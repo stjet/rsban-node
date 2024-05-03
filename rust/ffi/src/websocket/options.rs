@@ -1,4 +1,5 @@
 use crate::{to_rust_string, wallets::LmdbWalletsHandle, FfiPropertyTree};
+use rsnano_core::utils::{PropertyTree, SerdePropertyTree};
 use rsnano_node::websocket::{ConfirmationOptions, Options, VoteOptions};
 use std::{
     ffi::{c_char, c_void},
@@ -61,10 +62,17 @@ pub unsafe extern "C" fn rsn_websocket_options_destroy(handle: *mut WebsocketOpt
 #[no_mangle]
 pub extern "C" fn rsn_confirmation_options_create(
     wallets: &LmdbWalletsHandle,
+    options: *mut c_void,
 ) -> *mut WebsocketOptionsHandle {
-    WebsocketOptionsHandle::new(Options::Confirmation(ConfirmationOptions::new(Arc::clone(
-        wallets,
-    ))))
+    let ptree: Box<dyn PropertyTree> = if !options.is_null() {
+        Box::new(FfiPropertyTree::new_borrowed(options))
+    } else {
+        Box::new(SerdePropertyTree::new())
+    };
+    WebsocketOptionsHandle::new(Options::Confirmation(ConfirmationOptions::new(
+        Arc::clone(wallets),
+        &*ptree,
+    )))
 }
 
 #[no_mangle]

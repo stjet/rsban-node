@@ -161,7 +161,7 @@ namespace websocket
 	{
 	public:
 		confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a);
-		confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::logger & logger_a);
+		confirmation_options (boost::property_tree::ptree & options_a, nano::wallets & wallets_a, nano::logger & logger_a);
 
 		/**
 		 * Checks if a message should be filtered for given block confirmation options.

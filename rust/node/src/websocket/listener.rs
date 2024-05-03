@@ -52,8 +52,8 @@ impl ConfirmationOptions {
     const TYPE_ALL_ACTIVE: u8 = Self::TYPE_ACTIVE_QUORUM | Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT;
     const TYPE_ALL: u8 = Self::TYPE_ALL_ACTIVE | Self::TYPE_INACTIVE;
 
-    pub fn new(wallets: Arc<Wallets>) -> Self {
-        Self {
+    pub fn new(wallets: Arc<Wallets>, options_a: &dyn PropertyTree) -> Self {
+        let mut result = Self {
             include_election_info: false,
             include_election_info_with_votes: false,
             include_sideband_info: false,
@@ -63,7 +63,64 @@ impl ConfirmationOptions {
             confirmation_types: Self::TYPE_ALL,
             accounts: HashSet::new(),
             wallets,
+        };
+        // Non-account filtering options
+        result.include_block = options_a.get_bool("include_block", true);
+        result.include_election_info = options_a.get_bool("include_election_info", false);
+        result.include_election_info_with_votes =
+            options_a.get_bool("include_election_info_with_votes", false);
+        result.include_sideband_info = options_a.get_bool("include_sideband_info", false);
+
+        let type_l = options_a
+            .get_string("confirmation_type")
+            .unwrap_or_else(|_| "all".to_string());
+
+        if type_l.eq_ignore_ascii_case("active") {
+            result.confirmation_types = Self::TYPE_ALL_ACTIVE;
+        } else if type_l.eq_ignore_ascii_case("active_quorum") {
+            result.confirmation_types = Self::TYPE_ACTIVE_QUORUM;
+        } else if type_l.eq_ignore_ascii_case("active_confirmation_height") {
+            result.confirmation_types = Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT;
+        } else if type_l.eq_ignore_ascii_case("inactive") {
+            result.confirmation_types = Self::TYPE_INACTIVE;
+        } else {
+            result.confirmation_types = Self::TYPE_ALL;
         }
+
+        // Account filtering options
+        let all_local_accounts_l = options_a.get_bool("all_local_accounts", false);
+        if all_local_accounts_l {
+            result.all_local_accounts = true;
+            result.has_account_filtering_options = true;
+            if !result.include_block {
+                warn!("Websocket: Filtering option \"all_local_accounts\" requires that \"include_block\" is set to true to be effective");
+            }
+        }
+        let accounts_l = options_a.get_child("accounts");
+        if let Some(accounts_l) = accounts_l {
+            result.has_account_filtering_options = true;
+            for account_l in accounts_l.get_children() {
+                match Account::decode_account(&account_l.1.data()) {
+                    Ok(result_l) => {
+                        // Do not insert the given raw data to keep old prefix support
+                        result.accounts.insert(result_l.encode_account());
+                    }
+                    Err(_) => {
+                        warn!(
+                            "Invalid account provided for filtering blocks: {}",
+                            account_l.1.data()
+                        );
+                    }
+                }
+            }
+
+            if !result.include_block {
+                warn!("Filtering option \"accounts\" requires that \"include_block\" is set to true to be effective");
+            }
+        }
+        result.check_filter_empty();
+
+        result
     }
 
     pub fn should_filter(&self, message_a: &Message) -> bool {

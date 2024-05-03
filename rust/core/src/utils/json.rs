@@ -4,6 +4,11 @@ use std::collections::HashMap;
 
 pub trait PropertyTree {
     fn get_string(&self, path: &str) -> anyhow::Result<String>;
+    fn get_bool(&self, path: &str, default_value: bool) -> bool {
+        self.get_string(path)
+            .map(|s| s == "true")
+            .unwrap_or(default_value)
+    }
     fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTree>>;
     fn get_children(&self) -> Vec<(String, Box<dyn PropertyTree>)>;
     fn data(&self) -> String;

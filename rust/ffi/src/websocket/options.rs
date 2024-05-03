@@ -16,6 +16,20 @@ impl WebsocketOptionsHandle {
         Box::into_raw(Box::new(Self(options)))
     }
 
+    pub fn vote_options(&self) -> &VoteOptions {
+        let Options::Vote(options) = &self.0 else {
+            panic!("not of type VoteOptions")
+        };
+        options
+    }
+
+    pub fn vote_options_mut(&mut self) -> &mut VoteOptions {
+        let Options::Vote(options) = &mut self.0 else {
+            panic!("not of type VoteOptions")
+        };
+        options
+    }
+
     pub fn confirmation_options(&self) -> &ConfirmationOptions {
         let Options::Confirmation(options) = &self.0 else {
             panic!("not of type ConfirmationOptions")
@@ -247,6 +261,16 @@ pub unsafe extern "C" fn rsn_confirmation_options_update(
  */
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_options_create() -> *mut WebsocketOptionsHandle {
-    WebsocketOptionsHandle::new(Options::Vote(VoteOptions::new()))
+pub extern "C" fn rsn_vote_options_create(options: *mut c_void) -> *mut WebsocketOptionsHandle {
+    WebsocketOptionsHandle::new(Options::Vote(VoteOptions::new(
+        &FfiPropertyTree::new_borrowed(options),
+    )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_options_should_filter(
+    handle: &WebsocketOptionsHandle,
+    message: &MessageDto,
+) -> bool {
+    handle.vote_options().should_filter(&message.into())
 }

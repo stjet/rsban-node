@@ -37,16 +37,12 @@ nano::websocket::options::~options ()
 }
 
 nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a) :
-	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle, nullptr)),
-	wallets (wallets_a),
-	logger (logger_a)
+	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle, nullptr))
 {
 }
 
 nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree & options_a, nano::wallets & wallets_a, nano::logger & logger_a) :
-	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle, (void*)&options_a)),
-	wallets (wallets_a),
-	logger (logger_a)
+	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle, (void *)&options_a))
 {
 }
 
@@ -61,57 +57,15 @@ bool nano::websocket::confirmation_options::update (boost::property_tree::ptree 
 	return rsnano::rsn_confirmation_options_update (handle, &options_a);
 }
 
-void nano::websocket::confirmation_options::check_filter_empty () const
-{
-	// Warn the user if the options resulted in an empty filter
-	if (rsnano::rsn_confirmation_options_has_account_filtering_options (handle) && !rsnano::rsn_confirmation_options_all_local_accounts (handle) && rsnano::rsn_confirmation_options_accounts_is_empty (handle))
-	{
-		logger.warn (nano::log::type::websocket, "Provided options resulted in an empty account confirmation filter");
-	}
-}
-
 nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a) :
-	options (rsnano::rsn_vote_options_create ())
+	options (rsnano::rsn_vote_options_create (&const_cast<boost::property_tree::ptree &> (options_a)))
 {
-	include_replays = options_a.get<bool> ("include_replays", false);
-	include_indeterminate = options_a.get<bool> ("include_indeterminate", false);
-	auto representatives_l (options_a.get_child_optional ("representatives"));
-	if (representatives_l)
-	{
-		for (auto representative_l : *representatives_l)
-		{
-			nano::account result_l{};
-			if (!result_l.decode_account (representative_l.second.data ()))
-			{
-				// Do not insert the given raw data to keep old prefix support
-				representatives.insert (result_l.to_account ());
-			}
-			else
-			{
-				logger_a.warn (nano::log::type::websocket, "Invalid account provided for filtering votes: ", representative_l.second.data ());
-			}
-		}
-		// Warn the user if the option will be ignored
-		if (representatives.empty ())
-		{
-			logger_a.warn (nano::log::type::websocket, "Account filter for votes is empty, no messages will be filtered");
-		}
-	}
 }
 
 bool nano::websocket::vote_options::should_filter (nano::websocket::message const & message_a) const
 {
-	auto type (message_a.contents.get<std::string> ("message.type"));
-	bool should_filter_l = (!include_replays && type == "replay") || (!include_indeterminate && type == "indeterminate");
-	if (!should_filter_l && !representatives.empty ())
-	{
-		auto representative_text_l (message_a.contents.get<std::string> ("message.account"));
-		if (representatives.find (representative_text_l) == representatives.end ())
-		{
-			should_filter_l = true;
-		}
-	}
-	return should_filter_l;
+	auto message_dto{ message_a.to_dto () };
+	return rsnano::rsn_vote_options_should_filter (handle, &message_dto);
 }
 
 nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger & logger_a) :
@@ -293,7 +247,7 @@ void nano::websocket::session::handle_message (boost::property_tree::ptree const
 		std::unique_ptr<nano::websocket::options> options_l{ nullptr };
 		if (options_text_l && topic_l == nano::websocket::topic::confirmation)
 		{
-			options_l = std::make_unique<nano::websocket::confirmation_options> (const_cast<boost::property_tree::ptree&>(options_text_l.get ()), ws_listener.get_wallets (), logger);
+			options_l = std::make_unique<nano::websocket::confirmation_options> (const_cast<boost::property_tree::ptree &> (options_text_l.get ()), ws_listener.get_wallets (), logger);
 		}
 		else if (options_text_l && topic_l == nano::websocket::topic::vote)
 		{

@@ -202,18 +202,6 @@ namespace websocket
 		{
 			return rsnano::rsn_confirmation_options_include_sideband_info (handle);
 		}
-
-		static constexpr uint8_t const type_active_quorum = 1;
-		static constexpr uint8_t const type_active_confirmation_height = 2;
-		static constexpr uint8_t const type_inactive = 4;
-		static constexpr uint8_t const type_all_active = type_active_quorum | type_active_confirmation_height;
-		static constexpr uint8_t const type_all = type_all_active | type_inactive;
-
-	private:
-		void check_filter_empty () const;
-
-		nano::wallets & wallets;
-		nano::logger & logger;
 	};
 
 	/**
@@ -232,11 +220,6 @@ namespace websocket
 		 * @return false if the message should be broadcasted, true if it should be filtered
 		 */
 		bool should_filter (message const & message_a) const override;
-
-	private:
-		std::unordered_set<std::string> representatives;
-		bool include_replays{ false };
-		bool include_indeterminate{ false };
 	};
 
 	/** A websocket session managing its own lifetime */

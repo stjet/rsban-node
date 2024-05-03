@@ -2,25 +2,24 @@ use serde_json::{Map, Value};
 use std::any::Any;
 use std::collections::HashMap;
 
-pub trait PropertyTreeReader {
+pub trait PropertyTree {
     fn get_string(&self, path: &str) -> anyhow::Result<String>;
-    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>>;
-    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)>;
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTree>>;
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTree>)>;
     fn data(&self) -> String;
-}
-
-pub trait PropertyTreeWriter {
     fn clear(&mut self) -> anyhow::Result<()>;
     fn put_string(&mut self, path: &str, value: &str) -> anyhow::Result<()>;
     fn put_u64(&mut self, path: &str, value: u64) -> anyhow::Result<()>;
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter>;
-    fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter);
-    fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
-    fn put_child(&mut self, path: &str, value: &dyn PropertyTreeWriter);
+    fn new_writer(&self) -> Box<dyn PropertyTree>;
+    fn push_back(&mut self, path: &str, value: &dyn PropertyTree);
+    fn add_child(&mut self, path: &str, value: &dyn PropertyTree);
+    fn put_child(&mut self, path: &str, value: &dyn PropertyTree);
     fn add(&mut self, path: &str, value: &str) -> anyhow::Result<()>;
     fn as_any(&self) -> &dyn Any;
     fn to_json(&self) -> String;
 }
+
+pub trait PropertyTreeWriter {}
 
 pub struct TestPropertyTree {
     properties: HashMap<String, String>,
@@ -34,7 +33,7 @@ impl TestPropertyTree {
     }
 }
 
-impl PropertyTreeReader for TestPropertyTree {
+impl PropertyTree for TestPropertyTree {
     fn get_string(&self, path: &str) -> anyhow::Result<String> {
         self.properties
             .get(path)
@@ -42,20 +41,18 @@ impl PropertyTreeReader for TestPropertyTree {
             .ok_or_else(|| anyhow!("path not found"))
     }
 
-    fn get_child(&self, _path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+    fn get_child(&self, _path: &str) -> Option<Box<dyn PropertyTree>> {
         unimplemented!()
     }
 
-    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTree>)> {
         unimplemented!()
     }
 
     fn data(&self) -> String {
         unimplemented!()
     }
-}
 
-impl PropertyTreeWriter for TestPropertyTree {
     fn put_string(&mut self, path: &str, value: &str) -> anyhow::Result<()> {
         self.properties.insert(path.to_owned(), value.to_owned());
         Ok(())
@@ -65,15 +62,15 @@ impl PropertyTreeWriter for TestPropertyTree {
         todo!()
     }
 
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+    fn new_writer(&self) -> Box<dyn PropertyTree> {
         todo!()
     }
 
-    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
-    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
@@ -89,7 +86,7 @@ impl PropertyTreeWriter for TestPropertyTree {
         todo!()
     }
 
-    fn put_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn put_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
@@ -115,7 +112,7 @@ impl SerdePropertyTree {
     }
 }
 
-impl PropertyTreeReader for SerdePropertyTree {
+impl PropertyTree for SerdePropertyTree {
     fn get_string(&self, path: &str) -> anyhow::Result<String> {
         match self.value.get(path) {
             Some(v) => match v {
@@ -126,21 +123,21 @@ impl PropertyTreeReader for SerdePropertyTree {
         }
     }
 
-    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTree>> {
         self.value.get(path).map(|value| {
-            let child: Box<dyn PropertyTreeReader> = Box::new(Self {
+            let child: Box<dyn PropertyTree> = Box::new(Self {
                 value: value.clone(),
             });
             child
         })
     }
 
-    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTree>)> {
         match &self.value {
             Value::Array(array) => array
                 .iter()
                 .map(|i| {
-                    let reader: Box<dyn PropertyTreeReader> =
+                    let reader: Box<dyn PropertyTree> =
                         Box::new(SerdePropertyTree { value: i.clone() });
                     (String::default(), reader)
                 })
@@ -148,7 +145,7 @@ impl PropertyTreeReader for SerdePropertyTree {
             Value::Object(object) => object
                 .iter()
                 .map(|(k, v)| {
-                    let reader: Box<dyn PropertyTreeReader> =
+                    let reader: Box<dyn PropertyTree> =
                         Box::new(SerdePropertyTree { value: v.clone() });
                     (k.clone(), reader)
                 })
@@ -163,9 +160,7 @@ impl PropertyTreeReader for SerdePropertyTree {
             _ => unimplemented!(),
         }
     }
-}
 
-impl PropertyTreeWriter for SerdePropertyTree {
     fn clear(&mut self) -> anyhow::Result<()> {
         self.value = Value::Object(Map::new());
         Ok(())
@@ -187,19 +182,19 @@ impl PropertyTreeWriter for SerdePropertyTree {
         Ok(())
     }
 
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+    fn new_writer(&self) -> Box<dyn PropertyTree> {
         Box::new(Self::new())
     }
 
-    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn push_back(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
-    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
-    fn put_child(&mut self, _path: &str, _value: &dyn PropertyTreeWriter) {
+    fn put_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 

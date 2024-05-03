@@ -1,8 +1,6 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
-    utils::{
-        BufferWriter, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter, Serialize, Stream,
-    },
+    utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PendingKey,
     PublicKey, RawKey, Root, Signature,
 };
@@ -158,7 +156,7 @@ impl SendBlock {
         self.hashables.balance = balance;
     }
 
-    pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
+    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let destination = Account::decode_account(reader.get_string("destination")?)?;
         let balance = Amount::decode_dec(reader.get_string("balance")?)?;
@@ -257,7 +255,7 @@ impl Block for SendBlock {
         writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
-    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
         writer.put_string("type", "send")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string("destination", &self.hashables.destination.encode_account())?;

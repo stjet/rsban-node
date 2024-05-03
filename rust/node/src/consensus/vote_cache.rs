@@ -1,4 +1,4 @@
-use crate::stats::{DetailType, Direction, StatType, Stats};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, Amount, BlockHash, Vote, VoteCode, VoteSource,

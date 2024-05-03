@@ -1,6 +1,5 @@
-use std::ffi::c_void;
-
 use rsnano_core::utils::Latch;
+use std::ffi::c_void;
 
 type WaitLatchCallback = unsafe extern "C" fn(*mut c_void);
 
@@ -13,12 +12,6 @@ pub unsafe extern "C" fn rsn_set_wait_latch_callback(f: WaitLatchCallback) {
 
 pub struct FfiLatch {
     latch_ptr: *mut c_void,
-}
-
-impl FfiLatch {
-    pub fn new(latch_ptr: *mut c_void) -> Self {
-        Self { latch_ptr }
-    }
 }
 
 unsafe impl Send for FfiLatch {}

@@ -1,15 +1,10 @@
-use std::ffi::c_void;
-use std::ops::Deref;
-use std::sync::Arc;
-
+use super::BlockHandle;
+use crate::{utils::FfiStream, FfiPropertyTree};
 use rsnano_core::{
     BlockEnum, BlockHash, LazyBlockHash, PublicKey, RawKey, ReceiveBlock, ReceiveHashables,
     Signature,
 };
-
-use crate::{utils::FfiStream, FfiPropertyTreeReader};
-
-use super::BlockHandle;
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 #[repr(C)]
 pub struct ReceiveBlockDto {
@@ -113,8 +108,8 @@ pub extern "C" fn rsn_receive_block_size() -> usize {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_receive_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTreeReader::new(ptree);
+pub extern "C" fn rsn_receive_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
+    let reader = FfiPropertyTree::new_borrowed(ptree);
     match ReceiveBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyReceive(
             block,

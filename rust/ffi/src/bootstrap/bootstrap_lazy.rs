@@ -3,7 +3,7 @@ use super::{
     bootstrap_initiator::BootstrapInitiatorHandle, pulls_cache::PullInfoDto,
 };
 use crate::{
-    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle, FfiPropertyTreeWriter,
+    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle, FfiPropertyTree,
     NetworkParamsDto, NodeFlagsHandle,
 };
 use rsnano_core::{BlockHash, HashOrAccount};
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_get_information(
     handle: &BootstrapAttemptHandle,
     ptree: *mut c_void,
 ) {
-    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut writer = FfiPropertyTree::new_borrowed(ptree);
     handle.as_lazy().get_information(&mut writer).unwrap();
 }
 

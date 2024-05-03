@@ -1,12 +1,12 @@
 use super::{
     sign_message,
-    utils::{
-        BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeWriter, SerdePropertyTree,
-        Stream,
-    },
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, SerdePropertyTree, Stream},
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
-use crate::{utils::Serialize, Amount};
+use crate::{
+    utils::{PropertyTree, Serialize},
+    Amount,
+};
 use anyhow::Result;
 use std::time::{Duration, SystemTime};
 
@@ -135,7 +135,7 @@ impl Vote {
         result
     }
 
-    pub fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+    pub fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
         writer.put_string("account", &self.voting_account.encode_account())?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         writer.put_string("sequence", &self.timestamp().to_string())?;

@@ -64,7 +64,7 @@ use std::{
 };
 
 use primitive_types::{U256, U512};
-use rsnano_core::utils::{get_cpu_count, PropertyTreeWriter};
+use rsnano_core::utils::{get_cpu_count, PropertyTree};
 #[cfg(feature = "output_tracking")]
 use rsnano_core::utils::{OutputListener, OutputTracker};
 #[cfg(feature = "output_tracking")]
@@ -93,7 +93,7 @@ pub trait TransactionTracker: Send + Sync {
     fn txn_end(&self, txn_id: u64, is_write: bool);
     fn serialize_json(
         &self,
-        json: &mut dyn PropertyTreeWriter,
+        json: &mut dyn PropertyTree,
         min_read_time: Duration,
         min_write_time: Duration,
     ) -> anyhow::Result<()>;
@@ -114,7 +114,7 @@ impl TransactionTracker for NullTransactionTracker {
 
     fn serialize_json(
         &self,
-        _json: &mut dyn PropertyTreeWriter,
+        _json: &mut dyn PropertyTree,
         _min_read_time: Duration,
         _min_write_time: Duration,
     ) -> anyhow::Result<()> {

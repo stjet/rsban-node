@@ -236,12 +236,6 @@ impl From<&VoteCacheConfigDto> for VoteCacheConfig {
 
 pub struct VoteCacheEntryHandle(CacheEntry);
 
-impl VoteCacheEntryHandle {
-    pub fn new(entry: CacheEntry) -> *mut Self {
-        Box::into_raw(Box::new(VoteCacheEntryHandle(entry)))
-    }
-}
-
 impl Deref for VoteCacheEntryHandle {
     type Target = CacheEntry;
 

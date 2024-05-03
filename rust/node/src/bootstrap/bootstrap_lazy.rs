@@ -11,7 +11,7 @@ use crate::{
 };
 use anyhow::Result;
 use rsnano_core::{
-    utils::PropertyTreeWriter, Account, Amount, BlockEnum, BlockHash, BlockType, HashOrAccount,
+    utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::Transaction;
@@ -605,7 +605,7 @@ impl BootstrapAttemptLazy {
         }
     }
 
-    pub fn get_information(&self, ptree: &mut dyn PropertyTreeWriter) -> anyhow::Result<()> {
+    pub fn get_information(&self, ptree: &mut dyn PropertyTree) -> anyhow::Result<()> {
         let data = self.data.lock().unwrap();
         ptree.put_u64("lazy_blocks", data.lazy_blocks.len() as u64)?;
         ptree.put_u64("lazy_state_backlog", data.lazy_state_backlog.len() as u64)?;

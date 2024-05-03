@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use crate::stats::{DetailType, Direction, StatType, Stats};
+use crate::stats::{DetailType, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;

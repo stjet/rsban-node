@@ -1,5 +1,5 @@
 use super::{TransactionHandle, TransactionType};
-use crate::{FfiPropertyTreeWriter, LmdbConfigDto, TxnTrackingConfigDto};
+use crate::{FfiPropertyTree, LmdbConfigDto, TxnTrackingConfigDto};
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, NullTransactionTracker, TransactionTracker,
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn rsn_mdb_env_serialize_txn_tracker(
     min_read_time_ms: u64,
     min_write_time_ms: u64,
 ) {
-    let mut ptree = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut ptree = FfiPropertyTree::new_borrowed(ptree);
     (*handle)
         .0
         .serialize_txn_tracker(

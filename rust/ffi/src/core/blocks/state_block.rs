@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::{utils::FfiStream, FfiPropertyTreeReader};
+use crate::{utils::FfiStream, FfiPropertyTree};
 use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, LazyBlockHash, Link, PublicKey, RawKey, Signature,
     StateBlock, StateHashables,
@@ -173,8 +173,8 @@ pub unsafe extern "C" fn rsn_state_block_deserialize(stream: *mut c_void) -> *mu
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_state_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTreeReader::new(ptree);
+pub extern "C" fn rsn_state_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
+    let reader = FfiPropertyTree::new_borrowed(ptree);
     match StateBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::State(block))))),
         Err(_) => std::ptr::null_mut(),

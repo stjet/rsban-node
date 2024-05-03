@@ -22,7 +22,7 @@ use rsnano_core::{
 pub use send_block::*;
 pub use state_block::*;
 
-use crate::{utils::FfiStream, FfiPropertyTreeReader, FfiPropertyTreeWriter};
+use crate::{utils::FfiStream, FfiPropertyTree};
 use num::FromPrimitive;
 
 mod block_vec;
@@ -115,8 +115,8 @@ impl DerefMut for BlockHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *const c_void) -> *mut BlockHandle {
-    let ptree_reader = FfiPropertyTreeReader::new(ptree);
+pub unsafe extern "C" fn rsn_deserialize_block_json(ptree: *mut c_void) -> *mut BlockHandle {
+    let ptree_reader = FfiPropertyTree::new_borrowed(ptree);
     match deserialize_block_json(&ptree_reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(block)))),
         Err(_) => std::ptr::null_mut(),
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn rsn_block_serialize(handle: &BlockHandle, stream: *mut 
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_block_serialize_json(handle: &BlockHandle, ptree: *mut c_void) -> i32 {
-    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut writer = FfiPropertyTree::new_borrowed(ptree);
     match handle.deref().serialize_json(&mut writer) {
         Ok(_) => 0,
         Err(_) => -1,

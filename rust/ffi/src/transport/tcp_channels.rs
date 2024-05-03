@@ -24,12 +24,6 @@ use std::{
 
 pub struct TcpChannelsHandle(Arc<TcpChannels>);
 
-impl TcpChannelsHandle {
-    pub fn new(channels: Arc<TcpChannels>) -> *mut Self {
-        Box::into_raw(Box::new(Self(channels)))
-    }
-}
-
 impl Deref for TcpChannelsHandle {
     type Target = Arc<TcpChannels>;
 

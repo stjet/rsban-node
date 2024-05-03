@@ -8,7 +8,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::{seconds_since_epoch, PropertyTreeWriter};
+use rsnano_core::utils::{seconds_since_epoch, PropertyTree};
 use std::{
     ffi::CString,
     path::{Path, PathBuf},
@@ -146,7 +146,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
         Ok(())
     }
 
-    pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTreeWriter) -> anyhow::Result<()> {
+    pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTree) -> anyhow::Result<()> {
         let stats = self.env.environment.stat()?;
         json.put_u64("branch_pages", stats.branch_pages() as u64)?;
         json.put_u64("depth", stats.depth() as u64)?;
@@ -164,7 +164,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
 
     pub fn serialize_mdb_tracker(
         &self,
-        json: &mut dyn PropertyTreeWriter,
+        json: &mut dyn PropertyTree,
         min_read_time: Duration,
         min_write_time: Duration,
     ) -> anyhow::Result<()> {

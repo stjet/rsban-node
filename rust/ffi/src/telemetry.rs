@@ -15,7 +15,6 @@ use rsnano_node::{
 use std::{
     ffi::{c_char, c_void, CStr},
     net::SocketAddrV6,
-    ops::Deref,
     sync::Arc,
 };
 

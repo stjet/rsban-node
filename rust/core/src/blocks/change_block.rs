@@ -1,9 +1,6 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
-    utils::{
-        BufferWriter, Deserialize, FixedSizeSerialize, PropertyTreeReader, PropertyTreeWriter,
-        Serialize, Stream,
-    },
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, KeyPair, LazyBlockHash,
     Link, PublicKey, RawKey, Root, Signature,
 };
@@ -107,7 +104,7 @@ impl ChangeBlock {
         })
     }
 
-    pub fn deserialize_json(reader: &impl PropertyTreeReader) -> Result<Self> {
+    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let representative = Account::decode_account(reader.get_string("representative")?)?;
         let work = u64_from_hex_str(reader.get_string("work")?)?;
@@ -197,7 +194,7 @@ impl Block for ChangeBlock {
         writer.write_bytes_safe(&self.work.to_be_bytes());
     }
 
-    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> Result<()> {
+    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
         writer.put_string("type", "change")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string(

@@ -1,6 +1,6 @@
 mod options;
 
-use super::{FfiPropertyTreeWriter, StringDto, StringHandle};
+use super::{FfiPropertyTree, StringDto, StringHandle};
 use num::FromPrimitive;
 use rsnano_node::websocket::{from_topic, to_topic, Message, MessageBuilder};
 use std::{
@@ -20,7 +20,7 @@ pub unsafe extern "C" fn rsn_websocket_set_common_fields(message: *mut MessageDt
     let dto = &mut (*message);
     let mut message = Message {
         topic: FromPrimitive::from_u8(dto.topic).unwrap(),
-        contents: Box::new(FfiPropertyTreeWriter::new_borrowed(dto.contents)),
+        contents: Box::new(FfiPropertyTree::new_borrowed(dto.contents)),
     };
     MessageBuilder::set_common_fields(&mut message).unwrap();
 }
@@ -78,7 +78,7 @@ unsafe fn set_message_dto(result: *mut MessageDto, message: Message) {
     (*result).contents = message
         .contents
         .as_any()
-        .downcast_ref::<FfiPropertyTreeWriter>()
+        .downcast_ref::<FfiPropertyTree>()
         .unwrap()
         .handle;
     // Forget the message, so that the property_tree handle won't get deleted.
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn rsn_callback_listener_broadcast(f: ListenerBroadcastCal
             contents: message
                 .contents
                 .as_any()
-                .downcast_ref::<FfiPropertyTreeWriter>()
+                .downcast_ref::<FfiPropertyTree>()
                 .ok_or_else(|| anyhow!("not an FfiPropertyTreeWriter"))?
                 .handle,
         };

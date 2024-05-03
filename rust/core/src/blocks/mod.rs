@@ -25,8 +25,8 @@ pub use builders::*;
 
 use crate::{
     utils::{
-        BufferReader, BufferWriter, Deserialize, MemoryStream, PropertyTreeReader,
-        PropertyTreeWriter, SerdePropertyTree, Stream,
+        BufferReader, BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree,
+        Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, FullHash, KeyPair, Link, QualifiedRoot,
     Root, Signature, WorkVersion,
@@ -117,7 +117,7 @@ pub trait Block: FullHash {
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> BlockHash;
     fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter);
-    fn serialize_json(&self, writer: &mut dyn PropertyTreeWriter) -> anyhow::Result<()>;
+    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
         let mut writer = SerdePropertyTree::new();
         self.serialize_json(&mut writer)?;
@@ -452,7 +452,7 @@ impl serde::Serialize for BlockEnum {
     }
 }
 
-pub fn deserialize_block_json(ptree: &impl PropertyTreeReader) -> anyhow::Result<BlockEnum> {
+pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<BlockEnum> {
     let block_type = ptree.get_string("type")?;
     match block_type.as_str() {
         "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::LegacyReceive),

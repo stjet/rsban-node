@@ -1,5 +1,5 @@
 use super::{ActiveTransactions, ActiveTransactionsExt, ElectionBehavior};
-use crate::stats::{DetailType, Direction, StatType, Stats};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Amount, BlockEnum,

@@ -2,7 +2,7 @@ use crate::wallets::Wallets;
 
 use super::{Message, Topic};
 use anyhow::Result;
-use rsnano_core::{utils::PropertyTreeReader, Account};
+use rsnano_core::{utils::PropertyTree, Account};
 use std::{
     collections::{HashMap, HashSet},
     ffi::c_void,
@@ -67,6 +67,52 @@ impl ConfirmationOptions {
         }
     }
 
+    pub fn should_filter(&self, message_a: &Message) -> bool {
+        let mut should_filter_conf_type_l = true;
+
+        let type_text_l = message_a.contents.get_string("message.confirmation_type");
+        //auto confirmation_types = rsnano::rsn_confirmation_options_confirmation_types (handle);
+        //if (type_text_l == "active_quorum" && confirmation_types & type_active_quorum)
+        //{
+        //	should_filter_conf_type_l = false;
+        //}
+        //else if (type_text_l == "active_confirmation_height" && confirmation_types & type_active_confirmation_height)
+        //{
+        //	should_filter_conf_type_l = false;
+        //}
+        //else if (type_text_l == "inactive" && confirmation_types & type_inactive)
+        //{
+        //	should_filter_conf_type_l = false;
+        //}
+
+        let should_filter_account = self.has_account_filtering_options;
+        //auto destination_opt_l (message_a.contents.get_optional<std::string> ("message.block.link_as_account"));
+        //if (destination_opt_l)
+        //{
+        //	auto source_text_l (message_a.contents.get<std::string> ("message.account"));
+        //	if (rsnano::rsn_confirmation_options_all_local_accounts (handle))
+        //	{
+        //		nano::account source_l{};
+        //		nano::account destination_l{};
+        //		auto decode_source_ok_l (!source_l.decode_account (source_text_l));
+        //		auto decode_destination_ok_l (!destination_l.decode_account (destination_opt_l.get ()));
+        //		(void)decode_source_ok_l;
+        //		(void)decode_destination_ok_l;
+        //		debug_assert (decode_source_ok_l && decode_destination_ok_l);
+        //		if (wallets.exists (source_l) || wallets.exists (destination_l))
+        //		{
+        //			should_filter_account = false;
+        //		}
+        //	}
+        //	if (rsnano::rsn_confirmation_options_accounts_contains (handle, source_text_l.c_str ()) || rsnano::rsn_confirmation_options_accounts_contains (handle, destination_opt_l->c_str ()))
+        //	{
+        //		should_filter_account = false;
+        //	}
+        //}
+
+        should_filter_conf_type_l || should_filter_account
+    }
+
     /**
      * Update some existing options
      * Filtering options:
@@ -74,8 +120,8 @@ impl ConfirmationOptions {
      * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
      * @return false
      */
-    pub fn update(&mut self, options: impl PropertyTreeReader) -> bool {
-        let mut update_accounts = |accounts_text: &dyn PropertyTreeReader, insert: bool| {
+    pub fn update(&mut self, options: impl PropertyTree) -> bool {
+        let mut update_accounts = |accounts_text: &dyn PropertyTree, insert: bool| {
             self.has_account_filtering_options = true;
             for account in accounts_text.get_children() {
                 match Account::decode_account(account.1.data()) {

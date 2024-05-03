@@ -2,7 +2,7 @@ use super::{ActiveTransactions, ActiveTransactionsExt, ElectionBehavior};
 use crate::{
     cementation::ConfirmingSet,
     config::{NetworkConstants, OptimisticSchedulerConfig},
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},

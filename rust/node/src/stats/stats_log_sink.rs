@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Local};
-use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_core::utils::PropertyTree;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 use crate::utils::create_property_tree;
@@ -116,8 +116,8 @@ impl StatsLogSink for FileWriter {
 
 /// JSON sink. The resulting JSON object is provided as both a property_tree::ptree (to_object) and a string (to_string)
 pub struct JsonWriter {
-    tree: Box<dyn PropertyTreeWriter>,
-    entries_tree: Box<dyn PropertyTreeWriter>,
+    tree: Box<dyn PropertyTree>,
+    entries_tree: Box<dyn PropertyTree>,
     log_entries: usize,
 }
 

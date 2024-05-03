@@ -1,3 +1,6 @@
+use super::BlockHandle;
+use crate::utils::FfiStream;
+use crate::FfiPropertyTree;
 use num::FromPrimitive;
 use rsnano_core::{
     valid_send_block_predecessor, Account, Amount, BlockEnum, BlockHash, LazyBlockHash, PublicKey,
@@ -6,10 +9,6 @@ use rsnano_core::{
 use std::ffi::c_void;
 use std::ops::Deref;
 use std::sync::Arc;
-
-use crate::{utils::FfiStream, FfiPropertyTreeReader};
-
-use super::BlockHandle;
 
 #[repr(C)]
 pub struct SendBlockDto {
@@ -140,8 +139,8 @@ pub extern "C" fn rsn_send_block_valid_predecessor(block_type: u8) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_send_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTreeReader::new(ptree);
+pub extern "C" fn rsn_send_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
+    let reader = FfiPropertyTree::new_borrowed(ptree);
     match SendBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacySend(
             block,

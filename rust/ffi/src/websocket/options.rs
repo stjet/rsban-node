@@ -1,7 +1,7 @@
-use crate::{to_rust_string, wallets::LmdbWalletsHandle, FfiPropertyTreeReader};
+use crate::{to_rust_string, wallets::LmdbWalletsHandle, FfiPropertyTree};
 use rsnano_node::websocket::{ConfirmationOptions, Options, VoteOptions};
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, c_void},
     ops::{Deref, DerefMut},
     sync::Arc,
 };
@@ -217,11 +217,11 @@ pub unsafe extern "C" fn rsn_confirmation_options_accounts_is_empty(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirmation_options_update(
     handle: &mut WebsocketOptionsHandle,
-    options: *const c_void,
+    options: *mut c_void,
 ) -> bool {
     handle
         .confirmation_options_mut()
-        .update(FfiPropertyTreeReader::new(options))
+        .update(FfiPropertyTree::new_borrowed(options))
 }
 
 /*

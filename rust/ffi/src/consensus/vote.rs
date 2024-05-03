@@ -1,4 +1,4 @@
-use crate::{utils::FfiStream, FfiPropertyTreeWriter, StringDto};
+use crate::{utils::FfiStream, FfiPropertyTree, StringDto};
 use rsnano_core::{utils::Serialize, Account, BlockHash, FullHash, RawKey, Signature, Vote};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -94,14 +94,16 @@ pub struct VoteHashesDto {
     pub hashes: *const [u8; 32],
 }
 
-pub struct VoteHashesHandle(Vec<[u8; 32]>);
+pub struct VoteHashesHandle {
+    _data: Vec<[u8; 32]>,
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_hashes(handle: &VoteHandle) -> VoteHashesDto {
     let hashes: Vec<_> = handle.hashes.iter().map(|i| *i.as_bytes()).collect();
     let hashes_ptr = hashes.as_ptr();
     let count = hashes.len();
-    let handle = Box::into_raw(Box::new(VoteHashesHandle(hashes)));
+    let handle = Box::into_raw(Box::new(VoteHashesHandle { _data: hashes }));
     VoteHashesDto {
         handle,
         count,
@@ -152,7 +154,7 @@ pub extern "C" fn rsn_vote_hashes_string(handle: &VoteHandle) -> StringDto {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_serialize_json(handle: &VoteHandle, ptree: *mut c_void) {
-    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut writer = FfiPropertyTree::new_borrowed(ptree);
     handle.serialize_json(&mut writer).unwrap();
 }
 

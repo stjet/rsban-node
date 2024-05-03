@@ -1,12 +1,14 @@
 use rsnano_node::bootstrap::BootstrapAttempts;
 use std::sync::Mutex;
-pub struct BootstrapAttemptsHandle(Mutex<BootstrapAttempts>);
+pub struct BootstrapAttemptsHandle {
+    _data: Mutex<BootstrapAttempts>,
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_attempts_create() -> *mut BootstrapAttemptsHandle {
-    Box::into_raw(Box::new(BootstrapAttemptsHandle(Mutex::new(
-        BootstrapAttempts::new(),
-    ))))
+    Box::into_raw(Box::new(BootstrapAttemptsHandle {
+        _data: Mutex::new(BootstrapAttempts::new()),
+    }))
 }
 
 #[no_mangle]

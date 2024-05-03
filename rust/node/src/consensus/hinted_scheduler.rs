@@ -2,7 +2,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::HintedSchedulerConfig,
     consensus::ActiveTransactionsExt,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
     OnlineReps,
 };
 use rsnano_core::{

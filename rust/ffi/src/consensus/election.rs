@@ -1,3 +1,8 @@
+use crate::{
+    core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
+    utils::ContextWrapper,
+    VoidPointerCallback,
+};
 use num_traits::FromPrimitive;
 use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
 use rsnano_node::{
@@ -9,17 +14,8 @@ use rsnano_node::{
 use std::{
     ffi::c_void,
     ops::Deref,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, MutexGuard,
-    },
+    sync::{atomic::Ordering, Arc, MutexGuard},
     time::{Duration, SystemTime},
-};
-
-use crate::{
-    core::{copy_block_array_dto, BlockArrayDto, BlockHandle},
-    utils::ContextWrapper,
-    VoidPointerCallback,
 };
 
 use super::election_status::ElectionStatusHandle;
@@ -137,12 +133,6 @@ pub extern "C" fn rsn_election_behavior(handle: &ElectionHandle) -> u8 {
 }
 
 pub struct ElectionLockHandle(pub Option<MutexGuard<'static, ElectionData>>);
-
-impl ElectionLockHandle {
-    pub fn take(&mut self) -> Option<MutexGuard<'static, ElectionData>> {
-        self.0.take()
-    }
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_lock_destroy(handle: *mut ElectionLockHandle) {

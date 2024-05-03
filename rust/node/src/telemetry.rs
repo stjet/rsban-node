@@ -347,7 +347,7 @@ impl Telemetry {
             signature: Signature::default(),
         };
         // Make sure this is the final operation!
-        telemetry_data.sign(&self.node_id);
+        telemetry_data.sign(&self.node_id).unwrap();
         telemetry_data
     }
 }
@@ -480,7 +480,7 @@ pub fn consolidate_telemetry_data(telemetry_datas: &[TelemetryData]) -> Telemetr
 }
 
 fn get_mode_or_average(collection: &HashMap<u64, i32>, sum: u128, size: u128) -> u64 {
-    let Some((key, count)) = collection.iter().max_by_key(|(k, v)| *v) else {
+    let Some((key, count)) = collection.iter().max_by_key(|(_k, v)| *v) else {
         return Default::default();
     };
     if *count > 1 {
@@ -490,11 +490,11 @@ fn get_mode_or_average(collection: &HashMap<u64, i32>, sum: u128, size: u128) ->
     }
 }
 
-fn get_mode<T>(collection: &HashMap<T, i32>, size: u128) -> T
+fn get_mode<T>(collection: &HashMap<T, i32>, _size: u128) -> T
 where
     T: Default + Clone,
 {
-    let Some((key, count)) = collection.iter().max_by_key(|(k, v)| *v) else {
+    let Some((key, count)) = collection.iter().max_by_key(|(_k, v)| *v) else {
         return Default::default();
     };
     if *count > 1 {

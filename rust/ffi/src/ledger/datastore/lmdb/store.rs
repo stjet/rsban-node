@@ -6,7 +6,7 @@ use super::{
     pruned_store::LmdbPrunedStoreHandle, version_store::LmdbVersionStoreHandle, TransactionHandle,
     TransactionType,
 };
-use crate::{FfiPropertyTreeWriter, LmdbConfigDto, StringDto, TxnTrackingConfigDto};
+use crate::{FfiPropertyTree, LmdbConfigDto, StringDto, TxnTrackingConfigDto};
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 use rsnano_store_lmdb::{
     EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbStore, NullTransactionTracker,
@@ -210,7 +210,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_serialize_memory_stats(
     handle: *mut LmdbStoreHandle,
     ptree: *mut c_void,
 ) {
-    let mut writer = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut writer = FfiPropertyTree::new_borrowed(ptree);
     if let Err(e) = (*handle).0.serialize_memory_stats(&mut writer) {
         eprintln!("memory stat serialization failed: {:?}", e);
     }
@@ -231,7 +231,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_serialize_mdb_tracker(
     min_read_time_ms: u64,
     min_write_time_ms: u64,
 ) {
-    let mut ptree = FfiPropertyTreeWriter::new_borrowed(ptree);
+    let mut ptree = FfiPropertyTree::new_borrowed(ptree);
     (*handle)
         .0
         .serialize_mdb_tracker(

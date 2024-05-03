@@ -1,6 +1,6 @@
 use super::{ActiveTransactions, ActiveTransactionsExt, VoteProcessorQueue};
 use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
     transport::ChannelEnum,
 };
 use rsnano_core::{validate_message, Vote, VoteCode, VoteSource};

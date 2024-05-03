@@ -1,15 +1,13 @@
-use std::ffi::c_void;
-use std::ops::Deref;
-use std::sync::Arc;
-
+use super::BlockHandle;
+use crate::utils::FfiStream;
+use crate::FfiPropertyTree;
 use rsnano_core::{
     Account, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey, RawKey,
     Signature,
 };
-
-use crate::{utils::FfiStream, FfiPropertyTreeReader};
-
-use super::BlockHandle;
+use std::ffi::c_void;
+use std::ops::Deref;
+use std::sync::Arc;
 
 #[repr(C)]
 pub struct OpenBlockDto {
@@ -141,8 +139,8 @@ pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_open_block_deserialize_json(ptree: *const c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTreeReader::new(ptree);
+pub extern "C" fn rsn_open_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
+    let reader = FfiPropertyTree::new_borrowed(ptree);
     match OpenBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
             block,

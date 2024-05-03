@@ -108,7 +108,7 @@ public:
 	send_block ();
 	send_block (nano::block_hash const &, nano::account const &, nano::amount const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	send_block (bool &, nano::stream &);
-	send_block (bool &, boost::property_tree::ptree const &);
+	send_block (bool &, boost::property_tree::ptree &);
 	send_block (const send_block &);
 	send_block (send_block && other);
 	send_block (rsnano::BlockHandle * handle_a);
@@ -136,7 +136,7 @@ public:
 	receive_block ();
 	receive_block (nano::block_hash const &, nano::block_hash const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	receive_block (bool &, nano::stream &);
-	receive_block (bool &, boost::property_tree::ptree const &);
+	receive_block (bool &, boost::property_tree::ptree &);
 	receive_block (const nano::receive_block &);
 	receive_block (nano::receive_block &&);
 	receive_block (rsnano::BlockHandle * handle_a);
@@ -162,7 +162,6 @@ public:
 	open_block (nano::block_hash const &, nano::account const &, nano::account const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	open_block (nano::block_hash const &, nano::account const &, nano::account const &, std::nullptr_t);
 	open_block (bool &, nano::stream &);
-	open_block (bool &, boost::property_tree::ptree const &);
 	open_block (const nano::open_block &);
 	open_block (nano::open_block &&);
 	open_block (rsnano::BlockHandle * handle_a);
@@ -191,7 +190,6 @@ public:
 	change_block ();
 	change_block (nano::block_hash const &, nano::account const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	change_block (bool &, nano::stream &);
-	change_block (bool &, boost::property_tree::ptree const &);
 	change_block (const nano::change_block &);
 	change_block (nano::change_block &&);
 	change_block (rsnano::BlockHandle * handle_a);
@@ -217,7 +215,7 @@ public:
 	state_block ();
 	state_block (nano::account const &, nano::block_hash const &, nano::account const &, nano::amount const &, nano::link const &, nano::raw_key const &, nano::public_key const &, uint64_t);
 	state_block (bool &, nano::stream &);
-	state_block (bool &, boost::property_tree::ptree const &);
+	state_block (bool &, boost::property_tree::ptree &);
 	state_block (const nano::state_block &);
 	state_block (nano::state_block &&);
 	state_block (rsnano::BlockHandle * handle_a);
@@ -266,7 +264,7 @@ public:
 	virtual ~mutable_block_visitor () = default;
 };
 
-std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree const &);
+std::shared_ptr<nano::block> deserialize_block_json (boost::property_tree::ptree &);
 /**
  * Serialize a block prefixed with an 8-bit typecode
  */

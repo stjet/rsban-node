@@ -39,7 +39,6 @@ use rsnano_core::utils::{IS_SANITIZER_BUILD, MEMORY_INTENSIVE_INSTRUMENTATION};
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;
 pub use secure::*;
 pub use stats::*;
-pub(crate) use websocket::*;
 
 use rsnano_node::utils::ErrorCode;
 
@@ -106,7 +105,9 @@ pub unsafe extern "C" fn rsn_callback_is_sanitizer_build(
     IS_SANITIZER_BUILD = f;
 }
 
-pub struct U256ArrayHandle(Vec<[u8; 32]>);
+pub struct U256ArrayHandle {
+    _data: Vec<[u8; 32]>,
+}
 
 #[repr(C)]
 pub struct U256ArrayDto {
@@ -119,7 +120,7 @@ impl U256ArrayDto {
     pub fn initialize(&mut self, values: Vec<[u8; 32]>) {
         self.items = values.as_ptr();
         self.count = values.len();
-        self.handle = Box::into_raw(Box::new(U256ArrayHandle(values)))
+        self.handle = Box::into_raw(Box::new(U256ArrayHandle { _data: values }))
     }
 }
 

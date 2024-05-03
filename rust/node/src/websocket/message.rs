@@ -1,6 +1,6 @@
 use crate::utils::create_property_tree;
 use anyhow::Result;
-use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_core::utils::PropertyTree;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Copy, FromPrimitive)]
@@ -29,7 +29,7 @@ pub enum Topic {
 
 pub struct Message {
     pub topic: Topic,
-    pub contents: Box<dyn PropertyTreeWriter>,
+    pub contents: Box<dyn PropertyTree>,
 }
 
 pub struct MessageBuilder {}

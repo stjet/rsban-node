@@ -173,7 +173,7 @@ bool nano::websocket::confirmation_options::should_filter (nano::websocket::mess
 	return should_filter_conf_type_l || should_filter_account;
 }
 
-bool nano::websocket::confirmation_options::update (boost::property_tree::ptree const & options_a)
+bool nano::websocket::confirmation_options::update (boost::property_tree::ptree & options_a)
 {
 	return rsnano::rsn_confirmation_options_update (handle, &options_a);
 }
@@ -441,7 +441,7 @@ void nano::websocket::session::handle_message (boost::property_tree::ptree const
 		if (existing != subscriptions.end ())
 		{
 			auto options_text_l (message_a.get_child_optional ("options"));
-			if (options_text_l.is_initialized () && !existing->second->update (*options_text_l))
+			if (options_text_l.is_initialized () && !existing->second->update (const_cast<boost::property_tree::ptree &> (*options_text_l)))
 			{
 				action_succeeded = true;
 			}

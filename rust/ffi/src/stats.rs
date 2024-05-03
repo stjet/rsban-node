@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use super::FfiPropertyTreeWriter;
+use super::FfiPropertyTree;
 
 #[repr(C)]
 pub struct StatConfigDto {
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn rsn_stat_log_sink_to_object(
     let obj = (*handle).0.to_object();
     match obj {
         Some(obj) => {
-            let x = obj.downcast_ref::<FfiPropertyTreeWriter>().unwrap();
+            let x = obj.downcast_ref::<FfiPropertyTree>().unwrap();
             x.handle
         }
         None => std::ptr::null_mut(),

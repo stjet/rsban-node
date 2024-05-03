@@ -1,6 +1,5 @@
-use crate::{Block, BlockEnum, StateBlock};
-
 use super::{PublicKey, RawKey, Signature};
+use crate::{Block, StateBlock};
 
 pub struct KeyPair {
     keypair: ed25519_dalek_blake2b::Keypair,

@@ -1,5 +1,5 @@
 use backtrace::Backtrace;
-use rsnano_core::utils::PropertyTreeWriter;
+use rsnano_core::utils::PropertyTree;
 use rsnano_store_lmdb::TransactionTracker;
 use std::{
     collections::HashMap,
@@ -127,7 +127,7 @@ impl TransactionTracker for LongRunningTransactionLogger {
 
     fn serialize_json(
         &self,
-        json: &mut dyn PropertyTreeWriter,
+        json: &mut dyn PropertyTree,
         min_read_time: Duration,
         min_write_time: Duration,
     ) -> anyhow::Result<()> {

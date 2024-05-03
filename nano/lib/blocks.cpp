@@ -441,7 +441,7 @@ nano::send_block::send_block (bool & error_a, nano::stream & stream_a)
 	error_a = handle == nullptr;
 }
 
-nano::send_block::send_block (bool & error_a, boost::property_tree::ptree const & tree_a)
+nano::send_block::send_block (bool & error_a, boost::property_tree::ptree & tree_a)
 {
 	handle = rsnano::rsn_send_block_deserialize_json (&tree_a);
 	error_a = handle == nullptr;
@@ -582,12 +582,6 @@ nano::open_block::open_block (nano::block_hash const & source_a, nano::account c
 nano::open_block::open_block (bool & error_a, nano::stream & stream_a)
 {
 	handle = rsnano::rsn_open_block_deserialize (&stream_a);
-	error_a = handle == nullptr;
-}
-
-nano::open_block::open_block (bool & error_a, boost::property_tree::ptree const & tree_a)
-{
-	handle = rsnano::rsn_open_block_deserialize_json (&tree_a);
 	error_a = handle == nullptr;
 }
 
@@ -745,12 +739,6 @@ nano::change_block::change_block (bool & error_a, nano::stream & stream_a)
 	error_a = handle == nullptr;
 }
 
-nano::change_block::change_block (bool & error_a, boost::property_tree::ptree const & tree_a)
-{
-	handle = rsnano::rsn_change_block_deserialize_json (&tree_a);
-	error_a = handle == nullptr;
-}
-
 nano::change_block::change_block (const nano::change_block & other_a)
 {
 	cached_hash = other_a.cached_hash;
@@ -899,7 +887,7 @@ nano::state_block::state_block (bool & error_a, nano::stream & stream_a)
 	error_a = handle == nullptr;
 }
 
-nano::state_block::state_block (bool & error_a, boost::property_tree::ptree const & tree_a)
+nano::state_block::state_block (bool & error_a, boost::property_tree::ptree & tree_a)
 {
 	handle = rsnano::rsn_state_block_deserialize_json (&tree_a);
 	error_a = handle == nullptr;
@@ -1072,7 +1060,7 @@ std::size_t nano::state_block::size ()
 	return rsnano::rsn_state_block_size ();
 }
 
-std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree const & tree_a)
+std::shared_ptr<nano::block> nano::deserialize_block_json (boost::property_tree::ptree & tree_a)
 {
 	std::shared_ptr<nano::block> result;
 	rsnano::BlockHandle * block_handle (rsnano::rsn_deserialize_block_json (&tree_a));
@@ -1135,7 +1123,7 @@ nano::receive_block::receive_block (bool & error_a, nano::stream & stream_a)
 	error_a = handle == nullptr;
 }
 
-nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree const & tree_a)
+nano::receive_block::receive_block (bool & error_a, boost::property_tree::ptree & tree_a)
 {
 	handle = rsnano::rsn_receive_block_deserialize_json (&tree_a);
 	error_a = handle == nullptr;

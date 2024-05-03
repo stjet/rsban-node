@@ -615,7 +615,7 @@ impl TcpListenerBuilder {
 }
 
 impl TcpServerObserver for TcpListener {
-    fn bootstrap_server_timeout(&self, connection_id: usize) {
+    fn bootstrap_server_timeout(&self, _connection_id: usize) {
         debug!("Closing TCP server due to timeout");
     }
 

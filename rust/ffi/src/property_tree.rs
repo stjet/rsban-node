@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rsnano_core::utils::{PropertyTreeReader, PropertyTreeWriter};
+use rsnano_core::utils::PropertyTree;
 use rsnano_node::utils::CREATE_PROPERTY_TREE;
 use std::{
     ffi::{c_void, CStr, CString},
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn rsn_add_ptree_child(
 ) {
     context.0.push((
         to_rust_string(name),
-        Box::new(FfiPropertyTreeReader::new(child_tree)),
+        Box::new(FfiPropertyTree::new_borrowed(child_tree)),
     ));
 }
 
@@ -145,12 +145,12 @@ pub unsafe extern "C" fn rsn_set_ptree_data(context: &mut PTreeDataContainer, da
     context.0 = to_rust_string(data);
 }
 
-pub struct FfiPropertyTreeWriter {
+pub struct FfiPropertyTree {
     pub handle: *mut c_void,
     owned: bool,
 }
 
-impl FfiPropertyTreeWriter {
+impl FfiPropertyTree {
     /// don't free the handle
     pub fn new_borrowed(handle: *mut c_void) -> Self {
         Self {
@@ -168,7 +168,7 @@ impl FfiPropertyTreeWriter {
     }
 }
 
-impl PropertyTreeWriter for FfiPropertyTreeWriter {
+impl PropertyTree for FfiPropertyTree {
     fn put_string(&mut self, path: &str, value: &str) -> Result<()> {
         unsafe {
             match PUT_STRING_CALLBACK {
@@ -199,19 +199,16 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
         }
     }
 
-    fn new_writer(&self) -> Box<dyn PropertyTreeWriter> {
+    fn new_writer(&self) -> Box<dyn PropertyTree> {
         create_ffi_property_tree()
     }
 
-    fn push_back(&mut self, path: &str, value: &dyn PropertyTreeWriter) {
+    fn push_back(&mut self, path: &str, value: &dyn PropertyTree) {
         unsafe {
             match PUSH_BACK_CALLBACK {
                 Some(f) => {
                     let path_str = CString::new(path).unwrap();
-                    let ffi_value = value
-                        .as_any()
-                        .downcast_ref::<FfiPropertyTreeWriter>()
-                        .unwrap();
+                    let ffi_value = value.as_any().downcast_ref::<FfiPropertyTree>().unwrap();
                     f(self.handle, path_str.as_ptr(), ffi_value.handle);
                 }
                 None => panic!("PUSH_BACK_CALLBACK missing"),
@@ -223,15 +220,12 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
         self
     }
 
-    fn add_child(&mut self, path: &str, value: &dyn PropertyTreeWriter) {
+    fn add_child(&mut self, path: &str, value: &dyn PropertyTree) {
         unsafe {
             match ADD_CHILD_CALLBACK {
                 Some(f) => {
                     let path_str = CString::new(path).unwrap();
-                    let ffi_value = value
-                        .as_any()
-                        .downcast_ref::<FfiPropertyTreeWriter>()
-                        .unwrap();
+                    let ffi_value = value.as_any().downcast_ref::<FfiPropertyTree>().unwrap();
                     f(self.handle, path_str.as_ptr(), ffi_value.handle);
                 }
                 None => panic!("ADD_CHILD_CALLBACK missing"),
@@ -269,15 +263,12 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
         }
     }
 
-    fn put_child(&mut self, path: &str, value: &dyn PropertyTreeWriter) {
+    fn put_child(&mut self, path: &str, value: &dyn PropertyTree) {
         unsafe {
             match PUT_CHILD_CALLBACK {
                 Some(f) => {
                     let path_str = CString::new(path).unwrap();
-                    let ffi_value = value
-                        .as_any()
-                        .downcast_ref::<FfiPropertyTreeWriter>()
-                        .unwrap();
+                    let ffi_value = value.as_any().downcast_ref::<FfiPropertyTree>().unwrap();
                     f(self.handle, path_str.as_ptr(), ffi_value.handle);
                 }
                 None => panic!("PUT_CHILD_CALLBACK missing"),
@@ -308,47 +299,7 @@ impl PropertyTreeWriter for FfiPropertyTreeWriter {
         }
         result
     }
-}
 
-pub(crate) fn create_ffi_property_tree() -> Box<dyn PropertyTreeWriter> {
-    let handle = unsafe {
-        match CREATE_TREE_CALLBACK {
-            Some(f) => f(),
-            None => panic!("CREATE_TREE_CALLBACK missing"),
-        }
-    };
-    Box::new(FfiPropertyTreeWriter::new_owned(handle))
-}
-
-impl Drop for FfiPropertyTreeWriter {
-    fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                match DESTROY_TREE_CALLBACK {
-                    Some(f) => f(self.handle),
-                    None => panic!("DESTROY_TREE_CALLBACK missing"),
-                }
-            }
-        }
-    }
-}
-
-const PROPERTY_TREE_BUFFER_SIZE: usize = 1024;
-
-pub struct FfiPropertyTreeReader {
-    handle: *const c_void,
-}
-
-impl FfiPropertyTreeReader {
-    pub fn new(handle: *const c_void) -> Self {
-        Self { handle }
-    }
-}
-
-pub struct PTreeChildContainer(Vec<(String, Box<dyn PropertyTreeReader>)>);
-pub struct PTreeDataContainer(String);
-
-impl PropertyTreeReader for FfiPropertyTreeReader {
     fn get_string(&self, path: &str) -> Result<String> {
         unsafe {
             match GET_STRING_CALLBACK {
@@ -371,7 +322,7 @@ impl PropertyTreeReader for FfiPropertyTreeReader {
         }
     }
 
-    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTreeReader>> {
+    fn get_child(&self, path: &str) -> Option<Box<dyn PropertyTree>> {
         let child_handle = unsafe {
             GET_CHILD_CALLBACK.expect("GET_CHILD_CALLBACK missing")(
                 self.handle,
@@ -383,11 +334,11 @@ impl PropertyTreeReader for FfiPropertyTreeReader {
         if child_handle.is_null() {
             None
         } else {
-            Some(Box::new(FfiPropertyTreeReader::new(child_handle)))
+            Some(Box::new(FfiPropertyTree::new_borrowed(child_handle)))
         }
     }
 
-    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTreeReader>)> {
+    fn get_children(&self) -> Vec<(String, Box<dyn PropertyTree>)> {
         let mut result = Box::new(PTreeChildContainer(Vec::new()));
         unsafe {
             GET_CHILDREN_CALLBACK.expect("GET_CHILDREN_CALLBACK missing")(
@@ -404,3 +355,31 @@ impl PropertyTreeReader for FfiPropertyTreeReader {
         result.0
     }
 }
+
+pub(crate) fn create_ffi_property_tree() -> Box<dyn PropertyTree> {
+    let handle = unsafe {
+        match CREATE_TREE_CALLBACK {
+            Some(f) => f(),
+            None => panic!("CREATE_TREE_CALLBACK missing"),
+        }
+    };
+    Box::new(FfiPropertyTree::new_owned(handle))
+}
+
+impl Drop for FfiPropertyTree {
+    fn drop(&mut self) {
+        if self.owned {
+            unsafe {
+                match DESTROY_TREE_CALLBACK {
+                    Some(f) => f(self.handle),
+                    None => panic!("DESTROY_TREE_CALLBACK missing"),
+                }
+            }
+        }
+    }
+}
+
+const PROPERTY_TREE_BUFFER_SIZE: usize = 1024;
+
+pub struct PTreeChildContainer(Vec<(String, Box<dyn PropertyTree>)>);
+pub struct PTreeDataContainer(String);

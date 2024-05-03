@@ -136,7 +136,7 @@ namespace websocket
 		 * Update options, if available for a given topic
 		 * @return false on success
 		 */
-		virtual bool update (boost::property_tree::ptree const & options_a)
+		virtual bool update (boost::property_tree::ptree & options_a)
 		{
 			return true;
 		}
@@ -175,7 +175,7 @@ namespace websocket
 		 * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
 		 * @return false
 		 */
-		bool update (boost::property_tree::ptree const & options_a) override;
+		bool update (boost::property_tree::ptree & options_a) override;
 
 		/** Returns whether or not block contents should be included */
 		bool get_include_block () const

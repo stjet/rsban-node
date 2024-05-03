@@ -1,7 +1,7 @@
 use super::UncheckedMap;
 use crate::{
     config::{NodeConfig, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
     transport::{ChannelEnum, FairQueue, Origin},
 };
 use rsnano_core::{

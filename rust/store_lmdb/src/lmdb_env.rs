@@ -5,7 +5,7 @@ use crate::{
 use anyhow::bail;
 use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
 use lmdb_sys::{MDB_env, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS};
-use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTreeWriter};
+use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTree};
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -859,7 +859,7 @@ impl<T: Environment> LmdbEnv<T> {
 
     pub fn serialize_txn_tracker(
         &self,
-        json: &mut dyn PropertyTreeWriter,
+        json: &mut dyn PropertyTree,
         min_read_time: Duration,
         min_write_time: Duration,
     ) -> anyhow::Result<()> {

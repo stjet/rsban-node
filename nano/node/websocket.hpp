@@ -263,16 +263,6 @@ namespace websocket
 		socket_type::endpoint_type remote;
 		socket_type::endpoint_type local;
 
-		/** Hash functor for topic enums */
-		struct topic_hash
-		{
-			template <typename T>
-			std::size_t operator() (T t) const
-			{
-				return static_cast<std::size_t> (t);
-			}
-		};
-
 		/** Handle incoming message */
 		void handle_message (boost::property_tree::ptree const & message_a);
 		/** Acknowledge incoming message */
@@ -292,22 +282,21 @@ namespace websocket
 
 		/** Start accepting connections */
 		void run ();
-		void accept ();
-		void on_accept (boost::system::error_code ec_a);
 
 		/** Close all websocket sessions and stop listening for new connections */
 		void stop ();
 
 		/** Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block") */
-		void broadcast_confirmation (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::amount const & amount_a, std::string const & subtype, nano::election_status const & election_status_a, std::vector<nano::vote_with_weight_info> const & election_votes_a);
+		void broadcast_confirmation (
+		std::shared_ptr<nano::block> const & block_a,
+		nano::account const & account_a,
+		nano::amount const & amount_a,
+		std::string const & subtype,
+		nano::election_status const & election_status_a,
+		std::vector<nano::vote_with_weight_info> const & election_votes_a);
 
 		/** Broadcast \p message to all session subscribing to the message topic. */
 		void broadcast (nano::websocket::message message_a);
-
-		nano::logger & get_logger () const
-		{
-			return logger;
-		}
 
 		std::uint16_t listening_port ()
 		{
@@ -332,6 +321,10 @@ namespace websocket
 		{
 			return topic_subscriber_count[static_cast<std::size_t> (topic_a)];
 		}
+
+	private:
+		void accept ();
+		void on_accept (boost::system::error_code ec_a);
 
 	private:
 		/** A websocket session can increase and decrease subscription counts. */

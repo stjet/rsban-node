@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 using socket_type = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
@@ -144,6 +143,8 @@ namespace websocket
 		}
 
 		friend class session;
+
+	public:
 		rsnano::WebsocketOptionsHandle * handle;
 	};
 
@@ -160,6 +161,7 @@ namespace websocket
 	class confirmation_options final : public options
 	{
 	public:
+		confirmation_options (rsnano::WebsocketOptionsHandle * handle);
 		confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a);
 		confirmation_options (boost::property_tree::ptree & options_a, nano::wallets & wallets_a, nano::logger & logger_a);
 
@@ -230,7 +232,7 @@ namespace websocket
 	public:
 		/** Constructor that takes ownership over \p socket_a */
 		explicit session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger &);
-
+		session (session const &) = delete;
 		~session ();
 
 		/** Perform Websocket handshake and start reading messages */
@@ -270,9 +272,6 @@ namespace websocket
 				return static_cast<std::size_t> (t);
 			}
 		};
-		/** Map of subscriptions -> options registered by this session. */
-		std::unordered_map<topic, std::unique_ptr<options>, topic_hash> subscriptions;
-		nano::mutex subscriptions_mutex;
 
 		/** Handle incoming message */
 		void handle_message (boost::property_tree::ptree const & message_a);
@@ -280,6 +279,9 @@ namespace websocket
 		void send_ack (std::string action_a, std::string id_a);
 		/** Send all queued messages. This must be called from the write strand. */
 		void write_queued_messages ();
+
+	public:
+		rsnano::WebsocketSessionHandle * handle;
 	};
 
 	/** Creates a new session for each incoming connection */

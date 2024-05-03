@@ -36,6 +36,11 @@ nano::websocket::options::~options ()
 	rsnano::rsn_websocket_options_destroy (handle);
 }
 
+nano::websocket::confirmation_options::confirmation_options (rsnano::WebsocketOptionsHandle * handle) :
+	options (handle)
+{
+}
+
 nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a) :
 	options (rsnano::rsn_confirmation_options_create (wallets_a.rust_handle, nullptr))
 {
@@ -68,11 +73,102 @@ bool nano::websocket::vote_options::should_filter (nano::websocket::message cons
 	return rsnano::rsn_vote_options_should_filter (handle, &message_dto);
 }
 
+namespace
+{
+nano::websocket::topic to_topic (std::string const & topic_a)
+{
+	return static_cast<nano::websocket::topic> (rsnano::rsn_to_topic (topic_a.c_str ()));
+}
+
+std::string from_topic (nano::websocket::topic topic_a)
+{
+	rsnano::StringDto result;
+	rsnano::rsn_from_topic (static_cast<uint8_t> (topic_a), &result);
+	return rsnano::convert_dto_to_string (result);
+}
+
+class listener_subscriptions_lock
+{
+public:
+	listener_subscriptions_lock (nano::websocket::session const & session) :
+		handle{ rsnano::rsn_websocket_session_lock_subscriptions (session.handle) }
+	{
+	}
+
+	listener_subscriptions_lock (listener_subscriptions_lock const &) = delete;
+
+	~listener_subscriptions_lock ()
+	{
+		unlock ();
+	}
+
+	void unlock ()
+	{
+		if (handle != nullptr)
+		{
+			rsnano::rsn_listener_subscriptions_lock_destroy (handle);
+			handle = nullptr;
+		}
+	}
+
+	std::vector<nano::websocket::topic> topics () const
+	{
+		auto topics_handle = rsnano::rsn_listener_subscriptions_lock_get_topics (handle);
+		auto len = rsnano::rsn_topic_vec_len (topics_handle);
+		std::vector<nano::websocket::topic> result;
+		result.reserve (len);
+		for (auto i = 0; i < len; ++i)
+		{
+			auto topic = static_cast<nano::websocket::topic> (rsnano::rsn_topic_vec_get (topics_handle, i));
+			result.push_back (topic);
+		}
+		rsnano::rsn_topic_vec_destroy (topics_handle);
+		return result;
+	}
+
+	bool should_filter (nano::websocket::message const & message)
+	{
+		auto dto{ message.to_dto () };
+		return rsnano::rsn_listener_subscriptions_lock_should_filter (handle, &dto);
+	}
+
+	bool set_options (nano::websocket::topic topic, nano::websocket::options const & options, socket_type::endpoint_type const & remote)
+	{
+		auto remote_dto{ rsnano::endpoint_to_dto (remote) };
+		return rsnano::rsn_listener_subscriptions_lock_set_options (handle, static_cast<uint8_t> (topic), options.handle, &remote_dto);
+	}
+
+	bool update (nano::websocket::topic topic, boost::property_tree::ptree & message)
+	{
+		return rsnano::rsn_listener_subscriptions_lock_update (handle, static_cast<uint8_t> (topic), &message);
+	}
+
+	bool erase (nano::websocket::topic topic)
+	{
+		return rsnano::rsn_listener_subscriptions_lock_remove (handle, static_cast<uint8_t> (topic));
+	}
+
+	bool contains_topic (nano::websocket::topic topic)
+	{
+		return rsnano::rsn_listener_subscriptions_lock_contains_topic (handle, static_cast<uint8_t> (topic));
+	}
+
+	nano::websocket::confirmation_options get_confirmation_options (nano::websocket::topic topic, nano::wallets const & wallets)
+	{
+		auto opts_handle = rsnano::rsn_listener_subscriptions_lock_get_conf_opts_or_default (handle, static_cast<uint8_t> (topic), wallets.rust_handle);
+		return { opts_handle };
+	}
+
+	rsnano::ListenerSubscriptionsLock * handle;
+};
+}
+
 nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger & logger_a) :
 	ws_listener (listener_a),
 	ws (std::move (socket_a)),
 	strand{ ws.get_executor () },
-	logger{ logger_a }
+	logger{ logger_a },
+	handle{ rsnano::rsn_websocket_session_create () }
 {
 	{
 		// Best effort attempt to get endpoint addresses
@@ -89,12 +185,13 @@ nano::websocket::session::session (nano::websocket::listener & listener_a, socke
 nano::websocket::session::~session ()
 {
 	{
-		nano::unique_lock<nano::mutex> lk (subscriptions_mutex);
-		for (auto & subscription : subscriptions)
+		listener_subscriptions_lock subs_lock{ *this };
+		for (auto topic : subs_lock.topics ())
 		{
-			ws_listener.decrease_subscriber_count (subscription.first);
+			ws_listener.decrease_subscriber_count (topic);
 		}
 	}
+	rsnano::rsn_websocket_session_destroy (handle);
 }
 
 void nano::websocket::session::handshake ()
@@ -131,11 +228,10 @@ void nano::websocket::session::close ()
 
 void nano::websocket::session::write (nano::websocket::message message_a)
 {
-	nano::unique_lock<nano::mutex> lk (subscriptions_mutex);
-	auto subscription (subscriptions.find (message_a.topic));
-	if (message_a.topic == nano::websocket::topic::ack || (subscription != subscriptions.end () && !subscription->second->should_filter (message_a)))
+	listener_subscriptions_lock subs_lock{ *this };
+	if (message_a.topic == nano::websocket::topic::ack || !subs_lock.should_filter (message_a))
 	{
-		lk.unlock ();
+		subs_lock.unlock ();
 		auto this_l (shared_from_this ());
 		boost::asio::post (strand,
 		[message_a, this_l] () {
@@ -205,21 +301,6 @@ void nano::websocket::session::read ()
 	});
 }
 
-namespace
-{
-nano::websocket::topic to_topic (std::string const & topic_a)
-{
-	return static_cast<nano::websocket::topic> (rsnano::rsn_to_topic (topic_a.c_str ()));
-}
-
-std::string from_topic (nano::websocket::topic topic_a)
-{
-	rsnano::StringDto result;
-	rsnano::rsn_from_topic (static_cast<uint8_t> (topic_a), &result);
-	return rsnano::convert_dto_to_string (result);
-}
-}
-
 void nano::websocket::session::send_ack (std::string action_a, std::string id_a)
 {
 	nano::websocket::message msg (nano::websocket::topic::ack);
@@ -243,7 +324,7 @@ void nano::websocket::session::handle_message (boost::property_tree::ptree const
 	if (action == "subscribe" && topic_l != nano::websocket::topic::invalid)
 	{
 		auto options_text_l (message_a.get_child_optional ("options"));
-		nano::lock_guard<nano::mutex> lk (subscriptions_mutex);
+		listener_subscriptions_lock subs_lock{ *this };
 		std::unique_ptr<nano::websocket::options> options_l{ nullptr };
 		if (options_text_l && topic_l == nano::websocket::topic::confirmation)
 		{
@@ -257,37 +338,26 @@ void nano::websocket::session::handle_message (boost::property_tree::ptree const
 		{
 			options_l = std::make_unique<nano::websocket::options> ();
 		}
-		auto existing (subscriptions.find (topic_l));
-		if (existing != subscriptions.end ())
+
+		auto inserted = subs_lock.set_options (topic_l, *options_l, remote);
+		if (inserted)
 		{
-			logger.info (nano::log::type::websocket, "Updated subscription to topic: {} ({})", from_topic (topic_l), nano::util::to_str (remote));
-			existing->second = std::move (options_l);
-		}
-		else
-		{
-			logger.info (nano::log::type::websocket, "New subscription to topic: {} ({})", from_topic (topic_l), nano::util::to_str (remote));
-			subscriptions.emplace (topic_l, std::move (options_l));
 			ws_listener.increase_subscriber_count (topic_l);
 		}
 		action_succeeded = true;
 	}
 	else if (action == "update")
 	{
-		nano::lock_guard<nano::mutex> lk (subscriptions_mutex);
-		auto existing (subscriptions.find (topic_l));
-		if (existing != subscriptions.end ())
+		listener_subscriptions_lock subs_lock{ *this };
+		if (subs_lock.update (topic_l, const_cast<boost::property_tree::ptree &> (message_a)))
 		{
-			auto options_text_l (message_a.get_child_optional ("options"));
-			if (options_text_l.is_initialized () && !existing->second->update (const_cast<boost::property_tree::ptree &> (*options_text_l)))
-			{
-				action_succeeded = true;
-			}
+			action_succeeded = true;
 		}
 	}
 	else if (action == "unsubscribe" && topic_l != nano::websocket::topic::invalid)
 	{
-		nano::lock_guard<nano::mutex> lk (subscriptions_mutex);
-		if (subscriptions.erase (topic_l))
+		listener_subscriptions_lock subs_lock{ *this };
+		if (subs_lock.erase (topic_l))
 		{
 			logger.info (nano::log::type::websocket, "Removed subscription to topic: {} ({})", from_topic (topic_l), nano::util::to_str (remote));
 			ws_listener.decrease_subscriber_count (topic_l);
@@ -401,25 +471,21 @@ void nano::websocket::listener::broadcast_confirmation (std::shared_ptr<nano::bl
 		auto session_ptr (weak_session.lock ());
 		if (session_ptr)
 		{
-			auto subscription (session_ptr->subscriptions.find (nano::websocket::topic::confirmation));
-			if (subscription != session_ptr->subscriptions.end ())
+			listener_subscriptions_lock subs_lock{ *session_ptr };
+			if (subs_lock.contains_topic (nano::websocket::topic::confirmation))
 			{
-				nano::websocket::confirmation_options default_options (wallets, logger);
-				auto conf_options (dynamic_cast<nano::websocket::confirmation_options *> (subscription->second.get ()));
-				if (conf_options == nullptr)
-				{
-					conf_options = &default_options;
-				}
-				auto include_block (conf_options == nullptr ? true : conf_options->get_include_block ());
+				auto conf_options{ subs_lock.get_confirmation_options (nano::websocket::topic::confirmation, wallets) };
+				auto include_block = conf_options.get_include_block ();
 
 				if (include_block && !msg_with_block)
 				{
-					msg_with_block = builder.block_confirmed (block_a, account_a, amount_a, subtype, include_block, election_status_a, election_votes_a, *conf_options);
+					msg_with_block = builder.block_confirmed (block_a, account_a, amount_a, subtype, include_block, election_status_a, election_votes_a, conf_options);
 				}
 				else if (!include_block && !msg_without_block)
 				{
-					msg_without_block = builder.block_confirmed (block_a, account_a, amount_a, subtype, include_block, election_status_a, election_votes_a, *conf_options);
+					msg_without_block = builder.block_confirmed (block_a, account_a, amount_a, subtype, include_block, election_status_a, election_votes_a, conf_options);
 				}
+				subs_lock.unlock ();
 
 				session_ptr->write (include_block ? msg_with_block.get () : msg_without_block.get ());
 			}

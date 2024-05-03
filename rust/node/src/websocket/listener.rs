@@ -27,12 +27,40 @@ impl Listener for NullListener {
     }
 }
 
+#[derive(Clone)]
 pub enum Options {
     Confirmation(ConfirmationOptions),
     Vote(VoteOptions),
     Other,
 }
 
+impl Options {
+    /**
+     * Checks if a message should be filtered for default options (no options given).
+     * @param message_a the message to be checked
+     * @return false - the message should always be broadcasted
+     */
+    pub fn should_filter(&self, message: &Message) -> bool {
+        match self {
+            Options::Confirmation(i) => i.should_filter(message),
+            Options::Vote(i) => i.should_filter(message),
+            Options::Other => false,
+        }
+    }
+
+    /**
+     * Update options, if available for a given topic
+     * @return false on success
+     */
+    pub fn update(&mut self, options: &dyn PropertyTree) -> bool {
+        match self {
+            Options::Confirmation(i) => i.update(options),
+            _ => true,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct ConfirmationOptions {
     pub include_election_info: bool,
     pub include_election_info_with_votes: bool,
@@ -177,7 +205,7 @@ impl ConfirmationOptions {
      * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
      * @return false
      */
-    pub fn update(&mut self, options: impl PropertyTree) -> bool {
+    pub fn update(&mut self, options: &dyn PropertyTree) -> bool {
         let mut update_accounts = |accounts_text: &dyn PropertyTree, insert: bool| {
             self.has_account_filtering_options = true;
             for account in accounts_text.get_children() {
@@ -226,6 +254,7 @@ impl ConfirmationOptions {
     }
 }
 
+#[derive(Clone)]
 pub struct VoteOptions {
     representatives: HashSet<String>,
     include_replays: bool,
@@ -294,17 +323,26 @@ impl VoteOptions {
     }
 }
 
+pub struct WebsocketSession {
+    /// Map of subscriptions -> options registered by this session.
+    pub subscriptions: Mutex<HashMap<Topic, Options>>,
+}
+
+impl WebsocketSession {
+    pub fn new() -> Self {
+        Self {
+            subscriptions: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
 pub struct WebsocketListener {
     cpp_pointer: *mut c_void,
-    subscriptions: Mutex<HashMap<Topic, Options>>,
 }
 
 impl WebsocketListener {
     pub fn new(cpp_pointer: *mut c_void) -> Self {
-        Self {
-            cpp_pointer,
-            subscriptions: Mutex::new(HashMap::new()),
-        }
+        Self { cpp_pointer }
     }
 }
 

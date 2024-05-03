@@ -9,7 +9,7 @@ use std::{
 
 use super::MessageDto;
 
-pub struct WebsocketOptionsHandle(Options);
+pub struct WebsocketOptionsHandle(pub Options);
 
 impl WebsocketOptionsHandle {
     pub fn new(options: Options) -> *mut Self {
@@ -18,13 +18,6 @@ impl WebsocketOptionsHandle {
 
     pub fn vote_options(&self) -> &VoteOptions {
         let Options::Vote(options) = &self.0 else {
-            panic!("not of type VoteOptions")
-        };
-        options
-    }
-
-    pub fn vote_options_mut(&mut self) -> &mut VoteOptions {
-        let Options::Vote(options) = &mut self.0 else {
             panic!("not of type VoteOptions")
         };
         options
@@ -253,7 +246,7 @@ pub unsafe extern "C" fn rsn_confirmation_options_update(
 ) -> bool {
     handle
         .confirmation_options_mut()
-        .update(FfiPropertyTree::new_borrowed(options))
+        .update(&FfiPropertyTree::new_borrowed(options))
 }
 
 /*

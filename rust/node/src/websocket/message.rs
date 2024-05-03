@@ -1,9 +1,12 @@
 use crate::utils::create_property_tree;
 use anyhow::Result;
 use rsnano_core::utils::PropertyTree;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    fmt::Debug,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-#[derive(Clone, Copy, FromPrimitive)]
+#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash)]
 pub enum Topic {
     Invalid = 0,
     /// Acknowledgement of prior incoming message
@@ -25,6 +28,29 @@ pub enum Topic {
     NewUnconfirmedBlock,
     /// Auxiliary length, not a valid topic, must be the last enum
     Length,
+}
+
+impl Topic {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Topic::Ack => "ack",
+            Topic::Confirmation => "confirmation",
+            Topic::StartedElection => "started_election",
+            Topic::StoppedElection => "stopped_election",
+            Topic::Vote => "vote",
+            Topic::Work => "work",
+            Topic::Bootstrap => "bootstrap",
+            Topic::Telemetry => "telemetry",
+            Topic::NewUnconfirmedBlock => "new_unconfirmed_block",
+            _ => "invalid",
+        }
+    }
+}
+
+impl Debug for Topic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 pub struct Message {
@@ -69,7 +95,7 @@ impl MessageBuilder {
     }
 
     pub fn set_common_fields(message: &mut Message) -> Result<()> {
-        message.contents.add("topic", from_topic(message.topic))?;
+        message.contents.add("topic", message.topic.as_str())?;
         message.contents.add(
             "time",
             &SystemTime::now()
@@ -88,21 +114,6 @@ impl MessageBuilder {
         };
         Self::set_common_fields(&mut message)?;
         Ok(message)
-    }
-}
-
-pub fn from_topic(topic: Topic) -> &'static str {
-    match topic {
-        Topic::Ack => "ack",
-        Topic::Confirmation => "confirmation",
-        Topic::StartedElection => "started_election",
-        Topic::StoppedElection => "stopped_election",
-        Topic::Vote => "vote",
-        Topic::Work => "work",
-        Topic::Bootstrap => "bootstrap",
-        Topic::Telemetry => "telemetry",
-        Topic::NewUnconfirmedBlock => "new_unconfirmed_block",
-        _ => "invalid",
     }
 }
 

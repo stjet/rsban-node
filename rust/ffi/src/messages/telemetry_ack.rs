@@ -324,7 +324,11 @@ pub unsafe extern "C" fn rsn_telemetry_data_get_unknown_data(
     data: *mut u8,
 ) {
     let source = &(*handle).0.unknown_data;
-    let target = std::slice::from_raw_parts_mut(data, source.len());
+    let target = if data.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(data, source.len())
+    };
     target.copy_from_slice(source)
 }
 
@@ -334,7 +338,12 @@ pub unsafe extern "C" fn rsn_telemetry_data_set_unknown_data(
     data: *const u8,
     len: usize,
 ) {
-    (*handle).0.unknown_data = std::slice::from_raw_parts(data, len).to_vec()
+    (*handle).0.unknown_data = if data.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(data, len)
+    }
+    .to_vec()
 }
 
 #[no_mangle]

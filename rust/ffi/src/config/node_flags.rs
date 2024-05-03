@@ -47,7 +47,11 @@ pub unsafe extern "C" fn rsn_node_flags_config_overrides(
     size: usize,
 ) -> usize {
     let lock = (*handle).0.lock().unwrap();
-    let result = std::slice::from_raw_parts_mut(result, size);
+    let result = if result.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(result, size)
+    };
     for (i, s) in lock.config_overrides.iter().enumerate() {
         result[i] = StringDto::from(s);
     }
@@ -60,7 +64,11 @@ pub unsafe extern "C" fn rsn_node_flags_config_set_overrides(
     overrides: *const *const i8,
     size: usize,
 ) {
-    let slice = std::slice::from_raw_parts(overrides, size);
+    let slice = if overrides.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(overrides, size)
+    };
     let overrides = slice
         .iter()
         .map(|&i| CStr::from_ptr(i).to_str().unwrap().to_string())
@@ -89,7 +97,11 @@ pub unsafe extern "C" fn rsn_node_flags_rpc_config_set_overrides(
     overrides: *const *const i8,
     size: usize,
 ) {
-    let slice = std::slice::from_raw_parts(overrides, size);
+    let slice = if overrides.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(overrides, size)
+    };
     let overrides = slice
         .iter()
         .map(|&i| CStr::from_ptr(i).to_str().unwrap().to_string())

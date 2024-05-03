@@ -31,7 +31,11 @@ pub unsafe extern "C" fn rsn_message_asc_pull_ack_create3(
     blocks: *const *const BlockHandle,
     count: usize,
 ) -> *mut MessageHandle {
-    let blocks = std::slice::from_raw_parts(blocks, count);
+    let blocks = if blocks.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(blocks, count)
+    };
     let blocks = blocks
         .iter()
         .map(|&b| (*b).deref().deref().clone())

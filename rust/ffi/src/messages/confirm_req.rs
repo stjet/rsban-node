@@ -17,7 +17,11 @@ pub unsafe extern "C" fn rsn_message_confirm_req_create(
     roots_hashes_count: usize,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
-        let dtos = std::slice::from_raw_parts(roots_hashes, roots_hashes_count);
+        let dtos = if roots_hashes.is_null() {
+            &[]
+        } else {
+            std::slice::from_raw_parts(roots_hashes, roots_hashes_count)
+        };
         let roots_hashes = dtos
             .iter()
             .map(|dto| {
@@ -56,7 +60,11 @@ pub unsafe extern "C" fn rsn_message_confirm_req_roots_hashes(
     result: *mut HashRootPair,
 ) {
     let payload = get_payload(handle);
-    let result_slice = std::slice::from_raw_parts_mut(result, payload.roots_hashes().len());
+    let result_slice = if result.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(result, payload.roots_hashes().len())
+    };
     for (i, (hash, root)) in payload.roots_hashes().iter().enumerate() {
         result_slice[i] = HashRootPair {
             block_hash: *hash.as_bytes(),

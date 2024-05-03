@@ -9,7 +9,11 @@ pub extern "C" fn rsn_random_pool_generate_word32(min: u32, max: u32) -> u32 {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_random_pool_generate_block(output: *mut u8, len: usize) {
-    let bytes = slice::from_raw_parts_mut(output, len);
+    let bytes = if output.is_null() {
+        &mut []
+    } else {
+        slice::from_raw_parts_mut(output, len)
+    };
     thread_rng().fill(bytes);
 }
 

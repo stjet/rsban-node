@@ -17,7 +17,11 @@ pub unsafe extern "C" fn rsn_working_path(network: u16, result: *mut u8, size: u
 
     let path_str = path.to_string_lossy();
     let bytes = path_str.as_bytes();
-    let result_slice = std::slice::from_raw_parts_mut(result, size);
+    let result_slice = if result.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(result, size)
+    };
     result_slice[..bytes.len()].copy_from_slice(bytes);
     bytes.len() as i32
 }
@@ -36,7 +40,11 @@ pub unsafe extern "C" fn rsn_unique_path(network: u16, result: *mut u8, size: us
 
     let path_str = path.to_string_lossy();
     let bytes = path_str.as_bytes();
-    let result_slice = std::slice::from_raw_parts_mut(result, size);
+    let result_slice = if result.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(result, size)
+    };
     result_slice[..bytes.len()].copy_from_slice(bytes);
     bytes.len() as i32
 }

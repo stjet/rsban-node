@@ -58,7 +58,11 @@ pub unsafe extern "C" fn rsn_sign_message(
 ) -> i32 {
     let private_key = RawKey::from_ptr(priv_key);
     let public_key = PublicKey::from_ptr(pub_key);
-    let data = std::slice::from_raw_parts(message, len);
+    let data = if message.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(message, len)
+    };
     let sig = sign_message(&private_key, &public_key, data);
     let signature = slice::from_raw_parts_mut(signature, 64);
     signature.copy_from_slice(sig.as_bytes());
@@ -73,7 +77,11 @@ pub unsafe extern "C" fn rsn_validate_message(
     signature: &[u8; 64],
 ) -> bool {
     let public_key = PublicKey::from_bytes(*pub_key);
-    let message = std::slice::from_raw_parts(message, len);
+    let message = if message.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(message, len)
+    };
     let signature = Signature::from_bytes(*signature);
     validate_message(&public_key, message, &signature).is_err()
 }

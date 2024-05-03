@@ -168,10 +168,14 @@ pub unsafe extern "C" fn rsn_consolidate_telemetry_data(
     datas: *const *const TelemetryDataHandle,
     len: usize,
 ) -> *mut TelemetryDataHandle {
-    let datas: Vec<_> = std::slice::from_raw_parts(datas, len)
-        .iter()
-        .map(|i| (**i).clone())
-        .collect();
+    let datas: Vec<_> = if datas.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(datas, len)
+    }
+    .iter()
+    .map(|i| (**i).clone())
+    .collect();
 
     TelemetryDataHandle::new(consolidate_telemetry_data(&datas))
 }

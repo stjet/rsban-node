@@ -73,7 +73,11 @@ fn init_tracing(dirs: impl AsRef<str>) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_log(log_level: u8, message: *const c_char, len: usize) {
     let message = std::mem::transmute::<*const c_char, *const u8>(message);
-    let data = std::slice::from_raw_parts(message, len);
+    let data = if message.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(message, len)
+    };
     let message = std::str::from_utf8(data).unwrap();
 
     let cpp_level: CppLogLevel = FromPrimitive::from_u8(log_level).unwrap();

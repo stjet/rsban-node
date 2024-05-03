@@ -231,7 +231,11 @@ pub struct BlockArrayDto {
 
 impl BlockArrayDto {
     pub unsafe fn blocks(&self) -> impl Iterator<Item = &Arc<BlockEnum>> {
-        let dtos = std::slice::from_raw_parts(self.blocks, self.count);
+        let dtos = if self.blocks.is_null() {
+            &[]
+        } else {
+            std::slice::from_raw_parts(self.blocks, self.count)
+        };
         dtos.iter().map(|&b| (*b).deref())
     }
 }

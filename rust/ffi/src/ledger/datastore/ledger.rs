@@ -132,7 +132,11 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
     accounts: *const BootstrapWeightsItem,
     count: usize,
 ) {
-    let dtos = std::slice::from_raw_parts(accounts, count);
+    let dtos = if accounts.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(accounts, count)
+    };
     let weights = dtos
         .iter()
         .map(|d| {

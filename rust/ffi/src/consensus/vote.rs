@@ -39,7 +39,11 @@ pub unsafe extern "C" fn rsn_vote_create2(
     let account = Account::from_ptr(account);
     let key = RawKey::from_ptr(prv_key);
 
-    let hashes = std::slice::from_raw_parts(hashes, hash_count);
+    let hashes = if hashes.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(hashes, hash_count)
+    };
     let hashes = hashes.iter().map(|&h| BlockHash::from_bytes(h)).collect();
 
     VoteHandle::new(Arc::new(Vote::new(

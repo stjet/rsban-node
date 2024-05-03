@@ -192,7 +192,11 @@ pub unsafe extern "C" fn rsn_socket_async_write(
     } else {
         None
     };
-    let buffer = std::slice::from_raw_parts(buffer, buffer_len);
+    let buffer = if buffer.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(buffer, buffer_len)
+    };
     (*handle).async_write(
         &Arc::new(buffer.to_vec()),
         cb,

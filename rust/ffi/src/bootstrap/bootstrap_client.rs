@@ -103,7 +103,11 @@ pub unsafe extern "C" fn rsn_bootstrap_client_receive_buffer(
     buffer: *mut u8,
     len: usize,
 ) {
-    let buffer = std::slice::from_raw_parts_mut(buffer, len);
+    let buffer = if buffer.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(buffer, len)
+    };
     buffer.copy_from_slice(&(*handle).0.receive_buffer());
 }
 
@@ -118,7 +122,11 @@ pub unsafe extern "C" fn rsn_bootstrap_client_send_buffer(
     policy: u8,
     traffic_type: u8,
 ) {
-    let buffer = Arc::new(std::slice::from_raw_parts(buffer, len).to_vec());
+    let buffer = if buffer.is_null() {
+        Arc::new(Vec::new())
+    } else {
+        Arc::new(std::slice::from_raw_parts(buffer, len).to_vec())
+    };
     let callback_wrapper =
         SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
     let cb = Box::new(move |ec, size| {

@@ -34,7 +34,11 @@ pub unsafe extern "C" fn rsn_network_filter_apply(
     size: usize,
     digest: *mut u8,
 ) -> bool {
-    let (calc_digest, existed) = (*handle).apply(std::slice::from_raw_parts(bytes, size));
+    let (calc_digest, existed) = (*handle).apply(if bytes.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(bytes, size)
+    });
     if !digest.is_null() {
         std::slice::from_raw_parts_mut(digest, 16).copy_from_slice(&calc_digest.to_be_bytes());
     }
@@ -56,9 +60,13 @@ pub unsafe extern "C" fn rsn_network_filter_clear_many(
     digests: *const [u8; 16],
     count: usize,
 ) {
-    let digests = std::slice::from_raw_parts(digests, count)
-        .iter()
-        .map(|bytes| u128::from_be_bytes(*bytes));
+    let digests = if digests.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(digests, count)
+    }
+    .iter()
+    .map(|bytes| u128::from_be_bytes(*bytes));
     (*handle).clear_many(digests);
 }
 
@@ -68,7 +76,11 @@ pub unsafe extern "C" fn rsn_network_filter_clear_bytes(
     bytes: *const u8,
     count: usize,
 ) {
-    let bytes = std::slice::from_raw_parts(bytes, count);
+    let bytes = if bytes.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(bytes, count)
+    };
     (*handle).clear_bytes(bytes);
 }
 
@@ -84,7 +96,11 @@ pub unsafe extern "C" fn rsn_network_filter_hash(
     count: usize,
     digest: *mut [u8; 16],
 ) {
-    let bytes = std::slice::from_raw_parts(bytes, count);
+    let bytes = if bytes.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(bytes, count)
+    };
     let result = (*handle).hash(bytes);
     (*digest) = result.to_be_bytes();
 }

@@ -430,7 +430,11 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
     count: usize,
 ) -> bool {
     let keys: *const [u8; 32] = std::mem::transmute(keys);
-    let keys = std::slice::from_raw_parts(keys, count);
+    let keys = if keys.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(keys, count)
+    };
     let keys: Vec<_> = keys
         .iter()
         .map(|bytes| PublicKey::from_bytes(*bytes))

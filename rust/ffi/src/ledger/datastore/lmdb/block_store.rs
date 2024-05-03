@@ -26,7 +26,11 @@ pub unsafe extern "C" fn rsn_lmdb_block_store_raw_put(
     hash: *const u8,
 ) {
     let txn = (*txn).as_write_txn();
-    let data = slice::from_raw_parts(data, len);
+    let data = if data.is_null() {
+        &[]
+    } else {
+        slice::from_raw_parts(data, len)
+    };
     let hash = BlockHash::from_ptr(hash);
     (*handle).0.raw_put(txn, data, &hash);
 }

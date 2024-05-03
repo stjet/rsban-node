@@ -55,8 +55,15 @@ pub unsafe extern "C" fn rsn_distributed_work_factory_enabled_peers(
     peers: *const PeerDto,
     len: usize,
 ) -> bool {
-    let peers = std::slice::from_raw_parts(peers, len);
-    handle.work_generation_enabled_peers(&peers.iter().map(|i| i.into()).collect::<Vec<_>>())
+    let peers = if peers.is_null() {
+        Vec::new()
+    } else {
+        std::slice::from_raw_parts(peers, len)
+            .iter()
+            .map(|i| i.into())
+            .collect::<Vec<_>>()
+    };
+    handle.work_generation_enabled_peers(&peers)
 }
 
 pub type WorkMakeBlockingCallback =

@@ -512,6 +512,7 @@ impl OrderedVoters {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::stats::Direction;
     use mock_instant::MockClock;
     use rsnano_core::KeyPair;
 

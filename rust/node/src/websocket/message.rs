@@ -6,8 +6,8 @@ use crate::{
 };
 use anyhow::Result;
 use rsnano_core::{
-    to_hex_string, utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote,
-    VoteCode, VoteWithWeightInfo, WorkVersion,
+    utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote, VoteCode,
+    VoteWithWeightInfo, WorkVersion,
 };
 use std::{
     fmt::Debug,
@@ -277,7 +277,7 @@ impl MessageBuilder {
         let mut request_l = create_property_tree();
         request_l.put_string("version", version_a.as_str())?;
         request_l.put_string("hash", &root_a.to_string())?;
-        request_l.put_string("difficulty", &to_hex_string(difficulty_a))?;
+        request_l.put_string("difficulty", &format!("{:016x}", difficulty_a))?;
         let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
         request_l.put_string("multiplier", &format!("{:.10}", request_multiplier_l))?;
         work_l.add_child("request", &*request_l);
@@ -285,12 +285,12 @@ impl MessageBuilder {
         if completed_a {
             let mut result_l = create_property_tree();
             result_l.put_string("source", peer_a)?;
-            result_l.put_string("work", &to_hex_string(work_a))?;
+            result_l.put_string("work", &format!("{:016x}", work_a))?;
             let result_difficulty_l =
                 DEV_NETWORK_PARAMS
                     .work
                     .difficulty(version_a, &root_a.into(), work_a);
-            result_l.put_string("difficulty", &to_hex_string(result_difficulty_l))?;
+            result_l.put_string("difficulty", &format!("{:016x}", result_difficulty_l))?;
             let result_multiplier_l =
                 DifficultyV1::to_multiplier(result_difficulty_l, publish_threshold_a);
             result_l.put_string("multiplier", &format!("{:.10}", result_multiplier_l))?;

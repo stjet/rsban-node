@@ -1,11 +1,20 @@
 mod options;
 
-use crate::{transport::EndpointDto, wallets::LmdbWalletsHandle};
+use crate::{
+    consensus::{ElectionStatusHandle, VoteWithWeightInfoVecHandle},
+    core::BlockHandle,
+    to_rust_string,
+    transport::EndpointDto,
+    wallets::LmdbWalletsHandle,
+};
 
 use self::options::WebsocketOptionsHandle;
 use super::{FfiPropertyTree, StringDto, StringHandle};
 use num::FromPrimitive;
-use rsnano_core::utils::{PropertyTree, SerdePropertyTree};
+use rsnano_core::{
+    utils::{PropertyTree, SerdePropertyTree},
+    Account, Amount, BlockHash,
+};
 use rsnano_node::websocket::{
     to_topic, ConfirmationOptions, Message, MessageBuilder, Options, Topic, WebsocketSession,
 };
@@ -92,17 +101,61 @@ pub unsafe extern "C" fn rsn_message_builder_bootstrap_exited(
     set_message_dto(result, message);
 }
 
-unsafe fn set_message_dto(result: *mut MessageDto, message: Message) {
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_started_election(
+    hash: *const u8,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::started_election(&BlockHash::from_ptr(hash)).unwrap();
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_stopped_election(
+    hash: *const u8,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::stopped_election(&BlockHash::from_ptr(hash)).unwrap();
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
+    block: &BlockHandle,
+    account: *const u8,
+    amount: *const u8,
+    subtype: *const c_char,
+    include_block: bool,
+    election_status: &ElectionStatusHandle,
+    votes: &VoteWithWeightInfoVecHandle,
+    options: &WebsocketOptionsHandle,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::block_confirmed(
+        block,
+        &Account::from_ptr(account),
+        &Amount::from_ptr(amount),
+        to_rust_string(subtype),
+        include_block,
+        election_status,
+        votes,
+        options.confirmation_options(),
+    )
+    .unwrap();
+    set_message_dto(result, message);
+}
+
+unsafe fn set_message_dto(result: *mut MessageDto, mut message: Message) {
     (*result).topic = message.topic as u8;
-    (*result).contents = message
+    let ffi_ptree = message
         .contents
-        .as_any()
-        .downcast_ref::<FfiPropertyTree>()
-        .unwrap()
-        .handle;
-    // Forget the message, so that the property_tree handle won't get deleted.
+        .as_any_mut()
+        .downcast_mut::<FfiPropertyTree>()
+        .unwrap();
+    (*result).contents = ffi_ptree.handle;
+    // Prevent the property_tree from being deleted.
     // The caller of this function is responsable for calling delete on the handle.
-    std::mem::forget(message);
+    ffi_ptree.make_borrowed();
 }
 
 type ListenerBroadcastCallback = unsafe extern "C" fn(*mut c_void, *const MessageDto) -> bool;

@@ -166,6 +166,10 @@ impl FfiPropertyTree {
             owned: true,
         }
     }
+
+    pub fn make_borrowed(&mut self) {
+        self.owned = false;
+    }
 }
 
 impl PropertyTree for FfiPropertyTree {
@@ -217,6 +221,10 @@ impl PropertyTree for FfiPropertyTree {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 

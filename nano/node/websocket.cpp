@@ -529,105 +529,43 @@ nano::websocket::message dto_to_message (rsnano::MessageDto & message_dto)
 
 nano::websocket::message nano::websocket::message_builder::started_election (nano::block_hash const & hash_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::started_election);
-	set_common_fields (message_l);
-
-	boost::property_tree::ptree message_node_l;
-	message_node_l.add ("hash", hash_a.to_string ());
-	message_l.contents.add_child ("message", message_node_l);
-
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_started_election (hash_a.bytes.data (), &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::stopped_election (nano::block_hash const & hash_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::stopped_election);
-	set_common_fields (message_l);
-
-	boost::property_tree::ptree message_node_l;
-	message_node_l.add ("hash", hash_a.to_string ());
-	message_l.contents.add_child ("message", message_node_l);
-
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_stopped_election (hash_a.bytes.data (), &message_dto);
+	return dto_to_message (message_dto);
 }
 
-nano::websocket::message nano::websocket::message_builder::block_confirmed (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::amount const & amount_a, std::string subtype, bool include_block_a, nano::election_status const & election_status_a, std::vector<nano::vote_with_weight_info> const & election_votes_a, nano::websocket::confirmation_options const & options_a)
+nano::websocket::message nano::websocket::message_builder::block_confirmed (
+std::shared_ptr<nano::block> const & block_a,
+nano::account const & account_a,
+nano::amount const & amount_a,
+std::string subtype,
+bool include_block_a,
+nano::election_status const & election_status_a,
+std::vector<nano::vote_with_weight_info> const & election_votes_a,
+nano::websocket::confirmation_options const & options_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::confirmation);
-	set_common_fields (message_l);
-
-	// Block confirmation properties
-	boost::property_tree::ptree message_node_l;
-	message_node_l.add ("account", account_a.to_account ());
-	message_node_l.add ("amount", amount_a.to_string_dec ());
-	message_node_l.add ("hash", block_a->hash ().to_string ());
-
-	std::string confirmation_type = "unknown";
-	switch (election_status_a.get_election_status_type ())
+	auto vec_handle = rsnano::rsn_vote_with_weight_info_vec_create ();
+	for (const auto & info : election_votes_a)
 	{
-		case nano::election_status_type::active_confirmed_quorum:
-			confirmation_type = "active_quorum";
-			break;
-		case nano::election_status_type::active_confirmation_height:
-			confirmation_type = "active_confirmation_height";
-			break;
-		case nano::election_status_type::inactive_confirmation_height:
-			confirmation_type = "inactive";
-			break;
-		default:
-			break;
-	};
-	message_node_l.add ("confirmation_type", confirmation_type);
-
-	if (options_a.get_include_election_info () || options_a.get_include_election_info_with_votes ())
-	{
-		boost::property_tree::ptree election_node_l;
-		election_node_l.add ("duration", election_status_a.get_election_duration ().count ());
-		election_node_l.add ("time", election_status_a.get_election_end ().count ());
-		election_node_l.add ("tally", election_status_a.get_tally ().to_string_dec ());
-		election_node_l.add ("final", election_status_a.get_final_tally ().to_string_dec ());
-		election_node_l.add ("blocks", std::to_string (election_status_a.get_block_count ()));
-		election_node_l.add ("voters", std::to_string (election_status_a.get_voter_count ()));
-		election_node_l.add ("request_count", std::to_string (election_status_a.get_confirmation_request_count ()));
-		if (options_a.get_include_election_info_with_votes ())
-		{
-			boost::property_tree::ptree election_votes_l;
-			for (auto const & vote_l : election_votes_a)
-			{
-				boost::property_tree::ptree entry;
-				entry.put ("representative", vote_l.representative.to_account ());
-				entry.put ("timestamp", vote_l.timestamp);
-				entry.put ("hash", vote_l.hash.to_string ());
-				entry.put ("weight", vote_l.weight.convert_to<std::string> ());
-				election_votes_l.push_back (std::make_pair ("", entry));
-			}
-			election_node_l.add_child ("votes", election_votes_l);
-		}
-		message_node_l.add_child ("election_info", election_node_l);
+		auto dto{ info.into_dto () };
+		rsnano::rsn_vote_with_weight_info_vec_push (vec_handle, &dto);
 	}
-
-	if (include_block_a)
-	{
-		boost::property_tree::ptree block_node_l;
-		block_a->serialize_json (block_node_l);
-		if (!subtype.empty ())
-		{
-			block_node_l.add ("subtype", subtype);
-		}
-		message_node_l.add_child ("block", block_node_l);
-	}
-
-	if (options_a.get_include_sideband_info ())
-	{
-		boost::property_tree::ptree sideband_node_l;
-		sideband_node_l.add ("height", std::to_string (block_a->sideband ().height ()));
-		sideband_node_l.add ("local_timestamp", std::to_string (block_a->sideband ().timestamp ()));
-		message_node_l.add_child ("sideband", sideband_node_l);
-	}
-
-	message_l.contents.add_child ("message", message_node_l);
-
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_block_confirmed (block_a->get_handle (),
+	account_a.bytes.data (), amount_a.bytes.data (),
+	subtype.c_str (), include_block_a, election_status_a.handle,
+	vec_handle,
+	options_a.handle,
+	&message_dto);
+	rsnano::rsn_vote_with_weight_info_vec_destroy (vec_handle);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::vote_received (std::shared_ptr<nano::vote> const & vote_a, nano::vote_code code_a)

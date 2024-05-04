@@ -19,6 +19,8 @@ mod vote_spacing;
 mod vote_with_weight_info;
 
 pub use active_transactions::ActiveTransactionsHandle;
+pub use election_status::ElectionStatusHandle;
 pub use local_vote_history::LocalVoteHistoryHandle;
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
+pub use vote_with_weight_info::{VoteWithWeightInfoDto, VoteWithWeightInfoVecHandle};

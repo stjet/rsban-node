@@ -1,17 +1,15 @@
+use super::ConfirmationOptions;
 use crate::{
     consensus::{ElectionStatus, ElectionStatusType},
     utils::create_property_tree,
 };
 use anyhow::Result;
-use num::bigint::ToBigInt;
-use rsnano_core::{utils::PropertyTree, Account, Amount, BlockEnum, VoteWithWeightInfo};
+use rsnano_core::{utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, VoteWithWeightInfo};
 use std::{
     fmt::Debug,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use super::ConfirmationOptions;
 
 #[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash)]
 pub enum Topic {
@@ -111,26 +109,46 @@ impl MessageBuilder {
         Ok(message)
     }
 
+    pub fn started_election(hash: &BlockHash) -> Result<Message> {
+        let mut message = Message::new(Topic::StartedElection);
+        Self::set_common_fields(&mut message)?;
+
+        let mut message_node_l = create_property_tree();
+        message_node_l.add("hash", &hash.to_string())?;
+        message.contents.add_child("message", &*message_node_l);
+        Ok(message)
+    }
+
+    pub fn stopped_election(hash: &BlockHash) -> Result<Message> {
+        let mut message = Message::new(Topic::StoppedElection);
+        Self::set_common_fields(&mut message)?;
+
+        let mut message_node_l = create_property_tree();
+        message_node_l.add("hash", &hash.to_string())?;
+        message.contents.add_child("message", &*message_node_l);
+        Ok(message)
+    }
+
     pub fn block_confirmed(
-        block: Arc<BlockEnum>,
-        account: Account,
-        amount: Amount,
+        block_a: &Arc<BlockEnum>,
+        account_a: &Account,
+        amount_a: &Amount,
         subtype: String,
-        include_block: bool,
-        election_status: &ElectionStatus,
-        election_votes: &[VoteWithWeightInfo],
-        options: &ConfirmationOptions,
-    ) -> anyhow::Result<Message> {
+        include_block_a: bool,
+        election_status_a: &ElectionStatus,
+        election_votes_a: &[VoteWithWeightInfo],
+        options_a: &ConfirmationOptions,
+    ) -> Result<Message> {
         let mut message_l = Message::new(Topic::Confirmation);
         Self::set_common_fields(&mut message_l)?;
 
         // Block confirmation properties
         let mut message_node_l = create_property_tree();
-        message_node_l.add("account", &account.encode_account())?;
-        message_node_l.add("amount", &amount.to_string_dec())?;
-        message_node_l.add("hash", &block.hash().to_string())?;
+        message_node_l.add("account", &account_a.encode_account())?;
+        message_node_l.add("amount", &amount_a.to_string_dec())?;
+        message_node_l.add("hash", &block_a.hash().to_string())?;
 
-        let confirmation_type = match election_status.election_status_type {
+        let confirmation_type = match election_status_a.election_status_type {
             ElectionStatusType::ActiveConfirmedQuorum => "active_quorum",
             ElectionStatusType::ActiveConfirmationHeight => "active_confirmation_height",
             ElectionStatusType::InactiveConfirmationHeight => "inactive",
@@ -138,32 +156,32 @@ impl MessageBuilder {
         };
         message_node_l.add("confirmation_type", confirmation_type)?;
 
-        if options.include_election_info || options.include_election_info_with_votes {
+        if options_a.include_election_info || options_a.include_election_info_with_votes {
             let mut election_node_l = create_property_tree();
             election_node_l.add(
                 "duration",
-                &election_status.election_duration.as_millis().to_string(),
+                &election_status_a.election_duration.as_millis().to_string(),
             )?;
             election_node_l.add(
                 "time",
-                &election_status
+                &election_status_a
                     .election_end
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_millis()
                     .to_string(),
             )?;
-            election_node_l.add("tally", &election_status.tally.to_string_dec())?;
-            election_node_l.add("final", &election_status.final_tally.to_string_dec())?;
-            election_node_l.add("blocks", &election_status.block_count.to_string())?;
-            election_node_l.add("voters", &election_status.voter_count.to_string())?;
+            election_node_l.add("tally", &election_status_a.tally.to_string_dec())?;
+            election_node_l.add("final", &election_status_a.final_tally.to_string_dec())?;
+            election_node_l.add("blocks", &election_status_a.block_count.to_string())?;
+            election_node_l.add("voters", &election_status_a.voter_count.to_string())?;
             election_node_l.add(
                 "request_count",
-                &election_status.confirmation_request_count.to_string(),
+                &election_status_a.confirmation_request_count.to_string(),
             )?;
-            if options.include_election_info_with_votes {
+            if options_a.include_election_info_with_votes {
                 let mut election_votes_l = create_property_tree();
-                for vote_l in election_votes {
+                for vote_l in election_votes_a {
                     let mut entry = create_property_tree();
                     entry.put_string("representative", &vote_l.representative.encode_account())?;
                     entry.put_u64("timestamp", vote_l.timestamp)?;
@@ -176,26 +194,27 @@ impl MessageBuilder {
             message_node_l.add_child("election_info", &*election_node_l);
         }
 
-        if include_block {
+        if include_block_a {
             let mut block_node_l = create_property_tree();
-            block.serialize_json(&mut *block_node_l)?;
+            block_a.serialize_json(&mut *block_node_l)?;
             if !subtype.is_empty() {
                 block_node_l.add("subtype", &subtype)?;
             }
             message_node_l.add_child("block", &*block_node_l);
         }
 
-        if options.include_sideband_info {
+        if options_a.include_sideband_info {
             let mut sideband_node_l = create_property_tree();
-            sideband_node_l.add("height", &block.sideband().unwrap().height.to_string())?;
+            sideband_node_l.add("height", &block_a.sideband().unwrap().height.to_string())?;
             sideband_node_l.add(
                 "local_timestamp",
-                &block.sideband().unwrap().timestamp.to_string(),
+                &block_a.sideband().unwrap().timestamp.to_string(),
             )?;
             message_node_l.add_child("sideband", &*sideband_node_l);
         }
 
         message_l.contents.add_child("message", &*message_node_l);
+
         Ok(message_l)
     }
 

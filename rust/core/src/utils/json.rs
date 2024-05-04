@@ -21,6 +21,7 @@ pub trait PropertyTree {
     fn put_child(&mut self, path: &str, value: &dyn PropertyTree);
     fn add(&mut self, path: &str, value: &str) -> anyhow::Result<()>;
     fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
     fn to_json(&self) -> String;
 }
 
@@ -84,6 +85,10 @@ impl PropertyTree for TestPropertyTree {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 
@@ -208,6 +213,10 @@ impl PropertyTree for SerdePropertyTree {
     }
 
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 

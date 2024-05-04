@@ -1,7 +1,7 @@
 use rsnano_core::{
     utils::system_time_from_nanoseconds, Account, Amount, BlockHash, VoteWithWeightInfo,
 };
-use std::time::UNIX_EPOCH;
+use std::{ops::Deref, time::UNIX_EPOCH};
 
 #[repr(C)]
 pub struct VoteWithWeightInfoDto {
@@ -44,11 +44,33 @@ impl VoteWithWeightInfoVecHandle {
     }
 }
 
+impl Deref for VoteWithWeightInfoVecHandle {
+    type Target = Vec<VoteWithWeightInfo>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_vote_with_weight_info_vec_create() -> *mut VoteWithWeightInfoVecHandle
+{
+    VoteWithWeightInfoVecHandle::new(Vec::new())
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_with_weight_info_vec_destroy(
     handle: *mut VoteWithWeightInfoVecHandle,
 ) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_vote_with_weight_info_vec_push(
+    handle: &mut VoteWithWeightInfoVecHandle,
+    info: &VoteWithWeightInfoDto,
+) {
+    handle.0.push(info.into())
 }
 
 #[no_mangle]

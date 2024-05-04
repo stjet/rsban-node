@@ -270,3 +270,25 @@ std::vector<nano::account> rsnano::account_vec::into_vector () const
 	}
 	return result;
 }
+
+rsnano::string_vec::string_vec () :
+	handle{ rsnano::rsn_string_vec_create () }
+{
+}
+rsnano::string_vec::string_vec (std::vector<std::string> const & values) :
+	handle{ rsnano::rsn_string_vec_create () }
+{
+	for (const auto & v : values)
+	{
+		push (v);
+	}
+}
+
+rsnano::string_vec::~string_vec ()
+{
+	rsnano::rsn_string_vec_destroy (handle);
+}
+void rsnano::string_vec::push (std::string const & value)
+{
+	rsnano::rsn_string_vec_push (handle, value.c_str ());
+}

@@ -254,4 +254,15 @@ public:
 	rsnano::AccountVecHandle * handle;
 };
 
+class string_vec
+{
+public:
+	string_vec ();
+	string_vec (std::vector<std::string> const & values);
+	string_vec (string_vec const &) = delete;
+	~string_vec ();
+	void push (std::string const & value);
+	rsnano::StringVecHandle * handle;
+};
+
 }

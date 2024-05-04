@@ -570,81 +570,21 @@ nano::websocket::confirmation_options const & options_a)
 
 nano::websocket::message nano::websocket::message_builder::vote_received (std::shared_ptr<nano::vote> const & vote_a, nano::vote_code code_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::vote);
-	set_common_fields (message_l);
-
-	// Vote information
-	boost::property_tree::ptree vote_node_l;
-	vote_a->serialize_json (vote_node_l);
-
-	// Vote processing information
-	std::string vote_type = "invalid";
-	switch (code_a)
-	{
-		case nano::vote_code::vote:
-			vote_type = "vote";
-			break;
-		case nano::vote_code::replay:
-			vote_type = "replay";
-			break;
-		case nano::vote_code::indeterminate:
-			vote_type = "indeterminate";
-			break;
-		case nano::vote_code::ignored:
-			vote_type = "ignored";
-			break;
-		case nano::vote_code::invalid:
-			debug_assert (false);
-			break;
-	}
-	vote_node_l.put ("type", vote_type);
-	message_l.contents.add_child ("message", vote_node_l);
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_vote_received (vote_a->get_handle (), static_cast<uint8_t> (code_a), &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::work_generation (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t work_a, uint64_t difficulty_a, uint64_t publish_threshold_a, std::chrono::milliseconds const & duration_a, std::string const & peer_a, std::vector<std::string> const & bad_peers_a, bool completed_a, bool cancelled_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::work);
-	set_common_fields (message_l);
-
-	// Active difficulty information
-	boost::property_tree::ptree work_l;
-	work_l.put ("success", completed_a ? "true" : "false");
-	work_l.put ("reason", completed_a ? "" : cancelled_a ? "cancelled"
-														 : "failure");
-	work_l.put ("duration", duration_a.count ());
-
-	boost::property_tree::ptree request_l;
-	request_l.put ("version", nano::to_string (version_a));
-	request_l.put ("hash", root_a.to_string ());
-	request_l.put ("difficulty", nano::to_string_hex (difficulty_a));
-	auto request_multiplier_l (nano::difficulty::to_multiplier (difficulty_a, publish_threshold_a));
-	request_l.put ("multiplier", nano::to_string (request_multiplier_l));
-	work_l.add_child ("request", request_l);
-
-	if (completed_a)
-	{
-		boost::property_tree::ptree result_l;
-		result_l.put ("source", peer_a);
-		result_l.put ("work", nano::to_string_hex (work_a));
-		auto result_difficulty_l (nano::dev::network_params.work.difficulty (version_a, root_a, work_a));
-		result_l.put ("difficulty", nano::to_string_hex (result_difficulty_l));
-		auto result_multiplier_l (nano::difficulty::to_multiplier (result_difficulty_l, publish_threshold_a));
-		result_l.put ("multiplier", nano::to_string (result_multiplier_l));
-		work_l.add_child ("result", result_l);
-	}
-
-	boost::property_tree::ptree bad_peers_l;
-	for (auto & peer_text : bad_peers_a)
-	{
-		boost::property_tree::ptree entry;
-		entry.put ("", peer_text);
-		bad_peers_l.push_back (std::make_pair ("", entry));
-	}
-	work_l.add_child ("bad_peers", bad_peers_l);
-
-	message_l.contents.add_child ("message", work_l);
-	return message_l;
+	rsnano::string_vec bad_peers_vec (bad_peers_a);
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_work_generation (
+	static_cast<uint8_t> (version_a),
+	root_a.bytes.data (),
+	work_a, difficulty_a, publish_threshold_a, duration_a.count (),
+	peer_a.c_str (), bad_peers_vec.handle, completed_a, cancelled_a, &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::work_cancelled (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t const difficulty_a, uint64_t const publish_threshold_a, std::chrono::milliseconds const & duration_a, std::vector<std::string> const & bad_peers_a)

@@ -29,6 +29,7 @@ mod work;
 
 use std::{
     ffi::{c_void, CStr, CString},
+    ops::Deref,
     os::raw::c_char,
 };
 
@@ -131,4 +132,29 @@ pub unsafe extern "C" fn rsn_u256_array_destroy(dto: *mut U256ArrayDto) {
 
 pub(crate) unsafe fn to_rust_string(s: *const c_char) -> String {
     CStr::from_ptr(s).to_str().unwrap().to_owned()
+}
+
+pub struct StringVecHandle(Vec<String>);
+
+impl Deref for StringVecHandle {
+    type Target = Vec<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_string_vec_create() -> *mut StringVecHandle {
+    Box::into_raw(Box::new(StringVecHandle(Vec::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_string_vec_destroy(handle: *mut StringVecHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_string_vec_push(handle: &mut StringVecHandle, value: *const c_char) {
+    handle.0.push(to_rust_string(value));
 }

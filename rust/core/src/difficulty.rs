@@ -13,6 +13,15 @@ pub enum WorkVersion {
     Work1,
 }
 
+impl WorkVersion {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WorkVersion::Work1 => "work_1",
+            WorkVersion::Unspecified => "unspecified",
+        }
+    }
+}
+
 impl TryFrom<u8> for WorkVersion {
     type Error = anyhow::Error;
 

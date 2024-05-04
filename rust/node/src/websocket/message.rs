@@ -2,9 +2,13 @@ use super::ConfirmationOptions;
 use crate::{
     consensus::{ElectionStatus, ElectionStatusType},
     utils::create_property_tree,
+    DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
-use rsnano_core::{utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, VoteWithWeightInfo};
+use rsnano_core::{
+    to_hex_string, utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote,
+    VoteCode, VoteWithWeightInfo, WorkVersion,
+};
 use std::{
     fmt::Debug,
     sync::Arc,
@@ -215,6 +219,93 @@ impl MessageBuilder {
 
         message_l.contents.add_child("message", &*message_node_l);
 
+        Ok(message_l)
+    }
+
+    pub fn vote_received(vote_a: &Arc<Vote>, code_a: VoteCode) -> Result<Message> {
+        let mut message_l = Message::new(Topic::Vote);
+        Self::set_common_fields(&mut message_l)?;
+
+        // Vote information
+        let mut vote_node_l = create_property_tree();
+        vote_a.serialize_json(&mut *vote_node_l)?;
+
+        // Vote processing information
+        let vote_type = match code_a {
+            VoteCode::Vote => "vote",
+            VoteCode::Replay => "replay",
+            VoteCode::Indeterminate => "indeterminate",
+            VoteCode::Ignored => "ignored",
+            VoteCode::Invalid => unreachable!(),
+        };
+
+        vote_node_l.put_string("type", vote_type)?;
+        message_l.contents.add_child("message", &*vote_node_l);
+        Ok(message_l)
+    }
+
+    pub fn work_generation(
+        version_a: WorkVersion,
+        root_a: &BlockHash,
+        work_a: u64,
+        difficulty_a: u64,
+        publish_threshold_a: u64,
+        duration_a: Duration,
+        peer_a: &str,
+        bad_peers_a: &[String],
+        completed_a: bool,
+        cancelled_a: bool,
+    ) -> Result<Message> {
+        let mut message_l = Message::new(Topic::Work);
+        Self::set_common_fields(&mut message_l)?;
+
+        // Active difficulty information
+        let mut work_l = create_property_tree();
+        work_l.put_string("success", if completed_a { "true" } else { "false" })?;
+        work_l.put_string(
+            "reason",
+            if completed_a {
+                ""
+            } else if cancelled_a {
+                "cancelled"
+            } else {
+                "failure"
+            },
+        )?;
+        work_l.put_u64("duration", duration_a.as_millis() as u64)?;
+
+        let mut request_l = create_property_tree();
+        request_l.put_string("version", version_a.as_str())?;
+        request_l.put_string("hash", &root_a.to_string())?;
+        request_l.put_string("difficulty", &to_hex_string(difficulty_a))?;
+        let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
+        request_l.put_string("multiplier", &format!("{:.10}", request_multiplier_l))?;
+        work_l.add_child("request", &*request_l);
+
+        if completed_a {
+            let mut result_l = create_property_tree();
+            result_l.put_string("source", peer_a)?;
+            result_l.put_string("work", &to_hex_string(work_a))?;
+            let result_difficulty_l =
+                DEV_NETWORK_PARAMS
+                    .work
+                    .difficulty(version_a, &root_a.into(), work_a);
+            result_l.put_string("difficulty", &to_hex_string(result_difficulty_l))?;
+            let result_multiplier_l =
+                DifficultyV1::to_multiplier(result_difficulty_l, publish_threshold_a);
+            result_l.put_string("multiplier", &format!("{:.10}", result_multiplier_l))?;
+            work_l.add_child("result", &*result_l);
+        }
+
+        let mut bad_peers_l = create_property_tree();
+        for peer_text in bad_peers_a {
+            let mut entry = create_property_tree();
+            entry.put_string("", peer_text)?;
+            bad_peers_l.push_back("", &*entry);
+        }
+        work_l.add_child("bad_peers", &*bad_peers_l);
+
+        message_l.contents.add_child("message", &*work_l);
         Ok(message_l)
     }
 

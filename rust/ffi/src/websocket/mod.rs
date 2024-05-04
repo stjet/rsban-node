@@ -1,11 +1,12 @@
 mod options;
 
 use crate::{
-    consensus::{ElectionStatusHandle, VoteWithWeightInfoVecHandle},
+    consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
     to_rust_string,
     transport::EndpointDto,
     wallets::LmdbWalletsHandle,
+    StringVecHandle,
 };
 
 use self::options::WebsocketOptionsHandle;
@@ -13,7 +14,7 @@ use super::{FfiPropertyTree, StringDto, StringHandle};
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
-    Account, Amount, BlockHash,
+    Account, Amount, BlockHash, WorkVersion,
 };
 use rsnano_node::websocket::{
     to_topic, ConfirmationOptions, Message, MessageBuilder, Options, Topic, WebsocketSession,
@@ -120,6 +121,17 @@ pub unsafe extern "C" fn rsn_message_builder_stopped_election(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_vote_received(
+    vote: &VoteHandle,
+    vote_code: u8,
+    result: *mut MessageDto,
+) {
+    let message =
+        MessageBuilder::vote_received(vote, FromPrimitive::from_u8(vote_code).unwrap()).unwrap();
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
     block: &BlockHandle,
     account: *const u8,
@@ -140,6 +152,36 @@ pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
         election_status,
         votes,
         options.confirmation_options(),
+    )
+    .unwrap();
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_work_generation(
+    version: u8,
+    root: *const u8,
+    work: u64,
+    difficulty: u64,
+    publish_threshold: u64,
+    duration_ms: u64,
+    peer: *const c_char,
+    bad_peers: &StringVecHandle,
+    completed: bool,
+    cancelled: bool,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::work_generation(
+        WorkVersion::from_u8(version).unwrap(),
+        &BlockHash::from_ptr(root),
+        work,
+        difficulty,
+        publish_threshold,
+        Duration::from_millis(duration_ms),
+        &to_rust_string(peer),
+        bad_peers,
+        completed,
+        cancelled,
     )
     .unwrap();
     set_message_dto(result, message);

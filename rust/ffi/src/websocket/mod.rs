@@ -3,6 +3,7 @@ mod options;
 use crate::{
     consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
+    messages::TelemetryDataHandle,
     to_rust_string,
     transport::EndpointDto,
     wallets::LmdbWalletsHandle,
@@ -99,6 +100,25 @@ pub unsafe extern "C" fn rsn_message_builder_bootstrap_exited(
     )
     .unwrap();
 
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_telemetry_received(
+    telemetry_data: &TelemetryDataHandle,
+    endpoint: &EndpointDto,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::telemetry_received(telemetry_data, endpoint.into()).unwrap();
+    set_message_dto(result, message);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_message_builder_new_block_arrived(
+    block: &BlockHandle,
+    result: *mut MessageDto,
+) {
+    let message = MessageBuilder::new_block_arrived(&**block).unwrap();
     set_message_dto(result, message);
 }
 

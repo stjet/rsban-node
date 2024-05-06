@@ -614,31 +614,17 @@ nano::websocket::message nano::websocket::message_builder::bootstrap_exited (std
 
 nano::websocket::message nano::websocket::message_builder::telemetry_received (nano::telemetry_data const & telemetry_data_a, nano::endpoint const & endpoint_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::telemetry);
-	set_common_fields (message_l);
-
-	// Telemetry information
-	nano::jsonconfig telemetry_l;
-	telemetry_data_a.serialize_json (telemetry_l, false);
-	telemetry_l.put ("address", endpoint_a.address ());
-	telemetry_l.put ("port", endpoint_a.port ());
-
-	message_l.contents.add_child ("message", telemetry_l.get_tree ());
-	return message_l;
+	rsnano::MessageDto message_dto;
+	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_message_builder_telemetry_received (telemetry_data_a.handle, &endpoint_dto, &message_dto);
+	return dto_to_message (message_dto);
 }
 
 nano::websocket::message nano::websocket::message_builder::new_block_arrived (nano::block const & block_a)
 {
-	nano::websocket::message message_l (nano::websocket::topic::new_unconfirmed_block);
-	set_common_fields (message_l);
-
-	boost::property_tree::ptree block_l;
-	block_a.serialize_json (block_l);
-	auto subtype (nano::state_subtype (block_a.sideband ().details ()));
-	block_l.put ("subtype", subtype);
-
-	message_l.contents.add_child ("message", block_l);
-	return message_l;
+	rsnano::MessageDto message_dto;
+	rsnano::rsn_message_builder_new_block_arrived (block_a.get_handle (), &message_dto);
+	return dto_to_message (message_dto);
 }
 
 void nano::websocket::message_builder::set_common_fields (nano::websocket::message & message_a)

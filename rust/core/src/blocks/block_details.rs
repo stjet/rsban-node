@@ -61,6 +61,18 @@ impl BlockDetails {
             is_epoch: (0b0010_0000 & value) != 0,
         })
     }
+
+    pub fn state_subtype(&self) -> &'static str {
+        if self.is_send {
+            "send"
+        } else if self.is_receive {
+            "receive"
+        } else if self.is_epoch {
+            "epoch"
+        } else {
+            "change"
+        }
+    }
 }
 
 impl Serialize for BlockDetails {

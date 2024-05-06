@@ -2,7 +2,8 @@ use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
-    BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
+    BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, PropertyTree, Serialize, Stream,
+    StreamExt,
 };
 use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, PublicKey,
@@ -12,7 +13,7 @@ use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]
@@ -186,6 +187,44 @@ impl TelemetryData {
         };
 
         serde_json::to_string_pretty(&json_dto)
+    }
+
+    pub fn serialize_json(
+        &self,
+        json: &mut dyn PropertyTree,
+        ignore_identification_metrics: bool,
+    ) -> anyhow::Result<()> {
+        json.put_u64("block_count", self.block_count)?;
+        json.put_u64("cemented_count", self.cemented_count)?;
+        json.put_u64("unchecked_count", self.unchecked_count)?;
+        json.put_u64("account_count", self.account_count)?;
+        json.put_u64("bandwidth_cap", self.bandwidth_cap)?;
+        json.put_u64("peer_count", self.peer_count as u64)?;
+        json.put_u64("protocol_version", self.protocol_version as u64)?;
+        json.put_u64("uptime", self.uptime)?;
+        json.put_string("genesis_block", &self.genesis_block.to_string())?;
+        json.put_u64("major_version", self.major_version as u64)?;
+        json.put_u64("minor_version", self.minor_version as u64)?;
+        json.put_u64("patch_version", self.patch_version as u64)?;
+        json.put_u64("pre_release_version", self.pre_release_version as u64)?;
+        json.put_u64("maker", self.maker as u64)?;
+        json.put_u64(
+            "timestamp",
+            self.timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as u64,
+        )?;
+        json.put_string(
+            "active_difficulty",
+            &format!("{:016x}", self.active_difficulty),
+        )?;
+        // Keep these last for UI purposes
+        if !ignore_identification_metrics {
+            json.put_string("node_id", &self.node_id.to_node_id())?;
+            json.put_string("signature", &self.signature.encode_hex())?;
+        }
+        Ok(())
     }
 }
 

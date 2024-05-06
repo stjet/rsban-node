@@ -9,8 +9,10 @@ use rsnano_core::{
     utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote, VoteCode,
     VoteWithWeightInfo, WorkVersion,
 };
+use rsnano_messages::TelemetryData;
 use std::{
     fmt::Debug,
+    net::SocketAddrV6,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -111,6 +113,37 @@ impl MessageBuilder {
         message.contents.add_child("message", bootstrap.as_ref());
 
         Ok(message)
+    }
+
+    pub fn telemetry_received(
+        telemetry_data: &TelemetryData,
+        endpoint: SocketAddrV6,
+    ) -> Result<Message> {
+        let mut message_l = Message::new(Topic::Telemetry);
+        Self::set_common_fields(&mut message_l)?;
+
+        // Telemetry information
+        let mut telemetry_l = create_property_tree();
+        telemetry_data.serialize_json(&mut *telemetry_l, false)?;
+        telemetry_l.put_string("address", &endpoint.ip().to_string())?;
+        telemetry_l.put_u64("port", endpoint.port() as u64)?;
+
+        message_l.contents.add_child("message", &*telemetry_l);
+        Ok(message_l)
+    }
+
+    pub fn new_block_arrived(block: &BlockEnum) -> Result<Message> {
+        let mut message_l = Message::new(Topic::NewUnconfirmedBlock);
+        Self::set_common_fields(&mut message_l)?;
+
+        let mut block_l = create_property_tree();
+        block.serialize_json(&mut *block_l)?;
+        let subtype = block.sideband().unwrap().details.state_subtype();
+        block_l.put_string("subtype", subtype)?;
+
+        message_l.contents.add_child("message", &*block_l);
+
+        Ok(message_l)
     }
 
     pub fn started_election(hash: &BlockHash) -> Result<Message> {

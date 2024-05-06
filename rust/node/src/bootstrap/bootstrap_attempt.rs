@@ -1,7 +1,7 @@
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
-    websocket::{Listener, MessageBuilder},
+    websocket::{Listener, MessageBuilder, WebsocketListener},
 };
 use anyhow::Result;
 use rsnano_core::{encode_hex, Account, BlockEnum};
@@ -23,7 +23,7 @@ pub struct BootstrapAttempt {
     pub mode: BootstrapMode,
     pub total_blocks: AtomicU64,
     next_log: Mutex<Instant>,
-    websocket_server: Arc<dyn Listener>,
+    websocket_server: Option<Arc<WebsocketListener>>,
     ledger: Arc<Ledger>,
     attempt_start: Instant,
 
@@ -45,7 +45,7 @@ pub struct BootstrapAttempt {
 
 impl BootstrapAttempt {
     pub fn new(
-        websocket_server: Arc<dyn Listener>,
+        websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
@@ -87,8 +87,9 @@ impl BootstrapAttempt {
         let mode = self.mode_text();
         let id = &self.id;
         debug!("Starting bootstrap attempt with ID: {id} (mode: {mode}) ");
-        self.websocket_server
-            .broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
+        if let Some(websocket) = &self.websocket_server {
+            websocket.broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
+        }
         Ok(())
     }
 
@@ -211,16 +212,18 @@ impl Drop for BootstrapAttempt {
         let id = &self.id;
         debug!("Exiting bootstrap attempt with ID: {id} (mode: {mode})");
 
-        self.websocket_server
-            .broadcast(
-                &MessageBuilder::bootstrap_exited(
-                    id,
-                    mode,
-                    self.duration(),
-                    self.total_blocks.load(Ordering::SeqCst),
+        if let Some(websocket) = &self.websocket_server {
+            websocket
+                .broadcast(
+                    &MessageBuilder::bootstrap_exited(
+                        id,
+                        mode,
+                        self.duration(),
+                        self.total_blocks.load(Ordering::SeqCst),
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-            .unwrap();
+                .unwrap();
+        }
     }
 }

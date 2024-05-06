@@ -15,15 +15,9 @@
 
 #include <boost/property_tree/json_parser.hpp>
 
-#include <deque>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
-
-using socket_type = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
-#define beast_buffers boost::beast::make_printable
-using ws_type = boost::beast::websocket::stream<socket_type>;
 
 namespace nano
 {
@@ -220,63 +214,13 @@ namespace websocket
 		bool should_filter (message const & message_a) const override;
 	};
 
-	/** A websocket session managing its own lifetime */
-	class session final : public std::enable_shared_from_this<session>
-	{
-		friend class listener;
-
-	public:
-		/** Constructor that takes ownership over \p socket_a */
-		explicit session (nano::websocket::listener & listener_a, socket_type socket_a, nano::logger &);
-		session (session const &) = delete;
-		~session ();
-
-		/** Perform Websocket handshake and start reading messages */
-		void handshake ();
-
-		/** Close the websocket and end the session */
-		void close ();
-
-		/** Read the next message. This implicitely handles incoming websocket pings. */
-		void read ();
-
-		/** Enqueue \p message_a for writing to the websockets */
-		void write (nano::websocket::message message_a);
-
-	private:
-		/** The owning listener */
-		nano::websocket::listener & ws_listener;
-		ws_type ws;
-		boost::asio::strand<boost::asio::io_context::executor_type> strand;
-		nano::logger & logger;
-
-		/** Buffer for received messages */
-		boost::beast::multi_buffer read_buffer;
-		/** Outgoing messages. The send queue is protected by accessing it only through the strand */
-		std::deque<message> send_queue;
-
-		/** Cache remote & local endpoints to make them available after the socket is closed */
-		socket_type::endpoint_type remote;
-		socket_type::endpoint_type local;
-
-		/** Handle incoming message */
-		void handle_message (boost::property_tree::ptree const & message_a);
-		/** Acknowledge incoming message */
-		void send_ack (std::string action_a, std::string id_a);
-		/** Send all queued messages. This must be called from the write strand. */
-		void write_queued_messages ();
-
-	public:
-		rsnano::WebsocketSessionHandle * handle;
-	};
-
 	/** Creates a new session for each incoming connection */
 	class listener final : public std::enable_shared_from_this<listener>
 	{
 	public:
-		listener (nano::logger & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a);
-		listener(listener const &) = delete;
-		~listener();
+		listener (rsnano::async_runtime & async_rt, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a);
+		listener (listener const &) = delete;
+		~listener ();
 
 		/** Start accepting connections */
 		void run ();
@@ -296,10 +240,7 @@ namespace websocket
 		/** Broadcast \p message to all session subscribing to the message topic. */
 		void broadcast (nano::websocket::message message_a);
 
-		std::uint16_t listening_port ()
-		{
-			return acceptor.local_endpoint ().port ();
-		}
+		std::uint16_t listening_port ();
 
 		/**
 		 * Per-topic subscribers check. Relies on all sessions correctly increasing and
@@ -309,11 +250,10 @@ namespace websocket
 		{
 			return subscriber_count (topic_a) > 0;
 		}
-		/** Getter for subscriber count of a specific topic*/  
-		std::size_t subscriber_count (nano::websocket::topic const & topic_a) const
-		{
-			return topic_subscriber_count[static_cast<std::size_t> (topic_a)];
-		}
+		/** Getter for subscriber count of a specific topic*/
+		std::size_t subscriber_count (nano::websocket::topic const & topic_a) const;
+
+		rsnano::WebsocketListenerHandle * handle;
 	};
 }
 
@@ -323,7 +263,7 @@ namespace websocket
 class websocket_server
 {
 public:
-	websocket_server (nano::websocket::config &, nano::node_observers &, nano::wallets &, nano::ledger &, boost::asio::io_context &, nano::logger &);
+	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config &, nano::node_observers &, nano::wallets &, nano::ledger &, boost::asio::io_context &, nano::logger &);
 
 	void start ();
 	void stop ();

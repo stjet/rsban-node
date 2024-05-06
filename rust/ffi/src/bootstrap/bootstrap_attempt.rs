@@ -1,17 +1,16 @@
 use super::bootstrap_initiator::BootstrapInitiatorHandle;
 use crate::{
     block_processing::BlockProcessorHandle, core::BlockHandle, ledger::datastore::LedgerHandle,
-    StringDto, StringHandle,
+    websocket::WebsocketListenerHandle, StringDto, StringHandle,
 };
 use num::FromPrimitive;
 use rsnano_core::Account;
 use rsnano_node::{
     block_processing::BlockSource,
     bootstrap::{BootstrapAttempt, BootstrapStrategy},
-    websocket::{Listener, NullListener, WebsocketListener},
 };
 use std::{
-    ffi::{c_void, CStr, CString},
+    ffi::{CStr, CString},
     ops::Deref,
     os::raw::c_char,
     sync::{atomic::Ordering, Arc, MutexGuard},
@@ -36,7 +35,7 @@ impl Deref for BootstrapAttemptHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
-    websocket_server: *mut c_void,
+    websocket_server: *mut WebsocketListenerHandle,
     block_processor: *const BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
     ledger: *const LedgerHandle,
@@ -46,10 +45,10 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
 ) -> *mut BootstrapAttemptHandle {
     let id_str = CStr::from_ptr(id).to_str().unwrap();
     let mode = FromPrimitive::from_u8(mode).unwrap();
-    let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
-        Arc::new(NullListener::new())
+    let websocket_server = if websocket_server.is_null() {
+        None
     } else {
-        Arc::new(WebsocketListener::new(websocket_server))
+        Some(Arc::clone((*websocket_server).deref()))
     };
     let block_processor = Arc::downgrade(&*block_processor);
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);

@@ -3,13 +3,13 @@ use super::{
     bootstrap_initiator::BootstrapInitiatorHandle, pulls_cache::PullInfoDto,
 };
 use crate::{
-    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle, FfiPropertyTree,
-    NetworkParamsDto, NodeFlagsHandle,
+    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
+    websocket::WebsocketListenerHandle, FfiPropertyTree, NetworkParamsDto, NodeFlagsHandle,
 };
 use rsnano_core::{BlockHash, HashOrAccount};
 use rsnano_node::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
-    websocket::{Listener, NullListener, WebsocketListener},
+    websocket::{Listener, NullListener},
     NetworkParams,
 };
 use std::{
@@ -22,7 +22,7 @@ use std::{
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
     self_ptr: *mut c_void,
-    websocket_server: *mut c_void,
+    websocket_server: *mut WebsocketListenerHandle,
     block_processor: &BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
     ledger: *const LedgerHandle,
@@ -33,10 +33,10 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
     network_params: &NetworkParamsDto,
 ) -> *mut BootstrapAttemptHandle {
     let id_str = CStr::from_ptr(id).to_str().unwrap();
-    let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
-        Arc::new(NullListener::new())
+    let websocket_server = if websocket_server.is_null() {
+        None
     } else {
-        Arc::new(WebsocketListener::new(websocket_server))
+        Some(Arc::clone((*websocket_server).deref()))
     };
     let bootstrap_initiator = Arc::downgrade(&*bootstrap_initiator);
     let ledger = Arc::clone(&*ledger);

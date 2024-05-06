@@ -7,7 +7,7 @@
 #include <nano/node/websocket.hpp>
 
 #include <chrono>
-
+#define beast_buffers boost::beast::make_printable
 using namespace std::chrono_literals;
 
 namespace

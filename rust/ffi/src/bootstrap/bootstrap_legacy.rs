@@ -1,26 +1,27 @@
 use std::{
     ffi::{c_char, c_void, CStr},
+    ops::Deref,
     sync::Arc,
 };
 
-use crate::{block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle};
+use crate::{
+    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
+    websocket::WebsocketListenerHandle,
+};
 
 use super::{
     bootstrap_attempt::BootstrapAttemptHandle, pulls_cache::PullInfoDto, BootstrapInitiatorHandle,
 };
 use rsnano_core::BlockHash;
-use rsnano_node::{
-    bootstrap::{
-        BootstrapAttemptLegacy, BootstrapStrategy, ADD_BULK_PUSH_TARGET, ADD_FRONTIER,
-        ADD_START_ACCOUNT, REQUEST_BULK_PUSH_TARGET,
-    },
-    websocket::{Listener, NullListener, WebsocketListener},
+use rsnano_node::bootstrap::{
+    BootstrapAttemptLegacy, BootstrapStrategy, ADD_BULK_PUSH_TARGET, ADD_FRONTIER,
+    ADD_START_ACCOUNT, REQUEST_BULK_PUSH_TARGET,
 };
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_legacy_create(
     cpp_handle: *mut c_void,
-    websocket_server: *mut c_void,
+    websocket_server: *mut WebsocketListenerHandle,
     block_processor: &BlockProcessorHandle,
     bootstrap_initiator: &BootstrapInitiatorHandle,
     ledger: &LedgerHandle,
@@ -28,10 +29,10 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_legacy_create(
     incremental_id: u64,
 ) -> *mut BootstrapAttemptHandle {
     let id_str = CStr::from_ptr(id).to_str().unwrap();
-    let websocket_server: Arc<dyn Listener> = if websocket_server.is_null() {
-        Arc::new(NullListener::new())
+    let websocket_server = if websocket_server.is_null() {
+        None
     } else {
-        Arc::new(WebsocketListener::new(websocket_server))
+        Some(Arc::clone((*websocket_server).deref()))
     };
     BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Legacy(
         BootstrapAttemptLegacy::new(

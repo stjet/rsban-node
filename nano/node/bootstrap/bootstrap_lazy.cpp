@@ -23,7 +23,7 @@ rsnano::BootstrapAttemptHandle * create_lazy_handle (nano::bootstrap_attempt_laz
 	auto network_params_dto{ node_a->network_params.to_dto () };
 	return rsnano::rsn_bootstrap_attempt_lazy_create (
 	self,
-	node_a->websocket.server.get (),
+	node_a->websocket.server != nullptr ? node_a->websocket.server->handle : nullptr,
 	node_a->block_processor.get_handle (),
 	node_a->bootstrap_initiator.get_handle (),
 	node_a->ledger.get_handle (),

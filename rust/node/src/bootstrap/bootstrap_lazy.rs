@@ -6,7 +6,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::PullInfo,
     config::NodeFlags,
-    websocket::Listener,
+    websocket::{Listener, WebsocketListener},
     NetworkParams,
 };
 use anyhow::Result;
@@ -224,7 +224,7 @@ impl BootstrapAttemptLazy {
 
     pub fn new(
         cpp_handle: *mut c_void,
-        websocket_server: Arc<dyn Listener>,
+        websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,

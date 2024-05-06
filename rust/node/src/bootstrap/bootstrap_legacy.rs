@@ -1,5 +1,5 @@
 use super::{BootstrapAttempt, BootstrapInitiator, BootstrapMode, PullInfo};
-use crate::{block_processing::BlockProcessor, websocket::Listener};
+use crate::{block_processing::BlockProcessor, websocket::WebsocketListener};
 use rsnano_core::{Account, BlockHash};
 use rsnano_ledger::Ledger;
 use std::{
@@ -15,7 +15,7 @@ pub struct BootstrapAttemptLegacy {
 impl BootstrapAttemptLegacy {
     pub fn new(
         cpp_handle: *mut c_void,
-        websocket_server: Arc<dyn Listener>,
+        websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,

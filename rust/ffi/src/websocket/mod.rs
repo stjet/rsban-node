@@ -13,23 +13,17 @@ use crate::{
     StringVecHandle,
 };
 use num::FromPrimitive;
-use rsnano_core::{
-    utils::{PropertyTree, SerdePropertyTree},
-    Account, Amount, BlockHash, WorkVersion,
-};
+use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
 use rsnano_node::websocket::{
-    to_topic, ConfirmationOptions, Listener, Message, MessageBuilder, Options, Topic,
-    WebsocketListener, WebsocketListenerExt, WebsocketSession,
+    to_topic, Listener, Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
 };
 use std::{
-    collections::HashMap,
     ffi::{c_void, CStr, CString},
-    net::SocketAddr,
+    ops::Deref,
     os::raw::c_char,
-    sync::{Arc, MutexGuard},
+    sync::Arc,
     time::Duration,
 };
-use tracing::info;
 
 #[repr(C)]
 pub struct MessageDto {
@@ -221,173 +215,6 @@ unsafe fn set_message_dto(result: *mut MessageDto, mut message: Message) {
     ffi_ptree.make_borrowed();
 }
 
-type ListenerBroadcastCallback = unsafe extern "C" fn(*mut c_void, *const MessageDto) -> bool;
-static mut BROADCAST_CALLBACK: Option<ListenerBroadcastCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_listener_broadcast(f: ListenerBroadcastCallback) {
-    BROADCAST_CALLBACK = Some(f);
-    rsnano_node::websocket::BROADCAST_CALLBACK = Some(|cpp_pointer, message| {
-        let message_dto = MessageDto {
-            topic: message.topic as u8,
-            contents: message
-                .contents
-                .as_any()
-                .downcast_ref::<FfiPropertyTree>()
-                .ok_or_else(|| anyhow!("not an FfiPropertyTreeWriter"))?
-                .handle,
-        };
-        if (BROADCAST_CALLBACK.unwrap())(cpp_pointer, &message_dto) {
-            Ok(())
-        } else {
-            Err(anyhow!("callback failed"))
-        }
-    });
-}
-
-pub struct WebsocketSessionHandle(Arc<WebsocketSession>);
-
-#[no_mangle]
-pub extern "C" fn rsn_websocket_session_create() -> *mut WebsocketSessionHandle {
-    Box::into_raw(Box::new(WebsocketSessionHandle(Arc::new(
-        WebsocketSession::new(),
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_websocket_session_destroy(handle: *mut WebsocketSessionHandle) {
-    drop(Box::from_raw(handle))
-}
-
-pub struct ListenerSubscriptionsLock(MutexGuard<'static, HashMap<Topic, Options>>);
-
-#[no_mangle]
-pub extern "C" fn rsn_websocket_session_lock_subscriptions(
-    handle: &WebsocketSessionHandle,
-) -> *mut ListenerSubscriptionsLock {
-    let guard = handle.0.subscriptions.lock().unwrap();
-    let guard = unsafe {
-        std::mem::transmute::<
-            MutexGuard<HashMap<Topic, Options>>,
-            MutexGuard<'static, HashMap<Topic, Options>>,
-        >(guard)
-    };
-    Box::into_raw(Box::new(ListenerSubscriptionsLock(guard)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_destroy(
-    handle: *mut ListenerSubscriptionsLock,
-) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_get_topics(
-    handle: &ListenerSubscriptionsLock,
-) -> *mut TopicVecHandle {
-    Box::into_raw(Box::new(TopicVecHandle(handle.0.keys().cloned().collect())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_contains_topic(
-    handle: &ListenerSubscriptionsLock,
-    topic: u8,
-) -> bool {
-    handle.0.contains_key(&Topic::from_u8(topic).unwrap())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_get_conf_opts_or_default(
-    handle: &ListenerSubscriptionsLock,
-    topic: u8,
-    wallets: &LmdbWalletsHandle,
-) -> *mut WebsocketOptionsHandle {
-    let default_options = Options::Confirmation(ConfirmationOptions::new(
-        Arc::clone(wallets),
-        &SerdePropertyTree::new(),
-    ));
-
-    let options = match handle.0.get(&Topic::from_u8(topic).unwrap()) {
-        Some(i) => match i {
-            Options::Confirmation(_) => i.clone(),
-            _ => default_options,
-        },
-        None => default_options,
-    };
-
-    Box::into_raw(Box::new(WebsocketOptionsHandle(options)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_should_filter(
-    handle: &ListenerSubscriptionsLock,
-    message: &MessageDto,
-) -> bool {
-    let message = Message::from(message);
-    if let Some(options) = handle.0.get(&message.topic) {
-        options.should_filter(&message)
-    } else {
-        false
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_set_options(
-    handle: &mut ListenerSubscriptionsLock,
-    topic: u8,
-    options: &mut WebsocketOptionsHandle,
-    remote: &EndpointDto,
-) -> bool {
-    let topic = Topic::from_u8(topic).unwrap();
-    let endpoint = SocketAddr::from(remote);
-    match handle.0.insert(topic, options.0.clone()) {
-        Some(_) => {
-            info!(
-                "Updated subscription to topic: {} ({})",
-                topic.as_str(),
-                endpoint
-            );
-            false
-        }
-        None => {
-            info!(
-                "New subscription to topic: {} ({})",
-                topic.as_str(),
-                endpoint
-            );
-            true
-        }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_update(
-    handle: &mut ListenerSubscriptionsLock,
-    topic: u8,
-    message: *mut c_void,
-) -> bool {
-    let topic = Topic::from_u8(topic).unwrap();
-    let message = FfiPropertyTree::new_borrowed(message);
-    if let Some(option) = handle.0.get_mut(&topic) {
-        if let Some(options_text) = message.get_child("options") {
-            if option.update(&*options_text) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_listener_subscriptions_lock_remove(
-    handle: &mut ListenerSubscriptionsLock,
-    topic: u8,
-) -> bool {
-    let topic = Topic::from_u8(topic).unwrap();
-    handle.0.remove(&topic).is_some()
-}
-
 pub struct TopicVecHandle(Vec<Topic>);
 
 #[no_mangle]
@@ -406,6 +233,14 @@ pub unsafe extern "C" fn rsn_topic_vec_destroy(handle: *mut TopicVecHandle) {
 }
 
 pub struct WebsocketListenerHandle(Arc<WebsocketListener>);
+
+impl Deref for WebsocketListenerHandle {
+    type Target = Arc<WebsocketListener>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_websocket_listener_create(

@@ -19,7 +19,7 @@ nano::account const & start_account_a)
 {
 	return rsnano::rsn_bootstrap_attempt_legacy_create (
 	this_l,
-	node_a->websocket.server.get (),
+	node_a->websocket.server != nullptr ? node_a->websocket.server->handle : nullptr,
 	node_a->block_processor.handle,
 	node_a->bootstrap_initiator.get_handle (),
 	node_a->ledger.handle,

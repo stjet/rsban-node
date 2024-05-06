@@ -1,4 +1,3 @@
-#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/blocks.hpp>
@@ -18,7 +17,7 @@ constexpr unsigned nano::bootstrap_limits::requeued_pulls_limit_dev;
 nano::bootstrap_attempt::bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a)
 {
 	handle = rsnano::rsn_bootstrap_attempt_create (
-	node_a->websocket.server.get (),
+	node_a->websocket.server != nullptr ? node_a->websocket.server->handle : nullptr,
 	node_a->block_processor.get_handle (),
 	node_a->bootstrap_initiator.get_handle (),
 	node_a->ledger.get_handle (),

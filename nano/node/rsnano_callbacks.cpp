@@ -381,24 +381,6 @@ void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a
 	parent->put_child (key, *child);
 }
 
-bool listener_broadcast (void * handle_a, rsnano::MessageDto const * message_a)
-{
-	try
-	{
-		auto ptree = static_cast<boost::property_tree::ptree const *> (message_a->contents);
-		nano::websocket::message message_l (static_cast<nano::websocket::topic> (message_a->topic));
-		message_l.contents = *ptree;
-
-		auto listener = static_cast<nano::websocket::listener *> (handle_a);
-		listener->broadcast (message_l);
-		return true;
-	}
-	catch (...)
-	{
-		return false;
-	}
-}
-
 void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
 {
 	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
@@ -670,7 +652,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 
-	rsnano::rsn_callback_listener_broadcast (listener_broadcast);
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_bootstrap_initiator_remove_from_cache (bootstrap_initiator_remove_cache);

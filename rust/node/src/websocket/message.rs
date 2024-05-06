@@ -66,7 +66,24 @@ impl Debug for Topic {
 
 pub struct Message {
     pub topic: Topic,
-    pub contents: Box<dyn PropertyTree>,
+    pub contents: Box<dyn PropertyTree + Send>,
+}
+
+impl Clone for Message {
+    fn clone(&self) -> Self {
+        Self {
+            topic: self.topic,
+            contents: self.contents.clone(),
+        }
+    }
+}
+
+impl Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Message")
+            .field("topic", &self.topic)
+            .finish()
+    }
 }
 
 impl Message {

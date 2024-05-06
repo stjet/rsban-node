@@ -316,7 +316,7 @@ namespace websocket
 		{
 			return subscriber_count (topic_a) > 0;
 		}
-		/** Getter for subscriber count of a specific topic*/
+		/** Getter for subscriber count of a specific topic*/  
 		std::size_t subscriber_count (nano::websocket::topic const & topic_a) const
 		{
 			return topic_subscriber_count[static_cast<std::size_t> (topic_a)];

@@ -1,13 +1,29 @@
-use super::{Message, Topic};
-use crate::wallets::Wallets;
+use super::{to_topic, Message, MessageBuilder, Topic};
+use crate::{consensus::ElectionStatus, wallets::Wallets};
 use anyhow::Result;
-use rsnano_core::{utils::PropertyTree, Account};
+use futures_util::{SinkExt, StreamExt};
+use rsnano_core::{
+    utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree},
+    Account, Amount, BlockEnum, VoteWithWeightInfo,
+};
+use serde::Deserialize;
+use serde_json::Value;
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     ffi::c_void,
-    sync::{Arc, Mutex},
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex, Weak,
+    },
 };
-use tracing::warn;
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::{mpsc, oneshot},
+};
+use tokio_tungstenite::tungstenite::protocol::{frame::coding::CloseCode, CloseFrame};
+use tracing::{info, warn};
 
 pub trait Listener: Send + Sync {
     fn broadcast(&self, message: &Message) -> Result<()>;
@@ -323,27 +339,380 @@ impl VoteOptions {
     }
 }
 
-pub struct WebsocketSession {
+#[derive(Deserialize)]
+struct IncomingMessage<'a> {
+    action: Option<&'a str>,
+    topic: Option<&'a str>,
+    #[serde(default)]
+    ack: bool,
+    id: Option<&'a str>,
+    options: Option<Value>,
+    #[serde(default)]
+    accounts_add: Vec<&'a str>,
+    #[serde(default)]
+    accounts_del: Vec<&'a str>,
+}
+
+struct WebsocketSessionEntry {
     /// Map of subscriptions -> options registered by this session.
-    pub subscriptions: Mutex<HashMap<Topic, Options>>,
+    subscriptions: Mutex<HashMap<Topic, Options>>,
+    send_queue_tx: mpsc::Sender<Message>,
+    close: oneshot::Sender<()>,
+}
+
+pub struct WebsocketSession {
+    entry: Arc<WebsocketSessionEntry>,
+    wallets: Arc<Wallets>,
+    topic_subscriber_count: Arc<[AtomicUsize; 11]>,
+    remote_endpoint: SocketAddr,
 }
 
 impl WebsocketSession {
-    pub fn new() -> Self {
+    fn new(
+        wallets: Arc<Wallets>,
+        topic_subscriber_count: Arc<[AtomicUsize; 11]>,
+        remote_endpoint: SocketAddr,
+        entry: Arc<WebsocketSessionEntry>,
+    ) -> Self {
         Self {
-            subscriptions: Mutex::new(HashMap::new()),
+            entry,
+            wallets,
+            topic_subscriber_count,
+            remote_endpoint,
         }
+    }
+
+    pub async fn run(
+        self,
+        stream: &mut tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
+        send_queue: &mut mpsc::Receiver<Message>,
+    ) -> anyhow::Result<()> {
+        loop {
+            tokio::select! {
+                Some(msg) = stream.next() =>{
+                    self.process(msg?).await?;
+                }
+                Some(msg) = send_queue.recv() =>{
+                    // write queued messages
+                    stream
+                        .send(tokio_tungstenite::tungstenite::Message::text(
+                            msg.contents.to_json(),
+                        )).await?;
+                }
+                else =>{break;}
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn process(&self, msg: tokio_tungstenite::tungstenite::Message) -> anyhow::Result<()> {
+        if msg.is_text() {
+            let msg_text = msg.into_text()?;
+            let incoming: IncomingMessage = serde_json::from_str(&msg_text)?;
+            self.handle_message(incoming).await
+        } else {
+            Ok(())
+        }
+    }
+
+    async fn handle_message(&self, message: IncomingMessage<'_>) -> anyhow::Result<()> {
+        let topic = to_topic(message.topic.unwrap_or(""));
+        let mut action_succeeded = false;
+        let mut ack = message.ack;
+        let mut reply_action = message.action.unwrap_or("");
+        if message.action == Some("subscribe") && topic != Topic::Invalid {
+            let mut subs = self.entry.subscriptions.lock().unwrap();
+            let options = match topic {
+                Topic::Confirmation => {
+                    if let Some(options_value) = message.options {
+                        Options::Confirmation(ConfirmationOptions::new(
+                            Arc::clone(&self.wallets),
+                            &SerdePropertyTree::from_value(options_value),
+                        ))
+                    } else {
+                        Options::Other
+                    }
+                }
+                Topic::Vote => {
+                    if let Some(options_value) = message.options {
+                        Options::Vote(VoteOptions::new(&SerdePropertyTree::from_value(
+                            options_value,
+                        )))
+                    } else {
+                        Options::Other
+                    }
+                }
+                _ => Options::Other,
+            };
+            let inserted = subs.insert(topic, options).is_none();
+            if inserted {
+                self.topic_subscriber_count[topic as usize].fetch_add(1, Ordering::SeqCst);
+            }
+            action_succeeded = true;
+        } else if message.action == Some("update") {
+            let mut subs = self.entry.subscriptions.lock().unwrap();
+            if let Some(option) = subs.get_mut(&topic) {
+                if let Some(options_value) = message.options {
+                    if option.update(&SerdePropertyTree::from_value(options_value)) {
+                        action_succeeded = true;
+                    }
+                }
+            }
+        } else if message.action == Some("unsubscribe") && topic != Topic::Invalid {
+            let mut subs = self.entry.subscriptions.lock().unwrap();
+            if subs.remove(&topic).is_some() {
+                info!(
+                    "Removed subscription to topic: {} ({})",
+                    topic.as_str(),
+                    self.remote_endpoint
+                );
+                self.topic_subscriber_count[topic as usize].fetch_sub(1, Ordering::SeqCst);
+            }
+            action_succeeded = true;
+        } else if message.action == Some("ping") {
+            action_succeeded = true;
+            ack = true;
+            reply_action = "pong";
+        }
+        if ack && action_succeeded {
+            self.send_ack(reply_action, &message.id).await?;
+        }
+        Ok(())
+    }
+
+    async fn send_ack(&self, reply_action: &str, id: &Option<&str>) -> anyhow::Result<()> {
+        let mut vals = serde_json::Map::new();
+        vals["ack"] = Value::String(reply_action.to_string());
+        vals["time"] = Value::String(milliseconds_since_epoch().to_string());
+        if let Some(id) = id {
+            vals["id"] = Value::String(id.to_string());
+        }
+        let contents = serde_json::Value::Object(vals);
+        let msg = Message {
+            topic: Topic::Ack,
+            contents: Box::new(SerdePropertyTree::from_value(contents)),
+        };
+
+        self.write(msg).await
+    }
+
+    async fn write(&self, msg: Message) -> anyhow::Result<()> {
+        let should_filter = {
+            let subs = self.entry.subscriptions.lock().unwrap();
+            if let Some(options) = subs.get(&msg.topic) {
+                options.should_filter(&msg)
+            } else {
+                false
+            }
+        };
+
+        if msg.topic == Topic::Ack || !should_filter {
+            self.entry.send_queue_tx.send(msg).await.expect("foo")
+        }
+
+        Ok(())
     }
 }
 
 pub struct WebsocketListener {
     cpp_pointer: *mut c_void,
+    endpoint: SocketAddr,
+    tx_stop: Mutex<Option<oneshot::Sender<()>>>,
+    wallets: Arc<Wallets>,
+    topic_subscriber_count: Arc<[AtomicUsize; 11]>,
+    sessions: Arc<Mutex<Vec<Weak<WebsocketSessionEntry>>>>,
 }
 
 impl WebsocketListener {
-    pub fn new(cpp_pointer: *mut c_void) -> Self {
-        Self { cpp_pointer }
+    pub fn new(cpp_pointer: *mut c_void, endpoint: SocketAddr, wallets: Arc<Wallets>) -> Self {
+        Self {
+            cpp_pointer,
+            endpoint,
+            tx_stop: Mutex::new(None),
+            wallets,
+            topic_subscriber_count: Arc::new(std::array::from_fn(|_| AtomicUsize::new(0))),
+            sessions: Arc::new(Mutex::new(Vec::new())),
+        }
     }
+
+    /// Start accepting connections
+    pub async fn run(&self) {
+        let listener = match TcpListener::bind(self.endpoint).await {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("Listen failed: {:?}", e);
+                return;
+            }
+        };
+
+        let (tx_stop, rx_stop) = oneshot::channel::<()>();
+        *self.tx_stop.lock().unwrap() = Some(tx_stop);
+
+        tokio::select! {
+            _ = rx_stop =>{},
+           _ = self.accept(listener) =>{}
+        }
+    }
+
+    /// Close all websocket sessions and stop listening for new connections
+    pub async fn stop(&self) {
+        if let Some(tx) = self.tx_stop.lock().unwrap().take() {
+            tx.send(()).unwrap()
+        }
+        // TODO: send closing handshake?
+        // TODO: clean send queues
+    }
+
+    pub fn broadcast(&self, message: Message) {
+        let sessions = self.sessions.lock().unwrap();
+        for session in sessions.iter() {
+            if let Some(session) = session.upgrade() {
+                let _ = session.send_queue_tx.blocking_send(message.clone());
+            }
+        }
+    }
+
+    pub fn broadcast_confirmation(
+        &self,
+        block_a: &Arc<BlockEnum>,
+        account_a: &Account,
+        amount_a: &Amount,
+        subtype: &'static str,
+        election_status_a: &ElectionStatus,
+        election_votes_a: &Vec<VoteWithWeightInfo>,
+    ) {
+        let mut msg_with_block = None;
+        let mut msg_without_block = None;
+        let sessions = self.sessions.lock().unwrap();
+        for session in sessions.iter() {
+            if let Some(session) = session.upgrade() {
+                let subs = session.subscriptions.lock().unwrap();
+                if let Some(options) = subs.get(&Topic::Confirmation) {
+                    let default_opts = ConfirmationOptions::new(
+                        Arc::clone(&self.wallets),
+                        &SerdePropertyTree::new(),
+                    );
+                    let conf_opts = if let Options::Confirmation(i) = options {
+                        i
+                    } else {
+                        &default_opts
+                    };
+
+                    let include_block = conf_opts.include_block;
+
+                    if include_block && msg_with_block.is_none() {
+                        msg_with_block = Some(
+                            MessageBuilder::block_confirmed(
+                                block_a,
+                                account_a,
+                                amount_a,
+                                subtype.to_string(),
+                                include_block,
+                                election_status_a,
+                                election_votes_a,
+                                conf_opts,
+                            )
+                            .unwrap(),
+                        );
+                    } else if !include_block && msg_without_block.is_none() {
+                        msg_without_block = Some(
+                            MessageBuilder::block_confirmed(
+                                block_a,
+                                account_a,
+                                amount_a,
+                                subtype.to_string(),
+                                include_block,
+                                election_status_a,
+                                election_votes_a,
+                                conf_opts,
+                            )
+                            .unwrap(),
+                        );
+                    }
+                    drop(subs);
+                    let _ = session.send_queue_tx.blocking_send(if include_block {
+                        msg_with_block.as_ref().unwrap().clone()
+                    } else {
+                        msg_without_block.as_ref().unwrap().clone()
+                    });
+                }
+            }
+        }
+    }
+
+    async fn accept(&self, listener: TcpListener) {
+        loop {
+            match listener.accept().await {
+                Ok((stream, remote_endpoint)) => {
+                    let wallets = Arc::clone(&self.wallets);
+                    let sub_count = Arc::clone(&self.topic_subscriber_count);
+                    let (tx_send, rx_send) = mpsc::channel::<Message>(1024);
+                    let sessions = Arc::clone(&self.sessions);
+                    tokio::spawn(async move {
+                        if let Err(e) = accept_connection(
+                            stream,
+                            wallets,
+                            sub_count,
+                            remote_endpoint,
+                            tx_send,
+                            rx_send,
+                            sessions,
+                        )
+                        .await
+                        {
+                            warn!("listener failed: {:?}", e)
+                        }
+                    });
+                }
+                Err(e) => warn!("Accept failed: {:?}", e),
+            }
+        }
+    }
+}
+
+async fn accept_connection(
+    stream: TcpStream,
+    wallets: Arc<Wallets>,
+    topic_subscriber_count: Arc<[AtomicUsize; 11]>,
+    remote_endpoint: SocketAddr,
+    tx_send: mpsc::Sender<Message>,
+    mut rx_send: mpsc::Receiver<Message>,
+    sessions: Arc<Mutex<Vec<Weak<WebsocketSessionEntry>>>>,
+) -> anyhow::Result<()> {
+    // Create the session and initiate websocket handshake
+    let mut ws_stream = tokio_tungstenite::accept_async(stream).await?;
+
+    let (close_tx, close_rx) = oneshot::channel::<()>();
+    let entry = Arc::new(WebsocketSessionEntry {
+        subscriptions: Mutex::new(HashMap::new()),
+        send_queue_tx: tx_send,
+        close: close_tx,
+    });
+
+    {
+        let mut sessions = sessions.lock().unwrap();
+        sessions.retain(|s| s.strong_count() > 0);
+        sessions.push(Arc::downgrade(&entry));
+    }
+
+    let session = WebsocketSession::new(wallets, topic_subscriber_count, remote_endpoint, entry);
+
+    tokio::select! {
+        _ = close_rx =>{
+            ws_stream
+                .close(Some(CloseFrame {
+                    code: CloseCode::Normal,
+                    reason: Cow::Borrowed("Shutting down"),
+                }))
+                .await?;
+        }
+        res = session.run(&mut ws_stream, &mut rx_send) =>{
+            res?;
+        }
+    };
+
+    Ok(())
 }
 
 unsafe impl Send for WebsocketListener {}

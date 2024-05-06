@@ -150,6 +150,8 @@ pub struct FfiPropertyTree {
     owned: bool,
 }
 
+unsafe impl Send for FfiPropertyTree {}
+
 impl FfiPropertyTree {
     /// don't free the handle
     pub fn new_borrowed(handle: *mut c_void) -> Self {
@@ -362,9 +364,13 @@ impl PropertyTree for FfiPropertyTree {
         unsafe { GET_PTREE_DATA.expect("GET_PTREE_DATA missing")(self.handle, result.as_mut()) }
         result.0
     }
+
+    fn clone(&self) -> Box<dyn PropertyTree + Send> {
+        todo!()
+    }
 }
 
-pub(crate) fn create_ffi_property_tree() -> Box<dyn PropertyTree> {
+pub(crate) fn create_ffi_property_tree() -> Box<dyn PropertyTree + Send> {
     let handle = unsafe {
         match CREATE_TREE_CALLBACK {
             Some(f) => f(),

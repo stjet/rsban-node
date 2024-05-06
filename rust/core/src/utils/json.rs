@@ -23,6 +23,7 @@ pub trait PropertyTree {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn to_json(&self) -> String;
+    fn clone(&self) -> Box<dyn PropertyTree + Send>;
 }
 
 pub trait PropertyTreeWriter {}
@@ -103,6 +104,12 @@ impl PropertyTree for TestPropertyTree {
     fn to_json(&self) -> String {
         todo!()
     }
+
+    fn clone(&self) -> Box<dyn PropertyTree + Send> {
+        Box::new(Self {
+            properties: self.properties.clone(),
+        })
+    }
 }
 
 pub struct SerdePropertyTree {
@@ -115,6 +122,11 @@ impl SerdePropertyTree {
             value: Value::Object(Map::new()),
         }
     }
+
+    pub fn from_value(value: Value) -> Self {
+        Self { value }
+    }
+
     pub fn parse(s: &str) -> anyhow::Result<Self> {
         Ok(Self {
             value: serde_json::from_str(s)?,
@@ -222,6 +234,12 @@ impl PropertyTree for SerdePropertyTree {
 
     fn to_json(&self) -> String {
         self.value.to_string()
+    }
+
+    fn clone(&self) -> Box<dyn PropertyTree + Send> {
+        Box::new(Self {
+            value: self.value.clone(),
+        })
     }
 }
 

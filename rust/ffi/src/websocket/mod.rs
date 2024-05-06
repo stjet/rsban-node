@@ -300,7 +300,7 @@ pub unsafe extern "C" fn rsn_websocket_listener_broadcast(
 pub unsafe extern "C" fn rsn_websocket_listener_listening_port(
     handle: &WebsocketListenerHandle,
 ) -> u16 {
-    handle.0.endpoint.port()
+    handle.0.listening_port()
 }
 
 #[no_mangle]

@@ -268,6 +268,7 @@ nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano
 	}
 
 	auto endpoint = nano::tcp_endpoint{ boost::asio::ip::make_address_v6 (config.address), config.port };
+	std::cout << "CPP ENDPOINT FOR WEBSOCKET IS " << endpoint.address().to_string() << " " << endpoint.port() << std::endl;
 	server = std::make_shared<nano::websocket::listener> (async_rt, wallets, io_ctx, endpoint);
 
 	observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {

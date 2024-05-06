@@ -344,7 +344,7 @@ struct IncomingMessage<'a> {
     action: Option<&'a str>,
     topic: Option<&'a str>,
     #[serde(default)]
-    ack: bool,
+    ack: Option<&'a str>,
     id: Option<&'a str>,
     options: Option<Value>,
     #[serde(default)]
@@ -419,7 +419,7 @@ impl WebsocketSession {
     async fn handle_message(&self, message: IncomingMessage<'_>) -> anyhow::Result<()> {
         let topic = to_topic(message.topic.unwrap_or(""));
         let mut action_succeeded = false;
-        let mut ack = message.ack;
+        let mut ack = message.ack == Some("true");
         let mut reply_action = message.action.unwrap_or("");
         if message.action == Some("subscribe") && topic != Topic::Invalid {
             let mut subs = self.entry.subscriptions.lock().unwrap();
@@ -483,10 +483,13 @@ impl WebsocketSession {
 
     async fn send_ack(&self, reply_action: &str, id: &Option<&str>) -> anyhow::Result<()> {
         let mut vals = serde_json::Map::new();
-        vals["ack"] = Value::String(reply_action.to_string());
-        vals["time"] = Value::String(milliseconds_since_epoch().to_string());
+        vals.insert("ack".to_string(), Value::String(reply_action.to_string()));
+        vals.insert(
+            "time".to_string(),
+            Value::String(milliseconds_since_epoch().to_string()),
+        );
         if let Some(id) = id {
-            vals["id"] = Value::String(id.to_string());
+            vals.insert("id".to_string(), Value::String(id.to_string()));
         }
         let contents = serde_json::Value::Object(vals);
         let msg = Message {
@@ -516,7 +519,7 @@ impl WebsocketSession {
 }
 
 pub struct WebsocketListener {
-    pub endpoint: SocketAddr,
+    endpoint: Mutex<SocketAddr>,
     tx_stop: Mutex<Option<oneshot::Sender<()>>>,
     wallets: Arc<Wallets>,
     topic_subscriber_count: Arc<[AtomicUsize; 11]>,
@@ -527,7 +530,7 @@ pub struct WebsocketListener {
 impl WebsocketListener {
     pub fn new(endpoint: SocketAddr, wallets: Arc<Wallets>, async_rt: Arc<AsyncRuntime>) -> Self {
         Self {
-            endpoint,
+            endpoint: Mutex::new(endpoint),
             tx_stop: Mutex::new(None),
             wallets,
             topic_subscriber_count: Arc::new(std::array::from_fn(|_| AtomicUsize::new(0))),
@@ -541,13 +544,18 @@ impl WebsocketListener {
     }
 
     async fn run2(&self) {
-        let listener = match TcpListener::bind(self.endpoint).await {
+        println!("listener run2");
+        let endpoint = self.endpoint.lock().unwrap().clone();
+        let listener = match TcpListener::bind(endpoint).await {
             Ok(s) => s,
             Err(e) => {
                 warn!("Listen failed: {:?}", e);
                 return;
             }
         };
+        let ep = listener.local_addr().unwrap();
+        *self.endpoint.lock().unwrap() = ep;
+        info!("Websocket listener started on {}", ep);
 
         let (tx_stop, rx_stop) = oneshot::channel::<()>();
         *self.tx_stop.lock().unwrap() = Some(tx_stop);
@@ -572,6 +580,10 @@ impl WebsocketListener {
                 }
             }
         }
+    }
+
+    pub fn listening_port(&self) -> u16 {
+        self.endpoint.lock().unwrap().port()
     }
 
     /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")
@@ -647,6 +659,7 @@ impl WebsocketListener {
         loop {
             match listener.accept().await {
                 Ok((stream, remote_endpoint)) => {
+                    println!("accept returned OK!");
                     let wallets = Arc::clone(&self.wallets);
                     let sub_count = Arc::clone(&self.topic_subscriber_count);
                     let (tx_send, rx_send) = mpsc::channel::<Message>(1024);

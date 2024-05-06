@@ -27,6 +27,7 @@ type PropertyTreeGetChildrenCallback =
 type PropertyTreeGetDataCallback = unsafe extern "C" fn(*const c_void, *mut PTreeDataContainer);
 type StringCharsCallback = unsafe extern "C" fn(*mut c_void) -> *const c_char;
 type StringDeleteCallback = unsafe extern "C" fn(*mut c_void);
+type ClonePropertyTreeCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 
 static mut PUT_STRING_CALLBACK: Option<PropertyTreePutStringCallback> = None;
 static mut PUT_U64_CALLBACK: Option<PropertyTreePutU64Callback> = None;
@@ -36,6 +37,7 @@ static mut GET_STRING_CALLBACK: Option<PropertyTreeGetStringCallback> = None;
 static mut GET_CHILD_CALLBACK: Option<PropertyTreeGetChildCallback> = None;
 static mut GET_CHILDREN_CALLBACK: Option<PropertyTreeGetChildrenCallback> = None;
 static mut GET_PTREE_DATA: Option<PropertyTreeGetDataCallback> = None;
+static mut CLONE_PTREE: Option<ClonePropertyTreeCallback> = None;
 static mut CREATE_TREE_CALLBACK: Option<PropertyTreeCreateTreeCallback> = None;
 static mut DESTROY_TREE_CALLBACK: Option<PropertyTreeDestroyTreeCallback> = None;
 static mut PUSH_BACK_CALLBACK: Option<PropertyTreePushBackCallback> = None;
@@ -91,6 +93,11 @@ pub unsafe extern "C" fn rsn_callback_property_tree_get_data(f: PropertyTreeGetD
 pub unsafe extern "C" fn rsn_callback_property_tree_create(f: PropertyTreeCreateTreeCallback) {
     CREATE_TREE_CALLBACK = Some(f);
     CREATE_PROPERTY_TREE = Some(create_ffi_property_tree);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_property_tree_clone(f: ClonePropertyTreeCallback) {
+    CLONE_PTREE = Some(f);
 }
 
 #[no_mangle]
@@ -363,10 +370,6 @@ impl PropertyTree for FfiPropertyTree {
         let mut result = Box::new(PTreeDataContainer(String::new()));
         unsafe { GET_PTREE_DATA.expect("GET_PTREE_DATA missing")(self.handle, result.as_mut()) }
         result.0
-    }
-
-    fn clone(&self) -> Box<dyn PropertyTree + Send> {
-        todo!()
     }
 }
 

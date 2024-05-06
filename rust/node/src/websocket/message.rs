@@ -1,13 +1,13 @@
 use super::ConfirmationOptions;
 use crate::{
     consensus::{ElectionStatus, ElectionStatusType},
-    utils::create_property_tree,
     DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
 use rsnano_core::{
-    utils::PropertyTree, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote, VoteCode,
-    VoteWithWeightInfo, WorkVersion,
+    utils::{PropertyTree, SerdePropertyTree},
+    Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote, VoteCode, VoteWithWeightInfo,
+    WorkVersion,
 };
 use rsnano_messages::TelemetryData;
 use std::{
@@ -66,7 +66,7 @@ impl Debug for Topic {
 
 pub struct Message {
     pub topic: Topic,
-    pub contents: Box<dyn PropertyTree + Send>,
+    pub contents: SerdePropertyTree,
 }
 
 impl Clone for Message {
@@ -90,7 +90,7 @@ impl Message {
     pub fn new(topic: Topic) -> Self {
         Self {
             topic,
-            contents: create_property_tree(),
+            contents: SerdePropertyTree::new(),
         }
     }
 }
@@ -106,11 +106,11 @@ impl MessageBuilder {
     pub fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
         let mut message = Self::new_message()?;
         // Bootstrap information
-        let mut bootstrap = create_property_tree();
+        let mut bootstrap = SerdePropertyTree::new();
         bootstrap.put_string("reason", "started")?;
         bootstrap.put_string("id", id)?;
         bootstrap.put_string("mode", mode)?;
-        message.contents.add_child("message", bootstrap.as_ref());
+        message.contents.add_child("message", &bootstrap);
         Ok(message)
     }
 
@@ -121,13 +121,13 @@ impl MessageBuilder {
         total_blocks: u64,
     ) -> Result<Message> {
         let mut message = Self::new_message()?;
-        let mut bootstrap = create_property_tree();
+        let mut bootstrap = SerdePropertyTree::new();
         bootstrap.put_string("reason", "exited")?;
         bootstrap.put_string("id", id)?;
         bootstrap.put_string("mode", mode)?;
         bootstrap.put_u64("total_blocks", total_blocks)?;
         bootstrap.put_u64("duration", duration.as_secs())?;
-        message.contents.add_child("message", bootstrap.as_ref());
+        message.contents.add_child("message", &bootstrap);
 
         Ok(message)
     }
@@ -140,12 +140,12 @@ impl MessageBuilder {
         Self::set_common_fields(&mut message_l)?;
 
         // Telemetry information
-        let mut telemetry_l = create_property_tree();
-        telemetry_data.serialize_json(&mut *telemetry_l, false)?;
+        let mut telemetry_l = SerdePropertyTree::new();
+        telemetry_data.serialize_json(&mut telemetry_l, false)?;
         telemetry_l.put_string("address", &endpoint.ip().to_string())?;
         telemetry_l.put_u64("port", endpoint.port() as u64)?;
 
-        message_l.contents.add_child("message", &*telemetry_l);
+        message_l.contents.add_child("message", &telemetry_l);
         Ok(message_l)
     }
 
@@ -153,12 +153,12 @@ impl MessageBuilder {
         let mut message_l = Message::new(Topic::NewUnconfirmedBlock);
         Self::set_common_fields(&mut message_l)?;
 
-        let mut block_l = create_property_tree();
-        block.serialize_json(&mut *block_l)?;
+        let mut block_l = SerdePropertyTree::new();
+        block.serialize_json(&mut block_l)?;
         let subtype = block.sideband().unwrap().details.state_subtype();
         block_l.put_string("subtype", subtype)?;
 
-        message_l.contents.add_child("message", &*block_l);
+        message_l.contents.add_child("message", &block_l);
 
         Ok(message_l)
     }
@@ -167,9 +167,9 @@ impl MessageBuilder {
         let mut message = Message::new(Topic::StartedElection);
         Self::set_common_fields(&mut message)?;
 
-        let mut message_node_l = create_property_tree();
+        let mut message_node_l = SerdePropertyTree::new();
         message_node_l.add("hash", &hash.to_string())?;
-        message.contents.add_child("message", &*message_node_l);
+        message.contents.add_child("message", &message_node_l);
         Ok(message)
     }
 
@@ -177,9 +177,9 @@ impl MessageBuilder {
         let mut message = Message::new(Topic::StoppedElection);
         Self::set_common_fields(&mut message)?;
 
-        let mut message_node_l = create_property_tree();
+        let mut message_node_l = SerdePropertyTree::new();
         message_node_l.add("hash", &hash.to_string())?;
-        message.contents.add_child("message", &*message_node_l);
+        message.contents.add_child("message", &message_node_l);
         Ok(message)
     }
 
@@ -197,7 +197,7 @@ impl MessageBuilder {
         Self::set_common_fields(&mut message_l)?;
 
         // Block confirmation properties
-        let mut message_node_l = create_property_tree();
+        let mut message_node_l = SerdePropertyTree::new();
         message_node_l.add("account", &account_a.encode_account())?;
         message_node_l.add("amount", &amount_a.to_string_dec())?;
         message_node_l.add("hash", &block_a.hash().to_string())?;
@@ -211,7 +211,7 @@ impl MessageBuilder {
         message_node_l.add("confirmation_type", confirmation_type)?;
 
         if options_a.include_election_info || options_a.include_election_info_with_votes {
-            let mut election_node_l = create_property_tree();
+            let mut election_node_l = SerdePropertyTree::new();
             election_node_l.add(
                 "duration",
                 &election_status_a.election_duration.as_millis().to_string(),
@@ -234,40 +234,43 @@ impl MessageBuilder {
                 &election_status_a.confirmation_request_count.to_string(),
             )?;
             if options_a.include_election_info_with_votes {
-                let mut election_votes_l = create_property_tree();
+                let mut election_votes_l = Vec::new();
                 for vote_l in election_votes_a {
-                    let mut entry = create_property_tree();
+                    let mut entry = SerdePropertyTree::new();
                     entry.put_string("representative", &vote_l.representative.encode_account())?;
                     entry.put_u64("timestamp", vote_l.timestamp)?;
                     entry.put_string("hash", &vote_l.hash.to_string())?;
                     entry.put_string("weight", &vote_l.weight.to_string_dec())?;
-                    election_votes_l.push_back("", &*entry);
+                    election_votes_l.push(entry.value);
                 }
-                election_node_l.add_child("votes", &*election_votes_l);
+                election_node_l.add_child_value(
+                    "votes".to_string(),
+                    serde_json::Value::Array(election_votes_l),
+                );
             }
-            message_node_l.add_child("election_info", &*election_node_l);
+            message_node_l.add_child("election_info", &election_node_l);
         }
 
         if include_block_a {
-            let mut block_node_l = create_property_tree();
-            block_a.serialize_json(&mut *block_node_l)?;
+            let mut block_node_l = SerdePropertyTree::new();
+            block_a.serialize_json(&mut block_node_l)?;
             if !subtype.is_empty() {
                 block_node_l.add("subtype", &subtype)?;
             }
-            message_node_l.add_child("block", &*block_node_l);
+            message_node_l.add_child("block", &block_node_l);
         }
 
         if options_a.include_sideband_info {
-            let mut sideband_node_l = create_property_tree();
+            let mut sideband_node_l = SerdePropertyTree::new();
             sideband_node_l.add("height", &block_a.sideband().unwrap().height.to_string())?;
             sideband_node_l.add(
                 "local_timestamp",
                 &block_a.sideband().unwrap().timestamp.to_string(),
             )?;
-            message_node_l.add_child("sideband", &*sideband_node_l);
+            message_node_l.add_child("sideband", &sideband_node_l);
         }
 
-        message_l.contents.add_child("message", &*message_node_l);
+        message_l.contents.add_child("message", &message_node_l);
 
         Ok(message_l)
     }
@@ -277,8 +280,8 @@ impl MessageBuilder {
         Self::set_common_fields(&mut message_l)?;
 
         // Vote information
-        let mut vote_node_l = create_property_tree();
-        vote_a.serialize_json(&mut *vote_node_l)?;
+        let mut vote_node_l = SerdePropertyTree::new();
+        vote_a.serialize_json(&mut vote_node_l)?;
 
         // Vote processing information
         let vote_type = match code_a {
@@ -290,7 +293,7 @@ impl MessageBuilder {
         };
 
         vote_node_l.put_string("type", vote_type)?;
-        message_l.contents.add_child("message", &*vote_node_l);
+        message_l.contents.add_child("message", &vote_node_l);
         Ok(message_l)
     }
 
@@ -310,7 +313,7 @@ impl MessageBuilder {
         Self::set_common_fields(&mut message_l)?;
 
         // Active difficulty information
-        let mut work_l = create_property_tree();
+        let mut work_l = SerdePropertyTree::new();
         work_l.put_string("success", if completed_a { "true" } else { "false" })?;
         work_l.put_string(
             "reason",
@@ -324,16 +327,16 @@ impl MessageBuilder {
         )?;
         work_l.put_u64("duration", duration_a.as_millis() as u64)?;
 
-        let mut request_l = create_property_tree();
+        let mut request_l = SerdePropertyTree::new();
         request_l.put_string("version", version_a.as_str())?;
         request_l.put_string("hash", &root_a.to_string())?;
         request_l.put_string("difficulty", &format!("{:016x}", difficulty_a))?;
         let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
         request_l.put_string("multiplier", &format!("{:.10}", request_multiplier_l))?;
-        work_l.add_child("request", &*request_l);
+        work_l.add_child("request", &request_l);
 
         if completed_a {
-            let mut result_l = create_property_tree();
+            let mut result_l = SerdePropertyTree::new();
             result_l.put_string("source", peer_a)?;
             result_l.put_string("work", &format!("{:016x}", work_a))?;
             let result_difficulty_l =
@@ -344,18 +347,21 @@ impl MessageBuilder {
             let result_multiplier_l =
                 DifficultyV1::to_multiplier(result_difficulty_l, publish_threshold_a);
             result_l.put_string("multiplier", &format!("{:.10}", result_multiplier_l))?;
-            work_l.add_child("result", &*result_l);
+            work_l.add_child("result", &result_l);
         }
 
-        let mut bad_peers_l = create_property_tree();
+        let mut bad_peers_l = Vec::new();
         for peer_text in bad_peers_a {
-            let mut entry = create_property_tree();
+            let mut entry = SerdePropertyTree::new();
             entry.put_string("", peer_text)?;
-            bad_peers_l.push_back("", &*entry);
+            bad_peers_l.push(entry.value);
         }
-        work_l.add_child("bad_peers", &*bad_peers_l);
+        work_l.add_child_value(
+            "bad_peers".to_string(),
+            serde_json::Value::Array(bad_peers_l),
+        );
 
-        message_l.contents.add_child("message", &*work_l);
+        message_l.contents.add_child("message", &work_l);
         Ok(message_l)
     }
 
@@ -375,7 +381,7 @@ impl MessageBuilder {
     fn new_message() -> Result<Message, anyhow::Error> {
         let mut message = Message {
             topic: Topic::Bootstrap,
-            contents: create_property_tree(),
+            contents: SerdePropertyTree::new(),
         };
         Self::set_common_fields(&mut message)?;
         Ok(message)

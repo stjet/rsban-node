@@ -19,35 +19,44 @@ use rsnano_node::websocket::{
 };
 use std::{
     ffi::{c_void, CStr, CString},
-    ops::Deref,
+    ops::{Deref, DerefMut},
     os::raw::c_char,
     sync::Arc,
     time::Duration,
 };
 
-#[repr(C)]
-pub struct MessageDto {
-    pub topic: u8,
-    pub contents: *mut c_void,
+pub struct WebsocketMessageHandle(Message);
+
+impl WebsocketMessageHandle {
+    pub fn new(message: Message) -> *mut Self {
+        Box::into_raw(Box::new(Self(message)))
+    }
 }
 
-impl From<&MessageDto> for Message {
-    fn from(value: &MessageDto) -> Self {
-        Self {
-            topic: FromPrimitive::from_u8(value.topic).unwrap(),
-            contents: Box::new(FfiPropertyTree::new_borrowed(value.contents)),
-        }
+impl Deref for WebsocketMessageHandle {
+    type Target = Message;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for WebsocketMessageHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_websocket_set_common_fields(message: *mut MessageDto) {
-    let dto = &mut (*message);
-    let mut message = Message {
-        topic: FromPrimitive::from_u8(dto.topic).unwrap(),
-        contents: Box::new(FfiPropertyTree::new_borrowed(dto.contents)),
-    };
-    MessageBuilder::set_common_fields(&mut message).unwrap();
+pub unsafe extern "C" fn rsn_websocket_message_clone(
+    handle: &WebsocketMessageHandle,
+) -> *mut WebsocketMessageHandle {
+    WebsocketMessageHandle::new(handle.0.clone())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_message_destroy(handle: *mut WebsocketMessageHandle) {
+    drop(Box::from_raw(handle))
 }
 
 #[no_mangle]
@@ -68,15 +77,13 @@ pub unsafe extern "C" fn rsn_to_topic(topic: *const c_char) -> u8 {
 pub unsafe extern "C" fn rsn_message_builder_bootstrap_started(
     id: *const c_char,
     mode: *const c_char,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::bootstrap_started(
         &CStr::from_ptr(id).to_string_lossy(),
         &CStr::from_ptr(mode).to_string_lossy(),
     )
     .unwrap();
-
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
@@ -85,8 +92,7 @@ pub unsafe extern "C" fn rsn_message_builder_bootstrap_exited(
     mode: *const c_char,
     duration_s: u64,
     total_blocks: u64,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::bootstrap_exited(
         &CStr::from_ptr(id).to_string_lossy(),
         &CStr::from_ptr(mode).to_string_lossy(),
@@ -94,56 +100,50 @@ pub unsafe extern "C" fn rsn_message_builder_bootstrap_exited(
         total_blocks,
     )
     .unwrap();
-
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_telemetry_received(
     telemetry_data: &TelemetryDataHandle,
     endpoint: &EndpointDto,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::telemetry_received(telemetry_data, endpoint.into()).unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_new_block_arrived(
     block: &BlockHandle,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::new_block_arrived(&**block).unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_started_election(
     hash: *const u8,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::started_election(&BlockHash::from_ptr(hash)).unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_stopped_election(
     hash: *const u8,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::stopped_election(&BlockHash::from_ptr(hash)).unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_vote_received(
     vote: &VoteHandle,
     vote_code: u8,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message =
         MessageBuilder::vote_received(vote, FromPrimitive::from_u8(vote_code).unwrap()).unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
@@ -156,8 +156,7 @@ pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
     election_status: &ElectionStatusHandle,
     votes: &VoteWithWeightInfoVecHandle,
     options: &WebsocketOptionsHandle,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::block_confirmed(
         block,
         &Account::from_ptr(account),
@@ -169,7 +168,7 @@ pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
         options.confirmation_options(),
     )
     .unwrap();
-    set_message_dto(result, message);
+    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
@@ -184,8 +183,7 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
     bad_peers: &StringVecHandle,
     completed: bool,
     cancelled: bool,
-    result: *mut MessageDto,
-) {
+) -> *mut WebsocketMessageHandle {
     let message = MessageBuilder::work_generation(
         WorkVersion::from_u8(version).unwrap(),
         &BlockHash::from_ptr(root),
@@ -199,20 +197,7 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
         cancelled,
     )
     .unwrap();
-    set_message_dto(result, message);
-}
-
-unsafe fn set_message_dto(result: *mut MessageDto, mut message: Message) {
-    (*result).topic = message.topic as u8;
-    let ffi_ptree = message
-        .contents
-        .as_any_mut()
-        .downcast_mut::<FfiPropertyTree>()
-        .unwrap();
-    (*result).contents = ffi_ptree.handle;
-    // Prevent the property_tree from being deleted.
-    // The caller of this function is responsable for calling delete on the handle.
-    ffi_ptree.make_borrowed();
+    WebsocketMessageHandle::new(message)
 }
 
 pub struct TopicVecHandle(Vec<Topic>);
@@ -291,9 +276,9 @@ pub unsafe extern "C" fn rsn_websocket_listener_broadcast_confirmation(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_websocket_listener_broadcast(
     handle: &WebsocketListenerHandle,
-    message: &MessageDto,
+    message: &WebsocketMessageHandle,
 ) {
-    handle.0.broadcast(&message.into());
+    handle.0.broadcast(message);
 }
 
 #[no_mangle]

@@ -71,35 +71,22 @@ namespace websocket
 	class message final
 	{
 	public:
-		message (nano::websocket::topic topic_a) :
-			topic (topic_a)
-		{
-		}
-		message (nano::websocket::topic topic_a, boost::property_tree::ptree & tree_a) :
-			topic (topic_a), contents (tree_a)
-		{
-		}
-
-		rsnano::MessageDto to_dto () const;
-
-		std::string to_string () const;
-		nano::websocket::topic topic;
-		boost::property_tree::ptree contents;
+		message(rsnano::WebsocketMessageHandle * handle) : handle{ handle } {}
+		message(message const & other) : handle {rsnano::rsn_websocket_message_clone(other.handle)} {}
+		~message(){rsnano::rsn_websocket_message_destroy(handle);}
+		rsnano::WebsocketMessageHandle * handle;
 	};
 
 	/** Message builder. This is expanded with new builder functions are necessary. */
 	class message_builder final
 	{
 	public:
-		message block_confirmed (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::amount const & amount_a, std::string subtype, bool include_block, nano::election_status const & election_status_a, std::vector<nano::vote_with_weight_info> const & election_votes_a, nano::websocket::confirmation_options const & options_a);
 		message started_election (nano::block_hash const & hash_a);
 		message stopped_election (nano::block_hash const & hash_a);
 		message vote_received (std::shared_ptr<nano::vote> const & vote_a, nano::vote_code code_a);
 		message work_generation (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t const work_a, uint64_t const difficulty_a, uint64_t const publish_threshold_a, std::chrono::milliseconds const & duration_a, std::string const & peer_a, std::vector<std::string> const & bad_peers_a, bool const completed_a = true, bool const cancelled_a = false);
 		message work_cancelled (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t const difficulty_a, uint64_t const publish_threshold_a, std::chrono::milliseconds const & duration_a, std::vector<std::string> const & bad_peers_a);
 		message work_failed (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t const difficulty_a, uint64_t const publish_threshold_a, std::chrono::milliseconds const & duration_a, std::vector<std::string> const & bad_peers_a);
-		message bootstrap_started (std::string const & id_a, std::string const & mode_a);
-		message bootstrap_exited (std::string const & id_a, std::string const & mode_a, std::chrono::steady_clock::time_point const start_time_a, uint64_t const total_blocks_a);
 		message telemetry_received (nano::telemetry_data const &, nano::endpoint const &);
 		message new_block_arrived (nano::block const & block_a);
 	};
@@ -113,87 +100,7 @@ namespace websocket
 		options (options const &) = delete;
 		virtual ~options ();
 
-	protected:
-		/**
-		 * Checks if a message should be filtered for default options (no options given).
-		 * @param message_a the message to be checked
-		 * @return false - the message should always be broadcasted
-		 */
-		virtual bool should_filter (message const & message_a) const
-		{
-			return false;
-		}
-		/**
-		 * Update options, if available for a given topic
-		 * @return false on success
-		 */
-		virtual bool update (boost::property_tree::ptree & options_a)
-		{
-			return true;
-		}
-
-		friend class session;
-
-	public:
 		rsnano::WebsocketOptionsHandle * handle;
-	};
-
-	/**
-	 * Options for block confirmation subscriptions
-	 * Non-filtering options:
-	 * - "include_block" (bool, default true) - if false, do not include block contents. Only account, amount and hash will be included.
-	 * Filtering options:
-	 * - "all_local_accounts" (bool) - will only not filter blocks that have local wallet accounts as source/destination
-	 * - "accounts" (array of std::strings) - will only not filter blocks that have these accounts as source/destination
-	 * @remark Both options can be given, the resulting filter is an intersection of individual filters
-	 * @warn Legacy blocks are always filtered (not broadcasted)
-	 */
-	class confirmation_options final : public options
-	{
-	public:
-		confirmation_options (rsnano::WebsocketOptionsHandle * handle);
-		confirmation_options (nano::wallets & wallets_a, nano::logger & logger_a);
-		confirmation_options (boost::property_tree::ptree & options_a, nano::wallets & wallets_a, nano::logger & logger_a);
-
-		/**
-		 * Checks if a message should be filtered for given block confirmation options.
-		 * @param message_a the message to be checked
-		 * @return false if the message should be broadcasted, true if it should be filtered
-		 */
-		bool should_filter (message const & message_a) const override;
-
-		/**
-		 * Update some existing options
-		 * Filtering options:
-		 * - "accounts_add" (array of std::strings) - additional accounts for which blocks should not be filtered
-		 * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
-		 * @return false
-		 */
-		bool update (boost::property_tree::ptree & options_a) override;
-
-		/** Returns whether or not block contents should be included */
-		bool get_include_block () const
-		{
-			return rsnano::rsn_confirmation_options_include_block (handle);
-		}
-
-		/** Returns whether or not to include election info, such as tally and duration */
-		bool get_include_election_info () const
-		{
-			return rsnano::rsn_confirmation_options_include_election_info (handle);
-		}
-
-		/** Returns whether or not to include election info with votes */
-		bool get_include_election_info_with_votes () const
-		{
-			return rsnano::rsn_confirmation_options_include_election_info_with_votes (handle);
-		}
-
-		/** Returns whether or not to include sideband info */
-		bool get_include_sideband_info () const
-		{
-			return rsnano::rsn_confirmation_options_include_sideband_info (handle);
-		}
 	};
 
 	/**
@@ -205,13 +112,6 @@ namespace websocket
 	{
 	public:
 		vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a);
-
-		/**
-		 * Checks if a message should be filtered for given vote received options.
-		 * @param message_a the message to be checked
-		 * @return false if the message should be broadcasted, true if it should be filtered
-		 */
-		bool should_filter (message const & message_a) const override;
 	};
 
 	/** Creates a new session for each incoming connection */

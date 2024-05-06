@@ -494,7 +494,7 @@ impl WebsocketSession {
         let contents = serde_json::Value::Object(vals);
         let msg = Message {
             topic: Topic::Ack,
-            contents: Box::new(SerdePropertyTree::from_value(contents)),
+            contents: SerdePropertyTree::from_value(contents),
         };
 
         self.write(msg).await
@@ -544,7 +544,6 @@ impl WebsocketListener {
     }
 
     async fn run2(&self) {
-        println!("listener run2");
         let endpoint = self.endpoint.lock().unwrap().clone();
         let listener = match TcpListener::bind(endpoint).await {
             Ok(s) => s,
@@ -659,7 +658,6 @@ impl WebsocketListener {
         loop {
             match listener.accept().await {
                 Ok((stream, remote_endpoint)) => {
-                    println!("accept returned OK!");
                     let wallets = Arc::clone(&self.wallets);
                     let sub_count = Arc::clone(&self.topic_subscriber_count);
                     let (tx_send, rx_send) = mpsc::channel::<Message>(1024);

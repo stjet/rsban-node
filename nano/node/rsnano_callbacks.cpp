@@ -177,6 +177,12 @@ void ptree_get_data (const void * ptree, rsnano::PTreeDataContainer * result)
 	rsnano::rsn_set_ptree_data (result, data.c_str ());
 }
 
+void * ptree_clone (void * ptree)
+{
+	auto tree = static_cast<const boost::property_tree::ptree *> (ptree);
+	return new boost::property_tree::ptree(*tree);
+}
+
 void * ptree_create ()
 {
 	return new boost::property_tree::ptree ();
@@ -636,6 +642,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_property_tree_get_child (ptree_get_child);
 	rsnano::rsn_callback_property_tree_get_children (ptree_get_children);
 	rsnano::rsn_callback_property_tree_get_data (ptree_get_data);
+	rsnano::rsn_callback_property_tree_clone(ptree_clone);
 
 	rsnano::rsn_callback_string_chars (string_chars);
 	rsnano::rsn_callback_string_delete (string_delete);

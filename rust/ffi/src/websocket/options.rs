@@ -7,8 +7,6 @@ use std::{
     sync::Arc,
 };
 
-use super::MessageDto;
-
 pub struct WebsocketOptionsHandle(pub Options);
 
 impl WebsocketOptionsHandle {
@@ -231,24 +229,6 @@ pub unsafe extern "C" fn rsn_confirmation_options_accounts_is_empty(
     handle.confirmation_options_mut().accounts.is_empty()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_options_should_filter(
-    handle: &WebsocketOptionsHandle,
-    message: &MessageDto,
-) -> bool {
-    handle.confirmation_options().should_filter(&message.into())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirmation_options_update(
-    handle: &mut WebsocketOptionsHandle,
-    options: *mut c_void,
-) -> bool {
-    handle
-        .confirmation_options_mut()
-        .update(&FfiPropertyTree::new_borrowed(options))
-}
-
 /*
  * VoteOptions
  */
@@ -258,12 +238,4 @@ pub extern "C" fn rsn_vote_options_create(options: *mut c_void) -> *mut Websocke
     WebsocketOptionsHandle::new(Options::Vote(VoteOptions::new(
         &FfiPropertyTree::new_borrowed(options),
     )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_options_should_filter(
-    handle: &WebsocketOptionsHandle,
-    message: &MessageDto,
-) -> bool {
-    handle.vote_options().should_filter(&message.into())
 }

@@ -23,7 +23,6 @@ pub trait PropertyTree {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn to_json(&self) -> String;
-    fn clone(&self) -> Box<dyn PropertyTree + Send>;
 }
 
 pub trait PropertyTreeWriter {}
@@ -104,16 +103,11 @@ impl PropertyTree for TestPropertyTree {
     fn to_json(&self) -> String {
         todo!()
     }
-
-    fn clone(&self) -> Box<dyn PropertyTree + Send> {
-        Box::new(Self {
-            properties: self.properties.clone(),
-        })
-    }
 }
 
+#[derive(Clone)]
 pub struct SerdePropertyTree {
-    value: Value,
+    pub value: Value,
 }
 
 impl SerdePropertyTree {
@@ -131,6 +125,13 @@ impl SerdePropertyTree {
         Ok(Self {
             value: serde_json::from_str(s)?,
         })
+    }
+
+    pub fn add_child_value(&mut self, path: String, value: Value) {
+        let Value::Object(map) = &mut self.value else {
+            panic!("not an object");
+        };
+        map.insert(path, value);
     }
 }
 
@@ -212,16 +213,24 @@ impl PropertyTree for SerdePropertyTree {
         todo!()
     }
 
-    fn add_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
-        todo!()
+    fn add_child(&mut self, path: &str, value: &dyn PropertyTree) {
+        let child = value
+            .as_any()
+            .downcast_ref::<SerdePropertyTree>()
+            .expect("not a serde ptree");
+
+        let Value::Object(map) = &mut self.value else {
+            panic!("not an object");
+        };
+        map.insert(path.to_string(), child.value.clone());
     }
 
     fn put_child(&mut self, _path: &str, _value: &dyn PropertyTree) {
         todo!()
     }
 
-    fn add(&mut self, _path: &str, _value: &str) -> anyhow::Result<()> {
-        todo!()
+    fn add(&mut self, path: &str, value: &str) -> anyhow::Result<()> {
+        self.put_string(path, value)
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -234,12 +243,6 @@ impl PropertyTree for SerdePropertyTree {
 
     fn to_json(&self) -> String {
         self.value.to_string()
-    }
-
-    fn clone(&self) -> Box<dyn PropertyTree + Send> {
-        Box::new(Self {
-            value: self.value.clone(),
-        })
     }
 }
 

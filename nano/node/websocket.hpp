@@ -108,10 +108,6 @@ namespace websocket
 		message bootstrap_exited (std::string const & id_a, std::string const & mode_a, std::chrono::steady_clock::time_point const start_time_a, uint64_t const total_blocks_a);
 		message telemetry_received (nano::telemetry_data const &, nano::endpoint const &);
 		message new_block_arrived (nano::block const & block_a);
-
-	private:
-		/** Set the common fields for messages: timestamp and topic. */
-		void set_common_fields (message & message_a);
 	};
 
 	/** Options for subscriptions */
@@ -279,6 +275,8 @@ namespace websocket
 	{
 	public:
 		listener (nano::logger & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a);
+		listener(listener const &) = delete;
+		~listener();
 
 		/** Start accepting connections */
 		void run ();
@@ -303,11 +301,6 @@ namespace websocket
 			return acceptor.local_endpoint ().port ();
 		}
 
-		nano::wallets & get_wallets () const
-		{
-			return wallets;
-		}
-
 		/**
 		 * Per-topic subscribers check. Relies on all sessions correctly increasing and
 		 * decreasing the subscriber counts themselves.
@@ -321,28 +314,6 @@ namespace websocket
 		{
 			return topic_subscriber_count[static_cast<std::size_t> (topic_a)];
 		}
-
-	private:
-		void accept ();
-		void on_accept (boost::system::error_code ec_a);
-
-	private:
-		/** A websocket session can increase and decrease subscription counts. */
-		friend nano::websocket::session;
-
-		/** Adds to subscription count of a specific topic*/
-		void increase_subscriber_count (nano::websocket::topic const & topic_a);
-		/** Removes from subscription count of a specific topic*/
-		void decrease_subscriber_count (nano::websocket::topic const & topic_a);
-
-		nano::logger & logger;
-		nano::wallets & wallets;
-		boost::asio::ip::tcp::acceptor acceptor;
-		socket_type socket;
-		nano::mutex sessions_mutex;
-		std::vector<std::weak_ptr<session>> sessions;
-		std::array<std::atomic<std::size_t>, number_topics> topic_subscriber_count;
-		std::atomic<bool> stopped{ false };
 	};
 }
 

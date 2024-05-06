@@ -1,5 +1,5 @@
 use super::{to_topic, Message, MessageBuilder, Topic};
-use crate::{consensus::ElectionStatus, wallets::Wallets};
+use crate::{consensus::ElectionStatus, utils::AsyncRuntime, wallets::Wallets};
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
@@ -11,7 +11,6 @@ use serde_json::Value;
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
-    ffi::c_void,
     net::SocketAddr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -26,6 +25,7 @@ use tokio_tungstenite::tungstenite::protocol::{frame::coding::CloseCode, CloseFr
 use tracing::{info, warn};
 
 pub trait Listener: Send + Sync {
+    /// Broadcast \p message to all session subscribing to the message topic.
     fn broadcast(&self, message: &Message) -> Result<()>;
 }
 
@@ -357,7 +357,7 @@ struct WebsocketSessionEntry {
     /// Map of subscriptions -> options registered by this session.
     subscriptions: Mutex<HashMap<Topic, Options>>,
     send_queue_tx: mpsc::Sender<Message>,
-    close: oneshot::Sender<()>,
+    close: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 pub struct WebsocketSession {
@@ -516,28 +516,31 @@ impl WebsocketSession {
 }
 
 pub struct WebsocketListener {
-    cpp_pointer: *mut c_void,
-    endpoint: SocketAddr,
+    pub endpoint: SocketAddr,
     tx_stop: Mutex<Option<oneshot::Sender<()>>>,
     wallets: Arc<Wallets>,
     topic_subscriber_count: Arc<[AtomicUsize; 11]>,
     sessions: Arc<Mutex<Vec<Weak<WebsocketSessionEntry>>>>,
+    async_rt: Arc<AsyncRuntime>,
 }
 
 impl WebsocketListener {
-    pub fn new(cpp_pointer: *mut c_void, endpoint: SocketAddr, wallets: Arc<Wallets>) -> Self {
+    pub fn new(endpoint: SocketAddr, wallets: Arc<Wallets>, async_rt: Arc<AsyncRuntime>) -> Self {
         Self {
-            cpp_pointer,
             endpoint,
             tx_stop: Mutex::new(None),
             wallets,
             topic_subscriber_count: Arc::new(std::array::from_fn(|_| AtomicUsize::new(0))),
             sessions: Arc::new(Mutex::new(Vec::new())),
+            async_rt,
         }
     }
 
-    /// Start accepting connections
-    pub async fn run(&self) {
+    pub fn subscriber_count(&self, topic: Topic) -> usize {
+        self.topic_subscriber_count[topic as usize].load(Ordering::SeqCst)
+    }
+
+    async fn run2(&self) {
         let listener = match TcpListener::bind(self.endpoint).await {
             Ok(s) => s,
             Err(e) => {
@@ -556,29 +559,28 @@ impl WebsocketListener {
     }
 
     /// Close all websocket sessions and stop listening for new connections
-    pub async fn stop(&self) {
+    pub async fn stop2(&self) {
         if let Some(tx) = self.tx_stop.lock().unwrap().take() {
             tx.send(()).unwrap()
         }
-        // TODO: send closing handshake?
-        // TODO: clean send queues
-    }
 
-    pub fn broadcast(&self, message: Message) {
-        let sessions = self.sessions.lock().unwrap();
-        for session in sessions.iter() {
+        let mut sessions = self.sessions.lock().unwrap();
+        for session in sessions.drain(..) {
             if let Some(session) = session.upgrade() {
-                let _ = session.send_queue_tx.blocking_send(message.clone());
+                if let Some(close) = session.close.lock().unwrap().take() {
+                    let _ = close.send(());
+                }
             }
         }
     }
 
+    /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")
     pub fn broadcast_confirmation(
         &self,
         block_a: &Arc<BlockEnum>,
         account_a: &Account,
         amount_a: &Amount,
-        subtype: &'static str,
+        subtype: &str,
         election_status_a: &ElectionStatus,
         election_votes_a: &Vec<VoteWithWeightInfo>,
     ) {
@@ -671,6 +673,28 @@ impl WebsocketListener {
     }
 }
 
+pub trait WebsocketListenerExt {
+    fn run(&self);
+    fn stop(&self);
+}
+
+impl WebsocketListenerExt for Arc<WebsocketListener> {
+    /// Start accepting connections
+    fn run(&self) {
+        let self_l = Arc::clone(self);
+        self.async_rt.tokio.spawn(async move {
+            self_l.run2().await;
+        });
+    }
+
+    fn stop(&self) {
+        let self_l = Arc::clone(self);
+        self.async_rt.tokio.spawn(async move {
+            self_l.stop2().await;
+        });
+    }
+}
+
 async fn accept_connection(
     stream: TcpStream,
     wallets: Arc<Wallets>,
@@ -687,7 +711,7 @@ async fn accept_connection(
     let entry = Arc::new(WebsocketSessionEntry {
         subscriptions: Mutex::new(HashMap::new()),
         send_queue_tx: tx_send,
-        close: close_tx,
+        close: Mutex::new(Some(close_tx)),
     });
 
     {
@@ -715,19 +739,15 @@ async fn accept_connection(
     Ok(())
 }
 
-unsafe impl Send for WebsocketListener {}
-unsafe impl Sync for WebsocketListener {}
-
-pub type BroadcastCallback = fn(*mut c_void, &Message) -> Result<()>;
-pub static mut BROADCAST_CALLBACK: Option<BroadcastCallback> = None;
-
 impl Listener for WebsocketListener {
-    fn broadcast(&self, message: &Message) -> Result<()> {
-        unsafe {
-            match BROADCAST_CALLBACK {
-                Some(f) => f(self.cpp_pointer, message),
-                None => Err(anyhow!("BROADCAST_CALLBACK missing")),
+    fn broadcast(&self, message: &Message) -> anyhow::Result<()> {
+        let sessions = self.sessions.lock().unwrap();
+        for session in sessions.iter() {
+            if let Some(session) = session.upgrade() {
+                let _ = session.send_queue_tx.blocking_send(message.clone());
             }
         }
+
+        Ok(())
     }
 }

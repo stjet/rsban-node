@@ -627,14 +627,6 @@ nano::websocket::message nano::websocket::message_builder::new_block_arrived (na
 	return dto_to_message (message_dto);
 }
 
-void nano::websocket::message_builder::set_common_fields (nano::websocket::message & message_a)
-{
-	rsnano::MessageDto msg;
-	msg.topic = static_cast<uint8_t> (message_a.topic);
-	msg.contents = &message_a.contents;
-	rsnano::rsn_websocket_set_common_fields (&msg);
-}
-
 rsnano::MessageDto nano::websocket::message::to_dto () const
 {
 	return { static_cast<uint8_t> (topic), (void *)&contents };

@@ -1,24 +1,25 @@
 mod options;
 
+use self::options::WebsocketOptionsHandle;
+use super::{FfiPropertyTree, StringDto, StringHandle};
 use crate::{
     consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
     messages::TelemetryDataHandle,
     to_rust_string,
     transport::EndpointDto,
+    utils::AsyncRuntimeHandle,
     wallets::LmdbWalletsHandle,
     StringVecHandle,
 };
-
-use self::options::WebsocketOptionsHandle;
-use super::{FfiPropertyTree, StringDto, StringHandle};
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
     Account, Amount, BlockHash, WorkVersion,
 };
 use rsnano_node::websocket::{
-    to_topic, ConfirmationOptions, Message, MessageBuilder, Options, Topic, WebsocketSession,
+    to_topic, ConfirmationOptions, Listener, Message, MessageBuilder, Options, Topic,
+    WebsocketListener, WebsocketListenerExt, WebsocketSession,
 };
 use std::{
     collections::HashMap,
@@ -402,4 +403,75 @@ pub extern "C" fn rsn_topic_vec_get(handle: &TopicVecHandle, index: usize) -> u8
 #[no_mangle]
 pub unsafe extern "C" fn rsn_topic_vec_destroy(handle: *mut TopicVecHandle) {
     drop(Box::from_raw(handle))
+}
+
+pub struct WebsocketListenerHandle(Arc<WebsocketListener>);
+
+#[no_mangle]
+pub extern "C" fn rsn_websocket_listener_create(
+    endpoint: &EndpointDto,
+    wallets: &LmdbWalletsHandle,
+    async_rt: &AsyncRuntimeHandle,
+) -> *mut WebsocketListenerHandle {
+    Box::into_raw(Box::new(WebsocketListenerHandle(Arc::new(
+        WebsocketListener::new(endpoint.into(), Arc::clone(wallets), Arc::clone(async_rt)),
+    ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_listener_destroy(handle: *mut WebsocketListenerHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_websocket_listener_run(handle: &WebsocketListenerHandle) {
+    handle.0.run();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_websocket_listener_stop(handle: &WebsocketListenerHandle) {
+    handle.0.stop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_listener_broadcast_confirmation(
+    handle: &WebsocketListenerHandle,
+    block: &BlockHandle,
+    account: *const u8,
+    amount: *const u8,
+    subtype: *const c_char,
+    election_status: &ElectionStatusHandle,
+    election_votes: &VoteWithWeightInfoVecHandle,
+) {
+    handle.0.broadcast_confirmation(
+        block,
+        &Account::from_ptr(account),
+        &Amount::from_ptr(amount),
+        &to_rust_string(subtype),
+        election_status,
+        election_votes,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_listener_broadcast(
+    handle: &WebsocketListenerHandle,
+    message: &MessageDto,
+) {
+    handle.0.broadcast(&message.into());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_listener_listening_port(
+    handle: &WebsocketListenerHandle,
+) -> u16 {
+    handle.0.endpoint.port()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_websocket_listener_subscriber_count(
+    handle: &WebsocketListenerHandle,
+    topic: u8,
+) -> usize {
+    handle.0.subscriber_count(Topic::from_u8(topic).unwrap())
 }

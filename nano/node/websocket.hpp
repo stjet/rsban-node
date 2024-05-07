@@ -100,18 +100,6 @@ namespace websocket
 		message new_block_arrived (nano::block const & block_a);
 	};
 
-	/** Options for subscriptions */
-	class options
-	{
-	public:
-		options ();
-		options (rsnano::WebsocketOptionsHandle * handle);
-		options (options const &) = delete;
-		virtual ~options ();
-
-		rsnano::WebsocketOptionsHandle * handle;
-	};
-
 	/** Creates a new session for each incoming connection */
 	class listener final : public std::enable_shared_from_this<listener>
 	{

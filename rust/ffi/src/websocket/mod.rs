@@ -1,7 +1,3 @@
-mod options;
-
-use self::options::WebsocketOptionsHandle;
-use super::{StringDto, StringHandle};
 use crate::{
     consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
@@ -15,10 +11,9 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
 use rsnano_node::websocket::{
-    to_topic, Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
+    Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
 };
 use std::{
-    ffi::{CStr, CString},
     ops::{Deref, DerefMut},
     os::raw::c_char,
     sync::Arc,
@@ -57,50 +52,6 @@ pub unsafe extern "C" fn rsn_websocket_message_clone(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_websocket_message_destroy(handle: *mut WebsocketMessageHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_from_topic(topic: u8, result: *mut StringDto) {
-    let topic_string = Box::new(StringHandle(
-        CString::new(Topic::from_u8(topic).unwrap().as_str()).unwrap(),
-    ));
-    (*result).value = topic_string.0.as_ptr();
-    (*result).handle = Box::into_raw(topic_string);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_to_topic(topic: *const c_char) -> u8 {
-    to_topic(CStr::from_ptr(topic).to_string_lossy()) as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_bootstrap_started(
-    id: *const c_char,
-    mode: *const c_char,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::bootstrap_started(
-        &CStr::from_ptr(id).to_string_lossy(),
-        &CStr::from_ptr(mode).to_string_lossy(),
-    )
-    .unwrap();
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_bootstrap_exited(
-    id: *const c_char,
-    mode: *const c_char,
-    duration_s: u64,
-    total_blocks: u64,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::bootstrap_exited(
-        &CStr::from_ptr(id).to_string_lossy(),
-        &CStr::from_ptr(mode).to_string_lossy(),
-        Duration::from_secs(duration_s),
-        total_blocks,
-    )
-    .unwrap();
-    WebsocketMessageHandle::new(message)
 }
 
 #[no_mangle]
@@ -147,31 +98,6 @@ pub unsafe extern "C" fn rsn_message_builder_vote_received(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_block_confirmed(
-    block: &BlockHandle,
-    account: *const u8,
-    amount: *const u8,
-    subtype: *const c_char,
-    include_block: bool,
-    election_status: &ElectionStatusHandle,
-    votes: &VoteWithWeightInfoVecHandle,
-    options: &WebsocketOptionsHandle,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::block_confirmed(
-        block,
-        &Account::from_ptr(account),
-        &Amount::from_ptr(amount),
-        to_rust_string(subtype),
-        include_block,
-        election_status,
-        votes,
-        options.confirmation_options(),
-    )
-    .unwrap();
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_work_generation(
     version: u8,
     root: *const u8,
@@ -198,23 +124,6 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
     )
     .unwrap();
     WebsocketMessageHandle::new(message)
-}
-
-pub struct TopicVecHandle(Vec<Topic>);
-
-#[no_mangle]
-pub extern "C" fn rsn_topic_vec_len(handle: &TopicVecHandle) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_topic_vec_get(handle: &TopicVecHandle, index: usize) -> u8 {
-    handle.0[index] as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_topic_vec_destroy(handle: *mut TopicVecHandle) {
-    drop(Box::from_raw(handle))
 }
 
 pub struct WebsocketListenerHandle(Arc<WebsocketListener>);
@@ -278,7 +187,7 @@ pub unsafe extern "C" fn rsn_websocket_listener_broadcast(
     handle: &WebsocketListenerHandle,
     message: &WebsocketMessageHandle,
 ) {
-    handle.0.broadcast(message);
+    let _ = handle.0.broadcast(message);
 }
 
 #[no_mangle]

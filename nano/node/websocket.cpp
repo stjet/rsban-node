@@ -20,20 +20,6 @@
 
 #include <chrono>
 
-nano::websocket::options::options () :
-	handle{ rsnano::rsn_websocket_options_create () }
-{
-}
-nano::websocket::options::options (rsnano::WebsocketOptionsHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::websocket::options::~options ()
-{
-	rsnano::rsn_websocket_options_destroy (handle);
-}
-
 void nano::websocket::listener::stop ()
 {
 	rsnano::rsn_websocket_listener_stop (handle);

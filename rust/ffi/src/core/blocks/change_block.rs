@@ -1,6 +1,5 @@
 use super::BlockHandle;
 use crate::utils::FfiStream;
-use crate::FfiPropertyTree;
 use rsnano_core::{
     Account, BlockEnum, BlockHash, ChangeBlock, ChangeHashables, LazyBlockHash, PublicKey, RawKey,
     Signature,
@@ -112,17 +111,6 @@ pub extern "C" fn rsn_change_block_size() -> usize {
 pub unsafe extern "C" fn rsn_change_block_deserialize(stream: *mut c_void) -> *mut BlockHandle {
     let mut stream = FfiStream::new(stream);
     match ChangeBlock::deserialize(&mut stream) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
-            block,
-        ))))),
-        Err(_) => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_change_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTree::new_borrowed(ptree);
-    match ChangeBlock::deserialize_json(&reader) {
         Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyChange(
             block,
         ))))),

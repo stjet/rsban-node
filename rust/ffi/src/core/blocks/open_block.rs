@@ -137,14 +137,3 @@ pub unsafe extern "C" fn rsn_open_block_deserialize(stream: *mut c_void) -> *mut
         Err(_) => std::ptr::null_mut(),
     }
 }
-
-#[no_mangle]
-pub extern "C" fn rsn_open_block_deserialize_json(ptree: *mut c_void) -> *mut BlockHandle {
-    let reader = FfiPropertyTree::new_borrowed(ptree);
-    match OpenBlock::deserialize_json(&reader) {
-        Ok(block) => Box::into_raw(Box::new(BlockHandle(Arc::new(BlockEnum::LegacyOpen(
-            block,
-        ))))),
-        Err(_) => std::ptr::null_mut(),
-    }
-}

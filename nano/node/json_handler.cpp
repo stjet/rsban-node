@@ -1191,20 +1191,6 @@ void nano::json_handler::block_confirm ()
 				status.set_block_count (1);
 				status.set_election_status_type (nano::election_status_type::active_confirmation_height);
 				node.active.insert_recently_cemented (status);
-				// Trigger callback for confirmed block
-				auto account = block_l->account ();
-				auto amount = node.ledger.amount (*transaction, hash);
-				bool is_state_send (false);
-				bool is_state_epoch (false);
-				if (amount)
-				{
-					if (auto state = dynamic_cast<nano::state_block *> (block_l.get ()))
-					{
-						is_state_send = state->is_send ();
-						is_state_epoch = amount.value () == 0 && node.ledger.is_epoch_link (state->link_field ().value ());
-					}
-				}
-				node.observers->blocks.notify (status, {}, account, amount.value_or (0), is_state_send, is_state_epoch);
 			}
 			response_l.put ("started", "1");
 		}

@@ -173,7 +173,32 @@ impl ActiveTransactions {
     }
 
     pub fn insert_recently_cemented(&self, status: ElectionStatus) {
-        self.recently_cemented.lock().unwrap().push_back(status);
+        self.recently_cemented
+            .lock()
+            .unwrap()
+            .push_back(status.clone());
+
+        // Trigger callback for confirmed block
+        let block = status.winner.as_ref().unwrap();
+        let account = block.account();
+        let amount = self.ledger.amount(&self.ledger.read_txn(), &block.hash());
+        let mut is_state_send = false;
+        let mut is_state_epoch = false;
+        if amount.is_some() {
+            if block.block_type() == BlockType::State {
+                is_state_send = block.is_send();
+                is_state_epoch = block.is_epoch();
+            }
+        }
+
+        (self.election_end)(
+            &status,
+            &Vec::new(),
+            account,
+            amount.unwrap_or_default(),
+            is_state_send,
+            is_state_epoch,
+        );
     }
 
     pub fn recently_cemented_list(&self) -> BoundedVecDeque<ElectionStatus> {

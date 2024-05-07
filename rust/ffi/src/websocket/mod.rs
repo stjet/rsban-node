@@ -163,7 +163,7 @@ pub unsafe extern "C" fn rsn_websocket_listener_destroy(handle: *mut WebsocketLi
 
 #[no_mangle]
 pub extern "C" fn rsn_websocket_listener_run(handle: &WebsocketListenerHandle) {
-    handle.0.run();
+    handle.0.start();
 }
 
 #[no_mangle]

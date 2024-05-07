@@ -1,6 +1,5 @@
 use super::{to_topic, Message, MessageBuilder, Topic};
 use crate::{consensus::ElectionStatus, utils::AsyncRuntime, wallets::Wallets};
-use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
     utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree},
@@ -22,26 +21,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tokio_tungstenite::tungstenite::protocol::{frame::coding::CloseCode, CloseFrame};
-use tracing::{info, warn};
-
-pub trait Listener: Send + Sync {
-    /// Broadcast \p message to all session subscribing to the message topic.
-    fn broadcast(&self, message: &Message) -> Result<()>;
-}
-
-pub struct NullListener {}
-
-impl NullListener {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Listener for NullListener {
-    fn broadcast(&self, _message: &Message) -> Result<()> {
-        Ok(())
-    }
-}
+use tracing::{info, trace, warn};
 
 #[derive(Clone)]
 pub enum Options {
@@ -68,10 +48,9 @@ impl Options {
      * Update options, if available for a given topic
      * @return false on success
      */
-    pub fn update(&mut self, options: &dyn PropertyTree) -> bool {
-        match self {
-            Options::Confirmation(i) => i.update(options),
-            _ => true,
+    pub fn update(&mut self, options: &dyn PropertyTree) {
+        if let Options::Confirmation(i) = self {
+            i.update(options);
         }
     }
 }
@@ -183,41 +162,44 @@ impl ConfirmationOptions {
      * @return false if the message should be broadcasted, true if it should be filtered
      */
     pub fn should_filter(&self, message_a: &Message) -> bool {
+        let Some(message_content) = message_a.contents.value.get("message") else {
+            return false;
+        };
         let mut should_filter_conf_type = true;
 
-        let type_text = message_a
-            .contents
-            .get_string("message.confirmation_type")
-            .unwrap_or_default();
-        let confirmation_types = self.confirmation_types;
-        if type_text == "active_quorum" && (confirmation_types & Self::TYPE_ACTIVE_QUORUM) > 0 {
-            should_filter_conf_type = false;
-        } else if type_text == "active_confirmation_height"
-            && (confirmation_types & Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT) > 0
+        if let Some(serde_json::Value::String(type_text)) = message_content.get("confirmation_type")
         {
-            should_filter_conf_type = false;
-        } else if type_text == "inactive" && (confirmation_types & Self::TYPE_INACTIVE) > 0 {
-            should_filter_conf_type = false;
+            let confirmation_types = self.confirmation_types;
+            if type_text == "active_quorum" && (confirmation_types & Self::TYPE_ACTIVE_QUORUM) > 0 {
+                should_filter_conf_type = false;
+            } else if type_text == "active_confirmation_height"
+                && (confirmation_types & Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT) > 0
+            {
+                should_filter_conf_type = false;
+            } else if type_text == "inactive" && (confirmation_types & Self::TYPE_INACTIVE) > 0 {
+                should_filter_conf_type = false;
+            }
         }
 
         let mut should_filter_account = self.has_account_filtering_options;
-        let destination_text = message_a
-            .contents
-            .get_string("message.block.link_as_account");
-        if let Ok(destination_text) = destination_text {
-            let source_text = message_a
-                .contents
-                .get_string("message.account")
-                .unwrap_or_default();
-            if self.all_local_accounts {
-                let source = Account::decode_account(&source_text).unwrap_or_default();
-                let destination = Account::decode_account(&destination_text).unwrap_or_default();
-                if self.wallets.exists(&source) || self.wallets.exists(&destination) {
+        if let Some(serde_json::Value::Object(block)) = message_content.get("block") {
+            if let Some(serde_json::Value::String(destination_text)) = block.get("link_as_account")
+            {
+                let source_text = match message_content.get("account") {
+                    Some(serde_json::Value::String(s)) => s.as_str(),
+                    _ => "",
+                };
+                if self.all_local_accounts {
+                    let source = Account::decode_account(source_text).unwrap_or_default();
+                    let destination =
+                        Account::decode_account(&destination_text).unwrap_or_default();
+                    if self.wallets.exists(&source) || self.wallets.exists(&destination) {
+                        should_filter_account = false;
+                    }
+                }
+                if self.accounts.contains(source_text) || self.accounts.contains(destination_text) {
                     should_filter_account = false;
                 }
-            }
-            if self.accounts.contains(&source_text) || self.accounts.contains(&destination_text) {
-                should_filter_account = false;
             }
         }
 
@@ -229,9 +211,8 @@ impl ConfirmationOptions {
      * Filtering options:
      * - "accounts_add" (array of std::strings) - additional accounts for which blocks should not be filtered
      * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
-     * @return false
      */
-    pub fn update(&mut self, options: &dyn PropertyTree) -> bool {
+    pub fn update(&mut self, options: &dyn PropertyTree) {
         let mut update_accounts = |accounts_text: &dyn PropertyTree, insert: bool| {
             self.has_account_filtering_options = true;
             for account in accounts_text.get_children() {
@@ -266,7 +247,6 @@ impl ConfirmationOptions {
         }
 
         self.check_filter_empty();
-        false
     }
 
     pub fn check_filter_empty(&self) {
@@ -287,19 +267,26 @@ pub struct VoteOptions {
     include_indeterminate: bool,
 }
 
+#[derive(Deserialize)]
+pub struct VoteJsonOptions {
+    include_replays: Option<bool>,
+    include_indeterminate: Option<bool>,
+    representatives: Option<Vec<String>>,
+}
+
 impl VoteOptions {
-    pub fn new(options_a: &dyn PropertyTree) -> Self {
+    pub fn new(options_a: VoteJsonOptions) -> Self {
         let mut result = Self {
             representatives: HashSet::new(),
             include_replays: false,
             include_indeterminate: false,
         };
 
-        result.include_replays = options_a.get_bool("include_replays", false);
-        result.include_indeterminate = options_a.get_bool("include_indeterminate", false);
-        if let Some(representatives_l) = options_a.get_child("representatives") {
-            for representative_l in representatives_l.get_children() {
-                match Account::decode_account(representative_l.1.data()) {
+        result.include_replays = options_a.include_replays.unwrap_or(false);
+        result.include_indeterminate = options_a.include_indeterminate.unwrap_or(false);
+        if let Some(representatives_l) = options_a.representatives {
+            for representative_l in representatives_l {
+                match Account::decode_account(&representative_l) {
                     Ok(result_l) => {
                         // Do not insert the given raw data to keep old prefix support
                         result.representatives.insert(result_l.encode_account());
@@ -307,7 +294,7 @@ impl VoteOptions {
                     Err(_) => {
                         warn!(
                             "Invalid account provided for filtering votes: {}",
-                            representative_l.1.data()
+                            representative_l
                         );
                     }
                 }
@@ -327,21 +314,30 @@ impl VoteOptions {
      * @return false if the message should be broadcasted, true if it should be filtered
      */
     pub fn should_filter(&self, message_a: &Message) -> bool {
-        let msg_type = message_a
-            .contents
-            .get_string("message.type")
-            .unwrap_or_default();
+        trace!(
+            message = serde_json::to_string_pretty(&message_a.contents.value).unwrap(),
+            include_replays = self.include_replays,
+            "vote should filter!"
+        );
+        let Some(message_contents) = message_a.contents.value.get("message") else {
+            return true;
+        };
+
+        let msg_type = match message_contents.get("type") {
+            Some(serde_json::Value::String(s)) => s.as_str(),
+            _ => "",
+        };
 
         let mut should_filter_l = (!self.include_replays && msg_type == "replay")
             || (!self.include_indeterminate && msg_type == "indeterminate");
 
         if !should_filter_l && !self.representatives.is_empty() {
-            let representative_text_l = message_a
-                .contents
-                .get_string("message.account")
-                .unwrap_or_default();
+            let representative_text_l = match message_contents.get("account") {
+                Some(serde_json::Value::String(s)) => s.as_str(),
+                _ => "",
+            };
 
-            if !self.representatives.contains(&representative_text_l) {
+            if !self.representatives.contains(representative_text_l) {
                 should_filter_l = true;
             }
         }
@@ -370,6 +366,35 @@ struct WebsocketSessionEntry {
     close: Mutex<Option<oneshot::Sender<()>>>,
 }
 
+impl WebsocketSessionEntry {
+    fn blocking_write(&self, msg: Message) -> anyhow::Result<()> {
+        if !self.should_filter(&msg) {
+            self.send_queue_tx.blocking_send(msg)?;
+        }
+        Ok(())
+    }
+
+    async fn write(&self, msg: Message) -> anyhow::Result<()> {
+        if !self.should_filter(&msg) {
+            self.send_queue_tx.send(msg).await?
+        }
+        Ok(())
+    }
+
+    fn should_filter(&self, msg: &Message) -> bool {
+        if msg.topic == Topic::Ack {
+            return false;
+        }
+
+        let subs = self.subscriptions.lock().unwrap();
+        if let Some(options) = subs.get(&msg.topic) {
+            options.should_filter(&msg)
+        } else {
+            true
+        }
+    }
+}
+
 pub struct WebsocketSession {
     entry: Arc<WebsocketSessionEntry>,
     wallets: Arc<Wallets>,
@@ -384,6 +409,7 @@ impl WebsocketSession {
         remote_endpoint: SocketAddr,
         entry: Arc<WebsocketSessionEntry>,
     ) -> Self {
+        trace!(remote = %remote_endpoint, "new websocket session created");
         Self {
             entry,
             wallets,
@@ -405,21 +431,27 @@ impl WebsocketSession {
                     }
                 }
                 Some(msg) = send_queue.recv() =>{
+                    let message_text = msg.contents.to_json();
+                    trace!(message = message_text, "sending websocket message");
                     // write queued messages
                     stream
                         .send(tokio_tungstenite::tungstenite::Message::text(
-                            msg.contents.to_json(),
+                            message_text,
                         )).await?;
                 }
-                else =>{break;}
+                else =>{
+                    break;
+                }
             }
         }
-
         Ok(())
     }
 
     async fn process(&self, msg: tokio_tungstenite::tungstenite::Message) -> bool {
-        if msg.is_text() {
+        if msg.is_close() {
+            trace!("close message received");
+            false
+        } else if msg.is_text() {
             let msg_text = match msg.into_text() {
                 Ok(i) => i,
                 Err(e) => {
@@ -427,6 +459,8 @@ impl WebsocketSession {
                     return false;
                 }
             };
+
+            trace!(message = msg_text, "Received text websocket message");
 
             let incoming = match serde_json::from_str::<IncomingMessage>(&msg_text) {
                 Ok(i) => i,
@@ -443,8 +477,10 @@ impl WebsocketSession {
                 warn!("Could not process websocket message: {:?}", e);
                 return false;
             }
+            true
+        } else {
+            true
         }
-        true
     }
 
     async fn handle_message(&self, message: IncomingMessage<'_>) -> anyhow::Result<()> {
@@ -467,9 +503,9 @@ impl WebsocketSession {
                 }
                 Topic::Vote => {
                     if let Some(options_value) = message.options {
-                        Options::Vote(VoteOptions::new(&SerdePropertyTree::from_value(
+                        Options::Vote(VoteOptions::new(serde_json::from_value::<VoteJsonOptions>(
                             options_value,
-                        )))
+                        )?))
                     } else {
                         Options::Other
                     }
@@ -485,9 +521,8 @@ impl WebsocketSession {
             let mut subs = self.entry.subscriptions.lock().unwrap();
             if let Some(option) = subs.get_mut(&topic) {
                 if let Some(options_value) = message.options {
-                    if option.update(&SerdePropertyTree::from_value(options_value)) {
-                        action_succeeded = true;
-                    }
+                    option.update(&SerdePropertyTree::from_value(options_value));
+                    action_succeeded = true;
                 }
             }
         } else if message.action == Some("unsubscribe") && topic != Topic::Invalid {
@@ -528,24 +563,17 @@ impl WebsocketSession {
             contents: SerdePropertyTree::from_value(contents),
         };
 
-        self.write(msg).await
+        self.entry.write(msg).await
     }
+}
 
-    async fn write(&self, msg: Message) -> anyhow::Result<()> {
-        let should_filter = {
-            let subs = self.entry.subscriptions.lock().unwrap();
-            if let Some(options) = subs.get(&msg.topic) {
-                options.should_filter(&msg)
-            } else {
-                false
-            }
-        };
-
-        if msg.topic == Topic::Ack || !should_filter {
-            self.entry.send_queue_tx.send(msg).await.expect("foo")
+impl Drop for WebsocketSession {
+    fn drop(&mut self) {
+        trace!(remote = %self.remote_endpoint, "websocket session dropped");
+        let subs = self.entry.subscriptions.lock().unwrap();
+        for (topic, _) in subs.iter() {
+            self.topic_subscriber_count[*topic as usize].fetch_sub(1, Ordering::SeqCst);
         }
-
-        Ok(())
     }
 }
 
@@ -616,6 +644,18 @@ impl WebsocketListener {
         self.endpoint.lock().unwrap().port()
     }
 
+    /// Broadcast \p message to all session subscribing to the message topic.
+    pub fn broadcast(&self, message: &Message) -> anyhow::Result<()> {
+        let sessions = self.sessions.lock().unwrap();
+        for session in sessions.iter() {
+            if let Some(session) = session.upgrade() {
+                let _ = session.blocking_write(message.clone());
+            }
+        }
+
+        Ok(())
+    }
+
     /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")
     pub fn broadcast_confirmation(
         &self,
@@ -675,7 +715,7 @@ impl WebsocketListener {
                         );
                     }
                     drop(subs);
-                    let _ = session.send_queue_tx.blocking_send(if include_block {
+                    let _ = session.blocking_write(if include_block {
                         msg_with_block.as_ref().unwrap().clone()
                     } else {
                         msg_without_block.as_ref().unwrap().clone()
@@ -779,17 +819,4 @@ async fn accept_connection(
     };
 
     Ok(())
-}
-
-impl Listener for WebsocketListener {
-    fn broadcast(&self, message: &Message) -> anyhow::Result<()> {
-        let sessions = self.sessions.lock().unwrap();
-        for session in sessions.iter() {
-            if let Some(session) = session.upgrade() {
-                let _ = session.send_queue_tx.blocking_send(message.clone());
-            }
-        }
-
-        Ok(())
-    }
 }

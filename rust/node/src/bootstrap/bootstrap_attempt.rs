@@ -1,7 +1,7 @@
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
-    websocket::{Listener, MessageBuilder, WebsocketListener},
+    websocket::{MessageBuilder, WebsocketListener},
 };
 use anyhow::Result;
 use rsnano_core::{encode_hex, Account, BlockEnum};

@@ -1,7 +1,7 @@
 mod options;
 
 use self::options::WebsocketOptionsHandle;
-use super::{FfiPropertyTree, StringDto, StringHandle};
+use super::{StringDto, StringHandle};
 use crate::{
     consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
@@ -15,10 +15,10 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
 use rsnano_node::websocket::{
-    to_topic, Listener, Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
+    to_topic, Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
 };
 use std::{
-    ffi::{c_void, CStr, CString},
+    ffi::{CStr, CString},
     ops::{Deref, DerefMut},
     os::raw::c_char,
     sync::Arc,

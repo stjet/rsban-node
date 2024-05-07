@@ -71,9 +71,18 @@ namespace websocket
 	class message final
 	{
 	public:
-		message(rsnano::WebsocketMessageHandle * handle) : handle{ handle } {}
-		message(message const & other) : handle {rsnano::rsn_websocket_message_clone(other.handle)} {}
-		~message(){rsnano::rsn_websocket_message_destroy(handle);}
+		message (rsnano::WebsocketMessageHandle * handle) :
+			handle{ handle }
+		{
+		}
+		message (message const & other) :
+			handle{ rsnano::rsn_websocket_message_clone (other.handle) }
+		{
+		}
+		~message ()
+		{
+			rsnano::rsn_websocket_message_destroy (handle);
+		}
 		rsnano::WebsocketMessageHandle * handle;
 	};
 
@@ -101,17 +110,6 @@ namespace websocket
 		virtual ~options ();
 
 		rsnano::WebsocketOptionsHandle * handle;
-	};
-
-	/**
-	 * Filtering options for vote subscriptions
-	 * Possible filtering options:
-	 * * "representatives" (array of std::strings) - will only broadcast votes from these representatives
-	 */
-	class vote_options final : public options
-	{
-	public:
-		vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a);
 	};
 
 	/** Creates a new session for each incoming connection */

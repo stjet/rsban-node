@@ -9,7 +9,6 @@ use crate::{
 use rsnano_core::{BlockHash, HashOrAccount};
 use rsnano_node::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
-    websocket::{Listener, NullListener},
     NetworkParams,
 };
 use std::{

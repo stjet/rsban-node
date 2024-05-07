@@ -6,7 +6,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::PullInfo,
     config::NodeFlags,
-    websocket::{Listener, WebsocketListener},
+    websocket::WebsocketListener,
     NetworkParams,
 };
 use anyhow::Result;

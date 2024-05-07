@@ -34,11 +34,6 @@ nano::websocket::options::~options ()
 	rsnano::rsn_websocket_options_destroy (handle);
 }
 
-nano::websocket::vote_options::vote_options (boost::property_tree::ptree const & options_a, nano::logger & logger_a) :
-	options (rsnano::rsn_vote_options_create (&const_cast<boost::property_tree::ptree &> (options_a)))
-{
-}
-
 void nano::websocket::listener::stop ()
 {
 	rsnano::rsn_websocket_listener_stop (handle);

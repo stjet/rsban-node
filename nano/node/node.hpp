@@ -178,7 +178,7 @@ public:
 	nano::request_aggregator aggregator; // ported
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot; // ported
-	nano::websocket_server websocket;
+	nano::websocket_server websocket; // ported
 	nano::local_block_broadcaster local_block_broadcaster; // ported
 	nano::process_live_dispatcher process_live_dispatcher;
 

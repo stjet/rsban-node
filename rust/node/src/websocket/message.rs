@@ -238,7 +238,7 @@ impl MessageBuilder {
                 for vote_l in election_votes_a {
                     let mut entry = SerdePropertyTree::new();
                     entry.put_string("representative", &vote_l.representative.encode_account())?;
-                    entry.put_u64("timestamp", vote_l.timestamp)?;
+                    entry.put_string("timestamp", &vote_l.timestamp.to_string())?;
                     entry.put_string("hash", &vote_l.hash.to_string())?;
                     entry.put_string("weight", &vote_l.weight.to_string_dec())?;
                     election_votes_l.push(entry.value);

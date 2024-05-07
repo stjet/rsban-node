@@ -1,10 +1,8 @@
-use crate::{to_rust_string, wallets::LmdbWalletsHandle, FfiPropertyTree};
-use rsnano_core::utils::{PropertyTree, SerdePropertyTree};
-use rsnano_node::websocket::{ConfirmationOptions, Options, VoteOptions};
+use crate::to_rust_string;
+use rsnano_node::websocket::{ConfirmationOptions, Options};
 use std::{
-    ffi::{c_char, c_void},
+    ffi::c_char,
     ops::{Deref, DerefMut},
-    sync::Arc,
 };
 
 pub struct WebsocketOptionsHandle(pub Options);
@@ -12,13 +10,6 @@ pub struct WebsocketOptionsHandle(pub Options);
 impl WebsocketOptionsHandle {
     pub fn new(options: Options) -> *mut Self {
         Box::into_raw(Box::new(Self(options)))
-    }
-
-    pub fn vote_options(&self) -> &VoteOptions {
-        let Options::Vote(options) = &self.0 else {
-            panic!("not of type VoteOptions")
-        };
-        options
     }
 
     pub fn confirmation_options(&self) -> &ConfirmationOptions {
@@ -211,15 +202,4 @@ pub unsafe extern "C" fn rsn_confirmation_options_accounts_is_empty(
     handle: &mut WebsocketOptionsHandle,
 ) -> bool {
     handle.confirmation_options_mut().accounts.is_empty()
-}
-
-/*
- * VoteOptions
- */
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_options_create(options: *mut c_void) -> *mut WebsocketOptionsHandle {
-    WebsocketOptionsHandle::new(Options::Vote(VoteOptions::new(
-        &FfiPropertyTree::new_borrowed(options),
-    )))
 }

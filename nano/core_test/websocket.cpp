@@ -17,6 +17,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -549,6 +550,7 @@ TEST (websocket, confirmation_options_update)
 		client.await_ack ();
 		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
 		added = true;
+		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
 		EXPECT_TRUE (client.get_response ());
 		// Update the filter again, removing the account
 		std::string delete_message = boost::str (boost::format (R"json({"action": "update", "topic": "confirmation", "ack": true, "options": {"accounts_del": ["%1%"]}})json") % nano::dev::genesis_key.pub.to_account ());
@@ -561,7 +563,7 @@ TEST (websocket, confirmation_options_update)
 	auto future = std::async (std::launch::async, task);
 
 	// Wait for update acknowledgement
-	ASSERT_TIMELY (5s, added);
+	ASSERT_TIMELY_EQ (5s, added.load (), true);
 
 	// Confirm a block
 	(void)node1->wallets.insert_adhoc (node1->wallets.first_wallet_id (), nano::dev::genesis_key.prv);
@@ -812,7 +814,7 @@ TEST (websocket, work)
 	ASSERT_EQ (event.get<std::string> ("topic"), "work");
 
 	auto & contents = event.get_child ("message");
-	ASSERT_EQ (contents.get<std::string> ("success"), true);
+	ASSERT_EQ (contents.get<std::string> ("success"), "true");
 	ASSERT_LT (contents.get<unsigned> ("duration"), 10000U);
 
 	ASSERT_EQ (1, contents.count ("request"));

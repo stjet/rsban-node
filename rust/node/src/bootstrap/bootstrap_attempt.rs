@@ -88,7 +88,7 @@ impl BootstrapAttempt {
         let id = &self.id;
         debug!("Starting bootstrap attempt with ID: {id} (mode: {mode}) ");
         if let Some(websocket) = &self.websocket_server {
-            websocket.broadcast(&MessageBuilder::bootstrap_started(id, mode)?)?;
+            websocket.broadcast(&MessageBuilder::bootstrap_started(id, mode)?);
         }
         Ok(())
     }
@@ -213,17 +213,15 @@ impl Drop for BootstrapAttempt {
         debug!("Exiting bootstrap attempt with ID: {id} (mode: {mode})");
 
         if let Some(websocket) = &self.websocket_server {
-            websocket
-                .broadcast(
-                    &MessageBuilder::bootstrap_exited(
-                        id,
-                        mode,
-                        self.duration(),
-                        self.total_blocks.load(Ordering::SeqCst),
-                    )
-                    .unwrap(),
+            websocket.broadcast(
+                &MessageBuilder::bootstrap_exited(
+                    id,
+                    mode,
+                    self.duration(),
+                    self.total_blocks.load(Ordering::SeqCst),
                 )
-                .unwrap();
+                .unwrap(),
+            );
         }
     }
 }

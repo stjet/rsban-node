@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
+#include "nano/node/active_transactions.hpp"
 
 #include <nano/boost/asio/strand.hpp>
 #include <nano/boost/beast/core.hpp>
@@ -30,6 +31,9 @@ class node_observers;
 class telemetry_data;
 class vote;
 class wallets;
+class active_transactions;
+class telemetry;
+class vote_processor;
 }
 
 namespace nano
@@ -104,7 +108,10 @@ namespace websocket
 	class listener final : public std::enable_shared_from_this<listener>
 	{
 	public:
-		listener (rsnano::async_runtime & async_rt, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a);
+		listener (rsnano::WebsocketListenerHandle * handle) :
+			handle{ handle }
+		{
+		}
 		listener (listener const &) = delete;
 		~listener ();
 
@@ -149,21 +156,15 @@ namespace websocket
 class websocket_server
 {
 public:
-	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config &, nano::node_observers &, nano::wallets &, nano::ledger &, boost::asio::io_context &, nano::logger &);
+	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a,
+	nano::wallets & wallets_a, nano::active_transactions & active_transactions_a,
+	nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a);
 
 	void start ();
 	void stop ();
 
-private: // Dependencies
-	nano::websocket::config const & config;
-	nano::node_observers & observers;
-	nano::wallets & wallets;
-	nano::ledger & ledger;
-	boost::asio::io_context & io_ctx;
-	nano::logger & logger;
-
 public:
 	// TODO: Encapsulate, this is public just because existing code needs it
-	std::shared_ptr<nano::websocket::listener> server;
+	std::shared_ptr<nano::websocket::listener> server{};
 };
 }

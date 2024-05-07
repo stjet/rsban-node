@@ -15,10 +15,19 @@ use rsnano_node::{
 use std::{
     ffi::{c_char, c_void, CStr},
     net::SocketAddrV6,
+    ops::Deref,
     sync::Arc,
 };
 
 pub struct TelemetryHandle(Arc<Telemetry>);
+
+impl Deref for TelemetryHandle {
+    type Target = Arc<Telemetry>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub type TelemetryNotifyCallback =
     extern "C" fn(*mut c_void, *mut TelemetryDataHandle, *mut ChannelHandle);

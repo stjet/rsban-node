@@ -67,11 +67,11 @@ pub struct ActiveTransactions {
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
-    active_started_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
-    active_stopped_observer: Box<dyn Fn(BlockHash) + Send + Sync>,
+    active_started_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
+    active_stopped_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
     vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
     activate_successors: Mutex<Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
-    election_end: ElectionEndCallback,
+    election_end: Mutex<Vec<ElectionEndCallback>>,
     account_balance_changed: AccountBalanceChangedCallback,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
     thread: Mutex<Option<JoinHandle<()>>>,
@@ -131,11 +131,11 @@ impl ActiveTransactions {
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
-            active_started_observer,
-            active_stopped_observer,
+            active_started_observer: Mutex::new(vec![active_started_observer]),
+            active_stopped_observer: Mutex::new(vec![active_stopped_observer]),
             vote_processed_observers: Mutex::new(Vec::new()),
             activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
-            election_end,
+            election_end: Mutex::new(vec![election_end]),
             account_balance_changed,
             representative_register,
             thread: Mutex::new(None),
@@ -145,6 +145,18 @@ impl ActiveTransactions {
 
     pub fn len(&self) -> usize {
         self.mutex.lock().unwrap().roots.len()
+    }
+
+    pub fn add_election_end_callback(&self, f: ElectionEndCallback) {
+        self.election_end.lock().unwrap().push(f);
+    }
+
+    pub fn add_active_started_callback(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
+        self.active_started_observer.lock().unwrap().push(f);
+    }
+
+    pub fn add_active_stopped_callback(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
+        self.active_stopped_observer.lock().unwrap().push(f);
     }
 
     pub fn clear_recently_confirmed(&self) {
@@ -191,14 +203,17 @@ impl ActiveTransactions {
             }
         }
 
-        (self.election_end)(
-            &status,
-            &Vec::new(),
-            account,
-            amount.unwrap_or_default(),
-            is_state_send,
-            is_state_epoch,
-        );
+        let callbacks = self.election_end.lock().unwrap();
+        for callback in callbacks.iter() {
+            (callback)(
+                &status,
+                &Vec::new(),
+                account,
+                amount.unwrap_or_default(),
+                is_state_send,
+                is_state_epoch,
+            );
+        }
     }
 
     pub fn recently_cemented_list(&self) -> BoundedVecDeque<ElectionStatus> {
@@ -251,14 +266,20 @@ impl ActiveTransactions {
         let amount = self.ledger.amount(tx, &block.hash()).unwrap_or_default();
         let is_state_send = block.block_type() == BlockType::State && block.is_send();
         let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
-        (self.election_end)(
-            status,
-            votes,
-            account,
-            amount,
-            is_state_send,
-            is_state_epoch,
-        );
+
+        {
+            let ended_callbacks = self.election_end.lock().unwrap();
+            for callback in ended_callbacks.iter() {
+                (callback)(
+                    status,
+                    votes,
+                    account,
+                    amount,
+                    is_state_send,
+                    is_state_epoch,
+                );
+            }
+        }
 
         if amount > Amount::zero() {
             (self.account_balance_changed)(&account, false);
@@ -661,7 +682,10 @@ impl ActiveTransactions {
         for (hash, block) in blocks {
             // Notify observers about dropped elections & blocks lost confirmed elections
             if !self.confirmed(election) || hash != election_winner {
-                (self.active_stopped_observer)(hash);
+                let callbacks = self.active_stopped_observer.lock().unwrap();
+                for callback in callbacks.iter() {
+                    (callback)(hash);
+                }
             }
 
             if !self.confirmed(election) {
@@ -1542,7 +1566,12 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
 
             self.trigger_vote_cache(&hash);
 
-            (self.active_started_observer)(hash);
+            {
+                let callbacks = self.active_started_observer.lock().unwrap();
+                for callback in callbacks.iter() {
+                    (callback)(hash);
+                }
+            }
             self.vacancy_update.lock().unwrap()();
         }
 

@@ -7,10 +7,13 @@
 #include <nano/lib/logging.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/work.hpp>
+#include <nano/node/active_transactions.hpp>
 #include <nano/node/election_status.hpp>
 #include <nano/node/node_observers.hpp>
+#include <nano/node/telemetry.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
+#include <nano/node/vote_processor.hpp>
 #include <nano/node/wallet.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/secure/ledger.hpp>
@@ -19,17 +22,11 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <chrono>
+#include <memory>
 
 void nano::websocket::listener::stop ()
 {
 	rsnano::rsn_websocket_listener_stop (handle);
-}
-
-nano::websocket::listener::listener (rsnano::async_runtime & async_rt, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a)
-{
-	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	handle = rsnano::rsn_websocket_listener_create (&endpoint_dto, wallets_a.rust_handle,
-	async_rt.handle);
 }
 
 nano::websocket::listener::~listener ()
@@ -127,86 +124,16 @@ nano::websocket::message nano::websocket::message_builder::new_block_arrived (na
  * websocket_server
  */
 
-nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a, nano::node_observers & observers_a, nano::wallets & wallets_a, nano::ledger & ledger_a, boost::asio::io_context & io_ctx_a, nano::logger & logger_a) :
-	config{ config_a },
-	observers{ observers_a },
-	wallets{ wallets_a },
-	ledger{ ledger_a },
-	io_ctx{ io_ctx_a },
-	logger{ logger_a }
+nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a, nano::wallets & wallets_a, nano::active_transactions & active_transactions_a, nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a)
 {
-	if (!config.enabled)
+	auto config_dto{ config_a.to_dto () };
+	auto listener_handle = rsnano::rsn_websocket_server_create (&config_dto, wallets_a.rust_handle, async_rt.handle,
+	active_transactions_a.handle, telemetry_a.handle, vote_processor_a.handle);
+
+	if (listener_handle != nullptr)
 	{
-		return;
+		server = std::make_unique<nano::websocket::listener> (listener_handle);
 	}
-
-	auto endpoint = nano::tcp_endpoint{ boost::asio::ip::make_address_v6 (config.address), config.port };
-	server = std::make_shared<nano::websocket::listener> (async_rt, wallets, io_ctx, endpoint);
-
-	observers.blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
-		debug_assert (status_a.get_election_status_type () != nano::election_status_type::ongoing);
-
-		if (server->any_subscriber (nano::websocket::topic::confirmation))
-		{
-			auto block_a = status_a.get_winner ();
-			std::string subtype;
-			if (is_state_send_a)
-			{
-				subtype = "send";
-			}
-			else if (block_a->type () == nano::block_type::state)
-			{
-				if (block_a->is_change ())
-				{
-					subtype = "change";
-				}
-				else if (is_state_epoch_a)
-				{
-					debug_assert (amount_a == 0 && ledger.is_epoch_link (block_a->link_field ().value ()));
-					subtype = "epoch";
-				}
-				else
-				{
-					subtype = "receive";
-				}
-			}
-
-			server->broadcast_confirmation (block_a, account_a, amount_a, subtype, status_a, votes_a);
-		}
-	});
-
-	observers.active_started.add ([this] (nano::block_hash const & hash_a) {
-		if (server->any_subscriber (nano::websocket::topic::started_election))
-		{
-			nano::websocket::message_builder builder;
-			server->broadcast (builder.started_election (hash_a));
-		}
-	});
-
-	observers.active_stopped.add ([this] (nano::block_hash const & hash_a) {
-		if (server->any_subscriber (nano::websocket::topic::stopped_election))
-		{
-			nano::websocket::message_builder builder;
-			server->broadcast (builder.stopped_election (hash_a));
-		}
-	});
-
-	observers.telemetry.add ([this] (nano::telemetry_data const & telemetry_data, std::shared_ptr<nano::transport::channel> const & channel) {
-		if (server->any_subscriber (nano::websocket::topic::telemetry))
-		{
-			nano::websocket::message_builder builder;
-			server->broadcast (builder.telemetry_received (telemetry_data, channel->get_remote_endpoint ()));
-		}
-	});
-
-	observers.vote.add ([this] (std::shared_ptr<nano::vote> vote_a, std::shared_ptr<nano::transport::channel> const & channel_a, nano::vote_code code_a) {
-		if (server->any_subscriber (nano::websocket::topic::vote))
-		{
-			nano::websocket::message_builder builder;
-			auto msg{ builder.vote_received (vote_a, code_a) };
-			server->broadcast (msg);
-		}
-	});
 }
 
 void nano::websocket_server::start ()

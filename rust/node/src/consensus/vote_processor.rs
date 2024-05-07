@@ -20,7 +20,7 @@ pub struct VoteProcessor {
     queue: Arc<VoteProcessorQueue>,
     active: Arc<ActiveTransactions>,
     stats: Arc<Stats>,
-    vote_processed: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>,
+    vote_processed: Mutex<Vec<Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>>>,
     pub total_processed: AtomicU64,
 }
 
@@ -35,7 +35,7 @@ impl VoteProcessor {
             queue,
             active,
             stats,
-            vote_processed: on_vote,
+            vote_processed: Mutex::new(vec![on_vote]),
             thread: Mutex::new(None),
             total_processed: AtomicU64::new(0),
         }
@@ -120,13 +120,24 @@ impl VoteProcessor {
             } else {
                 VoteCode::Indeterminate
             };
-            (self.vote_processed)(vote, channel, result);
+
+            let callbacks = self.vote_processed.lock().unwrap();
+            for callback in callbacks.iter() {
+                (callback)(vote, channel, result);
+            }
         }
 
         self.stats.inc(StatType::Vote, DetailType::VoteProcessed);
         trace!(?vote, ?result, "vote processed");
 
         result
+    }
+
+    pub fn add_vote_processed_callback(
+        &self,
+        callback: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>,
+    ) {
+        self.vote_processed.lock().unwrap().push(callback);
     }
 }
 

@@ -44,7 +44,7 @@ pub struct Telemetry {
     channels: Arc<TcpChannels>,
     node_id: KeyPair,
     startup_time: Instant,
-    notify: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>,
+    notify: Mutex<Vec<Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>>>,
 }
 
 impl Telemetry {
@@ -78,7 +78,7 @@ impl Telemetry {
                 last_broadcast: None,
                 last_request: None,
             }),
-            notify,
+            notify: Mutex::new(vec![notify]),
             node_id,
             startup_time: Instant::now(),
         }
@@ -90,6 +90,10 @@ impl Telemetry {
         if let Some(handle) = self.thread.lock().unwrap().take() {
             handle.join().unwrap();
         }
+    }
+
+    pub fn add_callback(&self, f: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>) {
+        self.notify.lock().unwrap().push(f);
     }
 
     fn verify(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelEnum>) -> bool {
@@ -155,7 +159,12 @@ impl Telemetry {
 
         drop(guard);
 
-        (self.notify)(data, channel);
+        {
+            let callbacks = self.notify.lock().unwrap();
+            for callback in callbacks.iter() {
+                (callback)(data, channel);
+            }
+        }
 
         self.stats.inc(StatType::Telemetry, DetailType::Process);
     }

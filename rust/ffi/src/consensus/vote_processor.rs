@@ -7,10 +7,19 @@ use rsnano_node::{
 };
 use std::{
     ffi::c_void,
+    ops::Deref,
     sync::{atomic::Ordering, Arc},
 };
 
 pub struct VoteProcessorHandle(Arc<VoteProcessor>);
+
+impl Deref for VoteProcessorHandle {
+    type Target = Arc<VoteProcessor>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub type VoteProcessorVoteProcessedCallback =
     unsafe extern "C" fn(*mut c_void, *mut VoteHandle, *mut ChannelHandle, u8);

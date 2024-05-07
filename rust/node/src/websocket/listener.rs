@@ -598,6 +598,10 @@ impl WebsocketListener {
         }
     }
 
+    pub fn any_subscriber(&self, topic: Topic) -> bool {
+        self.subscriber_count(topic) > 0
+    }
+
     pub fn subscriber_count(&self, topic: Topic) -> usize {
         self.topic_subscriber_count[topic as usize].load(Ordering::SeqCst)
     }
@@ -645,15 +649,13 @@ impl WebsocketListener {
     }
 
     /// Broadcast \p message to all session subscribing to the message topic.
-    pub fn broadcast(&self, message: &Message) -> anyhow::Result<()> {
+    pub fn broadcast(&self, message: &Message) {
         let sessions = self.sessions.lock().unwrap();
         for session in sessions.iter() {
             if let Some(session) = session.upgrade() {
                 let _ = session.blocking_write(message.clone());
             }
         }
-
-        Ok(())
     }
 
     /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")

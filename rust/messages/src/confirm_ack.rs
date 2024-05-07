@@ -63,7 +63,7 @@ impl Eq for ConfirmAck {}
 
 impl Display for ConfirmAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\n{}", self.vote.to_json().map_err(|_| std::fmt::Error)?)
+        write!(f, "\n{}", self.vote.to_json())
     }
 }
 

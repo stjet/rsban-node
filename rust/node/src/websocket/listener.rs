@@ -89,6 +89,17 @@ pub struct ConfirmationOptions {
     wallets: Arc<Wallets>,
 }
 
+#[derive(Deserialize, Default)]
+pub struct ConfirmationJsonOptions {
+    pub include_block: Option<bool>,
+    pub include_election_info: Option<bool>,
+    pub include_election_info_with_votes: Option<bool>,
+    pub include_sideband_info: Option<bool>,
+    pub confirmation_type: Option<String>,
+    pub all_local_accounts: Option<bool>,
+    pub accounts: Option<Vec<String>>,
+}
+
 impl ConfirmationOptions {
     const TYPE_ACTIVE_QUORUM: u8 = 1;
     const TYPE_ACTIVE_CONFIRMATION_HEIGHT: u8 = 2;
@@ -96,7 +107,7 @@ impl ConfirmationOptions {
     const TYPE_ALL_ACTIVE: u8 = Self::TYPE_ACTIVE_QUORUM | Self::TYPE_ACTIVE_CONFIRMATION_HEIGHT;
     const TYPE_ALL: u8 = Self::TYPE_ALL_ACTIVE | Self::TYPE_INACTIVE;
 
-    pub fn new(wallets: Arc<Wallets>, options_a: &dyn PropertyTree) -> Self {
+    pub fn new(wallets: Arc<Wallets>, options_a: ConfirmationJsonOptions) -> Self {
         let mut result = Self {
             include_election_info: false,
             include_election_info_with_votes: false,
@@ -109,15 +120,15 @@ impl ConfirmationOptions {
             wallets,
         };
         // Non-account filtering options
-        result.include_block = options_a.get_bool("include_block", true);
-        result.include_election_info = options_a.get_bool("include_election_info", false);
+        result.include_block = options_a.include_block.unwrap_or(true);
+        result.include_election_info = options_a.include_election_info.unwrap_or(false);
         result.include_election_info_with_votes =
-            options_a.get_bool("include_election_info_with_votes", false);
-        result.include_sideband_info = options_a.get_bool("include_sideband_info", false);
+            options_a.include_election_info_with_votes.unwrap_or(false);
+        result.include_sideband_info = options_a.include_sideband_info.unwrap_or(false);
 
         let type_l = options_a
-            .get_string("confirmation_type")
-            .unwrap_or_else(|_| "all".to_string());
+            .confirmation_type
+            .unwrap_or_else(|| "all".to_string());
 
         if type_l.eq_ignore_ascii_case("active") {
             result.confirmation_types = Self::TYPE_ALL_ACTIVE;
@@ -132,7 +143,7 @@ impl ConfirmationOptions {
         }
 
         // Account filtering options
-        let all_local_accounts_l = options_a.get_bool("all_local_accounts", false);
+        let all_local_accounts_l = options_a.all_local_accounts.unwrap_or(false);
         if all_local_accounts_l {
             result.all_local_accounts = true;
             result.has_account_filtering_options = true;
@@ -140,11 +151,10 @@ impl ConfirmationOptions {
                 warn!("Websocket: Filtering option \"all_local_accounts\" requires that \"include_block\" is set to true to be effective");
             }
         }
-        let accounts_l = options_a.get_child("accounts");
-        if let Some(accounts_l) = accounts_l {
+        if let Some(accounts_l) = options_a.accounts {
             result.has_account_filtering_options = true;
-            for account_l in accounts_l.get_children() {
-                match Account::decode_account(&account_l.1.data()) {
+            for account_l in accounts_l {
+                match Account::decode_account(&account_l) {
                     Ok(result_l) => {
                         // Do not insert the given raw data to keep old prefix support
                         result.accounts.insert(result_l.encode_account());
@@ -152,7 +162,7 @@ impl ConfirmationOptions {
                     Err(_) => {
                         warn!(
                             "Invalid account provided for filtering blocks: {}",
-                            account_l.1.data()
+                            account_l
                         );
                     }
                 }
@@ -344,7 +354,7 @@ struct IncomingMessage<'a> {
     action: Option<&'a str>,
     topic: Option<&'a str>,
     #[serde(default)]
-    ack: Option<&'a str>,
+    ack: bool,
     id: Option<&'a str>,
     options: Option<Value>,
     #[serde(default)]
@@ -390,7 +400,9 @@ impl WebsocketSession {
         loop {
             tokio::select! {
                 Some(msg) = stream.next() =>{
-                    self.process(msg?).await?;
+                    if !self.process(msg?).await {
+                        break;
+                    }
                 }
                 Some(msg) = send_queue.recv() =>{
                     // write queued messages
@@ -406,20 +418,39 @@ impl WebsocketSession {
         Ok(())
     }
 
-    async fn process(&self, msg: tokio_tungstenite::tungstenite::Message) -> anyhow::Result<()> {
+    async fn process(&self, msg: tokio_tungstenite::tungstenite::Message) -> bool {
         if msg.is_text() {
-            let msg_text = msg.into_text()?;
-            let incoming: IncomingMessage = serde_json::from_str(&msg_text)?;
-            self.handle_message(incoming).await
-        } else {
-            Ok(())
+            let msg_text = match msg.into_text() {
+                Ok(i) => i,
+                Err(e) => {
+                    warn!("Could not deserialize string: {:?}", e);
+                    return false;
+                }
+            };
+
+            let incoming = match serde_json::from_str::<IncomingMessage>(&msg_text) {
+                Ok(i) => i,
+                Err(e) => {
+                    warn!(
+                        text = msg_text,
+                        "Could not deserialize JSON message: {:?}", e
+                    );
+                    return false;
+                }
+            };
+
+            if let Err(e) = self.handle_message(incoming).await {
+                warn!("Could not process websocket message: {:?}", e);
+                return false;
+            }
         }
+        true
     }
 
     async fn handle_message(&self, message: IncomingMessage<'_>) -> anyhow::Result<()> {
         let topic = to_topic(message.topic.unwrap_or(""));
         let mut action_succeeded = false;
-        let mut ack = message.ack == Some("true");
+        let mut ack = message.ack;
         let mut reply_action = message.action.unwrap_or("");
         if message.action == Some("subscribe") && topic != Topic::Invalid {
             let mut subs = self.entry.subscriptions.lock().unwrap();
@@ -428,7 +459,7 @@ impl WebsocketSession {
                     if let Some(options_value) = message.options {
                         Options::Confirmation(ConfirmationOptions::new(
                             Arc::clone(&self.wallets),
-                            &SerdePropertyTree::from_value(options_value),
+                            serde_json::from_value::<ConfirmationJsonOptions>(options_value)?,
                         ))
                     } else {
                         Options::Other
@@ -604,7 +635,7 @@ impl WebsocketListener {
                 if let Some(options) = subs.get(&Topic::Confirmation) {
                     let default_opts = ConfirmationOptions::new(
                         Arc::clone(&self.wallets),
-                        &SerdePropertyTree::new(),
+                        ConfirmationJsonOptions::default(),
                     );
                     let conf_opts = if let Options::Confirmation(i) = options {
                         i

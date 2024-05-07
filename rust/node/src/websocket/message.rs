@@ -280,8 +280,7 @@ impl MessageBuilder {
         Self::set_common_fields(&mut message_l)?;
 
         // Vote information
-        let mut vote_node_l = SerdePropertyTree::new();
-        vote_a.serialize_json(&mut vote_node_l)?;
+        let mut vote_node_l = vote_a.serialize_json();
 
         // Vote processing information
         let vote_type = match code_a {
@@ -292,8 +291,16 @@ impl MessageBuilder {
             VoteCode::Invalid => unreachable!(),
         };
 
-        vote_node_l.put_string("type", vote_type)?;
-        message_l.contents.add_child("message", &vote_node_l);
+        let serde_json::Value::Object(o) = &mut vote_node_l else {
+            unreachable!()
+        };
+        o.insert(
+            "type".to_string(),
+            serde_json::Value::String(vote_type.to_string()),
+        );
+        message_l
+            .contents
+            .add_child("message", &SerdePropertyTree::from_value(vote_node_l));
         Ok(message_l)
     }
 

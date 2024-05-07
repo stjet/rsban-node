@@ -465,11 +465,6 @@ std::vector<nano::block_hash> read_block_hashes (rsnano::VoteHandle const * hand
 	return hashes;
 }
 
-void nano::vote::serialize_json (boost::property_tree::ptree & tree) const
-{
-	rsnano::rsn_vote_serialize_json (handle, &tree);
-}
-
 /**
  * Returns the timestamp of the vote (with the duration bits masked, set to zero)
  * If it is a final vote, all the bits including duration bits are returned as they are, all FF

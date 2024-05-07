@@ -8,6 +8,7 @@ use crate::{
     Amount,
 };
 use anyhow::Result;
+use num::bigint::ToBigInt;
 use std::time::{Duration, SystemTime};
 
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
@@ -135,26 +136,38 @@ impl Vote {
         result
     }
 
-    pub fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
-        writer.put_string("account", &self.voting_account.encode_account())?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        writer.put_string("sequence", &self.timestamp().to_string())?;
-        writer.put_string("timestamp", &self.timestamp().to_string())?;
-        writer.put_string("duration", &self.duration_bits().to_string())?;
-        let mut blocks_tree = writer.new_writer();
+    pub fn serialize_json(&self) -> serde_json::Value {
+        let mut values = serde_json::Map::new();
+        values.insert(
+            "account".to_string(),
+            serde_json::Value::String(self.voting_account.encode_account()),
+        );
+        values.insert(
+            "signature".to_string(),
+            serde_json::Value::String(self.signature.encode_hex()),
+        );
+        values.insert(
+            "sequence".to_string(),
+            serde_json::Value::String(self.timestamp().to_string()),
+        );
+        values.insert(
+            "timestamp".to_string(),
+            serde_json::Value::String(self.timestamp().to_string()),
+        );
+        values.insert(
+            "duration".to_string(),
+            serde_json::Value::String(self.duration_bits().to_string()),
+        );
+        let mut blocks = Vec::new();
         for hash in &self.hashes {
-            let mut entry = writer.new_writer();
-            entry.put_string("", &hash.to_string())?;
-            blocks_tree.push_back("", entry.as_ref());
+            blocks.push(serde_json::Value::String(hash.to_string()));
         }
-        writer.add_child("blocks", blocks_tree.as_ref());
-        Ok(())
+        values.insert("blocks".to_string(), serde_json::Value::Array(blocks));
+        serde_json::Value::Object(values)
     }
 
-    pub fn to_json(&self) -> anyhow::Result<String> {
-        let mut ptree = SerdePropertyTree::new();
-        self.serialize_json(&mut ptree)?;
-        Ok(ptree.to_json())
+    pub fn to_json(&self) -> String {
+        self.serialize_json().to_string()
     }
 
     pub fn hash(&self) -> BlockHash {

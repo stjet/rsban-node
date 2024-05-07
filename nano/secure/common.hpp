@@ -222,7 +222,6 @@ public:
 	bool operator== (nano::vote const &) const;
 	bool operator!= (nano::vote const &) const;
 	void serialize (nano::stream &) const;
-	void serialize_json (boost::property_tree::ptree & tree) const;
 	/**
 	 * Deserializes a vote from the bytes in `stream'
 	 * Returns true if there was an error

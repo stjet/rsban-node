@@ -157,12 +157,6 @@ pub extern "C" fn rsn_vote_hashes_string(handle: &VoteHandle) -> StringDto {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_serialize_json(handle: &VoteHandle, ptree: *mut c_void) {
-    let mut writer = FfiPropertyTree::new_borrowed(ptree);
-    handle.serialize_json(&mut writer).unwrap();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_hash(handle: &VoteHandle, result: *mut u8) {
     let hash = handle.hash();
     let result = std::slice::from_raw_parts_mut(result, 32);

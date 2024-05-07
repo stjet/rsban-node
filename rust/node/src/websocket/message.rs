@@ -10,8 +10,11 @@ use rsnano_core::{
     WorkVersion,
 };
 use rsnano_messages::TelemetryData;
+use serde::Serialize;
+use serde_json::{Map, Value};
 use std::{
     fmt::Debug,
+    hash::Hash,
     net::SocketAddrV6,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -66,7 +69,16 @@ impl Debug for Topic {
 
 pub struct Message {
     pub topic: Topic,
-    pub contents: SerdePropertyTree,
+    pub contents: Value,
+}
+
+impl Message {
+    pub fn new(topic: Topic) -> Self {
+        Self {
+            topic,
+            contents: Value::Object(Map::new()),
+        }
+    }
 }
 
 impl Clone for Message {
@@ -86,13 +98,54 @@ impl Debug for Message {
     }
 }
 
-impl Message {
-    pub fn new(topic: Topic) -> Self {
-        Self {
-            topic,
-            contents: SerdePropertyTree::new(),
-        }
-    }
+#[derive(Serialize)]
+struct OutgoingMessage<'a> {
+    topic: &'a str,
+    time: String,
+    message: Value,
+}
+
+#[derive(Serialize)]
+struct BootstrapStarted<'a> {
+    reason: &'a str,
+    id: &'a str,
+    mode: &'a str,
+}
+
+#[derive(Serialize)]
+struct BootstrapExited<'a> {
+    reason: &'a str,
+    id: &'a str,
+    mode: &'a str,
+    total_blocks: u64,
+    duration: u64,
+}
+
+#[derive(Serialize)]
+struct TelemetryReceived {
+    block_count: u64,
+    cemented_count: u64,
+    unchecked_count: u64,
+    account_count: u64,
+    bandwidth_cap: u64,
+    peer_count: u32,
+    protocol_version: u8,
+    uptime: u64,
+    genesis_block: String,
+    major_version: u8,
+    minor_version: u8,
+    patch_version: u8,
+    pre_release_version: u8,
+    maker: u8,
+    timestamp: u64,
+    active_difficulty: String,
+    address: String,
+    port: u16,
+}
+
+#[derive(Serialize)]
+struct StartedElection {
+    hash: String,
 }
 
 /// Message builder. This is expanded with new builder functions are necessary.
@@ -104,14 +157,14 @@ impl MessageBuilder {
     }
 
     pub fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
-        let mut message = Self::new_message()?;
-        // Bootstrap information
-        let mut bootstrap = SerdePropertyTree::new();
-        bootstrap.put_string("reason", "started")?;
-        bootstrap.put_string("id", id)?;
-        bootstrap.put_string("mode", mode)?;
-        message.contents.add_child("message", &bootstrap);
-        Ok(message)
+        Self::create_message(
+            Topic::Bootstrap,
+            BootstrapStarted {
+                reason: "started",
+                id,
+                mode,
+            },
+        )
     }
 
     pub fn bootstrap_exited(
@@ -120,57 +173,63 @@ impl MessageBuilder {
         duration: Duration,
         total_blocks: u64,
     ) -> Result<Message> {
-        let mut message = Self::new_message()?;
-        let mut bootstrap = SerdePropertyTree::new();
-        bootstrap.put_string("reason", "exited")?;
-        bootstrap.put_string("id", id)?;
-        bootstrap.put_string("mode", mode)?;
-        bootstrap.put_u64("total_blocks", total_blocks)?;
-        bootstrap.put_u64("duration", duration.as_secs())?;
-        message.contents.add_child("message", &bootstrap);
-
-        Ok(message)
+        Self::create_message(
+            Topic::Bootstrap,
+            BootstrapExited {
+                reason: "exited",
+                id,
+                mode,
+                total_blocks,
+                duration: duration.as_secs(),
+            },
+        )
     }
 
-    pub fn telemetry_received(
-        telemetry_data: &TelemetryData,
-        endpoint: SocketAddrV6,
-    ) -> Result<Message> {
-        let mut message_l = Message::new(Topic::Telemetry);
-        Self::set_common_fields(&mut message_l)?;
-
-        // Telemetry information
-        let mut telemetry_l = SerdePropertyTree::new();
-        telemetry_data.serialize_json(&mut telemetry_l, false)?;
-        telemetry_l.put_string("address", &endpoint.ip().to_string())?;
-        telemetry_l.put_u64("port", endpoint.port() as u64)?;
-
-        message_l.contents.add_child("message", &telemetry_l);
-        Ok(message_l)
+    pub fn telemetry_received(data: &TelemetryData, endpoint: SocketAddrV6) -> Result<Message> {
+        Self::create_message(
+            Topic::Telemetry,
+            TelemetryReceived {
+                block_count: data.block_count,
+                cemented_count: data.cemented_count,
+                unchecked_count: data.unchecked_count,
+                account_count: data.account_count,
+                bandwidth_cap: data.bandwidth_cap,
+                peer_count: data.peer_count,
+                protocol_version: data.protocol_version,
+                uptime: data.uptime,
+                genesis_block: data.genesis_block.to_string(),
+                major_version: data.major_version,
+                minor_version: data.minor_version,
+                patch_version: data.patch_version,
+                pre_release_version: data.pre_release_version,
+                maker: data.maker,
+                timestamp: data
+                    .timestamp
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64,
+                active_difficulty: format!("{:016x}", data.active_difficulty),
+                address: endpoint.ip().to_string(),
+                port: endpoint.port(),
+            },
+        )
     }
 
     pub fn new_block_arrived(block: &BlockEnum) -> Result<Message> {
-        let mut message_l = Message::new(Topic::NewUnconfirmedBlock);
-        Self::set_common_fields(&mut message_l)?;
-
-        let mut block_l = SerdePropertyTree::new();
-        block.serialize_json(&mut block_l)?;
+        let mut json_block = SerdePropertyTree::new();
+        block.serialize_json(&mut json_block)?;
         let subtype = block.sideband().unwrap().details.state_subtype();
-        block_l.put_string("subtype", subtype)?;
-
-        message_l.contents.add_child("message", &block_l);
-
-        Ok(message_l)
+        json_block.put_string("subtype", subtype)?;
+        Self::create_message(Topic::NewUnconfirmedBlock, json_block.value)
     }
 
     pub fn started_election(hash: &BlockHash) -> Result<Message> {
-        let mut message = Message::new(Topic::StartedElection);
-        Self::set_common_fields(&mut message)?;
-
-        let mut message_node_l = SerdePropertyTree::new();
-        message_node_l.add("hash", &hash.to_string())?;
-        message.contents.add_child("message", &message_node_l);
-        Ok(message)
+        Self::create_message(
+            Topic::StartedElection,
+            StartedElection {
+                hash: hash.to_string(),
+            },
+        )
     }
 
     pub fn stopped_election(hash: &BlockHash) -> Result<Message> {
@@ -392,6 +451,22 @@ impl MessageBuilder {
         };
         Self::set_common_fields(&mut message)?;
         Ok(message)
+    }
+
+    fn create_message(topic: Topic, message: impl Serialize) -> Result<Message> {
+        let message = OutgoingMessage {
+            topic: topic.as_str(),
+            time: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+                .to_string(),
+            message: serde_json::to_value(message)?,
+        };
+        Ok(Message {
+            topic,
+            contents: serde_json::to_value(message)?,
+        })
     }
 }
 

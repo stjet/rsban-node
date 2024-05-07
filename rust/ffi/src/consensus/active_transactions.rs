@@ -70,8 +70,6 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
     stats: &StatHandle,
     observers_context: *mut c_void,
     delete_observers_context: VoidPointerCallback,
-    active_started: BlockHashCallback,
-    active_stopped: BlockHashCallback,
     election_ended: ElectionEndedCallback,
     balance_changed: FfiAccountBalanceCallback,
     rep_register: &RepresentativeRegisterHandle,
@@ -81,16 +79,6 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         observers_context,
         delete_observers_context,
     ));
-
-    let ctx = Arc::clone(&ctx_wrapper);
-    let active_started_wrapper = Box::new(move |hash: BlockHash| {
-        active_started(ctx.get_context(), hash.as_bytes().as_ptr())
-    });
-
-    let ctx = Arc::clone(&ctx_wrapper);
-    let active_stopped_wrapper = Box::new(move |hash: BlockHash| {
-        active_stopped(ctx.get_context(), hash.as_bytes().as_ptr())
-    });
 
     let ctx = Arc::clone(&ctx_wrapper);
     let election_ended_wrapper: ElectionEndCallback = Box::new(
@@ -130,8 +118,6 @@ pub unsafe extern "C" fn rsn_active_transactions_create(
         Arc::clone(tcp_channels),
         Arc::clone(vote_cache),
         Arc::clone(stats),
-        active_started_wrapper,
-        active_stopped_wrapper,
         election_ended_wrapper,
         account_balance_changed_wrapper,
         Arc::clone(rep_register),

@@ -38,18 +38,6 @@ void delete_vacancy_update (void * context)
 	delete callback;
 }
 
-void call_active_started (void * context, uint8_t const * hash)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	(*observers)->active_started.notify (nano::block_hash::from_bytes (hash));
-}
-
-void call_active_stopped (void * context, uint8_t const * hash)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	(*observers)->active_stopped.notify (nano::block_hash::from_bytes (hash));
-}
-
 void delete_observers_context (void * context)
 {
 	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
@@ -136,7 +124,7 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	node_a.workers->handle, node_a.history.handle, node_a.block_processor.handle,
 	node_a.generator.handle, node_a.final_generator.handle, node_a.network->tcp_channels->handle,
 	node_a.vote_cache.handle, node_a.stats->handle, observers_context, delete_observers_context,
-	call_active_started, call_active_stopped, call_election_ended, call_account_balance_changed,
+	call_election_ended, call_account_balance_changed,
 	node_a.representative_register.handle, node_a.flags.handle);
 
 	auto activate_successors_context = new std::function<void (nano::store::read_transaction const &, std::shared_ptr<nano::block> const &)>{

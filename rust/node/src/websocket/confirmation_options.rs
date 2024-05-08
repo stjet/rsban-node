@@ -113,7 +113,7 @@ impl ConfirmationOptions {
      * @return false if the message should be broadcasted, true if it should be filtered
      */
     pub fn should_filter(&self, message_a: &Message) -> bool {
-        let Some(message_content) = message_a.contents.value.get("message") else {
+        let Some(message_content) = message_a.contents.get("message") else {
             return false;
         };
         let mut should_filter_conf_type = true;

@@ -117,35 +117,123 @@ struct BootstrapExited<'a> {
     reason: &'a str,
     id: &'a str,
     mode: &'a str,
-    total_blocks: u64,
-    duration: u64,
+    total_blocks: String,
+    duration: String,
 }
 
 #[derive(Serialize)]
 struct TelemetryReceived {
-    block_count: u64,
-    cemented_count: u64,
-    unchecked_count: u64,
-    account_count: u64,
-    bandwidth_cap: u64,
-    peer_count: u32,
-    protocol_version: u8,
-    uptime: u64,
+    block_count: String,
+    cemented_count: String,
+    unchecked_count: String,
+    account_count: String,
+    bandwidth_cap: String,
+    peer_count: String,
+    protocol_version: String,
+    uptime: String,
     genesis_block: String,
-    major_version: u8,
-    minor_version: u8,
-    patch_version: u8,
-    pre_release_version: u8,
-    maker: u8,
-    timestamp: u64,
+    major_version: String,
+    minor_version: String,
+    patch_version: String,
+    pre_release_version: String,
+    maker: String,
+    timestamp: String,
     active_difficulty: String,
+    node_id: String,
+    signature: String,
     address: String,
-    port: u16,
+    port: String,
 }
 
 #[derive(Serialize)]
 struct StartedElection {
     hash: String,
+}
+
+#[derive(Serialize)]
+struct StoppedElection {
+    hash: String,
+}
+
+#[derive(Serialize)]
+struct BlockConfirmed {
+    account: String,
+    amount: String,
+    hash: String,
+    confirmation_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    election_info: Option<ElectionInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    block: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sideband: Option<JsonSideband>,
+}
+
+#[derive(Serialize)]
+struct ElectionInfo {
+    duration: String,
+    time: String,
+    tally: String,
+    #[serde(rename = "final")]
+    final_tally: String,
+    blocks: String,
+    voters: String,
+    request_count: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    votes: Option<Vec<JsonVoteSummary>>,
+}
+
+#[derive(Serialize)]
+struct JsonVoteSummary {
+    representative: String,
+    timestamp: String,
+    hash: String,
+    weight: String,
+}
+
+#[derive(Serialize)]
+struct JsonSideband {
+    height: String,
+    local_timestamp: String,
+}
+
+#[derive(Serialize)]
+struct VoteReceived {
+    account: String,
+    signature: String,
+    sequence: String,
+    timestamp: String,
+    duration: String,
+    blocks: Vec<String>,
+    #[serde(rename = "type")]
+    vote_type: String,
+}
+
+#[derive(Serialize)]
+struct WorkGeneration<'a> {
+    success: &'a str,
+    reason: &'a str,
+    duration: String,
+    request: WorkRequest<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<WorkResult>,
+    bad_peers: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct WorkRequest<'a> {
+    version: &'a str,
+    hash: String,
+    difficulty: String,
+    multiplier: String,
+}
+
+#[derive(Serialize)]
+struct WorkResult {
+    source: String,
+    work: String,
+    difficulty: String,
+    multiplier: String,
 }
 
 /// Message builder. This is expanded with new builder functions are necessary.
@@ -179,8 +267,8 @@ impl MessageBuilder {
                 reason: "exited",
                 id,
                 mode,
-                total_blocks,
-                duration: duration.as_secs(),
+                total_blocks: total_blocks.to_string(),
+                duration: duration.as_secs().to_string(),
             },
         )
     }
@@ -189,28 +277,31 @@ impl MessageBuilder {
         Self::create_message(
             Topic::Telemetry,
             TelemetryReceived {
-                block_count: data.block_count,
-                cemented_count: data.cemented_count,
-                unchecked_count: data.unchecked_count,
-                account_count: data.account_count,
-                bandwidth_cap: data.bandwidth_cap,
-                peer_count: data.peer_count,
-                protocol_version: data.protocol_version,
-                uptime: data.uptime,
+                block_count: data.block_count.to_string(),
+                cemented_count: data.cemented_count.to_string(),
+                unchecked_count: data.unchecked_count.to_string(),
+                account_count: data.account_count.to_string(),
+                bandwidth_cap: data.bandwidth_cap.to_string(),
+                peer_count: data.peer_count.to_string(),
+                protocol_version: data.protocol_version.to_string(),
+                uptime: data.uptime.to_string(),
                 genesis_block: data.genesis_block.to_string(),
-                major_version: data.major_version,
-                minor_version: data.minor_version,
-                patch_version: data.patch_version,
-                pre_release_version: data.pre_release_version,
-                maker: data.maker,
+                major_version: data.major_version.to_string(),
+                minor_version: data.minor_version.to_string(),
+                patch_version: data.patch_version.to_string(),
+                pre_release_version: data.pre_release_version.to_string(),
+                maker: data.maker.to_string(),
                 timestamp: data
                     .timestamp
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_millis() as u64,
+                    .as_millis()
+                    .to_string(),
                 active_difficulty: format!("{:016x}", data.active_difficulty),
+                node_id: data.node_id.to_node_id(),
+                signature: data.signature.encode_hex(),
                 address: endpoint.ip().to_string(),
-                port: endpoint.port(),
+                port: endpoint.port().to_string(),
             },
         )
     }
@@ -233,13 +324,12 @@ impl MessageBuilder {
     }
 
     pub fn stopped_election(hash: &BlockHash) -> Result<Message> {
-        let mut message = Message::new(Topic::StoppedElection);
-        Self::set_common_fields(&mut message)?;
-
-        let mut message_node_l = SerdePropertyTree::new();
-        message_node_l.add("hash", &hash.to_string())?;
-        message.contents.add_child("message", &message_node_l);
-        Ok(message)
+        Self::create_message(
+            Topic::StoppedElection,
+            StoppedElection {
+                hash: hash.to_string(),
+            },
+        )
     }
 
     pub fn block_confirmed(
@@ -252,96 +342,84 @@ impl MessageBuilder {
         election_votes_a: &[VoteWithWeightInfo],
         options_a: &ConfirmationOptions,
     ) -> Result<Message> {
-        let mut message_l = Message::new(Topic::Confirmation);
-        Self::set_common_fields(&mut message_l)?;
-
-        // Block confirmation properties
-        let mut message_node_l = SerdePropertyTree::new();
-        message_node_l.add("account", &account_a.encode_account())?;
-        message_node_l.add("amount", &amount_a.to_string_dec())?;
-        message_node_l.add("hash", &block_a.hash().to_string())?;
-
         let confirmation_type = match election_status_a.election_status_type {
             ElectionStatusType::ActiveConfirmedQuorum => "active_quorum",
             ElectionStatusType::ActiveConfirmationHeight => "active_confirmation_height",
             ElectionStatusType::InactiveConfirmationHeight => "inactive",
             _ => "unknown",
         };
-        message_node_l.add("confirmation_type", confirmation_type)?;
 
-        if options_a.include_election_info || options_a.include_election_info_with_votes {
-            let mut election_node_l = SerdePropertyTree::new();
-            election_node_l.add(
-                "duration",
-                &election_status_a.election_duration.as_millis().to_string(),
-            )?;
-            election_node_l.add(
-                "time",
-                &election_status_a
-                    .election_end
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_millis()
-                    .to_string(),
-            )?;
-            election_node_l.add("tally", &election_status_a.tally.to_string_dec())?;
-            election_node_l.add("final", &election_status_a.final_tally.to_string_dec())?;
-            election_node_l.add("blocks", &election_status_a.block_count.to_string())?;
-            election_node_l.add("voters", &election_status_a.voter_count.to_string())?;
-            election_node_l.add(
-                "request_count",
-                &election_status_a.confirmation_request_count.to_string(),
-            )?;
-            if options_a.include_election_info_with_votes {
-                let mut election_votes_l = Vec::new();
-                for vote_l in election_votes_a {
-                    let mut entry = SerdePropertyTree::new();
-                    entry.put_string("representative", &vote_l.representative.encode_account())?;
-                    entry.put_string("timestamp", &vote_l.timestamp.to_string())?;
-                    entry.put_string("hash", &vote_l.hash.to_string())?;
-                    entry.put_string("weight", &vote_l.weight.to_string_dec())?;
-                    election_votes_l.push(entry.value);
-                }
-                election_node_l.add_child_value(
-                    "votes".to_string(),
-                    serde_json::Value::Array(election_votes_l),
-                );
-            }
-            message_node_l.add_child("election_info", &election_node_l);
-        }
+        let election_info =
+            if options_a.include_election_info || options_a.include_election_info_with_votes {
+                let votes = if options_a.include_election_info_with_votes {
+                    Some(
+                        election_votes_a
+                            .iter()
+                            .map(|v| JsonVoteSummary {
+                                representative: v.representative.encode_account(),
+                                timestamp: v.timestamp.to_string(),
+                                hash: v.hash.to_string(),
+                                weight: v.weight.to_string_dec(),
+                            })
+                            .collect(),
+                    )
+                } else {
+                    None
+                };
 
-        if include_block_a {
+                Some(ElectionInfo {
+                    duration: election_status_a.election_duration.as_millis().to_string(),
+                    time: election_status_a
+                        .election_end
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis()
+                        .to_string(),
+                    tally: election_status_a.tally.to_string_dec(),
+                    final_tally: election_status_a.final_tally.to_string_dec(),
+                    blocks: election_status_a.block_count.to_string(),
+                    voters: election_status_a.voter_count.to_string(),
+                    request_count: election_status_a.confirmation_request_count.to_string(),
+                    votes,
+                })
+            } else {
+                None
+            };
+
+        let block = if include_block_a {
             let mut block_node_l = SerdePropertyTree::new();
             block_a.serialize_json(&mut block_node_l)?;
             if !subtype.is_empty() {
                 block_node_l.add("subtype", &subtype)?;
             }
-            message_node_l.add_child("block", &block_node_l);
-        }
+            Some(block_node_l.value)
+        } else {
+            None
+        };
 
-        if options_a.include_sideband_info {
-            let mut sideband_node_l = SerdePropertyTree::new();
-            sideband_node_l.add("height", &block_a.sideband().unwrap().height.to_string())?;
-            sideband_node_l.add(
-                "local_timestamp",
-                &block_a.sideband().unwrap().timestamp.to_string(),
-            )?;
-            message_node_l.add_child("sideband", &sideband_node_l);
-        }
+        let sideband = if options_a.include_sideband_info {
+            Some(JsonSideband {
+                height: block_a.sideband().unwrap().height.to_string(),
+                local_timestamp: block_a.sideband().unwrap().timestamp.to_string(),
+            })
+        } else {
+            None
+        };
 
-        message_l.contents.add_child("message", &message_node_l);
+        let confirmed = BlockConfirmed {
+            account: account_a.encode_account(),
+            amount: amount_a.to_string_dec(),
+            hash: block_a.hash().to_string(),
+            confirmation_type: confirmation_type.to_string(),
+            election_info,
+            block,
+            sideband,
+        };
 
-        Ok(message_l)
+        Self::create_message(Topic::Confirmation, confirmed)
     }
 
     pub fn vote_received(vote_a: &Arc<Vote>, code_a: VoteCode) -> Result<Message> {
-        let mut message_l = Message::new(Topic::Vote);
-        Self::set_common_fields(&mut message_l)?;
-
-        // Vote information
-        let mut vote_node_l = vote_a.serialize_json();
-
-        // Vote processing information
         let vote_type = match code_a {
             VoteCode::Vote => "vote",
             VoteCode::Replay => "replay",
@@ -350,17 +428,18 @@ impl MessageBuilder {
             VoteCode::Invalid => unreachable!(),
         };
 
-        let serde_json::Value::Object(o) = &mut vote_node_l else {
-            unreachable!()
-        };
-        o.insert(
-            "type".to_string(),
-            serde_json::Value::String(vote_type.to_string()),
-        );
-        message_l
-            .contents
-            .add_child("message", &SerdePropertyTree::from_value(vote_node_l));
-        Ok(message_l)
+        Self::create_message(
+            Topic::Vote,
+            VoteReceived {
+                account: vote_a.voting_account.encode_account(),
+                signature: vote_a.signature.encode_hex(),
+                sequence: vote_a.timestamp().to_string(),
+                timestamp: vote_a.timestamp().to_string(),
+                duration: vote_a.duration_bits().to_string(),
+                blocks: vote_a.hashes.iter().map(|h| h.to_string()).collect(),
+                vote_type: vote_type.to_string(),
+            },
+        )
     }
 
     pub fn work_generation(
@@ -375,82 +454,50 @@ impl MessageBuilder {
         completed_a: bool,
         cancelled_a: bool,
     ) -> Result<Message> {
-        let mut message_l = Message::new(Topic::Work);
-        Self::set_common_fields(&mut message_l)?;
+        let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
+        let request = WorkRequest {
+            version: version_a.as_str(),
+            hash: root_a.to_string(),
+            difficulty: format!("{:016x}", difficulty_a),
+            multiplier: format!("{:.10}", request_multiplier_l),
+        };
 
-        // Active difficulty information
-        let mut work_l = SerdePropertyTree::new();
-        work_l.put_string("success", if completed_a { "true" } else { "false" })?;
-        work_l.put_string(
-            "reason",
-            if completed_a {
+        let result = if completed_a {
+            let result_difficulty_l =
+                DEV_NETWORK_PARAMS
+                    .work
+                    .difficulty(version_a, &root_a.into(), work_a);
+
+            let result_multiplier_l =
+                DifficultyV1::to_multiplier(result_difficulty_l, publish_threshold_a);
+
+            Some(WorkResult {
+                source: peer_a.to_string(),
+                work: format!("{:016x}", work_a),
+                difficulty: format!("{:016x}", result_difficulty_l),
+                multiplier: format!("{:.10}", result_multiplier_l),
+            })
+        } else {
+            None
+        };
+
+        let bad_peers = bad_peers_a.iter().cloned().collect();
+        let work_l = WorkGeneration {
+            success: if completed_a { "true" } else { "false" },
+            reason: if completed_a {
                 ""
             } else if cancelled_a {
                 "cancelled"
             } else {
                 "failure"
             },
-        )?;
-        work_l.put_u64("duration", duration_a.as_millis() as u64)?;
-
-        let mut request_l = SerdePropertyTree::new();
-        request_l.put_string("version", version_a.as_str())?;
-        request_l.put_string("hash", &root_a.to_string())?;
-        request_l.put_string("difficulty", &format!("{:016x}", difficulty_a))?;
-        let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
-        request_l.put_string("multiplier", &format!("{:.10}", request_multiplier_l))?;
-        work_l.add_child("request", &request_l);
-
-        if completed_a {
-            let mut result_l = SerdePropertyTree::new();
-            result_l.put_string("source", peer_a)?;
-            result_l.put_string("work", &format!("{:016x}", work_a))?;
-            let result_difficulty_l =
-                DEV_NETWORK_PARAMS
-                    .work
-                    .difficulty(version_a, &root_a.into(), work_a);
-            result_l.put_string("difficulty", &format!("{:016x}", result_difficulty_l))?;
-            let result_multiplier_l =
-                DifficultyV1::to_multiplier(result_difficulty_l, publish_threshold_a);
-            result_l.put_string("multiplier", &format!("{:.10}", result_multiplier_l))?;
-            work_l.add_child("result", &result_l);
-        }
-
-        let mut bad_peers_l = Vec::new();
-        for peer_text in bad_peers_a {
-            let mut entry = SerdePropertyTree::new();
-            entry.put_string("", peer_text)?;
-            bad_peers_l.push(entry.value);
-        }
-        work_l.add_child_value(
-            "bad_peers".to_string(),
-            serde_json::Value::Array(bad_peers_l),
-        );
-
-        message_l.contents.add_child("message", &work_l);
-        Ok(message_l)
-    }
-
-    pub fn set_common_fields(message: &mut Message) -> Result<()> {
-        message.contents.add("topic", message.topic.as_str())?;
-        message.contents.add(
-            "time",
-            &SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-                .to_string(),
-        )?;
-        Ok(())
-    }
-
-    fn new_message() -> Result<Message, anyhow::Error> {
-        let mut message = Message {
-            topic: Topic::Bootstrap,
-            contents: SerdePropertyTree::new(),
+            duration: duration_a.as_millis().to_string(),
+            request,
+            result,
+            bad_peers,
         };
-        Self::set_common_fields(&mut message)?;
-        Ok(message)
+
+        Self::create_message(Topic::Work, work_l)
     }
 
     fn create_message(topic: Topic, message: impl Serialize) -> Result<Message> {

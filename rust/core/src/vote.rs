@@ -136,7 +136,7 @@ impl Vote {
         result
     }
 
-    pub fn serialize_json(&self) -> serde_json::Value {
+    fn serialize_json(&self) -> serde_json::Value {
         let mut values = serde_json::Map::new();
         values.insert(
             "account".to_string(),

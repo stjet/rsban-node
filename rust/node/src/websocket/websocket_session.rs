@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{wallets::Wallets, websocket::IncomingMessage};
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree};
+use rsnano_core::utils::{milliseconds_since_epoch, SerdePropertyTree};
 use serde_json::Value;
 use std::{
     collections::HashMap,
@@ -103,7 +103,7 @@ impl WebsocketSession {
                     }
                 }
                 Some(msg) = send_queue.recv() =>{
-                    let message_text = msg.contents.to_json();
+                    let message_text = serde_json::to_string_pretty(&msg.contents).unwrap();
                     trace!(message = message_text, "sending websocket message");
                     // write queued messages
                     stream
@@ -232,7 +232,7 @@ impl WebsocketSession {
         let contents = serde_json::Value::Object(vals);
         let msg = Message {
             topic: Topic::Ack,
-            contents: SerdePropertyTree::from_value(contents),
+            contents,
         };
 
         self.entry.write(msg).await

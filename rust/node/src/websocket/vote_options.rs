@@ -60,11 +60,11 @@ impl VoteOptions {
      */
     pub fn should_filter(&self, message_a: &Message) -> bool {
         trace!(
-            message = serde_json::to_string_pretty(&message_a.contents.value).unwrap(),
+            message = serde_json::to_string_pretty(&message_a.contents).unwrap(),
             include_replays = self.include_replays,
             "vote should filter!"
         );
-        let Some(message_contents) = message_a.contents.value.get("message") else {
+        let Some(message_contents) = message_a.contents.get("message") else {
             return true;
         };
 

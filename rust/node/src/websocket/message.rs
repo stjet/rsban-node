@@ -5,13 +5,13 @@ use crate::{
 };
 use anyhow::Result;
 use rsnano_core::{
-    utils::{PropertyTree, SerdePropertyTree},
+    utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree},
     Account, Amount, BlockEnum, BlockHash, DifficultyV1, Vote, VoteCode, VoteWithWeightInfo,
     WorkVersion,
 };
 use rsnano_messages::TelemetryData;
-use serde::Serialize;
-use serde_json::{Map, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     fmt::Debug,
     hash::Hash,
@@ -20,7 +20,8 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash, Serialize, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum Topic {
     Invalid = 0,
     /// Acknowledgement of prior incoming message
@@ -44,65 +45,53 @@ pub enum Topic {
     Length,
 }
 
-impl Topic {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Topic::Ack => "ack",
-            Topic::Confirmation => "confirmation",
-            Topic::StartedElection => "started_election",
-            Topic::StoppedElection => "stopped_election",
-            Topic::Vote => "vote",
-            Topic::Work => "work",
-            Topic::Bootstrap => "bootstrap",
-            Topic::Telemetry => "telemetry",
-            Topic::NewUnconfirmedBlock => "new_unconfirmed_block",
-            _ => "invalid",
-        }
-    }
+#[derive(Deserialize)]
+pub struct IncomingMessage<'a> {
+    pub action: Option<&'a str>,
+    pub topic: Option<&'a str>,
+    #[serde(default)]
+    pub ack: bool,
+    pub id: Option<&'a str>,
+    pub options: Option<Value>,
+    #[serde(default)]
+    pub accounts_add: Vec<&'a str>,
+    #[serde(default)]
+    pub accounts_del: Vec<&'a str>,
 }
 
-impl Debug for Topic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
+#[derive(Serialize, Clone, Debug)]
+pub struct OutgoingMessageEnvelope {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ack: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topic: Option<Topic>,
+    pub time: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<Value>,
 }
 
-pub struct Message {
-    pub topic: Topic,
-    pub contents: Value,
-}
-
-impl Message {
-    pub fn new(topic: Topic) -> Self {
+impl OutgoingMessageEnvelope {
+    pub fn new(topic: Topic, message: impl Serialize) -> Self {
         Self {
-            topic,
-            contents: Value::Object(Map::new()),
+            id: None,
+            ack: None,
+            topic: Some(topic),
+            time: milliseconds_since_epoch().to_string(),
+            message: Some(serde_json::to_value(message).expect("could not serialize message")),
         }
     }
-}
 
-impl Clone for Message {
-    fn clone(&self) -> Self {
+    pub fn new_ack(id: Option<String>, action: String) -> Self {
         Self {
-            topic: self.topic,
-            contents: self.contents.clone(),
+            id,
+            topic: None,
+            ack: Some(action),
+            time: milliseconds_since_epoch().to_string(),
+            message: None,
         }
     }
-}
-
-impl Debug for Message {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Message")
-            .field("topic", &self.topic)
-            .finish()
-    }
-}
-
-#[derive(Serialize)]
-struct OutgoingMessage<'a> {
-    topic: &'a str,
-    time: String,
-    message: Value,
 }
 
 #[derive(Serialize)]
@@ -240,19 +229,16 @@ struct WorkResult {
 pub struct MessageBuilder {}
 
 impl MessageBuilder {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn bootstrap_started(id: &str, mode: &str) -> Result<Message> {
-        Self::create_message(
-            Topic::Bootstrap,
-            BootstrapStarted {
+    pub fn bootstrap_started(id: &str, mode: &str) -> Result<OutgoingMessageEnvelope> {
+        {
+            let topic = Topic::Bootstrap;
+            let message = BootstrapStarted {
                 reason: "started",
                 id,
                 mode,
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
     pub fn bootstrap_exited(
@@ -260,23 +246,27 @@ impl MessageBuilder {
         mode: &str,
         duration: Duration,
         total_blocks: u64,
-    ) -> Result<Message> {
-        Self::create_message(
-            Topic::Bootstrap,
-            BootstrapExited {
+    ) -> Result<OutgoingMessageEnvelope> {
+        {
+            let topic = Topic::Bootstrap;
+            let message = BootstrapExited {
                 reason: "exited",
                 id,
                 mode,
                 total_blocks: total_blocks.to_string(),
                 duration: duration.as_secs().to_string(),
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
-    pub fn telemetry_received(data: &TelemetryData, endpoint: SocketAddrV6) -> Result<Message> {
-        Self::create_message(
-            Topic::Telemetry,
-            TelemetryReceived {
+    pub fn telemetry_received(
+        data: &TelemetryData,
+        endpoint: SocketAddrV6,
+    ) -> Result<OutgoingMessageEnvelope> {
+        {
+            let topic = Topic::Telemetry;
+            let message = TelemetryReceived {
                 block_count: data.block_count.to_string(),
                 cemented_count: data.cemented_count.to_string(),
                 unchecked_count: data.unchecked_count.to_string(),
@@ -302,34 +292,41 @@ impl MessageBuilder {
                 signature: data.signature.encode_hex(),
                 address: endpoint.ip().to_string(),
                 port: endpoint.port().to_string(),
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
-    pub fn new_block_arrived(block: &BlockEnum) -> Result<Message> {
+    pub fn new_block_arrived(block: &BlockEnum) -> Result<OutgoingMessageEnvelope> {
         let mut json_block = SerdePropertyTree::new();
         block.serialize_json(&mut json_block)?;
         let subtype = block.sideband().unwrap().details.state_subtype();
         json_block.put_string("subtype", subtype)?;
-        Self::create_message(Topic::NewUnconfirmedBlock, json_block.value)
+        {
+            let topic = Topic::NewUnconfirmedBlock;
+            let message = json_block.value;
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
-    pub fn started_election(hash: &BlockHash) -> Result<Message> {
-        Self::create_message(
-            Topic::StartedElection,
-            StartedElection {
+    pub fn started_election(hash: &BlockHash) -> Result<OutgoingMessageEnvelope> {
+        {
+            let topic = Topic::StartedElection;
+            let message = StartedElection {
                 hash: hash.to_string(),
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
-    pub fn stopped_election(hash: &BlockHash) -> Result<Message> {
-        Self::create_message(
-            Topic::StoppedElection,
-            StoppedElection {
+    pub fn stopped_election(hash: &BlockHash) -> Result<OutgoingMessageEnvelope> {
+        {
+            let topic = Topic::StoppedElection;
+            let message = StoppedElection {
                 hash: hash.to_string(),
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
     pub fn block_confirmed(
@@ -341,7 +338,7 @@ impl MessageBuilder {
         election_status_a: &ElectionStatus,
         election_votes_a: &[VoteWithWeightInfo],
         options_a: &ConfirmationOptions,
-    ) -> Result<Message> {
+    ) -> Result<OutgoingMessageEnvelope> {
         let confirmation_type = match election_status_a.election_status_type {
             ElectionStatusType::ActiveConfirmedQuorum => "active_quorum",
             ElectionStatusType::ActiveConfirmationHeight => "active_confirmation_height",
@@ -416,10 +413,13 @@ impl MessageBuilder {
             sideband,
         };
 
-        Self::create_message(Topic::Confirmation, confirmed)
+        {
+            let topic = Topic::Confirmation;
+            Ok(OutgoingMessageEnvelope::new(topic, confirmed))
+        }
     }
 
-    pub fn vote_received(vote_a: &Arc<Vote>, code_a: VoteCode) -> Result<Message> {
+    pub fn vote_received(vote_a: &Arc<Vote>, code_a: VoteCode) -> Result<OutgoingMessageEnvelope> {
         let vote_type = match code_a {
             VoteCode::Vote => "vote",
             VoteCode::Replay => "replay",
@@ -428,9 +428,9 @@ impl MessageBuilder {
             VoteCode::Invalid => unreachable!(),
         };
 
-        Self::create_message(
-            Topic::Vote,
-            VoteReceived {
+        {
+            let topic = Topic::Vote;
+            let message = VoteReceived {
                 account: vote_a.voting_account.encode_account(),
                 signature: vote_a.signature.encode_hex(),
                 sequence: vote_a.timestamp().to_string(),
@@ -438,8 +438,9 @@ impl MessageBuilder {
                 duration: vote_a.duration_bits().to_string(),
                 blocks: vote_a.hashes.iter().map(|h| h.to_string()).collect(),
                 vote_type: vote_type.to_string(),
-            },
-        )
+            };
+            Ok(OutgoingMessageEnvelope::new(topic, message))
+        }
     }
 
     pub fn work_generation(
@@ -453,7 +454,7 @@ impl MessageBuilder {
         bad_peers_a: &[String],
         completed_a: bool,
         cancelled_a: bool,
-    ) -> Result<Message> {
+    ) -> Result<OutgoingMessageEnvelope> {
         let request_multiplier_l = DifficultyV1::to_multiplier(difficulty_a, publish_threshold_a);
         let request = WorkRequest {
             version: version_a.as_str(),
@@ -497,23 +498,10 @@ impl MessageBuilder {
             bad_peers,
         };
 
-        Self::create_message(Topic::Work, work_l)
-    }
-
-    fn create_message(topic: Topic, message: impl Serialize) -> Result<Message> {
-        let message = OutgoingMessage {
-            topic: topic.as_str(),
-            time: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-                .to_string(),
-            message: serde_json::to_value(message)?,
-        };
-        Ok(Message {
-            topic,
-            contents: serde_json::to_value(message)?,
-        })
+        {
+            let topic = Topic::Work;
+            Ok(OutgoingMessageEnvelope::new(topic, work_l))
+        }
     }
 }
 

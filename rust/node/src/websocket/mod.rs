@@ -15,17 +15,3 @@ use serde_json::Value;
 pub use vote_options::*;
 pub use websocket_server::*;
 pub use websocket_session::*;
-
-#[derive(Deserialize)]
-pub struct IncomingMessage<'a> {
-    pub action: Option<&'a str>,
-    pub topic: Option<&'a str>,
-    #[serde(default)]
-    pub ack: bool,
-    pub id: Option<&'a str>,
-    pub options: Option<Value>,
-    #[serde(default)]
-    pub accounts_add: Vec<&'a str>,
-    #[serde(default)]
-    pub accounts_del: Vec<&'a str>,
-}

@@ -1,6 +1,6 @@
+use super::{ConfirmationOptions, VoteOptions};
 use rsnano_core::utils::PropertyTree;
-
-use super::{ConfirmationOptions, Message, VoteOptions};
+use serde_json::Value;
 
 #[derive(Clone)]
 pub enum Options {
@@ -15,7 +15,7 @@ impl Options {
      * @param message_a the message to be checked
      * @return false - the message should always be broadcasted
      */
-    pub fn should_filter(&self, message: &Message) -> bool {
+    pub fn should_filter(&self, message: &Value) -> bool {
         match self {
             Options::Confirmation(i) => i.should_filter(message),
             Options::Vote(i) => i.should_filter(message),

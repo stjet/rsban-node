@@ -1,10 +1,9 @@
 use crate::wallets::Wallets;
 use rsnano_core::{utils::PropertyTree, Account};
 use serde::Deserialize;
+use serde_json::Value;
 use std::{collections::HashSet, sync::Arc};
 use tracing::warn;
-
-use super::Message;
 
 #[derive(Clone)]
 pub struct ConfirmationOptions {
@@ -112,10 +111,7 @@ impl ConfirmationOptions {
      * @param message_a the message to be checked
      * @return false if the message should be broadcasted, true if it should be filtered
      */
-    pub fn should_filter(&self, message_a: &Message) -> bool {
-        let Some(message_content) = message_a.contents.get("message") else {
-            return false;
-        };
+    pub fn should_filter(&self, message_content: &Value) -> bool {
         let mut should_filter_conf_type = true;
 
         if let Some(serde_json::Value::String(type_text)) = message_content.get("confirmation_type")

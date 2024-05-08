@@ -12,7 +12,7 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
 use rsnano_node::websocket::{
-    Message, MessageBuilder, Topic, WebsocketListener, WebsocketListenerExt,
+    MessageBuilder, OutgoingMessageEnvelope, Topic, WebsocketListener, WebsocketListenerExt,
 };
 use std::{
     ops::{Deref, DerefMut},
@@ -21,16 +21,16 @@ use std::{
     time::Duration,
 };
 
-pub struct WebsocketMessageHandle(Message);
+pub struct WebsocketMessageHandle(OutgoingMessageEnvelope);
 
 impl WebsocketMessageHandle {
-    pub fn new(message: Message) -> *mut Self {
-        Box::into_raw(Box::new(Self(message)))
+    pub fn new(envelope: OutgoingMessageEnvelope) -> *mut Self {
+        Box::into_raw(Box::new(Self(envelope)))
     }
 }
 
 impl Deref for WebsocketMessageHandle {
-    type Target = Message;
+    type Target = OutgoingMessageEnvelope;
 
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -1,9 +1,8 @@
 use rsnano_core::Account;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashSet;
-use tracing::{trace, warn};
-
-use super::Message;
+use tracing::warn;
 
 #[derive(Clone)]
 pub struct VoteOptions {
@@ -58,17 +57,8 @@ impl VoteOptions {
      * @param message_a the message to be checked
      * @return false if the message should be broadcasted, true if it should be filtered
      */
-    pub fn should_filter(&self, message_a: &Message) -> bool {
-        trace!(
-            message = serde_json::to_string_pretty(&message_a.contents).unwrap(),
-            include_replays = self.include_replays,
-            "vote should filter!"
-        );
-        let Some(message_contents) = message_a.contents.get("message") else {
-            return true;
-        };
-
-        let msg_type = match message_contents.get("type") {
+    pub fn should_filter(&self, contents: &Value) -> bool {
+        let msg_type = match contents.get("type") {
             Some(serde_json::Value::String(s)) => s.as_str(),
             _ => "",
         };
@@ -77,7 +67,7 @@ impl VoteOptions {
             || (!self.include_indeterminate && msg_type == "indeterminate");
 
         if !should_filter_l && !self.representatives.is_empty() {
-            let representative_text_l = match message_contents.get("account") {
+            let representative_text_l = match contents.get("account") {
                 Some(serde_json::Value::String(s)) => s.as_str(),
                 _ => "",
             };

@@ -1,11 +1,10 @@
 use super::{
-    to_topic, ConfirmationJsonOptions, ConfirmationOptions, Message, Options, Topic,
-    VoteJsonOptions, VoteOptions,
+    to_topic, ConfirmationJsonOptions, ConfirmationOptions, Options, OutgoingMessageEnvelope,
+    Topic, VoteJsonOptions, VoteOptions,
 };
 use crate::{wallets::Wallets, websocket::IncomingMessage};
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::utils::{milliseconds_since_epoch, SerdePropertyTree};
-use serde_json::Value;
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -20,12 +19,15 @@ use tracing::{info, trace, warn};
 pub struct WebsocketSessionEntry {
     /// Map of subscriptions -> options registered by this session.
     pub subscriptions: Mutex<HashMap<Topic, Options>>,
-    send_queue_tx: mpsc::Sender<Message>,
+    send_queue_tx: mpsc::Sender<OutgoingMessageEnvelope>,
     tx_close: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 impl WebsocketSessionEntry {
-    pub fn new(send_queue_tx: mpsc::Sender<Message>, tx_close: oneshot::Sender<()>) -> Self {
+    pub fn new(
+        send_queue_tx: mpsc::Sender<OutgoingMessageEnvelope>,
+        tx_close: oneshot::Sender<()>,
+    ) -> Self {
         Self {
             subscriptions: Mutex::new(HashMap::new()),
             send_queue_tx,
@@ -33,16 +35,16 @@ impl WebsocketSessionEntry {
         }
     }
 
-    pub fn blocking_write(&self, msg: Message) -> anyhow::Result<()> {
-        if !self.should_filter(&msg) {
-            self.send_queue_tx.blocking_send(msg)?;
+    pub fn blocking_write(&self, envelope: &OutgoingMessageEnvelope) -> anyhow::Result<()> {
+        if !self.should_filter(&envelope) {
+            self.send_queue_tx.blocking_send(envelope.clone())?;
         }
         Ok(())
     }
 
-    pub async fn write(&self, msg: Message) -> anyhow::Result<()> {
-        if !self.should_filter(&msg) {
-            self.send_queue_tx.send(msg).await?
+    pub async fn write(&self, envelope: &OutgoingMessageEnvelope) -> anyhow::Result<()> {
+        if !self.should_filter(&envelope) {
+            self.send_queue_tx.send(envelope.clone()).await?
         }
         Ok(())
     }
@@ -53,14 +55,22 @@ impl WebsocketSessionEntry {
         }
     }
 
-    fn should_filter(&self, msg: &Message) -> bool {
-        if msg.topic == Topic::Ack {
+    fn should_filter(&self, envelope: &OutgoingMessageEnvelope) -> bool {
+        if envelope.ack.is_some() {
             return false;
         }
 
+        let Some(topic) = envelope.topic else {
+            return true;
+        };
+
         let subs = self.subscriptions.lock().unwrap();
-        if let Some(options) = subs.get(&msg.topic) {
-            options.should_filter(&msg)
+        if let Some(options) = subs.get(&topic) {
+            if let Some(msg) = &envelope.message {
+                options.should_filter(msg)
+            } else {
+                true
+            }
         } else {
             true
         }
@@ -93,7 +103,7 @@ impl WebsocketSession {
     pub async fn run(
         self,
         stream: &mut tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>,
-        send_queue: &mut mpsc::Receiver<Message>,
+        send_queue: &mut mpsc::Receiver<OutgoingMessageEnvelope>,
     ) -> anyhow::Result<()> {
         loop {
             tokio::select! {
@@ -103,7 +113,7 @@ impl WebsocketSession {
                     }
                 }
                 Some(msg) = send_queue.recv() =>{
-                    let message_text = serde_json::to_string_pretty(&msg.contents).unwrap();
+                    let message_text = serde_json::to_string_pretty(&msg).unwrap();
                     trace!(message = message_text, "sending websocket message");
                     // write queued messages
                     stream
@@ -201,9 +211,8 @@ impl WebsocketSession {
             let mut subs = self.entry.subscriptions.lock().unwrap();
             if subs.remove(&topic).is_some() {
                 info!(
-                    "Removed subscription to topic: {} ({})",
-                    topic.as_str(),
-                    self.remote_endpoint
+                    "Removed subscription to topic: {:?} ({})",
+                    topic, self.remote_endpoint
                 );
                 self.topic_subscriber_count[topic as usize].fetch_sub(1, Ordering::SeqCst);
             }
@@ -220,22 +229,9 @@ impl WebsocketSession {
     }
 
     async fn send_ack(&self, reply_action: &str, id: &Option<&str>) -> anyhow::Result<()> {
-        let mut vals = serde_json::Map::new();
-        vals.insert("ack".to_string(), Value::String(reply_action.to_string()));
-        vals.insert(
-            "time".to_string(),
-            Value::String(milliseconds_since_epoch().to_string()),
-        );
-        if let Some(id) = id {
-            vals.insert("id".to_string(), Value::String(id.to_string()));
-        }
-        let contents = serde_json::Value::Object(vals);
-        let msg = Message {
-            topic: Topic::Ack,
-            contents,
-        };
-
-        self.entry.write(msg).await
+        let envelope =
+            OutgoingMessageEnvelope::new_ack(id.map(|s| s.to_string()), reply_action.to_string());
+        self.entry.write(&envelope).await
     }
 }
 

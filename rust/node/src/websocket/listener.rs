@@ -1,11 +1,10 @@
 use super::{
-    ConfirmationJsonOptions, ConfirmationOptions, Message, MessageBuilder, Options, Topic,
-    WebsocketSessionEntry,
+    ConfirmationJsonOptions, ConfirmationOptions, MessageBuilder, Options, OutgoingMessageEnvelope,
+    Topic, WebsocketSessionEntry,
 };
 use crate::{
     consensus::ElectionStatus, utils::AsyncRuntime, wallets::Wallets, websocket::WebsocketSession,
 };
-use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{Account, Amount, BlockEnum, VoteWithWeightInfo};
 use std::{
     borrow::Cow,
@@ -92,11 +91,11 @@ impl WebsocketListener {
     }
 
     /// Broadcast \p message to all session subscribing to the message topic.
-    pub fn broadcast(&self, message: &Message) {
+    pub fn broadcast(&self, message: &OutgoingMessageEnvelope) {
         let sessions = self.sessions.lock().unwrap();
         for session in sessions.iter() {
             if let Some(session) = session.upgrade() {
-                let _ = session.blocking_write(message.clone());
+                let _ = session.blocking_write(message);
             }
         }
     }
@@ -161,9 +160,9 @@ impl WebsocketListener {
                     }
                     drop(subs);
                     let _ = session.blocking_write(if include_block {
-                        msg_with_block.as_ref().unwrap().clone()
+                        msg_with_block.as_ref().unwrap()
                     } else {
-                        msg_without_block.as_ref().unwrap().clone()
+                        msg_without_block.as_ref().unwrap()
                     });
                 }
             }
@@ -176,7 +175,7 @@ impl WebsocketListener {
                 Ok((stream, remote_endpoint)) => {
                     let wallets = Arc::clone(&self.wallets);
                     let sub_count = Arc::clone(&self.topic_subscriber_count);
-                    let (tx_send, rx_send) = mpsc::channel::<Message>(1024);
+                    let (tx_send, rx_send) = mpsc::channel::<OutgoingMessageEnvelope>(1024);
                     let sessions = Arc::clone(&self.sessions);
                     tokio::spawn(async move {
                         if let Err(e) = accept_connection(
@@ -227,8 +226,8 @@ async fn accept_connection(
     wallets: Arc<Wallets>,
     topic_subscriber_count: Arc<[AtomicUsize; 11]>,
     remote_endpoint: SocketAddr,
-    tx_send: mpsc::Sender<Message>,
-    mut rx_send: mpsc::Receiver<Message>,
+    tx_send: mpsc::Sender<OutgoingMessageEnvelope>,
+    mut rx_send: mpsc::Receiver<OutgoingMessageEnvelope>,
     sessions: Arc<Mutex<Vec<Weak<WebsocketSessionEntry>>>>,
 ) -> anyhow::Result<()> {
     // Create the session and initiate websocket handshake

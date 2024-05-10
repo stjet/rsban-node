@@ -36,6 +36,7 @@ pub trait BootstrapConnectionsExt {
     fn requeue_pull(&self, pull: PullInfo, network_error: bool);
     fn populate_connections(&self, repeat: bool);
     fn add_pull(&self, pull: PullInfo);
+    fn connection(&self, use_front_connection: bool) -> (Option<Arc<BootstrapClient>>, bool);
 }
 
 impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
@@ -73,5 +74,9 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         unsafe {
             ADD_PULL_CALLBACK.expect("ADD_PULL_CALLBACK missing")(self.cpp_handle, pull);
         }
+    }
+
+    fn connection(&self, use_front_connection: bool) -> (Option<Arc<BootstrapClient>>, bool) {
+        todo!("NOT IMPLEMENTED YET")
     }
 }

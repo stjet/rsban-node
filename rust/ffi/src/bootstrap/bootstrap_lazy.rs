@@ -20,7 +20,6 @@ use std::{
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
-    self_ptr: *mut c_void,
     websocket_server: *mut WebsocketListenerHandle,
     block_processor: &BlockProcessorHandle,
     bootstrap_initiator: *const BootstrapInitiatorHandle,
@@ -42,7 +41,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
     let network_params = NetworkParams::try_from(network_params).unwrap();
     BootstrapAttemptHandle::new(Arc::new(BootstrapStrategy::Lazy(
         BootstrapAttemptLazy::new(
-            self_ptr,
             websocket_server,
             Arc::clone(block_processor),
             bootstrap_initiator,

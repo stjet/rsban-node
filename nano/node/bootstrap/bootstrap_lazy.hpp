@@ -41,7 +41,6 @@ class bootstrap_attempt_wallet final : public bootstrap_attempt
 {
 public:
 	explicit bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a = "");
-	~bootstrap_attempt_wallet ();
 	rsnano::BootstrapAttemptLockHandle * request_pending (rsnano::BootstrapAttemptLockHandle * lock_a);
 	void requeue_pending (nano::account const &);
 	void run () override;

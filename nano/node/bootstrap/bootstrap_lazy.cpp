@@ -18,11 +18,25 @@ constexpr std::size_t nano::bootstrap_limits::lazy_blocks_restart_limit;
 
 namespace
 {
-rsnano::BootstrapAttemptHandle * create_lazy_handle (nano::bootstrap_attempt_lazy * self, std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a)
+rsnano::BootstrapAttemptHandle * create_lazy_handle (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a)
 {
 	auto network_params_dto{ node_a->network_params.to_dto () };
 	return rsnano::rsn_bootstrap_attempt_lazy_create (
-	self,
+	node_a->websocket.server != nullptr ? node_a->websocket.server->handle : nullptr,
+	node_a->block_processor.get_handle (),
+	node_a->bootstrap_initiator.get_handle (),
+	node_a->ledger.get_handle (),
+	id_a.c_str (),
+	incremental_id_a,
+	node_a->flags.handle,
+	node_a->bootstrap_initiator.connections->handle,
+	&network_params_dto);
+}
+
+rsnano::BootstrapAttemptHandle * create_wallet_handle (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a)
+{
+	auto network_params_dto{ node_a->network_params.to_dto () };
+	return rsnano::rsn_bootstrap_attempt_wallet_create (
 	node_a->websocket.server != nullptr ? node_a->websocket.server->handle : nullptr,
 	node_a->block_processor.get_handle (),
 	node_a->bootstrap_initiator.get_handle (),
@@ -36,7 +50,7 @@ rsnano::BootstrapAttemptHandle * create_lazy_handle (nano::bootstrap_attempt_laz
 }
 
 nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a) :
-	nano::bootstrap_attempt (create_lazy_handle (this, node_a, incremental_id_a, id_a))
+	nano::bootstrap_attempt (create_lazy_handle (node_a, incremental_id_a, id_a))
 {
 }
 
@@ -72,12 +86,9 @@ void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree 
 }
 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :
-	nano::bootstrap_attempt (node_a, nano::bootstrap_mode::wallet_lazy, incremental_id_a, id_a),
+	nano::bootstrap_attempt (create_wallet_handle (node_a, incremental_id_a, id_a))
+	//nano::bootstrap_attempt (node_a, nano::bootstrap_mode::wallet_lazy, incremental_id_a, id_a),
 	node_weak (node_a)
-{
-}
-
-nano::bootstrap_attempt_wallet::~bootstrap_attempt_wallet ()
 {
 }
 
@@ -89,7 +100,12 @@ rsnano::BootstrapAttemptLockHandle * nano::bootstrap_attempt_wallet::request_pen
 		return lock_a;
 	}
 	rsnano::rsn_bootstrap_attempt_unlock (lock_a);
-	auto connection_l (node->bootstrap_initiator.connections->connection (shared_from_this ()));
+	auto [connection_l, should_stop] (node->bootstrap_initiator.connections->connection ());
+	if (should_stop){
+		node->logger->debug (nano::log::type::bootstrap, "Bootstrap attempt stopped because there are no peers");
+		stop ();
+	}
+
 	lock_a = rsnano::rsn_bootstrap_attempt_lock (handle);
 	if (connection_l && !get_stopped ())
 	{

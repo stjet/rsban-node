@@ -8,6 +8,7 @@ mod bootstrap_lazy;
 mod bootstrap_legacy;
 mod bootstrap_message_visitor;
 mod bootstrap_message_visitor_factory;
+mod bootstrap_wallet;
 mod bulk_pull_account_server;
 mod bulk_pull_client;
 mod bulk_pull_server;
@@ -36,6 +37,7 @@ pub use bootstrap_lazy::*;
 pub use bootstrap_legacy::*;
 pub use bootstrap_message_visitor::BootstrapMessageVisitorImpl;
 pub use bootstrap_message_visitor_factory::BootstrapMessageVisitorFactory;
+pub use bootstrap_wallet::*;
 pub use bulk_pull_account_server::BulkPullAccountServer;
 pub use bulk_pull_client::*;
 pub use bulk_pull_server::BulkPullServer;
@@ -68,6 +70,7 @@ pub enum BootstrapMode {
 pub enum BootstrapStrategy {
     Lazy(BootstrapAttemptLazy),
     Legacy(BootstrapAttemptLegacy),
+    Wallet(BootstrapAttemptWallet),
     Other(BootstrapAttempt),
 }
 
@@ -77,6 +80,7 @@ impl BootstrapStrategy {
             BootstrapStrategy::Other(i) => i,
             BootstrapStrategy::Lazy(i) => &i.attempt,
             BootstrapStrategy::Legacy(i) => &i.attempt,
+            BootstrapStrategy::Wallet(i) => &i.attempt,
         }
     }
 
@@ -85,6 +89,7 @@ impl BootstrapStrategy {
             BootstrapStrategy::Lazy(i) => i.run(),
             BootstrapStrategy::Other(_) => {}
             BootstrapStrategy::Legacy(_) => {}
+            BootstrapStrategy::Wallet(i) => i.run(),
         }
     }
 
@@ -115,6 +120,14 @@ impl BootstrapStrategy {
                 retry_limit,
             ),
             BootstrapStrategy::Lazy(i) => i.process_block(
+                block,
+                known_account,
+                pull_blocks_processed,
+                max_blocks,
+                block_expected,
+                retry_limit,
+            ),
+            BootstrapStrategy::Wallet(i) => i.process_block(
                 block,
                 known_account,
                 pull_blocks_processed,

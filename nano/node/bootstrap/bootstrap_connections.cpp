@@ -155,7 +155,7 @@ void nano::bootstrap_connections::init_rust ()
 	handle = rsnano::rsn_bootstrap_connections_create (cpp_handle);
 }
 
-std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection (std::shared_ptr<nano::bootstrap_attempt> const & attempt_a, bool use_front_connection)
+std::tuple<std::shared_ptr<nano::bootstrap_client>, bool> nano::bootstrap_connections::connection (bool use_front_connection)
 {
 	nano::unique_lock<nano::mutex> lock{ mutex };
 	condition.wait (lock, [&stopped = stopped, &idle = idle, &new_connections_empty = new_connections_empty] { return stopped || !idle.empty () || new_connections_empty; });
@@ -173,13 +173,11 @@ std::shared_ptr<nano::bootstrap_client> nano::bootstrap_connections::connection 
 			idle.pop_front ();
 		}
 	}
-	if (result == nullptr && connections_count == 0 && new_connections_empty && attempt_a != nullptr)
+	if (result == nullptr && connections_count == 0 && new_connections_empty)
 	{
-		node.logger->debug (nano::log::type::bootstrap, "Bootstrap attempt stopped because there are no peers");
-		lock.unlock ();
-		attempt_a->stop ();
+		return {result, true}; //should stop attempt
 	}
-	return result;
+	return {result, false};//should not stop attempt
 }
 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
@@ -440,7 +438,7 @@ void nano::bootstrap_connections::add_pull (nano::pull_info const & pull_a)
 void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> & lock_a)
 {
 	lock_a.unlock ();
-	auto connection_l (connection ());
+	auto [connection_l, should_stop] (connection ());
 	lock_a.lock ();
 	if (connection_l != nullptr && !pulls.empty ())
 	{

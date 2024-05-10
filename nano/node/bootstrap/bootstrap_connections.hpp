@@ -74,7 +74,7 @@ public:
 	bootstrap_connections (bootstrap_connections const &) = delete;
 	~bootstrap_connections ();
 	void init_rust ();
-	std::shared_ptr<nano::bootstrap_client> connection (std::shared_ptr<nano::bootstrap_attempt> const & attempt_a = nullptr, bool use_front_connection = false);
+	std::tuple<std::shared_ptr<nano::bootstrap_client>, bool> connection (bool use_front_connection = false);
 	// this:
 	void pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client = false, bool push_front = false);
 	void add_connection (nano::endpoint const & endpoint_a);

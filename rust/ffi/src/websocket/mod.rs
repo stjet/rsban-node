@@ -144,19 +144,6 @@ impl Deref for WebsocketListenerHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_websocket_listener_create(
-    endpoint: &EndpointDto,
-    wallets: &LmdbWalletsHandle,
-    async_rt: &AsyncRuntimeHandle,
-) -> *mut WebsocketListenerHandle {
-    WebsocketListenerHandle::new(Arc::new(WebsocketListener::new(
-        endpoint.into(),
-        Arc::clone(wallets),
-        Arc::clone(async_rt),
-    )))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_websocket_listener_destroy(handle: *mut WebsocketListenerHandle) {
     drop(Box::from_raw(handle))
 }

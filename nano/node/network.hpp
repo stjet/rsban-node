@@ -10,7 +10,6 @@
 #include <chrono>
 #include <deque>
 #include <memory>
-#include <unordered_set>
 
 namespace nano
 {
@@ -74,7 +73,6 @@ public:
 	bool empty () const;
 	void erase (nano::transport::channel const &);
 	/** Disconnects and adds peer to exclusion list */
-	void exclude (std::shared_ptr<nano::transport::channel> const & channel);
 	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 	static std::string to_string (nano::networks);

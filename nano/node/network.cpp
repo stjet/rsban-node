@@ -537,15 +537,6 @@ void nano::network::erase (nano::transport::channel const & channel_a)
 	}
 }
 
-void nano::network::exclude (std::shared_ptr<nano::transport::channel> const & channel)
-{
-	// Add to peer exclusion list
-	tcp_channels->excluded_peers ().add (channel->get_tcp_remote_endpoint ());
-
-	// Disconnect
-	erase (*channel);
-}
-
 /*
  * syn_cookies
  */

@@ -7,6 +7,7 @@ mod bootstrap_initiator;
 mod bootstrap_lazy;
 mod bootstrap_legacy;
 mod bootstrap_server;
+mod bootstrap_wallet;
 mod bulk_pull_account_server;
 mod bulk_pull_client;
 mod bulk_pull_server;

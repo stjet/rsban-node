@@ -1,5 +1,7 @@
 use std::ffi::c_void;
 
+use rsnano_core::HashOrAccount;
+
 use super::PullInfo;
 
 pub type BootstrapInitiatorClearPullsCallback = unsafe extern "C" fn(*mut c_void, u64);
@@ -16,6 +18,11 @@ pub type BootstrapInitiatorRemoveCacheCallback = fn(*mut c_void, &PullInfo);
 pub static mut BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK: Option<
     BootstrapInitiatorRemoveCacheCallback,
 > = None;
+
+pub type BootstrapInitiatorBootstrapLazyCallback =
+    fn(*mut c_void, HashOrAccount, bool, String) -> bool;
+pub static mut BOOTSTRAP_INITIATOR_BOOTSTRAP_LAZY: Option<BootstrapInitiatorBootstrapLazyCallback> =
+    None;
 
 pub struct BootstrapInitiator {
     handle: *mut c_void,
@@ -48,6 +55,17 @@ impl BootstrapInitiator {
             BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK
                 .expect("BOOTSTRAP_INITIATOR_REMOVE_CACHE_CALLBACK missing")(
                 self.handle, pull
+            )
+        }
+    }
+
+    pub fn bootstrap_lazy(&self, hash_or_account: HashOrAccount, force: bool, id: String) -> bool {
+        unsafe {
+            BOOTSTRAP_INITIATOR_BOOTSTRAP_LAZY.expect("BOOTSTRAP_INITIATOR_BOOTSTRAP_LAZY missing")(
+                self.handle,
+                hash_or_account,
+                force,
+                id,
             )
         }
     }

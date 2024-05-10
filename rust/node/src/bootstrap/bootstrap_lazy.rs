@@ -38,7 +38,6 @@ struct LazyStateBacklogItem {
  */
 pub struct BootstrapAttemptLazy {
     pub attempt: BootstrapAttempt,
-    cpp_handle: *mut c_void,
     peer_count: usize,
     flags: NodeFlags,
     connections: Arc<BootstrapConnections>,
@@ -223,7 +222,6 @@ impl BootstrapAttemptLazy {
     const BATCH_READ_SIZE: usize = 256;
 
     pub fn new(
-        cpp_handle: *mut c_void,
         websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
@@ -235,7 +233,6 @@ impl BootstrapAttemptLazy {
         network_params: NetworkParams,
     ) -> Result<Self> {
         Ok(Self {
-            cpp_handle,
             attempt: BootstrapAttempt::new(
                 websocket_server,
                 Arc::downgrade(&block_processor),

@@ -247,6 +247,7 @@ public:
 	account_vec ();
 	explicit account_vec (rsnano::AccountVecHandle * handle);
 	account_vec (std::vector<nano::account> accounts);
+	account_vec (std::deque<nano::account> accounts);
 	~account_vec ();
 	void push (nano::account const & account);
 	std::size_t size () const;

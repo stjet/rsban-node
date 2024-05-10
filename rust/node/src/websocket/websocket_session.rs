@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{wallets::Wallets, websocket::IncomingMessage};
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::utils::{milliseconds_since_epoch, SerdePropertyTree};
+use rsnano_core::utils::SerdePropertyTree;
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -223,15 +223,14 @@ impl WebsocketSession {
             reply_action = "pong";
         }
         if ack && action_succeeded {
-            self.send_ack(reply_action, &message.id).await?;
+            self.entry
+                .write(&OutgoingMessageEnvelope::new_ack(
+                    message.id.map(|s| s.to_string()),
+                    reply_action.to_string(),
+                ))
+                .await?;
         }
         Ok(())
-    }
-
-    async fn send_ack(&self, reply_action: &str, id: &Option<&str>) -> anyhow::Result<()> {
-        let envelope =
-            OutgoingMessageEnvelope::new_ack(id.map(|s| s.to_string()), reply_action.to_string());
-        self.entry.write(&envelope).await
     }
 }
 

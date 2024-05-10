@@ -175,9 +175,9 @@ std::tuple<std::shared_ptr<nano::bootstrap_client>, bool> nano::bootstrap_connec
 	}
 	if (result == nullptr && connections_count == 0 && new_connections_empty)
 	{
-		return {result, true}; //should stop attempt
+		return { result, true }; // should stop attempt
 	}
-	return {result, false};//should not stop attempt
+	return { result, false }; // should not stop attempt
 }
 
 void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstrap_client> const & client_a, bool new_client, bool push_front)
@@ -438,7 +438,7 @@ void nano::bootstrap_connections::add_pull (nano::pull_info const & pull_a)
 void nano::bootstrap_connections::request_pull (nano::unique_lock<nano::mutex> & lock_a)
 {
 	lock_a.unlock ();
-	auto [connection_l, should_stop] (connection ());
+	auto [connection_l, should_stop](connection ());
 	lock_a.lock ();
 	if (connection_l != nullptr && !pulls.empty ())
 	{

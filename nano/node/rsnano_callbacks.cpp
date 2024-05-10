@@ -1,5 +1,6 @@
 #include "boost/thread/latch.hpp"
 #include "nano/lib/blocks.hpp"
+#include "nano/lib/numbers.hpp"
 #include "nano/node/distributed_work_factory.hpp"
 
 #include <nano/lib/config.hpp>
@@ -407,6 +408,23 @@ void bootstrap_initiator_remove_cache (void * handle_a, rsnano::PullInfoDto cons
 	bootstrap_initiator->cache.remove (pull);
 }
 
+bool bootstrap_initiator_bootstrap_lazy (void * handle_a, const uint8_t * account, bool force, const char * id, std::size_t len)
+{
+	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
+	auto acc = nano::account::from_bytes (account);
+	std::string id_string;
+	if (len > 0)
+	{
+		id_string = std::string{ id, len };
+	}
+	else
+	{
+		id_string = "";
+	}
+
+	return bootstrap_initiator->bootstrap_lazy (acc, force, id_string);
+}
+
 class async_write_callback_wrapper
 {
 public:
@@ -542,6 +560,23 @@ void add_pull (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
 	}
 }
 
+rsnano::BootstrapClientHandle * bootstrap_connections_connection (void * cpp_handle, bool use_front_connection, bool * should_stop)
+{
+	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	auto con = connections->lock ();
+	rsnano::BootstrapClientHandle * result = nullptr;
+	if (con)
+	{
+		auto [i, stop]{ con->connection (use_front_connection) };
+		*should_stop = stop;
+		if (i)
+		{
+			result = rsnano::rsn_bootstrap_client_clone (i->handle);
+		}
+	}
+	return result;
+}
+
 void wait_latch (void * latch_ptr)
 {
 	auto latch = static_cast<boost::latch *> (latch_ptr);
@@ -662,6 +697,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
 	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
 	rsnano::rsn_callback_bootstrap_initiator_remove_from_cache (bootstrap_initiator_remove_cache);
+	rsnano::rsn_callback_bootstrap_initiator_bootstrap_lazy (bootstrap_initiator_bootstrap_lazy);
 
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
@@ -682,6 +718,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
+	rsnano::rsn_callback_bootstrap_connections_connection (bootstrap_connections_connection);
 
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);
 	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);

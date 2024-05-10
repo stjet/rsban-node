@@ -1,8 +1,9 @@
 use super::{bootstrap_client::BootstrapClientHandle, pulls_cache::PullInfoDto};
 use crate::VoidPointerCallback;
 use rsnano_node::bootstrap::{
-    BootstrapConnections, ADD_PULL_CALLBACK, DROP_BOOTSTRAP_CONNECTIONS_CALLBACK,
-    POOL_CONNECTION_CALLBACK, POPULATE_CONNECTIONS_CALLBACK, REQUEUE_PULL_CALLBACK,
+    BootstrapConnections, ADD_PULL_CALLBACK, CONNECTION_CALLBACK,
+    DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, POOL_CONNECTION_CALLBACK, POPULATE_CONNECTIONS_CALLBACK,
+    REQUEUE_PULL_CALLBACK,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -39,6 +40,9 @@ pub type PopulateConnectionsCallback = unsafe extern "C" fn(*mut c_void, bool);
 
 pub type AddPullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto);
 
+pub type BootstrapConnectionsConnectionCallback =
+    unsafe extern "C" fn(*mut c_void, bool, *mut bool) -> *mut BootstrapClientHandle;
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: VoidPointerCallback) {
     unsafe {
@@ -49,6 +53,7 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: Vo
 static mut FFI_POOL_CONNECTION_CALLBACK: Option<PoolConnectionCallback> = None;
 static mut FFI_REQUEUE_PULL_CALLBACK: Option<RequeuePullCallback> = None;
 static mut FFI_ADD_PULL_CALLBACK: Option<AddPullCallback> = None;
+static mut FFI_CONNECTIONS_CALLBACK: Option<BootstrapConnectionsConnectionCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_pool_connection(
@@ -97,6 +102,33 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_add_pull(callback: A
         ADD_PULL_CALLBACK = Some(|cpp_handle, pull| {
             let pull_dto = (&pull).into();
             FFI_ADD_PULL_CALLBACK.unwrap()(cpp_handle, &pull_dto);
+        });
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_connections_connection(
+    callback: BootstrapConnectionsConnectionCallback,
+) {
+    unsafe {
+        FFI_CONNECTIONS_CALLBACK = Some(callback);
+        CONNECTION_CALLBACK = Some(|cpp_handle, use_front_connection| {
+            let mut should_stop = false;
+            let handle = FFI_CONNECTIONS_CALLBACK.unwrap()(
+                cpp_handle,
+                use_front_connection,
+                &mut should_stop,
+            );
+
+            let client = if handle.is_null() {
+                None
+            } else {
+                let client = Some(Arc::clone(&**handle));
+                drop(Box::from_raw(handle));
+                client
+            };
+
+            (client, should_stop)
         });
     }
 }

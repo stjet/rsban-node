@@ -41,14 +41,10 @@ class bootstrap_attempt_wallet final : public bootstrap_attempt
 {
 public:
 	explicit bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a = "");
-	rsnano::BootstrapAttemptLockHandle * request_pending (rsnano::BootstrapAttemptLockHandle * lock_a);
 	void requeue_pending (nano::account const &);
 	void run () override;
 	void wallet_start (std::deque<nano::account> &);
-	bool wallet_finished ();
 	std::size_t wallet_size ();
 	void get_information (boost::property_tree::ptree &) override;
-	std::weak_ptr<nano::node> node_weak;
-	std::deque<nano::account> wallet_accounts;
 };
 }

@@ -248,6 +248,15 @@ rsnano::account_vec::account_vec (std::vector<nano::account> accounts) :
 	}
 }
 
+rsnano::account_vec::account_vec (std::deque<nano::account> accounts) :
+	handle{ rsnano::rsn_account_vec_create () }
+{
+	for (const auto & i : accounts)
+	{
+		push (i);
+	}
+}
+
 std::size_t rsnano::account_vec::size () const
 {
 	return rsnano::rsn_account_vec_len (handle);

@@ -22,6 +22,9 @@ pub static mut REQUEUE_PULL_CALLBACK: Option<fn(*mut c_void, PullInfo, bool)> = 
 pub static mut POPULATE_CONNECTIONS_CALLBACK: Option<unsafe extern "C" fn(*mut c_void, bool)> =
     None;
 pub static mut ADD_PULL_CALLBACK: Option<fn(*mut c_void, PullInfo)> = None;
+pub static mut CONNECTION_CALLBACK: Option<
+    fn(*mut c_void, bool) -> (Option<Arc<BootstrapClient>>, bool),
+> = None;
 
 impl Drop for BootstrapConnections {
     fn drop(&mut self) {
@@ -77,6 +80,11 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     }
 
     fn connection(&self, use_front_connection: bool) -> (Option<Arc<BootstrapClient>>, bool) {
-        todo!("NOT IMPLEMENTED YET")
+        unsafe {
+            CONNECTION_CALLBACK.expect("CONNECTION_CALLBACK missing")(
+                self.cpp_handle,
+                use_front_connection,
+            )
+        }
     }
 }

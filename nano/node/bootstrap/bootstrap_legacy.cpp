@@ -150,8 +150,9 @@ bool nano::bootstrap_attempt_legacy::request_frontier (rsnano::BootstrapAttemptL
 	}
 	auto result (true);
 	rsnano::rsn_bootstrap_attempt_unlock (*lock_a);
-	auto [connection_l, should_stop] (node->bootstrap_initiator.connections->connection (first_attempt));
-	if (should_stop){
+	auto [connection_l, should_stop](node->bootstrap_initiator.connections->connection (first_attempt));
+	if (should_stop)
+	{
 		node->logger->debug (nano::log::type::bootstrap, "Bootstrap attempt stopped because there are no peers");
 		stop ();
 	}

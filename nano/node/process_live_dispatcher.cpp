@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/process_live_dispatcher.hpp>
@@ -9,47 +11,16 @@
 #include <nano/store/component.hpp>
 
 nano::process_live_dispatcher::process_live_dispatcher (nano::ledger & ledger, nano::scheduler::priority & scheduler, nano::vote_cache & vote_cache, nano::websocket_server & websocket) :
-	ledger{ ledger },
-	scheduler{ scheduler },
-	vote_cache{ vote_cache },
-	websocket{ websocket }
+	handle{ rsnano::rsn_process_live_dispatcher_create (ledger.handle, scheduler.handle, websocket.get_handle ()) }
 {
+}
+
+nano::process_live_dispatcher::~process_live_dispatcher ()
+{
+	rsnano::rsn_process_live_dispatcher_destroy (handle);
 }
 
 void nano::process_live_dispatcher::connect (nano::block_processor & block_processor)
 {
-	block_processor.add_batch_processed_observer ([this] (auto const & batch) {
-		auto const transaction = ledger.store.tx_begin_read ();
-		for (auto const & [result, block, source] : batch)
-		{
-			debug_assert (block != nullptr);
-			inspect (result, *block, *transaction);
-		}
-	});
-}
-
-void nano::process_live_dispatcher::inspect (nano::block_status const & result, nano::block const & block, store::transaction const & transaction)
-{
-	switch (result)
-	{
-		case nano::block_status::progress:
-			process_live (block, transaction);
-			break;
-		default:
-			break;
-	}
-}
-
-void nano::process_live_dispatcher::process_live (nano::block const & block, store::transaction const & transaction)
-{
-	// Start collecting quorum on block
-	if (ledger.dependents_confirmed (transaction, block))
-	{
-		scheduler.activate (block.account (), transaction);
-	}
-
-	if (websocket.server && websocket.server->any_subscriber (nano::websocket::topic::new_unconfirmed_block))
-	{
-		websocket.server->broadcast (nano::websocket::message_builder ().new_block_arrived (block));
-	}
+	rsnano::rsn_process_live_dispatcher_connect (handle, block_processor.handle);
 }

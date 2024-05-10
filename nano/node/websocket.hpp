@@ -159,6 +159,7 @@ public:
 	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a,
 	nano::wallets & wallets_a, nano::active_transactions & active_transactions_a,
 	nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a);
+	rsnano::WebsocketListenerHandle * get_handle ();
 
 	void start ();
 	void stop ();

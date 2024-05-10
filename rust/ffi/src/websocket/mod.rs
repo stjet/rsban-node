@@ -68,7 +68,7 @@ pub unsafe extern "C" fn rsn_message_builder_telemetry_received(
 pub unsafe extern "C" fn rsn_message_builder_new_block_arrived(
     block: &BlockHandle,
 ) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::new_block_arrived(&**block).unwrap();
+    let message = MessageBuilder::new_block_arrived(&**block);
     WebsocketMessageHandle::new(message)
 }
 

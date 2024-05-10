@@ -297,16 +297,12 @@ impl MessageBuilder {
         }
     }
 
-    pub fn new_block_arrived(block: &BlockEnum) -> Result<OutgoingMessageEnvelope> {
+    pub fn new_block_arrived(block: &BlockEnum) -> OutgoingMessageEnvelope {
         let mut json_block = SerdePropertyTree::new();
-        block.serialize_json(&mut json_block)?;
+        block.serialize_json(&mut json_block).unwrap();
         let subtype = block.sideband().unwrap().details.state_subtype();
-        json_block.put_string("subtype", subtype)?;
-        {
-            let topic = Topic::NewUnconfirmedBlock;
-            let message = json_block.value;
-            Ok(OutgoingMessageEnvelope::new(topic, message))
-        }
+        json_block.put_string("subtype", subtype).unwrap();
+        OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value)
     }
 
     pub fn started_election(hash: &BlockHash) -> Result<OutgoingMessageEnvelope> {

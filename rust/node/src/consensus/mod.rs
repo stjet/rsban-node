@@ -29,6 +29,7 @@ pub use local_vote_history::*;
 pub use manual_scheduler::*;
 pub use optimistic_scheduler::*;
 pub use priority_scheduler::*;
+pub use process_live_dispatcher::*;
 pub use recently_confirmed_cache::*;
 pub use rep_tiers::*;
 pub use request_aggregator::*;

@@ -7,6 +7,7 @@ mod local_vote_history;
 mod manual_scheduler;
 mod optimistic_scheduler;
 mod priority_scheduler;
+mod process_live_dispatcher;
 mod recently_cemented_cache;
 mod rep_tiers;
 mod request_aggregator;

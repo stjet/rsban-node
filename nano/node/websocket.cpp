@@ -151,3 +151,13 @@ void nano::websocket_server::stop ()
 		server->stop ();
 	}
 }
+
+rsnano::WebsocketListenerHandle * nano::websocket_server::get_handle ()
+{
+	if (server)
+	{
+		return server->handle;
+	}
+
+	return nullptr;
+}

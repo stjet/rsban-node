@@ -9,10 +9,19 @@ use rsnano_core::Account;
 use rsnano_node::consensus::{PriorityScheduler, PrioritySchedulerExt};
 use std::{
     ffi::{c_char, CStr},
+    ops::Deref,
     sync::Arc,
 };
 
 pub struct ElectionSchedulerHandle(Arc<PriorityScheduler>);
+
+impl Deref for ElectionSchedulerHandle {
+    type Target = Arc<PriorityScheduler>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_election_scheduler_create(

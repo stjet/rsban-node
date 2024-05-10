@@ -1,4 +1,8 @@
 #pragma once
+namespace rsnano
+{
+class ProcessLiveDispatcherHandle;
+}
 
 namespace nano::store
 {
@@ -24,16 +28,10 @@ class process_live_dispatcher
 {
 public:
 	process_live_dispatcher (nano::ledger &, nano::scheduler::priority &, nano::vote_cache &, nano::websocket_server &);
+	process_live_dispatcher (process_live_dispatcher const &) = delete;
+	~process_live_dispatcher ();
 	void connect (nano::block_processor & block_processor);
 
-private:
-	// Block_processor observer
-	void inspect (nano::block_status const & result, nano::block const & block, store::transaction const & transaction);
-	void process_live (nano::block const & block, store::transaction const & transaction);
-
-	nano::ledger & ledger;
-	nano::scheduler::priority & scheduler;
-	nano::vote_cache & vote_cache;
-	nano::websocket_server & websocket;
+	rsnano::ProcessLiveDispatcherHandle * handle;
 };
 }

@@ -157,71 +157,9 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_run(handle: &BootstrapAttemptHand
     handle.0.run()
 }
 
-pub struct BootstrapAttemptLockHandle(Option<MutexGuard<'static, u8>>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lock(
-    handle: *mut BootstrapAttemptHandle,
-) -> *mut BootstrapAttemptLockHandle {
-    let guard = (*handle).0.attempt().mutex.lock().unwrap();
-    Box::into_raw(Box::new(BootstrapAttemptLockHandle(Some(
-        std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard),
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_unlock(handle: *mut BootstrapAttemptLockHandle) {
-    drop(Box::from_raw(handle));
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_notifiy_all(handle: *mut BootstrapAttemptHandle) {
     (*handle).0.attempt().condition.notify_all();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_until_block_processor_empty(
-    handle: &BootstrapAttemptHandle,
-    lck: &mut BootstrapAttemptLockHandle,
-) {
-    let guard = lck.0.take().unwrap();
-    let guard = handle
-        .0
-        .attempt()
-        .wait_until_block_processor_empty(guard, BlockSource::BootstrapLegacy);
-    lck.0 = Some(guard);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_wait(
-    handle: *mut BootstrapAttemptHandle,
-    lck: *mut BootstrapAttemptLockHandle,
-) {
-    let guard = (*handle)
-        .0
-        .attempt()
-        .condition
-        .wait((*lck).0.take().unwrap())
-        .unwrap();
-    (*lck).0 = Some(std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_wait_for(
-    handle: *mut BootstrapAttemptHandle,
-    lck: *mut BootstrapAttemptLockHandle,
-    timeout_millis: u64,
-) {
-    let (guard, _) = (*handle)
-        .0
-        .attempt()
-        .condition
-        .wait_timeout(
-            (*lck).0.take().unwrap(),
-            Duration::from_millis(timeout_millis),
-        )
-        .unwrap();
-    (*lck).0 = Some(std::mem::transmute::<MutexGuard<u8>, MutexGuard<'static, u8>>(guard));
 }
 
 #[no_mangle]

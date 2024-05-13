@@ -20,7 +20,6 @@ namespace transport
 
 class bootstrap_attempt;
 class bootstrap_connections;
-class frontier_req_client;
 class pull_info;
 
 class bootstrap_client_observer

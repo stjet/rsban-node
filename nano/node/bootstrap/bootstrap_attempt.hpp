@@ -14,9 +14,6 @@ namespace nano
 {
 class node;
 
-class frontier_req_client;
-class bulk_push_client;
-
 /**
  * Polymorphic base class for bootstrap sessions.
  */

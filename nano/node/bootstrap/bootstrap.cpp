@@ -14,8 +14,8 @@ nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
 	node (node_a),
 	handle{ rsnano::rsn_bootstrap_initiator_create (this) }
 {
-	connections = std::make_shared<nano::bootstrap_connections> (node);
-	connections->init_rust ();
+	connections = std::make_shared<nano::bootstrap_connections> (node, *this);
+
 	bootstrap_initiator_threads.push_back (boost::thread ([this] () {
 		nano::thread_role::set (nano::thread_role::name::bootstrap_connections);
 		connections->run ();
@@ -196,7 +196,6 @@ void nano::bootstrap_initiator::remove_attempt (std::shared_ptr<nano::bootstrap_
 		auto attempt_ptr = attempt->second;
 		attempts.remove (attempt_ptr->get_incremental_id ());
 		attempts_list.erase (attempt);
-		std::cout << "attempts.size(): " << attempts.size() << ", attempts_list.size(): " << attempts_list.size() << std::endl;
 		debug_assert (attempts.size () == attempts_list.size ());
 		lock.unlock ();
 		attempt_ptr->stop ();

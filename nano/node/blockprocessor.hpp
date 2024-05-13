@@ -33,7 +33,6 @@ class active_transactions;
 class election_scheduler;
 class unchecked_map;
 class gap_cache;
-class bootstrap_initiator;
 class vote_cache;
 class signature_checker;
 

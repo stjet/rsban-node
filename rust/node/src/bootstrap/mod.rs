@@ -24,16 +24,10 @@ use std::sync::Arc;
 
 pub use ascending::*;
 pub use bootstrap_attempt::*;
+pub use bootstrap_attempts::BootstrapAttempts;
+pub use bootstrap_client::BootstrapClient;
 pub use bootstrap_connections::*;
 pub use bootstrap_initiator::*;
-pub use frontier_req_client::*;
-pub use frontier_req_server::FrontierReqServer;
-
-pub use bootstrap_client::{
-    BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr,
-};
-
-pub use bootstrap_attempts::BootstrapAttempts;
 pub use bootstrap_lazy::*;
 pub use bootstrap_legacy::*;
 pub use bootstrap_message_visitor::BootstrapMessageVisitorImpl;
@@ -46,6 +40,8 @@ pub use bulk_pull_server::BulkPullServer;
 pub use bulk_push_client::*;
 pub use bulk_push_server::BulkPushServer;
 pub use channel_entry::ChannelEntry;
+pub use frontier_req_client::*;
+pub use frontier_req_server::FrontierReqServer;
 pub use pulls_cache::{PullInfo, PullsCache};
 use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
 
@@ -56,6 +52,10 @@ pub mod bootstrap_limits {
     pub const BOOTSTRAP_CONNECTION_WARMUP_TIME_SEC: f64 = 5.0;
     pub const BOOTSTRAP_MINIMUM_ELAPSED_SECONDS_BLOCKRATE: f64 = 0.02;
     pub const BOOTSTRAP_MINIMUM_FRONTIER_BLOCKS_PER_SEC: f64 = 1000.0;
+    pub const BOOTSTRAP_MINIMUM_BLOCKS_PER_SEC: f64 = 10.0;
+    pub const BOOTSTRAP_MINIMUM_TERMINATION_TIME_SEC: f64 = 30.0;
+    pub const BOOTSTRAP_MAX_NEW_CONNECTIONS: u32 = 32;
+    pub const REQUEUED_PULLS_PROCESSED_BLOCKS_FACTOR: u32 = 4096;
     pub const LAZY_BATCH_PULL_COUNT_RESIZE_BLOCKS_LIMIT: u64 = 4 * 1024 * 1024;
     pub const LAZY_BATCH_PULL_COUNT_RESIZE_RATIO: f64 = 2.0;
     pub const BULK_PUSH_COST_LIMIT: u64 = 200;

@@ -3,15 +3,14 @@ use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 use crate::{
     messages::MessageHandle,
     transport::{
-        ChannelHandle, ChannelTcpSendBufferCallback, ChannelTcpSendCallback,
-        ChannelTcpSendCallbackWrapper, EndpointDto, ReadCallbackWrapper, SendBufferCallbackWrapper,
-        SocketDestroyContext, SocketHandle, SocketReadCallback,
+        ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
+        EndpointDto, ReadCallbackWrapper, SendBufferCallbackWrapper, SocketDestroyContext,
+        SocketHandle, SocketReadCallback,
     },
-    utils::AsyncRuntimeHandle,
     StringDto, VoidPointerCallback,
 };
 use rsnano_node::{
-    bootstrap::{BootstrapClient, BootstrapClientObserver, BootstrapClientObserverWeakPtr},
+    bootstrap::BootstrapClient,
     transport::{BufferDropPolicy, TrafficType},
 };
 
@@ -25,23 +24,6 @@ impl Deref for BootstrapClientHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-/// `observer` is a `shared_ptr<bootstrap_client_observer>*`
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_client_create(
-    async_rt: *mut AsyncRuntimeHandle,
-    observer: *mut c_void,
-    channel: &ChannelHandle,
-    socket: *mut SocketHandle,
-) -> *mut BootstrapClientHandle {
-    let observer = Arc::new(FfiBootstrapClientObserver::new(observer));
-    let channel = Arc::clone(channel);
-    let socket = (*socket).deref().clone();
-    let async_rt = Arc::clone(&(*async_rt).0);
-    Box::into_raw(Box::new(BootstrapClientHandle(Arc::new(
-        BootstrapClient::new(async_rt, observer, channel, socket),
-    ))))
 }
 
 #[no_mangle]
@@ -248,116 +230,4 @@ pub unsafe extern "C" fn rsn_bootstrap_client_stop(
     force: bool,
 ) {
     (*handle).0.stop(force);
-}
-
-struct FfiBootstrapClientObserver {
-    /// a `shared_ptr<bootstrap_client_observer>*`
-    handle: *mut c_void,
-}
-
-impl FfiBootstrapClientObserver {
-    fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-unsafe impl Send for FfiBootstrapClientObserver {}
-unsafe impl Sync for FfiBootstrapClientObserver {}
-
-impl BootstrapClientObserver for FfiBootstrapClientObserver {
-    fn bootstrap_client_closed(&self) {
-        unsafe {
-            CLIENT_CLOSED.expect("CLIENT_CLOSED missing")(self.handle);
-        }
-    }
-
-    fn to_weak(&self) -> Box<dyn BootstrapClientObserverWeakPtr> {
-        let weak_handle =
-            unsafe { OBSERVER_TO_WEAK.expect("OBSERVER_TO_WEAK missing")(self.handle) };
-        Box::new(FfiBootstrapClientObserverWeakPtr::new(weak_handle))
-    }
-}
-
-impl Drop for FfiBootstrapClientObserver {
-    fn drop(&mut self) {
-        unsafe { DROP_OBSERVER.expect("DROP_OBSERVER missing")(self.handle) }
-    }
-}
-
-struct FfiBootstrapClientObserverWeakPtr {
-    /// a `weak_ptr<bootstrap_client_observer>*`
-    handle: *mut c_void,
-}
-
-unsafe impl Send for FfiBootstrapClientObserverWeakPtr {}
-unsafe impl Sync for FfiBootstrapClientObserverWeakPtr {}
-
-impl FfiBootstrapClientObserverWeakPtr {
-    fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-impl BootstrapClientObserverWeakPtr for FfiBootstrapClientObserverWeakPtr {
-    fn upgrade(&self) -> Option<Arc<dyn BootstrapClientObserver>> {
-        let observer_handle =
-            unsafe { WEAK_TO_OBSERVER.expect("WEAK_TO_OBSERVER missing")(self.handle) };
-        if observer_handle.is_null() {
-            None
-        } else {
-            Some(Arc::new(FfiBootstrapClientObserver::new(observer_handle)))
-        }
-    }
-}
-
-impl Drop for FfiBootstrapClientObserverWeakPtr {
-    fn drop(&mut self) {
-        unsafe { DROP_WEAK.expect("DROP_WEAK missing")(self.handle) }
-    }
-}
-
-pub type BootstrapClientClosedCallback = unsafe extern "C" fn(*mut c_void);
-
-static mut CLIENT_CLOSED: Option<BootstrapClientClosedCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_closed(
-    f: BootstrapClientClosedCallback,
-) {
-    CLIENT_CLOSED = Some(f);
-}
-
-/// takes a `shared_ptr<bootstrap_client_observer>*` and
-pub type BootstrapClientObserverToWeakCallback = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
-
-static mut OBSERVER_TO_WEAK: Option<BootstrapClientObserverToWeakCallback> = None;
-static mut WEAK_TO_OBSERVER: Option<BootstrapClientObserverToWeakCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_to_weak(
-    f: BootstrapClientObserverToWeakCallback,
-) {
-    OBSERVER_TO_WEAK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_weak_to_observer(
-    f: BootstrapClientObserverToWeakCallback,
-) {
-    WEAK_TO_OBSERVER = Some(f);
-}
-
-static mut DROP_WEAK: Option<VoidPointerCallback> = None;
-static mut DROP_OBSERVER: Option<VoidPointerCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_destroy(f: VoidPointerCallback) {
-    DROP_OBSERVER = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_client_observer_weak_destroy(
-    f: VoidPointerCallback,
-) {
-    DROP_WEAK = Some(f);
 }

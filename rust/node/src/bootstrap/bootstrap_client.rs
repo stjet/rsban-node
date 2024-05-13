@@ -1,4 +1,4 @@
-use super::bootstrap_limits;
+use super::{bootstrap_limits, BootstrapConnections};
 use crate::{
     transport::{
         BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket,
@@ -11,24 +11,15 @@ use std::{
     net::{Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
 };
 use tokio::task::spawn_blocking;
 
-pub trait BootstrapClientObserver: Send + Sync {
-    fn bootstrap_client_closed(&self);
-    fn to_weak(&self) -> Box<dyn BootstrapClientObserverWeakPtr>;
-}
-
-pub trait BootstrapClientObserverWeakPtr: Send + Sync {
-    fn upgrade(&self) -> Option<Arc<dyn BootstrapClientObserver>>;
-}
-
 pub struct BootstrapClient {
     async_rt: Arc<AsyncRuntime>,
-    observer: Box<dyn BootstrapClientObserverWeakPtr>,
+    observer: Weak<BootstrapConnections>,
     channel: Arc<ChannelEnum>,
     socket: Arc<Socket>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
@@ -42,7 +33,7 @@ pub struct BootstrapClient {
 impl BootstrapClient {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
-        observer: Arc<dyn BootstrapClientObserver>,
+        observer: &Arc<BootstrapConnections>,
         channel: Arc<ChannelEnum>,
         socket: Arc<Socket>,
     ) -> Self {
@@ -51,7 +42,7 @@ impl BootstrapClient {
         }
         Self {
             async_rt,
-            observer: observer.to_weak(),
+            observer: Arc::downgrade(observer),
             channel,
             socket,
             receive_buffer: Arc::new(Mutex::new(vec![0; 256])),

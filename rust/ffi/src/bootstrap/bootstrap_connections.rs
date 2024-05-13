@@ -1,10 +1,16 @@
-use super::{bootstrap_client::BootstrapClientHandle, pulls_cache::PullInfoDto};
-use crate::{transport::EndpointDto, VoidPointerCallback};
-use rsnano_node::bootstrap::{
-    BootstrapConnections, ADD_PULL_CALLBACK, CONNECTION_CALLBACK,
-    DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, FIND_CONNECTION_CALLBACK, POOL_CONNECTION_CALLBACK,
-    POPULATE_CONNECTIONS_CALLBACK, REQUEUE_PULL_CALLBACK,
+use super::{
+    bootstrap_attempts::BootstrapAttemptsHandle, pulls_cache::PullsCacheHandle,
+    BootstrapInitiatorHandle,
 };
+use crate::{
+    block_processing::BlockProcessorHandle,
+    transport::{
+        EndpointDto, OutboundBandwidthLimiterHandle, SocketFfiObserver, TcpChannelsHandle,
+    },
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    FfiPropertyTree, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+};
+use rsnano_node::bootstrap::{BootstrapConnections, BootstrapConnectionsExt};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BootstrapConnectionsHandle(Arc<BootstrapConnections>);
@@ -19,10 +25,37 @@ impl Deref for BootstrapConnectionsHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_connections_create(
-    cpp_handle: *mut c_void,
+    attempts: &BootstrapAttemptsHandle,
+    config: &NodeConfigDto,
+    flags: &NodeFlagsHandle,
+    channels: &TcpChannelsHandle,
+    async_rt: &AsyncRuntimeHandle,
+    workers: &ThreadPoolHandle,
+    network_params: &NetworkParamsDto,
+    observers: *mut c_void,
+    stats: &StatHandle,
+    outbound_limiter: &OutboundBandwidthLimiterHandle,
+    block_processor: &BlockProcessorHandle,
+    bootstrap_initiator: &BootstrapInitiatorHandle,
+    pulls_cache: &PullsCacheHandle,
 ) -> *mut BootstrapConnectionsHandle {
+    let ffi_observer = Arc::new(SocketFfiObserver::new(observers));
     Box::into_raw(Box::new(BootstrapConnectionsHandle(Arc::new(
-        BootstrapConnections::new(cpp_handle),
+        BootstrapConnections::new(
+            Arc::clone(attempts),
+            config.try_into().unwrap(),
+            flags.lock().unwrap().clone(),
+            Arc::clone(channels),
+            Arc::clone(async_rt),
+            Arc::clone(workers),
+            network_params.try_into().unwrap(),
+            ffi_observer,
+            Arc::clone(stats),
+            Arc::clone(&outbound_limiter),
+            Arc::clone(&block_processor),
+            Arc::clone(&bootstrap_initiator),
+            Arc::clone(&pulls_cache),
+        ),
     ))))
 }
 
@@ -31,128 +64,55 @@ pub unsafe extern "C" fn rsn_bootstrap_connections_drop(handle: *mut BootstrapCo
     drop(Box::from_raw(handle));
 }
 
-pub type PoolConnectionCallback =
-    unsafe extern "C" fn(*mut c_void, *mut BootstrapClientHandle, bool, bool);
-
-pub type RequeuePullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto, bool);
-
-pub type PopulateConnectionsCallback = unsafe extern "C" fn(*mut c_void, bool);
-
-pub type AddPullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto);
-
-pub type BootstrapConnectionsConnectionCallback =
-    unsafe extern "C" fn(*mut c_void, bool, *mut bool) -> *mut BootstrapClientHandle;
-
-pub type BootstrapConnectionsFindConnectionCallback =
-    unsafe extern "C" fn(*mut c_void, *const EndpointDto) -> *mut BootstrapClientHandle;
-
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: VoidPointerCallback) {
-    unsafe {
-        DROP_BOOTSTRAP_CONNECTIONS_CALLBACK = Some(callback);
-    }
-}
-
-static mut FFI_POOL_CONNECTION_CALLBACK: Option<PoolConnectionCallback> = None;
-static mut FFI_REQUEUE_PULL_CALLBACK: Option<RequeuePullCallback> = None;
-static mut FFI_ADD_PULL_CALLBACK: Option<AddPullCallback> = None;
-static mut FFI_CONNECTIONS_CALLBACK: Option<BootstrapConnectionsConnectionCallback> = None;
-static mut FFI_FIND_CONNECTION_CALLBACK: Option<BootstrapConnectionsFindConnectionCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_pool_connection(
-    callback: PoolConnectionCallback,
+pub extern "C" fn rsn_bootstrap_connections_add_connection(
+    handle: &BootstrapConnectionsHandle,
+    endpoint: &EndpointDto,
 ) {
-    unsafe {
-        FFI_POOL_CONNECTION_CALLBACK = Some(callback);
-        POOL_CONNECTION_CALLBACK = Some(|cpp_handle, client, new_client, push_front| {
-            let client_handle = Box::into_raw(Box::new(BootstrapClientHandle(client)));
-            FFI_POOL_CONNECTION_CALLBACK.unwrap()(
-                cpp_handle,
-                client_handle,
-                new_client,
-                push_front,
-            );
-        });
-    }
+    handle.add_connection(endpoint.into());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_requeue_pull(
-    callback: RequeuePullCallback,
+pub extern "C" fn rsn_bootstrap_connections_target_connections(
+    handle: &BootstrapConnectionsHandle,
+    pulls_remaining: usize,
+    attempts_count: usize,
+) -> u32 {
+    handle.target_connections(pulls_remaining, attempts_count)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_bootstrap_connections_clear_pulls(
+    handle: &BootstrapConnectionsHandle,
+    bootstrap_id: u64,
 ) {
-    unsafe {
-        FFI_REQUEUE_PULL_CALLBACK = Some(callback);
-        REQUEUE_PULL_CALLBACK = Some(|cpp_handle, pull, network_error| {
-            let pull_dto = (&pull).into();
-            FFI_REQUEUE_PULL_CALLBACK.unwrap()(cpp_handle, &pull_dto, network_error);
-        });
-    }
+    handle.clear_pulls(bootstrap_id)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_populate_connections(
-    callback: PopulateConnectionsCallback,
+pub extern "C" fn rsn_bootstrap_connections_run(handle: &BootstrapConnectionsHandle) {
+    handle.run();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_bootstrap_connections_stop(handle: &BootstrapConnectionsHandle) {
+    handle.stop();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_bootstrap_connections_bootstrap_status(
+    handle: &BootstrapConnectionsHandle,
+    tree: *mut c_void,
+    attempts_count: usize,
 ) {
-    unsafe {
-        POPULATE_CONNECTIONS_CALLBACK = Some(callback);
-    }
+    handle.bootstrap_status(&mut FfiPropertyTree::new_borrowed(tree), attempts_count);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_add_pull(callback: AddPullCallback) {
-    unsafe {
-        FFI_ADD_PULL_CALLBACK = Some(callback);
-        ADD_PULL_CALLBACK = Some(|cpp_handle, pull| {
-            let pull_dto = (&pull).into();
-            FFI_ADD_PULL_CALLBACK.unwrap()(cpp_handle, &pull_dto);
-        });
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_connection(
-    callback: BootstrapConnectionsConnectionCallback,
-) {
-    unsafe {
-        FFI_CONNECTIONS_CALLBACK = Some(callback);
-        CONNECTION_CALLBACK = Some(|cpp_handle, use_front_connection| {
-            let mut should_stop = true;
-            let handle = FFI_CONNECTIONS_CALLBACK.unwrap()(
-                cpp_handle,
-                use_front_connection,
-                &mut should_stop,
-            );
-
-            let client = if handle.is_null() {
-                None
-            } else {
-                let client = Some(Arc::clone(&**handle));
-                drop(Box::from_raw(handle));
-                client
-            };
-
-            (client, should_stop)
-        });
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_bootstrap_connections_find_connection(
-    callback: BootstrapConnectionsFindConnectionCallback,
-) {
-    unsafe {
-        FFI_FIND_CONNECTION_CALLBACK = Some(callback);
-        FIND_CONNECTION_CALLBACK = Some(|cpp_handle, endpoint| {
-            let endpoint_dto = EndpointDto::from(endpoint);
-            let client_handle = FFI_FIND_CONNECTION_CALLBACK.unwrap()(cpp_handle, &endpoint_dto);
-            if client_handle.is_null() {
-                None
-            } else {
-                let client = Some(Arc::clone(&**client_handle));
-                drop(Box::from_raw(client_handle));
-                client
-            }
-        });
-    }
+pub extern "C" fn rsn_bootstrap_connections_connections_count(
+    handle: &BootstrapConnectionsHandle,
+) -> u32 {
+    handle
+        .connections_count
+        .load(std::sync::atomic::Ordering::SeqCst)
 }

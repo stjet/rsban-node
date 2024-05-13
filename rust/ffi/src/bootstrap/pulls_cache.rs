@@ -1,9 +1,20 @@
-use std::sync::Mutex;
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 use rsnano_core::{BlockHash, HashOrAccount};
 use rsnano_node::bootstrap::{PullInfo, PullsCache};
 
-pub struct PullsCacheHandle(Mutex<PullsCache>);
+pub struct PullsCacheHandle(Arc<Mutex<PullsCache>>);
+
+impl Deref for PullsCacheHandle {
+    type Target = Arc<Mutex<PullsCache>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[repr(C)]
 pub struct PullInfoDto {
@@ -52,7 +63,9 @@ impl From<&PullInfo> for PullInfoDto {
 
 #[no_mangle]
 pub extern "C" fn rsn_pulls_cache_create() -> *mut PullsCacheHandle {
-    Box::into_raw(Box::new(PullsCacheHandle(Mutex::new(PullsCache::new()))))
+    Box::into_raw(Box::new(PullsCacheHandle(Arc::new(Mutex::new(
+        PullsCache::new(),
+    )))))
 }
 
 #[no_mangle]

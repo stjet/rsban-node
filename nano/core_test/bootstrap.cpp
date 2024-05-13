@@ -547,12 +547,13 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	ASSERT_TIMELY (2s, attempt->get_frontiers_received ());
 	// Add non-existing pull & stop remote peer
 	{
-		nano::unique_lock<nano::mutex> lock{ node1->bootstrap_initiator.connections->mutex };
-		ASSERT_FALSE (attempt->get_stopped ());
-		attempt->inc_pulling ();
-		node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->get_incremental_id ());
-		node1->bootstrap_initiator.connections->request_pull (lock);
-		node2->stop ();
+		// todo:
+		// nano::unique_lock<nano::mutex> lock{ node1->bootstrap_initiator.connections->mutex };
+		// ASSERT_FALSE (attempt->get_stopped ());
+		// attempt->inc_pulling ();
+		// node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->get_incremental_id ());
+		// node1->bootstrap_initiator.connections->request_pull (lock);
+		// node2->stop ();
 	}
 	ASSERT_TIMELY (5s, attempt == nullptr || attempt->get_requeued_pulls () == 1);
 	ASSERT_EQ (0, node1->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
@@ -2164,7 +2165,7 @@ TEST (bulk, genesis_pruning)
 	ASSERT_TIMELY_EQ (5s, 3, node2->ledger.block_count ());
 
 	// New bootstrap to sync up everything
-	ASSERT_TIMELY_EQ (5s, node2->bootstrap_initiator.connections->connections_count, 0);
+	ASSERT_TIMELY_EQ (5s, node2->bootstrap_initiator.connections->get_connections_count (), 0);
 	node2->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
 	ASSERT_TIMELY_EQ (5s, node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	node2->stop ();

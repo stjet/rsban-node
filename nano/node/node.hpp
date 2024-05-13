@@ -149,7 +149,6 @@ public:
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry; // ported
-	nano::bootstrap_initiator bootstrap_initiator;
 	nano::bootstrap_server bootstrap_server;
 	std::filesystem::path application_path;
 	nano::port_mapping port_mapping;
@@ -162,6 +161,7 @@ public:
 	nano::confirming_set confirming_set; // ported
 	nano::vote_cache vote_cache; // ported
 	nano::block_processor block_processor; // ported
+	nano::bootstrap_initiator bootstrap_initiator;
 	nano::wallets wallets; // mostly ported
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported

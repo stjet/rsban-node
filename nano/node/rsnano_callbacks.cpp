@@ -475,125 +475,6 @@ void tcp_socket_delete_callback (void * handle_a)
 	delete callback;
 };
 
-void bootstrap_client_observer_closed (void * handle_a)
-{
-	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
-	(*observer)->bootstrap_client_closed ();
-}
-
-void bootstrap_client_observer_destroy (void * handle_a)
-{
-	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
-	delete observer;
-}
-
-void * bootstrap_client_observer_to_weak (void * handle_a)
-{
-	auto observer{ static_cast<std::shared_ptr<nano::bootstrap_client_observer> *> (handle_a) };
-	return new std::weak_ptr<nano::bootstrap_client_observer> (*observer);
-}
-
-void * bootstrap_client_weak_to_observer (void * handle_a)
-{
-	auto weak{ static_cast<std::weak_ptr<nano::bootstrap_client_observer> *> (handle_a) };
-	auto observer = (*weak).lock ();
-	void * result = nullptr;
-	if (observer)
-		result = new std::shared_ptr<nano::bootstrap_client_observer> (observer);
-	return result;
-}
-
-void bootstrap_client_observer_weak_destroy (void * handle_a)
-{
-	auto observer{ static_cast<std::weak_ptr<nano::bootstrap_client_observer> *> (handle_a) };
-	delete observer;
-}
-
-void delete_bootstrap_connections (void * cpp_handle)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	delete connections;
-}
-
-void pool_connection (void * cpp_handle, rsnano::BootstrapClientHandle * client_handle, bool new_client, bool push_front)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto client = std::make_shared<nano::bootstrap_client> (client_handle);
-	auto con = connections->lock ();
-	if (con)
-	{
-		con->pool_connection (client, new_client, push_front);
-	}
-}
-
-void requeue_pull (void * cpp_handle, rsnano::PullInfoDto const * pull_dto, bool network_error)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	nano::pull_info pull;
-	pull.load_dto (*pull_dto);
-	auto con = connections->lock ();
-	if (con)
-	{
-		con->requeue_pull (pull, network_error);
-	}
-}
-
-void populate_connections (void * cpp_handle, bool repeat)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto con = connections->lock ();
-	if (con)
-	{
-		con->populate_connections (repeat);
-	}
-}
-
-void add_pull (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	nano::pull_info pull;
-	pull.load_dto (*pull_dto);
-	auto con = connections->lock ();
-	if (con)
-	{
-		con->add_pull (pull);
-	}
-}
-
-rsnano::BootstrapClientHandle * bootstrap_connections_connection (void * cpp_handle, bool use_front_connection, bool * should_stop)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto con = connections->lock ();
-	rsnano::BootstrapClientHandle * result = nullptr;
-	if (con)
-	{
-		auto [i, stop]{ con->connection (use_front_connection) };
-		*should_stop = stop;
-		if (i)
-		{
-			result = rsnano::rsn_bootstrap_client_clone (i->handle);
-		}
-	}
-	return result;
-}
-
-rsnano::BootstrapClientHandle * bootstrap_connections_find_connection (void * cpp_handle, rsnano::EndpointDto const * endpoint)
-{
-	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
-	auto con = connections->lock ();
-	rsnano::BootstrapClientHandle * result = nullptr;
-	if (con)
-	{
-		auto ep{ rsnano::dto_to_endpoint (*endpoint) };
-		auto client{ con->find_connection (ep) };
-		if (client)
-		{
-			result = rsnano::rsn_bootstrap_client_clone (client->handle);
-		}
-	}
-	return result;
-}
-
 void wait_latch (void * latch_ptr)
 {
 	auto latch = static_cast<boost::latch *> (latch_ptr);
@@ -687,23 +568,10 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 
-	rsnano::rsn_callback_bootstrap_client_observer_closed (bootstrap_client_observer_closed);
-	rsnano::rsn_callback_bootstrap_client_observer_destroy (bootstrap_client_observer_destroy);
-	rsnano::rsn_callback_bootstrap_client_observer_to_weak (bootstrap_client_observer_to_weak);
-	rsnano::rsn_callback_bootstrap_client_weak_to_observer (bootstrap_client_weak_to_observer);
-	rsnano::rsn_callback_bootstrap_client_observer_weak_destroy (bootstrap_client_observer_weak_destroy);
-
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
 
 	rsnano::rsn_set_wait_latch_callback (wait_latch);
-	rsnano::rsn_callback_bootstrap_connections_dropped (delete_bootstrap_connections);
-	rsnano::rsn_callback_bootstrap_connections_pool_connection (pool_connection);
-	rsnano::rsn_callback_bootstrap_connections_requeue_pull (requeue_pull);
-	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
-	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
-	rsnano::rsn_callback_bootstrap_connections_connection (bootstrap_connections_connection);
-	rsnano::rsn_callback_bootstrap_connections_find_connection (bootstrap_connections_find_connection);
 
 	rsnano::rsn_callback_work_make_blocking (work_make_blocking);
 	rsnano::rsn_callback_work_make_blocking_2 (work_make_blocking_2);

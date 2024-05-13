@@ -1876,14 +1876,7 @@ void nano::json_handler::bootstrap_status ()
 	response_l.put ("running_attempts_count", std::to_string (attempts_count));
 	response_l.put ("total_attempts_count", std::to_string (node.bootstrap_initiator.attempts.total_attempts ()));
 	boost::property_tree::ptree connections;
-	{
-		nano::lock_guard<nano::mutex> connections_lock (node.bootstrap_initiator.connections->mutex);
-		connections.put ("clients", std::to_string (node.bootstrap_initiator.connections->clients.size ()));
-		connections.put ("connections", std::to_string (node.bootstrap_initiator.connections->connections_count));
-		connections.put ("idle", std::to_string (node.bootstrap_initiator.connections->idle.size ()));
-		connections.put ("target_connections", std::to_string (node.bootstrap_initiator.connections->target_connections (node.bootstrap_initiator.connections->pulls.size (), attempts_count)));
-		connections.put ("pulls", std::to_string (node.bootstrap_initiator.connections->pulls.size ()));
-	}
+	node.bootstrap_initiator.connections->bootstrap_status (connections, attempts_count);
 	response_l.add_child ("connections", connections);
 	response_l.add_child ("attempts", node.bootstrap_initiator.attempts.attempts_information ());
 	response_errors ();

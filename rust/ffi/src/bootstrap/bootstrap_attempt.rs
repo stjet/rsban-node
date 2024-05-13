@@ -74,7 +74,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_destroy(handle: *mut BootstrapAtt
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_stop(handle: *mut BootstrapAttemptHandle) {
-    (*handle).0.attempt().stop();
+    (*handle).0.stop();
 }
 
 #[no_mangle]

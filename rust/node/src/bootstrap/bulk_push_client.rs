@@ -1,17 +1,16 @@
-use super::{BootstrapClient, BootstrapStrategy};
+use super::{BootstrapAttemptLegacy, BootstrapClient};
 use crate::transport::{BufferDropPolicy, TrafficType};
 use rsnano_core::{utils::MemoryStream, BlockEnum, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
 use rsnano_messages::Message;
 use std::{
-    ops::Deref,
     sync::{Arc, Mutex},
     sync::{Condvar, Weak},
 };
 use tracing::debug;
 
 pub struct BulkPushClient {
-    attempt: Option<Weak<BootstrapStrategy>>,
+    attempt: Option<Weak<BootstrapAttemptLegacy>>,
     connection: Arc<BootstrapClient>,
     data: Mutex<BulkPushClientData>,
     condition: Condvar,
@@ -37,7 +36,7 @@ impl BulkPushClient {
         }
     }
 
-    pub fn set_attempt(&mut self, attempt: &Arc<BootstrapStrategy>) {
+    pub fn set_attempt(&mut self, attempt: &Arc<BootstrapAttemptLegacy>) {
         self.attempt = Some(Arc::downgrade(attempt));
     }
 
@@ -109,10 +108,6 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
             return;
         };
 
-        let BootstrapStrategy::Legacy(legacy) = attempt.deref() else {
-            return;
-        };
-
         let mut guard = self.data.lock().unwrap();
         let mut block = None;
         let mut finished = false;
@@ -120,7 +115,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
         while block.is_none() && !finished {
             if guard.current_target.0.is_zero() || guard.current_target.0 == guard.current_target.1
             {
-                match legacy.request_bulk_push_target() {
+                match attempt.request_bulk_push_target() {
                     Some(target) => guard.current_target = target,
                     None => finished = true,
                 }

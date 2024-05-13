@@ -577,43 +577,27 @@ rsnano::BootstrapClientHandle * bootstrap_connections_connection (void * cpp_han
 	return result;
 }
 
+rsnano::BootstrapClientHandle * bootstrap_connections_find_connection (void * cpp_handle, rsnano::EndpointDto const * endpoint)
+{
+	auto connections{ static_cast<std::weak_ptr<nano::bootstrap_connections> *> (cpp_handle) };
+	auto con = connections->lock ();
+	rsnano::BootstrapClientHandle * result = nullptr;
+	if (con)
+	{
+		auto ep{ rsnano::dto_to_endpoint (*endpoint) };
+		auto client{ con->find_connection (ep) };
+		if (client)
+		{
+			result = rsnano::rsn_bootstrap_client_clone (client->handle);
+		}
+	}
+	return result;
+}
+
 void wait_latch (void * latch_ptr)
 {
 	auto latch = static_cast<boost::latch *> (latch_ptr);
 	latch->wait ();
-}
-
-void legacy_add_frontier (void * cpp_handle, rsnano::PullInfoDto const * pull_dto)
-{
-	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
-	nano::pull_info pull;
-	pull.load_dto (*pull_dto);
-	attempt->add_frontier (pull);
-}
-
-void legacy_set_start_account (void * cpp_handle, uint8_t const * account)
-{
-	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
-	attempt->set_start_account (nano::account::from_bytes (account));
-}
-
-void legacy_add_bulk_push_target (void * cpp_handle, uint8_t const * head, uint8_t const * end)
-{
-	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
-	attempt->add_bulk_push_target (nano::block_hash::from_bytes (head), nano::block_hash::from_bytes (end));
-}
-
-bool legacy_request_bulk_push_target (void * cpp_handle, uint8_t * head, uint8_t * end)
-{
-	auto attempt = static_cast<nano::bootstrap_attempt_legacy *> (cpp_handle);
-	auto target = std::make_pair (nano::block_hash{ 0 }, nano::block_hash{ 0 });
-	bool empty = attempt->request_bulk_push_target (target);
-	if (!empty)
-	{
-		target.first.copy_bytes_to (head);
-		target.second.copy_bytes_to (end);
-	}
-	return empty;
 }
 
 bool work_make_blocking (void * factory_pointer, rsnano::BlockHandle * block_handle, uint64_t difficulty, uint64_t * result)
@@ -719,11 +703,7 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_bootstrap_connections_populate_connections (populate_connections);
 	rsnano::rsn_callback_bootstrap_connections_add_pull (add_pull);
 	rsnano::rsn_callback_bootstrap_connections_connection (bootstrap_connections_connection);
-
-	rsnano::rsn_callback_bootstrap_attempt_legacy_add_frontier (legacy_add_frontier);
-	rsnano::rsn_callback_bootstrap_attempt_legacy_add_start_account (legacy_set_start_account);
-	rsnano::rsn_callback_bootstrap_attempt_legacy_add_bulk_push_target (legacy_add_bulk_push_target);
-	rsnano::rsn_callback_bootstrap_attempt_legacy_request_bulk_push_target (legacy_request_bulk_push_target);
+	rsnano::rsn_callback_bootstrap_connections_find_connection (bootstrap_connections_find_connection);
 
 	rsnano::rsn_callback_work_make_blocking (work_make_blocking);
 	rsnano::rsn_callback_work_make_blocking_2 (work_make_blocking_2);

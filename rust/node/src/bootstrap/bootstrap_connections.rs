@@ -1,5 +1,5 @@
 use super::{BootstrapClient, PullInfo};
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, net::SocketAddrV6, sync::Arc};
 
 pub struct BootstrapConnections {
     cpp_handle: *mut c_void,
@@ -26,6 +26,10 @@ pub static mut CONNECTION_CALLBACK: Option<
     fn(*mut c_void, bool) -> (Option<Arc<BootstrapClient>>, bool),
 > = None;
 
+pub static mut FIND_CONNECTION_CALLBACK: Option<
+    fn(*mut c_void, endpoint: SocketAddrV6) -> Option<Arc<BootstrapClient>>,
+> = None;
+
 impl Drop for BootstrapConnections {
     fn drop(&mut self) {
         unsafe {
@@ -40,6 +44,7 @@ pub trait BootstrapConnectionsExt {
     fn populate_connections(&self, repeat: bool);
     fn add_pull(&self, pull: PullInfo);
     fn connection(&self, use_front_connection: bool) -> (Option<Arc<BootstrapClient>>, bool);
+    fn find_connection(&self, endpoint: SocketAddrV6) -> Option<Arc<BootstrapClient>>;
 }
 
 impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
@@ -84,6 +89,15 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             CONNECTION_CALLBACK.expect("CONNECTION_CALLBACK missing")(
                 self.cpp_handle,
                 use_front_connection,
+            )
+        }
+    }
+
+    fn find_connection(&self, endpoint: SocketAddrV6) -> Option<Arc<BootstrapClient>> {
+        unsafe {
+            FIND_CONNECTION_CALLBACK.expect("FIND_CONNECTION_CALLBACK missing")(
+                self.cpp_handle,
+                endpoint,
             )
         }
     }

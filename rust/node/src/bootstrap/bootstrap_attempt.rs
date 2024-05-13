@@ -33,7 +33,7 @@ pub struct BootstrapAttempt {
 
     /// There is a circular dependency between BootstrapInitiator and BootstrapAttempt,
     /// that's why we take a Weak reference
-    bootstrap_initiator: Weak<BootstrapInitiator>,
+    pub bootstrap_initiator: Weak<BootstrapInitiator>,
     pub mutex: Mutex<u8>,
     pub condition: Condvar,
     pub pulling: AtomicU32,
@@ -171,7 +171,6 @@ impl BootstrapAttempt {
     }
 
     pub fn still_pulling(&self) -> bool {
-        debug_assert!(self.mutex.try_lock().is_err());
         let running = !self.stopped.load(Ordering::SeqCst);
         let still_pulling = self.pulling.load(Ordering::SeqCst) > 0;
         running && still_pulling

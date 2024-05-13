@@ -18,7 +18,6 @@ use rsnano_store_lmdb::Transaction;
 use std::{
     cmp::max,
     collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
-    ffi::c_void,
     hash::{Hash, Hasher},
     ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, Weak},

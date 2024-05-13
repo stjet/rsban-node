@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{ledger::datastore::LedgerHandle, NetworkParamsDto};
 use rsnano_core::Account;
-use rsnano_node::bootstrap::{FrontierReqClient, FrontierReqClientExt};
+use rsnano_node::bootstrap::{BootstrapStrategy, FrontierReqClient, FrontierReqClientExt};
 use std::sync::Arc;
 
 pub struct FrontierReqClientHandle(Arc<FrontierReqClient>);
@@ -24,7 +24,10 @@ pub extern "C" fn rsn_frontier_req_client_create(
         network_params,
         Arc::clone(connections),
     );
-    client.set_attempt(Arc::clone(attempt));
+    let BootstrapStrategy::Legacy(legacy) = &***attempt else {
+        panic!("not a legacy attempt")
+    };
+    client.set_attempt(Arc::clone(legacy));
     Box::into_raw(Box::new(FrontierReqClientHandle(Arc::new(client))))
 }
 

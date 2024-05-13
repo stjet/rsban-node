@@ -1,9 +1,9 @@
 use super::{bootstrap_client::BootstrapClientHandle, pulls_cache::PullInfoDto};
-use crate::VoidPointerCallback;
+use crate::{transport::EndpointDto, VoidPointerCallback};
 use rsnano_node::bootstrap::{
     BootstrapConnections, ADD_PULL_CALLBACK, CONNECTION_CALLBACK,
-    DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, POOL_CONNECTION_CALLBACK, POPULATE_CONNECTIONS_CALLBACK,
-    REQUEUE_PULL_CALLBACK,
+    DROP_BOOTSTRAP_CONNECTIONS_CALLBACK, FIND_CONNECTION_CALLBACK, POOL_CONNECTION_CALLBACK,
+    POPULATE_CONNECTIONS_CALLBACK, REQUEUE_PULL_CALLBACK,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -43,6 +43,9 @@ pub type AddPullCallback = unsafe extern "C" fn(*mut c_void, *const PullInfoDto)
 pub type BootstrapConnectionsConnectionCallback =
     unsafe extern "C" fn(*mut c_void, bool, *mut bool) -> *mut BootstrapClientHandle;
 
+pub type BootstrapConnectionsFindConnectionCallback =
+    unsafe extern "C" fn(*mut c_void, *const EndpointDto) -> *mut BootstrapClientHandle;
+
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_dropped(callback: VoidPointerCallback) {
     unsafe {
@@ -54,6 +57,7 @@ static mut FFI_POOL_CONNECTION_CALLBACK: Option<PoolConnectionCallback> = None;
 static mut FFI_REQUEUE_PULL_CALLBACK: Option<RequeuePullCallback> = None;
 static mut FFI_ADD_PULL_CALLBACK: Option<AddPullCallback> = None;
 static mut FFI_CONNECTIONS_CALLBACK: Option<BootstrapConnectionsConnectionCallback> = None;
+static mut FFI_FIND_CONNECTION_CALLBACK: Option<BootstrapConnectionsFindConnectionCallback> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_bootstrap_connections_pool_connection(
@@ -113,7 +117,7 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_connection(
     unsafe {
         FFI_CONNECTIONS_CALLBACK = Some(callback);
         CONNECTION_CALLBACK = Some(|cpp_handle, use_front_connection| {
-            let mut should_stop = false;
+            let mut should_stop = true;
             let handle = FFI_CONNECTIONS_CALLBACK.unwrap()(
                 cpp_handle,
                 use_front_connection,
@@ -129,6 +133,26 @@ pub unsafe extern "C" fn rsn_callback_bootstrap_connections_connection(
             };
 
             (client, should_stop)
+        });
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_callback_bootstrap_connections_find_connection(
+    callback: BootstrapConnectionsFindConnectionCallback,
+) {
+    unsafe {
+        FFI_FIND_CONNECTION_CALLBACK = Some(callback);
+        FIND_CONNECTION_CALLBACK = Some(|cpp_handle, endpoint| {
+            let endpoint_dto = EndpointDto::from(endpoint);
+            let client_handle = FFI_FIND_CONNECTION_CALLBACK.unwrap()(cpp_handle, &endpoint_dto);
+            if client_handle.is_null() {
+                None
+            } else {
+                let client = Some(Arc::clone(&**client_handle));
+                drop(Box::from_raw(client_handle));
+                client
+            }
         });
     }
 }

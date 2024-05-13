@@ -1,4 +1,4 @@
-use super::{BootstrapClient, BootstrapConnections, BootstrapStrategy};
+use super::{BootstrapAttemptLegacy, BootstrapClient, BootstrapConnections};
 use crate::{
     bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
@@ -14,7 +14,6 @@ use rsnano_ledger::Ledger;
 use rsnano_messages::{FrontierReq, Message};
 use std::{
     collections::VecDeque,
-    ops::Deref,
     sync::{Arc, Condvar, Mutex, Weak},
     time::Instant,
 };
@@ -26,7 +25,7 @@ pub struct FrontierReqClient {
     connection: Arc<BootstrapClient>,
     connections: Arc<BootstrapConnections>,
     ledger: Arc<Ledger>,
-    attempt: Option<Weak<BootstrapStrategy>>,
+    attempt: Option<Weak<BootstrapAttemptLegacy>>,
     network_params: NetworkParams,
     condition: Condvar,
 }
@@ -113,7 +112,7 @@ impl FrontierReqClient {
         }
     }
 
-    pub fn set_attempt(&mut self, attempt: Arc<BootstrapStrategy>) {
+    pub fn set_attempt(&mut self, attempt: Arc<BootstrapAttemptLegacy>) {
         self.attempt = Some(Arc::downgrade(&attempt));
     }
 
@@ -142,12 +141,8 @@ impl FrontierReqClient {
             return;
         };
 
-        let BootstrapStrategy::Legacy(legacy) = attempt.deref() else {
-            return;
-        };
-
         if data.bulk_push_available() {
-            legacy.add_bulk_push_target(&head, &end);
+            attempt.add_bulk_push_target(head, end);
             if end.is_zero() {
                 data.bulk_push_cost += 2;
             } else {
@@ -218,10 +213,6 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
             return;
         };
 
-        let BootstrapStrategy::Legacy(legacy) = attempt.deref() else {
-            return;
-        };
-
         if ec.is_ok() {
             debug_assert_eq!(size_a, SIZE_FRONTIER);
             let buf = self.connection.receive_buffer();
@@ -258,7 +249,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                 return;
             }
 
-            if legacy.attempt.should_log() {
+            if attempt.attempt.should_log() {
                 debug!(
                     "Received {} frontiers from {}",
                     guard.count,
@@ -293,9 +284,9 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                                     attempts: 0,
                                     processed: 0,
                                     retry_limit: self.network_params.bootstrap.frontier_retry_limit,
-                                    bootstrap_id: legacy.attempt.incremental_id,
+                                    bootstrap_id: attempt.attempt.incremental_id,
                                 };
-                                legacy.add_frontier(&pull);
+                                attempt.add_frontier(pull);
                                 // Either we're behind or there's a fork we differ on
                                 // Either way, bulk pushing will probably not be effective
                                 guard.bulk_push_cost += 5;
@@ -313,9 +304,9 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                             attempts: 0,
                             processed: 0,
                             retry_limit: self.network_params.bootstrap.frontier_retry_limit,
-                            bootstrap_id: legacy.attempt.incremental_id,
+                            bootstrap_id: attempt.attempt.incremental_id,
                         };
-                        legacy.add_frontier(&pull);
+                        attempt.add_frontier(pull);
                     }
                 } else {
                     let pull = PullInfo {
@@ -327,10 +318,10 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                         attempts: 0,
                         processed: 0,
                         retry_limit: self.network_params.bootstrap.frontier_retry_limit,
-                        bootstrap_id: legacy.attempt.incremental_id,
+                        bootstrap_id: attempt.attempt.incremental_id,
                     };
 
-                    legacy.add_frontier(&pull);
+                    attempt.add_frontier(pull);
                 }
                 self.receive_frontier();
             } else {
@@ -342,11 +333,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                         guard.next(&self.ledger);
                     }
                     // Prevent new frontier_req requests
-                    legacy.set_start_account(Account::MAX);
+                    attempt.set_start_account(Account::MAX);
                     debug!("Bulk push cost: {}", guard.bulk_push_cost);
                 } else {
                     // Set last processed account as new start target
-                    legacy.set_start_account(guard.last_account);
+                    attempt.set_start_account(guard.last_account);
                 }
                 self.connections
                     .pool_connection(Arc::clone(&self.connection), false, false);

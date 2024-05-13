@@ -71,7 +71,7 @@ pub enum BootstrapMode {
 
 pub enum BootstrapStrategy {
     Lazy(BootstrapAttemptLazy),
-    Legacy(BootstrapAttemptLegacy),
+    Legacy(Arc<BootstrapAttemptLegacy>),
     Wallet(Arc<BootstrapAttemptWallet>),
     Other(BootstrapAttempt),
 }
@@ -90,8 +90,17 @@ impl BootstrapStrategy {
         match self {
             BootstrapStrategy::Lazy(i) => i.run(),
             BootstrapStrategy::Other(_) => {}
-            BootstrapStrategy::Legacy(_) => {}
+            BootstrapStrategy::Legacy(i) => i.run(),
             BootstrapStrategy::Wallet(i) => i.run(),
+        }
+    }
+
+    pub fn stop(&self) {
+        match self {
+            BootstrapStrategy::Legacy(i) => i.stop(),
+            BootstrapStrategy::Lazy(i) => i.attempt.stop(),
+            BootstrapStrategy::Other(i) => i.stop(),
+            BootstrapStrategy::Wallet(i) => i.attempt.stop(),
         }
     }
 

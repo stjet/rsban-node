@@ -1,6 +1,6 @@
 use super::{bootstrap_attempt::BootstrapAttemptHandle, bootstrap_client::BootstrapClientHandle};
 use crate::ledger::datastore::LedgerHandle;
-use rsnano_node::bootstrap::{BulkPushClient, BulkPushClientExt};
+use rsnano_node::bootstrap::{BootstrapStrategy, BulkPushClient, BulkPushClientExt};
 use std::sync::Arc;
 
 pub struct BulkPushClientHandle(Arc<BulkPushClient>);
@@ -12,7 +12,10 @@ pub extern "C" fn rsn_bulk_push_client_create(
     attempt: &BootstrapAttemptHandle,
 ) -> *mut BulkPushClientHandle {
     let mut client = BulkPushClient::new(Arc::clone(connection), Arc::clone(ledger));
-    client.set_attempt(attempt);
+    let BootstrapStrategy::Legacy(legacy) = &***attempt else {
+        panic!("not legacy")
+    };
+    client.set_attempt(legacy);
     Box::into_raw(Box::new(BulkPushClientHandle(Arc::new(client))))
 }
 

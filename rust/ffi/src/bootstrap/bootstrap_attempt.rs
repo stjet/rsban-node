@@ -55,7 +55,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_create(
             block_processor,
             bootstrap_initiator,
             ledger,
-            id_str,
+            id_str.to_string(),
             mode,
             incremental_id,
         )

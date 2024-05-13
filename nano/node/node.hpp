@@ -161,12 +161,13 @@ public:
 	nano::confirming_set confirming_set; // ported
 	nano::vote_cache vote_cache; // ported
 	nano::block_processor block_processor; // ported
-	nano::bootstrap_initiator bootstrap_initiator;
 	nano::wallets wallets; // mostly ported
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported
 	nano::active_transactions active; // ported
 	nano::vote_processor vote_processor; // ported
+	nano::websocket_server websocket; // ported
+	nano::bootstrap_initiator bootstrap_initiator;
 	nano::rep_crawler rep_crawler; // ported
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 
@@ -178,7 +179,6 @@ public:
 	nano::request_aggregator aggregator; // ported
 	nano::backlog_population backlog; // ported
 	nano::bootstrap_ascending::service ascendboot; // ported
-	nano::websocket_server websocket; // ported
 	nano::local_block_broadcaster local_block_broadcaster; // ported
 	nano::process_live_dispatcher process_live_dispatcher; // ported
 

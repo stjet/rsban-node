@@ -77,6 +77,15 @@ pub enum BootstrapStrategy {
 }
 
 impl BootstrapStrategy {
+    pub fn mode(&self) -> BootstrapMode {
+        match self {
+            BootstrapStrategy::Lazy(_) => BootstrapMode::Lazy,
+            BootstrapStrategy::Legacy(_) => BootstrapMode::Legacy,
+            BootstrapStrategy::Wallet(_) => BootstrapMode::WalletLazy,
+            BootstrapStrategy::Other(_) => panic!("unknown bootstrap mode"),
+        }
+    }
+
     pub fn attempt(&self) -> &BootstrapAttempt {
         match self {
             BootstrapStrategy::Other(i) => i,

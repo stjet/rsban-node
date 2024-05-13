@@ -43,7 +43,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_legacy_create(
             Arc::downgrade(block_processor),
             Arc::downgrade(bootstrap_initiator),
             Arc::clone(ledger),
-            id_str,
+            id_str.to_string(),
             incremental_id,
             Arc::clone(bootstrap_connections),
             network_params.try_into().unwrap(),

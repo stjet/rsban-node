@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/bootstrap/bootstrap_connections.hpp>
 #include <nano/node/common.hpp>
 
@@ -52,6 +54,7 @@ class pulls_cache final
 {
 public:
 	pulls_cache ();
+	pulls_cache (rsnano::PullsCacheHandle * handle);
 	pulls_cache (pulls_cache const &) = delete;
 	pulls_cache (pulls_cache &&) = delete;
 	~pulls_cache ();
@@ -70,6 +73,7 @@ class bootstrap_attempts final
 {
 public:
 	bootstrap_attempts ();
+	explicit bootstrap_attempts (rsnano::BootstrapAttemptsHandle * handle);
 	bootstrap_attempts (bootstrap_attempts const &) = delete;
 	bootstrap_attempts (bootstrap_attempts &&) = delete;
 	~bootstrap_attempts () noexcept;
@@ -93,6 +97,8 @@ class bootstrap_attempt_wallet;
 class bootstrap_initiator final
 {
 public:
+	rsnano::BootstrapInitiatorHandle * handle;
+
 	explicit bootstrap_initiator (nano::node &);
 	bootstrap_initiator (nano::bootstrap_initiator const &) = delete;
 	~bootstrap_initiator ();
@@ -100,37 +106,15 @@ public:
 	void bootstrap (bool force = false, std::string id_a = "", uint32_t const frontiers_age_a = std::numeric_limits<uint32_t>::max (), nano::account const & start_account_a = nano::account{});
 	bool bootstrap_lazy (nano::hash_or_account const &, bool force = false, std::string id_a = "");
 	void bootstrap_wallet (std::deque<nano::account> &);
-	void run_bootstrap ();
-	void lazy_requeue (nano::block_hash const &, nano::block_hash const &);
 	bool in_progress ();
-	void block_processed (store::transaction const & tx, nano::block_status const & result, nano::block const & block);
 	nano::bootstrap_attempts attempts;
 	std::shared_ptr<nano::bootstrap_connections> connections;
-	std::shared_ptr<nano::bootstrap_attempt> new_attempt ();
-	bool has_new_attempts ();
-	void remove_attempt (std::shared_ptr<nano::bootstrap_attempt>);
 	std::shared_ptr<nano::bootstrap_attempt> current_attempt ();
 	std::shared_ptr<nano::bootstrap_attempt_lazy> current_lazy_attempt ();
 	std::shared_ptr<nano::bootstrap_attempt_wallet> current_wallet_attempt ();
-	void clear_pulls (uint64_t bootstrap_id_a);
 	rsnano::BootstrapInitiatorHandle * get_handle () const;
 	nano::pulls_cache cache;
 	void stop ();
-
-private:
-	nano::node & node;
-	std::shared_ptr<nano::bootstrap_attempt> find_attempt (nano::bootstrap_mode);
-	void stop_attempts ();
-	std::unordered_map<std::size_t, std::shared_ptr<nano::bootstrap_attempt>> attempts_list;
-	std::atomic<bool> stopped{ false };
-	nano::mutex mutex;
-	nano::condition_variable condition;
-	std::vector<boost::thread> bootstrap_initiator_threads;
-
-public:
-	rsnano::BootstrapInitiatorHandle * handle;
-
-	friend std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);
 };
 
 std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);

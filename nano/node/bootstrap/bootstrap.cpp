@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/lib/threading.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
@@ -10,23 +11,57 @@
 #include <cassert>
 #include <memory>
 
-nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
-	node (node_a),
-	handle{ rsnano::rsn_bootstrap_initiator_create (this) }
+namespace
 {
-	connections = std::make_shared<nano::bootstrap_connections> (node, *this);
-
-	bootstrap_initiator_threads.push_back (boost::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::bootstrap_connections);
-		connections->run ();
-	}));
-	for (std::size_t i = 0; i < node.config->bootstrap_initiator_threads; ++i)
+std::shared_ptr<nano::bootstrap_attempt> attempt_from_handle (rsnano::BootstrapAttemptHandle * attempt_handle)
+{
+	std::shared_ptr<nano::bootstrap_attempt> result{};
+	if (attempt_handle)
 	{
-		bootstrap_initiator_threads.push_back (boost::thread ([this] () {
-			nano::thread_role::set (nano::thread_role::name::bootstrap_initiator);
-			run_bootstrap ();
-		}));
+		auto mode = static_cast<nano::bootstrap_mode> (rsnano::rsn_bootstrap_attempt_bootstrap_mode (attempt_handle));
+		switch (mode)
+		{
+			case nano::bootstrap_mode::lazy:
+				result = std::make_shared<nano::bootstrap_attempt_lazy> (attempt_handle);
+				break;
+			case nano::bootstrap_mode::legacy:
+				result = std::make_shared<nano::bootstrap_attempt_legacy> (attempt_handle);
+				break;
+			case nano::bootstrap_mode::wallet_lazy:
+				result = std::make_shared<nano::bootstrap_attempt_wallet> (attempt_handle);
+				break;
+			default:
+				assert (false);
+				break;
+		}
 	}
+	return result;
+}
+
+rsnano::BootstrapInitiatorHandle * create_bootstrap_initiator (nano::node & node_a)
+{
+	auto config_dto{ node_a.config->to_dto () };
+	auto params_dto{ node_a.network_params.to_dto () };
+
+	return rsnano::rsn_bootstrap_initiator_create (&config_dto,
+	node_a.flags.handle, node_a.network->tcp_channels->handle,
+	node_a.async_rt.handle, node_a.workers->handle,
+	&params_dto,
+	new std::weak_ptr<nano::node_observers> (node_a.observers),
+	node_a.stats->handle, node_a.outbound_limiter.handle,
+	node_a.block_processor.handle, node_a.websocket.get_handle (),
+	node_a.ledger.handle);
+}
+}
+
+nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
+	handle{ create_bootstrap_initiator (node_a) },
+	attempts{ rsnano::rsn_bootstrap_initiator_attempts (handle) },
+	connections{ std::make_shared<nano::bootstrap_connections> (rsnano::rsn_bootstrap_initiator_connections (handle)) },
+	cache{ rsnano::rsn_bootstrap_initiator_cache (handle) }
+{
+	rsnano::rsn_bootstrap_initiator_initialize (handle);
+	rsnano::rsn_bootstrap_initiator_start (handle);
 }
 
 nano::bootstrap_initiator::~bootstrap_initiator ()
@@ -37,234 +72,47 @@ nano::bootstrap_initiator::~bootstrap_initiator ()
 
 void nano::bootstrap_initiator::bootstrap (bool force, std::string id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a)
 {
-	if (force)
-	{
-		stop_attempts ();
-	}
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	if (!stopped && find_attempt (nano::bootstrap_mode::legacy) == nullptr)
-	{
-		node.stats->inc (nano::stat::type::bootstrap, frontiers_age_a == std::numeric_limits<uint32_t>::max () ? nano::stat::detail::initiate : nano::stat::detail::initiate_legacy_age, nano::stat::dir::out);
-		auto incremental_id = attempts.create_incremental_id ();
-		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), incremental_id, id_a, frontiers_age_a, start_account_a));
-		attempts_list.insert ({ legacy_attempt->get_incremental_id (), legacy_attempt });
-		attempts.add (legacy_attempt);
-		lock.unlock ();
-		condition.notify_all ();
-	}
+	rsnano::rsn_bootstrap_initiator_bootstrap (handle, force, id_a.c_str (), frontiers_age_a, start_account_a.bytes.data ());
 }
 
 void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bool add_to_peers, std::string id_a)
 {
-	if (add_to_peers)
-	{
-		if (!node.flags.disable_tcp_realtime ())
-		{
-			node.network->merge_peer (nano::transport::map_endpoint_to_v6 (endpoint_a));
-		}
-	}
-	if (!stopped)
-	{
-		stop_attempts ();
-		node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out);
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.create_incremental_id (), id_a, std::numeric_limits<uint32_t>::max (), 0));
-		attempts_list.insert ({ legacy_attempt->get_incremental_id (), legacy_attempt });
-		attempts.add (legacy_attempt);
-		if (!node.network->tcp_channels->excluded_peers ().check (nano::transport::map_endpoint_to_tcp (endpoint_a)))
-		{
-			connections->add_connection (endpoint_a);
-		}
-	}
-	condition.notify_all ();
+	auto dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
+	rsnano::rsn_bootstrap_initiator_bootstrap2 (handle, &dto, add_to_peers, id_a.c_str ());
 }
 
 bool nano::bootstrap_initiator::bootstrap_lazy (nano::hash_or_account const & hash_or_account_a, bool force, std::string id_a)
 {
-	bool key_inserted (false);
-	auto lazy_attempt (current_lazy_attempt ());
-	if (lazy_attempt == nullptr || force)
-	{
-		if (force)
-		{
-			stop_attempts ();
-		}
-		node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_lazy, nano::stat::dir::out);
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		if (!stopped && find_attempt (nano::bootstrap_mode::lazy) == nullptr)
-		{
-			lazy_attempt = std::make_shared<nano::bootstrap_attempt_lazy> (node.shared (), attempts.create_incremental_id (), id_a.empty () ? hash_or_account_a.to_string () : id_a);
-			attempts_list.insert ({ lazy_attempt->get_incremental_id (), lazy_attempt });
-			attempts.add (lazy_attempt);
-			key_inserted = lazy_attempt->lazy_start (hash_or_account_a);
-		}
-	}
-	else
-	{
-		key_inserted = lazy_attempt->lazy_start (hash_or_account_a);
-	}
-	condition.notify_all ();
-	return key_inserted;
+	return rsnano::rsn_bootstrap_initiator_bootstrap_lazy (handle, hash_or_account_a.bytes.data (), force, id_a.c_str ());
 }
 
 void nano::bootstrap_initiator::bootstrap_wallet (std::deque<nano::account> & accounts_a)
 {
-	debug_assert (!accounts_a.empty ());
-	auto wallet_attempt (current_wallet_attempt ());
-	node.stats->inc (nano::stat::type::bootstrap, nano::stat::detail::initiate_wallet_lazy, nano::stat::dir::out);
-	if (wallet_attempt == nullptr)
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		std::string id (!accounts_a.empty () ? accounts_a[0].to_account () : "");
-		wallet_attempt = std::make_shared<nano::bootstrap_attempt_wallet> (node.shared (), attempts.create_incremental_id (), id);
-		attempts_list.insert ({ wallet_attempt->get_incremental_id (), wallet_attempt });
-		attempts.add (wallet_attempt);
-		wallet_attempt->wallet_start (accounts_a);
-	}
-	else
-	{
-		wallet_attempt->wallet_start (accounts_a);
-	}
-	condition.notify_all ();
-}
-
-void nano::bootstrap_initiator::run_bootstrap ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
-	{
-		if (has_new_attempts ())
-		{
-			auto attempt (new_attempt ());
-			lock.unlock ();
-			if (attempt != nullptr)
-			{
-				attempt->run ();
-				remove_attempt (attempt);
-			}
-			lock.lock ();
-		}
-		else
-		{
-			condition.wait (lock);
-		}
-	}
-}
-
-void nano::bootstrap_initiator::lazy_requeue (nano::block_hash const & hash_a, nano::block_hash const & previous_a)
-{
-	auto lazy_attempt (current_lazy_attempt ());
-	if (lazy_attempt != nullptr)
-	{
-		lazy_attempt->lazy_requeue (hash_a, previous_a);
-	}
+	rsnano::account_vec acc_vec{ accounts_a };
+	rsnano::rsn_bootstrap_initiator_bootstrap_wallet (handle, acc_vec.handle);
 }
 
 bool nano::bootstrap_initiator::in_progress ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	return !attempts_list.empty ();
-}
-
-void nano::bootstrap_initiator::block_processed (store::transaction const & tx, nano::block_status const & result, nano::block const & block)
-{
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	for (auto & i : attempts_list)
-	{
-		i.second->block_processed (tx, result, block);
-	}
-}
-
-std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::find_attempt (nano::bootstrap_mode mode_a)
-{
-	for (auto & i : attempts_list)
-	{
-		if (i.second->get_mode () == mode_a)
-		{
-			return i.second;
-		}
-	}
-	return nullptr;
-}
-
-void nano::bootstrap_initiator::remove_attempt (std::shared_ptr<nano::bootstrap_attempt> attempt_a)
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	auto attempt{ attempts_list.find (attempt_a->get_incremental_id ()) };
-	if (attempt != attempts_list.end ())
-	{
-		auto attempt_ptr = attempt->second;
-		attempts.remove (attempt_ptr->get_incremental_id ());
-		attempts_list.erase (attempt);
-		debug_assert (attempts.size () == attempts_list.size ());
-		lock.unlock ();
-		attempt_ptr->stop ();
-	}
-	else
-	{
-		lock.unlock ();
-	}
-	condition.notify_all ();
-}
-
-std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::new_attempt ()
-{
-	for (auto & i : attempts_list)
-	{
-		if (!i.second->set_started ())
-		{
-			return i.second;
-		}
-	}
-	return nullptr;
-}
-
-bool nano::bootstrap_initiator::has_new_attempts ()
-{
-	for (auto & i : attempts_list)
-	{
-		if (!i.second->get_started ())
-		{
-			return true;
-		}
-	}
-	return false;
+	return rsnano::rsn_bootstrap_initiator_in_progress (handle);
 }
 
 std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::current_attempt ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	return find_attempt (nano::bootstrap_mode::legacy);
+	auto attempt_handle = rsnano::rsn_bootstrap_initiator_current_attempt (handle);
+	return attempt_from_handle (attempt_handle);
 }
 
 std::shared_ptr<nano::bootstrap_attempt_lazy> nano::bootstrap_initiator::current_lazy_attempt ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	return std::dynamic_pointer_cast<nano::bootstrap_attempt_lazy> (find_attempt (nano::bootstrap_mode::lazy));
+	auto attempt_handle = rsnano::rsn_bootstrap_initiator_current_lazy_attempt (handle);
+	return std::dynamic_pointer_cast<nano::bootstrap_attempt_lazy> (attempt_from_handle (attempt_handle));
 }
 
 std::shared_ptr<nano::bootstrap_attempt_wallet> nano::bootstrap_initiator::current_wallet_attempt ()
 {
-	nano::lock_guard<nano::mutex> lock{ mutex };
-	return std::dynamic_pointer_cast<nano::bootstrap_attempt_wallet> (find_attempt (nano::bootstrap_mode::wallet_lazy));
-}
-
-void nano::bootstrap_initiator::stop_attempts ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	std::unordered_map<std::size_t, std::shared_ptr<nano::bootstrap_attempt>> copy_attempts;
-	copy_attempts.swap (attempts_list);
-	attempts.clear ();
-	lock.unlock ();
-	for (auto & i : copy_attempts)
-	{
-		i.second->stop ();
-	}
-}
-
-void nano::bootstrap_initiator::clear_pulls (uint64_t bootstrap_id_a)
-{
-	connections->clear_pulls (bootstrap_id_a);
+	auto attempt_handle = rsnano::rsn_bootstrap_initiator_current_wallet_attempt (handle);
+	return std::dynamic_pointer_cast<nano::bootstrap_attempt_wallet> (attempt_from_handle (attempt_handle));
 }
 
 rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () const
@@ -274,29 +122,17 @@ rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () cons
 
 void nano::bootstrap_initiator::stop ()
 {
-	if (!stopped.exchange (true))
-	{
-		stop_attempts ();
-		connections->stop ();
-		condition.notify_all ();
-
-		for (auto & thread : bootstrap_initiator_threads)
-		{
-			if (thread.joinable ())
-			{
-				thread.join ();
-			}
-		}
-	}
+	rsnano::rsn_bootstrap_initiator_stop (handle);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name)
 {
-	auto cache_count = bootstrap_initiator.cache.size ();
-	auto sizeof_cache_element = pulls_cache::element_size ();
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pulls_cache", cache_count, sizeof_cache_element }));
-	return composite;
+	return std::make_unique<container_info_composite> (rsnano::rsn_bootstrap_initiator_collect_container_info (bootstrap_initiator.handle, name.c_str ()));
+}
+
+nano::pulls_cache::pulls_cache (rsnano::PullsCacheHandle * handle) :
+	handle{ handle }
+{
 }
 
 nano::pulls_cache::pulls_cache () :
@@ -342,6 +178,11 @@ nano::bootstrap_attempts::bootstrap_attempts () :
 {
 }
 
+nano::bootstrap_attempts::bootstrap_attempts (rsnano::BootstrapAttemptsHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::bootstrap_attempts::~bootstrap_attempts () noexcept
 {
 	rsnano::rsn_bootstrap_attempts_destroy (handle);
@@ -364,28 +205,8 @@ void nano::bootstrap_attempts::clear ()
 
 std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_attempts::find (uint64_t incremental_id_a)
 {
-	std::shared_ptr<nano::bootstrap_attempt> result{};
 	auto attempt_handle = rsnano::rsn_bootstrap_attempts_find (handle, incremental_id_a);
-	if (attempt_handle)
-	{
-		auto mode = static_cast<nano::bootstrap_mode> (rsnano::rsn_bootstrap_attempt_bootstrap_mode (attempt_handle));
-		switch (mode)
-		{
-			case nano::bootstrap_mode::lazy:
-				result = std::make_shared<nano::bootstrap_attempt_lazy> (attempt_handle);
-				break;
-			case nano::bootstrap_mode::legacy:
-				result = std::make_shared<nano::bootstrap_attempt_legacy> (attempt_handle);
-				break;
-			case nano::bootstrap_mode::wallet_lazy:
-				result = std::make_shared<nano::bootstrap_attempt_wallet> (attempt_handle);
-				break;
-			default:
-				assert (false);
-				break;
-		}
-	}
-	return result;
+	return attempt_from_handle (attempt_handle);
 }
 std::size_t nano::bootstrap_attempts::size ()
 {

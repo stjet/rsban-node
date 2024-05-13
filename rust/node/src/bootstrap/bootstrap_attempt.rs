@@ -49,14 +49,14 @@ impl BootstrapAttempt {
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
-        id: &str,
+        id: String,
         mode: BootstrapMode,
         incremental_id: u64,
     ) -> Result<Self> {
         let id = if id.is_empty() {
             encode_hex(HardenedConstants::get().random_128)
         } else {
-            id.to_owned()
+            id
         };
 
         let result = Self {

@@ -1,7 +1,4 @@
-use super::{
-    bootstrap_attempts::BootstrapAttemptsHandle, pulls_cache::PullsCacheHandle,
-    BootstrapInitiatorHandle,
-};
+use super::{bootstrap_attempts::BootstrapAttemptsHandle, pulls_cache::PullsCacheHandle};
 use crate::{
     block_processing::BlockProcessorHandle,
     transport::{
@@ -14,6 +11,12 @@ use rsnano_node::bootstrap::{BootstrapConnections, BootstrapConnectionsExt};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BootstrapConnectionsHandle(Arc<BootstrapConnections>);
+
+impl BootstrapConnectionsHandle {
+    pub fn new(connections: Arc<BootstrapConnections>) -> *mut Self {
+        Box::into_raw(Box::new(Self(connections)))
+    }
+}
 
 impl Deref for BootstrapConnectionsHandle {
     type Target = Arc<BootstrapConnections>;
@@ -36,7 +39,6 @@ pub extern "C" fn rsn_bootstrap_connections_create(
     stats: &StatHandle,
     outbound_limiter: &OutboundBandwidthLimiterHandle,
     block_processor: &BlockProcessorHandle,
-    bootstrap_initiator: &BootstrapInitiatorHandle,
     pulls_cache: &PullsCacheHandle,
 ) -> *mut BootstrapConnectionsHandle {
     let ffi_observer = Arc::new(SocketFfiObserver::new(observers));
@@ -53,7 +55,6 @@ pub extern "C" fn rsn_bootstrap_connections_create(
             Arc::clone(stats),
             Arc::clone(&outbound_limiter),
             Arc::clone(&block_processor),
-            Arc::clone(&bootstrap_initiator),
             Arc::clone(&pulls_cache),
         ),
     ))))

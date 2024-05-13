@@ -45,7 +45,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
             Arc::clone(block_processor),
             bootstrap_initiator,
             ledger,
-            id_str,
+            id_str.to_string(),
             incremental_id,
             flags.lock().unwrap().clone(),
             Arc::clone(connections),

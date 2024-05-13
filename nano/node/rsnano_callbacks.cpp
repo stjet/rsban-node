@@ -388,43 +388,6 @@ void toml_put_child (void * handle_a, const uint8_t * key_a, uintptr_t key_len_a
 	parent->put_child (key, *child);
 }
 
-void bootstrap_initiator_clear_pulls (void * handle_a, uint64_t bootstrap_id_a)
-{
-	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
-	bootstrap_initiator->clear_pulls (bootstrap_id_a);
-}
-
-bool bootstrap_initiator_in_progress (void * handle_a)
-{
-	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
-	return bootstrap_initiator->in_progress ();
-}
-
-void bootstrap_initiator_remove_cache (void * handle_a, rsnano::PullInfoDto const * pull_dto)
-{
-	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
-	nano::pull_info pull;
-	pull.load_dto (*pull_dto);
-	bootstrap_initiator->cache.remove (pull);
-}
-
-bool bootstrap_initiator_bootstrap_lazy (void * handle_a, const uint8_t * account, bool force, const char * id, std::size_t len)
-{
-	auto bootstrap_initiator{ static_cast<nano::bootstrap_initiator *> (handle_a) };
-	auto acc = nano::account::from_bytes (account);
-	std::string id_string;
-	if (len > 0)
-	{
-		id_string = std::string{ id, len };
-	}
-	else
-	{
-		id_string = "";
-	}
-
-	return bootstrap_initiator->bootstrap_lazy (acc, force, id_string);
-}
-
 class async_write_callback_wrapper
 {
 public:
@@ -558,11 +521,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_config (toml_drop_config);
 	rsnano::rsn_callback_toml_put_child (toml_put_child);
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
-
-	rsnano::rsn_callback_bootstrap_initiator_clear_pulls (bootstrap_initiator_clear_pulls);
-	rsnano::rsn_callback_bootstrap_initiator_in_progress (bootstrap_initiator_in_progress);
-	rsnano::rsn_callback_bootstrap_initiator_remove_from_cache (bootstrap_initiator_remove_cache);
-	rsnano::rsn_callback_bootstrap_initiator_bootstrap_lazy (bootstrap_initiator_bootstrap_lazy);
 
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
 	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);

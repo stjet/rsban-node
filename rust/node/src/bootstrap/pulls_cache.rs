@@ -33,9 +33,8 @@ impl PullsCache {
         self.by_account_head.len()
     }
 
-    pub fn element_size() -> usize {
-        size_of::<CachedPulls>()
-    }
+    pub const ELEMENT_SIZE: usize =
+        size_of::<CachedPulls>() + size_of::<AccountHead>() * 2 + size_of::<Instant>();
 
     pub fn contains(&self, pull: &PullInfo) -> bool {
         self.by_account_head.contains_key(&to_head_512(pull))

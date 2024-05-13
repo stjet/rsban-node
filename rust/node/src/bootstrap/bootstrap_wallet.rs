@@ -32,7 +32,7 @@ impl BootstrapAttemptWallet {
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
         ledger: Arc<Ledger>,
-        id: &str,
+        id: String,
         incremental_id: u64,
         connections: Arc<BootstrapConnections>,
         workers: Arc<dyn ThreadPool>,

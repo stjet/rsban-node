@@ -60,6 +60,7 @@ private:
 class bootstrap_connections final : public std::enable_shared_from_this<bootstrap_connections>
 {
 public:
+	bootstrap_connections (rsnano::BootstrapConnectionsHandle * handle);
 	bootstrap_connections (nano::node & node_a, nano::bootstrap_initiator & initiator);
 	bootstrap_connections (bootstrap_connections const &) = delete;
 	~bootstrap_connections ();

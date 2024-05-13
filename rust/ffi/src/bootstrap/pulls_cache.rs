@@ -8,6 +8,12 @@ use rsnano_node::bootstrap::{PullInfo, PullsCache};
 
 pub struct PullsCacheHandle(Arc<Mutex<PullsCache>>);
 
+impl PullsCacheHandle {
+    pub fn new(cache: Arc<Mutex<PullsCache>>) -> *mut Self {
+        Box::into_raw(Box::new(Self(cache)))
+    }
+}
+
 impl Deref for PullsCacheHandle {
     type Target = Arc<Mutex<PullsCache>>;
 
@@ -80,7 +86,7 @@ pub unsafe extern "C" fn rsn_pulls_cache_size(handle: *mut PullsCacheHandle) -> 
 
 #[no_mangle]
 pub extern "C" fn rsn_pulls_cache_element_size() -> usize {
-    PullsCache::element_size()
+    PullsCache::ELEMENT_SIZE
 }
 
 #[no_mangle]

@@ -44,7 +44,7 @@ impl BootstrapAttemptLegacy {
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
-        id: &str,
+        id: String,
         incremental_id: u64,
         connections: Arc<BootstrapConnections>,
         network_params: NetworkParams,

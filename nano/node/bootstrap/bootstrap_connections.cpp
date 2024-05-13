@@ -134,6 +134,11 @@ bool nano::bootstrap_client::get_hard_stop () const
 	return rsnano::rsn_bootstrap_client_hard_stop (handle);
 }
 
+nano::bootstrap_connections::bootstrap_connections (rsnano::BootstrapConnectionsHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::bootstrap_connections::bootstrap_connections (nano::node & node_a, nano::bootstrap_initiator & initiator)
 {
 	auto config_dto{ node_a.config->to_dto () };
@@ -143,7 +148,7 @@ nano::bootstrap_connections::bootstrap_connections (nano::node & node_a, nano::b
 	node_a.async_rt.handle, node_a.workers->handle, &params_dto,
 	new std::weak_ptr<nano::node_observers> (node_a.observers),
 	node_a.stats->handle, node_a.outbound_limiter.handle, node_a.block_processor.handle,
-	initiator.handle, initiator.cache.handle);
+	initiator.cache.handle);
 }
 
 nano::bootstrap_connections::~bootstrap_connections ()

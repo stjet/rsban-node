@@ -48,7 +48,7 @@ pub struct BootstrapConnections {
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
     outbound_limiter: Arc<OutboundBandwidthLimiter>,
-    bootstrap_initiator: Arc<BootstrapInitiator>,
+    bootstrap_initiator: Mutex<Option<Weak<BootstrapInitiator>>>,
     pulls_cache: Arc<Mutex<PullsCache>>,
 }
 
@@ -65,7 +65,6 @@ impl BootstrapConnections {
         stats: Arc<Stats>,
         outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
-        bootstrap_initiator: Arc<BootstrapInitiator>,
         pulls_cache: Arc<Mutex<PullsCache>>,
     ) -> Self {
         Self {
@@ -90,9 +89,13 @@ impl BootstrapConnections {
             stats,
             outbound_limiter,
             block_processor,
-            bootstrap_initiator,
             pulls_cache,
+            bootstrap_initiator: Mutex::new(None),
         }
+    }
+
+    pub fn set_bootstrap_initiator(&self, initiator: Arc<BootstrapInitiator>) {
+        *self.bootstrap_initiator.lock().unwrap() = Some(Arc::downgrade(&initiator));
     }
 
     pub fn target_connections(&self, pulls_remaining: usize, attempts_count: usize) -> u32 {
@@ -618,23 +621,32 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     // The bulk_pull_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
                     // Dispatch request in an external thread in case it needs to be destroyed
                     let self_l = Arc::clone(self);
-                    let initiator = Arc::clone(&self_l.bootstrap_initiator);
-                    self.workers.push_task(Box::new(move || {
-                        let client = Arc::new(BulkPullClient::new(
-                            self_l.network_params.clone(),
-                            self_l.flags.clone(),
-                            Arc::clone(&self_l.stats),
-                            Arc::clone(&self_l.block_processor),
-                            connection_l,
-                            attempt_l,
-                            Arc::clone(&self_l.workers),
-                            Arc::clone(&self_l.async_rt),
-                            self_l,
-                            initiator,
-                            pull,
-                        ));
-                        client.request();
-                    }));
+                    let initiator = self_l
+                        .bootstrap_initiator
+                        .lock()
+                        .unwrap()
+                        .as_ref()
+                        .cloned()
+                        .expect("bootstrap initiator not set")
+                        .upgrade();
+                    if let Some(initiator) = initiator {
+                        self.workers.push_task(Box::new(move || {
+                            let client = Arc::new(BulkPullClient::new(
+                                self_l.network_params.clone(),
+                                self_l.flags.clone(),
+                                Arc::clone(&self_l.stats),
+                                Arc::clone(&self_l.block_processor),
+                                connection_l,
+                                attempt_l,
+                                Arc::clone(&self_l.workers),
+                                Arc::clone(&self_l.async_rt),
+                                self_l,
+                                initiator,
+                                pull,
+                            ));
+                            client.request();
+                        }));
+                    }
                 }
             } else {
                 // Reuse connection if pulls deque become empty

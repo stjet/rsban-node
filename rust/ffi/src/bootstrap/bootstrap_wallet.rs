@@ -1,23 +1,21 @@
-use std::{
-    ffi::{c_char, CStr},
-    ops::Deref,
-    sync::Arc,
+use super::{
+    bootstrap_attempt::BootstrapAttemptHandle, bootstrap_connections::BootstrapConnectionsHandle,
+    BootstrapInitiatorHandle,
 };
-
 use crate::{
     block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
     utils::ThreadPoolHandle, wallets::AccountVecHandle, websocket::WebsocketListenerHandle,
     NodeConfigDto, StatHandle,
 };
-
-use super::{
-    bootstrap_attempt::BootstrapAttemptHandle, bootstrap_connections::BootstrapConnectionsHandle,
-    BootstrapInitiatorHandle,
-};
 use rsnano_core::Account;
 use rsnano_node::{
     bootstrap::{BootstrapAttemptWallet, BootstrapAttemptWalletExt, BootstrapStrategy},
     config::NodeConfig,
+};
+use std::{
+    ffi::{c_char, CStr},
+    ops::Deref,
+    sync::Arc,
 };
 
 #[no_mangle]
@@ -48,7 +46,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wallet_create(
             Arc::clone(block_processor),
             bootstrap_initiator,
             ledger,
-            id_str,
+            id_str.to_string(),
             incremental_id,
             Arc::clone(connections),
             Arc::clone(workers),

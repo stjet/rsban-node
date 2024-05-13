@@ -225,7 +225,7 @@ impl BootstrapAttemptLazy {
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
-        id: &str,
+        id: String,
         incremental_id: u64,
         flags: NodeFlags,
         connections: Arc<BootstrapConnections>,

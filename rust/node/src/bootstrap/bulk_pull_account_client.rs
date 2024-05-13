@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     BootstrapAttemptWallet, BootstrapClient, BootstrapConnections, BootstrapConnectionsExt,
-    BootstrapInitiator,
+    BootstrapInitiator, BootstrapInitiatorExt,
 };
 use rsnano_core::{
     utils::{BufferReader, Deserialize, FixedSizeSerialize},

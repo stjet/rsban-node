@@ -9,6 +9,12 @@ use std::{
 
 pub struct BootstrapAttemptsHandle(Arc<Mutex<BootstrapAttempts>>);
 
+impl BootstrapAttemptsHandle {
+    pub fn new(attempts: Arc<Mutex<BootstrapAttempts>>) -> *mut Self {
+        Box::into_raw(Box::new(Self(attempts)))
+    }
+}
+
 impl Deref for BootstrapAttemptsHandle {
     type Target = Arc<Mutex<BootstrapAttempts>>;
 

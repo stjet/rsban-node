@@ -1,19 +1,15 @@
 use super::{
-    CompositeSocketObserver, ConnectionsPerAddress, EndpointType, NullSocketObserver, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer,
-    TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
-    TokioSocketFacadeFactory,
+    CompositeSocketObserver, ConnectionsPerAddress, EndpointType, Socket, SocketBuilder,
+    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt,
+    TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    utils::{
-        first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool,
-        ThreadPoolImpl,
-    },
-    NetworkParams, DEV_NETWORK_PARAMS,
+    utils::{first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
+    NetworkParams,
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
@@ -129,10 +125,6 @@ impl TcpListener {
             ledger,
             node_id,
         }
-    }
-
-    pub fn new_test_builder(ledger: Arc<Ledger>) -> TcpListenerBuilder {
-        TcpListenerBuilder::new(ledger)
     }
 
     pub fn stop(&self) {
@@ -529,88 +521,6 @@ impl TcpListenerExt for Arc<TcpListener> {
 
     fn as_observer(self) -> Arc<dyn TcpServerObserver> {
         self
-    }
-}
-
-pub struct TcpListenerBuilder {
-    port: u16,
-    tcp_channels: Option<Arc<TcpChannels>>,
-    syn_cookies: Option<Arc<SynCookies>>,
-    async_rt: Option<Arc<AsyncRuntime>>,
-    ledger: Arc<Ledger>,
-    node_id: Option<KeyPair>,
-    block_processor: Option<Arc<BlockProcessor>>,
-}
-
-impl TcpListenerBuilder {
-    pub fn new(ledger: Arc<Ledger>) -> Self {
-        Self {
-            ledger,
-            port: 8088,
-            tcp_channels: None,
-            syn_cookies: None,
-            async_rt: None,
-            node_id: None,
-            block_processor: None,
-        }
-    }
-
-    pub fn async_rt(mut self, async_rt: Arc<AsyncRuntime>) -> Self {
-        self.async_rt = Some(async_rt);
-        self
-    }
-
-    pub fn port(mut self, port: u16) -> Self {
-        self.port = port;
-        self
-    }
-
-    pub fn tcp_channels(mut self, channels: Arc<TcpChannels>) -> Self {
-        self.tcp_channels = Some(channels);
-        self
-    }
-
-    pub fn syn_cookies(mut self, syn_cookies: Arc<SynCookies>) -> Self {
-        self.syn_cookies = Some(syn_cookies);
-        self
-    }
-
-    pub fn node_id(mut self, node_id: KeyPair) -> Self {
-        self.node_id = Some(node_id);
-        self
-    }
-
-    pub fn block_processor(mut self, processor: Arc<BlockProcessor>) -> Self {
-        self.block_processor = Some(processor);
-        self
-    }
-
-    pub fn build(self) -> TcpListener {
-        let block_processor = self.block_processor.unwrap_or_else(|| {
-            Arc::new(BlockProcessor::new_test_instance(Arc::clone(&self.ledger)))
-        });
-        let bootstrap_initiator = Arc::new(BootstrapInitiator::new(std::ptr::null_mut()));
-
-        TcpListener::new(
-            self.port,
-            32,
-            NodeConfig::new_null(),
-            self.tcp_channels
-                .unwrap_or_else(|| Arc::new(TcpChannels::new_test_instance())),
-            self.syn_cookies
-                .unwrap_or_else(|| Arc::new(SynCookies::default())),
-            DEV_NETWORK_PARAMS.clone(),
-            NodeFlags::default(),
-            self.async_rt
-                .unwrap_or_else(|| Arc::new(AsyncRuntime::default())),
-            Arc::new(NullSocketObserver::new()),
-            Arc::new(Stats::default()),
-            Arc::new(ThreadPoolImpl::new_test_instance()),
-            block_processor,
-            bootstrap_initiator,
-            self.ledger,
-            Arc::new(self.node_id.unwrap_or_else(|| KeyPair::new())),
-        )
     }
 }
 

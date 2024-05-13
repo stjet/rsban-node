@@ -1,7 +1,9 @@
 #pragma once
 
 #include "nano/lib/numbers.hpp"
+
 #include <nano/node/common.hpp>
+
 #include <memory>
 
 namespace rsnano

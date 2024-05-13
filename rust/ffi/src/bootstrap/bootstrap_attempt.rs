@@ -5,16 +5,12 @@ use crate::{
 };
 use num::FromPrimitive;
 use rsnano_core::Account;
-use rsnano_node::{
-    block_processing::BlockSource,
-    bootstrap::{BootstrapAttempt, BootstrapStrategy},
-};
+use rsnano_node::bootstrap::{BootstrapAttempt, BootstrapStrategy};
 use std::{
     ffi::{CStr, CString},
     ops::Deref,
     os::raw::c_char,
-    sync::{atomic::Ordering, Arc, MutexGuard},
-    time::Duration,
+    sync::{atomic::Ordering, Arc},
 };
 
 pub struct BootstrapAttemptHandle(Arc<BootstrapStrategy>);

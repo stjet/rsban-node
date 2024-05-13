@@ -47,7 +47,7 @@ pub use bulk_push_client::*;
 pub use bulk_push_server::BulkPushServer;
 pub use channel_entry::ChannelEntry;
 pub use pulls_cache::{PullInfo, PullsCache};
-use rsnano_core::{Account, BlockEnum};
+use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
 
 pub mod bootstrap_limits {
     pub const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;
@@ -101,6 +101,15 @@ impl BootstrapStrategy {
             BootstrapStrategy::Lazy(i) => i.attempt.stop(),
             BootstrapStrategy::Other(i) => i.stop(),
             BootstrapStrategy::Wallet(i) => i.attempt.stop(),
+        }
+    }
+
+    pub fn get_information(&self, tree: &mut dyn PropertyTree) {
+        match self {
+            BootstrapStrategy::Lazy(i) => i.get_information(tree).unwrap(),
+            BootstrapStrategy::Legacy(i) => i.get_information(tree),
+            BootstrapStrategy::Wallet(i) => i.get_information(tree),
+            BootstrapStrategy::Other(_) => {}
         }
     }
 

@@ -1885,24 +1885,7 @@ void nano::json_handler::bootstrap_status ()
 		connections.put ("pulls", std::to_string (node.bootstrap_initiator.connections->pulls.size ()));
 	}
 	response_l.add_child ("connections", connections);
-	boost::property_tree::ptree attempts;
-	{
-		for (auto i : node.bootstrap_initiator.attempts.get_attempts ())
-		{
-			boost::property_tree::ptree entry;
-			auto & attempt (i.second);
-			entry.put ("id", attempt->id ());
-			entry.put ("mode", attempt->mode_text ());
-			entry.put ("started", static_cast<bool> (attempt->get_started ()));
-			entry.put ("pulling", std::to_string (attempt->get_pulling ()));
-			entry.put ("total_blocks", std::to_string (attempt->total_blocks ()));
-			entry.put ("requeued_pulls", std::to_string (attempt->get_requeued_pulls ()));
-			attempt->get_information (entry);
-			entry.put ("duration", attempt->duration ().count ());
-			attempts.push_back (std::make_pair ("", entry));
-		}
-	}
-	response_l.add_child ("attempts", attempts);
+	response_l.add_child ("attempts", node.bootstrap_initiator.attempts.attempts_information ());
 	response_errors ();
 }
 

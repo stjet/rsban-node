@@ -6,7 +6,7 @@ use crate::{
     block_processing::BlockProcessor, config::NodeConfig, stats::Stats, utils::ThreadPool,
     websocket::WebsocketListener,
 };
-use rsnano_core::Account;
+use rsnano_core::{utils::PropertyTree, Account};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -87,6 +87,12 @@ impl BootstrapAttemptWallet {
     pub fn wallet_size(&self) -> usize {
         let guard = self.mutex.lock().unwrap();
         guard.wallet_accounts.len()
+    }
+
+    pub fn get_information(&self, result: &mut dyn PropertyTree) {
+        result
+            .put_u64("wallet_accounts", self.wallet_size() as u64)
+            .unwrap();
     }
 }
 

@@ -4,9 +4,6 @@
 
 #include <boost/multi_index_container.hpp>
 
-#include <atomic>
-#include <unordered_set>
-
 namespace nano
 {
 class node;
@@ -26,6 +23,7 @@ class bootstrap_attempt_lazy final : public bootstrap_attempt
 {
 public:
 	explicit bootstrap_attempt_lazy (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string const & id_a = "");
+	explicit bootstrap_attempt_lazy (rsnano::BootstrapAttemptHandle * handle);
 	bool lazy_start (nano::hash_or_account const &);
 	void lazy_add (nano::pull_info const &);
 	void lazy_requeue (nano::block_hash const &, nano::block_hash const &);
@@ -40,6 +38,7 @@ public:
 class bootstrap_attempt_wallet final : public bootstrap_attempt
 {
 public:
+	explicit bootstrap_attempt_wallet (rsnano::BootstrapAttemptHandle * handle);
 	explicit bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a = "");
 	void requeue_pending (nano::account const &);
 	void run () override;

@@ -80,13 +80,8 @@ public:
 	std::size_t size ();
 	uint64_t create_incremental_id ();
 	uint64_t total_attempts () const;
-	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> get_attempts ();
+	boost::property_tree::ptree attempts_information ();
 	rsnano::BootstrapAttemptsHandle * handle;
-
-private:
-	std::atomic<uint64_t> incremental{ 0 };
-	nano::mutex bootstrap_attempts_mutex;
-	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> attempts;
 };
 
 class bootstrap_attempt_lazy;

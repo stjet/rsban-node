@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/threading.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
@@ -5,7 +7,7 @@
 #include <nano/node/common.hpp>
 #include <nano/node/node.hpp>
 
-#include <algorithm>
+#include <cassert>
 #include <memory>
 
 nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
@@ -43,7 +45,8 @@ void nano::bootstrap_initiator::bootstrap (bool force, std::string id_a, uint32_
 	if (!stopped && find_attempt (nano::bootstrap_mode::legacy) == nullptr)
 	{
 		node.stats->inc (nano::stat::type::bootstrap, frontiers_age_a == std::numeric_limits<uint32_t>::max () ? nano::stat::detail::initiate : nano::stat::detail::initiate_legacy_age, nano::stat::dir::out);
-		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), attempts.create_incremental_id (), id_a, frontiers_age_a, start_account_a));
+		auto incremental_id = attempts.create_incremental_id ();
+		auto legacy_attempt (std::make_shared<nano::bootstrap_attempt_legacy> (node.shared (), incremental_id, id_a, frontiers_age_a, start_account_a));
 		attempts_list.insert ({ legacy_attempt->get_incremental_id (), legacy_attempt });
 		attempts.add (legacy_attempt);
 		lock.unlock ();
@@ -193,6 +196,7 @@ void nano::bootstrap_initiator::remove_attempt (std::shared_ptr<nano::bootstrap_
 		auto attempt_ptr = attempt->second;
 		attempts.remove (attempt_ptr->get_incremental_id ());
 		attempts_list.erase (attempt);
+		std::cout << "attempts.size(): " << attempts.size() << ", attempts_list.size(): " << attempts_list.size() << std::endl;
 		debug_assert (attempts.size () == attempts_list.size ());
 		lock.unlock ();
 		attempt_ptr->stop ();
@@ -346,74 +350,60 @@ nano::bootstrap_attempts::~bootstrap_attempts () noexcept
 
 void nano::bootstrap_attempts::add (std::shared_ptr<nano::bootstrap_attempt> attempt_a)
 {
-	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
-	attempts.emplace (attempt_a->get_incremental_id (), attempt_a);
-	//	rsnano::rsn_bootstrap_attempts_add (handle, attempt_a->handle);
+	rsnano::rsn_bootstrap_attempts_add (handle, attempt_a->handle);
 }
 
 void nano::bootstrap_attempts::remove (uint64_t incremental_id_a)
 {
-	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
-	attempts.erase (incremental_id_a);
-	//	rsnano::rsn_bootstrap_attempts_remove (handle, incremental_id_a);
+	rsnano::rsn_bootstrap_attempts_remove (handle, incremental_id_a);
 }
 
 void nano::bootstrap_attempts::clear ()
 {
-	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
-	attempts.clear ();
-	//	rsnano::rsn_bootstrap_attempts_clear (handle);
+	rsnano::rsn_bootstrap_attempts_clear (handle);
 }
 
 std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_attempts::find (uint64_t incremental_id_a)
 {
-	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
-	auto find_attempt (attempts.find (incremental_id_a));
-	if (find_attempt != attempts.end ())
+	std::shared_ptr<nano::bootstrap_attempt> result{};
+	auto attempt_handle = rsnano::rsn_bootstrap_attempts_find (handle, incremental_id_a);
+	if (attempt_handle)
 	{
-		return find_attempt->second;
+		auto mode = static_cast<nano::bootstrap_mode> (rsnano::rsn_bootstrap_attempt_bootstrap_mode (attempt_handle));
+		switch (mode)
+		{
+			case nano::bootstrap_mode::lazy:
+				result = std::make_shared<nano::bootstrap_attempt_lazy> (attempt_handle);
+				break;
+			case nano::bootstrap_mode::legacy:
+				result = std::make_shared<nano::bootstrap_attempt_legacy> (attempt_handle);
+				break;
+			case nano::bootstrap_mode::wallet_lazy:
+				result = std::make_shared<nano::bootstrap_attempt_wallet> (attempt_handle);
+				break;
+			default:
+				assert (false);
+				break;
+		}
 	}
-	else
-	{
-		return nullptr;
-	}
-	//	auto attempt_handle = rsnano::rsn_bootstrap_attempts_find (handle, incremental_id_a);
-	//	if (attempt_handle){
-	//		return rsnano::dto_to_bootstrap_attempt (attempt_handle);
-	//	}
-	//	else
-	//	{
-	//		return nullptr;
-	//	}
+	return result;
 }
 std::size_t nano::bootstrap_attempts::size ()
 {
-	nano::lock_guard<nano::mutex> lock{ bootstrap_attempts_mutex };
-	return attempts.size ();
-	// return rsnano::rsn_bootstrap_attempts_size (handle);
+	return rsnano::rsn_bootstrap_attempts_size (handle);
 }
 uint64_t nano::bootstrap_attempts::create_incremental_id ()
 {
-	return incremental++;
-	//	return rsnano::rsn_bootstrap_attempts_get_incremental_id (handle);
+	return rsnano::rsn_bootstrap_attempts_incremental_id (handle);
 }
 uint64_t nano::bootstrap_attempts::total_attempts () const
 {
-	return incremental;
-	//	return rsnano::rsn_bootstrap_attempts_total_attempts (handle);
+	return rsnano::rsn_bootstrap_attempts_total_attempts (handle);
 }
-std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> nano::bootstrap_attempts::get_attempts ()
+
+boost::property_tree::ptree nano::bootstrap_attempts::attempts_information ()
 {
-	nano::lock_guard<nano::mutex> lock (bootstrap_attempts_mutex);
+	boost::property_tree::ptree attempts;
+	rsnano::rsn_bootstrap_attempts_attempts_information (handle, &attempts);
 	return attempts;
-	//	std::vector<rsnano::BootstrapAttemptResultDto> dtos;
-	//	auto max_size = rsnano::rsn_bootstrap_attempts_size (handle);
-	//	dtos.resize (max_size);
-	//	auto actual_size = rsnano::rsn_bootstrap_attempts_attempts (handle, dtos.data(), max_size);
-	//	std::map<uint64_t, std::shared_ptr<nano::bootstrap_attempt>> result;
-	//	for (int i = 0; i < actual_size; ++i)
-	//	{
-	//		result.insert(dtos[i].id, rsnano::dto_to_bootstrap_attempt (dtos[i].attempt));
-	//	}
-	//	return result;
 }

@@ -10,8 +10,6 @@
 
 #include <boost/format.hpp>
 
-#include <algorithm>
-
 constexpr std::chrono::seconds nano::bootstrap_limits::lazy_flush_delay_sec;
 constexpr uint64_t nano::bootstrap_limits::lazy_batch_pull_count_resize_blocks_limit;
 constexpr double nano::bootstrap_limits::lazy_batch_pull_count_resize_ratio;
@@ -57,6 +55,11 @@ nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (std::shared_ptr<nano::node
 {
 }
 
+nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (rsnano::BootstrapAttemptHandle * handle) :
+	nano::bootstrap_attempt{ handle }
+{
+}
+
 bool nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & hash_or_account_a)
 {
 	return rsnano::rsn_bootstrap_attempt_lazy_lazy_start (handle, hash_or_account_a.bytes.data ());
@@ -86,6 +89,11 @@ bool nano::bootstrap_attempt_lazy::lazy_processed_or_exists (nano::block_hash co
 void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree & tree_a)
 {
 	rsnano::rsn_bootstrap_attempt_lazy_get_information (handle, &tree_a);
+}
+
+nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (rsnano::BootstrapAttemptHandle * handle) :
+	nano::bootstrap_attempt{ handle }
+{
 }
 
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a) :

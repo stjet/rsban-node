@@ -16,6 +16,7 @@ class node;
 class bootstrap_attempt_legacy : public bootstrap_attempt
 {
 public:
+	explicit bootstrap_attempt_legacy (rsnano::BootstrapAttemptHandle * handle);
 	explicit bootstrap_attempt_legacy (std::shared_ptr<nano::node> const & node_a, uint64_t const incremental_id_a, std::string const & id_a, uint32_t const frontiers_age_a, nano::account const & start_account_a);
 	void add_frontier (nano::pull_info const &);
 	void add_bulk_push_target (nano::block_hash const &, nano::block_hash const &);

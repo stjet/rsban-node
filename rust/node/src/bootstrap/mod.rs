@@ -8,6 +8,7 @@ mod bootstrap_lazy;
 mod bootstrap_legacy;
 mod bootstrap_message_visitor;
 mod bootstrap_message_visitor_factory;
+mod bootstrap_server;
 mod bootstrap_wallet;
 mod bulk_pull_account_client;
 mod bulk_pull_account_server;
@@ -20,8 +21,6 @@ mod frontier_req_client;
 mod frontier_req_server;
 mod pulls_cache;
 
-use std::sync::Arc;
-
 pub use ascending::*;
 pub use bootstrap_attempt::*;
 pub use bootstrap_attempts::BootstrapAttempts;
@@ -32,6 +31,7 @@ pub use bootstrap_lazy::*;
 pub use bootstrap_legacy::*;
 pub use bootstrap_message_visitor::BootstrapMessageVisitorImpl;
 pub use bootstrap_message_visitor_factory::BootstrapMessageVisitorFactory;
+pub use bootstrap_server::*;
 pub use bootstrap_wallet::*;
 pub use bulk_pull_account_client::*;
 pub use bulk_pull_account_server::BulkPullAccountServer;
@@ -44,6 +44,7 @@ pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
 pub use pulls_cache::{PullInfo, PullsCache};
 use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
+use std::sync::Arc;
 
 pub mod bootstrap_limits {
     pub const PULL_COUNT_PER_CHECK: u64 = 8 * 1024;

@@ -52,7 +52,7 @@ bool allow_bootstrap_a)
 	params.allow_bootstrap = allow_bootstrap_a;
 	params.syn_cookies = syn_cookies_a.handle;
 	params.node_id_priv = node_id_a.prv.bytes.data ();
-	handle = rsnano::rsn_bootstrap_server_create (&params);
+	handle = rsnano::rsn_tcp_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
 
@@ -63,29 +63,29 @@ nano::transport::tcp_server::tcp_server (rsnano::TcpServerHandle * handle_a) :
 
 nano::transport::tcp_server::~tcp_server ()
 {
-	rsnano::rsn_bootstrap_server_destroy (handle);
+	rsnano::rsn_tcp_server_destroy (handle);
 }
 
 void nano::transport::tcp_server::start ()
 {
-	rsnano::rsn_bootstrap_server_start (handle);
+	rsnano::rsn_tcp_server_start (handle);
 }
 
 void nano::transport::tcp_server::stop ()
 {
-	rsnano::rsn_bootstrap_server_stop (handle);
+	rsnano::rsn_tcp_server_stop (handle);
 }
 
 // TODO: We could periodically call this (from a dedicated timeout thread for eg.) but socket already handles timeouts,
 //  and since we only ever store tcp_server as weak_ptr, socket timeout will automatically trigger tcp_server cleanup
 void nano::transport::tcp_server::timeout ()
 {
-	rsnano::rsn_bootstrap_server_timeout (handle);
+	rsnano::rsn_tcp_server_timeout (handle);
 }
 
 std::optional<nano::keepalive> nano::transport::tcp_server::get_last_keepalive () const
 {
-	auto message = rsnano::rsn_bootstrap_server_get_last_keepalive (handle);
+	auto message = rsnano::rsn_tcp_server_get_last_keepalive (handle);
 	auto result = nano::message_handle_to_message (message);
 	if (result == nullptr)
 	{
@@ -138,28 +138,28 @@ nano::transport::request_response_visitor_factory::~request_response_visitor_fac
 
 bool nano::transport::tcp_server::is_stopped () const
 {
-	return rsnano::rsn_bootstrap_server_is_stopped (handle);
+	return rsnano::rsn_tcp_server_is_stopped (handle);
 }
 
 std::uintptr_t nano::transport::tcp_server::unique_id () const
 {
-	return rsnano::rsn_bootstrap_server_unique_id (handle);
+	return rsnano::rsn_tcp_server_unique_id (handle);
 }
 
 void nano::transport::tcp_server::set_remote_node_id (nano::account account_a)
 {
-	rsnano::rsn_bootstrap_server_set_remote_node_id (handle, account_a.bytes.data ());
+	rsnano::rsn_tcp_server_set_remote_node_id (handle, account_a.bytes.data ());
 }
 
 nano::tcp_endpoint nano::transport::tcp_server::get_remote_endpoint () const
 {
 	rsnano::EndpointDto dto;
-	rsnano::rsn_bootstrap_server_remote_endpoint (handle, &dto);
+	rsnano::rsn_tcp_server_remote_endpoint (handle, &dto);
 	return rsnano::dto_to_endpoint (dto);
 }
 
 std::shared_ptr<nano::transport::socket> const nano::transport::tcp_server::get_socket () const
 {
-	auto socket_handle = rsnano::rsn_bootstrap_server_socket (handle);
+	auto socket_handle = rsnano::rsn_tcp_server_socket (handle);
 	return std::make_shared<nano::transport::socket> (socket_handle);
 }

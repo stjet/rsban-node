@@ -34,7 +34,7 @@ public:
 
 	void connect (nano::bootstrap_server & server)
 	{
-		server.on_response.add ([&] (auto & response, auto & channel) {
+		server.set_response_callback ([&] (auto & response, auto & channel) {
 			add (response);
 		});
 	}

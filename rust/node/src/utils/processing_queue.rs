@@ -10,6 +10,9 @@ use std::{
 
 use crate::stats::{DetailType, Direction, StatType, Stats};
 
+/**
+ * Queue that processes enqueued elements in (possibly parallel) batches
+ */
 pub struct ProcessingQueue<T: Send + 'static> {
     thread_name: String,
     thread_count: usize,
@@ -21,6 +24,11 @@ pub struct ProcessingQueue<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> ProcessingQueue<T> {
+    /**
+     * @param thread_count Number of processing threads
+     * @param max_queue_size Max number of items enqueued, items beyond this value will be discarded
+     * @param max_batch_size Max number of elements processed in single batch, 0 for unlimited (default)
+     */
     pub fn new(
         stats: Arc<Stats>,
         stat_type: StatType,

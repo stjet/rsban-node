@@ -24,7 +24,7 @@ pub struct AscPullAck {
 }
 
 impl AscPullAck {
-    const MAX_FRONTIERS: usize = 1000;
+    pub const MAX_FRONTIERS: usize = 1000;
 
     pub fn create_test_instance_blocks() -> Self {
         Self {

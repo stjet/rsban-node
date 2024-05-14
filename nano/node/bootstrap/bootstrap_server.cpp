@@ -1,3 +1,7 @@
+#include "nano/lib/rsnano.hpp"
+#include "nano/node/messages.hpp"
+#include "nano/node/transport/tcp.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
@@ -11,305 +15,49 @@
 
 // TODO: Make threads configurable
 nano::bootstrap_server::bootstrap_server (nano::store::component & store_a, nano::ledger & ledger_a, nano::network_constants const & network_constants_a, nano::stats & stats_a) :
-	store{ store_a },
-	ledger{ ledger_a },
-	network_constants{ network_constants_a },
-	stats{ stats_a },
-	request_queue{ stats, nano::stat::type::bootstrap_server, nano::thread_role::name::bootstrap_server, /* threads */ 1, /* max size */ 1024 * 16, /* max batch */ 128 }
+	handle{ rsnano::rsn_bootstrap_server_create (stats_a.handle, ledger_a.handle) }
 {
-	request_queue.process_batch = [this] (auto & batch) {
-		process_batch (batch);
-	};
 }
 
 nano::bootstrap_server::~bootstrap_server ()
 {
+	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
 void nano::bootstrap_server::start ()
 {
-	request_queue.start ();
+	rsnano::rsn_bootstrap_server_start (handle);
 }
 
 void nano::bootstrap_server::stop ()
 {
-	request_queue.stop ();
-}
-
-bool nano::bootstrap_server::verify_request_type (nano::asc_pull_type type) const
-{
-	switch (type)
-	{
-		case asc_pull_type::invalid:
-			return false;
-		case asc_pull_type::blocks:
-		case asc_pull_type::account_info:
-		case asc_pull_type::frontiers:
-			return true;
-	}
-	return false;
-}
-
-bool nano::bootstrap_server::verify (const nano::asc_pull_req & message) const
-{
-	if (!verify_request_type (message.pull_type ()))
-	{
-		return false;
-	}
-
-	struct verify_visitor
-	{
-		bool operator() (nano::empty_payload const &) const
-		{
-			return false;
-		}
-		bool operator() (nano::asc_pull_req::blocks_payload const & pld) const
-		{
-			return pld.count > 0 && pld.count <= max_blocks;
-		}
-		bool operator() (nano::asc_pull_req::account_info_payload const & pld) const
-		{
-			return !pld.target.is_zero ();
-		}
-		bool operator() (nano::asc_pull_req::frontiers_payload const & pld) const
-		{
-			return pld.count > 0 && pld.count <= max_frontiers;
-		}
-	};
-
-	return std::visit (verify_visitor{}, message.payload ());
+	rsnano::rsn_bootstrap_server_stop (handle);
 }
 
 bool nano::bootstrap_server::request (nano::asc_pull_req const & message, std::shared_ptr<nano::transport::channel> channel)
 {
-	if (!verify (message))
-	{
-		stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::invalid);
-		return false;
-	}
-
-	// If channel is full our response will be dropped anyway, so filter that early
-	// TODO: Add per channel limits (this ideally should be done on the channel message processing side)
-	if (channel->max (nano::transport::traffic_type::bootstrap))
-	{
-		stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::channel_full, nano::stat::dir::in);
-		return false;
-	}
-
-	request_queue.add (std::make_pair (message, channel));
-	return true;
+	return rsnano::rsn_bootstrap_server_request (handle, message.handle, channel->handle);
 }
 
-void nano::bootstrap_server::respond (nano::asc_pull_ack & response, std::shared_ptr<nano::transport::channel> & channel)
+namespace
 {
-	stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::response, nano::stat::dir::out);
-
-	// Increase relevant stats depending on payload type
-	struct stat_visitor
-	{
-		nano::stats & stats;
-
-		void operator() (nano::empty_payload const &)
-		{
-			debug_assert (false, "missing payload");
-		}
-		void operator() (nano::asc_pull_ack::blocks_payload const & pld)
-		{
-			stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::response_blocks, nano::stat::dir::out);
-			stats.add (nano::stat::type::bootstrap_server, nano::stat::detail::blocks, nano::stat::dir::out, pld.blocks.size ());
-		}
-		void operator() (nano::asc_pull_ack::account_info_payload const & pld)
-		{
-			stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::response_account_info, nano::stat::dir::out);
-		}
-		void operator() (nano::asc_pull_ack::frontiers_payload const & pld)
-		{
-			stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::response_frontiers, nano::stat::dir::out);
-			stats.add (nano::stat::type::bootstrap_server, nano::stat::detail::frontiers, nano::stat::dir::out, pld.frontiers.size ());
-		}
-	};
-	std::visit (stat_visitor{ stats }, response.payload ());
-
-	on_response.notify (response, channel);
-
-	channel->send (
-	response, [this] (auto & ec, auto size) {
-		if (ec)
-		{
-			stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::write_error, nano::stat::dir::out);
-		}
-	},
-	nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type::bootstrap);
+void response_callback_wrapper (void * context, rsnano::MessageHandle * msg_handle, rsnano::ChannelHandle * channel_handle)
+{
+	auto callback = static_cast<std::function<void (nano::asc_pull_ack &, std::shared_ptr<nano::transport::channel> &)> *> (context);
+	nano::asc_pull_ack message{ msg_handle };
+	auto channel{ nano::transport::channel_handle_to_channel (channel_handle) };
+	(*callback) (message, channel);
 }
 
-/*
- * Requests
- */
-
-void nano::bootstrap_server::process_batch (std::deque<request_t> & batch)
+void delete_context (void * context)
 {
-	auto transaction = store.tx_begin_read ();
-
-	for (auto & [request, channel] : batch)
-	{
-		transaction->refresh_if_needed ();
-
-		if (!channel->max (nano::transport::traffic_type::bootstrap))
-		{
-			auto response = process (*transaction, request);
-			respond (response, channel);
-		}
-		else
-		{
-			stats.inc (nano::stat::type::bootstrap_server, nano::stat::detail::channel_full, nano::stat::dir::out);
-		}
-	}
+	auto callback = static_cast<std::function<void (nano::asc_pull_ack &, std::shared_ptr<nano::transport::channel> &)> *> (context);
+	delete callback;
+}
 }
 
-nano::asc_pull_ack nano::bootstrap_server::process (store::transaction const & transaction, const nano::asc_pull_req & message)
+void nano::bootstrap_server::set_response_callback (std::function<void (nano::asc_pull_ack &, std::shared_ptr<nano::transport::channel> &)> callback)
 {
-	return std::visit ([this, &transaction, &message] (auto && request) { return process (transaction, message.id (), request); }, message.payload ());
-}
-
-nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction &, nano::asc_pull_req::id_t id, const nano::empty_payload & request)
-{
-	// Empty payload should never be possible!
-	throw std::runtime_error ("missing payload");
-}
-
-/*
- * Blocks request
- */
-
-nano::asc_pull_ack nano::bootstrap_server::process (store::transaction const & transaction, nano::asc_pull_req::id_t id, nano::asc_pull_req::blocks_payload const & request)
-{
-	const std::size_t count = std::min (static_cast<std::size_t> (request.count), max_blocks);
-
-	switch (request.start_type)
-	{
-		case asc_pull_req::hash_type::block:
-		{
-			if (ledger.block_exists (transaction, request.start.as_block_hash ()))
-			{
-				return prepare_response (transaction, id, request.start.as_block_hash (), count);
-			}
-		}
-		break;
-		case asc_pull_req::hash_type::account:
-		{
-			auto info = ledger.account_info (transaction, request.start.as_account ());
-			if (info)
-			{
-				// Start from open block if pulling by account
-				return prepare_response (transaction, id, info->open_block (), count);
-			}
-		}
-		break;
-	}
-
-	// Neither block nor account found, send empty response to indicate that
-	return prepare_empty_blocks_response (id);
-}
-
-nano::asc_pull_ack nano::bootstrap_server::prepare_response (store::transaction const & transaction, nano::asc_pull_req::id_t id, nano::block_hash start_block, std::size_t count)
-{
-	debug_assert (count <= max_blocks); // Should be filtered out earlier
-
-	auto blocks = prepare_blocks (transaction, start_block, count);
-	debug_assert (blocks.size () <= count);
-
-	nano::asc_pull_ack::blocks_payload response_payload{};
-	response_payload.blocks = blocks;
-
-	nano::asc_pull_ack response{ network_constants, id, response_payload };
-	return response;
-}
-
-nano::asc_pull_ack nano::bootstrap_server::prepare_empty_blocks_response (nano::asc_pull_req::id_t id)
-{
-	nano::asc_pull_ack::blocks_payload empty_payload{};
-	nano::asc_pull_ack response{ network_constants, id, empty_payload };
-	return response;
-}
-
-std::vector<std::shared_ptr<nano::block>> nano::bootstrap_server::prepare_blocks (store::transaction const & transaction, nano::block_hash start_block, std::size_t count) const
-{
-	debug_assert (count <= max_blocks); // Should be filtered out earlier
-
-	std::vector<std::shared_ptr<nano::block>> result;
-	if (!start_block.is_zero ())
-	{
-		std::shared_ptr<nano::block> current = ledger.block (transaction, start_block);
-		while (current && result.size () < count)
-		{
-			result.push_back (current);
-
-			auto successor = current->sideband ().successor ();
-			current = ledger.block (transaction, successor);
-		}
-	}
-	return result;
-}
-
-/*
- * Account info request
- */
-
-nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction & transaction, nano::asc_pull_req::id_t id, const nano::asc_pull_req::account_info_payload & request)
-{
-	nano::account target{ 0 };
-	switch (request.target_type)
-	{
-		case asc_pull_req::hash_type::account:
-		{
-			target = request.target.as_account ();
-		}
-		break;
-		case asc_pull_req::hash_type::block:
-		{
-			// Try to lookup account assuming target is block hash
-			target = ledger.account (transaction, request.target.as_block_hash ()).value_or (0);
-		}
-		break;
-	}
-
-	nano::asc_pull_ack::account_info_payload response_payload{};
-	response_payload.account = target;
-
-	auto account_info = ledger.account_info (transaction, target);
-	if (account_info)
-	{
-		response_payload.account_open = account_info->open_block ();
-		response_payload.account_head = account_info->head ();
-		response_payload.account_block_count = account_info->block_count ();
-
-		auto conf_info = store.confirmation_height ().get (transaction, target);
-		if (conf_info)
-		{
-			response_payload.account_conf_frontier = conf_info->frontier ();
-			response_payload.account_conf_height = conf_info->height ();
-		}
-	}
-	// If account is missing the response payload will contain all 0 fields, except for the target
-	//
-	nano::asc_pull_ack response{ network_constants, id, response_payload };
-	return response;
-}
-
-/*
- * Frontiers request
- */
-
-nano::asc_pull_ack nano::bootstrap_server::process (const store::transaction & transaction, nano::asc_pull_req::id_t id, const nano::asc_pull_req::frontiers_payload & request)
-{
-	debug_assert (request.count <= max_frontiers); // Should be filtered out earlier
-	nano::asc_pull_ack::frontiers_payload response_payload{};
-
-	for (auto it = store.account ().begin (transaction, request.start), end = store.account ().end (); it != end && response_payload.frontiers.size () < request.count; ++it)
-	{
-		response_payload.frontiers.emplace_back (it->first, it->second.head ());
-	}
-
-	nano::asc_pull_ack response{ network_constants, id, response_payload };
-	return response;
+	auto context = new std::function<void (nano::asc_pull_ack &, std::shared_ptr<nano::transport::channel> &)> (callback);
+	rsnano::rsn_bootstrap_server_set_callback (handle, response_callback_wrapper, context, delete_context);
 }

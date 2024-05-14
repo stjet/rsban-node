@@ -167,7 +167,7 @@ public:
 	nano::active_transactions active; // ported
 	nano::vote_processor vote_processor; // ported
 	nano::websocket_server websocket; // ported
-	nano::bootstrap_initiator bootstrap_initiator;
+	nano::bootstrap_initiator bootstrap_initiator; // ported
 	nano::rep_crawler rep_crawler; // ported
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
 

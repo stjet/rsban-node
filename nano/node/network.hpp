@@ -49,8 +49,6 @@ public:
 	~network ();
 
 	void create_tcp_channels ();
-	void start ();
-	void stop ();
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
 	void flood_keepalive (float const scale_a = 1.0f);
 	void flood_keepalive_self (float const scale_a = 0.5f);
@@ -84,11 +82,6 @@ public:
 	void set_port (uint16_t port_a);
 
 private:
-	void run_processing ();
-	void run_cleanup ();
-	void run_keepalive ();
-	void run_reachout ();
-
 private: // Dependencies
 	nano::node & node;
 
@@ -130,5 +123,18 @@ public:
 	void process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel);
 
 	rsnano::LiveMessageProcessorHandle * handle;
+};
+
+class network_threads
+{
+public:
+	network_threads (nano::node & node);
+	network_threads (network_threads const &) = delete;
+	~network_threads ();
+
+	void start ();
+	void stop ();
+
+	rsnano::NetworkThreadsHandle * handle;
 };
 }

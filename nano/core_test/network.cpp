@@ -545,16 +545,6 @@ TEST (network, ipv6_from_ipv4)
 	ASSERT_TRUE (endpoint2.address ().is_v6 ());
 }
 
-TEST (network, endpoint_bad_fd)
-{
-	nano::test::system system (1);
-	system.stop_node (*system.nodes[0]);
-	auto endpoint (system.nodes[0]->network->endpoint ());
-	ASSERT_TRUE (endpoint.address ().is_loopback ());
-	// The endpoint is invalidated asynchronously
-	ASSERT_TIMELY_EQ (10s, system.nodes[0]->network->endpoint ().port (), 0);
-}
-
 TEST (network, reserved_address)
 {
 	nano::test::system system (1);

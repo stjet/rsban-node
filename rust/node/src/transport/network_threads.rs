@@ -28,6 +28,29 @@ pub struct NetworkThreads {
 }
 
 impl NetworkThreads {
+    pub fn new(
+        channels: Arc<TcpChannels>,
+        config: NodeConfig,
+        flags: NodeFlags,
+        network_params: NetworkParams,
+        stats: Arc<Stats>,
+        syn_cookies: Arc<SynCookies>,
+    ) -> Self {
+        Self {
+            cleanup_thread: None,
+            keepalive_thread: None,
+            reachout_thread: None,
+            processing_threads: Vec::new(),
+            stopped: Arc::new((Condvar::new(), Mutex::new(false))),
+            channels,
+            config,
+            flags,
+            network_params,
+            stats,
+            syn_cookies,
+        }
+    }
+
     pub fn start(&mut self) {
         let cleanup = CleanupLoop {
             stopped: self.stopped.clone(),
@@ -104,6 +127,15 @@ impl NetworkThreads {
         if let Some(t) = self.reachout_thread.take() {
             t.join().unwrap();
         }
+    }
+}
+
+impl Drop for NetworkThreads {
+    fn drop(&mut self) {
+        // All threads must be stopped before this destructor
+        debug_assert!(self.processing_threads.is_empty());
+        debug_assert!(self.cleanup_thread.is_none());
+        debug_assert!(self.keepalive_thread.is_none());
     }
 }
 

@@ -190,7 +190,8 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket },
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq),
-	live_message_processor{ *this }
+	live_message_processor{ *this },
+	network_threads{ *this }
 {
 	rsnano::rsn_live_message_processor_bind (live_message_processor.handle, network->tcp_channels->handle);
 	logger->debug (nano::log::type::node, "Constructing node...");
@@ -633,7 +634,7 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 void nano::node::start ()
 {
 	long_inactivity_cleanup ();
-	network->start ();
+	network_threads.start ();
 	add_initial_peers ();
 	if (!flags.disable_legacy_bootstrap () && !flags.disable_ongoing_bootstrap ())
 	{
@@ -760,8 +761,8 @@ void nano::node::stop ()
 	stats->stop ();
 	workers->stop ();
 	local_block_broadcaster.stop ();
-	network->stop (); // Stop network last to avoid killing in-use sockets
-					  //
+	network_threads.stop (); // Stop network last to avoid killing in-use sockets
+							 //
 	// work pool is not stopped on purpose due to testing setup
 }
 

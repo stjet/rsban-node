@@ -11,8 +11,6 @@
 
 #include <boost/format.hpp>
 
-#include <exception>
-
 using namespace std::chrono_literals;
 
 /*
@@ -30,199 +28,11 @@ nano::network::network (nano::node & node, uint16_t port) :
 
 nano::network::~network ()
 {
-	// All threads must be stopped before this destructor
-	debug_assert (processing_threads.empty ());
-	debug_assert (!cleanup_thread.joinable ());
-	debug_assert (!keepalive_thread.joinable ());
 }
 
 void nano::network::create_tcp_channels ()
 {
 	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port));
-}
-
-void nano::network::start ()
-{
-	cleanup_thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::network_cleanup);
-		run_cleanup ();
-	});
-
-	keepalive_thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::network_keepalive);
-		run_keepalive ();
-	});
-
-	reachout_thread = std::thread ([this] () {
-		nano::thread_role::set (nano::thread_role::name::network_reachout);
-		run_reachout ();
-	});
-
-	if (!node.flags.disable_tcp_realtime ())
-	{
-		tcp_channels->start ();
-
-		for (std::size_t i = 0; i < node.config->network_threads; ++i)
-		{
-			processing_threads.emplace_back (nano::thread_attributes::get_default (), [this] () {
-				nano::thread_role::set (nano::thread_role::name::packet_processing);
-				run_processing ();
-			});
-		}
-	}
-}
-
-void nano::network::stop ()
-{
-	{
-		nano::lock_guard<nano::mutex> lock{ mutex };
-		stopped = true;
-	}
-	condition.notify_all ();
-
-	tcp_channels->stop ();
-	resolver.cancel ();
-
-	for (auto & thread : processing_threads)
-	{
-		thread.join ();
-	}
-	processing_threads.clear ();
-
-	if (keepalive_thread.joinable ())
-	{
-		keepalive_thread.join ();
-	}
-	if (cleanup_thread.joinable ())
-	{
-		cleanup_thread.join ();
-	}
-	if (reachout_thread.joinable ())
-	{
-		reachout_thread.join ();
-	}
-
-	port = 0;
-}
-
-void nano::network::run_processing ()
-{
-	try
-	{
-		// TODO: Move responsibility of packet queuing and processing to the message_processor class
-		tcp_channels->process_messages ();
-	}
-	catch (boost::system::error_code & ec)
-	{
-		node.logger->critical (nano::log::type::network, "Error: {}", ec.message ());
-		release_assert (false);
-	}
-	catch (std::error_code & ec)
-	{
-		node.logger->critical (nano::log::type::network, "Error: {}", ec.message ());
-		release_assert (false);
-	}
-	catch (std::runtime_error & err)
-	{
-		node.logger->critical (nano::log::type::network, "Error: {}", err.what ());
-		release_assert (false);
-	}
-	catch (std::exception & err)
-	{
-		node.logger->critical (nano::log::type::network, "Error: {}", err.what ());
-		release_assert (false);
-	}
-	catch (...)
-	{
-		node.logger->critical (nano::log::type::network, "Unknown error");
-		release_assert (false);
-	}
-}
-
-void nano::network::run_cleanup ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
-	{
-		condition.wait_for (lock, node.network_params.network.is_dev_network () ? 1s : 5s);
-
-		if (stopped)
-		{
-			return;
-		}
-		lock.unlock ();
-
-		node.stats->inc (nano::stat::type::network, nano::stat::detail::loop_cleanup);
-
-		if (!node.flags.disable_connection_cleanup ())
-		{
-			auto const cutoff = std::chrono::system_clock::now () - node.network_params.network.cleanup_cutoff ();
-			cleanup (cutoff);
-		}
-
-		syn_cookies->purge (node.network_params.network.syn_cookie_cutoff);
-
-		lock.lock ();
-	}
-}
-
-void nano::network::run_keepalive ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
-	{
-		condition.wait_for (lock, node.network_params.network.keepalive_period);
-		lock.unlock ();
-
-		if (stopped)
-		{
-			return;
-		}
-
-		node.stats->inc (nano::stat::type::network, nano::stat::detail::loop_keepalive);
-
-		flood_keepalive (0.75f);
-		flood_keepalive_self (0.25f);
-
-		tcp_channels->keepalive ();
-
-		lock.lock ();
-	}
-}
-
-void nano::network::run_reachout ()
-{
-	nano::unique_lock<nano::mutex> lock{ mutex };
-	while (!stopped)
-	{
-		condition.wait_for (lock, node.network_params.network.merge_period);
-		if (stopped)
-		{
-			return;
-		}
-		lock.unlock ();
-
-		node.stats->inc (nano::stat::type::network, nano::stat::detail::loop_reachout);
-
-		auto keepalive = tcp_channels->sample_keepalive ();
-		if (keepalive)
-		{
-			for (auto const & peer : keepalive->get_peers ())
-			{
-				if (stopped)
-				{
-					return;
-				}
-
-				merge_peer (peer);
-
-				// Throttle reachout attempts
-				std::this_thread::sleep_for (node.network_params.network.merge_period);
-			}
-		}
-
-		lock.lock ();
-	}
 }
 
 void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> const & channel_a)
@@ -526,4 +336,32 @@ nano::live_message_processor::~live_message_processor ()
 void nano::live_message_processor::process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
 {
 	rsnano::rsn_live_message_processor_process (handle, message.handle, channel->handle);
+}
+
+nano::network_threads::network_threads (nano::node & node)
+{
+	auto config_dto{ node.config->to_dto () };
+	auto params_dto{ node.network_params.to_dto () };
+	handle = rsnano::rsn_network_threads_create (
+	node.network->tcp_channels->handle,
+	&config_dto,
+	node.flags.handle,
+	&params_dto,
+	node.stats->handle,
+	node.network->syn_cookies->handle);
+}
+
+nano::network_threads::~network_threads ()
+{
+	rsnano::rsn_network_threads_destroy (handle);
+}
+
+void nano::network_threads::start ()
+{
+	rsnano::rsn_network_threads_start (handle);
+}
+
+void nano::network_threads::stop ()
+{
+	rsnano::rsn_network_threads_stop (handle);
 }

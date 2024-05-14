@@ -40,6 +40,7 @@ pub use channel_tcp::*;
 pub(crate) use connections_per_address::ConnectionsPerAddress;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use network_filter::NetworkFilter;
+pub use network_threads::*;
 pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
 pub use socket::*;

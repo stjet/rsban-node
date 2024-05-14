@@ -2893,7 +2893,7 @@ TEST (node, peer_cache_restart)
 		auto node3 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), path, system.work, node_flags));
 		system.nodes.push_back (node3);
 		// Check cached peers after restart
-		node3->network->start ();
+		node3->network_threads.start ();
 		node3->add_initial_peers ();
 
 		auto & store = node3->store;

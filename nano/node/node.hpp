@@ -147,7 +147,7 @@ public:
 	nano::wallets_store & wallets_store; // ported
 	nano::ledger ledger; // ported
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
-	std::shared_ptr<nano::network> network;
+	std::shared_ptr<nano::network> network; // ported
 	std::shared_ptr<nano::telemetry> telemetry; // ported
 	nano::bootstrap_server bootstrap_server; // ported
 	std::filesystem::path application_path;

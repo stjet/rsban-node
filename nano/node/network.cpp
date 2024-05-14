@@ -61,24 +61,6 @@ void nano::network::flood_message (nano::message & message_a, nano::transport::b
 	}
 }
 
-void nano::network::flood_keepalive (float const scale_a)
-{
-	nano::keepalive message{ node.network_params.network };
-	auto peers{ message.get_peers () };
-	tcp_channels->random_fill (peers);
-	message.set_peers (peers);
-	flood_message (message, nano::transport::buffer_drop_policy::limiter, scale_a);
-}
-
-void nano::network::flood_keepalive_self (float const scale_a)
-{
-	nano::keepalive message{ node.network_params.network };
-	auto peers{ message.get_peers () };
-	fill_keepalive_self (peers);
-	message.set_peers (peers);
-	flood_message (message, nano::transport::buffer_drop_policy::limiter, scale_a);
-}
-
 void nano::network::flood_block (std::shared_ptr<nano::block> const & block_a, nano::transport::buffer_drop_policy const drop_policy_a)
 {
 	nano::publish message (node.network_params.network, block_a);
@@ -179,11 +161,6 @@ void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_
 	}
 }
 
-nano::tcp_endpoint nano::network::bootstrap_peer ()
-{
-	return tcp_channels->bootstrap_peer ();
-}
-
 std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::account const & node_id_a)
 {
 	return tcp_channels->find_node_id (node_id_a);
@@ -207,15 +184,6 @@ std::size_t nano::network::size () const
 bool nano::network::empty () const
 {
 	return size () == 0;
-}
-
-void nano::network::erase (nano::transport::channel const & channel_a)
-{
-	auto const channel_type = channel_a.get_type ();
-	if (channel_type == nano::transport::transport_type::tcp)
-	{
-		tcp_channels->erase (channel_a.get_tcp_remote_endpoint ());
-	}
 }
 
 /*
@@ -301,11 +269,6 @@ std::string nano::network::to_string (nano::networks network)
 void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
 {
 	tcp_channels->on_new_channel (observer_a);
-}
-
-void nano::network::clear_from_publish_filter (nano::uint128_t const & digest_a)
-{
-	tcp_channels->publish_filter->clear (digest_a);
 }
 
 uint16_t nano::network::get_port ()

@@ -50,8 +50,6 @@ public:
 
 	void create_tcp_channels ();
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
-	void flood_keepalive (float const scale_a = 1.0f);
-	void flood_keepalive_self (float const scale_a = 0.5f);
 	// Flood block to a random selection of peers
 	void flood_block (std::shared_ptr<nano::block> const &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter);
 	void flood_block_many (std::deque<std::shared_ptr<nano::block>>, std::function<void ()> = nullptr, unsigned = broadcast_interval_ms);
@@ -65,19 +63,15 @@ public:
 	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
-	// Get the next peer for attempting a tcp bootstrap connection
-	nano::tcp_endpoint bootstrap_peer ();
 	nano::endpoint endpoint () const;
 	void cleanup (std::chrono::system_clock::time_point const & cutoff);
 	std::size_t size () const;
 	bool empty () const;
-	void erase (nano::transport::channel const &);
 	/** Disconnects and adds peer to exclusion list */
 	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 	static std::string to_string (nano::networks);
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
-	void clear_from_publish_filter (nano::uint128_t const & digest_a);
 	uint16_t get_port ();
 	void set_port (uint16_t port_a);
 

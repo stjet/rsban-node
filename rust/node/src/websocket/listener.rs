@@ -1,11 +1,19 @@
 use super::{
-    ConfirmationJsonOptions, ConfirmationOptions, MessageBuilder, Options, OutgoingMessageEnvelope,
-    Topic, WebsocketSessionEntry,
+    ConfirmationJsonOptions, ConfirmationOptions, Options, OutgoingMessageEnvelope, Topic,
+    WebsocketSessionEntry,
 };
 use crate::{
-    consensus::ElectionStatus, utils::AsyncRuntime, wallets::Wallets, websocket::WebsocketSession,
+    consensus::{ElectionStatus, ElectionStatusType},
+    utils::AsyncRuntime,
+    wallets::Wallets,
+    websocket::WebsocketSession,
 };
-use rsnano_core::{Account, Amount, BlockEnum, VoteWithWeightInfo};
+use rsnano_core::{
+    utils::{PropertyTree, SerdePropertyTree},
+    Account, Amount, BlockEnum, BlockSideband, VoteWithWeightInfo,
+};
+use serde::Serialize;
+use serde_json::Value;
 use std::{
     borrow::Cow,
     net::SocketAddr,
@@ -13,6 +21,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
+    time::UNIX_EPOCH,
 };
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -130,33 +139,27 @@ impl WebsocketListener {
                     let include_block = conf_opts.include_block;
 
                     if include_block && msg_with_block.is_none() {
-                        msg_with_block = Some(
-                            MessageBuilder::block_confirmed(
-                                block_a,
-                                account_a,
-                                amount_a,
-                                subtype.to_string(),
-                                include_block,
-                                election_status_a,
-                                election_votes_a,
-                                conf_opts,
-                            )
-                            .unwrap(),
-                        );
+                        msg_with_block = Some(block_confirmed_message(
+                            block_a,
+                            account_a,
+                            amount_a,
+                            subtype.to_string(),
+                            include_block,
+                            election_status_a,
+                            election_votes_a,
+                            conf_opts,
+                        ));
                     } else if !include_block && msg_without_block.is_none() {
-                        msg_without_block = Some(
-                            MessageBuilder::block_confirmed(
-                                block_a,
-                                account_a,
-                                amount_a,
-                                subtype.to_string(),
-                                include_block,
-                                election_status_a,
-                                election_votes_a,
-                                conf_opts,
-                            )
-                            .unwrap(),
-                        );
+                        msg_without_block = Some(block_confirmed_message(
+                            block_a,
+                            account_a,
+                            amount_a,
+                            subtype.to_string(),
+                            include_block,
+                            election_status_a,
+                            election_votes_a,
+                            conf_opts,
+                        ));
                     }
                     drop(subs);
                     let _ = session.blocking_write(if include_block {
@@ -259,4 +262,138 @@ async fn accept_connection(
     };
 
     Ok(())
+}
+
+fn block_confirmed_message(
+    block: &Arc<BlockEnum>,
+    account: &Account,
+    amount: &Amount,
+    subtype: String,
+    include_block: bool,
+    election_status: &ElectionStatus,
+    election_votes: &[VoteWithWeightInfo],
+    options: &ConfirmationOptions,
+) -> OutgoingMessageEnvelope {
+    let election_info = if options.include_election_info || options.include_election_info_with_votes
+    {
+        let mut info = ElectionInfo::from(election_status);
+        if options.include_election_info_with_votes {
+            info.votes = Some(election_votes.iter().map(|v| v.into()).collect());
+        }
+        Some(info)
+    } else {
+        None
+    };
+
+    let block_json = if include_block {
+        let mut block_node_l = SerdePropertyTree::new();
+        block.serialize_json(&mut block_node_l).unwrap();
+        if !subtype.is_empty() {
+            block_node_l.add("subtype", &subtype).unwrap();
+        }
+        Some(block_node_l.value)
+    } else {
+        None
+    };
+
+    let sideband = if options.include_sideband_info {
+        Some(block.sideband().unwrap().into())
+    } else {
+        None
+    };
+
+    OutgoingMessageEnvelope::new(
+        Topic::Confirmation,
+        BlockConfirmed {
+            account: account.encode_account(),
+            amount: amount.to_string_dec(),
+            hash: block.hash().to_string(),
+            confirmation_type: election_status.election_status_type.as_str().to_string(),
+            election_info,
+            block: block_json,
+            sideband,
+        },
+    )
+}
+
+#[derive(Serialize)]
+struct JsonSideband {
+    height: String,
+    local_timestamp: String,
+}
+
+impl From<&BlockSideband> for JsonSideband {
+    fn from(value: &BlockSideband) -> Self {
+        Self {
+            height: value.height.to_string(),
+            local_timestamp: value.timestamp.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct BlockConfirmed {
+    account: String,
+    amount: String,
+    hash: String,
+    confirmation_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    election_info: Option<ElectionInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    block: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sideband: Option<JsonSideband>,
+}
+
+#[derive(Serialize)]
+struct ElectionInfo {
+    duration: String,
+    time: String,
+    tally: String,
+    #[serde(rename = "final")]
+    final_tally: String,
+    blocks: String,
+    voters: String,
+    request_count: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    votes: Option<Vec<JsonVoteSummary>>,
+}
+
+impl From<&ElectionStatus> for ElectionInfo {
+    fn from(value: &ElectionStatus) -> Self {
+        Self {
+            duration: value.election_duration.as_millis().to_string(),
+            time: value
+                .election_end
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                .to_string(),
+            tally: value.tally.to_string_dec(),
+            final_tally: value.final_tally.to_string_dec(),
+            blocks: value.block_count.to_string(),
+            voters: value.voter_count.to_string(),
+            request_count: value.confirmation_request_count.to_string(),
+            votes: None,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct JsonVoteSummary {
+    representative: String,
+    timestamp: String,
+    hash: String,
+    weight: String,
+}
+
+impl From<&VoteWithWeightInfo> for JsonVoteSummary {
+    fn from(v: &VoteWithWeightInfo) -> Self {
+        Self {
+            representative: v.representative.encode_account(),
+            timestamp: v.timestamp.to_string(),
+            hash: v.hash.to_string(),
+            weight: v.weight.to_string_dec(),
+        }
+    }
 }

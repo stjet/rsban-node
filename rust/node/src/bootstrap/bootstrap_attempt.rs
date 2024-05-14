@@ -1,11 +1,12 @@
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
-    websocket::{MessageBuilder, WebsocketListener},
+    websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
 use rsnano_core::{encode_hex, Account, BlockEnum};
 use rsnano_ledger::Ledger;
+use serde::Serialize;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
@@ -88,9 +89,33 @@ impl BootstrapAttempt {
         let id = &self.id;
         debug!("Starting bootstrap attempt with ID: {id} (mode: {mode}) ");
         if let Some(websocket) = &self.websocket_server {
-            websocket.broadcast(&MessageBuilder::bootstrap_started(id, mode)?);
+            websocket.broadcast(&self.bootstrap_started());
         }
         Ok(())
+    }
+
+    fn bootstrap_started(&self) -> OutgoingMessageEnvelope {
+        OutgoingMessageEnvelope::new(
+            Topic::Bootstrap,
+            BootstrapStarted {
+                reason: "started",
+                id: &self.id,
+                mode: self.mode_text(),
+            },
+        )
+    }
+
+    fn bootstrap_exited(&self) -> OutgoingMessageEnvelope {
+        OutgoingMessageEnvelope::new(
+            Topic::Bootstrap,
+            BootstrapExited {
+                reason: "exited",
+                id: &self.id,
+                mode: self.mode_text(),
+                total_blocks: self.total_blocks.load(Ordering::SeqCst).to_string(),
+                duration: self.duration().as_secs().to_string(),
+            },
+        )
     }
 
     pub fn stop(&self) {
@@ -212,15 +237,23 @@ impl Drop for BootstrapAttempt {
         debug!("Exiting bootstrap attempt with ID: {id} (mode: {mode})");
 
         if let Some(websocket) = &self.websocket_server {
-            websocket.broadcast(
-                &MessageBuilder::bootstrap_exited(
-                    id,
-                    mode,
-                    self.duration(),
-                    self.total_blocks.load(Ordering::SeqCst),
-                )
-                .unwrap(),
-            );
+            websocket.broadcast(&self.bootstrap_exited());
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct BootstrapStarted<'a> {
+    pub reason: &'a str,
+    pub id: &'a str,
+    pub mode: &'a str,
+}
+
+#[derive(Serialize)]
+pub struct BootstrapExited<'a> {
+    pub reason: &'a str,
+    pub id: &'a str,
+    pub mode: &'a str,
+    pub total_blocks: String,
+    pub duration: String,
 }

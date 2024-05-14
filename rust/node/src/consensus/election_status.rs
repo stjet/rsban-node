@@ -18,6 +18,18 @@ pub enum ElectionStatusType {
     Stopped = 5,
 }
 
+impl ElectionStatusType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ongoing => "ongoing",
+            Self::ActiveConfirmedQuorum => "active_quorum",
+            Self::ActiveConfirmationHeight => "active_confirmation_height",
+            Self::InactiveConfirmationHeight => "inactive",
+            Self::Stopped => "stopped",
+        }
+    }
+}
+
 /// Information on the status of an election
 #[derive(Clone)]
 pub struct ElectionStatus {

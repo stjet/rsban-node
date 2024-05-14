@@ -3,12 +3,8 @@ use super::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, SerdePropertyTree, Stream},
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
-use crate::{
-    utils::{PropertyTree, Serialize},
-    Amount,
-};
+use crate::{utils::Serialize, Amount};
 use anyhow::Result;
-use num::bigint::ToBigInt;
 use std::time::{Duration, SystemTime};
 
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
@@ -24,6 +20,18 @@ pub enum VoteCode {
     Vote,          // Vote has the highest timestamp
     Indeterminate, // Unknown if replay or vote
     Ignored,       // Vote is valid, but got ingored (e.g. due to cooldown)
+}
+
+impl VoteCode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            VoteCode::Vote => "vote",
+            VoteCode::Replay => "replay",
+            VoteCode::Indeterminate => "indeterminate",
+            VoteCode::Ignored => "ignored",
+            VoteCode::Invalid => "invalid",
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize)]

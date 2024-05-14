@@ -73,16 +73,6 @@ std::size_t nano::websocket::listener::subscriber_count (nano::websocket::topic 
 	return rsnano::rsn_websocket_listener_subscriber_count (handle, static_cast<uint8_t> (topic_a));
 }
 
-nano::websocket::message nano::websocket::message_builder::started_election (nano::block_hash const & hash_a)
-{
-	return { rsnano::rsn_message_builder_started_election (hash_a.bytes.data ()) };
-}
-
-nano::websocket::message nano::websocket::message_builder::stopped_election (nano::block_hash const & hash_a)
-{
-	return { rsnano::rsn_message_builder_stopped_election (hash_a.bytes.data ()) };
-}
-
 nano::websocket::message nano::websocket::message_builder::vote_received (std::shared_ptr<nano::vote> const & vote_a, nano::vote_code code_a)
 {
 	return { rsnano::rsn_message_builder_vote_received (vote_a->get_handle (), static_cast<uint8_t> (code_a)) };
@@ -107,17 +97,6 @@ nano::websocket::message nano::websocket::message_builder::work_cancelled (nano:
 nano::websocket::message nano::websocket::message_builder::work_failed (nano::work_version const version_a, nano::block_hash const & root_a, uint64_t const difficulty_a, uint64_t const publish_threshold_a, std::chrono::milliseconds const & duration_a, std::vector<std::string> const & bad_peers_a)
 {
 	return work_generation (version_a, root_a, 0, difficulty_a, publish_threshold_a, duration_a, "", bad_peers_a, false, false);
-}
-
-nano::websocket::message nano::websocket::message_builder::telemetry_received (nano::telemetry_data const & telemetry_data_a, nano::endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	return { rsnano::rsn_message_builder_telemetry_received (telemetry_data_a.handle, &endpoint_dto) };
-}
-
-nano::websocket::message nano::websocket::message_builder::new_block_arrived (nano::block const & block_a)
-{
-	return { rsnano::rsn_message_builder_new_block_arrived (block_a.get_handle ()) };
 }
 
 /*

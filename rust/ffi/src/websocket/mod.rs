@@ -2,17 +2,13 @@ mod websocket_server;
 use crate::{
     consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
     core::BlockHandle,
-    messages::TelemetryDataHandle,
-    to_rust_string,
-    transport::EndpointDto,
-    utils::AsyncRuntimeHandle,
-    wallets::LmdbWalletsHandle,
-    StringVecHandle,
+    to_rust_string, StringVecHandle,
 };
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
 use rsnano_node::websocket::{
-    MessageBuilder, OutgoingMessageEnvelope, Topic, WebsocketListener, WebsocketListenerExt,
+    vote_received, work_generation_message, OutgoingMessageEnvelope, Topic, WebsocketListener,
+    WebsocketListenerExt,
 };
 use std::{
     ops::{Deref, DerefMut},
@@ -56,45 +52,11 @@ pub unsafe extern "C" fn rsn_websocket_message_destroy(handle: *mut WebsocketMes
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_telemetry_received(
-    telemetry_data: &TelemetryDataHandle,
-    endpoint: &EndpointDto,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::telemetry_received(telemetry_data, endpoint.into()).unwrap();
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_new_block_arrived(
-    block: &BlockHandle,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::new_block_arrived(&**block);
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_started_election(
-    hash: *const u8,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::started_election(&BlockHash::from_ptr(hash)).unwrap();
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_builder_stopped_election(
-    hash: *const u8,
-) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::stopped_election(&BlockHash::from_ptr(hash)).unwrap();
-    WebsocketMessageHandle::new(message)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_message_builder_vote_received(
     vote: &VoteHandle,
     vote_code: u8,
 ) -> *mut WebsocketMessageHandle {
-    let message =
-        MessageBuilder::vote_received(vote, FromPrimitive::from_u8(vote_code).unwrap()).unwrap();
+    let message = vote_received(vote, FromPrimitive::from_u8(vote_code).unwrap());
     WebsocketMessageHandle::new(message)
 }
 
@@ -111,7 +73,7 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
     completed: bool,
     cancelled: bool,
 ) -> *mut WebsocketMessageHandle {
-    let message = MessageBuilder::work_generation(
+    let message = work_generation_message(
         WorkVersion::from_u8(version).unwrap(),
         &BlockHash::from_ptr(root),
         work,
@@ -122,8 +84,7 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
         bad_peers,
         completed,
         cancelled,
-    )
-    .unwrap();
+    );
     WebsocketMessageHandle::new(message)
 }
 

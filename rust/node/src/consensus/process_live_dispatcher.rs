@@ -1,9 +1,12 @@
 use super::PriorityScheduler;
 use crate::{
     block_processing::BlockProcessor,
-    websocket::{MessageBuilder, Topic, WebsocketListener},
+    websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
-use rsnano_core::BlockEnum;
+use rsnano_core::{
+    utils::{PropertyTree, SerdePropertyTree},
+    BlockEnum,
+};
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::sync::Arc;
@@ -42,7 +45,7 @@ impl ProcessLiveDispatcher {
 
         if let Some(websocket) = &self.websocket {
             if websocket.any_subscriber(Topic::NewUnconfirmedBlock) {
-                websocket.broadcast(&MessageBuilder::new_block_arrived(block));
+                websocket.broadcast(&new_block_arrived_message(block));
             }
         }
     }
@@ -64,4 +67,12 @@ impl ProcessLiveDispatcherExt for Arc<ProcessLiveDispatcher> {
             }
         }));
     }
+}
+
+fn new_block_arrived_message(block: &BlockEnum) -> OutgoingMessageEnvelope {
+    let mut json_block = SerdePropertyTree::new();
+    block.serialize_json(&mut json_block).unwrap();
+    let subtype = block.sideband().unwrap().details.state_subtype();
+    json_block.put_string("subtype", subtype).unwrap();
+    OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value)
 }

@@ -8,7 +8,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (na
 	composite->add_component (node_observers.vote.collect_container_info ("vote"));
 	composite->add_component (node_observers.account_balance.collect_container_info ("account_balance"));
 	composite->add_component (node_observers.endpoint.collect_container_info ("endpoint"));
-	composite->add_component (node_observers.disconnect.collect_container_info ("disconnect"));
 	composite->add_component (node_observers.work_cancel.collect_container_info ("work_cancel"));
 	return composite;
 }

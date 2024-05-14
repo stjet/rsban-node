@@ -387,10 +387,6 @@ nano::endpoint nano::network::endpoint () const
 void nano::network::cleanup (std::chrono::system_clock::time_point const & cutoff_a)
 {
 	tcp_channels->purge (cutoff_a);
-	if (node.network->empty ())
-	{
-		disconnect_observer ();
-	}
 }
 
 std::size_t nano::network::size () const

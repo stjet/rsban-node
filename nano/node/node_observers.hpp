@@ -27,7 +27,6 @@ public:
 	nano::observer_set<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>, nano::vote_code> vote;
 	nano::observer_set<nano::account const &, bool> account_balance;
 	nano::observer_set<std::shared_ptr<nano::transport::channel>> endpoint;
-	nano::observer_set<> disconnect;
 	nano::observer_set<nano::root const &> work_cancel;
 	nano::observer_set<nano::telemetry_data const &, std::shared_ptr<nano::transport::channel> const &> telemetry;
 

@@ -8,6 +8,7 @@ mod fair_queue;
 mod message_deserializer;
 mod message_processor;
 mod network_filter;
+mod network_threads;
 mod peer_exclusion;
 mod socket;
 mod syn_cookies;

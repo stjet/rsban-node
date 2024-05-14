@@ -514,6 +514,10 @@ impl TcpChannels {
             .list(min_version, include_temporary_channels)
     }
 
+    pub fn port(&self) -> u16 {
+        self.port.load(Ordering::SeqCst)
+    }
+
     pub fn set_port(&self, port: u16) {
         self.port.store(port, Ordering::SeqCst);
     }
@@ -649,6 +653,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
     fn merge_peer(&self, peer: &SocketAddrV6) {
         if !self.reachout_checked(peer, self.node_config.allow_local_peers) {
+            self.stats.inc(StatType::Network, DetailType::MergePeer);
             self.start_tcp(*peer);
         }
     }

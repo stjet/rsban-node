@@ -272,9 +272,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			debug_assert (channel_a != nullptr);
 			observers->endpoint.notify (channel_a);
 		});
-		network->disconnect_observer = [this] () {
-			observers->disconnect.notify ();
-		};
 		if (!config->callback_address.empty ())
 		{
 			observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {

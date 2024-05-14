@@ -84,6 +84,7 @@ void nano::port_mapping::refresh_devices ()
 	}
 }
 
+// TODO Connect this again in NetworkThreads keepalive_self!
 nano::endpoint nano::port_mapping::external_address ()
 {
 	nano::endpoint result_l (boost::asio::ip::address_v6{}, 0);

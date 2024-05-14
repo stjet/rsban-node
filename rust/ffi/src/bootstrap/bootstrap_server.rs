@@ -1,6 +1,6 @@
 use rsnano_messages::{DeserializedMessage, Message};
 use rsnano_node::bootstrap::BootstrapServer;
-use std::{ffi::c_void, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
     ledger::datastore::LedgerHandle, messages::MessageHandle, transport::ChannelHandle,
@@ -8,6 +8,14 @@ use crate::{
 };
 
 pub struct BootstrapServerHandle(Arc<BootstrapServer>);
+
+impl Deref for BootstrapServerHandle {
+    type Target = Arc<BootstrapServer>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_server_create(

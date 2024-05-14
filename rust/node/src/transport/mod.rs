@@ -6,6 +6,7 @@ mod channel_tcp;
 mod connections_per_address;
 mod fair_queue;
 mod message_deserializer;
+mod message_processor;
 mod network_filter;
 mod peer_exclusion;
 mod socket;
@@ -22,6 +23,7 @@ mod tokio_socket_facade;
 mod write_queue;
 
 pub use fair_queue::*;
+pub use message_processor::LiveMessageProcessor;
 use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 
@@ -135,6 +137,11 @@ impl ChannelEnum {
         match self {
             Self::Tcp(tcp) => tcp.max(traffic_type),
             _ => false,
+        }
+    }
+    pub fn set_peering_endpoint(&self, address: SocketAddrV6) {
+        if let Self::Tcp(tcp) = self {
+            tcp.set_peering_endpoint(address);
         }
     }
 }

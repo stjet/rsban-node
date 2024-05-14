@@ -189,8 +189,10 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	local_block_broadcaster{ *this, block_processor, *network, *stats, !flags.disable_block_processor_republishing () },
 	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket },
 	startup_time (std::chrono::steady_clock::now ()),
-	node_seq (seq)
+	node_seq (seq),
+	live_message_processor{ *this }
 {
+	rsnano::rsn_live_message_processor_bind (live_message_processor.handle, network->tcp_channels->handle);
 	logger->debug (nano::log::type::node, "Constructing node...");
 
 	wallets.set_start_election_callback ([this] (std::shared_ptr<nano::block> const & block) {

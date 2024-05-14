@@ -149,7 +149,7 @@ public:
 	nano::outbound_bandwidth_limiter outbound_limiter; // ported
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry; // ported
-	nano::bootstrap_server bootstrap_server;
+	nano::bootstrap_server bootstrap_server; // ported
 	std::filesystem::path application_path;
 	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
@@ -181,6 +181,7 @@ public:
 	nano::bootstrap_ascending::service ascendboot; // ported
 	nano::local_block_broadcaster local_block_broadcaster; // ported
 	nano::process_live_dispatcher process_live_dispatcher; // ported
+	nano::live_message_processor live_message_processor; // ported
 
 	std::chrono::steady_clock::time_point const startup_time;
 	std::chrono::seconds unchecked_cutoff = std::chrono::seconds (7 * 24 * 60 * 60); // Week

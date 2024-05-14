@@ -220,7 +220,7 @@ void delete_sink (void * callback_handle)
 }
 }
 
-nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink) :
+nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port) :
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
 	stats{ node.stats },
 	config{ node.config },
@@ -239,9 +239,6 @@ nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port, s
 	options.tcp_message_manager = tcp_message_manager.handle;
 	options.port = port;
 	options.flags = node.flags.handle;
-	options.sink_handle = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (sink);
-	options.sink_callback = sink_callback;
-	options.delete_sink = delete_sink;
 	options.limiter = node.outbound_limiter.handle;
 	options.node_id_prv = node.node_id.prv.bytes.data ();
 	options.syn_cookies = node.network->syn_cookies->handle;
@@ -428,6 +425,12 @@ void nano::transport::tcp_channels::start ()
 void nano::transport::tcp_channels::stop ()
 {
 	rsnano::rsn_tcp_channels_stop (handle);
+}
+
+void nano::transport::tcp_channels::set_sink (std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink)
+{
+	auto sink_handle = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (sink);
+	rsnano::rsn_tcp_channels_set_sink (handle, sink_handle, sink_callback, delete_sink);
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)

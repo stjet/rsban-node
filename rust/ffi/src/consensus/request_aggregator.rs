@@ -9,10 +9,19 @@ use rsnano_core::{BlockHash, Root};
 use rsnano_node::consensus::{RequestAggregator, RequestAggregatorExt};
 use std::{
     ffi::{c_char, CStr},
+    ops::Deref,
     sync::Arc,
 };
 
 pub struct RequestAggregatorHandle(Arc<RequestAggregator>);
+
+impl Deref for RequestAggregatorHandle {
+    type Target = Arc<RequestAggregator>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_request_aggregator_create(

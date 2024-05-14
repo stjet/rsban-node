@@ -38,9 +38,7 @@ nano::network::~network ()
 
 void nano::network::create_tcp_channels ()
 {
-	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port, [this] (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel) {
-		inbound (message, channel);
-	}));
+	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port));
 }
 
 void nano::network::start ()
@@ -301,132 +299,9 @@ void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> b
 	}
 }
 
-namespace
-{
-class network_message_visitor : public nano::message_visitor
-{
-public:
-	network_message_visitor (nano::node & node_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-		node (node_a),
-		channel (channel_a)
-	{
-	}
-
-	void keepalive (nano::keepalive const & message_a) override
-	{
-		// Check for special node port data
-		auto peer0 (message_a.get_peers ()[0]);
-		if (peer0.address () == boost::asio::ip::address_v6{} && peer0.port () != 0)
-		{
-			nano::endpoint new_endpoint (channel->get_tcp_remote_endpoint ().address (), peer0.port ());
-			node.network->merge_peer (new_endpoint);
-
-			// Remember this for future forwarding to other peers
-			channel->set_peering_endpoint (new_endpoint);
-		}
-	}
-
-	void publish (nano::publish const & message) override
-	{
-		bool added = node.block_processor.add (message.get_block (), nano::block_source::live, channel);
-		if (!added)
-		{
-			node.network->clear_from_publish_filter (message.get_digest ());
-			node.stats->inc (nano::stat::type::drop, nano::stat::detail::publish, nano::stat::dir::in);
-		}
-	}
-
-	void confirm_req (nano::confirm_req const & message_a) override
-	{
-		// Don't load nodes with disabled voting
-		if (node.config->enable_voting && node.wallets.voting_reps_count () > 0)
-		{
-			if (!message_a.get_roots_hashes ().empty ())
-			{
-				node.aggregator.add (channel, message_a.get_roots_hashes ());
-			}
-		}
-	}
-
-	void confirm_ack (nano::confirm_ack const & message_a) override
-	{
-		if (!message_a.get_vote ()->account ().is_zero ())
-		{
-			node.vote_processor_queue.vote (message_a.get_vote (), channel);
-		}
-	}
-
-	void bulk_pull (nano::bulk_pull const &) override
-	{
-		debug_assert (false);
-	}
-
-	void bulk_pull_account (nano::bulk_pull_account const &) override
-	{
-		debug_assert (false);
-	}
-
-	void bulk_push (nano::bulk_push const &) override
-	{
-		debug_assert (false);
-	}
-
-	void frontier_req (nano::frontier_req const &) override
-	{
-		debug_assert (false);
-	}
-
-	void node_id_handshake (nano::node_id_handshake const & message_a) override
-	{
-		node.stats->inc (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in);
-	}
-
-	void telemetry_req (nano::telemetry_req const & message_a) override
-	{
-		// Send an empty telemetry_ack if we do not want, just to acknowledge that we have received the message to
-		// remove any timeouts on the server side waiting for a message.
-		nano::telemetry_ack telemetry_ack{ node.network_params.network };
-		if (!node.flags.disable_providing_telemetry_metrics ())
-		{
-			auto telemetry_data = node.local_telemetry ();
-			telemetry_ack = nano::telemetry_ack{ node.network_params.network, telemetry_data };
-		}
-		channel->send (telemetry_ack, nullptr, nano::transport::buffer_drop_policy::no_socket_drop);
-	}
-
-	void telemetry_ack (nano::telemetry_ack const & message_a) override
-	{
-		node.telemetry->process (message_a, channel);
-	}
-
-	void asc_pull_req (nano::asc_pull_req const & message) override
-	{
-		node.bootstrap_server.request (message, channel);
-	}
-
-	void asc_pull_ack (nano::asc_pull_ack const & message) override
-	{
-		node.ascendboot.process (message, channel);
-	}
-
-private:
-	nano::node & node;
-	std::shared_ptr<nano::transport::channel> channel;
-};
-}
-
-void nano::network::process_message (nano::message const & message, std::shared_ptr<nano::transport::channel> const & channel)
-{
-	node.stats->inc (nano::stat::type::message, to_stat_detail (message.type ()), nano::stat::dir::in);
-	node.logger->trace (nano::log::type::network_processed, to_log_detail (message.type ()), nano::log::arg{ "message", message });
-
-	network_message_visitor visitor (node, channel);
-	message.visit (visitor);
-}
-
 void nano::network::inbound (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
 {
-	process_message (message, channel);
+	node.live_message_processor.process (message, channel);
 }
 
 // Send keepalives to all the peers we've been notified of
@@ -636,4 +511,23 @@ void nano::network::set_port (uint16_t port_a)
 {
 	port = port_a;
 	tcp_channels->set_port (port_a);
+}
+
+nano::live_message_processor::live_message_processor (nano::node & node)
+{
+	auto config_dto{ node.config->to_dto () };
+	handle = rsnano::rsn_live_message_processor_create (node.stats->handle, node.network->tcp_channels->handle,
+	node.block_processor.handle, &config_dto, node.flags.handle,
+	node.wallets.rust_handle, node.aggregator.handle, node.vote_processor_queue.handle,
+	node.telemetry->handle, node.bootstrap_server.handle, node.ascendboot.handle);
+}
+
+nano::live_message_processor::~live_message_processor ()
+{
+	rsnano::rsn_live_message_processor_destroy (handle);
+}
+
+void nano::live_message_processor::process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
+{
+	rsnano::rsn_live_message_processor_process (handle, message.handle, channel->handle);
 }

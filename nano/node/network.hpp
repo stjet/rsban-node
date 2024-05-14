@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/node/common.hpp>
 #include <nano/node/peer_exclusion.hpp>
 #include <nano/node/transport/tcp.hpp>
@@ -86,7 +88,6 @@ private:
 	void run_cleanup ();
 	void run_keepalive ();
 	void run_reachout ();
-	void process_message (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 private: // Dependencies
 	nano::node & node;
@@ -119,4 +120,16 @@ public:
 };
 
 std::unique_ptr<container_info_component> collect_container_info (network & network, std::string const & name);
+
+class live_message_processor
+{
+public:
+	live_message_processor (nano::node & node);
+	live_message_processor (live_message_processor const &) = delete;
+	~live_message_processor ();
+
+	void process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel);
+
+	rsnano::LiveMessageProcessorHandle * handle;
+};
 }

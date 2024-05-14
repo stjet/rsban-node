@@ -44,9 +44,6 @@ pub struct TcpChannelsOptionsDto {
     pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub port: u16,
     pub flags: *mut NodeFlagsHandle,
-    pub sink_handle: *mut c_void,
-    pub sink_callback: SinkCallback,
-    pub delete_sink: VoidPointerCallback,
     pub limiter: *mut OutboundBandwidthLimiterHandle,
     pub node_id_prv: *const u8,
     pub syn_cookies: *mut SynCookiesHandle,
@@ -59,15 +56,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 
     fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
         unsafe {
-            let context_wrapper = ContextWrapper::new(value.sink_handle, value.delete_sink);
-            let callback = value.sink_callback;
-            let sink = Box::new(move |msg: DeserializedMessage, channel| {
-                callback(
-                    context_wrapper.get_context(),
-                    MessageHandle::new(msg),
-                    ChannelHandle::new(channel),
-                )
-            });
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
 
             Ok(Self {
@@ -79,7 +67,6 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
                 port: value.port,
                 flags: (*value.flags).0.lock().unwrap().clone(),
-                sink,
                 limiter: (*value.limiter).0.clone(),
                 node_id: KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(
                     value.node_id_prv,
@@ -102,6 +89,24 @@ pub unsafe extern "C" fn rsn_tcp_channels_create(
         TcpChannelsOptions::try_from(options).unwrap(),
     ));
     Box::into_raw(Box::new(TcpChannelsHandle(channels)))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_set_sink(
+    handle: &TcpChannelsHandle,
+    sink_handle: *mut c_void,
+    sink_callback: SinkCallback,
+    delete_sink: VoidPointerCallback,
+) {
+    let context_wrapper = ContextWrapper::new(sink_handle, delete_sink);
+    let sink = Box::new(move |msg: DeserializedMessage, channel| unsafe {
+        sink_callback(
+            context_wrapper.get_context(),
+            MessageHandle::new(msg),
+            ChannelHandle::new(channel),
+        )
+    });
+    handle.set_sink(sink);
 }
 
 #[no_mangle]

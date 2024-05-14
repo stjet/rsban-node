@@ -117,12 +117,14 @@ namespace transport
 		friend class nano::transport::channel_tcp;
 
 	public:
-		explicit tcp_channels (nano::node &, uint16_t port, std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> = nullptr);
+		explicit tcp_channels (nano::node &, uint16_t port);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 
 		void start ();
 		void stop ();
+
+		void set_sink (std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)>);
 
 		void erase (nano::tcp_endpoint const &);
 		void erase_temporary_channel (nano::tcp_endpoint const &);

@@ -13,10 +13,19 @@ use rsnano_node::{
 };
 use std::{
     ffi::{c_char, CStr},
+    ops::Deref,
     sync::Arc,
 };
 
 pub struct BootstrapAscendingHandle(Arc<BootstrapAscending>);
+
+impl Deref for BootstrapAscendingHandle {
+    type Target = Arc<BootstrapAscending>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_ascending_create(

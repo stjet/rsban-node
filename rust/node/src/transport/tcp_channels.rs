@@ -29,7 +29,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex, RwLock, Weak,
     },
     time::{Duration, SystemTime},
 };
@@ -45,7 +45,6 @@ pub struct TcpChannelsOptions {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
     pub flags: NodeFlags,
-    pub sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Sync + Send>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub node_id: KeyPair,
     pub syn_cookies: Arc<SynCookies>,
@@ -64,7 +63,6 @@ impl TcpChannelsOptions {
             tcp_message_manager: Arc::new(TcpMessageManager::default()),
             port: 8088,
             flags: NodeFlags::default(),
-            sink: Box::new(|_, _| {}),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
             node_id: KeyPair::new(),
             syn_cookies: Arc::new(SynCookies::default()),
@@ -82,7 +80,7 @@ pub struct TcpChannels {
     pub tcp_message_manager: Arc<TcpMessageManager>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>,
+    sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
     next_channel_id: AtomicUsize,
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
@@ -137,7 +135,7 @@ impl TcpChannels {
                 new_channel_observer: None,
                 tcp_server_factory: tcp_server_factory.clone(),
             }),
-            sink: options.sink,
+            sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
             network,
             excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
@@ -150,6 +148,10 @@ impl TcpChannels {
             observer: options.observer,
             async_rt: Arc::downgrade(&options.async_rt),
         }
+    }
+
+    pub fn set_sink(&self, sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>) {
+        *self.sink.write().unwrap() = sink;
     }
 
     pub fn new_test_instance() -> Self {
@@ -594,11 +596,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
             && message.protocol.version_using >= self.network.network.protocol_version_min
         {
             if let Some(channel) = self.find_channel(endpoint) {
-                (self.sink)(message.clone(), Arc::clone(&channel));
+                (self.sink.read().unwrap())(message.clone(), Arc::clone(&channel));
                 channel.set_last_packet_received(SystemTime::now());
             } else {
                 if let Some(channel) = self.find_node_id(&node_id) {
-                    (self.sink)(message.clone(), Arc::clone(&channel));
+                    (self.sink.read().unwrap())(message.clone(), Arc::clone(&channel));
                     channel.set_last_packet_received(SystemTime::now());
                 } else if !self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
                     if !node_id.is_zero() {
@@ -628,7 +630,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
                         if socket_type == SocketType::Realtime {
                             let _ = self.insert(&temporary_channel, None);
                         }
-                        (self.sink)(message.clone(), temporary_channel);
+                        (self.sink.read().unwrap())(message.clone(), temporary_channel);
                     } else {
                         // Initial node_id_handshake request without node ID
                         debug_assert!(

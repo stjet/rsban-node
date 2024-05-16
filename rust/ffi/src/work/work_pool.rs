@@ -193,7 +193,7 @@ pub unsafe extern "C" fn rsn_work_pool_generate_async(
     context: *mut c_void,
     destroy_context: VoidPointerCallback,
 ) {
-    let done_callback: Option<Box<dyn Fn(Option<u64>) + Send>> = if context.is_null() {
+    let done_callback: Option<Box<dyn FnOnce(Option<u64>) + Send>> = if context.is_null() {
         None
     } else {
         let wrapper = WorkPoolDoneWrapper {

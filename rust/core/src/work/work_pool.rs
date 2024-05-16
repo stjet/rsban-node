@@ -19,7 +19,7 @@ pub trait WorkPool: Send + Sync {
         version: WorkVersion,
         root: Root,
         difficulty: u64,
-        done: Option<Box<dyn Fn(Option<u64>) + Send>>,
+        done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
     );
 
     fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64>;
@@ -68,6 +68,16 @@ impl WorkPoolImpl {
         pool.threads
             .push(pool.spawn_stub_worker_thread(configured_work));
         pool
+    }
+
+    pub fn disabled() -> Self {
+        Self {
+            threads: Vec::new(),
+            work_queue: Arc::new(WorkQueueCoordinator::new()),
+            work_thresholds: WORK_THRESHOLDS_STUB.clone(),
+            has_opencl: false,
+            pow_rate_limiter: Duration::ZERO,
+        }
     }
 
     fn spawn_threads(&mut self, thread_count: usize, opencl: Option<Box<OpenClWorkFunc>>) {
@@ -149,7 +159,7 @@ impl WorkPool for WorkPoolImpl {
         version: WorkVersion,
         root: Root,
         difficulty: u64,
-        done: Option<Box<dyn Fn(Option<u64>) + Send>>,
+        done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
     ) {
         debug_assert!(!root.is_zero());
         if !self.threads.is_empty() {
@@ -247,7 +257,7 @@ pub(crate) trait WorkGenerator {
         item: &Root,
         min_difficulty: u64,
         work_ticket: &WorkTicket,
-    ) -> Option<(u64, u64)>;
+    ) -> Option<u64>;
 }
 
 struct StubWorkGenerator(u64);
@@ -259,8 +269,8 @@ impl WorkGenerator for StubWorkGenerator {
         _item: &Root,
         _min_difficulty: u64,
         _work_ticket: &WorkTicket,
-    ) -> Option<(u64, u64)> {
-        Some((self.0, u64::MAX))
+    ) -> Option<u64> {
+        Some(self.0)
     }
 }
 

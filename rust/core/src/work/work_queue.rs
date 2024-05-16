@@ -41,18 +41,13 @@ pub(crate) struct WorkItem {
     pub version: WorkVersion,
     pub item: Root,
     pub min_difficulty: u64,
-    pub callback: Option<Box<dyn Fn(Option<u64>) + Send>>,
+    pub callback: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
 }
 
 impl WorkItem {
-    pub fn work_found(&self, work: u64, difficulty: u64) {
+    pub fn work_found(&mut self, work: u64) {
         // we're the ones that found the solution
-        debug_assert!(difficulty >= self.min_difficulty);
-        debug_assert!(
-            self.min_difficulty == 0
-                || DifficultyV1::default().get_difficulty(&self.item, work) == difficulty
-        );
-        if let Some(callback) = &self.callback {
+        if let Some(callback) = self.callback.take() {
             (callback)(Some(work));
         }
     }
@@ -77,16 +72,18 @@ impl WorkQueue {
         }
     }
 
-    pub fn cancel(&mut self, root: &Root) {
-        self.0.retain(|item| {
+    pub fn cancel(&mut self, root: &Root) -> Vec<Box<dyn FnOnce(Option<u64>) + Send>> {
+        let mut cancelled = Vec::new();
+        self.0.retain_mut(|item| {
             let retain = item.item != *root;
             if !retain {
-                if let Some(callback) = &item.callback {
-                    (callback)(None);
+                if let Some(callback) = item.callback.take() {
+                    cancelled.push(callback);
                 }
             }
             retain
         });
+        cancelled
     }
 
     pub fn enqueue(&mut self, item: WorkItem) {
@@ -162,13 +159,20 @@ impl WorkQueueCoordinator {
     }
 
     pub fn cancel(&self, root: &Root) {
-        let mut lock = self.lock_work_queue();
-        if !self.should_stop() {
-            if lock.is_first(root) {
-                self.expire_work_tickets();
-            }
+        let mut cancelled = Vec::new();
+        {
+            let mut lock = self.lock_work_queue();
+            if !self.should_stop() {
+                if lock.is_first(root) {
+                    self.expire_work_tickets();
+                }
 
-            lock.cancel(root);
+                cancelled = lock.cancel(root);
+            }
+        }
+
+        for callback in cancelled {
+            callback(None);
         }
     }
 }

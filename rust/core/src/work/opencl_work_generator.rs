@@ -1,6 +1,5 @@
-use crate::{difficulty::DifficultyV1, Difficulty, Root, WorkVersion};
-
 use super::{CpuWorkGenerator, WorkGenerator, WorkTicket};
+use crate::{Root, WorkVersion};
 use std::time::Duration;
 
 pub type OpenClWorkFunc = dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync;
@@ -18,17 +17,6 @@ impl OpenClWorkGenerator {
             cpu_gen: CpuWorkGenerator::new(rate_limiter),
         }
     }
-
-    fn create_opencl_work(
-        &self,
-        version: WorkVersion,
-        item: &Root,
-        min_difficulty: u64,
-        work_ticket: &WorkTicket,
-    ) -> Option<(u64, u64)> {
-        let work = (self.opencl)(version, *item, min_difficulty, work_ticket);
-        work.map(|work| (work, DifficultyV1::default().get_difficulty(item, work)))
-    }
 }
 
 impl WorkGenerator for OpenClWorkGenerator {
@@ -38,11 +26,11 @@ impl WorkGenerator for OpenClWorkGenerator {
         item: &Root,
         min_difficulty: u64,
         work_ticket: &WorkTicket,
-    ) -> Option<(u64, u64)> {
-        let result = self.create_opencl_work(version, item, min_difficulty, work_ticket);
+    ) -> Option<u64> {
+        let work = (self.opencl)(version, *item, min_difficulty, work_ticket);
 
-        if result.is_some() {
-            result
+        if work.is_some() {
+            work
         } else {
             self.cpu_gen
                 .create(version, item, min_difficulty, work_ticket)

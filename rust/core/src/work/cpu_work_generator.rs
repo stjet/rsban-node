@@ -125,7 +125,7 @@ where
     }
 
     /// Tries to create PoW in a batch of 256 iterations
-    fn try_create_batch(&mut self, item: &Root, min_difficulty: u64) -> Option<(u64, u64)> {
+    fn try_create_batch(&mut self, item: &Root, min_difficulty: u64) -> Option<u64> {
         // Don't query main memory every iteration in order to reduce memory bus traffic
         // All operations here operate on stack memory
         // Count iterations down to zero since comparing to zero is easier than comparing to another number
@@ -138,7 +138,7 @@ where
         }
 
         if difficulty >= min_difficulty {
-            Some((work, difficulty))
+            Some(work)
         } else {
             None
         }
@@ -157,7 +157,7 @@ where
         item: &Root,
         min_difficulty: u64,
         work_ticket: &WorkTicket,
-    ) -> Option<(u64, u64)> {
+    ) -> Option<u64> {
         while !work_ticket.expired() {
             let result = self.try_create_batch(item, min_difficulty);
             if result.is_some() {
@@ -240,9 +240,14 @@ mod tests {
         let mut generator =
             create_cpu_work_generator(stub_rng, difficulty_calc, StubSleeper::new(), RATE_LIMIT);
 
-        let result = generator.create(WorkVersion::Work1, &root, 100, &WorkTicket::never_expires());
+        let result = generator.create(
+            WorkVersion::Work1,
+            &root,
+            difficulty,
+            &WorkTicket::never_expires(),
+        );
 
-        assert_eq!(result, Some((work, difficulty)))
+        assert_eq!(result, Some(work))
     }
 
     #[test]
@@ -259,9 +264,14 @@ mod tests {
         let mut generator =
             create_cpu_work_generator(stub_rng, difficulty_calc, sleeper.clone(), RATE_LIMIT);
 
-        let result = generator.create(WorkVersion::Work1, &root, 100, &WorkTicket::never_expires());
+        let result = generator.create(
+            WorkVersion::Work1,
+            &root,
+            difficulty,
+            &WorkTicket::never_expires(),
+        );
 
-        assert_eq!(result, Some((work, difficulty)));
+        assert_eq!(result, Some(work));
         assert!(sleeper.calls().is_empty());
     }
 
@@ -280,9 +290,14 @@ mod tests {
             create_cpu_work_generator(stub_rng, difficulty_calc, sleeper.clone(), RATE_LIMIT);
         generator.iteration_size = 2;
 
-        let result = generator.create(WorkVersion::Work1, &root, 100, &WorkTicket::never_expires());
+        let result = generator.create(
+            WorkVersion::Work1,
+            &root,
+            difficulty,
+            &WorkTicket::never_expires(),
+        );
 
-        assert_eq!(result, Some((work, difficulty)));
+        assert_eq!(result, Some(work));
         assert_eq!(sleeper.calls(), vec![RATE_LIMIT, RATE_LIMIT]);
     }
 

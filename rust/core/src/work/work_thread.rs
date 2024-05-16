@@ -45,14 +45,14 @@ where
     }
 
     fn handle_work_result<'a>(
-        result: Option<(u64, u64)>,
+        result: Option<u64>,
         work_queue: &'a WorkQueueCoordinator,
         work_ticket: &WorkTicket,
     ) -> MutexGuard<'a, WorkQueue> {
         let mut queue_lock = work_queue.lock_work_queue();
-        if let Some((work, difficulty)) = result {
+        if let Some(work) = result {
             if !work_ticket.expired() {
-                queue_lock = Self::notify_work_found(work_queue, queue_lock, work, difficulty);
+                queue_lock = Self::notify_work_found(work_queue, queue_lock, work);
             }
         } else {
             // A different thread found a solution
@@ -65,15 +65,14 @@ where
         work_queue: &'a WorkQueueCoordinator,
         mut queue_lock: MutexGuard<'a, WorkQueue>,
         work: u64,
-        difficulty: u64,
     ) -> MutexGuard<'a, WorkQueue> {
         // Signal other threads to stop their work next time they check their ticket
         work_queue.expire_work_tickets();
-        let current = queue_lock.dequeue();
+        let mut current = queue_lock.dequeue();
 
         // work_found callback can take some time, to let's drop the lock
         drop(queue_lock);
-        current.work_found(work, difficulty);
+        current.work_found(work);
         work_queue.lock_work_queue()
     }
 }

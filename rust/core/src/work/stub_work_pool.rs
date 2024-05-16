@@ -24,7 +24,7 @@ impl WorkPool for StubWorkPool {
         _version: WorkVersion,
         _root: Root,
         difficulty: u64,
-        done: Option<Box<dyn Fn(Option<u64>) + Send>>,
+        done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
     ) {
         if let Some(done) = done {
             done(Some(difficulty))

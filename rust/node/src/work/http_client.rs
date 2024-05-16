@@ -1,7 +1,7 @@
 use reqwest::{IntoUrl, Method, StatusCode, Url};
 use rsnano_core::utils::{OutputListener, OutputTracker};
 use serde::{de::DeserializeOwned, Serialize};
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 pub struct HttpClient {
     strategy: HttpClientStrategy,
@@ -14,7 +14,9 @@ impl HttpClient {
     }
 
     pub fn new_null() -> Self {
-        Self::new_with_strategy(HttpClientStrategy::Nulled(ConfiguredResponse::default()))
+        Self::new_with_strategy(HttpClientStrategy::Nulled(
+            Self::null_builder().respond(ConfiguredResponse::default()),
+        ))
     }
 
     fn new_with_strategy(strategy: HttpClientStrategy) -> Self {
@@ -25,7 +27,9 @@ impl HttpClient {
     }
 
     pub fn null_builder() -> NulledHttpClientBuilder {
-        NulledHttpClientBuilder {}
+        NulledHttpClientBuilder {
+            responses: HashMap::new(),
+        }
     }
 
     pub async fn post_json<U: IntoUrl, T: Serialize + ?Sized>(
@@ -57,15 +61,43 @@ impl HttpClient {
 
 enum HttpClientStrategy {
     Real(reqwest::Client),
-    Nulled(ConfiguredResponse),
+    Nulled(HttpClientStub),
 }
 
-pub struct NulledHttpClientBuilder {}
+pub struct NulledHttpClientBuilder {
+    responses: HashMap<(Url, Method), ConfiguredResponse>,
+}
 
 impl NulledHttpClientBuilder {
     pub fn respond(self, response: ConfiguredResponse) -> HttpClient {
-        HttpClient::new_with_strategy(HttpClientStrategy::Nulled(response))
+        HttpClient::new_with_strategy(HttpClientStrategy::Nulled(HttpClientStub {
+            the_only_response: Some(response),
+            responses: HashMap::new(),
+        }))
     }
+
+    pub fn respond_url(
+        mut self,
+        method: Method,
+        url: impl IntoUrl,
+        response: ConfiguredResponse,
+    ) -> Self {
+        self.responses
+            .insert((url.into_url().unwrap(), method), response);
+        self
+    }
+
+    pub fn finish(self) -> HttpClient {
+        HttpClient::new_with_strategy(HttpClientStrategy::Nulled(HttpClientStub {
+            the_only_response: None,
+            responses: self.responses,
+        }))
+    }
+}
+
+struct HttpClientStub {
+    the_only_response: Option<ConfiguredResponse>,
+    responses: HashMap<(Url, Method), ConfiguredResponse>,
 }
 
 #[derive(Clone)]

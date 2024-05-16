@@ -225,11 +225,13 @@ mod tests {
     impl TestFixture {
         fn wait_until_process_count_is(&self, expected: usize) {
             let guard = self.processed.lock().unwrap();
-            let (guard, result) = self
-                .condition
-                .wait_timeout_while(guard, Duration::from_secs(5), |count| *count == expected)
-                .unwrap();
-            assert_eq!(result.timed_out(), false, "timeout! count was {}", *guard);
+            if *guard != expected {
+                let (guard, result) = self
+                    .condition
+                    .wait_timeout_while(guard, Duration::from_secs(5), |count| *count == expected)
+                    .unwrap();
+                assert_eq!(result.timed_out(), false, "timeout! count was {}", *guard);
+            }
         }
     }
 
@@ -252,7 +254,7 @@ mod tests {
                 {
                     *processed_clone.lock().unwrap() += i.len();
                 }
-                condition_clone.notify_one();
+                condition_clone.notify_all();
             }),
         );
         queue.start();

@@ -1,11 +1,11 @@
-use reqwest::{IntoUrl, StatusCode, Url};
+use reqwest::{IntoUrl, Method, StatusCode, Url};
 use rsnano_core::utils::{OutputListener, OutputTracker};
 use serde::{de::DeserializeOwned, Serialize};
 use std::rc::Rc;
 
 pub struct HttpClient {
     strategy: HttpClientStrategy,
-    request_listener: OutputListener<(Url, serde_json::Value)>,
+    request_listener: OutputListener<TrackedRequest>,
 }
 
 impl HttpClient {
@@ -34,8 +34,13 @@ impl HttpClient {
         json: &T,
     ) -> anyhow::Result<Response> {
         let url = url.into_url()?;
-        self.request_listener
-            .emit((url.clone(), serde_json::to_value(json)?));
+        if self.request_listener.is_tracked() {
+            self.request_listener.emit(TrackedRequest {
+                url: url.clone(),
+                method: Method::POST,
+                json: serde_json::to_value(json)?,
+            });
+        }
 
         match &self.strategy {
             HttpClientStrategy::Real(client) => {
@@ -45,7 +50,7 @@ impl HttpClient {
         }
     }
 
-    pub fn track_requests(&self) -> Rc<OutputTracker<(Url, serde_json::Value)>> {
+    pub fn track_requests(&self) -> Rc<OutputTracker<TrackedRequest>> {
         self.request_listener.track()
     }
 }
@@ -61,6 +66,13 @@ impl NulledHttpClientBuilder {
     pub fn respond(self, response: ConfiguredResponse) -> HttpClient {
         HttpClient::new_with_strategy(HttpClientStrategy::Nulled(response))
     }
+}
+
+#[derive(Clone)]
+pub struct TrackedRequest {
+    pub url: Url,
+    pub method: Method,
+    pub json: serde_json::Value,
 }
 
 pub struct Response {
@@ -162,9 +174,9 @@ mod tests {
 
         let requests = tracker.output();
         assert_eq!(requests.len(), 1);
-        let (url, json) = &requests[0];
-        assert_eq!(url, &target_url);
-        assert_eq!(json, &serde_json::to_value(&data).unwrap());
+        assert_eq!(requests[0].url, target_url);
+        assert_eq!(requests[0].method, Method::POST);
+        assert_eq!(requests[0].json, serde_json::to_value(&data).unwrap());
     }
 
     mod nullability {

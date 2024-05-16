@@ -1,15 +1,20 @@
+use super::WorkPool;
 use crate::{Root, WorkVersion};
-
-use super::{WorkPool, WorkThresholds};
 
 /// The StubWorkPool assumes work == difficulty
 pub struct StubWorkPool {
-    thresholds: WorkThresholds,
+    base_difficulty: u64,
 }
 
 impl StubWorkPool {
-    pub fn new(thresholds: WorkThresholds) -> Self {
-        Self { thresholds }
+    pub fn new(base_difficulty: u64) -> Self {
+        Self { base_difficulty }
+    }
+}
+
+impl Default for StubWorkPool {
+    fn default() -> Self {
+        Self::new(123)
     }
 }
 
@@ -31,7 +36,7 @@ impl WorkPool for StubWorkPool {
     }
 
     fn generate_dev2(&self, _root: Root) -> Option<u64> {
-        Some(self.thresholds.base)
+        Some(self.base_difficulty)
     }
 
     fn generate(&self, _version: WorkVersion, _root: Root, difficulty: u64) -> Option<u64> {

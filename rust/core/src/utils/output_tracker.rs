@@ -56,6 +56,10 @@ impl<T: Clone + 'static> OutputListener<T> {
         }
     }
 
+    pub fn is_tracked(&self) -> bool {
+        self.tracker_count() > 0
+    }
+
     pub fn tracker_count(&self) -> usize {
         self.trackers.borrow().len()
     }

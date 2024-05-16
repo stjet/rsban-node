@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use super::{
     CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, StubWorkPool, WorkItem,
-    WorkQueueCoordinator, WorkThread, WorkThresholds, WorkTicket,
+    WorkQueueCoordinator, WorkThread, WorkThresholds, WorkTicket, WORK_THRESHOLDS_STUB,
 };
 
 pub trait WorkPool: Send + Sync {
@@ -56,6 +56,20 @@ impl WorkPoolImpl {
         pool
     }
 
+    pub fn new_null(configured_work: u64) -> Self {
+        let mut pool = Self {
+            threads: Vec::new(),
+            work_queue: Arc::new(WorkQueueCoordinator::new()),
+            work_thresholds: WORK_THRESHOLDS_STUB.clone(),
+            has_opencl: false,
+            pow_rate_limiter: Duration::ZERO,
+        };
+
+        pool.threads
+            .push(pool.spawn_stub_worker_thread(configured_work));
+        pool
+    }
+
     fn spawn_threads(&mut self, thread_count: usize, opencl: Option<Box<OpenClWorkFunc>>) {
         if let Some(opencl) = opencl {
             // One extra thread to handle OpenCL
@@ -73,6 +87,10 @@ impl WorkPoolImpl {
 
     fn spawn_cpu_worker_thread(&self) -> JoinHandle<()> {
         self.spawn_worker_thread(CpuWorkGenerator::new(self.pow_rate_limiter))
+    }
+
+    fn spawn_stub_worker_thread(&self, configured_work: u64) -> JoinHandle<()> {
+        self.spawn_worker_thread(StubWorkGenerator(configured_work))
     }
 
     fn spawn_worker_thread<T>(&self, work_generator: T) -> JoinHandle<()>
@@ -232,15 +250,28 @@ pub(crate) trait WorkGenerator {
     ) -> Option<(u64, u64)>;
 }
 
+struct StubWorkGenerator(u64);
+
+impl WorkGenerator for StubWorkGenerator {
+    fn create(
+        &mut self,
+        _version: WorkVersion,
+        _item: &Root,
+        _min_difficulty: u64,
+        _work_ticket: &WorkTicket,
+    ) -> Option<(u64, u64)> {
+        Some((self.0, u64::MAX))
+    }
+}
+
 pub static STUB_WORK_POOL: Lazy<StubWorkPool> =
-    Lazy::new(|| StubWorkPool::new(WorkThresholds::publish_dev().clone()));
+    Lazy::new(|| StubWorkPool::new(WorkThresholds::publish_dev().base));
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{BlockBuilder, BlockEnum};
     use std::sync::mpsc;
-
-    use super::*;
 
     pub static WORK_POOL: Lazy<WorkPoolImpl> = Lazy::new(|| {
         WorkPoolImpl::new(

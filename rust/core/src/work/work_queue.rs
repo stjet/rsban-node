@@ -3,7 +3,7 @@ use std::sync::{
     Condvar, Mutex, MutexGuard,
 };
 
-use crate::{difficulty::DifficultyV1, Difficulty, Root, WorkVersion};
+use crate::{Root, WorkVersion};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 

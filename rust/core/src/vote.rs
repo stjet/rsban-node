@@ -1,6 +1,6 @@
 use super::{
     sign_message,
-    utils::{BufferWriter, Deserialize, FixedSizeSerialize, SerdePropertyTree, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Stream},
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
 };
 use crate::{utils::Serialize, Amount};

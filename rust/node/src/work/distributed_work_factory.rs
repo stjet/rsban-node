@@ -1,68 +1,173 @@
-use crate::config::{NodeConfig, Peer};
-use rsnano_core::{work::WorkPoolImpl, Account, BlockEnum, Root, WorkVersion};
-use std::{ffi::c_void, sync::Arc};
+use rsnano_core::{
+    to_hex_string,
+    work::{WorkPool, WorkPoolImpl},
+    Account, BlockEnum, Root, WorkVersion,
+};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::oneshot;
+
+use crate::utils::AsyncRuntime;
+
+#[derive(Serialize)]
+pub struct HttpWorkRequest {
+    action: &'static str,
+    hash: String,
+    difficulty: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    account: Option<String>,
+}
+
+impl HttpWorkRequest {
+    pub fn new(root: Root, difficulty: u64, account: Option<Account>) -> Self {
+        Self {
+            action: "work_generate",
+            hash: root.to_string(),
+            difficulty: to_hex_string(difficulty),
+            account: account.map(|a| a.encode_account()),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct HttpWorkResponse {
+    work: String,
+}
+
+#[derive(Clone)]
+pub struct WorkRequest {
+    pub root: Root,
+    pub difficulty: u64,
+    pub account: Option<Account>,
+    pub peers: Vec<(String, u16)>,
+}
+
+impl WorkRequest {
+    pub fn create_test_instance() -> Self {
+        Self {
+            root: Root::from(100),
+            difficulty: 42,
+            account: Some(Account::from(200)),
+            peers: vec![("127.0.0.1".to_string(), 9999)],
+        }
+    }
+}
 
 pub struct DistributedWorkFactory {
-    /// Pointer to the C++ implementation
-    factory_pointer: *mut c_void,
-    config: NodeConfig,
     work_pool: Arc<WorkPoolImpl>,
+    pub async_rt: Arc<AsyncRuntime>,
 }
 
 impl DistributedWorkFactory {
-    pub fn new(
-        factory_pointer: *mut c_void,
-        config: NodeConfig,
-        work_pool: Arc<WorkPoolImpl>,
-    ) -> Self {
+    pub fn new(work_pool: Arc<WorkPoolImpl>, async_rt: Arc<AsyncRuntime>) -> Self {
         Self {
-            factory_pointer,
-            config,
             work_pool,
+            async_rt,
         }
     }
 
     pub fn make_blocking_block(&self, block: &mut BlockEnum, difficulty: u64) -> Option<u64> {
-        unsafe {
-            MAKE_BLOCKING.expect("MAKE_BLOCKING missing")(self.factory_pointer, block, difficulty)
+        let work = self
+            .async_rt
+            .tokio
+            .block_on(self.generate_work(WorkRequest {
+                root: block.root(),
+                difficulty,
+                account: None,
+                peers: Vec::new(),
+            }));
+
+        if let Some(work) = work {
+            block.set_work(work);
         }
+
+        work
     }
 
     pub fn make_blocking(
         &self,
-        version: WorkVersion,
+        _version: WorkVersion,
         root: Root,
         difficulty: u64,
         account: Option<Account>,
     ) -> Option<u64> {
-        unsafe {
-            MAKE_BLOCKING_2.expect("MAKE_BLOCKING_2 missing")(
-                self.factory_pointer,
-                version,
+        self.async_rt
+            .tokio
+            .block_on(self.generate_work(WorkRequest {
                 root,
                 difficulty,
                 account,
-            )
-        }
+                peers: Vec::new(),
+            }))
+    }
+
+    pub async fn make(&self, root: Root, difficulty: u64, account: Option<Account>) -> Option<u64> {
+        self.generate_work(WorkRequest {
+            root,
+            difficulty,
+            account,
+            peers: Vec::new(),
+        })
+        .await
+    }
+
+    async fn generate_work(&self, request: WorkRequest) -> Option<u64> {
+        self.generate_in_local_work_pool(request.root, request.difficulty)
+            .await
+    }
+
+    async fn generate_in_local_work_pool(&self, root: Root, difficulty: u64) -> Option<u64> {
+        let (tx, rx) = oneshot::channel::<Option<u64>>();
+        self.work_pool.generate_async(
+            WorkVersion::Work1,
+            root,
+            difficulty,
+            Some(Box::new(move |work| {
+                tx.send(work).unwrap();
+            })),
+        );
+        rx.await.ok()?
+    }
+
+    pub fn cancel(&self, root: Root) {
+        self.work_pool.cancel(&root);
     }
 
     pub fn work_generation_enabled(&self) -> bool {
-        self.work_generation_enabled_peers(&self.config.work_peers)
-    }
-
-    pub fn work_generation_enabled_secondary(&self) -> bool {
-        self.work_generation_enabled_peers(&self.config.secondary_work_peers)
-    }
-
-    pub fn work_generation_enabled_peers(&self, peers: &[Peer]) -> bool {
-        !peers.is_empty() || self.work_pool.work_generation_enabled()
+        self.work_pool.work_generation_enabled()
     }
 }
 
-pub static mut MAKE_BLOCKING: Option<fn(*mut c_void, &mut BlockEnum, u64) -> Option<u64>> = None;
-pub static mut MAKE_BLOCKING_2: Option<
-    fn(*mut c_void, WorkVersion, Root, u64, Option<Account>) -> Option<u64>,
-> = None;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_core::work::WorkPoolImpl;
+    use std::sync::Arc;
 
-unsafe impl Send for DistributedWorkFactory {}
-unsafe impl Sync for DistributedWorkFactory {}
+    #[tokio::test]
+    async fn use_local_work_factor_when_no_peers_given() {
+        let expected_work = 12345;
+        let work_pool = Arc::new(WorkPoolImpl::new_null(expected_work));
+        let work_factory =
+            DistributedWorkFactory::new(work_pool, Arc::new(AsyncRuntime::default()));
+
+        let request = WorkRequest {
+            peers: vec![],
+            ..WorkRequest::create_test_instance()
+        };
+
+        let work = work_factory.generate_work(request.clone()).await;
+
+        assert_eq!(work, Some(expected_work));
+    }
+
+    // TODO:
+    // Backoff + Workrequest
+    // Cancel
+    // Local work
+    // resolve hostnames
+    // multiple peers
+    // secondary peers
+    // work generation disabled
+    // unresponsive work peers => use local work
+}

@@ -1,6 +1,5 @@
 use super::BlockHandle;
 use crate::utils::FfiStream;
-use crate::FfiPropertyTree;
 use rsnano_core::{
     Account, BlockEnum, BlockHash, LazyBlockHash, OpenBlock, OpenHashables, PublicKey, RawKey,
     Signature,

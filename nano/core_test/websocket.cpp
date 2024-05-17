@@ -770,7 +770,8 @@ TEST (websocket, vote_options_representatives)
 }
 
 // Test client subscribing to notifications for work generation
-TEST (websocket, work)
+// disabled, because distributed work generation was temporarily removed
+TEST (websocket, DISABLED_work)
 {
 	nano::test::system system;
 	nano::node_config config = system.default_config ();

@@ -2,8 +2,7 @@ use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
-    BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, PropertyTree, Serialize, Stream,
-    StreamExt,
+    BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, PublicKey,
@@ -13,7 +12,7 @@ use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]

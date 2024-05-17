@@ -3,10 +3,7 @@ use super::{
     WebsocketSessionEntry,
 };
 use crate::{
-    consensus::{ElectionStatus, ElectionStatusType},
-    utils::AsyncRuntime,
-    wallets::Wallets,
-    websocket::WebsocketSession,
+    consensus::ElectionStatus, utils::AsyncRuntime, wallets::Wallets, websocket::WebsocketSession,
 };
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},

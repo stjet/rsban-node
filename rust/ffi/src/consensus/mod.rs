@@ -27,4 +27,4 @@ pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_processor::VoteProcessorHandle;
 pub use vote_processor_queue::VoteProcessorQueueHandle;
-pub use vote_with_weight_info::{VoteWithWeightInfoDto, VoteWithWeightInfoVecHandle};
+pub use vote_with_weight_info::VoteWithWeightInfoVecHandle;

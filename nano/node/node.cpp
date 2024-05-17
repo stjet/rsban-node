@@ -592,7 +592,6 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (no
 	composite->add_component (collect_container_info (node.online_reps, "online_reps"));
 	composite->add_component (collect_container_info (node.history, "history"));
 	composite->add_component (node.confirming_set.collect_container_info ("confirming_set"));
-	composite->add_component (collect_container_info (node.distributed_work, "distributed_work"));
 	composite->add_component (collect_container_info (node.aggregator, "request_aggregator"));
 	composite->add_component (node.scheduler.collect_container_info ("election_scheduler"));
 	composite->add_component (node.vote_cache.collect_container_info ("vote_cache"));

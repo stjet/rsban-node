@@ -14,9 +14,9 @@ impl HttpClient {
     }
 
     pub fn new_null() -> Self {
-        Self::new_with_strategy(HttpClientStrategy::Nulled(
-            Self::null_builder().respond(ConfiguredResponse::default()),
-        ))
+        Self::new_with_strategy(HttpClientStrategy::Nulled(HttpClientStub::with_response(
+            ConfiguredResponse::default(),
+        )))
     }
 
     fn new_with_strategy(strategy: HttpClientStrategy) -> Self {
@@ -50,7 +50,7 @@ impl HttpClient {
             HttpClientStrategy::Real(client) => {
                 Ok(client.post(url).json(json).send().await?.into())
             }
-            HttpClientStrategy::Nulled(response) => Ok(response.clone().into()),
+            HttpClientStrategy::Nulled(client) => client.get_response(Method::POST, url),
         }
     }
 
@@ -98,6 +98,27 @@ impl NulledHttpClientBuilder {
 struct HttpClientStub {
     the_only_response: Option<ConfiguredResponse>,
     responses: HashMap<(Url, Method), ConfiguredResponse>,
+}
+
+impl HttpClientStub {
+    fn with_response(response: ConfiguredResponse) -> Self {
+        Self {
+            the_only_response: Some(response),
+            responses: HashMap::new(),
+        }
+    }
+
+    fn get_response(&self, method: Method, url: Url) -> anyhow::Result<Response> {
+        let response = if let Some(r) = &self.the_only_response {
+            Some(r)
+        } else {
+            self.responses.get(&(url.clone(), method.clone()))
+        };
+
+        response
+            .map(|r| r.clone().into())
+            .ok_or_else(|| anyhow!("no response configured for {} {}", method, url))
+    }
 }
 
 #[derive(Clone)]

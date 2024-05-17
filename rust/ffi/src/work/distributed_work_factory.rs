@@ -1,7 +1,13 @@
 use super::work_pool::WorkPoolHandle;
-use crate::{core::BlockHandle, NodeConfigDto, PeerDto};
-use rsnano_node::work::{DistributedWorkFactory, MAKE_BLOCKING, MAKE_BLOCKING_2};
+use crate::{
+    core::BlockHandle,
+    utils::{AsyncRuntimeHandle, ContextWrapper},
+    VoidPointerCallback,
+};
+use rsnano_core::{Account, Root, WorkVersion};
+use rsnano_node::work::DistributedWorkFactory;
 use std::{ffi::c_void, ops::Deref, sync::Arc};
+use tokio::task::spawn_blocking;
 
 pub struct DistributedWorkFactoryHandle(Arc<DistributedWorkFactory>);
 
@@ -15,16 +21,11 @@ impl Deref for DistributedWorkFactoryHandle {
 
 #[no_mangle]
 pub extern "C" fn rsn_distributed_work_factory_create(
-    factory_pointer: *mut c_void,
-    node_config: &NodeConfigDto,
     work_pool: &WorkPoolHandle,
+    async_rt: &AsyncRuntimeHandle,
 ) -> *mut DistributedWorkFactoryHandle {
     Box::into_raw(Box::new(DistributedWorkFactoryHandle(Arc::new(
-        DistributedWorkFactory::new(
-            factory_pointer,
-            node_config.try_into().unwrap(),
-            Arc::clone(work_pool),
-        ),
+        DistributedWorkFactory::new(Arc::clone(work_pool), Arc::clone(async_rt)),
     ))))
 }
 
@@ -43,71 +44,84 @@ pub extern "C" fn rsn_distributed_work_factory_enabled(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_distributed_work_factory_enabled_secondary(
+pub unsafe extern "C" fn rsn_distributed_work_factory_cancel(
     handle: &DistributedWorkFactoryHandle,
-) -> bool {
-    handle.work_generation_enabled_secondary()
+    root: *const u8,
+) {
+    handle.cancel(Root::from_ptr(root))
 }
 
+pub type WorkResultCallback = unsafe extern "C" fn(*mut c_void, bool, u64);
+
 #[no_mangle]
-pub unsafe extern "C" fn rsn_distributed_work_factory_enabled_peers(
+pub unsafe extern "C" fn rsn_distributed_work_factory_make(
     handle: &DistributedWorkFactoryHandle,
-    peers: *const PeerDto,
-    len: usize,
-) -> bool {
-    let peers = if peers.is_null() {
-        Vec::new()
+    root: *const u8,
+    difficulty: u64,
+    account: *const u8,
+    callback: WorkResultCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+) {
+    let account = if account.is_null() {
+        None
     } else {
-        std::slice::from_raw_parts(peers, len)
-            .iter()
-            .map(|i| i.into())
-            .collect::<Vec<_>>()
+        Some(Account::from_ptr(account))
     };
-    handle.work_generation_enabled_peers(&peers)
-}
+    let factory = Arc::clone(handle);
+    let context = ContextWrapper::new(context, delete_context);
+    let root = Root::from_ptr(root);
 
-pub type WorkMakeBlockingCallback =
-    unsafe extern "C" fn(*mut c_void, *mut BlockHandle, u64, *mut u64) -> bool;
-
-pub type WorkMakeBlocking2Callback =
-    unsafe extern "C" fn(*mut c_void, u8, *const u8, u64, bool, *const u8, &mut u64) -> bool;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_work_make_blocking(f: WorkMakeBlockingCallback) {
-    MAKE_BLOCKING_WRAPPER = Some(f);
-    MAKE_BLOCKING = Some(|factory_pointer, block, difficulty| {
-        let block_handle = BlockHandle::new(Arc::new(block.clone()));
-        let mut work = 0;
-        if MAKE_BLOCKING_WRAPPER.unwrap()(factory_pointer, block_handle, difficulty, &mut work) {
-            block.set_work(work);
-            Some(work)
-        } else {
-            None
-        }
+    handle.async_rt.tokio.spawn(async move {
+        let work = factory.make(root, difficulty, account).await;
+        spawn_blocking(move || {
+            callback(
+                context.get_context(),
+                work.is_some(),
+                work.unwrap_or_default(),
+            );
+        })
     });
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_callback_work_make_blocking_2(f: WorkMakeBlocking2Callback) {
-    MAKE_BLOCKING_2_WRAPPER = Some(f);
-    MAKE_BLOCKING_2 = Some(|factory_pointer, version, root, difficulty, account| {
-        let mut work = 0;
-        let account_raw = account.unwrap_or_default();
-        if MAKE_BLOCKING_2_WRAPPER.unwrap()(
-            factory_pointer,
-            version as u8,
-            root.as_bytes().as_ptr(),
-            difficulty,
-            account.is_some(),
-            account_raw.as_bytes().as_ptr(),
-            &mut work,
-        ) {
-            Some(work)
-        } else {
-            None
-        }
-    });
+pub unsafe extern "C" fn rsn_distributed_work_factory_make_blocking_block(
+    handle: &DistributedWorkFactoryHandle,
+    block: &mut BlockHandle,
+    difficulty: u64,
+    work: *mut u64,
+) -> bool {
+    let block = block.get_mut();
+    if let Some(result) = handle.make_blocking_block(block, difficulty) {
+        *work = result;
+        true
+    } else {
+        false
+    }
 }
 
-pub static mut MAKE_BLOCKING_WRAPPER: Option<WorkMakeBlockingCallback> = None;
-pub static mut MAKE_BLOCKING_2_WRAPPER: Option<WorkMakeBlocking2Callback> = None;
+#[no_mangle]
+pub unsafe extern "C" fn rsn_distributed_work_factory_make_blocking(
+    handle: &DistributedWorkFactoryHandle,
+    root: *const u8,
+    difficulty: u64,
+    account: *const u8,
+    work: *mut u64,
+) -> bool {
+    let account = if account.is_null() {
+        None
+    } else {
+        Some(Account::from_ptr(account))
+    };
+    if let Some(result) = handle.make_blocking(
+        WorkVersion::Work1,
+        Root::from_ptr(root),
+        difficulty,
+        account,
+    ) {
+        *work = result;
+        true
+    } else {
+        false
+    }
+}

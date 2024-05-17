@@ -56,8 +56,6 @@ add_library(
   confirmation_solicitor.cpp
   daemonconfig.hpp
   daemonconfig.cpp
-  distributed_work.hpp
-  distributed_work.cpp
   distributed_work_factory.hpp
   distributed_work_factory.cpp
   election.hpp
@@ -185,7 +183,8 @@ target_link_libraries(
   Boost::stacktrace
   Boost::system
   Boost::thread
-  ${CMAKE_DL_LIBS}
+  OpenSSL::SSL
+ ${CMAKE_DL_LIBS}
   ${psapi_lib})
 
 target_compile_definitions(

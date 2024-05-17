@@ -10,7 +10,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
-    core::{BlockHandle, BlockHashCallback},
+    core::BlockHandle,
     ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
     representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
     transport::TcpChannelsHandle,

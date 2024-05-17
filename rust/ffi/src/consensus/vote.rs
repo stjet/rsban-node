@@ -1,4 +1,4 @@
-use crate::{utils::FfiStream, FfiPropertyTree, StringDto};
+use crate::{utils::FfiStream, StringDto};
 use rsnano_core::{utils::Serialize, Account, BlockHash, FullHash, RawKey, Signature, Vote};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 

@@ -444,40 +444,6 @@ void wait_latch (void * latch_ptr)
 	latch->wait ();
 }
 
-bool work_make_blocking (void * factory_pointer, rsnano::BlockHandle * block_handle, uint64_t difficulty, uint64_t * result)
-{
-	auto factory = static_cast<nano::distributed_work_factory *> (factory_pointer);
-	auto block{ nano::block_handle_to_block (block_handle) };
-	auto work = factory->make_blocking (*block, difficulty);
-	if (work.has_value ())
-	{
-		*result = work.value ();
-		return true;
-	}
-
-	return false;
-}
-
-bool work_make_blocking_2 (void * factory_pointer, uint8_t version, uint8_t const * root_bytes, uint64_t difficulty, bool has_account, uint8_t const * account_bytes, uint64_t * result)
-{
-	auto factory = static_cast<nano::distributed_work_factory *> (factory_pointer);
-	nano::root root;
-	std::copy (root_bytes, root_bytes + 32, root.bytes.begin ());
-	std::optional<nano::account> account;
-	if (has_account)
-	{
-		account = nano::account::from_bytes (account_bytes);
-	}
-	auto work = factory->make_blocking (static_cast<nano::work_version> (version), root, difficulty, account);
-	if (work.has_value ())
-	{
-		*result = work.value ();
-		return true;
-	}
-
-	return false;
-}
-
 static bool callbacks_set = false;
 
 void rsnano::set_rsnano_callbacks ()
@@ -530,9 +496,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_is_sanitizer_build (nano::is_sanitizer_build);
 
 	rsnano::rsn_set_wait_latch_callback (wait_latch);
-
-	rsnano::rsn_callback_work_make_blocking (work_make_blocking);
-	rsnano::rsn_callback_work_make_blocking_2 (work_make_blocking_2);
 
 	callbacks_set = true;
 }

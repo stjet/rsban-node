@@ -1,152 +1,99 @@
-#include "nano/lib/rsnano.hpp"
-
-#include <nano/node/distributed_work.hpp>
+#include <nano/lib/rsnano.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/node.hpp>
 
-#include <iterator>
-
 nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
-	node (node_a)
+	handle{ rsnano::rsn_distributed_work_factory_create (node_a.work.handle, node_a.async_rt.handle) }
 {
-	auto config_dto{ node_a.config->to_dto () };
-	handle = rsnano::rsn_distributed_work_factory_create (this, &config_dto, node_a.work.handle);
 }
 
 nano::distributed_work_factory::~distributed_work_factory ()
 {
-	stop ();
 	rsnano::rsn_distributed_work_factory_destroy (handle);
 }
 
 bool nano::distributed_work_factory::work_generation_enabled (bool secondary_work_peers) const
 {
-	if (secondary_work_peers)
-	{
-		return rsnano::rsn_distributed_work_factory_enabled_secondary (handle);
-	}
 	return rsnano::rsn_distributed_work_factory_enabled (handle);
 }
 
 bool nano::distributed_work_factory::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
 {
-	std::vector<rsnano::PeerDto> dtos;
-	dtos.reserve (work_peers.size ());
-	for (auto i = work_peers.begin (), n = work_peers.end (); i != n; ++i)
-	{
-		rsnano::PeerDto dto;
-		dto.port = i->second;
-		dto.address_len = i->first.size ();
-		std::copy (i->first.begin (), i->first.end (), std::begin (dto.address));
-		dtos.push_back (dto);
-	}
-	return rsnano::rsn_distributed_work_factory_enabled_peers (handle, dtos.data (), dtos.size ());
+	return rsnano::rsn_distributed_work_factory_enabled (handle);
 }
 
 std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::block & block_a, uint64_t difficulty_a)
 {
-	auto opt_work_l (make_blocking (block_a.work_version (), block_a.root (), difficulty_a, block_a.account_field ()));
-	if (opt_work_l.has_value ())
+	uint64_t result;
+	if (rsnano::rsn_distributed_work_factory_make_blocking_block (handle, block_a.get_handle (), difficulty_a, &result))
 	{
-		block_a.block_work_set (opt_work_l.value ());
+		return { result };
 	}
-	return opt_work_l;
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::optional<nano::account> const & account_a)
 {
-	std::promise<std::optional<uint64_t>> promise;
-	make (
-	version_a, root_a, difficulty_a, [&promise] (std::optional<uint64_t> opt_work_a) {
-		promise.set_value (opt_work_a);
-	},
-	account_a);
-	return promise.get_future ().get ();
+	uint64_t result;
+	const uint8_t * account_ptr = nullptr;
+	if (account_a.has_value ())
+	{
+		account_ptr = account_a.value ().bytes.data ();
+	}
+	if (rsnano::rsn_distributed_work_factory_make_blocking (handle, root_a.bytes.data (), difficulty_a, account_ptr, &result))
+	{
+		return { result };
+	}
+	else
+	{
+		return std::nullopt;
+	}
+}
+
+namespace
+{
+void callback_wrapper (void * context, bool has_result, uint64_t work)
+{
+	auto callback = static_cast<std::function<void (std::optional<uint64_t>)> *> (context);
+	std::optional<uint64_t> opt_work{};
+	if (has_result)
+	{
+		opt_work = { work };
+	}
+	(*callback) (opt_work);
+}
+
+void delete_context (void * context)
+{
+	auto callback = static_cast<std::function<void (std::optional<uint64_t>)> *> (context);
+	delete callback;
+}
 }
 
 void nano::distributed_work_factory::make (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> callback_a, std::optional<nano::account> const & account_a, bool secondary_work_peers_a)
 {
-	auto const & peers_l (secondary_work_peers_a ? node.config->secondary_work_peers : node.config->work_peers);
-	if (make (version_a, root_a, peers_l, difficulty_a, callback_a, account_a))
+	const uint8_t * account_ptr = nullptr;
+	if (account_a.has_value ())
 	{
-		// Error in creating the job (either stopped or work generation is not possible)
-		callback_a (std::nullopt);
+		account_ptr = account_a.value ().bytes.data ();
 	}
+	auto context = new std::function<void (std::optional<uint64_t>)> (std::move (callback_a));
+	rsnano::rsn_distributed_work_factory_make (handle, root_a.bytes.data (), difficulty_a, account_ptr, callback_wrapper, context, delete_context);
 }
 
-bool nano::distributed_work_factory::make (nano::work_version const version_a, nano::root const & root_a, std::vector<std::pair<std::string, uint16_t>> const & peers_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> const & callback_a, std::optional<nano::account> const & account_a)
+void nano::distributed_work_factory::make (nano::work_version const version_a, nano::root const & root_a, std::vector<std::pair<std::string, uint16_t>> const & peers_a, uint64_t difficulty_a, std::function<void (std::optional<uint64_t>)> const & callback_a, std::optional<nano::account> const & account_a)
 {
-	return make (std::chrono::seconds (1), nano::work_request{ version_a, root_a, difficulty_a, account_a, callback_a, peers_a });
-}
-
-bool nano::distributed_work_factory::make (std::chrono::seconds const & backoff_a, nano::work_request const & request_a)
-{
-	bool error_l{ true };
-	if (!stopped)
-	{
-		cleanup_finished ();
-		if (work_generation_enabled (request_a.peers))
-		{
-			auto distributed (std::make_shared<nano::distributed_work> (node, request_a, backoff_a));
-			{
-				nano::lock_guard<nano::mutex> guard (mutex);
-				items.emplace (request_a.root, distributed);
-			}
-			distributed->start ();
-			error_l = false;
-		}
-	}
-	return error_l;
+	make (version_a, root_a, difficulty_a, callback_a, false);
 }
 
 void nano::distributed_work_factory::cancel (nano::root const & root_a)
 {
-	nano::lock_guard<nano::mutex> guard_l (mutex);
-	auto root_items_l = items.equal_range (root_a);
-	std::for_each (root_items_l.first, root_items_l.second, [] (auto item_l) {
-		if (auto distributed_l = item_l.second.lock ())
-		{
-			// Send work_cancel to work peers and stop local work generation
-			distributed_l->cancel ();
-		}
-	});
-	items.erase (root_items_l.first, root_items_l.second);
-}
-
-void nano::distributed_work_factory::cleanup_finished ()
-{
-	nano::lock_guard<nano::mutex> guard (mutex);
-	std::erase_if (items, [] (decltype (items)::value_type item) { return item.second.expired (); });
+	rsnano::rsn_distributed_work_factory_cancel (handle, root_a.bytes.data ());
 }
 
 void nano::distributed_work_factory::stop ()
 {
-	if (!stopped.exchange (true))
-	{
-		// Cancel any ongoing work
-		nano::lock_guard<nano::mutex> guard (mutex);
-		for (auto & item_l : items)
-		{
-			if (auto distributed_l = item_l.second.lock ())
-			{
-				distributed_l->cancel ();
-			}
-		}
-		items.clear ();
-	}
-}
-
-std::size_t nano::distributed_work_factory::size () const
-{
-	nano::lock_guard<nano::mutex> guard_l (mutex);
-	return items.size ();
-}
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (distributed_work_factory & distributed_work, std::string const & name)
-{
-	auto item_count = distributed_work.size ();
-	auto sizeof_item_element = sizeof (decltype (nano::distributed_work_factory::items)::value_type);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "items", item_count, sizeof_item_element }));
-	return composite;
 }

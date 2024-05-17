@@ -23,6 +23,8 @@ find_package(Corrosion REQUIRED)
 corrosion_import_crate(MANIFEST_PATH rust/ffi/Cargo.toml)
 # ---------------------
 
+find_package(OpenSSL)
+
 # Get the latest abbreviated commit hash of the working branch
 execute_process(
   COMMAND git log -1 --format=%h

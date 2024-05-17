@@ -1,6 +1,10 @@
 use crate::{
-    fill_node_config_dto, to_rust_string, utils::AsyncRuntimeHandle, NetworkParamsDto,
-    NodeConfigDto, StatHandle,
+    fill_node_config_dto,
+    ledger::datastore::lmdb::LmdbStoreHandle,
+    to_rust_string,
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    work::{DistributedWorkFactoryHandle, WorkPoolHandle},
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
 use rsnano_node::node::Node;
 use std::{ffi::c_char, sync::Arc};
@@ -13,6 +17,8 @@ pub unsafe extern "C" fn rsn_node_create(
     async_rt: &AsyncRuntimeHandle,
     config: &NodeConfigDto,
     params: &NetworkParamsDto,
+    flags: &NodeFlagsHandle,
+    work: &WorkPoolHandle,
 ) -> *mut NodeHandle {
     let path = to_rust_string(path);
     Box::into_raw(Box::new(NodeHandle(Arc::new(Node::new(
@@ -20,6 +26,8 @@ pub unsafe extern "C" fn rsn_node_create(
         path,
         config.try_into().unwrap(),
         params.try_into().unwrap(),
+        flags.lock().unwrap().clone(),
+        Arc::clone(work),
     )))))
 }
 
@@ -41,4 +49,30 @@ pub extern "C" fn rsn_node_config(handle: &NodeHandle, result: &mut NodeConfigDt
 #[no_mangle]
 pub extern "C" fn rsn_node_stats(handle: &NodeHandle) -> *mut StatHandle {
     StatHandle::new(&Arc::clone(&handle.0.stats))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_workers(handle: &NodeHandle) -> *mut ThreadPoolHandle {
+    Box::into_raw(Box::new(ThreadPoolHandle(Arc::clone(&handle.0.workers))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_bootstrap_workers(handle: &NodeHandle) -> *mut ThreadPoolHandle {
+    Box::into_raw(Box::new(ThreadPoolHandle(Arc::clone(
+        &handle.0.bootstrap_workers,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_distributed_work(
+    handle: &NodeHandle,
+) -> *mut DistributedWorkFactoryHandle {
+    Box::into_raw(Box::new(DistributedWorkFactoryHandle(Arc::clone(
+        &handle.0.distributed_work,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_store(handle: &NodeHandle) -> *mut LmdbStoreHandle {
+    Box::into_raw(Box::new(LmdbStoreHandle(Arc::clone(&handle.0.store))))
 }

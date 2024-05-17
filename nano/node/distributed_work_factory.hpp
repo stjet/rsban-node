@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
 
@@ -19,6 +21,7 @@ class distributed_work_factory final
 {
 public:
 	distributed_work_factory (nano::node &);
+	distributed_work_factory (rsnano::DistributedWorkFactoryHandle * handle);
 	distributed_work_factory (distributed_work_factory const &) = delete;
 	distributed_work_factory (distributed_work_factory &&) = delete;
 	~distributed_work_factory ();

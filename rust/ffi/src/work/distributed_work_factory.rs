@@ -9,7 +9,7 @@ use rsnano_node::work::DistributedWorkFactory;
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 use tokio::task::spawn_blocking;
 
-pub struct DistributedWorkFactoryHandle(Arc<DistributedWorkFactory>);
+pub struct DistributedWorkFactoryHandle(pub Arc<DistributedWorkFactory>);
 
 impl Deref for DistributedWorkFactoryHandle {
     type Target = Arc<DistributedWorkFactory>;

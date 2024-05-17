@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/lmdbconfig.hpp>
 #include <nano/lib/numbers.hpp>
@@ -47,6 +49,7 @@ private:
 
 public:
 	component (std::filesystem::path const &, nano::ledger_constants & constants, nano::txn_tracking_config const & txn_tracking_config_a = nano::txn_tracking_config{}, std::chrono::milliseconds block_processor_batch_max_time_a = std::chrono::milliseconds (5000), nano::lmdb_config const & lmdb_config_a = nano::lmdb_config{}, bool backup_before_upgrade = false);
+	component (rsnano::LmdbStoreHandle * handle);
 	~component ();
 	component (store const &) = delete;
 	component (store &&) = delete;

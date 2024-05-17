@@ -7,6 +7,11 @@ nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
 {
 }
 
+nano::distributed_work_factory::distributed_work_factory (rsnano::DistributedWorkFactoryHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::distributed_work_factory::~distributed_work_factory ()
 {
 	rsnano::rsn_distributed_work_factory_destroy (handle);

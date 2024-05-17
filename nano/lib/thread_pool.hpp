@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/relaxed_atomic.hpp>
 #include <nano/lib/thread_roles.hpp>
 #include <nano/lib/threading.hpp>
@@ -13,6 +14,7 @@ class thread_pool final
 {
 public:
 	explicit thread_pool (unsigned, nano::thread_role::name);
+	explicit thread_pool (rsnano::ThreadPoolHandle * handle);
 	thread_pool (thread_pool const &) = delete;
 	~thread_pool ();
 

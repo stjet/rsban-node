@@ -145,7 +145,8 @@ unsigned seq)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto params_dto{ config_a.network_params.to_dto () };
-	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto);
+	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto,
+	flags_a.handle, work_a.handle);
 }
 }
 
@@ -164,13 +165,12 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger> (make_logger_identifier (node_id)) },
 	stats{ std::make_shared<nano::stats> (rsnano::rsn_node_stats (handle)) },
-	workers{ std::make_shared<nano::thread_pool> (config_a.background_threads, nano::thread_role::name::worker) },
-	bootstrap_workers{ std::make_shared<nano::thread_pool> (config_a.bootstrap_serving_threads, nano::thread_role::name::bootstrap_worker) },
+	workers{ std::make_shared<nano::thread_pool> (rsnano::rsn_node_workers (handle)) },
+	bootstrap_workers{ std::make_shared<nano::thread_pool> (rsnano::rsn_node_bootstrap_workers (handle)) },
 	flags (flags_a),
 	work (work_a),
-	distributed_work (*this),
-	store_impl (nano::make_store (application_path_a, network_params.ledger, flags.read_only (), true, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_config, config_a.backup_before_upgrade)),
-	store (*store_impl),
+	distributed_work (rsnano::rsn_node_distributed_work (handle)),
+	store (rsnano::rsn_node_store (handle)),
 	unchecked{ config_a.max_unchecked_blocks, *stats, flags.disable_block_processor_unchecked_deletion () },
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
 	wallets_store (*wallets_store_impl),

@@ -43,6 +43,20 @@ nano::store::lmdb::component::component (std::filesystem::path const & path_a, n
 {
 }
 
+nano::store::lmdb::component::component (rsnano::LmdbStoreHandle * handle) :
+	handle{ handle },
+	block_store{ rsnano::rsn_lmdb_store_block (handle) },
+	account_store{ rsnano::rsn_lmdb_store_account (handle) },
+	pending_store{ rsnano::rsn_lmdb_store_pending (handle) },
+	online_weight_store{ rsnano::rsn_lmdb_store_online_weight (handle) },
+	pruned_store{ rsnano::rsn_lmdb_store_pruned (handle) },
+	peer_store{ rsnano::rsn_lmdb_store_peer (handle) },
+	confirmation_height_store{ rsnano::rsn_lmdb_store_confirmation_height (handle) },
+	final_vote_store{ rsnano::rsn_lmdb_store_final_vote (handle) },
+	version_store{ rsnano::rsn_lmdb_store_version (handle) }
+{
+}
+
 nano::store::lmdb::component::~component ()
 {
 	if (handle != nullptr)

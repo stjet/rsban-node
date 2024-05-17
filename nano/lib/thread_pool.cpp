@@ -13,6 +13,11 @@ nano::thread_pool::thread_pool (unsigned num_threads, nano::thread_role::name th
 {
 }
 
+nano::thread_pool::thread_pool (rsnano::ThreadPoolHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::thread_pool::~thread_pool ()
 {
 	rsnano::rsn_thread_pool_destroy (handle);

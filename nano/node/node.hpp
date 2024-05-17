@@ -131,18 +131,17 @@ public:
 	nano::keypair node_id;
 	rsnano::async_runtime & async_rt;
 	boost::asio::io_context & io_ctx;
-	std::shared_ptr<nano::node_observers> observers; // todo
+	std::shared_ptr<nano::node_observers> observers; // TODO
 	std::shared_ptr<nano::node_config> config;
 	nano::network_params network_params;
-	std::shared_ptr<nano::logger> logger; // todo
-	std::shared_ptr<nano::stats> stats; // ported
-	std::shared_ptr<nano::thread_pool> workers; // ported
-	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported
-	nano::node_flags flags; // ported
-	nano::work_pool & work; // ported
+	std::shared_ptr<nano::logger> logger;
+	std::shared_ptr<nano::stats> stats;
+	std::shared_ptr<nano::thread_pool> workers;
+	std::shared_ptr<nano::thread_pool> bootstrap_workers;
+	nano::node_flags flags;
+	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
-	std::unique_ptr<nano::store::component> store_impl; // ported
-	nano::store::component & store; // ported
+	nano::store::lmdb::component store;
 	nano::unchecked_map unchecked; // ported
 	std::unique_ptr<nano::wallets_store> wallets_store_impl; // ported
 	nano::wallets_store & wallets_store; // ported

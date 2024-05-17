@@ -29,7 +29,6 @@ RUN groupadd --gid 1000 nanocurrency && \
     useradd --uid 1000 --gid nanocurrency --shell /bin/bash --create-home nanocurrency
 
 COPY --from=builder /tmp/src/build/nano_node /usr/bin
-COPY --from=builder /tmp/src/build/nano_rpc /usr/bin
 COPY --from=builder /tmp/src/api/ /usr/bin/api/
 COPY --from=builder /etc/nano-network /etc
 

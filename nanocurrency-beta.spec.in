@@ -30,14 +30,12 @@ fi
 %build
 cmake -DCMAKE_VERBOSE_MAKEFILE=ON -DACTIVE_NETWORK=nano_beta_network -DCMAKE_BUILD_TYPE=RelWithDebInfo .
 make nano_node %{?_smp_mflags}
-make nano_rpc %{?_smp_mflags}
 
 %install
 if [ ! %{buildroot} = "/" ]; then %{__rm} -rf %{buildroot}; fi
 mkdir -p %{buildroot}/usr/bin
 mkdir -p %{buildroot}/etc/systemd/system/
 cp nano_node %{buildroot}/usr/bin/nano_node-beta
-cp nano_rpc %{buildroot}/usr/bin/nano_rpc-beta
 cp etc/systemd/nanocurrency-beta.service %{buildroot}/etc/systemd/system/nanocurrency-beta.service
 sed -i "s/nano_node/nano_node-beta/g" %{buildroot}/etc/systemd/system/nanocurrency-beta.service
 
@@ -47,7 +45,6 @@ if [ ! %{buildroot} = "/" ]; then %{__rm} -rf %{buildroot}; fi
 %files
 %defattr(755,root,root)
 %{_bindir}/nano_node-beta
-%{_bindir}/nano_rpc-beta
 %attr(644,root,root) /etc/systemd/system/nanocurrency-beta.service
 
 %pre

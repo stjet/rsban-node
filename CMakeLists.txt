@@ -527,13 +527,12 @@ add_subdirectory(nano/lib)
 add_subdirectory(nano/node)
 add_subdirectory(nano/nano_node)
 add_subdirectory(nano/rpc)
-add_subdirectory(nano/nano_rpc)
 
 add_custom_target(
   executables
   COMMAND echo "BATCH BUILDING node + rpc"
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  DEPENDS nano_node nano_rpc)
+  DEPENDS nano_node)
 
 if(NANO_TEST OR RAIBLOCKS_TEST)
   if(WIN32)
@@ -566,7 +565,7 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
     all_tests
     COMMAND echo "BATCH BUILDING TESTS"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS core_test load_test rpc_test slow_test nano_node nano_rpc)
+    DEPENDS core_test load_test rpc_test slow_test nano_node)
 endif()
 
 if(NANO_TEST OR RAIBLOCKS_TEST)

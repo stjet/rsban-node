@@ -15,7 +15,6 @@ echo "Running systests from: ${NANO_SYSTEST_DIR}"
 
 # This assumes that the executables are in the current working directory
 export NANO_NODE_EXE=./nano_node$(get_exec_extension)
-export NANO_RPC_EXE=./nano_rpc$(get_exec_extension)
 
 overall_status=0
 

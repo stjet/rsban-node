@@ -22,7 +22,6 @@
 #include <nano/node/node_observers.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/node/online_reps.hpp>
-#include <nano/node/portmapping.hpp>
 #include <nano/node/process_live_dispatcher.hpp>
 #include <nano/node/rep_tiers.hpp>
 #include <nano/node/repcrawler.hpp>
@@ -151,7 +150,6 @@ public:
 	std::shared_ptr<nano::telemetry> telemetry; // ported
 	nano::bootstrap_server bootstrap_server; // ported
 	std::filesystem::path application_path;
-	nano::port_mapping port_mapping;
 	nano::online_reps online_reps; // ported
 	nano::representative_register representative_register; // ported
 	nano::rep_tiers rep_tiers; // ported

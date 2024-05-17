@@ -108,8 +108,6 @@ add_library(
   openclwork.cpp
   peer_exclusion.hpp
   peer_exclusion.cpp
-  portmapping.hpp
-  portmapping.cpp
   process_live_dispatcher.cpp
   process_live_dispatcher.hpp
   repcrawler.hpp

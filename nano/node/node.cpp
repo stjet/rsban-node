@@ -158,7 +158,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	//
 	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this, config->tcp_incoming_connections_max) },
 	application_path (application_path_a),
-	port_mapping (*this),
 	representative_register (*this),
 	rep_crawler (config->rep_crawler, *this),
 	rep_tiers{ ledger, network_params, online_reps, *stats },
@@ -695,11 +694,6 @@ void nano::node::start ()
 			this_l->bootstrap_wallet ();
 		});
 	}
-	// Start port mapping if external address is not defined and TCP ports are enabled
-	if (config->external_address == boost::asio::ip::address_v6::any ().to_string () && tcp_enabled)
-	{
-		port_mapping.start ();
-	}
 	unchecked.start ();
 	wallets.start_actions ();
 	rep_tiers.start ();
@@ -755,7 +749,6 @@ void nano::node::stop ()
 	bootstrap_server.stop ();
 	bootstrap_initiator.stop ();
 	tcp_listener->stop ();
-	port_mapping.stop ();
 	wallets.stop_actions ();
 	stats->stop ();
 	workers->stop ();

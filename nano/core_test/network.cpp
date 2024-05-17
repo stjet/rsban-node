@@ -601,20 +601,6 @@ TEST (network, network_range_ipv4)
 	ASSERT_EQ (subnet2.network (), address2_subnet);
 }
 
-TEST (node, port_mapping)
-{
-	nano::test::system system (1);
-	auto node0 (system.nodes[0]);
-	node0->port_mapping.refresh_devices ();
-	node0->port_mapping.start ();
-	auto end (std::chrono::steady_clock::now () + std::chrono::seconds (500));
-	(void)end;
-	// while (std::chrono::steady_clock::now () < end)
-	{
-		ASSERT_NO_ERROR (system.poll ());
-	}
-}
-
 // Test disabled because it's failing intermittently.
 // PR in which it got disabled: https://github.com/nanocurrency/nano-node/pull/3611
 // Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3615
@@ -922,14 +908,6 @@ TEST (DISABLED_network, filter_invalid_version_using)
 	channel->send (keepalive);
 
 	ASSERT_TIMELY_EQ (5s, 1, node1.stats->count (nano::stat::type::error, nano::stat::detail::outdated_version));
-}
-
-TEST (network, fill_keepalive_self)
-{
-	nano::test::system system{ 2 };
-	std::array<nano::endpoint, 8> target;
-	system.nodes[0]->network->fill_keepalive_self (target);
-	ASSERT_EQ (target[2].port (), system.nodes[1]->network->port);
 }
 
 /*

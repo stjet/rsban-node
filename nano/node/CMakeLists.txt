@@ -1,16 +1,3 @@
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  # No opencl
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  set(platform_sources plat/windows/openclapi.cpp)
-  set(psapi_lib Psapi)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(platform_sources plat/posix/openclapi.cpp)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  set(platform_sources plat/posix/openclapi.cpp)
-else()
-  error("Unknown platform: ${CMAKE_SYSTEM_NAME}")
-endif()
-
 add_library(
   node
   ${platform_sources}
@@ -104,8 +91,6 @@ add_library(
   online_reps.cpp
   openclconfig.hpp
   openclconfig.cpp
-  openclwork.hpp
-  openclwork.cpp
   peer_exclusion.hpp
   peer_exclusion.cpp
   process_live_dispatcher.cpp

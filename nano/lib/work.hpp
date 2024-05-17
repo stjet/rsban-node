@@ -33,14 +33,10 @@ public:
 	rsnano::WorkTicketHandle * handle;
 };
 
-// type of function that does the work generation with an optional return value
-using opencl_work_func_t = std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, nano::work_ticket)>;
-
 class block;
 class block_details;
 enum class block_type : uint8_t;
 
-class opencl_work;
 class work_item final
 {
 public:
@@ -56,7 +52,7 @@ public:
 class work_pool final
 {
 public:
-	work_pool (nano::network_constants & network_constants, unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), nano::opencl_work_func_t = nullptr);
+	work_pool (nano::network_constants & network_constants, unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0));
 	work_pool (work_pool const &) = delete;
 	work_pool (work_pool &&) = delete;
 	~work_pool ();

@@ -9,8 +9,8 @@ use crate::{Root, WorkVersion};
 use once_cell::sync::Lazy;
 
 use super::{
-    CpuWorkGenerator, OpenClWorkFunc, OpenClWorkGenerator, StubWorkPool, WorkItem,
-    WorkQueueCoordinator, WorkThread, WorkThresholds, WorkTicket, WORK_THRESHOLDS_STUB,
+    CpuWorkGenerator, StubWorkPool, WorkItem, WorkQueueCoordinator, WorkThread, WorkThresholds,
+    WorkTicket, WORK_THRESHOLDS_STUB,
 };
 
 pub trait WorkPool: Send + Sync {
@@ -34,7 +34,6 @@ pub struct WorkPoolImpl {
     work_queue: Arc<WorkQueueCoordinator>,
     work_thresholds: WorkThresholds,
     pow_rate_limiter: Duration,
-    has_opencl: bool,
 }
 
 impl WorkPoolImpl {
@@ -42,17 +41,15 @@ impl WorkPoolImpl {
         work_thresholds: WorkThresholds,
         thread_count: usize,
         pow_rate_limiter: Duration,
-        opencl: Option<Box<OpenClWorkFunc>>,
     ) -> Self {
         let mut pool = Self {
             threads: Vec::new(),
             work_queue: Arc::new(WorkQueueCoordinator::new()),
             work_thresholds,
-            has_opencl: opencl.is_some(),
             pow_rate_limiter,
         };
 
-        pool.spawn_threads(thread_count, opencl);
+        pool.spawn_threads(thread_count);
         pool
     }
 
@@ -61,7 +58,6 @@ impl WorkPoolImpl {
             threads: Vec::new(),
             work_queue: Arc::new(WorkQueueCoordinator::new()),
             work_thresholds: WORK_THRESHOLDS_STUB.clone(),
-            has_opencl: false,
             pow_rate_limiter: Duration::ZERO,
         };
 
@@ -75,24 +71,14 @@ impl WorkPoolImpl {
             threads: Vec::new(),
             work_queue: Arc::new(WorkQueueCoordinator::new()),
             work_thresholds: WORK_THRESHOLDS_STUB.clone(),
-            has_opencl: false,
             pow_rate_limiter: Duration::ZERO,
         }
     }
 
-    fn spawn_threads(&mut self, thread_count: usize, opencl: Option<Box<OpenClWorkFunc>>) {
-        if let Some(opencl) = opencl {
-            // One extra thread to handle OpenCL
-            self.threads.push(self.spawn_open_cl_thread(opencl))
-        }
-
+    fn spawn_threads(&mut self, thread_count: usize) {
         for _ in 0..thread_count {
             self.threads.push(self.spawn_cpu_worker_thread())
         }
-    }
-
-    fn spawn_open_cl_thread(&self, opencl: Box<OpenClWorkFunc>) -> JoinHandle<()> {
-        self.spawn_worker_thread(OpenClWorkGenerator::new(self.pow_rate_limiter, opencl))
     }
 
     fn spawn_cpu_worker_thread(&self) -> JoinHandle<()> {
@@ -117,7 +103,7 @@ impl WorkPoolImpl {
     }
 
     pub fn has_opencl(&self) -> bool {
-        self.has_opencl
+        false
     }
 
     pub fn work_generation_enabled(&self) -> bool {
@@ -288,18 +274,12 @@ mod tests {
             WorkThresholds::publish_dev().clone(),
             crate::utils::get_cpu_count(),
             Duration::ZERO,
-            None,
         )
     });
 
     #[test]
     fn work_disabled() {
-        let pool = WorkPoolImpl::new(
-            WorkThresholds::publish_dev().clone(),
-            0,
-            Duration::ZERO,
-            None,
-        );
+        let pool = WorkPoolImpl::new(WorkThresholds::publish_dev().clone(), 0, Duration::ZERO);
         let result = pool.generate_dev2(Root::from(1));
         assert_eq!(result, None);
     }

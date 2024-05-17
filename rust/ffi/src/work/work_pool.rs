@@ -18,17 +18,11 @@ impl Deref for WorkPoolHandle {
     }
 }
 
-type OpenclCallback =
-    unsafe extern "C" fn(*mut c_void, u8, *const u8, u64, *mut WorkTicketHandle, *mut u64) -> bool;
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_work_pool_create(
     network_constants: *const NetworkConstantsDto,
     max_threads: u32,
     pow_rate_limiter_ns: u64,
-    opencl: OpenclCallback,
-    opencl_context: *mut c_void,
-    destroy_context: unsafe extern "C" fn(*mut c_void),
 ) -> *mut WorkPoolHandle {
     let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
     let thread_count = if network_constants.is_dev_network() {
@@ -40,75 +34,7 @@ pub unsafe extern "C" fn rsn_work_pool_create(
         network_constants.work,
         thread_count,
         Duration::from_nanos(pow_rate_limiter_ns),
-        create_opencl_wrapper(opencl, opencl_context, destroy_context),
     )))))
-}
-
-struct OpenclWrapper {
-    callback: OpenclCallback,
-    destroy_context: unsafe extern "C" fn(*mut c_void),
-    context: *mut c_void,
-}
-
-impl OpenclWrapper {
-    fn callback(
-        &self,
-        version: WorkVersion,
-        root: Root,
-        difficulty: u64,
-        ticket: &WorkTicket,
-    ) -> Option<u64> {
-        let mut work = 0;
-        let ticket =
-            unsafe { std::mem::transmute::<WorkTicket, WorkTicket<'static>>(ticket.clone()) };
-        let ticket_handle = Box::into_raw(Box::new(WorkTicketHandle(ticket)));
-        let found = unsafe {
-            (self.callback)(
-                self.context,
-                version as u8,
-                root.as_bytes().as_ptr(),
-                difficulty,
-                ticket_handle,
-                &mut work,
-            )
-        };
-        if found {
-            Some(work)
-        } else {
-            None
-        }
-    }
-}
-
-impl Drop for OpenclWrapper {
-    fn drop(&mut self) {
-        unsafe {
-            (self.destroy_context)(self.context);
-        }
-    }
-}
-
-unsafe impl Send for OpenclWrapper {}
-unsafe impl Sync for OpenclWrapper {}
-
-fn create_opencl_wrapper(
-    opencl: OpenclCallback,
-    context: *mut c_void,
-    destroy_context: unsafe extern "C" fn(*mut c_void),
-) -> Option<Box<dyn Fn(WorkVersion, Root, u64, &WorkTicket) -> Option<u64> + Send + Sync>> {
-    if context.is_null() {
-        return None;
-    }
-
-    let wrapper = OpenclWrapper {
-        callback: opencl,
-        destroy_context,
-        context,
-    };
-
-    Some(Box::new(move |version, root, difficulty, ticket| {
-        wrapper.callback(version, root, difficulty, ticket)
-    }))
 }
 
 #[no_mangle]

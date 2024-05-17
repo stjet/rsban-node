@@ -673,21 +673,6 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			(void)std::chrono::steady_clock::now ();
 		}
 		std::cout << timer.stop ().count () / iters << " " << timer.unit () << std::endl;
-		std::cout << "Dumping OpenCL information" << std::endl;
-		bool error (false);
-		nano::opencl_environment environment (error);
-		if (!error)
-		{
-			environment.dump (std::cout);
-			std::stringstream stream;
-			environment.dump (stream);
-			std::cout << stream.str () << std::endl;
-		}
-		else
-		{
-			std::cerr << "Error initializing OpenCL" << std::endl;
-			ec = nano::error_cli::generic;
-		}
 	}
 	else if (vm.count ("key_create"))
 	{

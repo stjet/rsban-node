@@ -48,8 +48,7 @@ add_executable(
   voting.cpp
   wallet.cpp
   wallets.cpp
-  websocket.cpp
-  work_pool.cpp)
+  websocket.cpp)
 
 target_compile_definitions(
   core_test PRIVATE -DTAG_VERSION_STRING=${TAG_VERSION_STRING}

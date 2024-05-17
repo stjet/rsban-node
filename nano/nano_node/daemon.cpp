@@ -11,7 +11,6 @@
 #include <nano/node/ipc/ipc_server.hpp>
 #include <nano/node/json_handler.hpp>
 #include <nano/node/node.hpp>
-#include <nano/node/openclwork.hpp>
 #include <nano/rpc/rpc.hpp>
 
 #include <boost/process.hpp>
@@ -85,15 +84,7 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 	if (!error)
 	{
 		rsnano::async_runtime async_rt{ true };
-		auto opencl = nano::opencl_work::create (config.opencl_enable, config.opencl, logger, config.node.network_params.work);
-		nano::opencl_work_func_t opencl_work_func;
-		if (opencl)
-		{
-			opencl_work_func = [&opencl] (nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, nano::work_ticket ticket_a) {
-				return opencl->generate_work (version_a, root_a, difficulty_a, ticket_a);
-			};
-		}
-		nano::work_pool opencl_work (config.node.network_params.network, config.node.work_threads, config.node.pow_sleep_interval, opencl_work_func);
+		nano::work_pool opencl_work (config.node.network_params.network, config.node.work_threads, config.node.pow_sleep_interval);
 		try
 		{
 			// This avoid a blank prompt during any node initialization delays

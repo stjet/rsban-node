@@ -15,6 +15,8 @@ pub mod config;
 pub mod consensus;
 mod ipc;
 pub mod node;
+mod node_id_file;
+pub mod nullable_fs;
 pub mod representatives;
 mod secure;
 pub mod stats;

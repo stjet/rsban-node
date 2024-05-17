@@ -33,7 +33,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
-#include <future>
 #include <iterator>
 #include <memory>
 #include <sstream>

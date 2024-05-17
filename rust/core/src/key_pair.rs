@@ -1,15 +1,48 @@
 use super::{PublicKey, RawKey, Signature};
-use crate::{Block, StateBlock};
+use crate::{utils::NullableRng, Block, StateBlock};
 
 pub struct KeyPair {
     keypair: ed25519_dalek_blake2b::Keypair,
 }
 
+pub struct KeyPairFactory {
+    rng: NullableRng,
+}
+
+impl KeyPairFactory {
+    fn new(rng: NullableRng) -> Self {
+        Self { rng }
+    }
+
+    pub fn new_null() -> Self {
+        Self {
+            rng: NullableRng::new_null(),
+        }
+    }
+
+    pub fn new_null_with(prv: RawKey) -> Self {
+        Self {
+            rng: NullableRng::new_null_bytes(prv.as_bytes()),
+        }
+    }
+
+    pub fn create_key_pair(&mut self) -> KeyPair {
+        let keypair = ed25519_dalek_blake2b::Keypair::generate(&mut self.rng);
+        KeyPair { keypair }
+    }
+}
+
+impl Default for KeyPairFactory {
+    fn default() -> Self {
+        Self {
+            rng: NullableRng::thread_rng(),
+        }
+    }
+}
+
 impl Default for KeyPair {
     fn default() -> Self {
-        let mut rng = rand::thread_rng();
-        let keypair = ed25519_dalek_blake2b::Keypair::generate(&mut rng);
-        Self { keypair }
+        KeyPairFactory::default().create_key_pair()
     }
 }
 
@@ -133,5 +166,38 @@ mod tests {
         let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         assert_eq!(signature_a, signature_b);
+    }
+
+    mod key_pair_factory {
+        use super::*;
+
+        #[test]
+        fn create_key_pair() {
+            let random_data = [
+                0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0x11, 0x22,
+                0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44,
+                0x11, 0x22, 0x33, 0x44,
+            ];
+            let rng = NullableRng::new_null_bytes(&random_data);
+            let mut key_pair_factory = KeyPairFactory::new(rng);
+
+            let key_pair = key_pair_factory.create_key_pair();
+
+            assert_eq!(key_pair.private_key().as_bytes(), &random_data);
+        }
+
+        #[test]
+        fn nullable() {
+            let mut key_pair_factory = KeyPairFactory::new_null();
+            let key_pair = key_pair_factory.create_key_pair();
+            assert_ne!(key_pair.private_key(), RawKey::zero());
+        }
+
+        #[test]
+        fn configured_response() {
+            let expected = RawKey::from_bytes([3; 32]);
+            let mut key_pair_factory = KeyPairFactory::new_null_with(expected);
+            assert_eq!(key_pair_factory.create_key_pair().private_key(), expected);
+        }
     }
 }

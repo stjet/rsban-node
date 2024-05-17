@@ -144,21 +144,25 @@ mod tests {
     use rsnano_core::work::WorkPoolImpl;
     use std::sync::Arc;
 
-    #[tokio::test]
-    async fn use_local_work_factor_when_no_peers_given() {
-        let expected_work = 12345;
-        let work_pool = Arc::new(WorkPoolImpl::new_null(expected_work));
-        let work_factory =
-            DistributedWorkFactory::new(work_pool, Arc::new(AsyncRuntime::default()));
+    #[test]
+    fn use_local_work_factor_when_no_peers_given() {
+        let async_rt = Arc::new(AsyncRuntime::default());
+        {
+            let expected_work = 12345;
+            let work_pool = Arc::new(WorkPoolImpl::new_null(expected_work));
+            let work_factory = DistributedWorkFactory::new(work_pool, Arc::clone(&async_rt));
 
-        let request = WorkRequest {
-            peers: vec![],
-            ..WorkRequest::create_test_instance()
-        };
+            let request = WorkRequest {
+                peers: vec![],
+                ..WorkRequest::create_test_instance()
+            };
 
-        let work = work_factory.generate_work(request.clone()).await;
+            let work = async_rt
+                .tokio
+                .block_on(work_factory.generate_work(request.clone()));
 
-        assert_eq!(work, Some(expected_work));
+            assert_eq!(work, Some(expected_work));
+        }
     }
 
     // TODO:

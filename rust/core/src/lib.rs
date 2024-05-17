@@ -22,7 +22,9 @@ pub use block_hash::{BlockHash, BlockHashBuilder};
 pub use vote::*;
 
 mod key_pair;
-pub use key_pair::{sign_message, validate_block_signature, validate_message, KeyPair};
+pub use key_pair::{
+    sign_message, validate_block_signature, validate_message, KeyPair, KeyPairFactory,
+};
 
 mod raw_key;
 pub use raw_key::RawKey;

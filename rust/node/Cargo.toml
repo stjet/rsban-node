@@ -14,6 +14,7 @@ rsnano_node = { path = ".", features = ["output_tracking"] }
 mock_instant = "0.2.1"
 tracing-subscriber = {version="0.3.18", features=["env-filter"]}
 axum = "0.7.5"
+tracing-test = "0.2.4"
 
 [dependencies]
 rsnano_core = { path = "../core" }

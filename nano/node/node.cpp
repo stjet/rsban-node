@@ -1,3 +1,5 @@
+#include "nano/lib/numbers.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
@@ -115,21 +117,53 @@ std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_c
 	return network;
 }
 
+namespace
+{
+nano::keypair get_node_id_key_pair (rsnano::NodeHandle const * handle)
+{
+	nano::raw_key prv;
+	rsnano::rsn_node_node_id (handle, prv.bytes.data ());
+	return std::move (nano::keypair{ std::move (prv) });
+}
+
+std::shared_ptr<nano::node_config> get_node_config (rsnano::NodeHandle const * handle)
+{
+	rsnano::NodeConfigDto dto;
+	rsn_node_config (handle, &dto);
+	auto config = std::make_shared<nano::node_config> ();
+	config->load_dto (dto);
+	return config;
+}
+
+rsnano::NodeHandle * create_node_handle (
+rsnano::async_runtime & async_rt_a,
+std::filesystem::path const & application_path_a,
+nano::node_config const & config_a,
+nano::work_pool & work_a,
+nano::node_flags flags_a,
+unsigned seq)
+{
+	auto config_dto{ config_a.to_dto () };
+	auto params_dto{ config_a.network_params.to_dto () };
+	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto);
+}
+}
+
 nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std::filesystem::path const & application_path_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
 	node (async_rt, application_path_a, nano::node_config (peering_port_a), work_a, flags_a, seq)
 {
 }
 
 nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
-	node_id{ nano::load_or_create_node_id (application_path_a) },
+	handle{ create_node_handle (async_rt_a, application_path_a, config_a, work_a, flags_a, seq) },
+	node_id{ get_node_id_key_pair (handle) },
 	async_rt{ async_rt_a },
 	io_ctx (async_rt_a.io_ctx),
-	node_initialized_latch (1),
 	observers{ std::make_shared<nano::node_observers> () },
-	config{ std::make_shared<nano::node_config> (config_a) },
+	config{ get_node_config (handle) },
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger> (make_logger_identifier (node_id)) },
-	stats{ std::make_shared<nano::stats> (config_a.stats_config) },
+	stats{ std::make_shared<nano::stats> (rsnano::rsn_node_stats (handle)) },
 	workers{ std::make_shared<nano::thread_pool> (config_a.background_threads, nano::thread_role::name::worker) },
 	bootstrap_workers{ std::make_shared<nano::thread_pool> (config_a.bootstrap_serving_threads, nano::thread_role::name::bootstrap_worker) },
 	flags (flags_a),
@@ -475,13 +509,13 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			}
 		});
 	}
-	node_initialized_latch.count_down ();
 }
 
 nano::node::~node ()
 {
 	logger->debug (nano::log::type::node, "Destructing node...");
 	stop ();
+	rsnano::rsn_node_destroy (handle);
 }
 
 namespace

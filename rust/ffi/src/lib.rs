@@ -16,6 +16,7 @@ mod hardened_constants;
 mod ipc;
 pub mod ledger;
 pub mod messages;
+mod node;
 mod property_tree;
 pub mod representatives;
 mod secure;

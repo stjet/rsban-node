@@ -14,6 +14,7 @@ pub mod cementation;
 pub mod config;
 pub mod consensus;
 mod ipc;
+pub mod node;
 pub mod representatives;
 mod secure;
 pub mod stats;

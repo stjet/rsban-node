@@ -64,9 +64,12 @@ outbound_bandwidth_limiter::config outbound_bandwidth_limiter_config (node_confi
 
 class node final : public std::enable_shared_from_this<nano::node>
 {
+	rsnano::NodeHandle * handle;
+
 public:
 	node (rsnano::async_runtime & async_rt_a, uint16_t peering_port, std::filesystem::path const & application_path, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
 	node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path, nano::node_config const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
+	node (node const &) = delete;
 	~node ();
 
 public:
@@ -125,14 +128,13 @@ public:
 	nano::telemetry_data local_telemetry () const;
 
 public:
-	nano::keypair node_id; // ported
-	rsnano::async_runtime & async_rt; // ported
-	boost::asio::io_context & io_ctx; // ported
-	boost::latch node_initialized_latch;
-	std::shared_ptr<nano::node_observers> observers;
-	std::shared_ptr<nano::node_config> config; // ported
-	nano::network_params network_params; // ported
-	std::shared_ptr<nano::logger> logger; // ported
+	nano::keypair node_id;
+	rsnano::async_runtime & async_rt;
+	boost::asio::io_context & io_ctx;
+	std::shared_ptr<nano::node_observers> observers; // todo
+	std::shared_ptr<nano::node_config> config;
+	nano::network_params network_params;
+	std::shared_ptr<nano::logger> logger; // todo
 	std::shared_ptr<nano::stats> stats; // ported
 	std::shared_ptr<nano::thread_pool> workers; // ported
 	std::shared_ptr<nano::thread_pool> bootstrap_workers; // ported

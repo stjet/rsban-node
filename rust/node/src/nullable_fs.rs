@@ -1,11 +1,12 @@
+use rsnano_core::utils::{OutputListener, OutputTracker};
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     io::ErrorKind,
+    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
-    sync::Arc,
+    rc::Rc,
 };
-
-use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FsEvent {
@@ -39,22 +40,47 @@ pub enum EventType {
 }
 
 pub(crate) struct NullableFilesystem {
-    fs: Box<dyn Filesystem>,
-    listener: OutputListenerMt<FsEvent>,
+    fs: RefCell<FsStrategy>,
+    listener: OutputListener<FsEvent>,
+}
+
+enum FsStrategy {
+    Real(RealFilesystem),
+    Nulled(FilesystemStub),
+}
+
+impl Deref for FsStrategy {
+    type Target = dyn Filesystem;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            FsStrategy::Real(i) => i,
+            FsStrategy::Nulled(i) => i,
+        }
+    }
+}
+
+impl DerefMut for FsStrategy {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            FsStrategy::Real(i) => i,
+            FsStrategy::Nulled(i) => i,
+        }
+    }
 }
 
 impl NullableFilesystem {
     pub fn new() -> Self {
         Self {
-            fs: Box::new(RealFilesystem {}),
-            listener: OutputListenerMt::new(),
+            fs: RefCell::new(FsStrategy::Real(RealFilesystem {})),
+            listener: OutputListener::new(),
         }
     }
 
     pub fn new_null() -> Self {
         Self {
-            fs: Box::new(FilesystemStub::default()),
-            listener: OutputListenerMt::new(),
+            fs: RefCell::new(FsStrategy::Nulled(FilesystemStub::default())),
+            listener: OutputListener::new(),
         }
     }
 
@@ -65,27 +91,27 @@ impl NullableFilesystem {
     }
 
     pub fn exists(&self, f: impl AsRef<Path>) -> bool {
-        self.fs.exists(f.as_ref())
+        self.fs.borrow().exists(f.as_ref())
     }
 
-    pub fn read_to_string(&mut self, f: impl AsRef<Path>) -> std::io::Result<String> {
-        self.fs.read_to_string(f.as_ref())
+    pub fn read_to_string(&self, f: impl AsRef<Path>) -> std::io::Result<String> {
+        self.fs.borrow_mut().read_to_string(f.as_ref())
     }
 
     pub fn create_dir_all(&self, f: impl AsRef<Path>) -> std::io::Result<()> {
         let path = f.as_ref();
         self.listener.emit(FsEvent::create_dir_all(path));
-        self.fs.create_dir_all(path)
+        self.fs.borrow_mut().create_dir_all(path)
     }
 
     pub fn write(&self, path: impl AsRef<Path>, contents: impl AsRef<[u8]>) -> std::io::Result<()> {
         let path = path.as_ref();
         let contents = contents.as_ref();
         self.listener.emit(FsEvent::write(path, contents));
-        self.fs.write(path, contents)
+        self.fs.borrow_mut().write(path, contents)
     }
 
-    pub fn track(&self) -> Arc<OutputTrackerMt<FsEvent>> {
+    pub fn track(&self) -> Rc<OutputTracker<FsEvent>> {
         self.listener.track()
     }
 }
@@ -116,10 +142,20 @@ impl NullableFilesystemBuilder {
         self
     }
 
+    pub fn create_dir_all_fails(mut self, path: impl Into<PathBuf>, error: std::io::Error) -> Self {
+        self.stub.create_dir_all_errors.insert(path.into(), error);
+        self
+    }
+
+    pub fn write_fails(mut self, path: impl Into<PathBuf>, error: std::io::Error) -> Self {
+        self.stub.write_errors.insert(path.into(), error);
+        self
+    }
+
     pub fn finish(self) -> NullableFilesystem {
         NullableFilesystem {
-            fs: Box::new(self.stub),
-            listener: OutputListenerMt::new(),
+            fs: RefCell::new(FsStrategy::Nulled(self.stub)),
+            listener: OutputListener::new(),
         }
     }
 }
@@ -127,8 +163,8 @@ impl NullableFilesystemBuilder {
 trait Filesystem {
     fn exists(&self, path: &Path) -> bool;
     fn read_to_string(&mut self, f: &Path) -> std::io::Result<String>;
-    fn create_dir_all(&self, path: &Path) -> std::io::Result<()>;
-    fn write(&self, path: &Path, contents: &[u8]) -> std::io::Result<()>;
+    fn create_dir_all(&mut self, path: &Path) -> std::io::Result<()>;
+    fn write(&mut self, path: &Path, contents: &[u8]) -> std::io::Result<()>;
 }
 
 struct RealFilesystem {}
@@ -142,11 +178,11 @@ impl Filesystem for RealFilesystem {
         std::fs::read_to_string(f)
     }
 
-    fn create_dir_all(&self, path: &Path) -> std::io::Result<()> {
+    fn create_dir_all(&mut self, path: &Path) -> std::io::Result<()> {
         std::fs::create_dir_all(path)
     }
 
-    fn write(&self, path: &Path, contents: &[u8]) -> std::io::Result<()> {
+    fn write(&mut self, path: &Path, contents: &[u8]) -> std::io::Result<()> {
         std::fs::write(path, contents)
     }
 }
@@ -155,6 +191,8 @@ impl Filesystem for RealFilesystem {
 struct FilesystemStub {
     exists: HashSet<PathBuf>,
     read_to_string: HashMap<PathBuf, std::io::Result<String>>,
+    create_dir_all_errors: HashMap<PathBuf, std::io::Error>,
+    write_errors: HashMap<PathBuf, std::io::Error>,
 }
 
 impl Filesystem for FilesystemStub {
@@ -172,12 +210,18 @@ impl Filesystem for FilesystemStub {
         }
     }
 
-    fn create_dir_all(&self, _path: &Path) -> std::io::Result<()> {
-        Ok(())
+    fn create_dir_all(&mut self, path: &Path) -> std::io::Result<()> {
+        match self.create_dir_all_errors.remove(path) {
+            Some(err) => Err(err),
+            None => Ok(()),
+        }
     }
 
-    fn write(&self, _path: &Path, _contents: &[u8]) -> std::io::Result<()> {
-        Ok(())
+    fn write(&mut self, path: &Path, _contents: &[u8]) -> std::io::Result<()> {
+        match self.write_errors.remove(path) {
+            Some(err) => Err(err),
+            None => Ok(()),
+        }
     }
 }
 
@@ -267,7 +311,7 @@ mod tests {
 
         #[test]
         fn is_nullable() {
-            let mut fs = NullableFilesystem::new_null();
+            let fs = NullableFilesystem::new_null();
             assert_eq!(fs.exists("/foo/bar"), false);
             assert!(fs.read_to_string("/foo/bar").is_err());
             assert!(fs.create_dir_all("/foo/bar").is_ok());
@@ -286,7 +330,7 @@ mod tests {
 
         #[test]
         fn read_to_string_file_not_found() {
-            let mut fs = NullableFilesystem::new_null();
+            let fs = NullableFilesystem::new_null();
             let err = fs.read_to_string("/foo/bar").unwrap_err();
             assert_eq!(err.kind(), ErrorKind::NotFound);
             assert_eq!(
@@ -298,7 +342,7 @@ mod tests {
         #[test]
         fn read_to_string() {
             let path = PathBuf::from("/foo/bar");
-            let mut fs = NullableFilesystem::null_builder()
+            let fs = NullableFilesystem::null_builder()
                 .read_to_string(&path, "hello world".to_string())
                 .finish();
 
@@ -308,11 +352,33 @@ mod tests {
         #[test]
         fn read_to_string_fails() {
             let path = PathBuf::from("/foo/bar");
-            let mut fs = NullableFilesystem::null_builder()
+            let fs = NullableFilesystem::null_builder()
                 .read_to_string_fails(&path, std::io::Error::new(ErrorKind::PermissionDenied, ""))
                 .finish();
 
             let err = fs.read_to_string(path).unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+        }
+
+        #[test]
+        fn create_dir_failure() {
+            let path = PathBuf::from("/foo/bar");
+            let fs = NullableFilesystem::null_builder()
+                .create_dir_all_fails(&path, std::io::Error::new(ErrorKind::PermissionDenied, ""))
+                .finish();
+
+            let err = fs.create_dir_all(path).unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+        }
+
+        #[test]
+        fn write_fails() {
+            let path = PathBuf::from("/foo/bar");
+            let fs = NullableFilesystem::null_builder()
+                .write_fails(&path, std::io::Error::new(ErrorKind::PermissionDenied, ""))
+                .finish();
+
+            let err = fs.write(path, b"test").unwrap_err();
             assert_eq!(err.kind(), ErrorKind::PermissionDenied);
         }
     }

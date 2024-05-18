@@ -80,35 +80,6 @@ void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 	rsnano::rsn_rep_crawler_keepalive (rep_crawler.handle, address_a.c_str (), port_a);
 }
 
-nano::keypair nano::load_or_create_node_id (std::filesystem::path const & application_path)
-{
-	auto node_private_key_path = application_path / "node_id_private.key";
-	std::ifstream ifs (node_private_key_path.c_str ());
-	if (ifs.good ())
-	{
-		nano::default_logger ().info (nano::log::type::init, "Reading node id from: '{}'", node_private_key_path.string ());
-		std::string node_private_key;
-		ifs >> node_private_key;
-		release_assert (node_private_key.size () == 64);
-		nano::keypair kp = nano::keypair (node_private_key);
-		return kp;
-	}
-	else
-	{
-		std::filesystem::create_directories (application_path);
-		// no node_id found, generate new one
-		nano::default_logger ().info (nano::log::type::node, "Generating a new node id, saving to: '{}'", node_private_key_path.string ());
-
-		nano::keypair kp;
-		std::ofstream ofs (node_private_key_path.c_str (), std::ofstream::out | std::ofstream::trunc);
-		ofs << kp.prv.to_string () << std::endl
-			<< std::flush;
-		ofs.close ();
-		release_assert (!ofs.fail ());
-		return kp;
-	}
-}
-
 std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_config const & config_a)
 {
 	auto network{ std::make_shared<nano::network> (node_a, config_a.peering_port.value_or (0)) };

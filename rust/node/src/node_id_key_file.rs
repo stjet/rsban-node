@@ -132,8 +132,6 @@ mod tests {
     }
 
     mod no_file_exists_yet {
-        use core::panic;
-
         use super::*;
 
         #[test]

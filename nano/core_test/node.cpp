@@ -3873,29 +3873,3 @@ TEST (node, pruning_depth)
 	ASSERT_TRUE (nano::test::block_or_pruned_all_exists (node1, { nano::dev::genesis, send1, send2 }));
 }
 
-TEST (node_config, node_id_private_key_persistence)
-{
-	nano::test::system system;
-
-	// create the directory and the file
-	auto path = nano::unique_path ();
-	ASSERT_TRUE (std::filesystem::exists (path));
-	auto priv_key_filename = path / "node_id_private.key";
-
-	// check that the key generated is random when the key does not exist
-	nano::keypair kp1 = nano::load_or_create_node_id (path);
-	std::filesystem::remove (priv_key_filename);
-	nano::keypair kp2 = nano::load_or_create_node_id (path);
-	ASSERT_NE (kp1.prv, kp2.prv);
-
-	// check that the key persists
-	nano::keypair kp3 = nano::load_or_create_node_id (path);
-	ASSERT_EQ (kp2.prv, kp3.prv);
-
-	// write the key file manually and check that right key is loaded
-	std::ofstream ofs (priv_key_filename.string (), std::ofstream::out | std::ofstream::trunc);
-	ofs << "3F28D035B8AA75EA53DF753BFD065CF6138E742971B2C99B84FD8FE328FED2D9" << std::flush;
-	ofs.close ();
-	nano::keypair kp4 = nano::load_or_create_node_id (path);
-	ASSERT_EQ (kp4.prv, nano::keypair ("3F28D035B8AA75EA53DF753BFD065CF6138E742971B2C99B84FD8FE328FED2D9").prv);
-}

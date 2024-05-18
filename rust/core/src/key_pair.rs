@@ -93,6 +93,12 @@ impl From<u64> for KeyPair {
     }
 }
 
+impl From<RawKey> for KeyPair {
+    fn from(value: RawKey) -> Self {
+        Self::from_priv_key_bytes(value.as_bytes()).unwrap()
+    }
+}
+
 pub fn sign_message(private_key: &RawKey, public_key: &PublicKey, data: &[u8]) -> Signature {
     let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(private_key.as_bytes())
         .expect("could not extract secret key");

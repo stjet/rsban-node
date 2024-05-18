@@ -1,6 +1,6 @@
 use crate::{
     config::{NodeConfig, NodeFlags},
-    node_id_file::NodeIdFile,
+    node_id_key_file::NodeIdKeyFile,
     stats::Stats,
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
@@ -44,7 +44,9 @@ impl Node {
         work: Arc<WorkPoolImpl>,
     ) -> Self {
         let application_path = application_path.into();
-        let node_id = NodeIdFile::default().initialize(&application_path);
+        let node_id = NodeIdKeyFile::default()
+            .initialize(&application_path)
+            .unwrap();
         Self {
             node_id,
             stats: Arc::new(Stats::new(config.stat_config.clone())),

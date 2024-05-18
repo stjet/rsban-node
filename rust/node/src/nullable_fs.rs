@@ -68,7 +68,7 @@ impl NullableFilesystem {
         self.fs.exists(f.as_ref())
     }
 
-    pub fn read_to_string(&self, f: impl AsRef<Path>) -> std::io::Result<String> {
+    pub fn read_to_string(&mut self, f: impl AsRef<Path>) -> std::io::Result<String> {
         self.fs.read_to_string(f.as_ref())
     }
 
@@ -107,7 +107,12 @@ impl NullableFilesystemBuilder {
     }
 
     pub fn read_to_string(mut self, path: impl Into<PathBuf>, contents: String) -> Self {
-        self.stub.read_to_string.insert(path.into(), contents);
+        self.stub.read_to_string.insert(path.into(), Ok(contents));
+        self
+    }
+
+    pub fn read_to_string_fails(mut self, path: impl Into<PathBuf>, error: std::io::Error) -> Self {
+        self.stub.read_to_string.insert(path.into(), Err(error));
         self
     }
 
@@ -121,7 +126,7 @@ impl NullableFilesystemBuilder {
 
 trait Filesystem {
     fn exists(&self, path: &Path) -> bool;
-    fn read_to_string(&self, f: &Path) -> std::io::Result<String>;
+    fn read_to_string(&mut self, f: &Path) -> std::io::Result<String>;
     fn create_dir_all(&self, path: &Path) -> std::io::Result<()>;
     fn write(&self, path: &Path, contents: &[u8]) -> std::io::Result<()>;
 }
@@ -133,7 +138,7 @@ impl Filesystem for RealFilesystem {
         path.exists()
     }
 
-    fn read_to_string(&self, f: &Path) -> std::io::Result<String> {
+    fn read_to_string(&mut self, f: &Path) -> std::io::Result<String> {
         std::fs::read_to_string(f)
     }
 
@@ -149,7 +154,7 @@ impl Filesystem for RealFilesystem {
 #[derive(Default)]
 struct FilesystemStub {
     exists: HashSet<PathBuf>,
-    read_to_string: HashMap<PathBuf, String>,
+    read_to_string: HashMap<PathBuf, std::io::Result<String>>,
 }
 
 impl Filesystem for FilesystemStub {
@@ -157,9 +162,9 @@ impl Filesystem for FilesystemStub {
         self.exists.contains(path)
     }
 
-    fn read_to_string(&self, f: &Path) -> std::io::Result<String> {
-        match self.read_to_string.get(f) {
-            Some(contents) => Ok(contents.clone()),
+    fn read_to_string(&mut self, f: &Path) -> std::io::Result<String> {
+        match self.read_to_string.remove(f) {
+            Some(contents) => contents,
             None => Err(std::io::Error::new(
                 ErrorKind::NotFound,
                 format!("no response configured for file {f:?}"),
@@ -262,7 +267,7 @@ mod tests {
 
         #[test]
         fn is_nullable() {
-            let fs = NullableFilesystem::new_null();
+            let mut fs = NullableFilesystem::new_null();
             assert_eq!(fs.exists("/foo/bar"), false);
             assert!(fs.read_to_string("/foo/bar").is_err());
             assert!(fs.create_dir_all("/foo/bar").is_ok());
@@ -281,7 +286,7 @@ mod tests {
 
         #[test]
         fn read_to_string_file_not_found() {
-            let fs = NullableFilesystem::new_null();
+            let mut fs = NullableFilesystem::new_null();
             let err = fs.read_to_string("/foo/bar").unwrap_err();
             assert_eq!(err.kind(), ErrorKind::NotFound);
             assert_eq!(
@@ -293,11 +298,22 @@ mod tests {
         #[test]
         fn read_to_string() {
             let path = PathBuf::from("/foo/bar");
-            let fs = NullableFilesystem::null_builder()
+            let mut fs = NullableFilesystem::null_builder()
                 .read_to_string(&path, "hello world".to_string())
                 .finish();
 
             assert_eq!(fs.read_to_string(path).unwrap(), "hello world");
+        }
+
+        #[test]
+        fn read_to_string_fails() {
+            let path = PathBuf::from("/foo/bar");
+            let mut fs = NullableFilesystem::null_builder()
+                .read_to_string_fails(&path, std::io::Error::new(ErrorKind::PermissionDenied, ""))
+                .finish();
+
+            let err = fs.read_to_string(path).unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::PermissionDenied);
         }
     }
 }

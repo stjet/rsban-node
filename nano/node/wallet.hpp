@@ -119,8 +119,6 @@ public:
 		representatives_lock lock ();
 		rsnano::WalletHandle * handle;
 	};
-	wallet (bool &, store::transaction &, nano::wallets &, std::string const &);
-	wallet (bool &, store::transaction &, nano::wallets &, std::string const &, std::string const &);
 	wallet (rsnano::WalletHandle * handle);
 	wallet (wallet const &) = delete;
 	~wallet ();
@@ -338,7 +336,6 @@ public: // TODO make private
 	// fields
 public:
 	nano::kdf kdf;
-	nano::node & node;
 	nano::store::lmdb::env & env;
 	static nano::uint128_t const high_priority;
 

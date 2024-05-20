@@ -439,22 +439,6 @@ const char * json)
 }
 }
 
-nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
-	handle{ create_wallet_handle (wallets_a.node, wallets_a, transaction_a, wallets_a.node.config->random_representative (), wallet_a, nullptr) },
-	store{ rsnano::rsn_wallet_store (handle) },
-	representatives_mutex{ handle }
-{
-	init_a = handle == nullptr;
-}
-
-nano::wallet::wallet (bool & init_a, store::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
-	handle{ create_wallet_handle (wallets_a.node, wallets_a, transaction_a, wallets_a.node.config->random_representative (), wallet_a, json.c_str ()) },
-	store{ rsnano::rsn_wallet_store (handle) },
-	representatives_mutex{ handle }
-{
-	init_a = handle == nullptr;
-}
-
 nano::wallet::wallet (rsnano::WalletHandle * handle) :
 	store{ rsnano::rsn_wallet_store (handle) },
 	handle{ handle },
@@ -666,7 +650,6 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 
 nano::wallets::wallets (bool error_a, nano::node & node_a) :
 	kdf{ node_a.config->network_params.kdf_work },
-	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	rust_handle{ create_wallets (node_a, env) },
 	mutex{ rust_handle }

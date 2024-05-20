@@ -158,7 +158,7 @@ public:
 	nano::local_vote_history history;
 	nano::confirming_set confirming_set;
 	nano::vote_cache vote_cache;
-	nano::block_processor block_processor; 
+	nano::block_processor block_processor;
 	nano::wallets wallets; // mostly ported
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported

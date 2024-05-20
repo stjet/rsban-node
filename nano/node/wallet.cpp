@@ -845,12 +845,12 @@ bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id
 
 bool nano::wallets::import_replace (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)
 {
-	return rsnano::rsn_wallets_import_replace(rust_handle, wallet_id.bytes.data(), json_a.c_str(), password_a.c_str());
+	return rsnano::rsn_wallets_import_replace (rust_handle, wallet_id.bytes.data (), json_a.c_str (), password_a.c_str ());
 }
 
 bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a)
 {
-	return rsn_wallets_import(rust_handle, wallet_id.bytes.data(), json_a.c_str());
+	return rsn_wallets_import (rust_handle, wallet_id.bytes.data (), json_a.c_str ());
 }
 
 nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> & accounts) const

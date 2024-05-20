@@ -9,7 +9,7 @@ use crate::{
     NetworkParams, OnlineReps,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rand::{thread_rng, Rng, RngCore};
+use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
     BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, Link, NoValue,
@@ -743,6 +743,61 @@ impl<T: Environment + 'static> Wallets<T> {
         temp.destroy(&mut tx);
         result
     }
+
+    pub fn set_representative(
+        &self,
+        wallet_id: WalletId,
+        rep: Account,
+        update_existing_accounts: bool,
+    ) -> Result<(), WalletsError> {
+        //let mut accounts = Vec::new();
+        {
+            //	auto lock{ mutex.lock () };
+            //	auto wallet = lock.find (wallet_id);
+
+            //	if (wallet == nullptr)
+            //	{
+            //		return nano::wallets_error::wallet_not_found;
+            //	}
+
+            //	{
+            //		auto txn{ tx_begin_write () };
+            //		if (update_existing_accounts && !wallet->store.valid_password (*txn))
+            //		{
+            //			return nano::wallets_error::wallet_locked;
+            //		}
+
+            //		wallet->store.representative_set (*txn, rep);
+            //	}
+
+            //	// Change representative for all wallet accounts
+            //	if (update_existing_accounts)
+            //	{
+            //		auto txn{ tx_begin_read () };
+            //		auto block_transaction (node.store.tx_begin_read ());
+            //		for (auto i (wallet->store.begin (*txn)), n (wallet->store.end ()); i != n; ++i)
+            //		{
+            //			nano::account const & account (i->first);
+            //			auto info = node.ledger.account_info (*block_transaction, account);
+            //			if (info)
+            //			{
+            //				if (info->representative () != rep)
+            //				{
+            //					accounts.push_back (account);
+            //				}
+            //			}
+            //		}
+            //	}
+        }
+
+        //for account in accounts {
+        //	(void)change_async (
+        //	wallet_id, account, rep, [] (std::shared_ptr<nano::block> const &) {}, 0, false);
+        //}
+
+        //Ok(())
+        todo!()
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
@@ -887,6 +942,16 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         source: Account,
         representative: Account,
     ) -> Result<(), ()>;
+
+    fn change_async(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        representative: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<(), WalletsError>;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1606,6 +1671,37 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         } else {
             Err(())
         }
+    }
+
+    fn change_async(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        representative: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        if wallet.store.find(&tx, &source).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+
+        self.change_async_wallet(
+            Arc::clone(wallet),
+            source,
+            representative,
+            action,
+            work,
+            generate_work,
+        );
+        Ok(())
     }
 }
 

@@ -976,3 +976,20 @@ pub unsafe extern "C" fn rsn_wallets_import_replace(
         )
         .is_err()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_set_representative(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    rep: *const u8,
+    update_existing_accounts: bool,
+) -> u8 {
+    match handle.set_representative(
+        WalletId::from_ptr(wallet_id),
+        Account::from_ptr(rep),
+        update_existing_accounts,
+    ) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}

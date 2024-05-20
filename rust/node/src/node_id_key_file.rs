@@ -144,7 +144,11 @@ mod tests {
         fn create_file_with_private_key() {
             let (_, fs_events) = initialize_node_id_without_existing_file();
             assert_eq!(fs_events.len(), 2);
-            assert_eq!(fs_events[0], FsEvent::create_dir_all(&test_app_path()));
+            assert_eq!(fs_events[0], FsEvent::create_dir_all(test_app_path()));
+            assert_eq!(
+                fs_events[1],
+                FsEvent::write(test_key_file_path(), EXPECTED_KEY.encode_hex())
+            );
         }
 
         #[test]

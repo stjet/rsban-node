@@ -41,6 +41,7 @@ public:
 class tcp_message_manager final
 {
 public:
+	explicit tcp_message_manager (rsnano::TcpMessageManagerHandle * handle);
 	explicit tcp_message_manager (unsigned incoming_connections_max_a);
 	tcp_message_manager (tcp_message_manager const &) = delete;
 	tcp_message_manager (tcp_message_manager &&) = delete;
@@ -118,6 +119,7 @@ namespace transport
 
 	public:
 		explicit tcp_channels (nano::node &, uint16_t port);
+		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 
@@ -138,6 +140,7 @@ namespace transport
 		// Get the next peer for attempting a tcp connection
 		nano::tcp_endpoint bootstrap_peer ();
 		bool not_a_peer (nano::endpoint const &, bool);
+		void merge_peer (nano::endpoint const & peer_a);
 		void process_messages ();
 		// Should we reach out to this endpoint with a keepalive message
 		bool track_reachout (nano::endpoint const &);
@@ -153,14 +156,6 @@ namespace transport
 		void start_tcp (nano::endpoint const &);
 		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
-		// channel_tcp_observer:
-		void data_sent (boost::asio::ip::tcp::endpoint const & endpoint_a);
-		void host_unreachable ();
-		void message_sent (nano::message const & message_a);
-		void message_dropped (nano::message const & message_a, std::size_t buffer_size_a);
-		void no_socket_drop ();
-		void write_drop ();
-
 		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		void set_port (uint16_t port_a);
@@ -172,11 +167,6 @@ namespace transport
 		nano::tcp_message_manager tcp_message_manager;
 		nano::peer_exclusion excluded_peers ();
 		std::shared_ptr<nano::network_filter> publish_filter;
-
-	private:
-		std::shared_ptr<nano::stats> stats;
-		std::shared_ptr<nano::node_config> config;
-		std::shared_ptr<nano::logger> logger;
 
 	public:
 		rsnano::TcpChannelsHandle * handle;

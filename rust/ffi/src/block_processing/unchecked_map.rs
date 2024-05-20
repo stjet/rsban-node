@@ -27,7 +27,7 @@ impl From<&UncheckedKey> for UncheckedKeyDto {
     }
 }
 
-pub struct UncheckedMapHandle(Arc<UncheckedMap>);
+pub struct UncheckedMapHandle(pub Arc<UncheckedMap>);
 
 impl Deref for UncheckedMapHandle {
     type Target = Arc<UncheckedMap>;

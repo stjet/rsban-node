@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/relaxed_atomic.hpp>
 #include <nano/lib/thread_roles.hpp>
 #include <nano/lib/threading.hpp>

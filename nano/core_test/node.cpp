@@ -3872,4 +3872,3 @@ TEST (node, pruning_depth)
 
 	ASSERT_TRUE (nano::test::block_or_pruned_all_exists (node1, { nano::dev::genesis, send1, send2 }));
 }
-

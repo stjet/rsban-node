@@ -59,6 +59,7 @@ public: // Config
 
 public:
 	explicit outbound_bandwidth_limiter (config);
+	explicit outbound_bandwidth_limiter (rsnano::OutboundBandwidthLimiterHandle * handle);
 	outbound_bandwidth_limiter (outbound_bandwidth_limiter const &) = delete;
 	outbound_bandwidth_limiter (outbound_bandwidth_limiter &&) = delete;
 	~outbound_bandwidth_limiter ();

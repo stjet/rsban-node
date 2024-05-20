@@ -60,13 +60,13 @@ namespace transport
 
 // Configs
 backlog_population::config backlog_population_config (node_config const &);
-outbound_bandwidth_limiter::config outbound_bandwidth_limiter_config (node_config const &);
 
 class node final : public std::enable_shared_from_this<nano::node>
 {
+public:
+	std::shared_ptr<nano::node_observers> observers; // TODO
 	rsnano::NodeHandle * handle;
 
-public:
 	node (rsnano::async_runtime & async_rt_a, uint16_t peering_port, std::filesystem::path const & application_path, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
 	node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path, nano::node_config const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
 	node (node const &) = delete;
@@ -131,7 +131,6 @@ public:
 	nano::keypair node_id;
 	rsnano::async_runtime & async_rt;
 	boost::asio::io_context & io_ctx;
-	std::shared_ptr<nano::node_observers> observers; // TODO
 	std::shared_ptr<nano::node_config> config;
 	nano::network_params network_params;
 	std::shared_ptr<nano::logger> logger;
@@ -142,11 +141,11 @@ public:
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
 	nano::store::lmdb::component store;
-	nano::unchecked_map unchecked; // ported
+	nano::unchecked_map unchecked;
 	std::unique_ptr<nano::wallets_store> wallets_store_impl; // ported
 	nano::wallets_store & wallets_store; // ported
-	nano::ledger ledger; // ported
-	nano::outbound_bandwidth_limiter outbound_limiter; // ported
+	nano::ledger ledger;
+	nano::outbound_bandwidth_limiter outbound_limiter;
 	std::shared_ptr<nano::network> network; // ported
 	std::shared_ptr<nano::telemetry> telemetry; // ported
 	nano::bootstrap_server bootstrap_server; // ported

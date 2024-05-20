@@ -24,6 +24,7 @@ class syn_cookies final
 {
 public:
 	explicit syn_cookies (std::size_t max_peers_per_ip);
+	explicit syn_cookies (rsnano::SynCookiesHandle * handle);
 	syn_cookies (nano::syn_cookies const &) = delete;
 	~syn_cookies ();
 	void purge (std::chrono::seconds const &);
@@ -45,7 +46,7 @@ public:
 class network final : public std::enable_shared_from_this<network>
 {
 public:
-	network (nano::node &, uint16_t port);
+	network (nano::node &, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle);
 	~network ();
 
 	void create_tcp_channels ();
@@ -75,28 +76,13 @@ public:
 	uint16_t get_port ();
 	void set_port (uint16_t port_a);
 
-private:
 private: // Dependencies
 	nano::node & node;
 
 public:
-	nano::networks const id;
 	std::shared_ptr<nano::syn_cookies> syn_cookies;
-	boost::asio::ip::udp::resolver resolver;
 	std::shared_ptr<nano::transport::tcp_channels> tcp_channels;
 	std::atomic<uint16_t> port{ 0 };
-
-public: // Callbacks
-	std::function<void ()> disconnect_observer{ [] () {} };
-
-private:
-	std::atomic<bool> stopped{ false };
-	mutable nano::mutex mutex;
-	nano::condition_variable condition;
-	std::vector<boost::thread> processing_threads; // Using boost::thread to enable increased stack size
-	std::thread cleanup_thread;
-	std::thread keepalive_thread;
-	std::thread reachout_thread;
 
 public:
 	static unsigned const broadcast_interval_ms = 10;

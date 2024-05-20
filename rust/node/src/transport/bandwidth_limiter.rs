@@ -1,3 +1,5 @@
+use crate::config::NodeConfig;
+
 use super::{TokenBucket, TrafficType};
 use std::sync::Mutex;
 
@@ -61,6 +63,17 @@ impl Default for OutboundBandwidthLimiterConfig {
             standard_burst_ratio: 3_f64,
             bootstrap_limit: 5 * 1024 * 1024,
             bootstrap_burst_ratio: 1_f64,
+        }
+    }
+}
+
+impl From<&NodeConfig> for OutboundBandwidthLimiterConfig {
+    fn from(value: &NodeConfig) -> Self {
+        Self {
+            standard_limit: value.bandwidth_limit,
+            standard_burst_ratio: value.bandwidth_limit_burst_ratio,
+            bootstrap_limit: value.bootstrap_bandwidth_limit,
+            bootstrap_burst_ratio: value.bootstrap_bandwidth_burst_ratio,
         }
     }
 }

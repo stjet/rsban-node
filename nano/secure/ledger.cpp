@@ -36,8 +36,15 @@ nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, na
 	handle{ create_ledger_handle (store_a, stat_a, constants, generate_cache_flags_a, min_rep_weight_a) },
 	cache{ rsnano::rsn_ledger_get_cache_handle (handle) },
 	constants{ constants },
-	store{ store_a },
-	stats{ stat_a }
+	store{ store_a }
+{
+}
+
+nano::ledger::ledger (rsnano::LedgerHandle * handle, nano::store::component & store_a, nano::ledger_constants & constants) :
+	handle{ handle },
+	cache{ rsnano::rsn_ledger_get_cache_handle (handle) },
+	constants{ constants },
+	store{ store_a }
 {
 }
 

@@ -19,6 +19,7 @@ class unchecked_map
 {
 public:
 	unchecked_map (unsigned const max_unchecked_blocks, nano::stats &, bool do_delete);
+	explicit unchecked_map (rsnano::UncheckedMapHandle * handle);
 	~unchecked_map ();
 
 	void start ();

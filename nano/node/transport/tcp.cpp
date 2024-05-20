@@ -39,6 +39,11 @@ nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_ma
 {
 }
 
+nano::tcp_message_manager::tcp_message_manager (rsnano::TcpMessageManagerHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::tcp_message_manager::~tcp_message_manager ()
 {
 	rsnano::rsn_tcp_message_manager_destroy (handle);
@@ -220,11 +225,15 @@ void delete_sink (void * callback_handle)
 }
 }
 
+nano::transport::tcp_channels::tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
+	handle{ handle },
+	tcp_message_manager{ mgr_handle },
+	publish_filter{ std::make_shared<nano::network_filter> (filter_handle) }
+{
+}
+
 nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port) :
 	tcp_message_manager{ node.config->tcp_incoming_connections_max },
-	stats{ node.stats },
-	config{ node.config },
-	logger{ node.logger },
 	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
 {
 	auto node_config_dto{ node.config->to_dto () };
@@ -439,6 +448,12 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
 }
 
+void nano::transport::tcp_channels::merge_peer (nano::endpoint const & peer_a)
+{
+	auto peer_dto{ rsnano::udp_endpoint_to_dto (peer_a) };
+	rsnano::rsn_tcp_channels_merge_peer (handle, &peer_dto);
+}
+
 bool nano::transport::tcp_channels::track_reachout (nano::endpoint const & endpoint_a)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
@@ -495,36 +510,6 @@ void delete_callback_context (void * context)
 	delete callback;
 }
 }
-
-void nano::transport::tcp_channels::host_unreachable ()
-{
-	stats->inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
-}
-
-void nano::transport::tcp_channels::message_sent (nano::message const & message_a)
-{
-	auto detail = nano::to_stat_detail (message_a.type ());
-	stats->inc (nano::stat::type::message, detail, nano::stat::dir::out);
-}
-
-void nano::transport::tcp_channels::message_dropped (nano::message const & message_a, std::size_t buffer_size_a)
-{
-	nano::transport::callback_visitor visitor;
-	message_a.visit (visitor);
-	stats->inc (nano::stat::type::drop, visitor.result, nano::stat::dir::out);
-	logger->debug (nano::log::type::tcp, "{} of size {} dropped", stats->detail_to_string (visitor.result), buffer_size_a);
-}
-
-void nano::transport::tcp_channels::no_socket_drop ()
-{
-	stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
-}
-
-void nano::transport::tcp_channels::write_drop ()
-{
-	stats->inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
-}
-
 namespace
 {
 void delete_new_channel_callback (void * context)

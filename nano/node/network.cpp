@@ -17,11 +17,10 @@ using namespace std::chrono_literals;
  * network
  */
 
-nano::network::network (nano::node & node, uint16_t port) :
+nano::network::network (nano::node & node, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
 	node{ node },
-	id{ nano::network_constants::active_network () },
-	syn_cookies{ std::make_shared<nano::syn_cookies> (node.network_params.network.max_peers_per_ip) },
-	resolver{ node.io_ctx },
+	syn_cookies{ make_shared<nano::syn_cookies> (syn_cookies_handle) },
+	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, mgr_handle, filter_handle) },
 	port{ port }
 {
 }
@@ -107,13 +106,7 @@ void nano::network::merge_peers (std::array<nano::endpoint, 8> const & peers_a)
 
 void nano::network::merge_peer (nano::endpoint const & peer_a)
 {
-	// ported in tcp_channels!
-	if (track_reachout (peer_a))
-	{
-		node.stats->inc (nano::stat::type::network, nano::stat::detail::merge_peer);
-		std::weak_ptr<nano::node> node_w (node.shared ());
-		node.network->tcp_channels->start_tcp (peer_a);
-	}
+	tcp_channels->merge_peer (peer_a);
 }
 
 bool nano::network::track_reachout (nano::endpoint const & endpoint_a)
@@ -181,6 +174,11 @@ bool nano::network::empty () const
 
 nano::syn_cookies::syn_cookies (std::size_t max_cookies_per_ip_a) :
 	handle{ rsnano::rsn_syn_cookies_create (max_cookies_per_ip_a) }
+{
+}
+
+nano::syn_cookies::syn_cookies (rsnano::SynCookiesHandle * handle) :
+	handle{ handle }
 {
 }
 

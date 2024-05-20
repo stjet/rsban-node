@@ -42,6 +42,11 @@ void nano::bandwidth_limiter::reset (std::size_t limit_a, double burst_ratio_a)
  * outbound_bandwidth_limiter
  */
 
+nano::outbound_bandwidth_limiter::outbound_bandwidth_limiter (rsnano::OutboundBandwidthLimiterHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::outbound_bandwidth_limiter::outbound_bandwidth_limiter (nano::outbound_bandwidth_limiter::config config_a)
 {
 	rsnano::OutboundBandwidthLimiterConfigDto config_dto;

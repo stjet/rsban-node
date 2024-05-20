@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 
 use super::TcpMessageItemHandle;
 
-pub struct TcpMessageManagerHandle(Arc<TcpMessageManager>);
+pub struct TcpMessageManagerHandle(pub Arc<TcpMessageManager>);
 
 impl Deref for TcpMessageManagerHandle {
     type Target = Arc<TcpMessageManager>;

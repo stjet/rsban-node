@@ -43,6 +43,11 @@ nano::unchecked_map::unchecked_map (unsigned const max_unchecked_blocks, nano::s
 	handle = rsnano::rsn_unchecked_map_create (max_unchecked_blocks, stats.handle, disable_delete);
 }
 
+nano::unchecked_map::unchecked_map (rsnano::UncheckedMapHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::unchecked_map::~unchecked_map ()
 {
 	rsnano::rsn_unchecked_map_destroy (handle);

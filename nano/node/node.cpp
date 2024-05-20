@@ -32,7 +32,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <fstream>
 #include <iterator>
 #include <memory>
 #include <sstream>
@@ -61,16 +60,6 @@ nano::backlog_population::config nano::backlog_population_config (const nano::no
 	return cfg;
 }
 
-nano::outbound_bandwidth_limiter::config nano::outbound_bandwidth_limiter_config (const nano::node_config & config)
-{
-	outbound_bandwidth_limiter::config cfg{};
-	cfg.standard_limit = config.bandwidth_limit;
-	cfg.standard_burst_ratio = config.bandwidth_limit_burst_ratio;
-	cfg.bootstrap_limit = config.bootstrap_bandwidth_limit;
-	cfg.bootstrap_burst_ratio = config.bootstrap_bandwidth_burst_ratio;
-	return cfg;
-}
-
 /*
  * node
  */
@@ -78,13 +67,6 @@ nano::outbound_bandwidth_limiter::config nano::outbound_bandwidth_limiter_config
 void nano::node::keepalive (std::string const & address_a, uint16_t port_a)
 {
 	rsnano::rsn_rep_crawler_keepalive (rep_crawler.handle, address_a.c_str (), port_a);
-}
-
-std::shared_ptr<nano::network> create_network (nano::node & node_a, nano::node_config const & config_a)
-{
-	auto network{ std::make_shared<nano::network> (node_a, config_a.peering_port.value_or (0)) };
-	network->create_tcp_channels ();
-	return network;
 }
 
 namespace
@@ -111,12 +93,14 @@ std::filesystem::path const & application_path_a,
 nano::node_config const & config_a,
 nano::work_pool & work_a,
 nano::node_flags flags_a,
-unsigned seq)
+unsigned seq,
+std::shared_ptr<nano::node_observers> & observers)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto params_dto{ config_a.network_params.to_dto () };
+	auto socket_observer = new std::weak_ptr<nano::node_observers> (observers);
 	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto,
-	flags_a.handle, work_a.handle);
+	flags_a.handle, work_a.handle, socket_observer);
 }
 }
 
@@ -126,11 +110,11 @@ nano::node::node (rsnano::async_runtime & async_rt, uint16_t peering_port_a, std
 }
 
 nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path const & application_path_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a, unsigned seq) :
-	handle{ create_node_handle (async_rt_a, application_path_a, config_a, work_a, flags_a, seq) },
+	observers{ std::make_shared<nano::node_observers> () },
+	handle{ create_node_handle (async_rt_a, application_path_a, config_a, work_a, flags_a, seq, observers) },
 	node_id{ get_node_id_key_pair (handle) },
 	async_rt{ async_rt_a },
 	io_ctx (async_rt_a.io_ctx),
-	observers{ std::make_shared<nano::node_observers> () },
 	config{ get_node_config (handle) },
 	network_params{ config_a.network_params },
 	logger{ std::make_shared<nano::logger> (make_logger_identifier (node_id)) },
@@ -141,15 +125,14 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	work (work_a),
 	distributed_work (rsnano::rsn_node_distributed_work (handle)),
 	store (rsnano::rsn_node_store (handle)),
-	unchecked{ config_a.max_unchecked_blocks, *stats, flags.disable_block_processor_unchecked_deletion () },
+	unchecked{ rsn_node_unchecked (handle) },
 	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
 	wallets_store (*wallets_store_impl),
-	ledger (store, *stats, network_params.ledger, flags_a.generate_cache (), config_a.representative_vote_weight_minimum.number ()),
-	outbound_limiter{ outbound_bandwidth_limiter_config (config_a) },
+	ledger (rsnano::rsn_node_ledger (handle), store, network_params.ledger),
+	outbound_limiter{ rsnano::rsn_node_outbound_bandwidth_limiter (handle) },
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-	//
-	network{ create_network (*this, config_a) },
+	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_tcp_message_manager (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (nano::telemetry::config{ *config, flags }, *this, *network, *observers, network_params, *stats)),
 	bootstrap_initiator (*this),
 	bootstrap_server{ store, ledger, network_params.network, *stats },

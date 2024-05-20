@@ -22,7 +22,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-pub struct TcpChannelsHandle(Arc<TcpChannels>);
+pub struct TcpChannelsHandle(pub Arc<TcpChannels>);
 
 impl Deref for TcpChannelsHandle {
     type Target = Arc<TcpChannels>;
@@ -340,6 +340,11 @@ pub extern "C" fn rsn_tcp_channels_random_fanout(
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_keepalive(handle: &TcpChannelsHandle) {
     handle.keepalive();
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_tcp_channels_merge_peer(handle: &TcpChannelsHandle, peer: &EndpointDto) {
+    handle.merge_peer(&peer.into());
 }
 
 #[no_mangle]

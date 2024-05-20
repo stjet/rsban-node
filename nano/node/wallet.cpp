@@ -845,29 +845,7 @@ bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id
 
 bool nano::wallets::import_replace (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)
 {
-	auto lock{ mutex.lock () };
-	auto existing{ lock.find (wallet_id) };
-
-	auto error (false);
-	std::unique_ptr<nano::wallet_store> temp;
-	{
-		auto transaction (env.tx_begin_write ());
-		nano::uint256_union id;
-		random_pool::generate_block (id.bytes.data (), id.bytes.size ());
-		temp = std::make_unique<nano::wallet_store> (error, kdf, *transaction, 0, 1, id.to_string (), json_a);
-	}
-	if (!error)
-	{
-		auto transaction (env.tx_begin_write ());
-		error = temp->attempt_password (*transaction, password_a);
-	}
-	auto transaction (env.tx_begin_write ());
-	if (!error)
-	{
-		error = existing->store.import (*transaction, *temp);
-	}
-	temp->destroy (*transaction);
-	return error;
+	return rsnano::rsn_wallets_import_replace(rust_handle, wallet_id.bytes.data(), json_a.c_str(), password_a.c_str());
 }
 
 bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a)

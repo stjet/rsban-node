@@ -9,6 +9,7 @@ use crate::{
     NetworkParams, OnlineReps,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+use rand::{thread_rng, Rng, RngCore};
 use rsnano_core::{
     utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
     BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, Link, NoValue,
@@ -712,6 +713,35 @@ impl<T: Environment + 'static> Wallets<T> {
             json,
         )?;
         Ok(())
+    }
+
+    pub fn import_replace(
+        &self,
+        wallet_id: WalletId,
+        json: &str,
+        password: &str,
+    ) -> anyhow::Result<()> {
+        let guard = self.mutex.lock().unwrap();
+        let existing = guard
+            .get(&wallet_id)
+            .ok_or_else(|| anyhow!("wallet not found"))?;
+        let mut tx = self.env.tx_begin_write();
+        let id = WalletId::from_bytes(thread_rng().gen());
+        let temp = LmdbWalletStore::new_from_json(
+            1,
+            self.kdf.clone(),
+            &mut tx,
+            &PathBuf::from(id.to_string()),
+            json,
+        )?;
+
+        let result = if temp.attempt_password(&tx, password) {
+            existing.store.import(&mut tx, &temp)
+        } else {
+            Err(anyhow!("bad password"))
+        };
+        temp.destroy(&mut tx);
+        result
     }
 }
 

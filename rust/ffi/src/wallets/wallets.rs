@@ -960,3 +960,19 @@ pub unsafe extern "C" fn rsn_wallets_import(
         )
         .is_err()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_import_replace(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    json: *const c_char,
+    password: *const c_char,
+) -> bool {
+    handle
+        .import_replace(
+            WalletId::from_ptr(wallet_id),
+            CStr::from_ptr(json).to_str().unwrap(),
+            CStr::from_ptr(password).to_str().unwrap(),
+        )
+        .is_err()
+}

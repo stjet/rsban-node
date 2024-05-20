@@ -737,53 +737,8 @@ nano::wallets_error nano::wallets::get_representative (nano::wallet_id const & w
 
 nano::wallets_error nano::wallets::set_representative (nano::wallet_id const & wallet_id, nano::account const & rep, bool update_existing_accounts)
 {
-	std::vector<nano::account> accounts;
-	{
-		auto lock{ mutex.lock () };
-		auto wallet = lock.find (wallet_id);
-
-		if (wallet == nullptr)
-		{
-			return nano::wallets_error::wallet_not_found;
-		}
-
-		{
-			auto txn{ tx_begin_write () };
-			if (update_existing_accounts && !wallet->store.valid_password (*txn))
-			{
-				return nano::wallets_error::wallet_locked;
-			}
-
-			wallet->store.representative_set (*txn, rep);
-		}
-
-		// Change representative for all wallet accounts
-		if (update_existing_accounts)
-		{
-			auto txn{ tx_begin_read () };
-			auto block_transaction (node.store.tx_begin_read ());
-			for (auto i (wallet->store.begin (*txn)), n (wallet->store.end ()); i != n; ++i)
-			{
-				nano::account const & account (i->first);
-				auto info = node.ledger.account_info (*block_transaction, account);
-				if (info)
-				{
-					if (info->representative () != rep)
-					{
-						accounts.push_back (account);
-					}
-				}
-			}
-		}
-	}
-
-	for (auto & account : accounts)
-	{
-		(void)change_async (
-		wallet_id, account, rep, [] (std::shared_ptr<nano::block> const &) {}, 0, false);
-	}
-
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_set_representative (rust_handle, wallet_id.bytes.data (), rep.bytes.data (), update_existing_accounts);
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const
@@ -1285,23 +1240,9 @@ nano::wallets_error nano::wallets::receive_async (nano::wallet_id const & wallet
 
 nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-	if (wallet->store.find (*txn, source_a) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-	change_async (wallet, source_a, representative_a, action_a, work_a, generate_work_a);
-	return nano::wallets_error::none;
+	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (action_a);
+	auto result = rsnano::rsn_wallets_change_async (rust_handle, wallet_id.bytes.data (), source_a.bytes.data (), representative_a.bytes.data (), start_election_wrapper, context, delete_start_election_context, work_a, generate_work_a);
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)

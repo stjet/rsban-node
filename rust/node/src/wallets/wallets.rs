@@ -743,61 +743,6 @@ impl<T: Environment + 'static> Wallets<T> {
         temp.destroy(&mut tx);
         result
     }
-
-    pub fn set_representative(
-        &self,
-        wallet_id: WalletId,
-        rep: Account,
-        update_existing_accounts: bool,
-    ) -> Result<(), WalletsError> {
-        //let mut accounts = Vec::new();
-        {
-            //	auto lock{ mutex.lock () };
-            //	auto wallet = lock.find (wallet_id);
-
-            //	if (wallet == nullptr)
-            //	{
-            //		return nano::wallets_error::wallet_not_found;
-            //	}
-
-            //	{
-            //		auto txn{ tx_begin_write () };
-            //		if (update_existing_accounts && !wallet->store.valid_password (*txn))
-            //		{
-            //			return nano::wallets_error::wallet_locked;
-            //		}
-
-            //		wallet->store.representative_set (*txn, rep);
-            //	}
-
-            //	// Change representative for all wallet accounts
-            //	if (update_existing_accounts)
-            //	{
-            //		auto txn{ tx_begin_read () };
-            //		auto block_transaction (node.store.tx_begin_read ());
-            //		for (auto i (wallet->store.begin (*txn)), n (wallet->store.end ()); i != n; ++i)
-            //		{
-            //			nano::account const & account (i->first);
-            //			auto info = node.ledger.account_info (*block_transaction, account);
-            //			if (info)
-            //			{
-            //				if (info->representative () != rep)
-            //				{
-            //					accounts.push_back (account);
-            //				}
-            //			}
-            //		}
-            //	}
-        }
-
-        //for account in accounts {
-        //	(void)change_async (
-        //	wallet_id, account, rep, [] (std::shared_ptr<nano::block> const &) {}, 0, false);
-        //}
-
-        //Ok(())
-        todo!()
-    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
@@ -951,6 +896,13 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
         work: u64,
         generate_work: bool,
+    ) -> Result<(), WalletsError>;
+
+    fn set_representative(
+        &self,
+        wallet_id: WalletId,
+        rep: Account,
+        update_existing_accounts: bool,
     ) -> Result<(), WalletsError>;
 }
 
@@ -1701,6 +1653,49 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             work,
             generate_work,
         );
+        Ok(())
+    }
+
+    fn set_representative(
+        &self,
+        wallet_id: WalletId,
+        rep: Account,
+        update_existing_accounts: bool,
+    ) -> Result<(), WalletsError> {
+        let mut accounts = Vec::new();
+        {
+            let guard = self.mutex.lock().unwrap();
+            let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+
+            {
+                let mut tx = self.env.tx_begin_write();
+                if update_existing_accounts && !wallet.store.valid_password(&tx) {
+                    return Err(WalletsError::WalletLocked);
+                }
+
+                wallet.store.representative_set(&mut tx, &rep);
+            }
+
+            // Change representative for all wallet accounts
+            if update_existing_accounts {
+                let tx = self.env.tx_begin_read();
+                let block_tx = self.ledger.read_txn();
+                let mut i = wallet.store.begin(&tx);
+                while let Some((account, _)) = i.current() {
+                    if let Some(info) = self.ledger.account_info(&block_tx, account) {
+                        if info.representative != rep {
+                            accounts.push(*account);
+                        }
+                    }
+                    i.next();
+                }
+            }
+        }
+
+        for account in accounts {
+            self.change_async(wallet_id, account, rep, Box::new(|_| {}), 0, false)?;
+        }
+
         Ok(())
     }
 }

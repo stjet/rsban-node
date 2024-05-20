@@ -15,7 +15,8 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
 };
 use rsnano_core::{
-    work::WorkThresholds, Account, Amount, BlockDetails, BlockHash, RawKey, Root, WalletId,
+    work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, RawKey, Root,
+    WalletId,
 };
 use rsnano_node::{
     config::NodeConfig,
@@ -988,6 +989,39 @@ pub unsafe extern "C" fn rsn_wallets_set_representative(
         WalletId::from_ptr(wallet_id),
         Account::from_ptr(rep),
         update_existing_accounts,
+    ) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_change_async(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    source: *const u8,
+    representative: *const u8,
+    callback: WalletsStartElectionCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+    work: u64,
+    generate_work: bool,
+) -> u8 {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let callback_wrapper = Box::new(move |block: Option<BlockEnum>| {
+        let block_handle = match block {
+            Some(b) => BlockHandle::new(Arc::new(b)),
+            None => std::ptr::null_mut(),
+        };
+        callback(context_wrapper.get_context(), block_handle);
+    });
+    match handle.change_async(
+        WalletId::from_ptr(wallet_id),
+        Account::from_ptr(source),
+        Account::from_ptr(representative),
+        callback_wrapper,
+        work,
+        generate_work,
     ) {
         Ok(()) => WalletsError::None as u8,
         Err(e) => e as u8,

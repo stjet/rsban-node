@@ -665,7 +665,6 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 }
 
 nano::wallets::wallets (bool error_a, nano::node & node_a) :
-	network_params{ node_a.config->network_params },
 	kdf{ node_a.config->network_params.kdf_work },
 	node (node_a),
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
@@ -873,11 +872,7 @@ bool nano::wallets::import_replace (nano::wallet_id const & wallet_id, std::stri
 
 bool nano::wallets::import (nano::wallet_id const & wallet_id, std::string const & json_a)
 {
-	auto lock{ mutex.lock () };
-	auto txn (tx_begin_write ());
-	bool error = true;
-	nano::wallet wallet (error, *txn, node.wallets, wallet_id.to_string (), json_a);
-	return error;
+	return rsn_wallets_import(rust_handle, wallet_id.bytes.data(), json_a.c_str());
 }
 
 nano::wallets_error nano::wallets::decrypt (nano::wallet_id const & wallet_id, std::vector<std::pair<nano::account, nano::raw_key>> & accounts) const
@@ -1522,7 +1517,6 @@ bool nano::wallets::set_block_hash (nano::store::transaction const & transaction
 	return !rsnano::rsn_lmdb_wallets_set_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), hash.bytes.data ());
 }
 
-nano::uint128_t const nano::wallets::generate_priority = std::numeric_limits<nano::uint128_t>::max ();
 nano::uint128_t const nano::wallets::high_priority = std::numeric_limits<nano::uint128_t>::max () - 1;
 
 namespace

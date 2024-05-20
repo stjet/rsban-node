@@ -946,3 +946,17 @@ pub unsafe extern "C" fn rsn_wallets_change_sync_wallet(
         )
         .is_err()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_import(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    json: *const c_char,
+) -> bool {
+    handle
+        .import(
+            WalletId::from_ptr(wallet_id),
+            CStr::from_ptr(json).to_str().unwrap(),
+        )
+        .is_err()
+}

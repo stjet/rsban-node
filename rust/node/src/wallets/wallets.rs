@@ -698,6 +698,21 @@ impl<T: Environment + 'static> Wallets<T> {
             .fetch(&tx, account)
             .map_err(|_| WalletsError::Generic)
     }
+
+    pub fn import(&self, wallet_id: WalletId, json: &str) -> anyhow::Result<()> {
+        let _guard = self.mutex.lock().unwrap();
+        let mut tx = self.env.tx_begin_write();
+        let _wallet = Wallet::new_from_json(
+            Arc::clone(&self.ledger),
+            self.work_thresholds.clone(),
+            &mut tx,
+            self.node_config.password_fanout as usize,
+            self.kdf.clone(),
+            &PathBuf::from(wallet_id.to_string()),
+            json,
+        )?;
+        Ok(())
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "boost/none.hpp"
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/lib/lmdbconfig.hpp>
@@ -11,9 +10,6 @@
 #include <nano/store/lmdb/lmdb.hpp>
 #include <nano/store/lmdb/wallet_value.hpp>
 
-#include <atomic>
-#include <mutex>
-#include <thread>
 #include <unordered_set>
 namespace rsnano
 {
@@ -341,16 +337,13 @@ public: // TODO make private
 
 	// fields
 public:
-	nano::network_params & network_params;
 	nano::kdf kdf;
 	nano::node & node;
 	nano::store::lmdb::env & env;
-	static nano::uint128_t const generate_priority;
 	static nano::uint128_t const high_priority;
 
 	rsnano::LmdbWalletsHandle * rust_handle;
 	mutable wallets_mutex mutex;
-	mutable nano::mutex reps_cache_mutex;
 };
 
 std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);

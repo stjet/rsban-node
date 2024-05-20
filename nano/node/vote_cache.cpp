@@ -62,6 +62,11 @@ std::vector<std::shared_ptr<nano::vote>> nano::vote_cache_entry::votes () const
  * vote_cache
  */
 
+nano::vote_cache::vote_cache (rsnano::VoteCacheHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::vote_cache::vote_cache (vote_cache_config const & config_a, nano::stats & stats_a)
 {
 	auto config_dto{ config_a.to_dto () };

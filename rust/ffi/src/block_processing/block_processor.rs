@@ -19,7 +19,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct BlockProcessorHandle(Arc<BlockProcessor>);
+pub struct BlockProcessorHandle(pub Arc<BlockProcessor>);
 
 impl Deref for BlockProcessorHandle {
     type Target = Arc<BlockProcessor>;

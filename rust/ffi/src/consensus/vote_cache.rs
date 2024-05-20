@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-pub struct VoteCacheHandle(Arc<Mutex<VoteCache>>);
+pub struct VoteCacheHandle(pub Arc<Mutex<VoteCache>>);
 
 impl Deref for VoteCacheHandle {
     type Target = Arc<Mutex<VoteCache>>;

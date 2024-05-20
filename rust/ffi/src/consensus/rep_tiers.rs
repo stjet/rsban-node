@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct RepTiersHandle(Arc<RepTiers>);
+pub struct RepTiersHandle(pub Arc<RepTiers>);
 
 impl Deref for RepTiersHandle {
     type Target = Arc<RepTiers>;

@@ -15,7 +15,7 @@ use std::{
 
 use super::{representative::RepresentativeHandle, OnlineRepsHandle};
 
-pub struct RepresentativeRegisterHandle(Arc<Mutex<RepresentativeRegister>>);
+pub struct RepresentativeRegisterHandle(pub Arc<Mutex<RepresentativeRegister>>);
 
 impl Deref for RepresentativeRegisterHandle {
     type Target = Arc<Mutex<RepresentativeRegister>>;

@@ -35,6 +35,7 @@ class rep_tiers final
 {
 public:
 	rep_tiers (nano::ledger &, nano::network_params &, nano::online_reps &, nano::stats &);
+	rep_tiers (rsnano::RepTiersHandle * handle);
 	~rep_tiers ();
 
 	void start ();

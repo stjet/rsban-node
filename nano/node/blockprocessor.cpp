@@ -86,6 +86,11 @@ void batch_processed_delete (void * context)
  * block_processor
  */
 
+nano::block_processor::block_processor (rsnano::BlockProcessorHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::block_processor::block_processor (nano::node & node_a)
 {
 	auto config_dto{ node_a.config->to_dto () };

@@ -19,6 +19,7 @@ class online_reps final
 {
 public:
 	online_reps (nano::ledger & ledger_a, nano::node_config const & config_a);
+	online_reps (rsnano::OnlineRepsHandle * handle);
 	online_reps (online_reps const &) = delete;
 	online_reps (online_reps &&) = delete;
 	~online_reps ();

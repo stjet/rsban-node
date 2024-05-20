@@ -13,7 +13,7 @@ use std::{
     time::Duration,
 };
 
-pub struct ConfirmingSetHandle(Arc<ConfirmingSet>);
+pub struct ConfirmingSetHandle(pub Arc<ConfirmingSet>);
 
 impl Deref for ConfirmingSetHandle {
     type Target = Arc<ConfirmingSet>;

@@ -1,8 +1,6 @@
-#include "nano/lib/observer_set.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
-#include "nano/node/transport/tcp.hpp"
 
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/stats.hpp>
@@ -21,41 +19,9 @@
 
 using namespace std::chrono_literals;
 
-namespace
+nano::telemetry::telemetry (rsnano::TelemetryHandle * handle) :
+	handle{ handle }
 {
-void notify_wrapper (void * context, rsnano::TelemetryDataHandle * data_handle, rsnano::ChannelHandle * channel_handle)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	nano::telemetry_data data{ data_handle };
-	auto channel{ nano::transport::channel_handle_to_channel (channel_handle) };
-	(*observers)->telemetry.notify (data, channel);
-}
-
-void delete_notify_context (void * context)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	delete observers;
-}
-}
-
-nano::telemetry::telemetry (const config & config_a, nano::node & node_a, nano::network & network_a, nano::node_observers & observers_a, nano::network_params & network_params_a, nano::stats & stats_a)
-{
-	auto node_config_dto{ node_a.config->to_dto () };
-	auto network_dto{ node_a.network_params.to_dto () };
-	auto context = new std::shared_ptr<nano::node_observers> (node_a.observers);
-	handle = rsnano::rsn_telemetry_create (
-	config_a.enable_ongoing_requests,
-	config_a.enable_ongoing_broadcasts,
-	&node_config_dto,
-	node_a.stats->handle,
-	node_a.ledger.handle,
-	node_a.unchecked.handle,
-	&network_dto,
-	node_a.network->tcp_channels->handle,
-	node_a.node_id.prv.bytes.data (),
-	notify_wrapper,
-	context,
-	delete_notify_context);
 }
 
 nano::telemetry::~telemetry ()

@@ -59,7 +59,6 @@ impl Telemetry {
         network_params: NetworkParams,
         channels: Arc<TcpChannels>,
         node_id: KeyPair,
-        notify: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>,
     ) -> Self {
         Self {
             config,
@@ -78,7 +77,7 @@ impl Telemetry {
                 last_broadcast: None,
                 last_request: None,
             }),
-            notify: Mutex::new(vec![notify]),
+            notify: Mutex::new(Vec::new()),
             node_id,
             startup_time: Instant::now(),
         }

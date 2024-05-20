@@ -60,8 +60,12 @@ void nano::representative::set_channel (std::shared_ptr<nano::transport::channel
 // representative_register
 //------------------------------------------------------------------------------
 
-nano::representative_register::representative_register (nano::node & node_a) :
-	node{ node_a }
+nano::representative_register::representative_register (rsnano::RepresentativeRegisterHandle * handle) :
+	handle{ handle }
+{
+}
+
+nano::representative_register::representative_register (nano::node & node_a)
 {
 	auto network_dto{ node_a.config->network_params.network.to_dto () };
 	handle = rsnano::rsn_representative_register_create (
@@ -129,11 +133,6 @@ std::vector<nano::representative> nano::representative_register::representatives
 	}
 	rsnano::rsn_representative_list_destroy (result_handle);
 	return result;
-}
-
-std::vector<nano::representative> nano::representative_register::principal_representatives (std::size_t count, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version)
-{
-	return representatives (count, node.minimum_principal_weight (), minimum_protocol_version);
 }
 
 /** Total number of representatives */

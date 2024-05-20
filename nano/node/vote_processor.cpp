@@ -24,6 +24,11 @@ nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::s
 	handle = rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle, rep_tiers_a.handle);
 }
 
+nano::vote_processor_queue::vote_processor_queue (rsnano::VoteProcessorQueueHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::vote_processor_queue::~vote_processor_queue ()
 {
 	rsnano::rsn_vote_processor_queue_destroy (handle);

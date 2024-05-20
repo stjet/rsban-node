@@ -12,7 +12,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct VoteProcessorQueueHandle(Arc<VoteProcessorQueue>);
+pub struct VoteProcessorQueueHandle(pub Arc<VoteProcessorQueue>);
 
 impl Deref for VoteProcessorQueueHandle {
     type Target = Arc<VoteProcessorQueue>;

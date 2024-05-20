@@ -3,7 +3,7 @@ use rsnano_core::{BlockHash, Root};
 use rsnano_node::consensus::LocalVoteHistory;
 use std::{ops::Deref, sync::Arc};
 
-pub struct LocalVoteHistoryHandle(Arc<LocalVoteHistory>);
+pub struct LocalVoteHistoryHandle(pub Arc<LocalVoteHistory>);
 
 impl Deref for LocalVoteHistoryHandle {
     type Target = Arc<LocalVoteHistory>;

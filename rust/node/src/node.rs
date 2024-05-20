@@ -1,7 +1,11 @@
 use crate::{
-    block_processing::UncheckedMap,
+    block_processing::{BlockProcessor, UncheckedMap},
+    bootstrap::BootstrapServer,
+    cementation::ConfirmingSet,
     config::{NodeConfig, NodeFlags},
+    consensus::{LocalVoteHistory, RepTiers, VoteCache, VoteProcessorQueue},
     node_id_key_file::NodeIdKeyFile,
+    representatives::RepresentativeRegister,
     stats::{LedgerStats, Stats},
     transport::{
         NetworkFilter, OutboundBandwidthLimiter, SocketObserver, SynCookies, TcpChannels,
@@ -11,7 +15,7 @@ use crate::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
     },
     work::DistributedWorkFactory,
-    NetworkParams,
+    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry,
 };
 use rsnano_core::{work::WorkPoolImpl, KeyPair};
 use rsnano_ledger::Ledger;
@@ -22,7 +26,7 @@ use rsnano_store_lmdb::{
 use std::{
     borrow::Borrow,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -44,6 +48,17 @@ pub struct Node {
     pub outbound_limiter: Arc<OutboundBandwidthLimiter>,
     pub syn_cookies: Arc<SynCookies>,
     pub channels: Arc<TcpChannels>,
+    pub telemetry: Arc<Telemetry>,
+    pub bootstrap_server: Arc<BootstrapServer>,
+    pub online_reps: Arc<Mutex<OnlineReps>>,
+    pub online_reps_sampler: Arc<OnlineWeightSampler>,
+    pub representative_register: Arc<Mutex<RepresentativeRegister>>,
+    pub rep_tiers: Arc<RepTiers>,
+    pub vote_processor_queue: Arc<VoteProcessorQueue>,
+    pub history: Arc<LocalVoteHistory>,
+    pub confirming_set: Arc<ConfirmingSet>,
+    pub vote_cache: Arc<Mutex<VoteCache>>,
+    pub block_processor: Arc<BlockProcessor>,
 }
 
 impl Node {
@@ -108,6 +123,87 @@ impl Node {
             observer: socket_observer,
         }));
 
+        let telemetry_config = TelementryConfig {
+            enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
+            enable_ongoing_broadcasts: !flags.disable_providing_telemetry_metrics,
+        };
+
+        let unchecked = Arc::new(UncheckedMap::new(
+            config.max_unchecked_blocks as usize,
+            Arc::clone(&stats),
+            flags.disable_block_processor_unchecked_deletion,
+        ));
+
+        let telemetry = Arc::new(Telemetry::new(
+            telemetry_config,
+            config.clone(),
+            Arc::clone(&stats),
+            Arc::clone(&ledger),
+            Arc::clone(&unchecked),
+            network_params.clone(),
+            Arc::clone(&channels),
+            node_id.clone(),
+        ));
+
+        let bootstrap_server = Arc::new(BootstrapServer::new(
+            Arc::clone(&stats),
+            Arc::clone(&ledger),
+        ));
+
+        let mut online_reps = OnlineReps::new(Arc::clone(&ledger));
+        online_reps.set_weight_period(Duration::from_secs(network_params.node.weight_period));
+        online_reps.set_online_weight_minimum(config.online_weight_minimum);
+
+        let mut online_reps_sampler = OnlineWeightSampler::new(Arc::clone(&ledger));
+        online_reps_sampler.set_online_weight_minimum(config.online_weight_minimum);
+        online_reps_sampler.set_max_samples(network_params.node.max_weight_samples);
+        let online_reps_sampler = Arc::new(online_reps_sampler);
+        online_reps.set_trended(online_reps_sampler.calculate_trend());
+        let online_reps = Arc::new(Mutex::new(online_reps));
+
+        let representative_register = Arc::new(Mutex::new(RepresentativeRegister::new(
+            Arc::clone(&ledger),
+            Arc::clone(&online_reps),
+            Arc::clone(&stats),
+            network_params.network.protocol_info(),
+        )));
+
+        let rep_tiers = Arc::new(RepTiers::new(
+            Arc::clone(&ledger),
+            network_params.clone(),
+            Arc::clone(&online_reps),
+            Arc::clone(&stats),
+        ));
+
+        let vote_processor_queue = Arc::new(VoteProcessorQueue::new(
+            flags.vote_processor_capacity,
+            Arc::clone(&stats),
+            Arc::clone(&online_reps),
+            Arc::clone(&ledger),
+            Arc::clone(&rep_tiers),
+        ));
+
+        let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
+
+        let confirming_set = Arc::new(ConfirmingSet::new(
+            Arc::clone(&ledger),
+            config.confirming_set_batch_time,
+        ));
+
+        let vote_cache = Arc::new(Mutex::new(VoteCache::new(
+            config.vote_cache.clone(),
+            Arc::clone(&stats),
+        )));
+
+        let block_processor = Arc::new(BlockProcessor::new(
+            Arc::new(config.clone()),
+            Arc::new(flags.clone()),
+            Arc::clone(&ledger),
+            Arc::clone(&unchecked),
+            Arc::clone(&stats),
+            Arc::new(network_params.work.clone()),
+        ));
+
         Self {
             node_id,
             workers,
@@ -119,11 +215,8 @@ impl Node {
                 Arc::clone(&work),
                 Arc::clone(&async_rt),
             )),
-            unchecked: Arc::new(UncheckedMap::new(
-                config.max_unchecked_blocks as usize,
-                Arc::clone(&stats),
-                flags.disable_block_processor_unchecked_deletion,
-            )),
+            unchecked,
+            telemetry,
             outbound_limiter,
             syn_cookies,
             channels,
@@ -136,6 +229,16 @@ impl Node {
             flags,
             work,
             async_rt,
+            bootstrap_server,
+            online_reps,
+            online_reps_sampler,
+            representative_register,
+            rep_tiers,
+            vote_processor_queue,
+            history,
+            confirming_set,
+            vote_cache,
+            block_processor,
         }
     }
 }

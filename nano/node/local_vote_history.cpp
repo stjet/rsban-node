@@ -7,6 +7,11 @@ nano::local_vote_history::local_vote_history (nano::voting_constants const & con
 {
 }
 
+nano::local_vote_history::local_vote_history (rsnano::LocalVoteHistoryHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::local_vote_history::~local_vote_history ()
 {
 	rsnano::rsn_local_vote_history_destroy (handle);

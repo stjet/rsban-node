@@ -63,6 +63,7 @@ public:
 		nano::tcp_endpoint prev_endpoint{};
 	};
 
+	representative_register (rsnano::RepresentativeRegisterHandle * handle);
 	representative_register (nano::node & node_a);
 	representative_register (representative_register const &) = delete;
 	~representative_register ();
@@ -77,10 +78,6 @@ public:
 	 */
 	std::vector<nano::representative> representatives (std::size_t count = std::numeric_limits<std::size_t>::max (), nano::uint128_t const minimum_weight = 0, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version = {});
 
-	/** Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
-	 */
-	std::vector<representative> principal_representatives (std::size_t count = std::numeric_limits<std::size_t>::max (), std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version = {});
-
 	/** Total number of representatives */
 	std::size_t representative_count ();
 
@@ -89,9 +86,6 @@ public:
 	void on_rep_request (std::shared_ptr<nano::transport::channel> const & target_channel);
 
 	rsnano::RepresentativeRegisterHandle * handle;
-
-private:
-	nano::node & node;
 };
 
 /**

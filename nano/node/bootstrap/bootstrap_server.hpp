@@ -36,6 +36,7 @@ public:
 
 public:
 	bootstrap_server (nano::store::component &, nano::ledger &, nano::network_constants const &, nano::stats &);
+	bootstrap_server (rsnano::BootstrapServerHandle * handle);
 	bootstrap_server (bootstrap_server const &) = delete;
 	~bootstrap_server ();
 

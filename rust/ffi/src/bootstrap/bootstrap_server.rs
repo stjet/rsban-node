@@ -7,7 +7,7 @@ use crate::{
     utils::ContextWrapper, StatHandle, VoidPointerCallback,
 };
 
-pub struct BootstrapServerHandle(Arc<BootstrapServer>);
+pub struct BootstrapServerHandle(pub Arc<BootstrapServer>);
 
 impl Deref for BootstrapServerHandle {
     type Target = Arc<BootstrapServer>;

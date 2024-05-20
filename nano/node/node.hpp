@@ -142,23 +142,23 @@ public:
 	nano::distributed_work_factory distributed_work;
 	nano::store::lmdb::component store;
 	nano::unchecked_map unchecked;
-	std::unique_ptr<nano::wallets_store> wallets_store_impl; // ported
-	nano::wallets_store & wallets_store; // ported
+	std::unique_ptr<nano::wallets_store> wallets_store_impl; // TODO
+	nano::wallets_store & wallets_store; // TODO
 	nano::ledger ledger;
 	nano::outbound_bandwidth_limiter outbound_limiter;
-	std::shared_ptr<nano::network> network; // ported
-	std::shared_ptr<nano::telemetry> telemetry; // ported
-	nano::bootstrap_server bootstrap_server; // ported
+	std::shared_ptr<nano::network> network;
+	std::shared_ptr<nano::telemetry> telemetry;
+	nano::bootstrap_server bootstrap_server;
 	std::filesystem::path application_path;
-	nano::online_reps online_reps; // ported
-	nano::representative_register representative_register; // ported
-	nano::rep_tiers rep_tiers; // ported
-	nano::vote_processor_queue vote_processor_queue; // ported
+	nano::online_reps online_reps;
+	nano::representative_register representative_register;
+	nano::rep_tiers rep_tiers;
+	nano::vote_processor_queue vote_processor_queue;
 	unsigned warmed_up;
-	nano::local_vote_history history; // ported
-	nano::confirming_set confirming_set; // ported
-	nano::vote_cache vote_cache; // ported
-	nano::block_processor block_processor; // ported
+	nano::local_vote_history history;
+	nano::confirming_set confirming_set;
+	nano::vote_cache vote_cache;
+	nano::block_processor block_processor; 
 	nano::wallets wallets; // mostly ported
 	nano::vote_generator generator; // ported
 	nano::vote_generator final_generator; // ported

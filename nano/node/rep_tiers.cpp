@@ -12,6 +12,11 @@ nano::rep_tiers::rep_tiers (nano::ledger & ledger_a, nano::network_params & netw
 	handle = rsnano::rsn_rep_tiers_create (ledger_a.handle, &network_params_dto, online_reps_a.get_handle (), stats_a.handle);
 }
 
+nano::rep_tiers::rep_tiers (rsnano::RepTiersHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::rep_tiers::~rep_tiers ()
 {
 	rsnano::rsn_rep_tiers_destroy (handle);

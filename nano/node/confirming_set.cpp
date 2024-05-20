@@ -34,6 +34,11 @@ void delete_block_hash_callback_context (void * context_a)
 }
 }
 
+nano::confirming_set::confirming_set (rsnano::ConfirmingSetHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::confirming_set::confirming_set (nano::ledger & ledger, std::chrono::milliseconds batch_time) :
 	handle{ rsnano::rsn_confirming_set_create (ledger.handle, batch_time.count ()) }
 {

@@ -141,7 +141,7 @@ impl OnlineWeightSampler {
         self.max_samples = max_samples;
     }
 
-    pub fn calculate_trend(&mut self) -> Amount {
+    pub fn calculate_trend(&self) -> Amount {
         self.medium_weight(self.load_samples())
     }
 

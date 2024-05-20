@@ -20,6 +20,7 @@ class local_vote_history final
 {
 public:
 	local_vote_history (nano::voting_constants const & constants);
+	local_vote_history (rsnano::LocalVoteHistoryHandle * handle);
 	local_vote_history (const local_vote_history &) = delete;
 	local_vote_history (local_vote_history &&) = delete;
 	~local_vote_history ();

@@ -83,6 +83,7 @@ class block_processor final
 {
 public:
 	block_processor (nano::node &);
+	block_processor (rsnano::BlockProcessorHandle * handle);
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
@@ -116,8 +117,6 @@ public:
 	rsnano::BlockProcessorHandle * handle;
 
 private:
-	std::thread thread;
-
 	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 };
 }

@@ -19,6 +19,11 @@ nano::bootstrap_server::bootstrap_server (nano::store::component & store_a, nano
 {
 }
 
+nano::bootstrap_server::bootstrap_server (rsnano::BootstrapServerHandle * handle) :
+	handle{ handle }
+{
+}
+
 nano::bootstrap_server::~bootstrap_server ()
 {
 	rsnano::rsn_bootstrap_server_destroy (handle);

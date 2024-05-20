@@ -1,7 +1,14 @@
 use crate::{
-    block_processing::UncheckedMapHandle,
+    block_processing::{BlockProcessorHandle, UncheckedMapHandle},
+    bootstrap::BootstrapServerHandle,
+    cementation::ConfirmingSetHandle,
+    consensus::{
+        LocalVoteHistoryHandle, RepTiersHandle, VoteCacheHandle, VoteProcessorQueueHandle,
+    },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
+    representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
+    telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
         NetworkFilterHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle,
@@ -134,5 +141,74 @@ pub extern "C" fn rsn_node_tcp_message_manager(
 pub extern "C" fn rsn_node_network_filter(handle: &NodeHandle) -> *mut NetworkFilterHandle {
     Box::into_raw(Box::new(NetworkFilterHandle(Arc::clone(
         &handle.0.channels.publish_filter,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_telemetry(handle: &NodeHandle) -> *mut TelemetryHandle {
+    Box::into_raw(Box::new(TelemetryHandle(Arc::clone(&handle.0.telemetry))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_bootstrap_server(handle: &NodeHandle) -> *mut BootstrapServerHandle {
+    Box::into_raw(Box::new(BootstrapServerHandle(Arc::clone(
+        &handle.0.bootstrap_server,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_online_reps(handle: &NodeHandle) -> *mut OnlineRepsHandle {
+    Box::into_raw(Box::new(OnlineRepsHandle {
+        online_reps: Arc::clone(&handle.0.online_reps),
+        sampler: Arc::clone(&handle.0.online_reps_sampler),
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_representative_register(
+    handle: &NodeHandle,
+) -> *mut RepresentativeRegisterHandle {
+    Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::clone(
+        &handle.0.representative_register,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_rep_tiers(handle: &NodeHandle) -> *mut RepTiersHandle {
+    Box::into_raw(Box::new(RepTiersHandle(Arc::clone(&handle.0.rep_tiers))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_vote_processor_queue(
+    handle: &NodeHandle,
+) -> *mut VoteProcessorQueueHandle {
+    Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::clone(
+        &handle.0.vote_processor_queue,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_history(handle: &NodeHandle) -> *mut LocalVoteHistoryHandle {
+    Box::into_raw(Box::new(LocalVoteHistoryHandle(Arc::clone(
+        &handle.0.history,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_confirming_set(handle: &NodeHandle) -> *mut ConfirmingSetHandle {
+    Box::into_raw(Box::new(ConfirmingSetHandle(Arc::clone(
+        &handle.0.confirming_set,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_vote_cache(handle: &NodeHandle) -> *mut VoteCacheHandle {
+    Box::into_raw(Box::new(VoteCacheHandle(Arc::clone(&handle.0.vote_cache))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_block_processor(handle: &NodeHandle) -> *mut BlockProcessorHandle {
+    Box::into_raw(Box::new(BlockProcessorHandle(Arc::clone(
+        &handle.0.block_processor,
     ))))
 }

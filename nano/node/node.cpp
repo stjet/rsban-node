@@ -133,9 +133,9 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_tcp_message_manager (handle), rsnano::rsn_node_network_filter (handle)) },
-	telemetry (std::make_shared<nano::telemetry> (nano::telemetry::config{ *config, flags }, *this, *network, *observers, network_params, *stats)),
+	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
 	bootstrap_initiator (*this),
-	bootstrap_server{ store, ledger, network_params.network, *stats },
+	bootstrap_server{ rsnano::rsn_node_bootstrap_server (handle) },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
 	//         (if UDP is active, otherwise it happens when `bootstrap` gets initialized), so then for TCP traffic
@@ -145,23 +145,19 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	//
 	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this, config->tcp_incoming_connections_max) },
 	application_path (application_path_a),
-	representative_register (*this),
+	representative_register (rsnano::rsn_node_representative_register (handle)),
 	rep_crawler (config->rep_crawler, *this),
-	rep_tiers{ ledger, network_params, online_reps, *stats },
+	rep_tiers{ rsnano::rsn_node_rep_tiers (handle) },
 	vote_processor_queue{
-		flags_a.vote_processor_capacity (),
-		*stats,
-		online_reps,
-		ledger,
-		rep_tiers,
+		rsnano::rsn_node_vote_processor_queue (handle)
 	},
 	vote_processor (vote_processor_queue, active, observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
 	warmed_up (0),
 	block_processor (*this),
-	online_reps (ledger, *config),
-	history{ config_a.network_params.voting },
-	confirming_set (ledger, config_a.confirming_set_batch_time),
-	vote_cache{ config_a.vote_cache, *stats },
+	online_reps (rsnano::rsn_node_online_reps (handle)),
+	history{ rsnano::rsn_node_history (handle) },
+	confirming_set (rsnano::rsn_node_confirming_set (handle)),
+	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
 	wallets (wallets_store.init_error (), *this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
 	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },

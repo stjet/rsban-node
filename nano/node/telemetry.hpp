@@ -48,7 +48,7 @@ public:
 	};
 
 public:
-	telemetry (config const &, nano::node &, nano::network &, nano::node_observers &, nano::network_params &, nano::stats &);
+	telemetry (rsnano::TelemetryHandle * handle);
 	telemetry (telemetry const &) = delete;
 	~telemetry ();
 

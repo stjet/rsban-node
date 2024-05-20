@@ -20,7 +20,6 @@ class bootstrap_server;
 class node_config;
 class node_flags;
 class network;
-class telemetry;
 class syn_cookies;
 class logger;
 class tcp_message_item final

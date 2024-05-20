@@ -9,7 +9,7 @@ use std::time::Duration;
 
 pub struct OnlineRepsHandle {
     pub online_reps: Arc<Mutex<OnlineReps>>,
-    pub sampler: OnlineWeightSampler,
+    pub sampler: Arc<OnlineWeightSampler>,
 }
 
 impl Deref for OnlineRepsHandle {
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn rsn_online_reps_create(
 
     let handle = OnlineRepsHandle {
         online_reps: Arc::new(Mutex::new(online_reps)),
-        sampler,
+        sampler: Arc::new(sampler),
     };
 
     Box::into_raw(Box::new(handle))

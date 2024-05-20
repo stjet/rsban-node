@@ -6,14 +6,17 @@
 #include <nano/store/component.hpp>
 #include <nano/store/online_weight.hpp>
 
-#include <iostream>
-
 nano::online_reps::online_reps (nano::ledger & ledger_a, nano::node_config const & config_a) :
 	handle{ rsnano::rsn_online_reps_create (
 	ledger_a.get_handle (),
 	config_a.network_params.node.weight_period,
 	config_a.online_weight_minimum.bytes.data (),
 	config_a.network_params.node.max_weight_samples) }
+{
+}
+
+nano::online_reps::online_reps (rsnano::OnlineRepsHandle * handle) :
+	handle{ handle }
 {
 }
 

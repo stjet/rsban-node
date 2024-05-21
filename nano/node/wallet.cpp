@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <future>
 #include <memory>
 #include <stdexcept>
 
@@ -604,14 +603,14 @@ boost::optional<nano::wallets::wallets_mutex_lock> nano::wallets::wallets_mutex:
 
 namespace
 {
-rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lmdb::env & env)
+rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a)
 {
 	auto config_dto{ node_a.config->to_dto () };
 	auto network_params_dto{ node_a.network_params.to_dto () };
 
 	return rsnano::rsn_lmdb_wallets_create (
 	node_a.config->enable_voting,
-	env.handle,
+	node_a.application_path.c_str (),
 	node_a.ledger.handle,
 	&config_dto,
 	node_a.config->network_params.kdf_work,
@@ -626,25 +625,10 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 }
 }
 
-nano::wallets::wallets (bool error_a, nano::node & node_a) :
-	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
-	rust_handle{ create_wallets (node_a, env) },
+nano::wallets::wallets (nano::node & node_a) :
+	rust_handle{ create_wallets (node_a) },
 	mutex{ rust_handle }
 {
-	{
-		// ported until here...
-
-		auto lock{ mutex.lock () };
-		auto wallets = lock.get_all ();
-		for (auto & item : wallets)
-		{
-			enter_initial_password (item.second);
-		}
-	}
-	if (node_a.config->enable_voting)
-	{
-		ongoing_compute_reps ();
-	}
 }
 
 nano::wallets::~wallets ()
@@ -1209,11 +1193,6 @@ bool nano::wallets::should_republish_vote (nano::account const & voting_account)
 void nano::wallets::compute_reps ()
 {
 	rsnano::rsn_wallets_compute_reps (rust_handle);
-}
-
-void nano::wallets::ongoing_compute_reps ()
-{
-	rsnano::rsn_wallets_ongoing_compute_reps (rust_handle);
 }
 
 void nano::wallets::receive_confirmed (nano::block_hash const & hash_a, nano::account const & destination_a)

@@ -142,8 +142,6 @@ public:
 	nano::distributed_work_factory distributed_work;
 	nano::store::lmdb::component store;
 	nano::unchecked_map unchecked;
-	std::unique_ptr<nano::wallets_store> wallets_store_impl; // TODO
-	nano::wallets_store & wallets_store; // TODO
 	nano::ledger ledger;
 	nano::outbound_bandwidth_limiter outbound_limiter;
 	std::shared_ptr<nano::network> network;

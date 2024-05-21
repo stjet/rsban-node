@@ -15,9 +15,7 @@ using namespace std::chrono_literals;
 TEST (wallets, open_create)
 {
 	nano::test::system system (1);
-	bool error (false);
-	nano::wallets wallets (error, *system.nodes[0]);
-	ASSERT_FALSE (error);
+	nano::wallets wallets (*system.nodes[0]);
 	ASSERT_EQ (1, wallets.wallet_count ()); // it starts out with a default wallet
 	auto id = nano::random_wallet_id ();
 	ASSERT_FALSE (wallets.wallet_exists (id));
@@ -30,9 +28,7 @@ TEST (wallets, open_existing)
 	nano::test::system system (1);
 	auto id (nano::random_wallet_id ());
 	{
-		bool error (false);
-		nano::wallets wallets (error, *system.nodes[0]);
-		ASSERT_FALSE (error);
+		nano::wallets wallets (*system.nodes[0]);
 		ASSERT_EQ (1, wallets.wallet_count ());
 		wallets.create (id);
 		ASSERT_TRUE (wallets.wallet_exists (id));
@@ -46,9 +42,7 @@ TEST (wallets, open_existing)
 		}
 	}
 	{
-		bool error (false);
-		nano::wallets wallets (error, *system.nodes[0]);
-		ASSERT_FALSE (error);
+		nano::wallets wallets (*system.nodes[0]);
 		ASSERT_EQ (2, wallets.wallet_count ());
 		ASSERT_TRUE (wallets.wallet_exists (id));
 		// give it some time so that the receivable blocks search can run
@@ -61,9 +55,7 @@ TEST (wallets, remove)
 	nano::test::system system (1);
 	nano::wallet_id one (1);
 	{
-		bool error (false);
-		nano::wallets wallets (error, *system.nodes[0]);
-		ASSERT_FALSE (error);
+		nano::wallets wallets (*system.nodes[0]);
 		ASSERT_EQ (1, wallets.wallet_count ());
 		wallets.create (one);
 		ASSERT_EQ (2, wallets.wallet_count ());
@@ -73,9 +65,7 @@ TEST (wallets, remove)
 		std::this_thread::sleep_for (1000ms);
 	}
 	{
-		bool error (false);
-		nano::wallets wallets (error, *system.nodes[0]);
-		ASSERT_FALSE (error);
+		nano::wallets wallets (*system.nodes[0]);
 		ASSERT_EQ (1, wallets.wallet_count ());
 		// give it some time so that the receivable blocks search can run
 		std::this_thread::sleep_for (1000ms);
@@ -89,8 +79,6 @@ TEST (wallets, DISABLED_reload)
 	nano::test::system system (1);
 	auto & node1 (*system.nodes[0]);
 	nano::wallet_id one (1);
-	bool error (false);
-	ASSERT_FALSE (error);
 	ASSERT_EQ (1, node1.wallets.wallet_count ());
 	{
 		auto lock_wallet (node1.wallets.mutex.lock ());

@@ -126,8 +126,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	distributed_work (rsnano::rsn_node_distributed_work (handle)),
 	store (rsnano::rsn_node_store (handle)),
 	unchecked{ rsn_node_unchecked (handle) },
-	wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_config)),
-	wallets_store (*wallets_store_impl),
 	ledger (rsnano::rsn_node_ledger (handle), store, network_params.ledger),
 	outbound_limiter{ rsnano::rsn_node_outbound_bandwidth_limiter (handle) },
 	// empty `config.peering_port` means the user made no port choice at all;
@@ -158,7 +156,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	history{ rsnano::rsn_node_history (handle) },
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
 	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
-	wallets (wallets_store.init_error (), *this),
+	wallets (*this),
 	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
 	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },
 	active (*this, confirming_set, block_processor),
@@ -1219,7 +1217,7 @@ int nano::node::store_version ()
 
 bool nano::node::init_error () const
 {
-	return store.init_error () || wallets_store.init_error ();
+	return store.init_error ();
 }
 
 std::pair<uint64_t, std::unordered_map<nano::account, nano::uint128_t>> nano::node::get_bootstrap_weights () const

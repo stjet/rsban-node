@@ -211,7 +211,7 @@ public:
 		rsnano::LmdbWalletsHandle * handle;
 	};
 
-	wallets (bool, nano::node &);
+	wallets (nano::node &);
 	~wallets ();
 
 	void create (nano::wallet_id const &);
@@ -288,7 +288,6 @@ public:
 	bool rep_exists (nano::account const & rep) const;
 	bool should_republish_vote (nano::account const & voting_account) const;
 	void compute_reps ();
-	void ongoing_compute_reps ();
 	void receive_confirmed (nano::block_hash const & hash_a, nano::account const & destination_a);
 
 	// TODO make private
@@ -325,8 +324,6 @@ public: // TODO make private
 
 	// fields
 public:
-	nano::store::lmdb::env & env;
-
 	rsnano::LmdbWalletsHandle * rust_handle;
 	mutable wallets_mutex mutex;
 };

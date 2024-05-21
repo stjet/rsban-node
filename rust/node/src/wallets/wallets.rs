@@ -148,7 +148,6 @@ impl<T: Environment + 'static> Wallets<T> {
             if backup_required {
                 create_backup_file(&wallets.env)?;
             }
-            // TODO port more here...
         }
 
         Ok(wallets)
@@ -1015,6 +1014,8 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     ) -> Result<(), WalletsError>;
 
     fn ensure_wallet_is_unlocked(&self, wallet_id: WalletId, password: &str) -> bool;
+
+    fn initialize2(&self);
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1973,6 +1974,18 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         }
 
         valid
+    }
+
+    fn initialize2(&self) {
+        {
+            let guard = self.mutex.lock().unwrap();
+            for (_, wallet) in guard.iter() {
+                self.enter_initial_password(wallet);
+            }
+        }
+        if self.node_config.enable_voting {
+            self.ongoing_compute_reps();
+        }
     }
 }
 

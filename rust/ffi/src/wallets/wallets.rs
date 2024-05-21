@@ -13,7 +13,8 @@ use crate::{
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
-    NetworkParamsDto, NodeConfigDto, StringDto, StringHandle, U256ArrayDto, VoidPointerCallback,
+    LmdbConfigDto, NetworkParamsDto, NodeConfigDto, StringDto, StringHandle, U256ArrayDto,
+    VoidPointerCallback,
 };
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, RawKey, Root,
@@ -24,6 +25,7 @@ use rsnano_node::{
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
     NetworkParams,
 };
+use rsnano_store_lmdb::{EnvOptions, LmdbConfig, LmdbEnv, SyncStrategy};
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},
@@ -46,7 +48,7 @@ impl Deref for LmdbWalletsHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     enable_voting: bool,
-    lmdb: &LmdbEnvHandle,
+    app_path: *const c_char,
     ledger: &LedgerHandle,
     node_config: &NodeConfigDto,
     kdf_work: u32,
@@ -59,13 +61,27 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     tcp_channels: &TcpChannelsHandle,
     confirming_set: &ConfirmingSetHandle,
 ) -> *mut LmdbWalletsHandle {
-    let network_params = NetworkParams::try_from(network_params).unwrap();
     let node_config = NodeConfig::try_from(node_config).unwrap();
+
+    let app_path = to_rust_string(app_path);
+    let mut wallets_path = PathBuf::from(app_path);
+    wallets_path.push("wallets.ldb");
+
+    let mut lmdb_config = node_config.lmdb_config.clone();
+    lmdb_config.sync = SyncStrategy::Always;
+    lmdb_config.map_size = 1024 * 1024 * 1024;
+    let options = EnvOptions {
+        config: lmdb_config,
+        use_no_mem_init: false,
+    };
+    let lmdb = Arc::new(LmdbEnv::with_options(wallets_path, &options).unwrap());
+
+    let network_params = NetworkParams::try_from(network_params).unwrap();
     let work = WorkThresholds::from(work_thresholds);
-    Box::into_raw(Box::new(LmdbWalletsHandle(Arc::new(
+    let wallets = Arc::new(
         Wallets::new(
             enable_voting,
-            Arc::clone(lmdb),
+            lmdb,
             Arc::clone(&ledger.0),
             &node_config,
             kdf_work,
@@ -79,7 +95,9 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             Arc::clone(confirming_set),
         )
         .expect("could not create wallet"),
-    ))))
+    );
+    wallets.initialize2();
+    Box::into_raw(Box::new(LmdbWalletsHandle(wallets)))
 }
 
 #[no_mangle]

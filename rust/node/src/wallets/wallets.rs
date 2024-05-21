@@ -802,6 +802,12 @@ impl<T: Environment + 'static> Wallets<T> {
     }
 }
 
+impl<T: Environment> Drop for Wallets<T> {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 const GENERATE_PRIORITY: Amount = Amount::MAX;
 const HIGH_PRIORITY: Amount = Amount::raw(u128::MAX - 1);
 

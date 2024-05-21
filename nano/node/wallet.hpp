@@ -212,6 +212,7 @@ public:
 	};
 
 	wallets (nano::node &);
+	wallets (rsnano::LmdbWalletsHandle * handle);
 	~wallets ();
 
 	void create (nano::wallet_id const &);

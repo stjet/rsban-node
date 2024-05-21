@@ -631,9 +631,14 @@ nano::wallets::wallets (nano::node & node_a) :
 {
 }
 
+nano::wallets::wallets (rsnano::LmdbWalletsHandle * handle) :
+	rust_handle{ handle },
+	mutex{ handle }
+{
+}
+
 nano::wallets::~wallets ()
 {
-	stop_actions ();
 	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 

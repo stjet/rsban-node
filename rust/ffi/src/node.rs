@@ -15,6 +15,7 @@ use crate::{
         TcpChannelsHandle, TcpMessageManagerHandle,
     },
     utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    wallets::LmdbWalletsHandle,
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
@@ -211,4 +212,9 @@ pub extern "C" fn rsn_node_block_processor(handle: &NodeHandle) -> *mut BlockPro
     Box::into_raw(Box::new(BlockProcessorHandle(Arc::clone(
         &handle.0.block_processor,
     ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_wallets(handle: &NodeHandle) -> *mut LmdbWalletsHandle {
+    Box::into_raw(Box::new(LmdbWalletsHandle(Arc::clone(&handle.0.wallets))))
 }

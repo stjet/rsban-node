@@ -14,14 +14,15 @@ use crate::{
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
     },
+    wallets::{Wallets, WalletsExt},
     work::DistributedWorkFactory,
     NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry,
 };
 use rsnano_core::{work::WorkPoolImpl, KeyPair};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{
-    EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbStore, NullTransactionTracker,
-    TransactionTracker,
+    EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker,
+    SyncStrategy, TransactionTracker,
 };
 use std::{
     borrow::Borrow,
@@ -59,6 +60,7 @@ pub struct Node {
     pub confirming_set: Arc<ConfirmingSet>,
     pub vote_cache: Arc<Mutex<VoteCache>>,
     pub block_processor: Arc<BlockProcessor>,
+    pub wallets: Arc<Wallets>,
 }
 
 impl Node {
@@ -204,6 +206,43 @@ impl Node {
             Arc::new(network_params.work.clone()),
         ));
 
+        let distributed_work = Arc::new(DistributedWorkFactory::new(
+            Arc::clone(&work),
+            Arc::clone(&async_rt),
+        ));
+
+        let mut wallets_path = application_path.clone();
+        wallets_path.push("wallets.ldb");
+
+        let mut wallets_lmdb_config = config.lmdb_config.clone();
+        wallets_lmdb_config.sync = SyncStrategy::Always;
+        wallets_lmdb_config.map_size = 1024 * 1024 * 1024;
+        let wallets_options = EnvOptions {
+            config: wallets_lmdb_config,
+            use_no_mem_init: false,
+        };
+        let wallets_env = Arc::new(LmdbEnv::with_options(wallets_path, &wallets_options).unwrap());
+
+        let wallets = Arc::new(
+            Wallets::new(
+                config.enable_voting,
+                wallets_env,
+                Arc::clone(&ledger),
+                &config,
+                network_params.kdf_work,
+                network_params.work.clone(),
+                Arc::clone(&distributed_work),
+                network_params.clone(),
+                Arc::clone(&workers),
+                Arc::clone(&block_processor),
+                Arc::clone(&online_reps),
+                Arc::clone(&channels),
+                Arc::clone(&confirming_set),
+            )
+            .expect("Could not create wallet"),
+        );
+        wallets.initialize2();
+
         Self {
             node_id,
             workers,
@@ -211,10 +250,7 @@ impl Node {
                 config.bootstrap_serving_threads as usize,
                 "Bootstrap work".to_string(),
             )),
-            distributed_work: Arc::new(DistributedWorkFactory::new(
-                Arc::clone(&work),
-                Arc::clone(&async_rt),
-            )),
+            distributed_work,
             unchecked,
             telemetry,
             outbound_limiter,
@@ -239,6 +275,7 @@ impl Node {
             confirming_set,
             vote_cache,
             block_processor,
+            wallets,
         }
     }
 }

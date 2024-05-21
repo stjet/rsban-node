@@ -377,7 +377,6 @@ impl BlockProcessorLoop {
 
         let ctx = Arc::new(BlockProcessorContext::new(block, source));
         let ctx_clone = Arc::clone(&ctx);
-        //auto future = ctx.get_future ();
         self.add_impl(ctx, None);
 
         match ctx_clone.wait_result(Duration::from_secs(

@@ -290,8 +290,6 @@ public:
 	void compute_reps ();
 	void ongoing_compute_reps ();
 	void receive_confirmed (nano::block_hash const & hash_a, nano::account const & destination_a);
-	/** Start read-only transaction */
-	std::unique_ptr<store::read_transaction> tx_begin_read () const;
 
 	// TODO make private
 	// private:

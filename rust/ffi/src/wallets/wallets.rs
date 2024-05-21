@@ -13,7 +13,7 @@ use crate::{
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
-    NetworkParamsDto, NodeConfigDto, U256ArrayDto, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StringDto, StringHandle, U256ArrayDto, VoidPointerCallback,
 };
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, RawKey, Root,
@@ -1234,4 +1234,19 @@ pub unsafe extern "C" fn rsn_decrypt_result_get(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_decrypt_result_destroy(handle: *mut DecryptResultHandle) {
     drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_serialize(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    result: &mut StringDto,
+) -> u8 {
+    match handle.serialize(WalletId::from_ptr(wallet_id)) {
+        Ok(json) => {
+            *result = json.into();
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
 }

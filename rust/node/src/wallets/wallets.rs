@@ -794,6 +794,13 @@ impl<T: Environment + 'static> Wallets<T> {
 
         Ok(result)
     }
+
+    pub fn serialize(&self, wallet_id: WalletId) -> Result<String, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        Ok(wallet.store.serialize_json(&tx))
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;

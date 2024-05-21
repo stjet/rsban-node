@@ -1113,15 +1113,14 @@ nano::wallets_error nano::wallets::send_async (nano::wallet_id const & wallet_id
 
 nano::wallets_error nano::wallets::serialize (nano::wallet_id const & wallet_id, std::string & json)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
+	rsnano::StringDto json_dto;
+	auto result = rsnano::rsn_wallets_serialize (rust_handle, wallet_id.bytes.data (), &json_dto);
+	auto error = static_cast<nano::wallets_error> (result);
+	if (error == nano::wallets_error::none)
 	{
-		return nano::wallets_error::wallet_not_found;
+		json = rsnano::convert_dto_to_string (json_dto);
 	}
-	auto txn{ tx_begin_read () };
-	wallet->store.serialize_json (*txn, json);
-	return nano::wallets_error::none;
+	return error;
 }
 
 void nano::wallets::create (nano::wallet_id const & id_a)
@@ -1179,11 +1178,6 @@ void nano::wallets::foreach_representative (std::function<void (nano::public_key
 bool nano::wallets::exists (nano::account const & account_a)
 {
 	return rsnano::rsn_wallets_exists (rust_handle, account_a.bytes.data ());
-}
-
-std::unique_ptr<nano::store::read_transaction> nano::wallets::tx_begin_read () const
-{
-	return env.tx_begin_read ();
 }
 
 void nano::wallets::clear_send_ids ()

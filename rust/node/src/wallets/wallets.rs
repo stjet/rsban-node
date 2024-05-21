@@ -847,7 +847,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
-    fn receive_async(
+    fn receive_async_wallet(
         &self,
         wallet: Arc<Wallet<T>>,
         hash: BlockHash,
@@ -859,6 +859,18 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
     );
 
+    fn receive_async(
+        &self,
+        wallet_id: WalletId,
+        hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<(), WalletsError>;
+
     fn receive_sync(
         &self,
         wallet: Arc<Wallet<T>>,
@@ -866,6 +878,38 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         representative: Account,
         amount: Amount,
     ) -> Result<(), ()>;
+
+    fn send_async_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    );
+
+    fn send_async(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<(), WalletsError>;
+
+    fn send_sync(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+    ) -> BlockHash;
 
     fn search_receivable(
         &self,
@@ -1353,7 +1397,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         block
     }
 
-    fn receive_async(
+    fn receive_async_wallet(
         &self,
         wallet: Arc<Wallet<T>>,
         hash: BlockHash,
@@ -1383,6 +1427,41 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         );
     }
 
+    fn receive_async(
+        &self,
+        wallet_id: WalletId,
+        hash: BlockHash,
+        representative: Account,
+        amount: Amount,
+        account: Account,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        if wallet.store.find(&tx, &account).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+
+        self.receive_async_wallet(
+            Arc::clone(wallet),
+            hash,
+            representative,
+            amount,
+            account,
+            action,
+            work,
+            generate_work,
+        );
+        Ok(())
+    }
+
     fn receive_sync(
         &self,
         wallet: Arc<Wallet<T>>,
@@ -1392,7 +1471,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
     ) -> Result<(), ()> {
         let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
         let result_clone = Arc::clone(&result);
-        self.receive_async(
+        self.receive_async_wallet(
             wallet,
             block.hash(),
             representative,
@@ -1412,6 +1491,105 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         } else {
             Err(())
         }
+    }
+
+    fn send_async_wallet(
+        &self,
+        wallet: Arc<Wallet<T>>,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) {
+        let self_l = Arc::clone(self);
+        self.wallet_actions.queue_wallet_action(
+            HIGH_PRIORITY,
+            wallet,
+            Box::new(move |wallet| {
+                let block = self_l.send_action(
+                    &wallet,
+                    source,
+                    account,
+                    amount,
+                    work,
+                    generate_work,
+                    id.clone(),
+                );
+                action(block);
+            }),
+        );
+    }
+
+    fn send_async(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        if wallet.store.find(&tx, &source).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+        self.send_async_wallet(
+            Arc::clone(wallet),
+            source,
+            account,
+            amount,
+            action,
+            work,
+            generate_work,
+            id,
+        );
+
+        Ok(())
+    }
+
+    fn send_sync(
+        &self,
+        wallet_id: WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+    ) -> BlockHash {
+        let guard = self.mutex.lock().unwrap();
+        let Some(wallet) = guard.get(&wallet_id) else {
+            panic!("wallet not found")
+        };
+
+        let result = Arc::new((Condvar::new(), Mutex::new((false, BlockHash::zero())))); // done, result
+        let result_clone = Arc::clone(&result);
+
+        self.send_async_wallet(
+            Arc::clone(wallet),
+            source,
+            account,
+            amount,
+            Box::new(move |block| {
+                *result_clone.1.lock().unwrap() =
+                    (true, block.map(|b| b.hash()).unwrap_or_default());
+                result_clone.0.notify_all();
+            }),
+            0,
+            true,
+            None,
+        );
+
+        let mut guard = result.1.lock().unwrap();
+        guard = result.0.wait_while(guard, |i| !i.0).unwrap();
+        guard.1
     }
 
     fn search_receivable(
@@ -1450,7 +1628,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                         if self.ledger.block_confirmed(&block_tx, &hash) {
                             let representative = wallet.store.representative(wallet_tx);
                             // Receive confirmed block
-                            self.receive_async(
+                            self.receive_async_wallet(
                                 Arc::clone(wallet),
                                 hash,
                                 representative,
@@ -1496,7 +1674,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
                     .pending_info(&self.ledger.read_txn(), &PendingKey::new(destination, hash));
                 if let Some(pending) = pending {
                     let amount = pending.amount;
-                    self.receive_async(
+                    self.receive_async_wallet(
                         wallet,
                         hash,
                         representative,

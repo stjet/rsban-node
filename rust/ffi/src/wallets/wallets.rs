@@ -1076,3 +1076,100 @@ pub unsafe extern "C" fn rsn_wallets_get_seed(
         Err(e) => e as u8,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_receive_async(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    hash: *const u8,
+    representative: *const u8,
+    amount: *const u8,
+    account: *const u8,
+    callback: WalletsStartElectionCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+    work: u64,
+    generate_work: bool,
+) -> u8 {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let callback_wrapper = Box::new(move |block: Option<BlockEnum>| {
+        let block_handle = match block {
+            Some(b) => BlockHandle::new(Arc::new(b)),
+            None => std::ptr::null_mut(),
+        };
+        callback(context_wrapper.get_context(), block_handle);
+    });
+    match handle.receive_async(
+        WalletId::from_ptr(wallet_id),
+        BlockHash::from_ptr(hash),
+        Account::from_ptr(representative),
+        Amount::from_ptr(amount),
+        Account::from_ptr(account),
+        callback_wrapper,
+        work,
+        generate_work,
+    ) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_send_async(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    source: *const u8,
+    account: *const u8,
+    amount: *const u8,
+    callback: WalletsStartElectionCallback,
+    context: *mut c_void,
+    delete_context: VoidPointerCallback,
+    work: u64,
+    generate_work: bool,
+    id: *const c_char,
+) -> u8 {
+    let context_wrapper = ContextWrapper::new(context, delete_context);
+    let callback_wrapper = Box::new(move |block: Option<BlockEnum>| {
+        let block_handle = match block {
+            Some(b) => BlockHandle::new(Arc::new(b)),
+            None => std::ptr::null_mut(),
+        };
+        callback(context_wrapper.get_context(), block_handle);
+    });
+    let id = if id.is_null() {
+        None
+    } else {
+        Some(to_rust_string(id))
+    };
+    match handle.send_async(
+        WalletId::from_ptr(wallet_id),
+        Account::from_ptr(source),
+        Account::from_ptr(account),
+        Amount::from_ptr(amount),
+        callback_wrapper,
+        work,
+        generate_work,
+        id,
+    ) {
+        Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_send_sync(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    source: *const u8,
+    account: *const u8,
+    amount: *const u8,
+    hash: *mut u8,
+) {
+    let result = handle.send_sync(
+        WalletId::from_ptr(wallet_id),
+        Account::from_ptr(source),
+        Account::from_ptr(account),
+        Amount::from_ptr(amount),
+    );
+    result.copy_bytes(hash);
+}

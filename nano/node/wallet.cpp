@@ -417,28 +417,6 @@ nano::wallet::representatives_lock nano::wallet::representatives_mutex::lock ()
 	return { rsnano::rsn_representatives_lock_create (handle) };
 }
 
-namespace
-{
-rsnano::WalletHandle * create_wallet_handle (
-nano::node & node,
-nano::wallets & wallets_a,
-nano::store::transaction & transaction_a,
-nano::account representative,
-std::string const & wallet_path,
-const char * json)
-{
-	return rsnano::rsn_wallet_create (
-	node.ledger.handle,
-	&node.network_params.work.dto,
-	node.config->password_fanout,
-	wallets_a.kdf.handle,
-	transaction_a.get_rust_handle (),
-	representative.bytes.data (),
-	wallet_path.c_str (),
-	json);
-}
-}
-
 nano::wallet::wallet (rsnano::WalletHandle * handle) :
 	store{ rsnano::rsn_wallet_store (handle) },
 	handle{ handle },
@@ -649,7 +627,6 @@ rsnano::LmdbWalletsHandle * create_wallets (nano::node & node_a, nano::store::lm
 }
 
 nano::wallets::wallets (bool error_a, nano::node & node_a) :
-	kdf{ node_a.config->network_params.kdf_work },
 	env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
 	rust_handle{ create_wallets (node_a, env) },
 	mutex{ rust_handle }
@@ -915,14 +892,6 @@ bool nano::wallets::change_sync (const std::shared_ptr<nano::wallet> & wallet, n
 	return rsnano::rsn_wallets_change_sync_wallet (rust_handle, wallet->handle, source_a.bytes.data (), representative_a.bytes.data ());
 }
 
-void nano::wallets::receive_async (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
-{
-	queue_wallet_action (amount_a, wallet, [&this_l = *this, wallet, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a] (nano::wallet & wallet_a) {
-		auto block (this_l.receive_action (wallet, hash_a, representative_a, amount_a, account_a, work_a, generate_work_a));
-		action_a (block);
-	});
-}
-
 bool nano::wallets::receive_sync (const std::shared_ptr<nano::wallet> & wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a)
 {
 	nano::amount amount{ amount_a };
@@ -1133,16 +1102,10 @@ std::shared_ptr<nano::block> nano::wallets::change_action (nano::wallet_id const
 
 nano::block_hash nano::wallets::send_sync (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet = lock.find (wallet_id);
-
-	std::promise<nano::block_hash> result;
-	std::future<nano::block_hash> future = result.get_future ();
-	send_async (wallet, source_a, account_a, amount_a, [&result] (std::shared_ptr<nano::block> const & block_a) {
-		result.set_value (block_a->hash ());
-	},
-	0, true, {});
-	return future.get ();
+	nano::amount amount{ amount_a };
+	nano::block_hash hash;
+	rsnano::rsn_wallets_send_sync (rust_handle, wallet_id.bytes.data (), source_a.bytes.data (), account_a.bytes.data (), amount.bytes.data (), hash.bytes.data ());
+	return hash;
 }
 
 bool nano::wallets::receive_sync (nano::wallet_id const & wallet_id, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a)
@@ -1161,24 +1124,10 @@ bool nano::wallets::change_sync (nano::wallet_id const & wallet_id, nano::accoun
 
 nano::wallets_error nano::wallets::receive_async (nano::wallet_id const & wallet_id, nano::block_hash const & hash_a, nano::account const & representative_a, nano::uint128_t const & amount_a, nano::account const & account_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-	if (wallet->store.find (*txn, account_a) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-
-	receive_async (wallet, hash_a, representative_a, amount_a, account_a, action_a, work_a, generate_work_a);
-	return nano::wallets_error::none;
+	nano::amount amount{ amount_a };
+	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (action_a);
+	auto result = rsnano::rsn_wallets_receive_async (rust_handle, wallet_id.bytes.data (), hash_a.bytes.data (), representative_a.bytes.data (), amount.bytes.data (), account_a.bytes.data (), start_election_wrapper, context, delete_start_election_context, work_a, generate_work_a);
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a)
@@ -1190,24 +1139,11 @@ nano::wallets_error nano::wallets::change_async (nano::wallet_id const & wallet_
 
 nano::wallets_error nano::wallets::send_async (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
-	auto lock{ mutex.lock () };
-	auto wallet (lock.find (wallet_id));
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-	if (wallet->store.find (*txn, source_a) == wallet->store.end ())
-	{
-		return nano::wallets_error::account_not_found;
-	}
-
-	send_async (wallet, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a);
-	return nano::wallets_error::none;
+	nano::amount amount{ amount_a };
+	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (action_a);
+	auto id_ptr = id_a.has_value () ? id_a.value ().c_str () : nullptr;
+	auto result = rsnano::rsn_wallets_send_async (rust_handle, wallet_id.bytes.data(), source_a.bytes.data (), account_a.bytes.data (), amount.bytes.data (), start_election_wrapper, context, delete_start_election_context, work_a, generate_work_a, id_ptr);
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::serialize (nano::wallet_id const & wallet_id, std::string & json)
@@ -1280,11 +1216,6 @@ bool nano::wallets::exists (nano::account const & account_a)
 	return rsnano::rsn_wallets_exists (rust_handle, account_a.bytes.data ());
 }
 
-std::unique_ptr<nano::store::write_transaction> nano::wallets::tx_begin_write ()
-{
-	return env.tx_begin_write ();
-}
-
 std::unique_ptr<nano::store::read_transaction> nano::wallets::tx_begin_read () const
 {
 	return env.tx_begin_read ();
@@ -1352,14 +1283,6 @@ nano::block_hash nano::wallets::get_block_hash (bool & error_a, nano::store::tra
 	nano::block_hash result;
 	error_a = !rsnano::rsn_lmdb_wallets_get_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), result.bytes.data ());
 	return result;
-}
-
-void nano::wallets::send_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
-{
-	queue_wallet_action (nano::wallets::high_priority, wallet, [&wallets = *this, wallet, source_a, account_a, amount_a, action_a, work_a, generate_work_a, id_a] (nano::wallet & wallet_a) {
-		auto block{ wallets.send_action (wallet, source_a, account_a, amount_a, work_a, generate_work_a, id_a) };
-		action_a (block);
-	});
 }
 
 void nano::wallets::work_ensure (std::shared_ptr<nano::wallet> wallet, nano::account const & account_a, nano::root const & root_a)

@@ -59,6 +59,7 @@ std::unique_ptr<container_info_component> collect_container_info (vote_processor
 class vote_processor final
 {
 public:
+	vote_processor (rsnano::VoteProcessorHandle * handle);
 	vote_processor (
 	nano::vote_processor_queue & queue_a,
 	nano::active_transactions & active_a,

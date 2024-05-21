@@ -42,7 +42,7 @@ pub struct BacklogPopulation {
     condition: Arc<Condvar>,
     /** Thread that runs the backlog implementation logic. The thread always runs, even if
      *  backlog population is disabled, so that it can service a manual trigger (e.g. via RPC). */
-    thread: Option<JoinHandle<()>>,
+    thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 pub type ActivateCallback = Box<
@@ -67,17 +67,17 @@ impl BacklogPopulation {
                 triggered: false,
             })),
             condition: Arc::new(Condvar::new()),
-            thread: None,
+            thread: Mutex::new(None),
         }
     }
 
-    pub fn set_activate_callback(&mut self, callback: ActivateCallback) {
+    pub fn set_activate_callback(&self, callback: ActivateCallback) {
         let mut lock = self.activate_callback.lock().unwrap();
         *lock = Some(callback);
     }
 
-    pub fn start(&mut self) {
-        debug_assert!(self.thread.is_none());
+    pub fn start(&self) {
+        debug_assert!(self.thread.lock().unwrap().is_none());
 
         let thread = BacklogPopulationThread {
             ledger: Arc::clone(&self.ledger),
@@ -88,7 +88,7 @@ impl BacklogPopulation {
             condition: Arc::clone(&self.condition),
         };
 
-        self.thread = Some(
+        *self.thread.lock().unwrap() = Some(
             thread::Builder::new()
                 .name("Backlog".to_owned())
                 .spawn(move || {
@@ -98,12 +98,12 @@ impl BacklogPopulation {
         );
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&self) {
         let mut lock = self.mutex.lock().unwrap();
         lock.stopped = true;
         drop(lock);
         self.notify();
-        if let Some(handle) = self.thread.take() {
+        if let Some(handle) = self.thread.lock().unwrap().take() {
             handle.join().unwrap()
         }
     }

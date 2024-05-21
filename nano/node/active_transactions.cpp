@@ -20,7 +20,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <stdexcept>
 
 using namespace std::chrono;
 
@@ -136,6 +135,12 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	rsnano::rsn_active_transactions_initialize (handle);
 }
 
+nano::active_transactions::active_transactions (nano::node & node_a, rsnano::ActiveTransactionsHandle* handle) :
+	handle{handle},
+	node{node_a}
+{
+}
+
 nano::active_transactions::~active_transactions ()
 {
 	rsnano::rsn_active_transactions_destroy (handle);
@@ -154,12 +159,6 @@ void nano::active_transactions::stop ()
 bool nano::active_transactions::confirmed (nano::election const & election) const
 {
 	return rsnano::rsn_active_transactions_confirmed (handle, election.handle);
-}
-
-bool nano::active_transactions::confirmed (nano::block_hash const & hash) const
-{
-	auto transaction (node.store.tx_begin_read ());
-	return node.ledger.block_confirmed (*transaction, hash);
 }
 
 std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_weight (nano::election & election) const

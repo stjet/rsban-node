@@ -22,7 +22,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct BootstrapInitiatorHandle(Arc<BootstrapInitiator>);
+pub struct BootstrapInitiatorHandle(pub Arc<BootstrapInitiator>);
 
 impl Deref for BootstrapInitiatorHandle {
     type Target = Arc<BootstrapInitiator>;

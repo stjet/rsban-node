@@ -17,7 +17,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct BootstrapAscendingHandle(Arc<BootstrapAscending>);
+pub struct BootstrapAscendingHandle(pub Arc<BootstrapAscending>);
 
 impl Deref for BootstrapAscendingHandle {
     type Target = Arc<BootstrapAscending>;

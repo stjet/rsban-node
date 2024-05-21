@@ -96,6 +96,7 @@ class rep_crawler final
 {
 public:
 	rep_crawler (rep_crawler_config const &, nano::node & node_a);
+	rep_crawler (rsnano::RepCrawlerHandle * handle, nano::node & node_a);
 	rep_crawler (rep_crawler const &) = delete;
 	~rep_crawler ();
 

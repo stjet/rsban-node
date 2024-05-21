@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/node/transport/channel.hpp>
@@ -29,6 +30,7 @@ class request_aggregator final
 {
 public:
 	request_aggregator (nano::node_config const & config, nano::stats & stats_a, nano::vote_generator &, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_transactions &);
+	request_aggregator (rsnano::RequestAggregatorHandle * handle);
 	request_aggregator (request_aggregator const &) = delete;
 	~request_aggregator ();
 

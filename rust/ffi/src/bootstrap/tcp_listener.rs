@@ -17,7 +17,7 @@ use rsnano_node::{
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 use tracing::debug;
 
-pub struct TcpListenerHandle(Arc<TcpListener>);
+pub struct TcpListenerHandle(pub Arc<TcpListener>);
 
 impl Deref for TcpListenerHandle {
     type Target = Arc<TcpListener>;

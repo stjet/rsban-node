@@ -16,6 +16,10 @@ nano::local_block_broadcaster::local_block_broadcaster (nano::node & node_a, nan
 	rsnano::rsn_local_block_broadcaster_initialize (handle);
 }
 
+nano::local_block_broadcaster::local_block_broadcaster (rsnano::LocalBlockBroadcasterHandle * handle)
+	: handle{handle}
+{}
+
 nano::local_block_broadcaster::~local_block_broadcaster ()
 {
 	rsnano::rsn_local_block_broadcaster_destroy (handle);

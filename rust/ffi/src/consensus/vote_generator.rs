@@ -19,7 +19,7 @@ use std::{
     time::Duration,
 };
 
-pub struct VoteGeneratorHandle(Arc<VoteGenerator>);
+pub struct VoteGeneratorHandle(pub Arc<VoteGenerator>);
 
 impl Deref for VoteGeneratorHandle {
     type Target = Arc<VoteGenerator>;

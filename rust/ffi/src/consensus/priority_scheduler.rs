@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct ElectionSchedulerHandle(Arc<PriorityScheduler>);
+pub struct ElectionSchedulerHandle(pub Arc<PriorityScheduler>);
 
 impl Deref for ElectionSchedulerHandle {
     type Target = Arc<PriorityScheduler>;

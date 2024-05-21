@@ -87,6 +87,65 @@ std::shared_ptr<nano::node_config> get_node_config (rsnano::NodeHandle const * h
 	return config;
 }
 
+namespace{
+void delete_observers_context (void * context)
+{
+	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+	delete observers;
+}
+
+void call_election_ended (void * context, rsnano::ElectionStatusHandle * status_handle,
+rsnano::VoteWithWeightInfoVecHandle * votes_handle, uint8_t const * account_bytes,
+uint8_t const * amount_bytes, bool is_state_send, bool is_state_epoch)
+{
+	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+	auto obs = observers->lock();
+	if (!obs){
+		return;
+	}
+
+	nano::election_status status{ status_handle };
+
+	std::vector<nano::vote_with_weight_info> votes;
+	auto len = rsnano::rsn_vote_with_weight_info_vec_len (votes_handle);
+	for (auto i = 0; i < len; ++i)
+	{
+		rsnano::VoteWithWeightInfoDto dto;
+		rsnano::rsn_vote_with_weight_info_vec_get (votes_handle, i, &dto);
+		votes.emplace_back (dto);
+	}
+	rsnano::rsn_vote_with_weight_info_vec_destroy (votes_handle);
+
+	auto account{ nano::account::from_bytes (account_bytes) };
+	auto amount{ nano::amount::from_bytes (amount_bytes) };
+
+	obs->blocks.notify (status, votes, account, amount.number (), is_state_send, is_state_epoch);
+}
+
+void call_account_balance_changed (void * context, uint8_t const * account, bool is_pending)
+{
+	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+	auto obs = observers->lock();
+	if (!obs){
+		return;
+	}
+	obs->account_balance.notify (nano::account::from_bytes (account), is_pending);
+}
+
+void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
+{
+	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+	auto obs = observers->lock();
+	if (!obs){
+		return;
+	}
+	auto vote = std::make_shared<nano::vote> (vote_handle);
+	auto channel = nano::transport::channel_handle_to_channel (channel_handle);
+	obs->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
+}
+
+}
+
 rsnano::NodeHandle * create_node_handle (
 rsnano::async_runtime & async_rt_a,
 std::filesystem::path const & application_path_a,
@@ -99,8 +158,10 @@ std::shared_ptr<nano::node_observers> & observers)
 	auto config_dto{ config_a.to_dto () };
 	auto params_dto{ config_a.network_params.to_dto () };
 	auto socket_observer = new std::weak_ptr<nano::node_observers> (observers);
+	auto observers_context = new std::weak_ptr<nano::node_observers> (observers);
 	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto,
-	flags_a.handle, work_a.handle, socket_observer);
+	flags_a.handle, work_a.handle, socket_observer, observers_context, delete_observers_context, 
+	call_election_ended, call_account_balance_changed, on_vote_processed);
 }
 }
 
@@ -132,7 +193,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_tcp_message_manager (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
-	bootstrap_initiator (*this),
+	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator(handle)),
 	bootstrap_server{ rsnano::rsn_node_bootstrap_server (handle) },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -141,15 +202,15 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (network->get_port (), *this, config->tcp_incoming_connections_max) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (rsnano::rsn_node_tcp_listener(handle)) },
 	application_path (application_path_a),
 	representative_register (rsnano::rsn_node_representative_register (handle)),
-	rep_crawler (config->rep_crawler, *this),
+	rep_crawler (rsnano::rsn_node_rep_crawler(handle), *this),
 	rep_tiers{ rsnano::rsn_node_rep_tiers (handle) },
 	vote_processor_queue{
 		rsnano::rsn_node_vote_processor_queue (handle)
 	},
-	vote_processor (vote_processor_queue, active, observers, *stats, *config, *logger, rep_crawler, network_params, rep_tiers),
+	vote_processor (rsnano::rsn_node_vote_processor(handle)),
 	warmed_up (0),
 	block_processor (rsnano::rsn_node_block_processor(handle)),
 	online_reps (rsnano::rsn_node_online_reps (handle)),
@@ -157,21 +218,21 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
 	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
 	wallets {rsnano::rsn_node_wallets(handle)},
-	generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* non-final */ false },
-	final_generator{ *this, *config, ledger, wallets, vote_processor, vote_processor_queue, history, *network, *stats, representative_register, /* final */ true },
-	active (*this, confirming_set, block_processor),
-	scheduler_impl{ std::make_unique<nano::scheduler::component> (*this) },
+	generator{rsnano::rsn_node_vote_generator(handle)},
+	final_generator{rsnano::rsn_node_final_generator(handle)},
+	active (*this, rsnano::rsn_node_active(handle)),
+	scheduler_impl{ std::make_unique<nano::scheduler::component> (handle) },
 	scheduler{ *scheduler_impl },
-	aggregator (*config, *stats, generator, final_generator, history, ledger, wallets, active),
-	backlog{ nano::backlog_population_config (*config), ledger, *stats },
-	ascendboot{ *config, block_processor, ledger, *network, *stats },
-	websocket{ async_rt, config->websocket_config, wallets, active, *telemetry, vote_processor },
-	local_block_broadcaster{ *this, block_processor, *network, *stats, !flags.disable_block_processor_republishing () },
-	process_live_dispatcher{ ledger, scheduler.priority, vote_cache, websocket },
+	aggregator (rsnano::rsn_node_request_aggregator(handle)),
+	backlog{rsnano::rsn_node_backlog_population(handle)},
+	ascendboot{ rsnano::rsn_node_ascendboot(handle)},
+	websocket{ rsnano::rsn_node_websocket(handle)},
+	local_block_broadcaster{ rsnano::rsn_node_local_block_broadcaster(handle)},
+	process_live_dispatcher{ rsnano::rsn_node_process_live_dispatcher(handle)},
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq),
-	live_message_processor{ *this },
-	network_threads{ *this }
+	live_message_processor{ rsnano::rsn_node_live_message_processor(handle)},
+	network_threads{rsnano::rsn_node_network_threads(handle)}
 {
 	rsnano::rsn_live_message_processor_bind (live_message_processor.handle, network->tcp_channels->handle);
 	logger->debug (nano::log::type::node, "Constructing node...");
@@ -1164,7 +1225,8 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
-	return active.confirmed (hash_a);
+	auto transaction (store.tx_begin_read ());
+	return ledger.block_confirmed (*transaction, hash_a );
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::store::transaction const & transaction, nano::block_hash const & hash_a)

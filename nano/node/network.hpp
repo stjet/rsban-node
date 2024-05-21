@@ -49,7 +49,6 @@ public:
 	network (nano::node &, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle);
 	~network ();
 
-	void create_tcp_channels ();
 	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
 	// Flood block to a random selection of peers
 	void flood_block (std::shared_ptr<nano::block> const &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter);
@@ -97,6 +96,7 @@ class live_message_processor
 {
 public:
 	live_message_processor (nano::node & node);
+	live_message_processor (rsnano::LiveMessageProcessorHandle * handle);
 	live_message_processor (live_message_processor const &) = delete;
 	~live_message_processor ();
 
@@ -109,6 +109,7 @@ class network_threads
 {
 public:
 	network_threads (nano::node & node);
+	network_threads (rsnano::NetworkThreadsHandle * handle);
 	network_threads (network_threads const &) = delete;
 	~network_threads ();
 

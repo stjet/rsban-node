@@ -1,25 +1,43 @@
 use crate::{
-    block_processing::{BlockProcessorHandle, UncheckedMapHandle},
-    bootstrap::BootstrapServerHandle,
+    block_processing::{
+        BacklogPopulationHandle, BlockProcessorHandle, LocalBlockBroadcasterHandle,
+        UncheckedMapHandle,
+    },
+    bootstrap::{
+        BootstrapAscendingHandle, BootstrapInitiatorHandle, BootstrapServerHandle,
+        TcpListenerHandle,
+    },
     cementation::ConfirmingSetHandle,
     consensus::{
-        LocalVoteHistoryHandle, RepTiersHandle, VoteCacheHandle, VoteProcessorQueueHandle,
+        ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
+        ElectionStatusHandle, FfiAccountBalanceCallback, HintedSchedulerHandle,
+        LocalVoteHistoryHandle, ManualSchedulerHandle, OptimisticSchedulerHandle,
+        ProcessLiveDispatcherHandle, RepTiersHandle, RequestAggregatorHandle, VoteCacheHandle,
+        VoteGeneratorHandle, VoteHandle, VoteProcessorHandle, VoteProcessorQueueHandle,
+        VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
     },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
-    representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
+    representatives::{OnlineRepsHandle, RepCrawlerHandle, RepresentativeRegisterHandle},
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
-        NetworkFilterHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle,
-        TcpChannelsHandle, TcpMessageManagerHandle,
+        ChannelHandle, LiveMessageProcessorHandle, NetworkFilterHandle, NetworkThreadsHandle,
+        OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
+        TcpMessageManagerHandle,
     },
-    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
+    websocket::WebsocketListenerHandle,
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
-use rsnano_node::node::Node;
+use rsnano_core::{Vote, VoteCode};
+use rsnano_node::{
+    consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
+    node::Node,
+    transport::ChannelEnum,
+};
 use std::{
     ffi::{c_char, c_void},
     sync::Arc,
@@ -36,9 +54,52 @@ pub unsafe extern "C" fn rsn_node_create(
     flags: &NodeFlagsHandle,
     work: &WorkPoolHandle,
     socket_observer: *mut c_void,
+    observers_context: *mut c_void,
+    delete_observers_context: VoidPointerCallback,
+    election_ended: ElectionEndedCallback,
+    balance_changed: FfiAccountBalanceCallback,
+    vote_processed: VoteProcessorVoteProcessedCallback,
 ) -> *mut NodeHandle {
     let path = to_rust_string(path);
-    let observer = Arc::new(SocketFfiObserver::new(socket_observer));
+    let socket_observer = Arc::new(SocketFfiObserver::new(socket_observer));
+
+    let ctx_wrapper = Arc::new(ContextWrapper::new(
+        observers_context,
+        delete_observers_context,
+    ));
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let election_ended_wrapper: ElectionEndCallback = Box::new(
+        move |status, votes, account, amount, is_state_send, is_state_epoch| {
+            let status_handle = ElectionStatusHandle::new(status.clone());
+            let votes_handle = VoteWithWeightInfoVecHandle::new(votes.clone());
+            election_ended(
+                ctx.get_context(),
+                status_handle,
+                votes_handle,
+                account.as_bytes().as_ptr(),
+                amount.to_be_bytes().as_ptr(),
+                is_state_send,
+                is_state_epoch,
+            );
+        },
+    );
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let account_balance_changed_wrapper: AccountBalanceChangedCallback =
+        Box::new(move |account, is_pending| {
+            balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
+        });
+
+    let ctx = Arc::clone(&ctx_wrapper);
+    let vote_processed = Box::new(
+        move |vote: &Arc<Vote>, channel: &Arc<ChannelEnum>, code: VoteCode| {
+            let vote_handle = VoteHandle::new(Arc::clone(vote));
+            let channel_handle = ChannelHandle::new(Arc::clone(channel));
+            vote_processed(ctx.get_context(), vote_handle, channel_handle, code as u8);
+        },
+    );
+
     Box::into_raw(Box::new(NodeHandle(Arc::new(Node::new(
         Arc::clone(async_rt),
         path,
@@ -46,7 +107,10 @@ pub unsafe extern "C" fn rsn_node_create(
         params.try_into().unwrap(),
         flags.lock().unwrap().clone(),
         Arc::clone(work),
-        observer,
+        socket_observer,
+        election_ended_wrapper,
+        account_balance_changed_wrapper,
+        vote_processed,
     )))))
 }
 
@@ -217,4 +281,146 @@ pub extern "C" fn rsn_node_block_processor(handle: &NodeHandle) -> *mut BlockPro
 #[no_mangle]
 pub extern "C" fn rsn_node_wallets(handle: &NodeHandle) -> *mut LmdbWalletsHandle {
     Box::into_raw(Box::new(LmdbWalletsHandle(Arc::clone(&handle.0.wallets))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_vote_generator(handle: &NodeHandle) -> *mut VoteGeneratorHandle {
+    Box::into_raw(Box::new(VoteGeneratorHandle(Arc::clone(
+        &handle.0.vote_generator,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_final_generator(handle: &NodeHandle) -> *mut VoteGeneratorHandle {
+    Box::into_raw(Box::new(VoteGeneratorHandle(Arc::clone(
+        &handle.0.final_generator,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_active(handle: &NodeHandle) -> *mut ActiveTransactionsHandle {
+    Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::clone(
+        &handle.0.active,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_vote_processor(handle: &NodeHandle) -> *mut VoteProcessorHandle {
+    Box::into_raw(Box::new(VoteProcessorHandle(Arc::clone(
+        &handle.0.vote_processor,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_websocket(handle: &NodeHandle) -> *mut WebsocketListenerHandle {
+    match &handle.0.websocket {
+        Some(ws) => Box::into_raw(Box::new(WebsocketListenerHandle(Arc::clone(ws)))),
+        None => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_bootstrap_initiator(
+    handle: &NodeHandle,
+) -> *mut BootstrapInitiatorHandle {
+    Box::into_raw(Box::new(BootstrapInitiatorHandle(Arc::clone(
+        &handle.0.bootstrap_initiator,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_rep_crawler(handle: &NodeHandle) -> *mut RepCrawlerHandle {
+    Box::into_raw(Box::new(RepCrawlerHandle(Arc::clone(
+        &handle.0.rep_crawler,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_tcp_listener(handle: &NodeHandle) -> *mut TcpListenerHandle {
+    Box::into_raw(Box::new(TcpListenerHandle(Arc::clone(
+        &handle.0.tcp_listener,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_hinted(handle: &NodeHandle) -> *mut HintedSchedulerHandle {
+    Box::into_raw(Box::new(HintedSchedulerHandle(Arc::clone(
+        &handle.0.hinted_scheduler,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_manual(handle: &NodeHandle) -> *mut ManualSchedulerHandle {
+    Box::into_raw(Box::new(ManualSchedulerHandle(Arc::clone(
+        &handle.0.manual_scheduler,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_optimistic(handle: &NodeHandle) -> *mut OptimisticSchedulerHandle {
+    Box::into_raw(Box::new(OptimisticSchedulerHandle(Arc::clone(
+        &handle.0.optimistic_scheduler,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_priority(handle: &NodeHandle) -> *mut ElectionSchedulerHandle {
+    Box::into_raw(Box::new(ElectionSchedulerHandle(Arc::clone(
+        &handle.0.priority_scheduler,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_request_aggregator(handle: &NodeHandle) -> *mut RequestAggregatorHandle {
+    Box::into_raw(Box::new(RequestAggregatorHandle(Arc::clone(
+        &handle.0.request_aggregator,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_backlog_population(handle: &NodeHandle) -> *mut BacklogPopulationHandle {
+    Box::into_raw(Box::new(BacklogPopulationHandle(Arc::clone(
+        &handle.0.backlog_population,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_ascendboot(handle: &NodeHandle) -> *mut BootstrapAscendingHandle {
+    Box::into_raw(Box::new(BootstrapAscendingHandle(Arc::clone(
+        &handle.0.ascendboot,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_local_block_broadcaster(
+    handle: &NodeHandle,
+) -> *mut LocalBlockBroadcasterHandle {
+    Box::into_raw(Box::new(LocalBlockBroadcasterHandle(Arc::clone(
+        &handle.0.local_block_broadcaster,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_process_live_dispatcher(
+    handle: &NodeHandle,
+) -> *mut ProcessLiveDispatcherHandle {
+    Box::into_raw(Box::new(ProcessLiveDispatcherHandle(Arc::clone(
+        &handle.0.process_live_dispatcher,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_live_message_processor(
+    handle: &NodeHandle,
+) -> *mut LiveMessageProcessorHandle {
+    Box::into_raw(Box::new(LiveMessageProcessorHandle(Arc::clone(
+        &handle.0.live_message_processor,
+    ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_network_threads(handle: &NodeHandle) -> *mut NetworkThreadsHandle {
+    Box::into_raw(Box::new(NetworkThreadsHandle(Arc::clone(
+        &handle.0.network_threads,
+    ))))
 }

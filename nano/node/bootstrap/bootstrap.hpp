@@ -100,6 +100,7 @@ public:
 	rsnano::BootstrapInitiatorHandle * handle;
 
 	explicit bootstrap_initiator (nano::node &);
+	explicit bootstrap_initiator (rsnano::BootstrapInitiatorHandle * handle);
 	bootstrap_initiator (nano::bootstrap_initiator const &) = delete;
 	~bootstrap_initiator ();
 	void bootstrap (nano::endpoint const &, bool add_to_peers = true, std::string id_a = "");

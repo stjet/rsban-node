@@ -36,6 +36,7 @@ class priority final
 {
 public:
 	priority (nano::node &, nano::stats &);
+	priority (rsnano::ElectionSchedulerHandle * handle);
 	priority (priority const &) = delete;
 	priority (priority &&) = delete;
 	~priority ();

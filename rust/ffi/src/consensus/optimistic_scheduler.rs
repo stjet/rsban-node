@@ -12,7 +12,7 @@ use std::{
 
 use super::ActiveTransactionsHandle;
 
-pub struct OptimisticSchedulerHandle(Arc<OptimisticScheduler>);
+pub struct OptimisticSchedulerHandle(pub Arc<OptimisticScheduler>);
 
 #[no_mangle]
 pub extern "C" fn rsn_optimistic_scheduler_create(

@@ -51,6 +51,7 @@ class active_transactions final
 {
 public:
 	active_transactions (nano::node &, nano::confirming_set &, nano::block_processor &);
+	active_transactions (nano::node &, rsnano::ActiveTransactionsHandle* handle);
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
@@ -108,7 +109,6 @@ public: // Events
 	// It is possible for an election to be confirmed on disk but not in memory, for instance if implicitly confirmed via confirmation height
 	bool confirmed (nano::election const & election) const;
 	bool confirmed_locked (nano::election_lock & lock) const;
-	bool confirmed (nano::block_hash const & hash) const;
 	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
 	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
 	/*

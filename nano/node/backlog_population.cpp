@@ -44,6 +44,11 @@ nano::backlog_population::backlog_population (const config & config_a, nano::led
 	handle = rsnano::rsn_backlog_population_create (&config_dto, ledger_a.get_handle (), stats_a.handle);
 }
 
+nano::backlog_population::backlog_population (rsnano::BacklogPopulationHandle * handle) :
+	handle{handle}
+{
+}
+
 nano::backlog_population::~backlog_population ()
 {
 	rsnano::rsn_backlog_population_destroy (handle);

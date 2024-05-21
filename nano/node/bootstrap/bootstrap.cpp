@@ -64,6 +64,13 @@ nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
 	rsnano::rsn_bootstrap_initiator_start (handle);
 }
 
+nano::bootstrap_initiator::bootstrap_initiator (rsnano::BootstrapInitiatorHandle * handle) :
+	handle{ handle},
+	attempts{ rsnano::rsn_bootstrap_initiator_attempts (handle) },
+	connections{ std::make_shared<nano::bootstrap_connections> (rsnano::rsn_bootstrap_initiator_connections (handle)) },
+	cache{ rsnano::rsn_bootstrap_initiator_cache (handle) }
+{}
+
 nano::bootstrap_initiator::~bootstrap_initiator ()
 {
 	stop ();

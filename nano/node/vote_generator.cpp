@@ -35,6 +35,11 @@ nano::vote_generator::vote_generator (nano::node & node_a, nano::node_config con
 	config_a.vote_generator_threshold);
 }
 
+nano::vote_generator::vote_generator (rsnano::VoteGeneratorHandle * handle):
+	handle{handle}
+{ 
+}
+
 nano::vote_generator::~vote_generator ()
 {
 	rsnano::rsn_vote_generator_destroy (handle);

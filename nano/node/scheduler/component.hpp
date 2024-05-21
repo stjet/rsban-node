@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/node/election.hpp>
 
@@ -32,6 +33,7 @@ class component final
 
 public:
 	explicit component (nano::node & node);
+	explicit component (rsnano::NodeHandle *);
 	~component ();
 
 	// Starts all schedulers

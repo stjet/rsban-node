@@ -36,7 +36,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct ActiveTransactionsHandle(Arc<ActiveTransactions>);
+pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);
 
 impl ActiveTransactionsHandle {
     pub fn new(inner: Arc<ActiveTransactions>) -> *mut Self {

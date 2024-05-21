@@ -19,6 +19,7 @@ class tcp_listener final : public std::enable_shared_from_this<tcp_listener>
 {
 public:
 	tcp_listener (uint16_t, nano::node &, std::size_t);
+	tcp_listener (rsnano::TcpListenerHandle * handle);
 	tcp_listener (tcp_listener const &) = delete;
 	~tcp_listener ();
 

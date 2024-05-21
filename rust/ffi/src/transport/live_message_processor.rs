@@ -13,7 +13,7 @@ use crate::{
 
 use super::{ChannelHandle, TcpChannelsHandle};
 
-pub struct LiveMessageProcessorHandle(Arc<LiveMessageProcessor>);
+pub struct LiveMessageProcessorHandle(pub Arc<LiveMessageProcessor>);
 
 #[no_mangle]
 pub extern "C" fn rsn_live_message_processor_create(

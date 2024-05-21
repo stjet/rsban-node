@@ -639,6 +639,7 @@ nano::wallets::wallets (rsnano::LmdbWalletsHandle * handle) :
 
 nano::wallets::~wallets ()
 {
+	stop_actions();
 	rsnano::rsn_lmdb_wallets_destroy (rust_handle);
 }
 

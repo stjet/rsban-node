@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-pub struct RepCrawlerHandle(Arc<RepCrawler>);
+pub struct RepCrawlerHandle(pub Arc<RepCrawler>);
 
 impl Deref for RepCrawlerHandle {
     type Target = Arc<RepCrawler>;

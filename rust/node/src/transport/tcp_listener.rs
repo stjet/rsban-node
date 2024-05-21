@@ -276,6 +276,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         &self,
         callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
     ) -> anyhow::Result<()> {
+        error!("Starting TCP listener");
         let mut data = self.data.lock().unwrap();
 
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));

@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct RequestAggregatorHandle(Arc<RequestAggregator>);
+pub struct RequestAggregatorHandle(pub Arc<RequestAggregator>);
 
 impl Deref for RequestAggregatorHandle {
     type Target = Arc<RequestAggregator>;

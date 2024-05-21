@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct LocalBlockBroadcasterHandle(Arc<LocalBlockBroadcaster>);
+pub struct LocalBlockBroadcasterHandle(pub Arc<LocalBlockBroadcaster>);
 
 #[no_mangle]
 pub extern "C" fn rsn_local_block_broadcaster_create(

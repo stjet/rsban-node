@@ -19,14 +19,22 @@ mod vote_processor_queue;
 mod vote_spacing;
 mod vote_with_weight_info;
 
-pub use active_transactions::ActiveTransactionsHandle;
+pub use active_transactions::{
+    ActiveTransactionsHandle, ElectionEndedCallback, FfiAccountBalanceCallback,
+};
 pub use election_status::ElectionStatusHandle;
+pub use hinted_scheduler::HintedSchedulerHandle;
 pub use local_vote_history::LocalVoteHistoryHandle;
+pub use manual_scheduler::ManualSchedulerHandle;
+pub use optimistic_scheduler::OptimisticSchedulerHandle;
+pub use priority_scheduler::ElectionSchedulerHandle;
+pub use process_live_dispatcher::ProcessLiveDispatcherHandle;
 pub use rep_tiers::RepTiersHandle;
 pub use request_aggregator::RequestAggregatorHandle;
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_cache::VoteCacheHandle;
-pub use vote_processor::VoteProcessorHandle;
+pub use vote_generator::VoteGeneratorHandle;
+pub use vote_processor::{VoteProcessorHandle, VoteProcessorVoteProcessedCallback};
 pub use vote_processor_queue::VoteProcessorQueueHandle;
 pub use vote_with_weight_info::VoteWithWeightInfoVecHandle;

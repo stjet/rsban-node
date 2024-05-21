@@ -29,11 +29,6 @@ nano::network::~network ()
 {
 }
 
-void nano::network::create_tcp_channels ()
-{
-	tcp_channels = std::move (std::make_shared<nano::transport::tcp_channels> (node, port));
-}
-
 void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	nano::keepalive message{ node.network_params.network };
@@ -278,6 +273,10 @@ nano::live_message_processor::live_message_processor (nano::node & node)
 	node.telemetry->handle, node.bootstrap_server.handle, node.ascendboot.handle);
 }
 
+nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :
+	handle{handle}
+{}
+
 nano::live_message_processor::~live_message_processor ()
 {
 	rsnano::rsn_live_message_processor_destroy (handle);
@@ -300,6 +299,10 @@ nano::network_threads::network_threads (nano::node & node)
 	node.stats->handle,
 	node.network->syn_cookies->handle);
 }
+
+nano::network_threads::network_threads (rsnano::NetworkThreadsHandle * handle) :
+	handle{handle}
+{}
 
 nano::network_threads::~network_threads ()
 {

@@ -44,6 +44,7 @@ class optimistic final
 
 public:
 	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
+	optimistic (rsnano::OptimisticSchedulerHandle * handle);
 	optimistic (optimistic const &) = delete;
 	~optimistic ();
 

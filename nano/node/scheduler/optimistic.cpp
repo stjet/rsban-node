@@ -16,6 +16,11 @@ nano::scheduler::optimistic::optimistic (optimistic_config const & config_a, nan
 	handle = rsnano::rsn_optimistic_scheduler_create (&config_dto, stats_a.handle, active_a.handle, &constants_dto, ledger_a.handle, node_a.confirming_set.handle);
 }
 
+nano::scheduler::optimistic::optimistic (rsnano::OptimisticSchedulerHandle * handle) :
+	handle{handle}
+{
+}
+
 nano::scheduler::optimistic::~optimistic ()
 {
 	rsnano::rsn_optimistic_scheduler_destroy (handle);

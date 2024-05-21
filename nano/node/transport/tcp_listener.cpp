@@ -32,6 +32,10 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 	node_a.node_id.prv.bytes.data ());
 }
 
+nano::transport::tcp_listener::tcp_listener (rsnano::TcpListenerHandle * handle) :
+	handle{handle}
+{}
+
 nano::transport::tcp_listener::~tcp_listener ()
 {
 	rsnano::rsn_tcp_listener_destroy (handle);

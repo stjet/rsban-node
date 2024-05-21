@@ -158,26 +158,26 @@ public:
 	nano::vote_cache vote_cache;
 	nano::block_processor block_processor;
 	nano::wallets wallets;
-	nano::vote_generator generator; // ported
-	nano::vote_generator final_generator; // ported
-	nano::active_transactions active; // ported
-	nano::vote_processor vote_processor; // ported
-	nano::websocket_server websocket; // ported
-	nano::bootstrap_initiator bootstrap_initiator; // ported
-	nano::rep_crawler rep_crawler; // ported
-	std::shared_ptr<nano::transport::tcp_listener> tcp_listener; // ported
+	nano::vote_generator generator;
+	nano::vote_generator final_generator;
+	nano::active_transactions active;
+	nano::vote_processor vote_processor;
+	nano::websocket_server websocket;
+	nano::bootstrap_initiator bootstrap_initiator;
+	nano::rep_crawler rep_crawler; 
+	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 
 private: // Placed here to maintain initialization order
-	std::unique_ptr<nano::scheduler::component> scheduler_impl; // ported
+	std::unique_ptr<nano::scheduler::component> scheduler_impl;
 
 public:
-	nano::scheduler::component & scheduler; // ported
-	nano::request_aggregator aggregator; // ported
-	nano::backlog_population backlog; // ported
-	nano::bootstrap_ascending::service ascendboot; // ported
-	nano::local_block_broadcaster local_block_broadcaster; // ported
-	nano::process_live_dispatcher process_live_dispatcher; // ported
-	nano::live_message_processor live_message_processor; // ported
+	nano::scheduler::component & scheduler; 
+	nano::request_aggregator aggregator;
+	nano::backlog_population backlog; 
+	nano::bootstrap_ascending::service ascendboot; 
+	nano::local_block_broadcaster local_block_broadcaster;
+	nano::process_live_dispatcher process_live_dispatcher; 
+	nano::live_message_processor live_message_processor; 
 	nano::network_threads network_threads; // ported
 
 	std::chrono::steady_clock::time_point const startup_time;

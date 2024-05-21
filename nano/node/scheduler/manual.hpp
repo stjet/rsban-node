@@ -23,6 +23,7 @@ class manual final
 {
 public:
 	manual (nano::node & node);
+	manual (rsnano::ManualSchedulerHandle * handle);
 	manual (manual const &) = delete;
 	~manual ();
 

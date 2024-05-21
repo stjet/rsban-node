@@ -15,6 +15,10 @@ nano::process_live_dispatcher::process_live_dispatcher (nano::ledger & ledger, n
 {
 }
 
+nano::process_live_dispatcher::process_live_dispatcher (rsnano::ProcessLiveDispatcherHandle * handle) :
+	handle{ handle}
+{}
+
 nano::process_live_dispatcher::~process_live_dispatcher ()
 {
 	rsnano::rsn_process_live_dispatcher_destroy (handle);

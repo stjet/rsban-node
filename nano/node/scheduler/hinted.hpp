@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
 #include <nano/secure/common.hpp>
@@ -44,6 +45,7 @@ class hinted final
 {
 public:
 	hinted (hinted_config const &, nano::node &, nano::vote_cache &, nano::active_transactions &, nano::online_reps &, nano::stats &);
+	hinted (rsnano::HintedSchedulerHandle * handle);
 	hinted (hinted const &) = delete;
 	~hinted ();
 

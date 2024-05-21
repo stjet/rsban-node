@@ -88,7 +88,7 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
     WebsocketMessageHandle::new(message)
 }
 
-pub struct WebsocketListenerHandle(Arc<WebsocketListener>);
+pub struct WebsocketListenerHandle(pub Arc<WebsocketListener>);
 
 impl WebsocketListenerHandle {
     pub fn new(listener: Arc<WebsocketListener>) -> *mut Self {

@@ -29,6 +29,7 @@ namespace bootstrap_ascending
 	{
 	public:
 		service (nano::node_config &, nano::block_processor &, nano::ledger &, nano::network &, nano::stats &);
+		service (rsnano::BootstrapAscendingHandle * handle);
 		service (service const &) = delete;
 		~service ();
 

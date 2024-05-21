@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct ManualSchedulerHandle(Arc<ManualScheduler>);
+pub struct ManualSchedulerHandle(pub Arc<ManualScheduler>);
 
 #[no_mangle]
 pub extern "C" fn rsn_manual_scheduler_create(

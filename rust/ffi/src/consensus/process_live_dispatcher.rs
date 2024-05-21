@@ -6,7 +6,7 @@ use crate::{
 use rsnano_node::consensus::{ProcessLiveDispatcher, ProcessLiveDispatcherExt};
 use std::sync::Arc;
 
-pub struct ProcessLiveDispatcherHandle(Arc<ProcessLiveDispatcher>);
+pub struct ProcessLiveDispatcherHandle(pub Arc<ProcessLiveDispatcher>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_process_live_dispatcher_create(

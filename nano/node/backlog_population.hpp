@@ -35,6 +35,7 @@ public:
 	};
 
 	backlog_population (const config &, nano::ledger &, nano::stats &);
+	backlog_population (rsnano::BacklogPopulationHandle * handle);
 	backlog_population (backlog_population const &) = delete;
 	backlog_population (backlog_population &&) = delete;
 	~backlog_population ();

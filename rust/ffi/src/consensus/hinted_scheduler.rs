@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 
-pub struct HintedSchedulerHandle(Arc<HintedScheduler>);
+pub struct HintedSchedulerHandle(pub Arc<HintedScheduler>);
 
 #[no_mangle]
 pub extern "C" fn rsn_hinted_scheduler_create(

@@ -118,6 +118,10 @@ nano::rep_tiers & rep_tiers_a)
 	handle = rsnano::rsn_vote_processor_create (queue_a.handle, active_a.handle, stats_a.handle, on_vote_processed, context, delete_vote_processed);
 }
 
+nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
+	handle{handle}
+{}
+
 nano::vote_processor::~vote_processor ()
 {
 	rsnano::rsn_vote_processor_destroy (handle);

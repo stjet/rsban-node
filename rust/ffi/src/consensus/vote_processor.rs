@@ -11,7 +11,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
-pub struct VoteProcessorHandle(Arc<VoteProcessor>);
+pub struct VoteProcessorHandle(pub Arc<VoteProcessor>);
 
 impl Deref for VoteProcessorHandle {
     type Target = Arc<VoteProcessor>;

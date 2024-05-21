@@ -25,7 +25,7 @@ impl From<&BacklogPopulationConfigDto> for BacklogPopulationConfig {
     }
 }
 
-pub struct BacklogPopulationHandle(BacklogPopulation);
+pub struct BacklogPopulationHandle(pub Arc<BacklogPopulation>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_backlog_population_create(
@@ -33,10 +33,12 @@ pub unsafe extern "C" fn rsn_backlog_population_create(
     ledger_handle: *mut LedgerHandle,
     stats_handle: *mut StatHandle,
 ) -> *mut BacklogPopulationHandle {
-    Box::into_raw(Box::new(BacklogPopulationHandle(BacklogPopulation::new(
-        (&*config_dto).into(),
-        Arc::clone(&(*ledger_handle).0),
-        Arc::clone(&(*stats_handle).0),
+    Box::into_raw(Box::new(BacklogPopulationHandle(Arc::new(
+        BacklogPopulation::new(
+            (&*config_dto).into(),
+            Arc::clone(&(*ledger_handle).0),
+            Arc::clone(&(*stats_handle).0),
+        ),
     ))))
 }
 
@@ -46,23 +48,23 @@ pub unsafe extern "C" fn rsn_backlog_population_destroy(handle: *mut BacklogPopu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_start(handle: *mut BacklogPopulationHandle) {
-    (*handle).0.start();
+pub extern "C" fn rsn_backlog_population_start(handle: &mut BacklogPopulationHandle) {
+    handle.0.start();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_stop(handle: *mut BacklogPopulationHandle) {
-    (*handle).0.stop();
+pub extern "C" fn rsn_backlog_population_stop(handle: &mut BacklogPopulationHandle) {
+    handle.0.stop();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_trigger(handle: *mut BacklogPopulationHandle) {
-    (*handle).0.trigger();
+pub extern "C" fn rsn_backlog_population_trigger(handle: &BacklogPopulationHandle) {
+    handle.0.trigger();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_notify(handle: *mut BacklogPopulationHandle) {
-    (*handle).0.notify();
+pub extern "C" fn rsn_backlog_population_notify(handle: &BacklogPopulationHandle) {
+    handle.0.notify();
 }
 
 pub type BacklogPopulationActivateCallback = unsafe extern "C" fn(

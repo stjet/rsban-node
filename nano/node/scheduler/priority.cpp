@@ -11,6 +11,11 @@ nano::scheduler::priority::priority (nano::node & node_a, nano::stats & stats_a)
 {
 }
 
+nano::scheduler::priority::priority (rsnano::ElectionSchedulerHandle * handle) :
+	handle{handle}
+{
+}
+
 nano::scheduler::priority::~priority ()
 {
 	rsnano::rsn_election_scheduler_destroy (handle);

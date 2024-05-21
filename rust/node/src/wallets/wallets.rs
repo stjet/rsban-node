@@ -743,6 +743,16 @@ impl<T: Environment + 'static> Wallets<T> {
         temp.destroy(&mut tx);
         result
     }
+
+    pub fn get_seed(&self, wallet_id: WalletId) -> Result<RawKey, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        Ok(wallet.store.seed(&tx))
+    }
 }
 
 const GENERATE_PRIORITY: Amount = Amount::MAX;
@@ -792,6 +802,13 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     fn ongoing_compute_reps(&self);
 
     fn change_seed(
+        &self,
+        wallet_id: WalletId,
+        prv_key: &RawKey,
+        count: u32,
+    ) -> Result<(u32, Account), WalletsError>;
+
+    fn change_seed_wallet(
         &self,
         wallet: &Arc<Wallet<T>>,
         tx: &mut LmdbWriteTransaction<T>,
@@ -904,6 +921,8 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         rep: Account,
         update_existing_accounts: bool,
     ) -> Result<(), WalletsError>;
+
+    fn ensure_wallet_is_unlocked(&self, wallet_id: WalletId, password: &str) -> bool;
 }
 
 impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
@@ -1091,7 +1110,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         );
     }
 
-    fn change_seed(
+    fn change_seed_wallet(
         &self,
         wallet: &Arc<Wallet<T>>,
         tx: &mut LmdbWriteTransaction<T>,
@@ -1108,6 +1127,23 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
             account = self.deterministic_insert(wallet, tx, false);
         }
         account
+    }
+
+    fn change_seed(
+        &self,
+        wallet_id: WalletId,
+        prv_key: &RawKey,
+        count: u32,
+    ) -> Result<(u32, Account), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        let mut tx = self.env.tx_begin_write();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+        let first_account = self.change_seed_wallet(wallet, &mut tx, prv_key, count);
+        let restored_count = wallet.store.deterministic_index_get(&tx);
+        Ok((restored_count, first_account))
     }
 
     fn send_action(
@@ -1697,6 +1733,20 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         }
 
         Ok(())
+    }
+
+    fn ensure_wallet_is_unlocked(&self, wallet_id: WalletId, password: &str) -> bool {
+        let guard = self.mutex.lock().unwrap();
+        let Some(existing) = guard.get(&wallet_id) else {
+            return false;
+        };
+        let tx = self.env.tx_begin_write();
+        let mut valid = existing.store.valid_password(&tx);
+        if !valid {
+            valid = self.enter_password_wallet(existing, &tx, password).is_ok();
+        }
+
+        valid
     }
 }
 

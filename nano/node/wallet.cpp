@@ -726,59 +726,19 @@ nano::wallets_error nano::wallets::set_representative (nano::wallet_id const & w
 
 nano::wallets_error nano::wallets::get_seed (nano::wallet_id const & wallet_id, nano::raw_key & prv_a) const
 {
-	auto lock{ mutex.lock () };
-	auto wallet = lock.find (wallet_id);
-
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-
-	auto txn{ tx_begin_read () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	wallet->store.seed (prv_a, *txn);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_get_seed (rust_handle, wallet_id.bytes.data (), prv_a.bytes.data ());
+	return static_cast<nano::wallets_error> (result);
 }
 
 nano::wallets_error nano::wallets::change_seed (nano::wallet_id const & wallet_id, nano::raw_key const & prv_a, uint32_t count, nano::public_key & first_account, uint32_t & restored_count)
 {
-	auto lock{ mutex.lock () };
-	auto wallet = lock.find (wallet_id);
-
-	if (wallet == nullptr)
-	{
-		return nano::wallets_error::wallet_not_found;
-	}
-
-	auto txn{ tx_begin_write () };
-	if (!wallet->store.valid_password (*txn))
-	{
-		return nano::wallets_error::wallet_locked;
-	}
-
-	first_account = change_seed (wallet, *txn, prv_a, count);
-	restored_count = wallet->store.deterministic_index_get (*txn);
-	return nano::wallets_error::none;
+	auto result = rsnano::rsn_wallets_change_seed2 (rust_handle, wallet_id.bytes.data (), prv_a.bytes.data (), count, first_account.bytes.data (), &restored_count);
+	return static_cast<nano::wallets_error> (result);
 }
 
 bool nano::wallets::ensure_wallet_is_unlocked (nano::wallet_id const & wallet_id, std::string const & password_a)
 {
-	auto lock{ mutex.lock () };
-	auto existing{ lock.find (wallet_id) };
-	bool valid (false);
-	{
-		auto transaction{ tx_begin_write () };
-		valid = existing->store.valid_password (*transaction);
-		if (!valid)
-		{
-			valid = !enter_password (existing, *transaction, password_a);
-		}
-	}
-	return valid;
+	return rsnano::rsn_wallets_ensure_wallet_is_unlocked (rust_handle, wallet_id.bytes.data (), password_a.c_str ());
 }
 
 bool nano::wallets::import_replace (nano::wallet_id const & wallet_id, std::string const & json_a, std::string const & password_a)

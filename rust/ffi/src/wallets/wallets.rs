@@ -9,6 +9,7 @@ use crate::{
     core::{BlockDetailsDto, BlockHandle},
     ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
+    to_rust_string,
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
@@ -664,7 +665,8 @@ pub unsafe extern "C" fn rsn_wallets_change_seed(
     count: u32,
     pub_key: *mut u8,
 ) {
-    let key = handle.change_seed(wallet, tx.as_write_txn(), &RawKey::from_ptr(prv_key), count);
+    let key =
+        handle.change_seed_wallet(wallet, tx.as_write_txn(), &RawKey::from_ptr(prv_key), count);
     key.copy_bytes(pub_key);
 }
 
@@ -1024,6 +1026,53 @@ pub unsafe extern "C" fn rsn_wallets_change_async(
         generate_work,
     ) {
         Ok(()) => WalletsError::None as u8,
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_ensure_wallet_is_unlocked(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    password: *const c_char,
+) -> bool {
+    handle.ensure_wallet_is_unlocked(WalletId::from_ptr(wallet_id), &to_rust_string(password))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_change_seed2(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    prv_key: *const u8,
+    count: u32,
+    first_account: *mut u8,
+    restored_count: &mut u32,
+) -> u8 {
+    match handle.change_seed(
+        WalletId::from_ptr(wallet_id),
+        &RawKey::from_ptr(prv_key),
+        count,
+    ) {
+        Ok((restored, first)) => {
+            *restored_count = restored;
+            first.copy_bytes(first_account);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_get_seed(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    prv_key: *mut u8,
+) -> u8 {
+    match handle.get_seed(WalletId::from_ptr(wallet_id)) {
+        Ok(seed) => {
+            seed.copy_bytes(prv_key);
+            WalletsError::None as u8
+        }
         Err(e) => e as u8,
     }
 }

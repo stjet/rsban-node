@@ -51,7 +51,7 @@ class active_transactions final
 {
 public:
 	active_transactions (nano::node &, nano::confirming_set &, nano::block_processor &);
-	active_transactions (nano::node &, rsnano::ActiveTransactionsHandle* handle);
+	active_transactions (nano::node &, rsnano::ActiveTransactionsHandle * handle);
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 

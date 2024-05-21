@@ -26,9 +26,8 @@ nano::active_transactions & active_a)
 	rsnano::rsn_request_aggregator_start (handle);
 }
 
-
 nano::request_aggregator::request_aggregator (rsnano::RequestAggregatorHandle * handle) :
-	handle{handle}
+	handle{ handle }
 {
 }
 

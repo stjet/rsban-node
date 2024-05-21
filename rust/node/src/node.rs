@@ -1,16 +1,20 @@
 use crate::{
     block_processing::{
-        BacklogPopulation, BacklogPopulationConfig, BlockProcessor, LocalBlockBroadcaster,
-        LocalBlockBroadcasterExt, UncheckedMap,
+        BacklogPopulation, BacklogPopulationConfig, BlockProcessor, BlockSource,
+        LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
     },
-    bootstrap::{BootstrapAscending, BootstrapInitiator, BootstrapInitiatorExt, BootstrapServer},
+    bootstrap::{
+        BootstrapAscending, BootstrapInitiator, BootstrapInitiatorExt,
+        BootstrapMessageVisitorFactory, BootstrapServer,
+    },
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{
-        AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt,
+        AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt, ElectionBehavior,
         ElectionEndCallback, HintedScheduler, LocalVoteHistory, ManualScheduler,
-        OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher, RepTiers, RequestAggregator,
-        RequestAggregatorExt, VoteCache, VoteGenerator, VoteProcessor, VoteProcessorQueue,
+        OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache, VoteGenerator, VoteProcessor,
+        VoteProcessorQueue,
     },
     node_id_key_file::NodeIdKeyFile,
     representatives::{RepCrawler, RepresentativeRegister},
@@ -18,7 +22,7 @@ use crate::{
     transport::{
         ChannelEnum, InboundCallback, LiveMessageProcessor, NetworkFilter, NetworkThreads,
         OutboundBandwidthLimiter, SocketObserver, SynCookies, TcpChannels, TcpChannelsOptions,
-        TcpListener, TcpMessageManager,
+        TcpListener, TcpListenerExt, TcpMessageManager,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
@@ -42,6 +46,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
+use tracing::debug;
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
@@ -141,6 +146,8 @@ impl Node {
             "Worker".to_string(),
         ));
 
+        // empty `config.peering_port` means the user made no port choice at all;
+        // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
             node_config: config.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
@@ -396,6 +403,13 @@ impl Node {
             Arc::clone(&active),
         ));
 
+        // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
+        //         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
+        //         (if UDP is active, otherwise it happens when `bootstrap` gets initialized), so then for TCP traffic
+        //         we want to tell `bootstrap` to use the already picked port instead of itself picking a different one.
+        //         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
+        //         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
+        //
         let tcp_listener = Arc::new(TcpListener::new(
             channels.port(),
             config.tcp_incoming_connections_max as usize,
@@ -531,13 +545,97 @@ impl Node {
             Arc::clone(&syn_cookies),
         ));
 
+        let processor = Arc::downgrade(&live_message_processor);
+        channels.set_sink(Box::new(move |msg, channel| {
+            if let Some(processor) = processor.upgrade() {
+                processor.process(msg.message, &channel);
+            }
+        }));
+
+        debug!("Constructing node...");
+
+        let manual_weak = Arc::downgrade(&manual_scheduler);
+        wallets.set_start_election_callback(Box::new(move |block| {
+            if let Some(manual) = manual_weak.upgrade() {
+                manual.push(block, None, ElectionBehavior::Normal);
+            }
+        }));
+
+        let rep_crawler_w = Arc::downgrade(&rep_crawler);
+        if !flags.disable_rep_crawler {
+            channels.on_new_channel(Arc::new(move |channel| {
+                if let Some(crawler) = rep_crawler_w.upgrade() {
+                    crawler.query_channel(channel);
+                }
+            }));
+        }
+
+        let block_processor_w = Arc::downgrade(&block_processor);
+        let history_w = Arc::downgrade(&history);
+        let active_w = Arc::downgrade(&active);
+        block_processor.set_blocks_rolled_back_callback(Box::new(
+            move |rolled_back, initial_block| {
+                // Deleting from votes cache, stop active transaction
+                let Some(block_processor) = block_processor_w.upgrade() else {
+                    return;
+                };
+                let Some(history) = history_w.upgrade() else {
+                    return;
+                };
+                let Some(active) = active_w.upgrade() else {
+                    return;
+                };
+                for i in rolled_back {
+                    block_processor.notify_block_rolled_back(&i);
+
+                    history.erase(&i.root());
+                    // Stop all rolled back active transactions except initial
+                    if i.hash() != initial_block.hash() {
+                        active.erase(&i.qualified_root());
+                    }
+                }
+            },
+        ));
+
+        channels.set_observer(Arc::downgrade(&Arc::clone(&tcp_listener).as_observer()));
+
+        let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
+            config.bootstrap_serving_threads as usize,
+            "Bootstrap work".to_string(),
+        ));
+
+        let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
+            Arc::clone(&async_rt),
+            Arc::clone(&syn_cookies),
+            Arc::clone(&stats),
+            network_params.network.clone(),
+            Arc::new(node_id.clone()),
+            Arc::clone(&ledger),
+            Arc::clone(&bootstrap_workers),
+            Arc::clone(&block_processor),
+            Arc::clone(&bootstrap_initiator),
+            flags.clone(),
+        ));
+
+        channels.set_message_visitor_factory(visitor_factory);
+
+        process_live_dispatcher.connect(&block_processor);
+
+        let block_processor_w = Arc::downgrade(&block_processor);
+        unchecked.set_satisfied_observer(Box::new(move |info| {
+            if let Some(processor) = block_processor_w.upgrade() {
+                processor.add(
+                    info.block.as_ref().unwrap().clone(),
+                    BlockSource::Unchecked,
+                    None,
+                );
+            }
+        }));
+
         Self {
             node_id,
             workers,
-            bootstrap_workers: Arc::new(ThreadPoolImpl::create(
-                config.bootstrap_serving_threads as usize,
-                "Bootstrap work".to_string(),
-            )),
+            bootstrap_workers,
             distributed_work,
             unchecked,
             telemetry,

@@ -8,9 +8,10 @@
 #include <nano/node/network.hpp>
 #include <nano/node/node.hpp>
 
-nano::local_block_broadcaster::local_block_broadcaster (rsnano::LocalBlockBroadcasterHandle * handle)
-	: handle{handle}
-{}
+nano::local_block_broadcaster::local_block_broadcaster (rsnano::LocalBlockBroadcasterHandle * handle) :
+	handle{ handle }
+{
+}
 
 nano::local_block_broadcaster::~local_block_broadcaster ()
 {

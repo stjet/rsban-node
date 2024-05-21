@@ -135,9 +135,9 @@ nano::active_transactions::active_transactions (nano::node & node_a, nano::confi
 	rsnano::rsn_active_transactions_initialize (handle);
 }
 
-nano::active_transactions::active_transactions (nano::node & node_a, rsnano::ActiveTransactionsHandle* handle) :
-	handle{handle},
-	node{node_a}
+nano::active_transactions::active_transactions (nano::node & node_a, rsnano::ActiveTransactionsHandle * handle) :
+	handle{ handle },
+	node{ node_a }
 {
 }
 

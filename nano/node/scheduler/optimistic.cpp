@@ -17,7 +17,7 @@ nano::scheduler::optimistic::optimistic (optimistic_config const & config_a, nan
 }
 
 nano::scheduler::optimistic::optimistic (rsnano::OptimisticSchedulerHandle * handle) :
-	handle{handle}
+	handle{ handle }
 {
 }
 

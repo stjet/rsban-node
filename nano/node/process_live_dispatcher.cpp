@@ -11,8 +11,9 @@
 #include <nano/store/component.hpp>
 
 nano::process_live_dispatcher::process_live_dispatcher (rsnano::ProcessLiveDispatcherHandle * handle) :
-	handle{ handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::process_live_dispatcher::~process_live_dispatcher ()
 {

@@ -28,8 +28,9 @@ nano::bootstrap_ascending::service::service (nano::node_config & config_a, nano:
 }
 
 nano::bootstrap_ascending::service::service (rsnano::BootstrapAscendingHandle * handle) :
-	handle{handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::bootstrap_ascending::service::~service ()
 {

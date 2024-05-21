@@ -33,8 +33,9 @@ nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_
 }
 
 nano::transport::tcp_listener::tcp_listener (rsnano::TcpListenerHandle * handle) :
-	handle{handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::transport::tcp_listener::~tcp_listener ()
 {

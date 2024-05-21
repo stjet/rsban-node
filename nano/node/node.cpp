@@ -87,62 +87,66 @@ std::shared_ptr<nano::node_config> get_node_config (rsnano::NodeHandle const * h
 	return config;
 }
 
-namespace{
-void delete_observers_context (void * context)
+namespace
 {
-	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
-	delete observers;
-}
-
-void call_election_ended (void * context, rsnano::ElectionStatusHandle * status_handle,
-rsnano::VoteWithWeightInfoVecHandle * votes_handle, uint8_t const * account_bytes,
-uint8_t const * amount_bytes, bool is_state_send, bool is_state_epoch)
-{
-	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
-	auto obs = observers->lock();
-	if (!obs){
-		return;
-	}
-
-	nano::election_status status{ status_handle };
-
-	std::vector<nano::vote_with_weight_info> votes;
-	auto len = rsnano::rsn_vote_with_weight_info_vec_len (votes_handle);
-	for (auto i = 0; i < len; ++i)
+	void delete_observers_context (void * context)
 	{
-		rsnano::VoteWithWeightInfoDto dto;
-		rsnano::rsn_vote_with_weight_info_vec_get (votes_handle, i, &dto);
-		votes.emplace_back (dto);
+		auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+		delete observers;
 	}
-	rsnano::rsn_vote_with_weight_info_vec_destroy (votes_handle);
 
-	auto account{ nano::account::from_bytes (account_bytes) };
-	auto amount{ nano::amount::from_bytes (amount_bytes) };
+	void call_election_ended (void * context, rsnano::ElectionStatusHandle * status_handle,
+	rsnano::VoteWithWeightInfoVecHandle * votes_handle, uint8_t const * account_bytes,
+	uint8_t const * amount_bytes, bool is_state_send, bool is_state_epoch)
+	{
+		auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+		auto obs = observers->lock ();
+		if (!obs)
+		{
+			return;
+		}
 
-	obs->blocks.notify (status, votes, account, amount.number (), is_state_send, is_state_epoch);
-}
+		nano::election_status status{ status_handle };
 
-void call_account_balance_changed (void * context, uint8_t const * account, bool is_pending)
-{
-	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
-	auto obs = observers->lock();
-	if (!obs){
-		return;
+		std::vector<nano::vote_with_weight_info> votes;
+		auto len = rsnano::rsn_vote_with_weight_info_vec_len (votes_handle);
+		for (auto i = 0; i < len; ++i)
+		{
+			rsnano::VoteWithWeightInfoDto dto;
+			rsnano::rsn_vote_with_weight_info_vec_get (votes_handle, i, &dto);
+			votes.emplace_back (dto);
+		}
+		rsnano::rsn_vote_with_weight_info_vec_destroy (votes_handle);
+
+		auto account{ nano::account::from_bytes (account_bytes) };
+		auto amount{ nano::amount::from_bytes (amount_bytes) };
+
+		obs->blocks.notify (status, votes, account, amount.number (), is_state_send, is_state_epoch);
 	}
-	obs->account_balance.notify (nano::account::from_bytes (account), is_pending);
-}
 
-void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
-{
-	auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
-	auto obs = observers->lock();
-	if (!obs){
-		return;
+	void call_account_balance_changed (void * context, uint8_t const * account, bool is_pending)
+	{
+		auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+		auto obs = observers->lock ();
+		if (!obs)
+		{
+			return;
+		}
+		obs->account_balance.notify (nano::account::from_bytes (account), is_pending);
 	}
-	auto vote = std::make_shared<nano::vote> (vote_handle);
-	auto channel = nano::transport::channel_handle_to_channel (channel_handle);
-	obs->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
-}
+
+	void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
+	{
+		auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
+		auto obs = observers->lock ();
+		if (!obs)
+		{
+			return;
+		}
+		auto vote = std::make_shared<nano::vote> (vote_handle);
+		auto channel = nano::transport::channel_handle_to_channel (channel_handle);
+		obs->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
+	}
 
 }
 
@@ -160,7 +164,7 @@ std::shared_ptr<nano::node_observers> & observers)
 	auto socket_observer = new std::weak_ptr<nano::node_observers> (observers);
 	auto observers_context = new std::weak_ptr<nano::node_observers> (observers);
 	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto,
-	flags_a.handle, work_a.handle, socket_observer, observers_context, delete_observers_context, 
+	flags_a.handle, work_a.handle, socket_observer, observers_context, delete_observers_context,
 	call_election_ended, call_account_balance_changed, on_vote_processed);
 }
 }
@@ -193,7 +197,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
 	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_tcp_message_manager (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
-	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator(handle)),
+	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator (handle)),
 	bootstrap_server{ rsnano::rsn_node_bootstrap_server (handle) },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -202,77 +206,38 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	//         Thus, be very careful if you change the order: if `bootstrap` gets constructed before `network`,
 	//         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
 	//
-	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (rsnano::rsn_node_tcp_listener(handle)) },
+	tcp_listener{ std::make_shared<nano::transport::tcp_listener> (rsnano::rsn_node_tcp_listener (handle)) },
 	application_path (application_path_a),
 	representative_register (rsnano::rsn_node_representative_register (handle)),
-	rep_crawler (rsnano::rsn_node_rep_crawler(handle), *this),
+	rep_crawler (rsnano::rsn_node_rep_crawler (handle), *this),
 	rep_tiers{ rsnano::rsn_node_rep_tiers (handle) },
 	vote_processor_queue{
 		rsnano::rsn_node_vote_processor_queue (handle)
 	},
-	vote_processor (rsnano::rsn_node_vote_processor(handle)),
+	vote_processor (rsnano::rsn_node_vote_processor (handle)),
 	warmed_up (0),
-	block_processor (rsnano::rsn_node_block_processor(handle)),
+	block_processor (rsnano::rsn_node_block_processor (handle)),
 	online_reps (rsnano::rsn_node_online_reps (handle)),
 	history{ rsnano::rsn_node_history (handle) },
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
 	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
-	wallets {rsnano::rsn_node_wallets(handle)},
-	generator{rsnano::rsn_node_vote_generator(handle)},
-	final_generator{rsnano::rsn_node_final_generator(handle)},
-	active (*this, rsnano::rsn_node_active(handle)),
+	wallets{ rsnano::rsn_node_wallets (handle) },
+	generator{ rsnano::rsn_node_vote_generator (handle) },
+	final_generator{ rsnano::rsn_node_final_generator (handle) },
+	active (*this, rsnano::rsn_node_active (handle)),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (handle) },
 	scheduler{ *scheduler_impl },
-	aggregator (rsnano::rsn_node_request_aggregator(handle)),
-	backlog{rsnano::rsn_node_backlog_population(handle)},
-	ascendboot{ rsnano::rsn_node_ascendboot(handle)},
-	websocket{ rsnano::rsn_node_websocket(handle)},
-	local_block_broadcaster{ rsnano::rsn_node_local_block_broadcaster(handle)},
-	process_live_dispatcher{ rsnano::rsn_node_process_live_dispatcher(handle)},
+	aggregator (rsnano::rsn_node_request_aggregator (handle)),
+	backlog{ rsnano::rsn_node_backlog_population (handle) },
+	ascendboot{ rsnano::rsn_node_ascendboot (handle) },
+	websocket{ rsnano::rsn_node_websocket (handle) },
+	local_block_broadcaster{ rsnano::rsn_node_local_block_broadcaster (handle) },
+	process_live_dispatcher{ rsnano::rsn_node_process_live_dispatcher (handle) },
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq),
-	live_message_processor{ rsnano::rsn_node_live_message_processor(handle)},
-	network_threads{rsnano::rsn_node_network_threads(handle)}
+	live_message_processor{ rsnano::rsn_node_live_message_processor (handle) },
+	network_threads{ rsnano::rsn_node_network_threads (handle) }
 {
-	rsnano::rsn_live_message_processor_bind (live_message_processor.handle, network->tcp_channels->handle);
-	logger->debug (nano::log::type::node, "Constructing node...");
-
-	wallets.set_start_election_callback ([this] (std::shared_ptr<nano::block> const & block) {
-		start_election (block);
-	});
-
-	if (!flags.disable_rep_crawler ())
-	{
-		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel) {
-			rep_crawler.query (channel);
-		});
-	}
-
-	std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> handle_roll_back =
-	[node_a = &(*this)] (std::vector<std::shared_ptr<nano::block>> const & rolled_back, std::shared_ptr<nano::block> const & initial_block) {
-		// Deleting from votes cache, stop active transaction
-		for (auto & i : rolled_back)
-		{
-			node_a->block_processor.notify_block_rolled_back (i);
-
-			node_a->history.erase (i->root ());
-			// Stop all rolled back active transactions except initial
-			if (i->hash () != initial_block->hash ())
-			{
-				node_a->active.erase (*i);
-			}
-		}
-	};
-	block_processor.set_blocks_rolled_back_callback (handle_roll_back);
-	network->tcp_channels->set_observer (tcp_listener);
-	nano::transport::request_response_visitor_factory visitor_factory{ *this };
-	network->tcp_channels->set_message_visitor_factory (visitor_factory);
-
-	process_live_dispatcher.connect (block_processor);
-	unchecked.set_satisfied_observer ([this] (nano::unchecked_info const & info) {
-		this->block_processor.add (info.get_block (), nano::block_source::unchecked);
-	});
-
 	backlog.set_activate_callback ([this] (nano::store::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
 		scheduler.priority.activate (account, transaction);
 		scheduler.optimistic.activate (account, account_info, conf_info);
@@ -298,225 +263,226 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		}
 	});
 
-	if (!init_error ())
+	if (init_error ())
 	{
-		// Notify election schedulers when AEC frees election slot
-		active.set_vacancy_update ([this] () {
-			scheduler.priority.notify ();
-			scheduler.hinted.notify ();
-			scheduler.optimistic.notify ();
-		});
+		return;
+	}
+	// Notify election schedulers when AEC frees election slot
+	active.set_vacancy_update ([this] () {
+		scheduler.priority.notify ();
+		scheduler.hinted.notify ();
+		scheduler.optimistic.notify ();
+	});
 
-		wallets.set_actions_observer ([this] (bool active) {
-			observers->wallet.notify (active);
-		});
-		network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
-			debug_assert (channel_a != nullptr);
-			observers->endpoint.notify (channel_a);
-		});
-		if (!config->callback_address.empty ())
-		{
-			observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
-				auto block_a (status_a.get_winner ());
-				if ((status_a.get_election_status_type () == nano::election_status_type::active_confirmed_quorum || status_a.get_election_status_type () == nano::election_status_type::active_confirmation_height))
-				{
-					auto node_l (shared_from_this ());
-					background ([node_l, block_a, account_a, amount_a, is_state_send_a, is_state_epoch_a] () {
-						boost::property_tree::ptree event;
-						event.add ("account", account_a.to_account ());
-						event.add ("hash", block_a->hash ().to_string ());
-						std::string block_text;
-						block_a->serialize_json (block_text);
-						event.add ("block", block_text);
-						event.add ("amount", amount_a.to_string_dec ());
-						if (is_state_send_a)
-						{
-							event.add ("is_send", is_state_send_a);
-							event.add ("subtype", "send");
-						}
-						// Subtype field
-						else if (block_a->type () == nano::block_type::state)
-						{
-							if (block_a->is_change ())
-							{
-								event.add ("subtype", "change");
-							}
-							else if (is_state_epoch_a)
-							{
-								debug_assert (amount_a == 0 && node_l->ledger.is_epoch_link (block_a->link_field ().value ()));
-								event.add ("subtype", "epoch");
-							}
-							else
-							{
-								event.add ("subtype", "receive");
-							}
-						}
-						std::stringstream ostream;
-						boost::property_tree::write_json (ostream, event);
-						ostream.flush ();
-						auto body (std::make_shared<std::string> (ostream.str ()));
-						auto address (node_l->config->callback_address);
-						auto port (node_l->config->callback_port);
-						auto target (std::make_shared<std::string> (node_l->config->callback_target));
-						auto resolver (std::make_shared<boost::asio::ip::tcp::resolver> (node_l->io_ctx));
-						resolver->async_resolve (boost::asio::ip::tcp::resolver::query (address, std::to_string (port)), [node_l, address, port, target, body, resolver] (boost::system::error_code const & ec, boost::asio::ip::tcp::resolver::iterator i_a) {
-							if (!ec)
-							{
-								node_l->do_rpc_callback (i_a, address, port, target, body, resolver);
-							}
-							else
-							{
-								node_l->logger->error (nano::log::type::rpc_callbacks, "Error resolving callback: {}:{} ({})", address, port, ec.message ());
-								node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
-							}
-						});
-					});
-				}
-			});
-		}
-
-		// Add block confirmation type stats regardless of http-callback and websocket subscriptions
+	wallets.set_actions_observer ([this] (bool active) {
+		observers->wallet.notify (active);
+	});
+	network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
+		debug_assert (channel_a != nullptr);
+		observers->endpoint.notify (channel_a);
+	});
+	if (!config->callback_address.empty ())
+	{
 		observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
-			debug_assert (status_a.get_election_status_type () != nano::election_status_type::ongoing);
-			switch (status_a.get_election_status_type ())
+			auto block_a (status_a.get_winner ());
+			if ((status_a.get_election_status_type () == nano::election_status_type::active_confirmed_quorum || status_a.get_election_status_type () == nano::election_status_type::active_confirmation_height))
 			{
-				case nano::election_status_type::active_confirmed_quorum:
-					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out);
-					break;
-				case nano::election_status_type::active_confirmation_height:
-					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out);
-					break;
-				case nano::election_status_type::inactive_confirmation_height:
-					this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out);
-					break;
-				default:
-					break;
-			}
-		});
-		observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
-			this->network->send_keepalive_self (channel_a);
-		});
-
-		observers->vote.add ([this] (std::shared_ptr<nano::vote> vote, std::shared_ptr<nano::transport::channel> const & channel, nano::vote_code code) {
-			debug_assert (code != nano::vote_code::invalid);
-			bool active_in_rep_crawler = rep_crawler.process (vote, channel);
-			if (active_in_rep_crawler)
-			{
-				// Representative is defined as online if replying to live votes or rep_crawler queries
-				this->online_reps.observe (vote->account ());
-			}
-		});
-
-		// Cancelling local work generation
-		observers->work_cancel.add ([this] (nano::root const & root_a) {
-			this->work.cancel (root_a);
-			this->distributed_work.cancel (root_a);
-		});
-
-		auto const network_label = network_params.network.get_current_network_as_string ();
-
-		logger->info (nano::log::type::node, "Node starting, version: {}", NANO_VERSION_STRING);
-		logger->info (nano::log::type::node, "Build information: {}", BUILD_INFO);
-		logger->info (nano::log::type::node, "Active network: {}", network_label);
-		logger->info (nano::log::type::node, "Database backend: {}", store.vendor_get ());
-		logger->info (nano::log::type::node, "Data path: {}", application_path.string ());
-		logger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl () ? "OpenCL" : "CPU"));
-		logger->info (nano::log::type::node, "Work peers: {}", config->work_peers.size ());
-		logger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
-
-		if (!work_generation_enabled ())
-		{
-			logger->info (nano::log::type::node, "Work generation is disabled");
-		}
-
-		logger->info (nano::log::type::node, "Outbound bandwidth limit: {} bytes/s, burst ratio: {}",
-		config->bandwidth_limit,
-		config->bandwidth_limit_burst_ratio);
-
-		if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
-		{
-			logger->critical (nano::log::type::node, "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
-
-			if (network_params.network.is_beta_network ())
-			{
-				logger->critical (nano::log::type::node, "Beta network may have reset, try clearing database files");
-			}
-
-			std::exit (1);
-		}
-
-		if (config->enable_voting)
-		{
-			logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count ());
-			if (wallets.voting_reps_count () > 1)
-			{
-				logger->warn (nano::log::type::node, "Voting with more than one representative can limit performance");
-			}
-		}
-
-		if ((network_params.network.is_live_network () || network_params.network.is_beta_network ()) && !flags.inactive_node ())
-		{
-			auto const bootstrap_weights = get_bootstrap_weights ();
-			ledger.set_bootstrap_weight_max_blocks (bootstrap_weights.first);
-
-			logger->info (nano::log::type::node, "Initial bootstrap height: {}", ledger.get_bootstrap_weight_max_blocks ());
-			logger->info (nano::log::type::node, "Current ledger height:    {}", ledger.block_count ());
-
-			// Use bootstrap weights if initial bootstrap is not completed
-			const bool use_bootstrap_weight = ledger.block_count () < bootstrap_weights.first;
-			if (use_bootstrap_weight)
-			{
-				logger->info (nano::log::type::node, "Using predefined representative weights, since block count is less than bootstrap threshold");
-				ledger.set_bootstrap_weights (bootstrap_weights.second);
-
-				logger->info (nano::log::type::node, "************************************ Bootstrap weights ************************************");
-				// Sort the weights
-				auto weights{ ledger.get_bootstrap_weights () };
-				std::vector<std::pair<nano::account, nano::uint128_t>> sorted_weights (weights.begin (), weights.end ());
-				std::sort (sorted_weights.begin (), sorted_weights.end (), [] (auto const & entry1, auto const & entry2) {
-					return entry1.second > entry2.second;
-				});
-
-				for (auto const & rep : sorted_weights)
-				{
-					logger->info (nano::log::type::node, "Using bootstrap rep weight: {} -> {}",
-					rep.first.to_account (),
-					nano::uint128_union (rep.second).format_balance (Mxrb_ratio, 0, true));
-				}
-				logger->info (nano::log::type::node, "************************************ ================= ************************************");
-			}
-		}
-
-		{
-			auto tx{ store.tx_begin_read () };
-			if (flags.enable_pruning () || store.pruned ().count (*tx) > 0)
-			{
-				ledger.enable_pruning ();
-			};
-		}
-
-		if (ledger.pruning_enabled ())
-		{
-			if (config->enable_voting && !flags.inactive_node ())
-			{
-				logger->critical (nano::log::type::node, "Incompatibility detected between config node.enable_voting and existing pruned blocks");
-				std::exit (1);
-			}
-			else if (!flags.enable_pruning () && !flags.inactive_node ())
-			{
-				logger->critical (nano::log::type::node, "To start node with existing pruned blocks use launch flag --enable_pruning");
-				std::exit (1);
-			}
-		}
-		confirming_set.add_cemented_observer ([this] (auto const & block) {
-			if (block->is_send ())
-			{
-				workers->push_task ([this, hash = block->hash (), destination = block->destination ()] () {
-					wallets.receive_confirmed (hash, destination);
+				auto node_l (shared_from_this ());
+				background ([node_l, block_a, account_a, amount_a, is_state_send_a, is_state_epoch_a] () {
+					boost::property_tree::ptree event;
+					event.add ("account", account_a.to_account ());
+					event.add ("hash", block_a->hash ().to_string ());
+					std::string block_text;
+					block_a->serialize_json (block_text);
+					event.add ("block", block_text);
+					event.add ("amount", amount_a.to_string_dec ());
+					if (is_state_send_a)
+					{
+						event.add ("is_send", is_state_send_a);
+						event.add ("subtype", "send");
+					}
+					// Subtype field
+					else if (block_a->type () == nano::block_type::state)
+					{
+						if (block_a->is_change ())
+						{
+							event.add ("subtype", "change");
+						}
+						else if (is_state_epoch_a)
+						{
+							debug_assert (amount_a == 0 && node_l->ledger.is_epoch_link (block_a->link_field ().value ()));
+							event.add ("subtype", "epoch");
+						}
+						else
+						{
+							event.add ("subtype", "receive");
+						}
+					}
+					std::stringstream ostream;
+					boost::property_tree::write_json (ostream, event);
+					ostream.flush ();
+					auto body (std::make_shared<std::string> (ostream.str ()));
+					auto address (node_l->config->callback_address);
+					auto port (node_l->config->callback_port);
+					auto target (std::make_shared<std::string> (node_l->config->callback_target));
+					auto resolver (std::make_shared<boost::asio::ip::tcp::resolver> (node_l->io_ctx));
+					resolver->async_resolve (boost::asio::ip::tcp::resolver::query (address, std::to_string (port)), [node_l, address, port, target, body, resolver] (boost::system::error_code const & ec, boost::asio::ip::tcp::resolver::iterator i_a) {
+						if (!ec)
+						{
+							node_l->do_rpc_callback (i_a, address, port, target, body, resolver);
+						}
+						else
+						{
+							node_l->logger->error (nano::log::type::rpc_callbacks, "Error resolving callback: {}:{} ({})", address, port, ec.message ());
+							node_l->stats->inc (nano::stat::type::error, nano::stat::detail::http_callback, nano::stat::dir::out);
+						}
+					});
 				});
 			}
 		});
 	}
+
+	// Add block confirmation type stats regardless of http-callback and websocket subscriptions
+	observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
+		debug_assert (status_a.get_election_status_type () != nano::election_status_type::ongoing);
+		switch (status_a.get_election_status_type ())
+		{
+			case nano::election_status_type::active_confirmed_quorum:
+				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out);
+				break;
+			case nano::election_status_type::active_confirmation_height:
+				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out);
+				break;
+			case nano::election_status_type::inactive_confirmation_height:
+				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out);
+				break;
+			default:
+				break;
+		}
+	});
+	observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
+		this->network->send_keepalive_self (channel_a);
+	});
+
+	observers->vote.add ([this] (std::shared_ptr<nano::vote> vote, std::shared_ptr<nano::transport::channel> const & channel, nano::vote_code code) {
+		debug_assert (code != nano::vote_code::invalid);
+		bool active_in_rep_crawler = rep_crawler.process (vote, channel);
+		if (active_in_rep_crawler)
+		{
+			// Representative is defined as online if replying to live votes or rep_crawler queries
+			this->online_reps.observe (vote->account ());
+		}
+	});
+
+	// Cancelling local work generation
+	observers->work_cancel.add ([this] (nano::root const & root_a) {
+		this->work.cancel (root_a);
+		this->distributed_work.cancel (root_a);
+	});
+
+	auto const network_label = network_params.network.get_current_network_as_string ();
+
+	logger->info (nano::log::type::node, "Node starting, version: {}", NANO_VERSION_STRING);
+	logger->info (nano::log::type::node, "Build information: {}", BUILD_INFO);
+	logger->info (nano::log::type::node, "Active network: {}", network_label);
+	logger->info (nano::log::type::node, "Database backend: {}", store.vendor_get ());
+	logger->info (nano::log::type::node, "Data path: {}", application_path.string ());
+	logger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl () ? "OpenCL" : "CPU"));
+	logger->info (nano::log::type::node, "Work peers: {}", config->work_peers.size ());
+	logger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
+
+	if (!work_generation_enabled ())
+	{
+		logger->info (nano::log::type::node, "Work generation is disabled");
+	}
+
+	logger->info (nano::log::type::node, "Outbound bandwidth limit: {} bytes/s, burst ratio: {}",
+	config->bandwidth_limit,
+	config->bandwidth_limit_burst_ratio);
+
+	if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
+	{
+		logger->critical (nano::log::type::node, "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
+
+		if (network_params.network.is_beta_network ())
+		{
+			logger->critical (nano::log::type::node, "Beta network may have reset, try clearing database files");
+		}
+
+		std::exit (1);
+	}
+
+	if (config->enable_voting)
+	{
+		logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count ());
+		if (wallets.voting_reps_count () > 1)
+		{
+			logger->warn (nano::log::type::node, "Voting with more than one representative can limit performance");
+		}
+	}
+
+	if ((network_params.network.is_live_network () || network_params.network.is_beta_network ()) && !flags.inactive_node ())
+	{
+		auto const bootstrap_weights = get_bootstrap_weights ();
+		ledger.set_bootstrap_weight_max_blocks (bootstrap_weights.first);
+
+		logger->info (nano::log::type::node, "Initial bootstrap height: {}", ledger.get_bootstrap_weight_max_blocks ());
+		logger->info (nano::log::type::node, "Current ledger height:    {}", ledger.block_count ());
+
+		// Use bootstrap weights if initial bootstrap is not completed
+		const bool use_bootstrap_weight = ledger.block_count () < bootstrap_weights.first;
+		if (use_bootstrap_weight)
+		{
+			logger->info (nano::log::type::node, "Using predefined representative weights, since block count is less than bootstrap threshold");
+			ledger.set_bootstrap_weights (bootstrap_weights.second);
+
+			logger->info (nano::log::type::node, "************************************ Bootstrap weights ************************************");
+			// Sort the weights
+			auto weights{ ledger.get_bootstrap_weights () };
+			std::vector<std::pair<nano::account, nano::uint128_t>> sorted_weights (weights.begin (), weights.end ());
+			std::sort (sorted_weights.begin (), sorted_weights.end (), [] (auto const & entry1, auto const & entry2) {
+				return entry1.second > entry2.second;
+			});
+
+			for (auto const & rep : sorted_weights)
+			{
+				logger->info (nano::log::type::node, "Using bootstrap rep weight: {} -> {}",
+				rep.first.to_account (),
+				nano::uint128_union (rep.second).format_balance (Mxrb_ratio, 0, true));
+			}
+			logger->info (nano::log::type::node, "************************************ ================= ************************************");
+		}
+	}
+
+	{
+		auto tx{ store.tx_begin_read () };
+		if (flags.enable_pruning () || store.pruned ().count (*tx) > 0)
+		{
+			ledger.enable_pruning ();
+		};
+	}
+
+	if (ledger.pruning_enabled ())
+	{
+		if (config->enable_voting && !flags.inactive_node ())
+		{
+			logger->critical (nano::log::type::node, "Incompatibility detected between config node.enable_voting and existing pruned blocks");
+			std::exit (1);
+		}
+		else if (!flags.enable_pruning () && !flags.inactive_node ())
+		{
+			logger->critical (nano::log::type::node, "To start node with existing pruned blocks use launch flag --enable_pruning");
+			std::exit (1);
+		}
+	}
+	confirming_set.add_cemented_observer ([this] (auto const & block) {
+		if (block->is_send ())
+		{
+			workers->push_task ([this, hash = block->hash (), destination = block->destination ()] () {
+				wallets.receive_confirmed (hash, destination);
+			});
+		}
+	});
 }
 
 nano::node::~node ()
@@ -1226,7 +1192,7 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
 	auto transaction (store.tx_begin_read ());
-	return ledger.block_confirmed (*transaction, hash_a );
+	return ledger.block_confirmed (*transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::store::transaction const & transaction, nano::block_hash const & hash_a)

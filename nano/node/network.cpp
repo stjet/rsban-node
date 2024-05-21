@@ -260,8 +260,9 @@ void nano::network::set_port (uint16_t port_a)
 }
 
 nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :
-	handle{handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::live_message_processor::~live_message_processor ()
 {
@@ -274,8 +275,9 @@ void nano::live_message_processor::process (const nano::message & message, const
 }
 
 nano::network_threads::network_threads (rsnano::NetworkThreadsHandle * handle) :
-	handle{handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::network_threads::~network_threads ()
 {

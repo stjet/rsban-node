@@ -132,7 +132,7 @@ impl TcpChannels {
                 attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
-                new_channel_observer: None,
+                new_channel_observers: Vec::new(),
                 tcp_server_factory: tcp_server_factory.clone(),
             }),
             sink: RwLock::new(Box::new(|_, _| {})),
@@ -181,7 +181,11 @@ impl TcpChannels {
     }
 
     pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>) {
-        self.tcp_channels.lock().unwrap().new_channel_observer = Some(callback);
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .new_channel_observers
+            .push(callback);
     }
 
     pub fn insert(
@@ -206,10 +210,10 @@ impl TcpChannels {
                 let wrapper = Arc::new(ChannelEntry::new(channel.clone(), server));
                 lock.channels.insert(wrapper);
                 lock.attempts.remove(&endpoint);
-                let observer = lock.new_channel_observer.clone();
+                let observers = lock.new_channel_observers.clone();
                 drop(lock);
-                if let Some(callback) = observer {
-                    callback(channel.clone());
+                for observer in observers {
+                    observer(channel.clone());
                 }
                 return Ok(());
             }
@@ -986,7 +990,7 @@ pub struct TcpChannelsImpl {
     pub attempts: TcpEndpointAttemptContainer,
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
-    new_channel_observer: Option<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
+    new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
     pub tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
 }
 

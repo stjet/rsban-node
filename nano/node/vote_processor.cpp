@@ -119,8 +119,9 @@ nano::rep_tiers & rep_tiers_a)
 }
 
 nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
-	handle{handle}
-{}
+	handle{ handle }
+{
+}
 
 nano::vote_processor::~vote_processor ()
 {

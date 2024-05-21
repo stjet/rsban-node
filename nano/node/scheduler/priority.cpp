@@ -12,7 +12,7 @@ nano::scheduler::priority::priority (nano::node & node_a, nano::stats & stats_a)
 }
 
 nano::scheduler::priority::priority (rsnano::ElectionSchedulerHandle * handle) :
-	handle{handle}
+	handle{ handle }
 {
 }
 

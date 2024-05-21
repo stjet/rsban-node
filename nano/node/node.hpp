@@ -164,20 +164,20 @@ public:
 	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;
 	nano::bootstrap_initiator bootstrap_initiator;
-	nano::rep_crawler rep_crawler; 
+	nano::rep_crawler rep_crawler;
 	std::shared_ptr<nano::transport::tcp_listener> tcp_listener;
 
 private: // Placed here to maintain initialization order
 	std::unique_ptr<nano::scheduler::component> scheduler_impl;
 
 public:
-	nano::scheduler::component & scheduler; 
+	nano::scheduler::component & scheduler;
 	nano::request_aggregator aggregator;
-	nano::backlog_population backlog; 
-	nano::bootstrap_ascending::service ascendboot; 
+	nano::backlog_population backlog;
+	nano::bootstrap_ascending::service ascendboot;
 	nano::local_block_broadcaster local_block_broadcaster;
-	nano::process_live_dispatcher process_live_dispatcher; 
-	nano::live_message_processor live_message_processor; 
+	nano::process_live_dispatcher process_live_dispatcher;
+	nano::live_message_processor live_message_processor;
 	nano::network_threads network_threads;
 
 	std::chrono::steady_clock::time_point const startup_time;

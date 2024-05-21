@@ -45,7 +45,7 @@ nano::backlog_population::backlog_population (const config & config_a, nano::led
 }
 
 nano::backlog_population::backlog_population (rsnano::BacklogPopulationHandle * handle) :
-	handle{handle}
+	handle{ handle }
 {
 }
 

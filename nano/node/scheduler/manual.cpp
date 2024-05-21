@@ -10,10 +10,10 @@ nano::scheduler::manual::manual (nano::node & node) :
 {
 }
 
-nano::scheduler::manual::manual (rsnano::ManualSchedulerHandle * handle) : 
-	handle{handle}{
-
-	}
+nano::scheduler::manual::manual (rsnano::ManualSchedulerHandle * handle) :
+	handle{ handle }
+{
+}
 
 nano::scheduler::manual::~manual ()
 {

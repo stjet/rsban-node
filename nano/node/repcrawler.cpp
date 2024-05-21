@@ -187,8 +187,8 @@ nano::rep_crawler::rep_crawler (nano::rep_crawler_config const & config_a, nano:
 }
 
 nano::rep_crawler::rep_crawler (rsnano::RepCrawlerHandle * handle, nano::node & node_a) :
-	handle{handle},
-	node{node_a}
+	handle{ handle },
+	node{ node_a }
 {
 }
 

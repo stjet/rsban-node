@@ -20,7 +20,10 @@ nano::scheduler::hinted::hinted (nano::scheduler::hinted_config const & config_a
 	handle = rsnano::rsn_hinted_scheduler_create (&config_dto, active_a.handle, node_a.ledger.handle, stats_a.handle, vote_cache_a.handle, node_a.confirming_set.handle, online_reps_a.get_handle ());
 }
 
-nano::scheduler::hinted::hinted (rsnano::HintedSchedulerHandle * handle) : handle{handle}{}
+nano::scheduler::hinted::hinted (rsnano::HintedSchedulerHandle * handle) :
+	handle{ handle }
+{
+}
 
 nano::scheduler::hinted::~hinted ()
 {

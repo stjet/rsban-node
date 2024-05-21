@@ -115,7 +115,8 @@ nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano
 	}
 }
 
-nano::websocket_server::websocket_server (rsnano::WebsocketListenerHandle * handle){
+nano::websocket_server::websocket_server (rsnano::WebsocketListenerHandle * handle)
+{
 	if (handle != nullptr)
 	{
 		server = std::make_unique<nano::websocket::listener> (handle);

@@ -10,11 +10,6 @@
 #include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
 
-nano::process_live_dispatcher::process_live_dispatcher (nano::ledger & ledger, nano::scheduler::priority & scheduler, nano::vote_cache & vote_cache, nano::websocket_server & websocket) :
-	handle{ rsnano::rsn_process_live_dispatcher_create (ledger.handle, scheduler.handle, websocket.get_handle ()) }
-{
-}
-
 nano::process_live_dispatcher::process_live_dispatcher (rsnano::ProcessLiveDispatcherHandle * handle) :
 	handle{ handle}
 {}

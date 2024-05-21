@@ -23,7 +23,6 @@ class node;
 class syn_cookies final
 {
 public:
-	explicit syn_cookies (std::size_t max_peers_per_ip);
 	explicit syn_cookies (rsnano::SynCookiesHandle * handle);
 	syn_cookies (nano::syn_cookies const &) = delete;
 	~syn_cookies ();
@@ -95,7 +94,6 @@ std::unique_ptr<container_info_component> collect_container_info (network & netw
 class live_message_processor
 {
 public:
-	live_message_processor (nano::node & node);
 	live_message_processor (rsnano::LiveMessageProcessorHandle * handle);
 	live_message_processor (live_message_processor const &) = delete;
 	~live_message_processor ();
@@ -108,7 +106,6 @@ public:
 class network_threads
 {
 public:
-	network_threads (nano::node & node);
 	network_threads (rsnano::NetworkThreadsHandle * handle);
 	network_threads (network_threads const &) = delete;
 	~network_threads ();

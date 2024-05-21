@@ -167,11 +167,6 @@ bool nano::network::empty () const
  * syn_cookies
  */
 
-nano::syn_cookies::syn_cookies (std::size_t max_cookies_per_ip_a) :
-	handle{ rsnano::rsn_syn_cookies_create (max_cookies_per_ip_a) }
-{
-}
-
 nano::syn_cookies::syn_cookies (rsnano::SynCookiesHandle * handle) :
 	handle{ handle }
 {
@@ -264,15 +259,6 @@ void nano::network::set_port (uint16_t port_a)
 	tcp_channels->set_port (port_a);
 }
 
-nano::live_message_processor::live_message_processor (nano::node & node)
-{
-	auto config_dto{ node.config->to_dto () };
-	handle = rsnano::rsn_live_message_processor_create (node.stats->handle, node.network->tcp_channels->handle,
-	node.block_processor.handle, &config_dto, node.flags.handle,
-	node.wallets.rust_handle, node.aggregator.handle, node.vote_processor_queue.handle,
-	node.telemetry->handle, node.bootstrap_server.handle, node.ascendboot.handle);
-}
-
 nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :
 	handle{handle}
 {}
@@ -285,19 +271,6 @@ nano::live_message_processor::~live_message_processor ()
 void nano::live_message_processor::process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
 {
 	rsnano::rsn_live_message_processor_process (handle, message.handle, channel->handle);
-}
-
-nano::network_threads::network_threads (nano::node & node)
-{
-	auto config_dto{ node.config->to_dto () };
-	auto params_dto{ node.network_params.to_dto () };
-	handle = rsnano::rsn_network_threads_create (
-	node.network->tcp_channels->handle,
-	&config_dto,
-	node.flags.handle,
-	&params_dto,
-	node.stats->handle,
-	node.network->syn_cookies->handle);
 }
 
 nano::network_threads::network_threads (rsnano::NetworkThreadsHandle * handle) :

@@ -178,7 +178,7 @@ public:
 	nano::local_block_broadcaster local_block_broadcaster;
 	nano::process_live_dispatcher process_live_dispatcher; 
 	nano::live_message_processor live_message_processor; 
-	nano::network_threads network_threads; // ported
+	nano::network_threads network_threads;
 
 	std::chrono::steady_clock::time_point const startup_time;
 	std::chrono::seconds unchecked_cutoff = std::chrono::seconds (7 * 24 * 60 * 60); // Week

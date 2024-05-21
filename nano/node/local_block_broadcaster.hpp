@@ -29,7 +29,6 @@ class local_block_broadcaster
 	};
 
 public:
-	local_block_broadcaster (nano::node &, nano::block_processor &, nano::network &, nano::stats &, bool enabled = false);
 	local_block_broadcaster (rsnano::LocalBlockBroadcasterHandle * handle);
 	local_block_broadcaster (local_block_broadcaster const &) = delete;
 	~local_block_broadcaster ();

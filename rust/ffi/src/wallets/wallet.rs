@@ -24,48 +24,6 @@ impl Deref for WalletHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_wallet_create(
-    ledger: &LedgerHandle,
-    work: &WorkThresholdsDto,
-    fanout: usize,
-    kdf: &KdfHandle,
-    txn: &mut TransactionHandle,
-    representative: *const u8,
-    wallet_path: *const c_char,
-    json: *const c_char,
-) -> *mut WalletHandle {
-    let txn = txn.as_write_txn();
-    let representative = Account::from_ptr(representative);
-    let wallet_path = PathBuf::from(CStr::from_ptr(wallet_path).to_str().unwrap());
-    let work = WorkThresholds::from(work);
-    let wallet = if json.is_null() {
-        Wallet::new(
-            Arc::clone(ledger),
-            work,
-            txn,
-            fanout,
-            kdf.deref().clone(),
-            representative,
-            &wallet_path,
-        )
-    } else {
-        Wallet::new_from_json(
-            Arc::clone(ledger),
-            work,
-            txn,
-            fanout,
-            kdf.deref().clone(),
-            &wallet_path,
-            CStr::from_ptr(json).to_str().unwrap(),
-        )
-    };
-    match wallet {
-        Ok(w) => Box::into_raw(Box::new(WalletHandle(Arc::new(w)))),
-        Err(_) => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_wallet_store(
     handle: *const WalletHandle,
 ) -> *mut LmdbWalletStoreHandle {

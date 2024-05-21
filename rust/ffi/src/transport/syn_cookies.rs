@@ -15,13 +15,6 @@ impl Deref for SynCookiesHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_syn_cookies_create(max_cookies_per_ip: usize) -> *mut SynCookiesHandle {
-    Box::into_raw(Box::new(SynCookiesHandle(Arc::new(SynCookies::new(
-        max_cookies_per_ip,
-    )))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_syn_cookies_destroy(handle: *mut SynCookiesHandle) {
     drop(Box::from_raw(handle))
 }

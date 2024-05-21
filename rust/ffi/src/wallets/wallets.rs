@@ -532,11 +532,6 @@ pub unsafe extern "C" fn rsn_wallets_compute_reps(handle: &LmdbWalletsHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_ongoing_compute_reps(handle: &LmdbWalletsHandle) {
-    handle.ongoing_compute_reps();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_wallets_destroy(handle: &LmdbWalletsHandle, wallet_id: *const u8) {
     handle.destroy(&WalletId::from_ptr(wallet_id));
 }

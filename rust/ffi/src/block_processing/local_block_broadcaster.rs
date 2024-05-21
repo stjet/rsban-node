@@ -13,40 +13,10 @@ use std::{
 pub struct LocalBlockBroadcasterHandle(pub Arc<LocalBlockBroadcaster>);
 
 #[no_mangle]
-pub extern "C" fn rsn_local_block_broadcaster_create(
-    block_processor: &BlockProcessorHandle,
-    stats: &StatHandle,
-    channels: &TcpChannelsHandle,
-    representatives: &RepresentativeRegisterHandle,
-    ledger: &LedgerHandle,
-    confirming_set: &ConfirmingSetHandle,
-    enabled: bool,
-) -> *mut LocalBlockBroadcasterHandle {
-    Box::into_raw(Box::new(LocalBlockBroadcasterHandle(Arc::new(
-        LocalBlockBroadcaster::new(
-            Arc::clone(&block_processor),
-            Arc::clone(&stats),
-            Arc::clone(&channels),
-            Arc::clone(&representatives),
-            Arc::clone(&ledger),
-            Arc::clone(&confirming_set),
-            enabled,
-        ),
-    ))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_local_block_broadcaster_destroy(
     handle: *mut LocalBlockBroadcasterHandle,
 ) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_local_block_broadcaster_initialize(
-    handle: &LocalBlockBroadcasterHandle,
-) {
-    handle.0.initialize();
 }
 
 #[no_mangle]

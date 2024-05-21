@@ -9,22 +9,6 @@ use std::sync::Arc;
 pub struct ProcessLiveDispatcherHandle(pub Arc<ProcessLiveDispatcher>);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_process_live_dispatcher_create(
-    ledger: &LedgerHandle,
-    scheduler: &ElectionSchedulerHandle,
-    websocket: *const WebsocketListenerHandle,
-) -> *mut ProcessLiveDispatcherHandle {
-    let websocket = if websocket.is_null() {
-        None
-    } else {
-        Some(Arc::clone(&*websocket))
-    };
-    Box::into_raw(Box::new(ProcessLiveDispatcherHandle(Arc::new(
-        ProcessLiveDispatcher::new(Arc::clone(ledger), Arc::clone(scheduler), websocket),
-    ))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_process_live_dispatcher_destroy(
     handle: *mut ProcessLiveDispatcherHandle,
 ) {

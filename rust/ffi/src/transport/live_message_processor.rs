@@ -16,37 +16,6 @@ use super::{ChannelHandle, TcpChannelsHandle};
 pub struct LiveMessageProcessorHandle(pub Arc<LiveMessageProcessor>);
 
 #[no_mangle]
-pub extern "C" fn rsn_live_message_processor_create(
-    stats: &StatHandle,
-    channels: &TcpChannelsHandle,
-    block_processor: &BlockProcessorHandle,
-    config: &NodeConfigDto,
-    flags: &NodeFlagsHandle,
-    wallets: &LmdbWalletsHandle,
-    request_aggregator: &RequestAggregatorHandle,
-    vote_processor_queue: &VoteProcessorQueueHandle,
-    telemetry: &TelemetryHandle,
-    bootstrap_server: &BootstrapServerHandle,
-    ascend_boot: &BootstrapAscendingHandle,
-) -> *mut LiveMessageProcessorHandle {
-    Box::into_raw(Box::new(LiveMessageProcessorHandle(Arc::new(
-        LiveMessageProcessor::new(
-            Arc::clone(&stats),
-            Arc::clone(&channels),
-            Arc::clone(&block_processor),
-            config.try_into().unwrap(),
-            flags.lock().unwrap().clone(),
-            Arc::clone(&wallets),
-            Arc::clone(&request_aggregator),
-            Arc::clone(&vote_processor_queue),
-            Arc::clone(&telemetry),
-            Arc::clone(&bootstrap_server),
-            Arc::clone(&ascend_boot),
-        ),
-    ))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_live_message_processor_destroy(
     handle: *mut LiveMessageProcessorHandle,
 ) {

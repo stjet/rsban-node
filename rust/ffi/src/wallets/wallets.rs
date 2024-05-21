@@ -134,11 +134,8 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(
-    handle: *mut LmdbWalletsHandle,
-    txn: *mut TransactionHandle,
-) {
-    (*handle).0.clear_send_ids((*txn).as_write_txn())
+pub unsafe extern "C" fn rsn_lmdb_wallets_clear_send_ids(handle: *mut LmdbWalletsHandle) {
+    (*handle).0.clear_send_ids()
 }
 
 pub struct WalletsMutexLockHandle(MutexGuard<'static, HashMap<WalletId, Arc<Wallet>>>);
@@ -1172,4 +1169,69 @@ pub unsafe extern "C" fn rsn_wallets_send_sync(
         Amount::from_ptr(amount),
     );
     result.copy_bytes(hash);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_key_type(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+) -> u8 {
+    handle.key_type(WalletId::from_ptr(wallet_id), Account::from_ptr(account)) as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_get_representative(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    representative: *mut u8,
+) -> u8 {
+    match handle.get_representative(WalletId::from_ptr(wallet_id)) {
+        Ok(rep) => {
+            rep.copy_bytes(representative);
+            WalletsError::None as u8
+        }
+        Err(e) => e as u8,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_decrypt(
+    handle: &LmdbWalletsHandle,
+    wallet_id: *const u8,
+    error: &mut u8,
+) -> *mut DecryptResultHandle {
+    match handle.decrypt(WalletId::from_ptr(wallet_id)) {
+        Ok(decrytped) => {
+            *error = WalletsError::None as u8;
+            Box::into_raw(Box::new(DecryptResultHandle(decrytped)))
+        }
+        Err(e) => {
+            *error = e as u8;
+            std::ptr::null_mut()
+        }
+    }
+}
+
+pub struct DecryptResultHandle(Vec<(Account, RawKey)>);
+
+#[no_mangle]
+pub extern "C" fn rsn_decrypt_result_len(handle: &DecryptResultHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_decrypt_result_get(
+    handle: &DecryptResultHandle,
+    index: usize,
+    account: *mut u8,
+    key: *mut u8,
+) {
+    handle.0[index].0.copy_bytes(account);
+    handle.0[index].1.copy_bytes(key);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_decrypt_result_destroy(handle: *mut DecryptResultHandle) {
+    drop(Box::from_raw(handle))
 }

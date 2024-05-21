@@ -18,8 +18,8 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
-    create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
+    create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, KeyType,
+    LmdbEnv, LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -237,8 +237,9 @@ impl<T: Environment + 'static> Wallets<T> {
         Ok(())
     }
 
-    pub fn clear_send_ids(&self, txn: &mut LmdbWriteTransaction<T>) {
-        txn.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
+    pub fn clear_send_ids(&self) {
+        let mut tx = self.env.tx_begin_write();
+        tx.clear_db(self.send_action_ids_handle.unwrap()).unwrap();
     }
 
     pub fn foreach_representative<F>(&self, mut action: F)
@@ -752,6 +753,46 @@ impl<T: Environment + 'static> Wallets<T> {
             return Err(WalletsError::WalletLocked);
         }
         Ok(wallet.store.seed(&tx))
+    }
+
+    pub fn key_type(&self, wallet_id: WalletId, account: Account) -> KeyType {
+        let guard = self.mutex.lock().unwrap();
+        match guard.get(&wallet_id) {
+            Some(wallet) => {
+                let tx = self.env.tx_begin_read();
+                wallet.store.get_key_type(&tx, &account)
+            }
+            None => KeyType::Unknown,
+        }
+    }
+
+    pub fn get_representative(&self, wallet_id: WalletId) -> Result<Account, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        Ok(wallet.store.representative(&tx))
+    }
+
+    pub fn decrypt(&self, wallet_id: WalletId) -> Result<Vec<(Account, RawKey)>, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, &wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        let mut it = wallet.store.begin(&tx);
+        let mut result = Vec::new();
+        while let Some((account, _)) = it.current() {
+            let key = wallet
+                .store
+                .fetch(&tx, account)
+                .map_err(|_| WalletsError::Generic)?;
+            result.push((*account, key));
+            it.next();
+        }
+
+        Ok(result)
     }
 }
 

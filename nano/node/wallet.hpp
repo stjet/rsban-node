@@ -309,7 +309,6 @@ public: // TODO make private
 	std::shared_ptr<nano::block> receive_action (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a);
 	std::shared_ptr<nano::block> change_action (const std::shared_ptr<wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, uint64_t work_a, bool generate_work_a);
 	std::shared_ptr<nano::block> send_action (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a);
-	void change_async (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a, std::function<void (std::shared_ptr<nano::block> const &)> const & action_a, uint64_t work_a, bool generate_work_a);
 	bool change_sync (const std::shared_ptr<nano::wallet> & wallet, nano::account const & source_a, nano::account const & representative_a);
 	bool receive_sync (const std::shared_ptr<nano::wallet> & wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & representative_a, nano::uint128_t const & amount_a);
 	bool search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a);
@@ -329,7 +328,6 @@ public: // TODO make private
 	// fields
 public:
 	nano::store::lmdb::env & env;
-	static nano::uint128_t const high_priority;
 
 	rsnano::LmdbWalletsHandle * rust_handle;
 	mutable wallets_mutex mutex;

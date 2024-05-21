@@ -47,7 +47,7 @@ mod version_store;
 pub use version_store::LmdbVersionStore;
 
 pub use rep_weight_store::*;
-pub use wallet_store::{Fans, LmdbWalletStore, WalletValue};
+pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
 
 mod fan;
 pub use fan::Fan;

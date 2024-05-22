@@ -299,18 +299,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		});
 	}
 
-	if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
-	{
-		logger->critical (nano::log::type::node, "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
-
-		if (network_params.network.is_beta_network ())
-		{
-			logger->critical (nano::log::type::node, "Beta network may have reset, try clearing database files");
-		}
-
-		std::exit (1);
-	}
-
 	if (config->enable_voting)
 	{
 		logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count ());

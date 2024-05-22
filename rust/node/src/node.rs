@@ -48,7 +48,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info, warn};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
@@ -783,6 +783,26 @@ impl Node {
             "Outbound bandwidth limit: {} bytes/s, burst ratio: {}",
             config.bandwidth_limit, config.bandwidth_limit_burst_ratio
         );
+
+        if !ledger.block_or_pruned_exists(&network_params.ledger.genesis.hash()) {
+            error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
+
+            if network_params.network.is_beta_network() {
+                error!("Beta network may have reset, try clearing database files");
+            }
+
+            panic!("Genesis block not found!");
+        }
+
+        if config.enable_voting {
+            info!(
+                "Voting is enabled, more system resources will be used, local representatives: {}",
+                wallets.voting_reps_count()
+            );
+            if wallets.voting_reps_count() > 1 {
+                warn!("Voting with more than one representative can limit performance");
+            }
+        }
 
         Self {
             node_id,

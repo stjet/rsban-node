@@ -34,7 +34,7 @@ use crate::{
 };
 use rsnano_core::{work::WorkPoolImpl, KeyPair, Vote, VoteCode};
 use rsnano_ledger::Ledger;
-use rsnano_messages::DeserializedMessage;
+use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker,
     SyncStrategy, TransactionTracker,
@@ -629,6 +629,52 @@ impl Node {
                     BlockSource::Unchecked,
                     None,
                 );
+            }
+        }));
+
+        let priority_w = Arc::downgrade(&priority_scheduler);
+        let optimistic_w = Arc::downgrade(&optimistic_scheduler);
+        backlog_population.set_activate_callback(Box::new(move |tx, account, info, height| {
+            let Some(priority) = priority_w.upgrade() else {
+                return;
+            };
+            let Some(optimistic) = optimistic_w.upgrade() else {
+                return;
+            };
+            priority.activate(account, tx);
+            optimistic.activate(*account, info, height);
+        }));
+
+        let ledger_w = Arc::downgrade(&ledger);
+        let vote_cache_w = Arc::downgrade(&vote_cache);
+        let wallets_w = Arc::downgrade(&wallets);
+        let channels_w = Arc::downgrade(&channels);
+        active.add_vote_processed_observer(Box::new(move |vote, source, results| {
+            let Some(ledger) = ledger_w.upgrade() else {
+                return;
+            };
+            let Some(vote_cache) = vote_cache_w.upgrade() else {
+                return;
+            };
+            let Some(wallets) = wallets_w.upgrade() else {
+                return;
+            };
+            let Some(channels) = channels_w.upgrade() else {
+                return;
+            };
+            let rep_weight = ledger.weight(&vote.voting_account);
+            vote_cache
+                .lock()
+                .unwrap()
+                .observe(vote, rep_weight, source, results.clone());
+
+            // Republish vote if it is new and the node does not host a principal representative (or close to)
+            let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);
+            if processed {
+                if wallets.should_republish_vote(vote.voting_account) {
+                    let ack = Message::ConfirmAck(ConfirmAck::new(vote.as_ref().clone()));
+                    channels.flood_message(&ack, 0.5);
+                }
             }
         }));
 

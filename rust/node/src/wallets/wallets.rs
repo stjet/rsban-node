@@ -800,6 +800,11 @@ impl<T: Environment + 'static> Wallets<T> {
         let tx = self.env.tx_begin_read();
         Ok(wallet.store.serialize_json(&tx))
     }
+
+    pub fn should_republish_vote(&self, voting_account: Account) -> bool {
+        let guard = self.representatives.lock().unwrap();
+        !guard.have_half_rep() && !guard.exists(&voting_account)
+    }
 }
 
 impl<T: Environment> Drop for Wallets<T> {

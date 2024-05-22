@@ -238,35 +238,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	live_message_processor{ rsnano::rsn_node_live_message_processor (handle) },
 	network_threads{ rsnano::rsn_node_network_threads (handle) }
 {
-	backlog.set_activate_callback ([this] (nano::store::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
-		scheduler.priority.activate (account, transaction);
-		scheduler.optimistic.activate (account, account_info, conf_info);
-	});
-
-	active.add_vote_processed_observer ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
-		auto rep_weight = ledger.weight (vote->account ());
-		vote_cache.observe (vote, rep_weight, source, results);
-	});
-
-	// Republish vote if it is new and the node does not host a principal representative (or close to)
-	active.add_vote_processed_observer ([this] (std::shared_ptr<nano::vote> const & vote, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> const & results) {
-		bool processed = std::any_of (results.begin (), results.end (), [] (auto const & result) {
-			return result.second == nano::vote_code::vote;
-		});
-		if (processed)
-		{
-			if (wallets.should_republish_vote (vote->account ()))
-			{
-				nano::confirm_ack ack{ network_params.network, vote };
-				network->tcp_channels->flood_message (ack, 0.5f);
-			}
-		}
-	});
-
-	if (init_error ())
-	{
-		return;
-	}
 	// Notify election schedulers when AEC frees election slot
 	active.set_vacancy_update ([this] () {
 		scheduler.priority.notify ();

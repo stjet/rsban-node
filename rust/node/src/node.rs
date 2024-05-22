@@ -11,18 +11,19 @@ use crate::{
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{
         AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt, ElectionBehavior,
-        ElectionEndCallback, HintedScheduler, LocalVoteHistory, ManualScheduler,
-        OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache, VoteGenerator, VoteProcessor,
-        VoteProcessorQueue,
+        ElectionEndCallback, ElectionStatusType, HintedScheduler, LocalVoteHistory,
+        ManualScheduler, OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher,
+        ProcessLiveDispatcherExt, RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache,
+        VoteGenerator, VoteProcessor, VoteProcessorQueue,
     },
     node_id_key_file::NodeIdKeyFile,
     representatives::{RepCrawler, RepresentativeRegister},
-    stats::{LedgerStats, Stats},
+    stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        ChannelEnum, InboundCallback, LiveMessageProcessor, NetworkFilter, NetworkThreads,
-        OutboundBandwidthLimiter, SocketObserver, SynCookies, TcpChannels, TcpChannelsOptions,
-        TcpListener, TcpListenerExt, TcpMessageManager,
+        BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
+        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, SocketObserver, SynCookies,
+        TcpChannels, TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager,
+        TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
@@ -30,7 +31,8 @@ use crate::{
     wallets::{Wallets, WalletsExt},
     websocket::create_websocket_server,
     work::DistributedWorkFactory,
-    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry,
+    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry, BUILD_INFO,
+    VERSION_STRING,
 };
 use rsnano_core::{work::WorkPoolImpl, KeyPair, Vote, VoteCode};
 use rsnano_ledger::Ledger;
@@ -46,7 +48,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
     time::Duration,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
@@ -536,6 +538,10 @@ impl Node {
                 }
             });
 
+        let keepalive_factory = Arc::new(KeepaliveFactory {
+            channels: Arc::clone(&channels),
+            config: config.clone(),
+        });
         let network_threads = Arc::new(NetworkThreads::new(
             Arc::clone(&channels),
             config.clone(),
@@ -543,6 +549,7 @@ impl Node {
             network_params.clone(),
             Arc::clone(&stats),
             Arc::clone(&syn_cookies),
+            Arc::clone(&keepalive_factory),
         ));
 
         let processor = Arc::downgrade(&live_message_processor);
@@ -677,6 +684,105 @@ impl Node {
                 }
             }
         }));
+
+        let priority_w = Arc::downgrade(&priority_scheduler);
+        let hinted_w = Arc::downgrade(&hinted_scheduler);
+        let optimistic_w = Arc::downgrade(&optimistic_scheduler);
+        // Notify election schedulers when AEC frees election slot
+        *active.vacancy_update.lock().unwrap() = Box::new(move || {
+            let Some(priority) = priority_w.upgrade() else {
+                return;
+            };
+            let Some(hinted) = hinted_w.upgrade() else {
+                return;
+            };
+            let Some(optimistic) = optimistic_w.upgrade() else {
+                return;
+            };
+
+            priority.notify();
+            hinted.notify();
+            optimistic.notify();
+        });
+
+        let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
+        channels.on_new_channel(Arc::new(move |channel| {
+            let Some(factory) = keepalive_factory_w.upgrade() else {
+                return;
+            };
+            let keepalive = factory.create_keepalive_self();
+            let msg = Message::Keepalive(keepalive);
+            channel.send(&msg, None, BufferDropPolicy::Limiter, TrafficType::Generic);
+        }));
+
+        // Add block confirmation type stats regardless of http-callback and websocket subscriptions
+        let stats_w = Arc::downgrade(&stats);
+        active.add_election_end_callback(Box::new(
+            move |status, _votes, _account, _amount, _is_state_send, _is_state_epoch| {
+                let Some(stats) = stats_w.upgrade() else {
+                    return;
+                };
+                match status.election_status_type {
+                    ElectionStatusType::ActiveConfirmedQuorum => stats.inc_dir(
+                        StatType::ConfirmationObserver,
+                        DetailType::ActiveQuorum,
+                        Direction::Out,
+                    ),
+                    ElectionStatusType::ActiveConfirmationHeight => stats.inc_dir(
+                        StatType::ConfirmationObserver,
+                        DetailType::ActiveConfHeight,
+                        Direction::Out,
+                    ),
+                    ElectionStatusType::InactiveConfirmationHeight => stats.inc_dir(
+                        StatType::ConfirmationObserver,
+                        DetailType::InactiveConfHeight,
+                        Direction::Out,
+                    ),
+                    ElectionStatusType::Ongoing => unreachable!(),
+                    ElectionStatusType::Stopped => {}
+                }
+            },
+        ));
+
+        let rep_crawler_w = Arc::downgrade(&rep_crawler);
+        let online_reps_w = Arc::downgrade(&online_reps);
+        vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, code| {
+            debug_assert!(code != VoteCode::Invalid);
+            let Some(rep_crawler) = rep_crawler_w.upgrade() else {
+                return;
+            };
+            let Some(online_reps) = online_reps_w.upgrade() else {
+                return;
+            };
+            let active_in_rep_crawler = rep_crawler.process(Arc::clone(vote), Arc::clone(channel));
+            if active_in_rep_crawler {
+                // Representative is defined as online if replying to live votes or rep_crawler queries
+                online_reps.lock().unwrap().observe(vote.voting_account);
+            }
+        }));
+
+        let network_label = network_params.network.get_current_network_as_string();
+        info!("Node starting, version: {}", VERSION_STRING);
+        info!("Build information: {}", BUILD_INFO);
+        info!("Active network: {}", network_label);
+        info!("Database backend: {}", store.vendor());
+        info!("Data path: {:?}", application_path);
+        info!(
+            "Work pool threads: {} ({})",
+            work.thread_count(),
+            if work.has_opencl() { "OpenCL" } else { "CPU" }
+        );
+        info!("Work peers: {}", config.work_peers.len());
+        info!("Node ID: {}", node_id.public_key().to_node_id());
+
+        if !distributed_work.work_generation_enabled() {
+            info!("Work generation is disabled");
+        }
+
+        info!(
+            "Outbound bandwidth limit: {} bytes/s, burst ratio: {}",
+            config.bandwidth_limit, config.bandwidth_limit_burst_ratio
+        );
 
         Self {
             node_id,

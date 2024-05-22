@@ -344,10 +344,10 @@ impl Telemetry {
             genesis_block: self.network_params.ledger.genesis.hash(),
             peer_count: self.channels.len() as u32,
             account_count: self.ledger.account_count(),
-            major_version: 27,       // TODO: get this from cmake
-            minor_version: 0,        // TODO: get this from cmake
-            patch_version: 0,        // TODO: get this from cmake
-            pre_release_version: 99, // TODO: get this from cmake
+            major_version: MAJOR_VERSION,
+            minor_version: MINOR_VERSION,
+            patch_version: PATCH_VERSION,
+            pre_release_version: PRE_RELEASE_VERSION,
             maker: TelemetryMaker::RsNano as u8,
             timestamp: SystemTime::now(),
             active_difficulty: self.network_params.work.threshold_base(WorkVersion::Work1),
@@ -359,6 +359,13 @@ impl Telemetry {
         telemetry_data
     }
 }
+
+pub const MAJOR_VERSION: u8 = 27; // TODO: get this from cmake
+pub const MINOR_VERSION: u8 = 0; // TODO: get this from cmake
+pub const PATCH_VERSION: u8 = 0; // TODO: get this from cmake
+pub const PRE_RELEASE_VERSION: u8 = 99; // TODO: get this from cmake
+pub const BUILD_INFO: &'static str = "TODO get buildinfo";
+pub const VERSION_STRING: &'static str = "27.0"; // TODO: get this from cmake
 
 #[derive(Clone, Hash, Copy, PartialEq, Eq, Default)]
 struct VendorVersion {

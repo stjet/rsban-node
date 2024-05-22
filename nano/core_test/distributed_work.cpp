@@ -52,13 +52,6 @@ TEST (distributed_work, no_peers_cancel)
 	// manually cancel
 	node.distributed_work.cancel (hash);
 	ASSERT_TIMELY (20s, done);
-
-	// now using observer
-	done = false;
-	node.distributed_work.make (nano::work_version::work_1, hash, node.config->work_peers, nano::difficulty::from_multiplier (1e6, node.network_params.work.get_base ()), callback_to_cancel);
-	std::this_thread::sleep_for (100ms);
-	node.observers->work_cancel.notify (hash);
-	ASSERT_TIMELY (20s, done);
 }
 
 TEST (distributed_work, no_peers_multi)

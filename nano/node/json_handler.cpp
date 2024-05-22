@@ -5085,7 +5085,7 @@ void nano::json_handler::work_cancel ()
 	auto hash (hash_impl ());
 	if (!ec)
 	{
-		node.observers->work_cancel.notify (hash);
+		node.distributed_work.cancel (hash);
 		response_l.put ("success", "");
 	}
 	response_errors ();

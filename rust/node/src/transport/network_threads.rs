@@ -25,6 +25,7 @@ pub struct NetworkThreads {
     network_params: NetworkParams,
     stats: Arc<Stats>,
     syn_cookies: Arc<SynCookies>,
+    keepalive_factory: Arc<KeepaliveFactory>,
 }
 
 impl NetworkThreads {
@@ -35,6 +36,7 @@ impl NetworkThreads {
         network_params: NetworkParams,
         stats: Arc<Stats>,
         syn_cookies: Arc<SynCookies>,
+        keepalive_factory: Arc<KeepaliveFactory>,
     ) -> Self {
         Self {
             cleanup_thread: None,
@@ -48,6 +50,7 @@ impl NetworkThreads {
             network_params,
             stats,
             syn_cookies,
+            keepalive_factory,
         }
     }
 
@@ -72,8 +75,8 @@ impl NetworkThreads {
             stopped: self.stopped.clone(),
             channels: Arc::clone(&self.channels),
             network_params: self.network_params.clone(),
-            config: self.config.clone(),
             stats: Arc::clone(&self.stats),
+            keepalive_factory: Arc::clone(&self.keepalive_factory),
         };
 
         self.keepalive_thread = Some(
@@ -182,12 +185,53 @@ impl CleanupLoop {
     }
 }
 
+pub struct KeepaliveFactory {
+    pub channels: Arc<TcpChannels>,
+    pub config: NodeConfig,
+}
+
+impl KeepaliveFactory {
+    pub fn create_keepalive_self(&self) -> Keepalive {
+        let mut result = Keepalive::default();
+        self.channels.random_fill(&mut result.peers);
+        // We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
+        // Move these items to index 2 and 3 so they propagate
+        result.peers[2] = result.peers[0];
+        result.peers[3] = result.peers[1];
+        // Replace part of message with node external address or listening port
+        result.peers[1] = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); // For node v19 (response channels)
+        if self.config.external_address != Ipv6Addr::UNSPECIFIED.to_string()
+            && self.config.external_port != 0
+        {
+            result.peers[0] = SocketAddrV6::new(
+                self.config.external_address.parse().unwrap(),
+                self.config.external_port,
+                0,
+                0,
+            );
+        } else {
+            // TODO Read external address from port_mapping!
+            //let external_address  node.port_mapping.external_address ());
+            let external_address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
+            if !external_address.ip().is_unspecified() {
+                result.peers[0] =
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
+                result.peers[1] = external_address;
+            } else {
+                result.peers[0] =
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
+            }
+        }
+        result
+    }
+}
+
 struct KeepaliveLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network_params: NetworkParams,
     stats: Arc<Stats>,
     channels: Arc<TcpChannels>,
-    config: NodeConfig,
+    keepalive_factory: Arc<KeepaliveFactory>,
 }
 
 impl KeepaliveLoop {
@@ -224,43 +268,9 @@ impl KeepaliveLoop {
     }
 
     fn flood_keepalive_self(&self, scale: f32) {
-        let keepalive = self.keepalive_self();
+        let keepalive = self.keepalive_factory.create_keepalive_self();
         self.channels
             .flood_message(&Message::Keepalive(keepalive), scale);
-    }
-
-    fn keepalive_self(&self) -> Keepalive {
-        let mut result = Keepalive::default();
-        self.channels.random_fill(&mut result.peers);
-        // We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
-        // Move these items to index 2 and 3 so they propagate
-        result.peers[2] = result.peers[0];
-        result.peers[3] = result.peers[1];
-        // Replace part of message with node external address or listening port
-        result.peers[1] = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); // For node v19 (response channels)
-        if self.config.external_address != Ipv6Addr::UNSPECIFIED.to_string()
-            && self.config.external_port != 0
-        {
-            result.peers[0] = SocketAddrV6::new(
-                self.config.external_address.parse().unwrap(),
-                self.config.external_port,
-                0,
-                0,
-            );
-        } else {
-            // TODO Read external address from port_mapping!
-            //let external_address  node.port_mapping.external_address ());
-            let external_address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
-            if !external_address.ip().is_unspecified() {
-                result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
-                result.peers[1] = external_address;
-            } else {
-                result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
-            }
-        }
-        result
     }
 }
 

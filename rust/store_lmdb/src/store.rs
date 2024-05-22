@@ -158,7 +158,7 @@ impl<T: Environment + 'static> LmdbStore<T> {
     }
 
     pub fn vendor(&self) -> String {
-        // fake version! todo: read version
+        // fake version! TODO: read version
         format!("lmdb-rkv {}.{}.{}", 0, 14, 0)
     }
 

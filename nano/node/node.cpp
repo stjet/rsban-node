@@ -238,20 +238,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	live_message_processor{ rsnano::rsn_node_live_message_processor (handle) },
 	network_threads{ rsnano::rsn_node_network_threads (handle) }
 {
-	// Notify election schedulers when AEC frees election slot
-	active.set_vacancy_update ([this] () {
-		scheduler.priority.notify ();
-		scheduler.hinted.notify ();
-		scheduler.optimistic.notify ();
-	});
-
-	wallets.set_actions_observer ([this] (bool active) {
-		observers->wallet.notify (active);
-	});
-	network->on_new_channel ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
-		debug_assert (channel_a != nullptr);
-		observers->endpoint.notify (channel_a);
-	});
 	if (!config->callback_address.empty ())
 	{
 		observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
@@ -312,64 +298,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			}
 		});
 	}
-
-	// Add block confirmation type stats regardless of http-callback and websocket subscriptions
-	observers->blocks.add ([this] (nano::election_status const & status_a, std::vector<nano::vote_with_weight_info> const & votes_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a, bool is_state_epoch_a) {
-		debug_assert (status_a.get_election_status_type () != nano::election_status_type::ongoing);
-		switch (status_a.get_election_status_type ())
-		{
-			case nano::election_status_type::active_confirmed_quorum:
-				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_quorum, nano::stat::dir::out);
-				break;
-			case nano::election_status_type::active_confirmation_height:
-				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::active_conf_height, nano::stat::dir::out);
-				break;
-			case nano::election_status_type::inactive_confirmation_height:
-				this->stats->inc (nano::stat::type::confirmation_observer, nano::stat::detail::inactive_conf_height, nano::stat::dir::out);
-				break;
-			default:
-				break;
-		}
-	});
-	observers->endpoint.add ([this] (std::shared_ptr<nano::transport::channel> const & channel_a) {
-		this->network->send_keepalive_self (channel_a);
-	});
-
-	observers->vote.add ([this] (std::shared_ptr<nano::vote> vote, std::shared_ptr<nano::transport::channel> const & channel, nano::vote_code code) {
-		debug_assert (code != nano::vote_code::invalid);
-		bool active_in_rep_crawler = rep_crawler.process (vote, channel);
-		if (active_in_rep_crawler)
-		{
-			// Representative is defined as online if replying to live votes or rep_crawler queries
-			this->online_reps.observe (vote->account ());
-		}
-	});
-
-	// Cancelling local work generation
-	observers->work_cancel.add ([this] (nano::root const & root_a) {
-		this->work.cancel (root_a);
-		this->distributed_work.cancel (root_a);
-	});
-
-	auto const network_label = network_params.network.get_current_network_as_string ();
-
-	logger->info (nano::log::type::node, "Node starting, version: {}", NANO_VERSION_STRING);
-	logger->info (nano::log::type::node, "Build information: {}", BUILD_INFO);
-	logger->info (nano::log::type::node, "Active network: {}", network_label);
-	logger->info (nano::log::type::node, "Database backend: {}", store.vendor_get ());
-	logger->info (nano::log::type::node, "Data path: {}", application_path.string ());
-	logger->info (nano::log::type::node, "Work pool threads: {} ({})", work.thread_count (), (work.has_opencl () ? "OpenCL" : "CPU"));
-	logger->info (nano::log::type::node, "Work peers: {}", config->work_peers.size ());
-	logger->info (nano::log::type::node, "Node ID: {}", node_id.pub.to_node_id ());
-
-	if (!work_generation_enabled ())
-	{
-		logger->info (nano::log::type::node, "Work generation is disabled");
-	}
-
-	logger->info (nano::log::type::node, "Outbound bandwidth limit: {} bytes/s, burst ratio: {}",
-	config->bandwidth_limit,
-	config->bandwidth_limit_burst_ratio);
 
 	if (!ledger.block_or_pruned_exists (config->network_params.ledger.genesis->hash ()))
 	{

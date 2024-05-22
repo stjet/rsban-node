@@ -299,15 +299,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		});
 	}
 
-	if (config->enable_voting)
-	{
-		logger->info (nano::log::type::node, "Voting is enabled, more system resources will be used, local representatives: {}", wallets.voting_reps_count ());
-		if (wallets.voting_reps_count () > 1)
-		{
-			logger->warn (nano::log::type::node, "Voting with more than one representative can limit performance");
-		}
-	}
-
 	if ((network_params.network.is_live_network () || network_params.network.is_beta_network ()) && !flags.inactive_node ())
 	{
 		auto const bootstrap_weights = get_bootstrap_weights ();

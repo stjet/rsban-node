@@ -1,17 +1,14 @@
 use crate::{
     block_processing::{BacklogPopulationHandle, BlockProcessorHandle, UncheckedMapHandle},
-    bootstrap::{
-        BootstrapAscendingHandle, BootstrapInitiatorHandle, BootstrapServerHandle,
-        TcpListenerHandle,
-    },
+    bootstrap::{BootstrapInitiatorHandle, BootstrapServerHandle, TcpListenerHandle},
     cementation::ConfirmingSetHandle,
     consensus::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
         ElectionStatusHandle, FfiAccountBalanceCallback, HintedSchedulerHandle,
-        LocalVoteHistoryHandle, ManualSchedulerHandle, OptimisticSchedulerHandle,
-        ProcessLiveDispatcherHandle, RepTiersHandle, RequestAggregatorHandle, VoteCacheHandle,
-        VoteGeneratorHandle, VoteHandle, VoteProcessorHandle, VoteProcessorQueueHandle,
-        VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
+        LocalVoteHistoryHandle, ManualSchedulerHandle, OptimisticSchedulerHandle, RepTiersHandle,
+        RequestAggregatorHandle, VoteCacheHandle, VoteGeneratorHandle, VoteHandle,
+        VoteProcessorHandle, VoteProcessorQueueHandle, VoteProcessorVoteProcessedCallback,
+        VoteWithWeightInfoVecHandle,
     },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},

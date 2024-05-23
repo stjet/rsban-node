@@ -22,8 +22,8 @@ use crate::{
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
         NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, SocketObserver, SynCookies,
-        TcpChannels, TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager,
-        TrafficType,
+        TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener, TcpListenerExt,
+        TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
@@ -37,8 +37,8 @@ use crate::{
 use reqwest::Url;
 use rsnano_core::{
     utils::{
-        as_nano_json, BufferReader, ContainerInfoComponent, Deserialize, SerdePropertyTree,
-        StreamExt,
+        as_nano_json, system_time_as_nanoseconds, BufferReader, ContainerInfoComponent,
+        Deserialize, SerdePropertyTree, StreamExt,
     },
     work::WorkPoolImpl,
     Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
@@ -55,8 +55,11 @@ use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, RwLock},
-    time::Duration,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc, Mutex, RwLock,
+    },
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tracing::{debug, error, info, warn};
 
@@ -108,7 +111,8 @@ pub struct Node {
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
-    pub network_threads: Arc<NetworkThreads>,
+    pub network_threads: Arc<Mutex<NetworkThreads>>,
+    warmed_up: AtomicU32,
 }
 
 impl Node {
@@ -552,7 +556,7 @@ impl Node {
             channels: Arc::clone(&channels),
             config: config.clone(),
         });
-        let network_threads = Arc::new(NetworkThreads::new(
+        let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
             Arc::clone(&channels),
             config.clone(),
             flags.clone(),
@@ -560,7 +564,7 @@ impl Node {
             Arc::clone(&stats),
             Arc::clone(&syn_cookies),
             Arc::clone(&keepalive_factory),
-        ));
+        )));
 
         let processor = Arc::downgrade(&live_message_processor);
         channels.set_sink(Box::new(move |msg, channel| {
@@ -1009,6 +1013,7 @@ impl Node {
             process_live_dispatcher,
             live_message_processor,
             network_threads,
+            warmed_up: AtomicU32::new(0),
         }
     }
 
@@ -1074,6 +1079,145 @@ impl Node {
                 self.rep_tiers.collect_container_info("rep_tiers"),
             ],
         )
+    }
+
+    fn long_inactivity_cleanup(&self) {
+        let mut perform_cleanup = false;
+        let mut tx = self.ledger.rw_txn();
+        if self.ledger.store.online_weight.count(&tx) > 0 {
+            let (&sample_time, _) = self
+                .ledger
+                .store
+                .online_weight
+                .rbegin(&tx)
+                .current()
+                .unwrap();
+            let one_week_ago = SystemTime::now() - Duration::from_secs(60 * 60 * 24 * 7);
+            perform_cleanup = sample_time < system_time_as_nanoseconds(one_week_ago);
+        }
+        if perform_cleanup {
+            self.ledger.store.online_weight.clear(&mut tx);
+            self.ledger.store.peer.clear(&mut tx);
+            info!("records of peers and online weight after a long period of inactivity");
+        }
+    }
+
+    fn add_initial_peers(&self) {
+        if self.flags.disable_add_initial_peers {
+            warn!("Not adding initial peers because `disable_add_initial_peers` flag is set");
+            return;
+        }
+
+        let mut initial_peers: Vec<SocketAddrV6> = Vec::new();
+        {
+            let tx = self.ledger.read_txn();
+            let mut it = self.ledger.store.peer.begin(&tx);
+            while let Some((endpoint_key, _)) = it.current() {
+                initial_peers.push(endpoint_key.into());
+                it.next();
+            }
+        }
+
+        info!("Adding cached initial peers: {}", initial_peers.len());
+
+        for peer in initial_peers {
+            self.channels.merge_peer(&peer);
+        }
+    }
+}
+
+pub trait NodeExt {
+    fn start(&self);
+    fn ongoing_bootstrap(&self);
+}
+
+impl NodeExt for Arc<Node> {
+    fn start(&self) {
+        self.long_inactivity_cleanup();
+        self.network_threads.lock().unwrap().start();
+        self.add_initial_peers();
+        if !self.flags.disable_legacy_bootstrap && !self.flags.disable_ongoing_bootstrap {
+            self.ongoing_bootstrap();
+        }
+    }
+
+    fn ongoing_bootstrap(&self) {
+        let mut next_wakeup =
+            Duration::from_secs(self.network_params.network.bootstrap_interval_s as u64);
+        if self.warmed_up.load(Ordering::SeqCst) < 3 {
+            // Re-attempt bootstrapping more aggressively on startup
+            next_wakeup = Duration::from_secs(5);
+            if !self.bootstrap_initiator.in_progress() && !self.channels.len() == 0 {
+                self.warmed_up.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        if self.network_params.network.is_dev_network() && self.flags.bootstrap_interval != 0 {
+            // For test purposes allow faster automatic bootstraps
+            next_wakeup = Duration::from_secs(self.flags.bootstrap_interval as u64);
+            self.warmed_up.fetch_add(1, Ordering::SeqCst);
+        }
+        // Differential bootstrap with max age (75% of all legacy attempts)
+        let mut frontiers_age = u32::MAX;
+        let bootstrap_weight_reached =
+            self.ledger.block_count() >= self.ledger.bootstrap_weight_max_blocks();
+        let previous_bootstrap_count =
+            self.stats
+                .count(StatType::Bootstrap, DetailType::Initiate, Direction::Out)
+                + self.stats.count(
+                    StatType::Bootstrap,
+                    DetailType::InitiateLegacyAge,
+                    Direction::Out,
+                );
+        /*
+        - Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
+        - Node shutdown time minus 1 hour for start attempts (warm up)
+        - Default age value otherwise (1 day for live network, 1 hour for beta)
+        */
+        if bootstrap_weight_reached {
+            if self.warmed_up.load(Ordering::SeqCst) < 3 {
+                // Find last online weight sample (last active time for node)
+                let mut last_sample_time = UNIX_EPOCH;
+
+                {
+                    let tx = self.ledger.read_txn();
+                    let last_record = self.ledger.store.online_weight.rbegin(&tx);
+                    if let Some(last_record) = last_record.current() {
+                        last_sample_time = UNIX_EPOCH
+                            .checked_add(Duration::from_nanos(*last_record.0))
+                            .unwrap();
+                    }
+                }
+
+                let time_since_last_sample = SystemTime::now()
+                    .duration_since(last_sample_time)
+                    .unwrap_or(Duration::MAX);
+
+                if time_since_last_sample.as_secs() + 60 * 60 < u32::MAX as u64 {
+                    frontiers_age = std::cmp::max(
+                        (time_since_last_sample.as_secs() + 60 * 60) as u32,
+                        self.network_params.bootstrap.default_frontiers_age_seconds,
+                    );
+                }
+            } else if previous_bootstrap_count % 4 != 0 {
+                frontiers_age = self.network_params.bootstrap.default_frontiers_age_seconds;
+            }
+        }
+        // Bootstrap and schedule for next attempt
+        self.bootstrap_initiator.bootstrap(
+            false,
+            format!("auto_bootstrap_{}", previous_bootstrap_count),
+            frontiers_age,
+            Account::zero(),
+        );
+        let self_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            next_wakeup,
+            Box::new(move || {
+                if let Some(node) = self_w.upgrade() {
+                    node.ongoing_bootstrap();
+                }
+            }),
+        );
     }
 }
 

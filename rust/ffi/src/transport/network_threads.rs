@@ -1,7 +1,7 @@
 use rsnano_node::transport::NetworkThreads;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-pub struct NetworkThreadsHandle(pub Arc<NetworkThreads>);
+pub struct NetworkThreadsHandle(pub Arc<Mutex<NetworkThreads>>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_network_threads_destroy(handle: *mut NetworkThreadsHandle) {
@@ -9,13 +9,11 @@ pub unsafe extern "C" fn rsn_network_threads_destroy(handle: *mut NetworkThreads
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_network_threads_start(handle: &mut NetworkThreadsHandle) {
-    let mut_threads = Arc::as_ptr(&handle.0) as *mut NetworkThreads;
-    (*mut_threads).start();
+pub unsafe extern "C" fn rsn_network_threads_start(handle: &NetworkThreadsHandle) {
+    handle.0.lock().unwrap().start();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_network_threads_stop(handle: &mut NetworkThreadsHandle) {
-    let mut_threads = Arc::as_ptr(&handle.0) as *mut NetworkThreads;
-    (*mut_threads).stop();
+pub unsafe extern "C" fn rsn_network_threads_stop(handle: &NetworkThreadsHandle) {
+    handle.0.lock().unwrap().stop();
 }

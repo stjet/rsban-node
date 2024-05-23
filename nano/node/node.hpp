@@ -42,7 +42,6 @@
 #include <atomic>
 #include <memory>
 #include <optional>
-#include <vector>
 
 namespace nano
 {
@@ -89,7 +88,6 @@ public:
 	std::pair<nano::uint128_t, nano::uint128_t> balance_pending (nano::account const &, bool only_confirmed);
 	nano::uint128_t weight (nano::account const &);
 	nano::uint128_t minimum_principal_weight ();
-	void ongoing_bootstrap ();
 	void ongoing_peer_store ();
 	void backup_wallet ();
 	void search_receivable_all ();
@@ -203,8 +201,6 @@ public: // Testing convenience functions
 	nano::uint128_t balance (nano::account const &);
 
 private:
-	void long_inactivity_cleanup ();
-
 	static std::string make_logger_identifier (nano::keypair const & node_id);
 };
 

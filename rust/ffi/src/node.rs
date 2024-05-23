@@ -35,7 +35,7 @@ use crate::{
 use rsnano_core::{Vote, VoteCode};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
-    node::Node,
+    node::{Node, NodeExt},
     transport::ChannelEnum,
 };
 use std::{
@@ -423,6 +423,11 @@ pub extern "C" fn rsn_node_network_threads(handle: &NodeHandle) -> *mut NetworkT
     Box::into_raw(Box::new(NetworkThreadsHandle(Arc::clone(
         &handle.0.network_threads,
     ))))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_start(handle: &NodeHandle) {
+    handle.0.start();
 }
 
 #[no_mangle]

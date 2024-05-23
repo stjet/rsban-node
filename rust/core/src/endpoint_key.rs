@@ -1,3 +1,5 @@
+use std::net::{Ipv6Addr, SocketAddrV6};
+
 use crate::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize, Stream,
 };
@@ -54,6 +56,18 @@ impl Deserialize for EndpointKey {
         stream.read_bytes(&mut buffer, 2)?;
         result.port = u16::from_be_bytes(buffer);
         Ok(result)
+    }
+}
+
+impl From<EndpointKey> for SocketAddrV6 {
+    fn from(value: EndpointKey) -> Self {
+        SocketAddrV6::new(Ipv6Addr::from(value.address), value.port, 0, 0)
+    }
+}
+
+impl From<&EndpointKey> for SocketAddrV6 {
+    fn from(value: &EndpointKey) -> Self {
+        SocketAddrV6::new(Ipv6Addr::from(value.address), value.port, 0, 0)
     }
 }
 

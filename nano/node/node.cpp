@@ -31,10 +31,8 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <algorithm>
-#include <cstdlib>
 #include <iterator>
 #include <memory>
-#include <sstream>
 
 double constexpr nano::node::price_max;
 double constexpr nano::node::free_cutoff;
@@ -292,13 +290,7 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 
 void nano::node::start ()
 {
-	long_inactivity_cleanup ();
-	network_threads.start ();
-	add_initial_peers ();
-	if (!flags.disable_legacy_bootstrap () && !flags.disable_ongoing_bootstrap ())
-	{
-		ongoing_bootstrap ();
-	}
+	rsnano::rsn_node_start (handle);
 	if (flags.enable_pruning ())
 	{
 		auto this_l (shared ());
@@ -471,90 +463,6 @@ nano::uint128_t nano::node::weight (nano::account const & account_a)
 nano::uint128_t nano::node::minimum_principal_weight ()
 {
 	return online_reps.minimum_principal_weight ();
-}
-
-void nano::node::long_inactivity_cleanup ()
-{
-	bool perform_cleanup = false;
-	auto const transaction (store.tx_begin_write ({ tables::online_weight, tables::peers }));
-	if (store.online_weight ().count (*transaction) > 0)
-	{
-		auto sample (store.online_weight ().rbegin (*transaction));
-		auto n (store.online_weight ().end ());
-		debug_assert (sample != n);
-		auto const one_week_ago = static_cast<std::size_t> ((std::chrono::system_clock::now () - std::chrono::hours (7 * 24)).time_since_epoch ().count ());
-		perform_cleanup = sample->first < one_week_ago;
-	}
-	if (perform_cleanup)
-	{
-		store.online_weight ().clear (*transaction);
-		store.peer ().clear (*transaction);
-		logger->info (nano::log::type::node, "Removed records of peers and online weight after a long period of inactivity");
-	}
-}
-
-void nano::node::ongoing_bootstrap ()
-{
-	auto next_wakeup = network_params.network.bootstrap_interval;
-	if (warmed_up < 3)
-	{
-		// Re-attempt bootstrapping more aggressively on startup
-		next_wakeup = std::chrono::seconds (5);
-		if (!bootstrap_initiator.in_progress () && !network->empty ())
-		{
-			++warmed_up;
-		}
-	}
-	if (network_params.network.is_dev_network () && flags.bootstrap_interval () != 0)
-	{
-		// For test purposes allow faster automatic bootstraps
-		next_wakeup = std::chrono::seconds (flags.bootstrap_interval ());
-		++warmed_up;
-	}
-	// Differential bootstrap with max age (75% of all legacy attempts)
-	uint32_t frontiers_age (std::numeric_limits<uint32_t>::max ());
-	auto bootstrap_weight_reached (ledger.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
-	auto previous_bootstrap_count (stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) + stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate_legacy_age, nano::stat::dir::out));
-	/*
-	- Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
-	- Node shutdown time minus 1 hour for start attempts (warm up)
-	- Default age value otherwise (1 day for live network, 1 hour for beta)
-	*/
-	if (bootstrap_weight_reached)
-	{
-		if (warmed_up < 3)
-		{
-			// Find last online weight sample (last active time for node)
-			uint64_t last_sample_time (0);
-
-			{
-				auto tx{ store.tx_begin_read () };
-				auto last_record = store.online_weight ().rbegin (*tx);
-				if (last_record != store.online_weight ().end ())
-				{
-					last_sample_time = last_record->first;
-				}
-			}
-			uint64_t time_since_last_sample = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count () - static_cast<uint64_t> (last_sample_time / std::pow (10, 9)); // Nanoseconds to seconds
-			if (time_since_last_sample + 60 * 60 < std::numeric_limits<uint32_t>::max ())
-			{
-				frontiers_age = std::max<uint32_t> (static_cast<uint32_t> (time_since_last_sample + 60 * 60), network_params.bootstrap.default_frontiers_age_seconds);
-			}
-		}
-		else if (previous_bootstrap_count % 4 != 0)
-		{
-			frontiers_age = network_params.bootstrap.default_frontiers_age_seconds;
-		}
-	}
-	// Bootstrap and schedule for next attempt
-	bootstrap_initiator.bootstrap (false, boost::str (boost::format ("auto_bootstrap_%1%") % previous_bootstrap_count), frontiers_age);
-	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + next_wakeup, [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->ongoing_bootstrap ();
-		}
-	});
 }
 
 void nano::node::ongoing_peer_store ()

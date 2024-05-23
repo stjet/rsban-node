@@ -850,6 +850,44 @@ impl Node {
             }
         }
 
+        {
+            let tx = ledger.read_txn();
+            if flags.enable_pruning || ledger.store.pruned.count(&tx) > 0 {
+                ledger.enable_pruning();
+            }
+        }
+
+        if ledger.pruning_enabled() {
+            if config.enable_voting && !flags.inactive_node {
+                let msg = "Incompatibility detected between config node.enable_voting and existing pruned blocks";
+                error!(msg);
+                panic!("{}", msg);
+            } else if !flags.enable_pruning && !flags.inactive_node {
+                let msg =
+                    "To start node with existing pruned blocks use launch flag --enable_pruning";
+                error!(msg);
+                panic!("{}", msg);
+            }
+        }
+
+        let workers_w = Arc::downgrade(&workers);
+        let wallets_w = Arc::downgrade(&wallets);
+        confirming_set.add_cemented_observer(Box::new(move |block| {
+            let Some(workers) = workers_w.upgrade() else {
+                return;
+            };
+            let Some(wallets) = wallets_w.upgrade() else {
+                return;
+            };
+
+            if block.is_send() {
+                let block = Arc::clone(block);
+                workers.push_task(Box::new(move || {
+                    wallets.receive_confirmed(block.hash(), block.destination().unwrap())
+                }));
+            }
+        }));
+
         Self {
             node_id,
             workers,

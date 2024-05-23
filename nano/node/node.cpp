@@ -290,36 +290,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 			}
 		});
 	}
-
-	{
-		auto tx{ store.tx_begin_read () };
-		if (flags.enable_pruning () || store.pruned ().count (*tx) > 0)
-		{
-			ledger.enable_pruning ();
-		};
-	}
-
-	if (ledger.pruning_enabled ())
-	{
-		if (config->enable_voting && !flags.inactive_node ())
-		{
-			logger->critical (nano::log::type::node, "Incompatibility detected between config node.enable_voting and existing pruned blocks");
-			std::exit (1);
-		}
-		else if (!flags.enable_pruning () && !flags.inactive_node ())
-		{
-			logger->critical (nano::log::type::node, "To start node with existing pruned blocks use launch flag --enable_pruning");
-			std::exit (1);
-		}
-	}
-	confirming_set.add_cemented_observer ([this] (auto const & block) {
-		if (block->is_send ())
-		{
-			workers->push_task ([this, hash = block->hash (), destination = block->destination ()] () {
-				wallets.receive_confirmed (hash, destination);
-			});
-		}
-	});
 }
 
 nano::node::~node ()

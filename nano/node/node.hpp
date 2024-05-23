@@ -140,7 +140,6 @@ public:
 	nano::block_processor block_processor;
 	nano::wallets wallets;
 	nano::vote_generator generator;
-	nano::vote_generator final_generator;
 	nano::active_transactions active;
 	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;
@@ -155,8 +154,6 @@ public:
 	nano::scheduler::component & scheduler;
 	nano::request_aggregator aggregator;
 	nano::backlog_population backlog;
-	nano::bootstrap_ascending::service ascendboot;
-	nano::process_live_dispatcher process_live_dispatcher;
 	nano::live_message_processor live_message_processor;
 	nano::network_threads network_threads;
 

@@ -89,8 +89,6 @@ add_library(
   openclconfig.cpp
   peer_exclusion.hpp
   peer_exclusion.cpp
-  process_live_dispatcher.cpp
-  process_live_dispatcher.hpp
   repcrawler.hpp
   repcrawler.cpp
   rep_tiers.hpp

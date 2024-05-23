@@ -288,13 +288,6 @@ pub extern "C" fn rsn_node_vote_generator(handle: &NodeHandle) -> *mut VoteGener
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_final_generator(handle: &NodeHandle) -> *mut VoteGeneratorHandle {
-    Box::into_raw(Box::new(VoteGeneratorHandle(Arc::clone(
-        &handle.0.final_generator,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_active(handle: &NodeHandle) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::clone(
         &handle.0.active,
@@ -378,22 +371,6 @@ pub extern "C" fn rsn_node_request_aggregator(handle: &NodeHandle) -> *mut Reque
 pub extern "C" fn rsn_node_backlog_population(handle: &NodeHandle) -> *mut BacklogPopulationHandle {
     Box::into_raw(Box::new(BacklogPopulationHandle(Arc::clone(
         &handle.0.backlog_population,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_ascendboot(handle: &NodeHandle) -> *mut BootstrapAscendingHandle {
-    Box::into_raw(Box::new(BootstrapAscendingHandle(Arc::clone(
-        &handle.0.ascendboot,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_process_live_dispatcher(
-    handle: &NodeHandle,
-) -> *mut ProcessLiveDispatcherHandle {
-    Box::into_raw(Box::new(ProcessLiveDispatcherHandle(Arc::clone(
-        &handle.0.process_live_dispatcher,
     ))))
 }
 

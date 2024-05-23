@@ -1,12 +1,9 @@
 use super::ActiveTransactionsHandle;
-use crate::{core::BlockHandle, utils::ContainerInfoComponentHandle, StatHandle};
+use crate::{core::BlockHandle, StatHandle};
 use num_traits::FromPrimitive;
 use rsnano_core::Amount;
 use rsnano_node::consensus::{ManualScheduler, ManualSchedulerExt};
-use std::{
-    ffi::{c_char, CStr},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 pub struct ManualSchedulerHandle(pub Arc<ManualScheduler>);
 
@@ -52,15 +49,4 @@ pub unsafe extern "C" fn rsn_manual_scheduler_push(
         previous_balance,
         FromPrimitive::from_u8(election_behavior).unwrap(),
     );
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_manual_scheduler_collect_container_info(
-    handle: &ManualSchedulerHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

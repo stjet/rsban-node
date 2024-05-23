@@ -3,7 +3,7 @@ use crate::{
     core::{BlockHandle, BlockVecHandle},
     ledger::datastore::LedgerHandle,
     transport::ChannelHandle,
-    utils::{ContainerInfoComponentHandle, ContextWrapper},
+    utils::ContextWrapper,
     work::WorkThresholdsDto,
     NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
@@ -13,11 +13,7 @@ use rsnano_node::{
     block_processing::{BlockProcessor, BlockSource},
     config::NodeConfig,
 };
-use std::{
-    ffi::{c_char, c_void, CStr},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct BlockProcessorHandle(pub Arc<BlockProcessor>);
 
@@ -210,15 +206,4 @@ pub extern "C" fn rsn_block_processor_notify_block_rolled_back(
     block: &BlockHandle,
 ) {
     handle.notify_block_rolled_back(block);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_collect_container_info(
-    handle: &BlockProcessorHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

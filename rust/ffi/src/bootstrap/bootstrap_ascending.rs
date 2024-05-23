@@ -3,7 +3,6 @@ use crate::{
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,
     transport::{ChannelHandle, TcpChannelsHandle},
-    utils::ContainerInfoComponentHandle,
     NetworkConstantsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_messages::Message;
@@ -11,11 +10,7 @@ use rsnano_node::{
     bootstrap::{BootstrapAscending, BootstrapAscendingExt},
     config::NodeConfig,
 };
-use std::{
-    ffi::{c_char, CStr},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 
 pub struct BootstrapAscendingHandle(pub Arc<BootstrapAscending>);
 
@@ -79,15 +74,4 @@ pub extern "C" fn rsn_bootstrap_ascending_process(
         panic!("not an asc pull ack message");
     };
     handle.0.process(payload, channel)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_ascending_collect_container_info(
-    handle: &BootstrapAscendingHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

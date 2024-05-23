@@ -3,7 +3,7 @@ use crate::{
     consensus::{ActiveTransactionsHandle, VoteHandle},
     ledger::datastore::LedgerHandle,
     transport::{ChannelHandle, TcpChannelsHandle},
-    utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle},
+    utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_core::BlockHash;
@@ -89,16 +89,6 @@ pub unsafe extern "C" fn rsn_rep_crawler_keepalive(
 ) {
     let address = CStr::from_ptr(address).to_str().unwrap().to_string();
     handle.keepalive_or_connect(address, port);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_rep_crawler_collect_container_info(
-    handle: &RepCrawlerHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info =
-        (*handle).collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 #[no_mangle]

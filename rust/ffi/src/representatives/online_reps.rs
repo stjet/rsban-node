@@ -135,13 +135,3 @@ pub unsafe extern "C" fn rsn_online_reps_list(
 pub unsafe extern "C" fn rsn_online_reps_clear(handle: *mut OnlineRepsHandle) {
     (*handle).online_reps.lock().unwrap().clear();
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_item_count(handle: *const OnlineRepsHandle) -> usize {
-    (*handle).online_reps.lock().unwrap().count()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_item_size() -> usize {
-    OnlineReps::item_size()
-}

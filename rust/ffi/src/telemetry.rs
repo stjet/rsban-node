@@ -1,23 +1,7 @@
-use crate::{
-    block_processing::UncheckedMapHandle,
-    ledger::datastore::LedgerHandle,
-    messages::{MessageHandle, TelemetryDataHandle},
-    transport::{ChannelHandle, EndpointDto, TcpChannelsHandle},
-    utils::{ContainerInfoComponentHandle, ContextWrapper},
-    NetworkParamsDto, NodeConfigDto, StatHandle, VoidPointerCallback,
-};
-use rsnano_core::KeyPair;
-use rsnano_messages::{Message, TelemetryData};
-use rsnano_node::{
-    config::NodeConfig, consolidate_telemetry_data, transport::ChannelEnum, NetworkParams,
-    TelementryConfig, TelementryExt, Telemetry,
-};
-use std::{
-    ffi::{c_char, c_void, CStr},
-    net::SocketAddrV6,
-    ops::Deref,
-    sync::Arc,
-};
+use crate::{messages::TelemetryDataHandle, transport::EndpointDto};
+use rsnano_messages::TelemetryData;
+use rsnano_node::{consolidate_telemetry_data, TelementryExt, Telemetry};
+use std::{net::SocketAddrV6, ops::Deref, sync::Arc};
 
 pub struct TelemetryHandle(pub Arc<Telemetry>);
 
@@ -28,9 +12,6 @@ impl Deref for TelemetryHandle {
         &self.0
     }
 }
-
-pub type TelemetryNotifyCallback =
-    extern "C" fn(*mut c_void, *mut TelemetryDataHandle, *mut ChannelHandle);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_destroy(handle: *mut TelemetryHandle) {
@@ -82,17 +63,6 @@ pub unsafe extern "C" fn rsn_telemetry_get_all(
     Box::into_raw(Box::new(TelemetryDataMapHandle(
         handle.0.get_all_telemetries().drain().collect(),
     )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_collect_container_info(
-    handle: &TelemetryHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 pub struct TelemetryDataMapHandle(Vec<(SocketAddrV6, TelemetryData)>);

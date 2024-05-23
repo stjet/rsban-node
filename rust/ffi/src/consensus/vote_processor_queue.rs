@@ -1,16 +1,10 @@
 use super::{rep_tiers::RepTiersHandle, VoteHandle};
 use crate::{
     ledger::datastore::LedgerHandle, representatives::OnlineRepsHandle, transport::ChannelHandle,
-    utils::ContainerInfoComponentHandle, StatHandle,
+    StatHandle,
 };
-use rsnano_core::Vote;
-use rsnano_node::{consensus::VoteProcessorQueue, transport::ChannelEnum};
-use std::{
-    collections::VecDeque,
-    ffi::{c_char, CStr},
-    ops::Deref,
-    sync::Arc,
-};
+use rsnano_node::consensus::VoteProcessorQueue;
+use std::{ops::Deref, sync::Arc};
 
 pub struct VoteProcessorQueueHandle(pub Arc<VoteProcessorQueue>);
 
@@ -73,16 +67,4 @@ pub extern "C" fn rsn_vote_processor_queue_flush(handle: &VoteProcessorQueueHand
 #[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_stop(handle: &VoteProcessorQueueHandle) {
     handle.0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_processor_collect_container_info(
-    handle: &VoteProcessorQueueHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(
-        handle
-            .0
-            .collect_container_info(CStr::from_ptr(name).to_string_lossy().to_string()),
-    )))
 }

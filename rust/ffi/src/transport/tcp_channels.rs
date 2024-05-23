@@ -5,7 +5,7 @@ use super::{
 use crate::{
     bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
     messages::MessageHandle,
-    utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
@@ -16,7 +16,7 @@ use rsnano_node::{
     NetworkParams,
 };
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::{Arc, Weak},
@@ -233,16 +233,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
         Some(channel) => ChannelHandle::new(channel),
         None => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_collect_container_info(
-    handle: &TcpChannelsHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info =
-        (*handle).collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 #[no_mangle]

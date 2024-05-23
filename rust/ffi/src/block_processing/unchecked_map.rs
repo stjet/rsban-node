@@ -80,18 +80,8 @@ pub unsafe extern "C" fn rsn_unchecked_map_entries_count(handle: *mut UncheckedM
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_entries_size() -> usize {
-    UncheckedMap::entries_size()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_buffer_count(handle: *mut UncheckedMapHandle) -> usize {
     (*handle).0.buffer_count()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_buffer_entry_size() -> usize {
-    UncheckedMap::buffer_entry_size()
 }
 
 #[no_mangle]

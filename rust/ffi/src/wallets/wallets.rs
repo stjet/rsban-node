@@ -7,14 +7,13 @@ use crate::{
     block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
     core::{BlockDetailsDto, BlockHandle},
-    ledger::datastore::{lmdb::LmdbEnvHandle, LedgerHandle, TransactionHandle},
+    ledger::datastore::{LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
     to_rust_string,
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
-    LmdbConfigDto, NetworkParamsDto, NodeConfigDto, StringDto, StringHandle, U256ArrayDto,
-    VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StringDto, U256ArrayDto, VoidPointerCallback,
 };
 use rsnano_core::{
     work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, RawKey, Root,
@@ -25,7 +24,7 @@ use rsnano_node::{
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
     NetworkParams,
 };
-use rsnano_store_lmdb::{EnvOptions, LmdbConfig, LmdbEnv, SyncStrategy};
+use rsnano_store_lmdb::{EnvOptions, LmdbEnv, SyncStrategy};
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr},

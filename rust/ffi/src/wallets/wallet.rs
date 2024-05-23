@@ -1,15 +1,9 @@
-use super::kdf::KdfHandle;
-use crate::{
-    ledger::datastore::{lmdb::LmdbWalletStoreHandle, LedgerHandle, TransactionHandle},
-    work::WorkThresholdsDto,
-};
-use rsnano_core::{work::WorkThresholds, Account, Root};
+use crate::ledger::datastore::{lmdb::LmdbWalletStoreHandle, TransactionHandle};
+use rsnano_core::{Account, Root};
 use rsnano_node::wallets::Wallet;
 use std::{
     collections::HashSet,
-    ffi::{c_char, CStr},
     ops::{Deref, DerefMut},
-    path::PathBuf,
     sync::{Arc, MutexGuard},
 };
 

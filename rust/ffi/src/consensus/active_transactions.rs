@@ -14,7 +14,7 @@ use crate::{
     ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
     representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
     transport::TcpChannelsHandle,
-    utils::{ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
+    utils::{ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
@@ -29,12 +29,7 @@ use rsnano_node::{
         ElectionBehavior, ElectionEndCallback,
     },
 };
-use std::{
-    collections::HashMap,
-    ffi::{c_char, c_void, CStr},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{collections::HashMap, ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);
 
@@ -508,16 +503,6 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
         &BlockHash::from_ptr(block_hash),
         VoteSource::from_u8(vote_source).unwrap(),
     ) as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_collect_container_info(
-    handle: &ActiveTransactionsHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info =
-        handle.collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }
 
 /*

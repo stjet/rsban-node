@@ -99,14 +99,3 @@ pub unsafe extern "C" fn rsn_local_vote_history_exists(
 pub unsafe extern "C" fn rsn_local_vote_history_size(handle: &LocalVoteHistoryHandle) -> usize {
     handle.size()
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_local_vote_history_container_info(
-    handle: &LocalVoteHistoryHandle,
-    size: *mut usize,
-    count: *mut usize,
-) {
-    let (s, c) = handle.container_info();
-    *size = s;
-    *count = c;
-}

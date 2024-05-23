@@ -1,17 +1,12 @@
 use crate::{
     core::{BlockCallback, BlockHandle, BlockHashCallback},
     ledger::datastore::LedgerHandle,
-    utils::{ContainerInfoComponentHandle, ContextWrapper},
+    utils::ContextWrapper,
     VoidPointerCallback,
 };
 use rsnano_core::{BlockEnum, BlockHash};
 use rsnano_node::cementation::ConfirmingSet;
-use std::{
-    ffi::{c_char, c_void, CStr},
-    ops::Deref,
-    sync::Arc,
-    time::Duration,
-};
+use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
 
 pub struct ConfirmingSetHandle(pub Arc<ConfirmingSet>);
 
@@ -98,15 +93,4 @@ pub unsafe extern "C" fn rsn_confirming_set_exists(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirming_set_len(handle: &mut ConfirmingSetHandle) -> usize {
     handle.0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirming_set_collect_container_info(
-    handle: &ConfirmingSetHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

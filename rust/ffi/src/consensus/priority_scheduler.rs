@@ -2,16 +2,11 @@ use super::ActiveTransactionsHandle;
 use crate::{
     core::BlockHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle},
-    utils::ContainerInfoComponentHandle,
     StatHandle,
 };
 use rsnano_core::Account;
 use rsnano_node::consensus::{PriorityScheduler, PrioritySchedulerExt};
-use std::{
-    ffi::{c_char, CStr},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 
 pub struct ElectionSchedulerHandle(pub Arc<PriorityScheduler>);
 
@@ -80,15 +75,4 @@ pub unsafe extern "C" fn rsn_election_scheduler_len(handle: &ElectionSchedulerHa
 #[no_mangle]
 pub unsafe extern "C" fn rsn_election_scheduler_empty(handle: &ElectionSchedulerHandle) -> bool {
     handle.0.is_empty()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_scheduler_collect_container_info(
-    handle: &ElectionSchedulerHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

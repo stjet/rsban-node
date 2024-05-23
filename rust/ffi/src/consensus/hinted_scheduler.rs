@@ -1,14 +1,10 @@
 use super::{vote_cache::VoteCacheHandle, ActiveTransactionsHandle};
 use crate::{
     cementation::ConfirmingSetHandle, ledger::datastore::LedgerHandle,
-    representatives::OnlineRepsHandle, utils::ContainerInfoComponentHandle,
-    HintedSchedulerConfigDto, StatHandle,
+    representatives::OnlineRepsHandle, HintedSchedulerConfigDto, StatHandle,
 };
 use rsnano_node::consensus::{HintedScheduler, HintedSchedulerExt};
-use std::{
-    ffi::{c_char, CStr},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 pub struct HintedSchedulerHandle(pub Arc<HintedScheduler>);
 
@@ -53,15 +49,4 @@ pub extern "C" fn rsn_hinted_scheduler_stop(handle: &HintedSchedulerHandle) {
 #[no_mangle]
 pub extern "C" fn rsn_hinted_scheduler_notify(handle: &HintedSchedulerHandle) {
     handle.0.notify();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hinted_scheduler_collect_container_info(
-    handle: &HintedSchedulerHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

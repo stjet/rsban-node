@@ -1,4 +1,4 @@
-use super::{vote_processor_queue::VoteProcessorQueueHandle, LocalVoteHistoryHandle, VoteHandle};
+use super::{vote_processor_queue::VoteProcessorQueueHandle, LocalVoteHistoryHandle};
 use crate::{
     ledger::datastore::LedgerHandle,
     messages::MessageHandle,

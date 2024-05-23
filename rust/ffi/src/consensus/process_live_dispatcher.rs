@@ -1,8 +1,4 @@
-use super::priority_scheduler::ElectionSchedulerHandle;
-use crate::{
-    block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
-    websocket::WebsocketListenerHandle,
-};
+use crate::block_processing::BlockProcessorHandle;
 use rsnano_node::consensus::{ProcessLiveDispatcher, ProcessLiveDispatcherExt};
 use std::sync::Arc;
 

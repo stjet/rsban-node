@@ -1,7 +1,5 @@
-use super::{SynCookiesHandle, TcpChannelsHandle};
-use crate::{NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle};
 use rsnano_node::transport::NetworkThreads;
-use std::{borrow::BorrowMut, sync::Arc};
+use std::sync::Arc;
 
 pub struct NetworkThreadsHandle(pub Arc<NetworkThreads>);
 

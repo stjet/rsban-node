@@ -1,10 +1,8 @@
-use crate::{consensus::VoteHandle, utils::ContainerInfoComponentHandle, StatHandle};
-use num_traits::FromPrimitive;
-use rsnano_core::{Amount, BlockHash, Vote, VoteCode, VoteSource};
-use rsnano_node::consensus::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig};
+use crate::{consensus::VoteHandle, StatHandle};
+use rsnano_core::{Amount, BlockHash, Vote, VoteCode};
+use rsnano_node::consensus::{VoteCache, VoteCacheConfig};
 use std::{
     collections::HashMap,
-    ffi::{c_char, CStr},
     ops::Deref,
     sync::{Arc, Mutex},
     time::Duration,
@@ -57,16 +55,6 @@ pub unsafe extern "C" fn rsn_vote_cache_find(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_erase(
-    handle: *mut VoteCacheHandle,
-    hash: *const u8,
-) -> bool {
-    let hash = BlockHash::from_ptr(hash);
-    let mut guard = (*handle).0.lock().unwrap();
-    guard.erase(&hash)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_clear(handle: *mut VoteCacheHandle) {
     let mut guard = (*handle).0.lock().unwrap();
     guard.clear()
@@ -108,22 +96,6 @@ pub unsafe extern "C" fn rsn_vote_result_map_get(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_observe(
-    handle: &mut VoteCacheHandle,
-    vote: &VoteHandle,
-    rep_weight: *const u8,
-    vote_source: u8,
-    results: &VoteResultMapHandle,
-) {
-    handle.0.lock().unwrap().observe(
-        vote,
-        Amount::from_ptr(rep_weight),
-        VoteSource::from_u8(vote_source).unwrap(),
-        results.into(),
-    );
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_vote(
     handle: &mut VoteCacheHandle,
     vote: &VoteHandle,
@@ -135,37 +107,6 @@ pub unsafe extern "C" fn rsn_vote_cache_vote(
         .lock()
         .unwrap()
         .insert(vote, Amount::from_ptr(weight));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_collect_container_info(
-    handle: *const VoteCacheHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = (*handle)
-        .0
-        .lock()
-        .unwrap()
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
-}
-
-#[repr(C)]
-pub struct TopEntryDto {
-    pub hash: [u8; 32],
-    pub tally: [u8; 16],
-    pub final_tally: [u8; 16],
-}
-
-pub struct TopEntryVecHandle(Vec<TopEntry>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_top(
-    handle: &VoteCacheHandle,
-    min_tally: *const u8,
-) -> *mut TopEntryVecHandle {
-    let result = handle.0.lock().unwrap().top(Amount::from_ptr(min_tally));
-    Box::into_raw(Box::new(TopEntryVecHandle(result)))
 }
 
 #[repr(C)]

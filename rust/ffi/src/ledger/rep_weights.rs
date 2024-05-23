@@ -1,7 +1,6 @@
 use super::datastore::TransactionHandle;
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::RepWeights;
-use rsnano_store_lmdb::EnvironmentWrapper;
 use std::{slice, sync::Arc};
 
 pub struct RepWeightsHandle(Arc<RepWeights>);
@@ -57,16 +56,6 @@ pub unsafe extern "C" fn rsn_rep_weights_representation_get(
     let result = slice::from_raw_parts_mut(result, 16);
     let representation = (*handle).0.representation_get(&Account::from_ptr(account));
     result.copy_from_slice(&representation.to_be_bytes());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_rep_weights_item_size() -> usize {
-    RepWeights::<EnvironmentWrapper>::item_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_rep_weights_item_count(handle: *const RepWeightsHandle) -> usize {
-    (*handle).0.count()
 }
 
 #[repr(C)]

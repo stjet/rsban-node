@@ -84,8 +84,3 @@ pub unsafe extern "C" fn rsn_peer_exclusion_remove(
 pub unsafe extern "C" fn rsn_peer_exclusion_size(handle: *mut PeerExclusionHandle) -> usize {
     (*handle).0.lock().unwrap().size()
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_peer_exclusion_element_size() -> usize {
-    PeerExclusion::element_size()
-}

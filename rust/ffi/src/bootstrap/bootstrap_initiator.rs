@@ -9,7 +9,7 @@ use crate::{
     transport::{
         EndpointDto, OutboundBandwidthLimiterHandle, SocketFfiObserver, TcpChannelsHandle,
     },
-    utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
     wallets::AccountVecHandle,
     websocket::WebsocketListenerHandle,
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
@@ -17,7 +17,7 @@ use crate::{
 use rsnano_core::{Account, HashOrAccount};
 use rsnano_node::bootstrap::{BootstrapInitiator, BootstrapInitiatorExt};
 use std::{
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, c_void},
     ops::Deref,
     sync::Arc,
 };
@@ -195,15 +195,4 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_cache(
     handle: &BootstrapInitiatorHandle,
 ) -> *mut PullsCacheHandle {
     PullsCacheHandle::new(Arc::clone(&handle.cache))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_initiator_collect_container_info(
-    handle: &BootstrapInitiatorHandle,
-    name: *const c_char,
-) -> *mut ContainerInfoComponentHandle {
-    let container_info = handle
-        .0
-        .collect_container_info(CStr::from_ptr(name).to_str().unwrap().to_owned());
-    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

@@ -1,9 +1,5 @@
-use std::{ffi::c_void, ops::Deref, sync::Arc};
-
 use rsnano_node::utils::AsyncRuntime;
-
-use super::ContextWrapper;
-use crate::VoidPointerCallback;
+use std::{ops::Deref, sync::Arc};
 
 pub struct AsyncRuntimeHandle(pub Arc<AsyncRuntime>);
 
@@ -41,18 +37,4 @@ pub extern "C" fn rsn_async_runtime_create(_multi_threaded: bool) -> *mut AsyncR
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_runtime_destroy(handle: *mut AsyncRuntimeHandle) {
     drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_async_runtime_post(
-    handle: &AsyncRuntimeHandle,
-    callback: VoidPointerCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    let callback_wrapper = Box::new(move || {
-        callback(context_wrapper.get_context());
-    });
-    handle.0.tokio.spawn_blocking(callback_wrapper);
 }

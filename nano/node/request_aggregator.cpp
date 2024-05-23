@@ -66,8 +66,3 @@ std::chrono::milliseconds nano::request_aggregator::get_max_delay () const
 {
 	return std::chrono::milliseconds{ rsnano::rsn_request_aggregator_max_delay_ms (handle) };
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (nano::request_aggregator & aggregator, std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_request_aggregator_collect_container_info (aggregator.handle, name.c_str ()));
-}

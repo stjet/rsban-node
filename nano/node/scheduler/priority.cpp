@@ -55,8 +55,3 @@ void nano::scheduler::priority::activate_successors (nano::store::read_transacti
 {
 	rsnano::rsn_election_scheduler_activate_successors (handle, transaction.get_rust_handle (), block->get_handle ());
 }
-
-std::unique_ptr<nano::container_info_component> nano::scheduler::priority::collect_container_info (std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_election_scheduler_collect_container_info (handle, name.c_str ()));
-}

@@ -34,9 +34,6 @@ public:
 	rsnano::LocalVoteHistoryHandle * handle;
 
 private:
-	friend std::unique_ptr<container_info_component> collect_container_info (local_vote_history & history, std::string const & name);
 	friend class local_vote_history_basic_Test;
 };
-
-std::unique_ptr<container_info_component> collect_container_info (local_vote_history & history, std::string const & name);
 }

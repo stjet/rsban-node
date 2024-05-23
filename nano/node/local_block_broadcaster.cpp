@@ -27,8 +27,3 @@ void nano::local_block_broadcaster::stop ()
 {
 	rsnano::rsn_local_block_broadcaster_stop (handle);
 }
-
-std::unique_ptr<nano::container_info_component> nano::local_block_broadcaster::collect_container_info (const std::string & name) const
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_local_block_broadcaster_collect_container_info (handle, name.c_str ()));
-}

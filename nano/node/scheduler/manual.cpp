@@ -41,8 +41,3 @@ void nano::scheduler::manual::push (std::shared_ptr<nano::block> const & block_a
 	}
 	rsnano::rsn_manual_scheduler_push (handle, block_a->get_handle (), previous_ptr, static_cast<uint8_t> (election_behavior_a));
 }
-
-std::unique_ptr<nano::container_info_component> nano::scheduler::manual::collect_container_info (std::string const & name) const
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_manual_scheduler_collect_container_info (handle, name.c_str ()));
-}

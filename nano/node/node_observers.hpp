@@ -28,6 +28,4 @@ public:
 	nano::observer_set<std::shared_ptr<nano::transport::socket>> socket_connected;
 	nano::observer_set<nano::transport::socket &> socket_accepted;
 };
-
-std::unique_ptr<container_info_component> collect_container_info (node_observers & node_observers, std::string const & name);
 }

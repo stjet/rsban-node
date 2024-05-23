@@ -24,7 +24,6 @@ public:
 	void remove (nano::tcp_endpoint const &);
 	bool contains (nano::tcp_endpoint const &);
 	std::size_t size () const;
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
 
 private:
 	rsnano::PeerExclusionHandle * handle;

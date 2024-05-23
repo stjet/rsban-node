@@ -1,6 +1,5 @@
 #pragma once
 #include "nano/lib/rsnano.hpp"
-#include "nano/lib/utility.hpp"
 
 #include <nano/lib/locks.hpp>
 #include <nano/lib/numbers.hpp>
@@ -34,7 +33,6 @@ public:
 	// Call action with confirmed block, may be different than what we started with
 	void push (std::shared_ptr<nano::block> const &, boost::optional<nano::uint128_t> const & = boost::none, nano::election_behavior = nano::election_behavior::normal);
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;
 	rsnano::ManualSchedulerHandle * handle;
 }; // class manual
 } // nano::scheduler

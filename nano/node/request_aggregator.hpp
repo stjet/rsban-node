@@ -45,5 +45,4 @@ public:
 
 	rsnano::RequestAggregatorHandle * handle;
 };
-std::unique_ptr<container_info_component> collect_container_info (request_aggregator &, std::string const &);
 }

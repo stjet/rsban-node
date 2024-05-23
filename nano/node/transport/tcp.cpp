@@ -460,11 +460,6 @@ bool nano::transport::tcp_channels::track_reachout (nano::endpoint const & endpo
 	return rsnano::rsn_tcp_channels_reachout (handle, &endpoint_dto);
 }
 
-std::unique_ptr<nano::container_info_component> nano::transport::tcp_channels::collect_container_info (std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_tcp_channels_collect_container_info (handle, name.c_str ()));
-}
-
 void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();

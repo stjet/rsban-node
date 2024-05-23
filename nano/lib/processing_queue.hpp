@@ -107,16 +107,6 @@ public:
 		return queue.size ();
 	}
 
-public: // Container info
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const
-	{
-		nano::lock_guard<nano::mutex> guard{ mutex };
-
-		auto composite = std::make_unique<container_info_composite> (name);
-		composite->add_component (std::make_unique<container_info_leaf> (container_info{ "queue", queue.size (), sizeof (typename decltype (queue)::value_type) }));
-		return composite;
-	}
-
 private:
 	std::deque<value_t> next_batch (nano::unique_lock<nano::mutex> & lock)
 	{

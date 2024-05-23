@@ -198,12 +198,6 @@ void nano::block_processor::notify_block_rolled_back (std::shared_ptr<nano::bloc
 	rsnano::rsn_block_processor_notify_block_rolled_back (handle, block->get_handle ());
 }
 
-std::unique_ptr<nano::container_info_component> nano::block_processor::collect_container_info (std::string const & name)
-{
-	auto info_handle = rsnano::rsn_block_processor_collect_container_info (handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}
-
 std::string_view nano::to_string (nano::block_source source)
 {
 	return magic_enum::enum_name (source);

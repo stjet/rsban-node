@@ -61,12 +61,6 @@ void nano::vote_cache::clear ()
 	return rsnano::rsn_vote_cache_clear (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_container_info (const std::string & name) const
-{
-	auto info_handle = rsnano::rsn_vote_cache_collect_container_info (handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}
-
 /*
  * vote_cache_config
  */

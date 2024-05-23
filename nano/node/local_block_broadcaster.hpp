@@ -6,8 +6,6 @@
 #include <nano/node/blockprocessor.hpp>
 #include <nano/secure/common.hpp>
 
-#include <memory>
-
 namespace nano
 {
 class node;
@@ -35,8 +33,6 @@ public:
 
 	void start ();
 	void stop ();
-
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;
 
 	rsnano::LocalBlockBroadcasterHandle * handle;
 };

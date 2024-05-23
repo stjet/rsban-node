@@ -59,12 +59,6 @@ void nano::vote_processor_queue::stop ()
 	rsnano::rsn_vote_processor_queue_stop (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (vote_processor_queue & queue, std::string const & name)
-{
-	auto info_handle = rsnano::rsn_vote_processor_collect_container_info (queue.handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}
-
 namespace
 {
 void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)

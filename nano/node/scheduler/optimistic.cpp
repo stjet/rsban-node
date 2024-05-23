@@ -46,11 +46,6 @@ bool nano::scheduler::optimistic::activate (const nano::account & account, const
 	return rsnano::rsn_optimistic_scheduler_activate (handle, account.bytes.data (), account_info.handle, &conf_info.dto);
 }
 
-std::unique_ptr<nano::container_info_component> nano::scheduler::optimistic::collect_container_info (const std::string & name) const
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_optimistic_scheduler_collect_container_info (handle, name.c_str ()));
-}
-
 /*
  * optimistic_scheduler_config
  */

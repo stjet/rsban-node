@@ -47,9 +47,5 @@ public:
 	void start ();
 	void stop ();
 	rsnano::VoteGeneratorHandle * handle;
-
-	friend std::unique_ptr<container_info_component> collect_container_info (vote_generator & vote_generator, std::string const & name);
 };
-
-std::unique_ptr<container_info_component> collect_container_info (vote_generator & generator, std::string const & name);
 }

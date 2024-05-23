@@ -52,8 +52,6 @@ public:
 	rsnano::VoteProcessorQueueHandle * handle;
 };
 
-std::unique_ptr<container_info_component> collect_container_info (vote_processor_queue & queue, std::string const & name);
-
 class vote_processor final
 {
 public:

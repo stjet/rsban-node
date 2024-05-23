@@ -45,11 +45,6 @@ void nano::scheduler::hinted::notify ()
 	rsnano::rsn_hinted_scheduler_notify (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::scheduler::hinted::collect_container_info (const std::string & name) const
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_hinted_scheduler_collect_container_info (handle, name.c_str ()));
-}
-
 /*
  * hinted_config
  */

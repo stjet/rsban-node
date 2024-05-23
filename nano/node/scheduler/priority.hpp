@@ -54,8 +54,6 @@ public:
 	bool empty () const;
 	void activate_successors (nano::store::read_transaction const & transaction, std::shared_ptr<nano::block> const & block);
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
-
 	rsnano::ElectionSchedulerHandle * handle;
 };
 }

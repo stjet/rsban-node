@@ -133,11 +133,6 @@ void nano::bootstrap_initiator::stop ()
 	rsnano::rsn_bootstrap_initiator_stop (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_bootstrap_initiator_collect_container_info (bootstrap_initiator.handle, name.c_str ()));
-}
-
 nano::pulls_cache::pulls_cache (rsnano::PullsCacheHandle * handle) :
 	handle{ handle }
 {

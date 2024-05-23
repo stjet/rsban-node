@@ -36,9 +36,3 @@ nano::rep_tier nano::rep_tiers::tier (const nano::account & representative) cons
 {
 	return static_cast<nano::rep_tier> (rsnano::rsn_rep_tiers_tier (handle, representative.bytes.data ()));
 }
-
-std::unique_ptr<nano::container_info_component> nano::rep_tiers::collect_container_info (const std::string & name)
-{
-	auto info_handle = rsnano::rsn_rep_tiers_collect_container_info (handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}

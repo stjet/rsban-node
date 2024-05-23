@@ -74,7 +74,6 @@ public:
 	 */
 	std::unordered_map<nano::endpoint, nano::telemetry_data> get_all_telemetries () const;
 
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 	rsnano::TelemetryHandle * handle;
 };
 

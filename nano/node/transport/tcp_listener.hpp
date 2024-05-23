@@ -33,8 +33,6 @@ public:
 	nano::tcp_endpoint endpoint ();
 	std::size_t connections_count ();
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
-
 	rsnano::TcpListenerHandle * handle;
 };
 }

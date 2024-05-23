@@ -122,8 +122,6 @@ public:
 	/** Total number of representatives */
 	std::size_t representative_count ();
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
-
 private:
 	nano::node & node;
 

@@ -232,11 +232,6 @@ std::size_t nano::rep_crawler::representative_count ()
 	return node.representative_register.representative_count ();
 }
 
-std::unique_ptr<nano::container_info_component> nano::rep_crawler::collect_container_info (const std::string & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_rep_crawler_collect_container_info (handle, name.c_str ()));
-}
-
 // Only for tests
 void nano::rep_crawler::force_add_rep (const nano::account & account, const std::shared_ptr<nano::transport::channel> & channel)
 {

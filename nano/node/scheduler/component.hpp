@@ -42,8 +42,6 @@ public:
 	// Stops all schedulers
 	void stop ();
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
-
 	nano::scheduler::hinted & hinted;
 	nano::scheduler::manual & manual;
 	nano::scheduler::optimistic & optimistic;

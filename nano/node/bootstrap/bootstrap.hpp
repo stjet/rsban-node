@@ -118,8 +118,6 @@ public:
 	void stop ();
 };
 
-std::unique_ptr<container_info_component> collect_container_info (bootstrap_initiator & bootstrap_initiator, std::string const & name);
-
 /**
  * Defines the numeric values for the bootstrap feature.
  */

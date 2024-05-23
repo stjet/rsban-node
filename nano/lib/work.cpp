@@ -153,12 +153,3 @@ uint64_t nano::work_pool::difficulty (const nano::work_version version_a, const 
 {
 	return rsnano::rsn_work_pool_difficulty (handle, static_cast<uint8_t> (version_a), root_a.bytes.data (), work_a);
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (work_pool & work_pool, std::string const & name)
-{
-	size_t count = work_pool.pending_size ();
-	auto sizeof_element = work_pool.pending_value_size ();
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "pending", count, sizeof_element }));
-	return composite;
-}

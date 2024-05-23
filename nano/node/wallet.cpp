@@ -1289,20 +1289,3 @@ bool nano::mdb_wallets_store::init_error () const
 {
 	return error;
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (wallets & wallets, std::string const & name)
-{
-	std::size_t items_count;
-	std::size_t actions_count = wallets.actions_size ();
-	{
-		auto guard{ wallets.mutex.lock () };
-		items_count = guard.size ();
-	}
-
-	auto sizeof_item_element = sizeof (nano::wallet_id) + sizeof (uintptr_t);
-	auto sizeof_actions_element = sizeof (uintptr_t) * 2;
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "items", items_count, sizeof_item_element }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "actions", actions_count, sizeof_actions_element }));
-	return composite;
-}

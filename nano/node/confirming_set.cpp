@@ -85,9 +85,3 @@ void nano::confirming_set::add_block_already_cemented_observer (std::function<vo
 	auto context = new std::function<void (nano::block_hash const &)> (callback_a);
 	rsnano::rsn_confirming_set_add_already_cemented_observer (handle, block_hash_callback, context, delete_block_hash_callback_context);
 }
-
-std::unique_ptr<nano::container_info_component> nano::confirming_set::collect_container_info (std::string const & name) const
-{
-	auto info_handle = rsnano::rsn_confirming_set_collect_container_info (handle, name.c_str ());
-	return std::make_unique<nano::container_info_composite> (info_handle);
-}

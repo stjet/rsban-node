@@ -329,8 +329,6 @@ public:
 	mutable wallets_mutex mutex;
 };
 
-std::unique_ptr<container_info_component> collect_container_info (wallets & wallets, std::string const & name);
-
 class wallets_store
 {
 public:

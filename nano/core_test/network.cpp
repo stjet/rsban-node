@@ -763,27 +763,6 @@ TEST (network, duplicate_revert_publish)
 	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 }
 
-namespace nano
-{
-TEST (peer_exclusion, container_info)
-{
-	nano::peer_exclusion excluded_peers;
-	nano::tcp_endpoint endpoint (boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (0x1)), 0);
-	ASSERT_EQ (1, excluded_peers.add (endpoint));
-	auto component{ excluded_peers.collect_container_info ("") };
-	auto composite (dynamic_cast<nano::container_info_composite *> (component.get ()));
-	ASSERT_NE (nullptr, component);
-	auto children (composite->get_children ());
-	ASSERT_EQ (1, children.size ());
-	auto child_leaf (dynamic_cast<nano::container_info_leaf *> (children.front ().get ()));
-	ASSERT_NE (nullptr, child_leaf);
-	auto child_info (child_leaf->get_info ());
-	ASSERT_EQ ("peers", child_info.name);
-	ASSERT_EQ (1, child_info.count);
-	ASSERT_EQ (rsnano::rsn_peer_exclusion_element_size (), child_info.sizeof_element);
-}
-}
-
 TEST (network, tcp_no_connect_excluded_peers)
 {
 	nano::test::system system (1);

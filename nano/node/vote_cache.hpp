@@ -63,8 +63,6 @@ public:
 	bool empty () const;
 
 public: // Container info
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name) const;
-
 	rsnano::VoteCacheHandle * handle;
 };
 }

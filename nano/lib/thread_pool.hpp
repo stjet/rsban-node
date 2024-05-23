@@ -30,6 +30,4 @@ public:
 
 	rsnano::ThreadPoolHandle * handle;
 };
-
-std::unique_ptr<nano::container_info_component> collect_container_info (thread_pool & thread_pool, std::string const & name);
 } // namespace nano

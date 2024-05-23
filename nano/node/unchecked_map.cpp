@@ -123,11 +123,3 @@ std::size_t nano::unchecked_map::buffer_count () const
 {
 	return rsnano::rsn_unchecked_map_buffer_count (handle);
 }
-
-std::unique_ptr<nano::container_info_component> nano::unchecked_map::collect_container_info (const std::string & name)
-{
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "entries", count (), rsnano::rsn_unchecked_map_entries_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "queries", buffer_count (), rsnano::rsn_unchecked_map_buffer_entry_size () }));
-	return composite;
-}

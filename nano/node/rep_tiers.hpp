@@ -6,8 +6,6 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <memory>
-
 namespace rsnano
 {
 class RepTiersHandle;
@@ -43,8 +41,6 @@ public:
 
 	/** Returns the representative tier for the account */
 	nano::rep_tier tier (nano::account const & representative) const;
-
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name);
 
 	rsnano::RepTiersHandle * handle;
 };

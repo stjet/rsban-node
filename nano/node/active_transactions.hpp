@@ -135,7 +135,6 @@ public:
 
 private:
 	friend class election;
-	friend std::unique_ptr<container_info_component> collect_container_info (active_transactions &, std::string const &);
 
 public: // Tests
 	void clear ();
@@ -153,5 +152,4 @@ public: // Tests
 	friend class frontiers_confirmation_expired_optimistic_elections_removal_Test;
 };
 
-std::unique_ptr<container_info_component> collect_container_info (active_transactions & active_transactions, std::string const & name);
 }

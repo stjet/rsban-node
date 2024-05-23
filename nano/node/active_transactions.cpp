@@ -447,8 +447,3 @@ void nano::active_transactions::clear ()
 {
 	rsnano::rsn_active_transactions_clear (handle);
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (active_transactions & active_transactions, std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_active_transactions_collect_container_info (active_transactions.handle, name.c_str ()));
-}

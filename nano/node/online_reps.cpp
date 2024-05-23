@@ -95,15 +95,6 @@ void nano::online_reps::clear ()
 	rsnano::rsn_online_reps_clear (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (online_reps & online_reps, std::string const & name)
-{
-	size_t count = rsnano::rsn_online_reps_item_count (online_reps.handle);
-	auto sizeof_element = rsnano::rsn_online_reps_item_size ();
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "reps", count, sizeof_element }));
-	return composite;
-}
-
 rsnano::OnlineRepsHandle * nano::online_reps::get_handle () const
 {
 	return handle;

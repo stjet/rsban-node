@@ -38,8 +38,5 @@ public:
 	std::size_t buffer_count () const;
 
 	rsnano::UncheckedMapHandle * handle;
-
-public: // Container info
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 };
 }

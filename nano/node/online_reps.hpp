@@ -6,7 +6,6 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <memory>
 #include <vector>
 
 namespace nano
@@ -45,8 +44,5 @@ private:
 	rsnano::OnlineRepsHandle * handle;
 
 	friend class election_quorum_minimum_update_weight_before_quorum_checks_Test;
-	friend std::unique_ptr<container_info_component> collect_container_info (online_reps & online_reps, std::string const & name);
 };
-
-std::unique_ptr<container_info_component> collect_container_info (online_reps & online_reps, std::string const & name);
 }

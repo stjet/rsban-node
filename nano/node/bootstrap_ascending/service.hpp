@@ -41,7 +41,6 @@ namespace bootstrap_ascending
 		 */
 		void process (nano::asc_pull_ack const & message, std::shared_ptr<nano::transport::channel> channel);
 
-		std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
 		rsnano::BootstrapAscendingHandle * handle;
 	};
 }

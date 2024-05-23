@@ -76,25 +76,3 @@ void drop_reply_action_context (void * context)
 	delete action;
 }
 }
-
-std::unique_ptr<nano::container_info_component> nano::collect_container_info (nano::vote_generator & vote_generator, std::string const & name)
-{
-	std::size_t candidates_count = 0;
-	std::size_t requests_count = 0;
-	// TODO:
-	/*{
-		nano::lock_guard<nano::mutex> guard{ vote_generator.mutex };
-		candidates_count = vote_generator.candidates.size ();
-		requests_count = vote_generator.requests.size ();
-	}
-	auto sizeof_candidate_element = sizeof (decltype (vote_generator.candidates)::value_type);
-	auto sizeof_request_element = sizeof (decltype (vote_generator.requests)::value_type);
-	*/
-	auto composite = std::make_unique<container_info_composite> (name);
-	/*
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "candidates", candidates_count, sizeof_candidate_element }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "requests", requests_count, sizeof_request_element }));
-	composite->add_component (vote_generator.vote_generation_queue.collect_container_info ("vote_generation_queue"));
-	*/
-	return composite;
-}

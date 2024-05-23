@@ -51,8 +51,3 @@ void nano::bootstrap_ascending::service::process (nano::asc_pull_ack const & mes
 {
 	rsnano::rsn_bootstrap_ascending_process (handle, message.handle, channel->handle);
 }
-
-std::unique_ptr<nano::container_info_component> nano::bootstrap_ascending::service::collect_container_info (std::string const & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_bootstrap_ascending_collect_container_info (handle, name.c_str ()));
-}

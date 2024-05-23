@@ -61,7 +61,6 @@ public:
 	 */
 	void notify ();
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const & name) const;
 	rsnano::OptimisticSchedulerHandle * handle;
 };
 }

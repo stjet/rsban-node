@@ -143,7 +143,6 @@ namespace transport
 		void process_messages ();
 		// Should we reach out to this endpoint with a keepalive message
 		bool track_reachout (nano::endpoint const &);
-		std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
 		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
 		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);

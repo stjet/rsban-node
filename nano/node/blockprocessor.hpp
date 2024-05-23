@@ -100,8 +100,6 @@ public:
 	std::optional<nano::block_status> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
 	void force (std::shared_ptr<nano::block> const &);
 
-	std::unique_ptr<nano::container_info_component> collect_container_info (std::string const & name);
-
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
 public: // Events

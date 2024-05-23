@@ -430,13 +430,3 @@ uint64_t nano::ledger::pruned_count () const
 {
 	return cache.pruned_count ();
 }
-
-std::unique_ptr<nano::container_info_component> nano::ledger::collect_container_info (std::string const & name) const
-{
-	auto count = get_bootstrap_weights_size ();
-	auto sizeof_element = sizeof (nano::account) + sizeof (nano::uint128_t);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "bootstrap_weights", count, sizeof_element }));
-	composite->add_component (cache.rep_weights ().collect_container_info ("rep_weights"));
-	return composite;
-}

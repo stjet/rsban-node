@@ -74,6 +74,4 @@ public:
 
 	rsnano::WorkPoolHandle * handle;
 };
-
-std::unique_ptr<container_info_component> collect_container_info (work_pool & work_pool, std::string const & name);
 }

@@ -84,11 +84,6 @@ std::unordered_map<nano::endpoint, nano::telemetry_data> nano::telemetry::get_al
 	return result;
 }
 
-std::unique_ptr<nano::container_info_component> nano::telemetry::collect_container_info (const std::string & name)
-{
-	return std::make_unique<container_info_composite> (rsnano::rsn_telemetry_collect_container_info (handle, name.c_str ()));
-}
-
 nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemetry_data> const & telemetry_datas)
 {
 	std::vector<rsnano::TelemetryDataHandle *> data_handles;

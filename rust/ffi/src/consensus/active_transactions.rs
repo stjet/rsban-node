@@ -19,25 +19,13 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Vote, VoteCode, VoteSource,
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, VoteSource};
+use rsnano_node::consensus::{
+    ActiveTransactions, ActiveTransactionsExt, Election, ElectionBehavior,
 };
-use rsnano_node::{
-    config::NodeConfig,
-    consensus::{
-        AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt, Election,
-        ElectionBehavior, ElectionEndCallback,
-    },
-};
-use std::{collections::HashMap, ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);
-
-impl ActiveTransactionsHandle {
-    pub fn new(inner: Arc<ActiveTransactions>) -> *mut Self {
-        Box::into_raw(Box::new(Self(inner)))
-    }
-}
 
 impl Deref for ActiveTransactionsHandle {
     type Target = Arc<ActiveTransactions>;
@@ -48,91 +36,8 @@ impl Deref for ActiveTransactionsHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_create(
-    network: &NetworkParamsDto,
-    online_reps: &OnlineRepsHandle,
-    wallets: &LmdbWalletsHandle,
-    config: &NodeConfigDto,
-    ledger: &LedgerHandle,
-    confirming_set: &ConfirmingSetHandle,
-    workers: &ThreadPoolHandle,
-    history: &LocalVoteHistoryHandle,
-    block_processor: &BlockProcessorHandle,
-    generator: &VoteGeneratorHandle,
-    final_generator: &VoteGeneratorHandle,
-    tcp_channels: &TcpChannelsHandle,
-    vote_cache: &VoteCacheHandle,
-    stats: &StatHandle,
-    observers_context: *mut c_void,
-    delete_observers_context: VoidPointerCallback,
-    election_ended: ElectionEndedCallback,
-    balance_changed: FfiAccountBalanceCallback,
-    rep_register: &RepresentativeRegisterHandle,
-    node_flags: &NodeFlagsHandle,
-) -> *mut ActiveTransactionsHandle {
-    let ctx_wrapper = Arc::new(ContextWrapper::new(
-        observers_context,
-        delete_observers_context,
-    ));
-
-    let ctx = Arc::clone(&ctx_wrapper);
-    let election_ended_wrapper: ElectionEndCallback = Box::new(
-        move |status, votes, account, amount, is_state_send, is_state_epoch| {
-            let status_handle = ElectionStatusHandle::new(status.clone());
-            let votes_handle = VoteWithWeightInfoVecHandle::new(votes.clone());
-            election_ended(
-                ctx.get_context(),
-                status_handle,
-                votes_handle,
-                account.as_bytes().as_ptr(),
-                amount.to_be_bytes().as_ptr(),
-                is_state_send,
-                is_state_epoch,
-            );
-        },
-    );
-
-    let ctx = Arc::clone(&ctx_wrapper);
-    let account_balance_changed_wrapper: AccountBalanceChangedCallback =
-        Box::new(move |account, is_pending| {
-            balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
-        });
-
-    ActiveTransactionsHandle::new(Arc::new(ActiveTransactions::new(
-        network.try_into().unwrap(),
-        Arc::clone(online_reps),
-        Arc::clone(wallets),
-        NodeConfig::try_from(config).unwrap(),
-        Arc::clone(ledger),
-        Arc::clone(confirming_set),
-        Arc::clone(workers),
-        Arc::clone(history),
-        Arc::clone(block_processor),
-        Arc::clone(generator),
-        Arc::clone(final_generator),
-        Arc::clone(tcp_channels),
-        Arc::clone(vote_cache),
-        Arc::clone(stats),
-        election_ended_wrapper,
-        account_balance_changed_wrapper,
-        Arc::clone(rep_register),
-        node_flags.lock().unwrap().clone(),
-    )))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_initialize(handle: &ActiveTransactionsHandle) {
-    handle.initialize();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_destroy(handle: *mut ActiveTransactionsHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_start(handle: &ActiveTransactionsHandle) {
-    handle.start();
 }
 
 #[no_mangle]
@@ -177,20 +82,6 @@ pub unsafe extern "C" fn rsn_active_transactions_tally_impl(
             .map(|(key, value)| (key.deref().clone(), Arc::clone(value)))
             .collect(),
     )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_remove_votes(
-    handle: &ActiveTransactionsHandle,
-    election: &ElectionHandle,
-    lock_handle: &mut ElectionLockHandle,
-    hash: *const u8,
-) {
-    handle.remove_votes(
-        election,
-        lock_handle.0.as_mut().unwrap(),
-        &BlockHash::from_ptr(hash),
-    );
 }
 
 #[no_mangle]
@@ -262,17 +153,6 @@ pub extern "C" fn rsn_election_vec_get(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_remove_election_winner_details(
-    handle: &ActiveTransactionsHandle,
-    hash: *const u8,
-) -> *mut ElectionHandle {
-    match handle.remove_election_winner_details(&BlockHash::from_ptr(hash)) {
-        Some(election) => ElectionHandle::new(election),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_active_transactions_process_confirmed(
     handle: &ActiveTransactionsHandle,
     status: &ElectionStatusHandle,
@@ -306,21 +186,6 @@ pub extern "C" fn rsn_active_transactions_limit(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_insert(
-    handle: &ActiveTransactionsHandle,
-    block: &BlockHandle,
-    election_behavior: u8,
-    inserted: &mut bool,
-) -> *mut ElectionHandle {
-    let (election_inserted, election) =
-        handle.insert(block, ElectionBehavior::from_u8(election_behavior).unwrap());
-    *inserted = election_inserted;
-    election
-        .map(|e| ElectionHandle::new(e))
-        .unwrap_or(std::ptr::null_mut())
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_active_transactions_clear_recently_confirmed(
     handle: &ActiveTransactionsHandle,
 ) {
@@ -339,14 +204,6 @@ pub extern "C" fn rsn_active_transactions_recently_cemented_count(
     handle: &ActiveTransactionsHandle,
 ) -> usize {
     handle.0.recently_cemented_count()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_was_recently_confirmed(
-    handle: &ActiveTransactionsHandle,
-    hash: *const u8,
-) -> bool {
-    handle.0.was_recently_confirmed(&BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]
@@ -439,17 +296,6 @@ pub unsafe extern "C" fn rsn_active_transactions_len(handle: &ActiveTransactions
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_winner(
-    handle: &ActiveTransactionsHandle,
-    hash: *const u8,
-) -> *mut BlockHandle {
-    handle
-        .winner(&BlockHash::from_ptr(hash))
-        .map(BlockHandle::new)
-        .unwrap_or(std::ptr::null_mut())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_election(
     handle: &ActiveTransactionsHandle,
     root: *const u8,
@@ -508,49 +354,6 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
 /*
  * Callbacks
  */
-pub type VoteProcessedCallback =
-    unsafe extern "C" fn(*mut c_void, *mut VoteHandle, u8, *mut VoteResultMapHandle);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_add_vote_processed_observer(
-    handle: &ActiveTransactionsHandle,
-    observer: VoteProcessedCallback,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-) {
-    let ctx_wrapper = ContextWrapper::new(context, drop_context);
-    let wrapped_observer = Box::new(
-        move |vote: &Arc<Vote>, source: VoteSource, results: &HashMap<BlockHash, VoteCode>| {
-            let vote_handle = VoteHandle::new(Arc::clone(vote));
-            let results_handle = VoteResultMapHandle::new(results);
-            observer(
-                ctx_wrapper.get_context(),
-                vote_handle,
-                source as u8,
-                results_handle,
-            );
-        },
-    );
-    handle.add_vote_processed_observer(wrapped_observer)
-}
-
-pub type ActivateSuccessorsCallback =
-    unsafe extern "C" fn(*mut c_void, *mut TransactionHandle, *mut BlockHandle);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_activate_successors(
-    handle: &ActiveTransactionsHandle,
-    callback: ActivateSuccessorsCallback,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-) {
-    let ctx_wrapper = ContextWrapper::new(context, drop_context);
-    handle.set_activate_successors_callback(Box::new(move |tx, block| {
-        let tx_handle = TransactionHandle::new(TransactionType::Read(tx));
-        let block_handle = BlockHandle::new(Arc::clone(&block));
-        callback(ctx_wrapper.get_context(), tx_handle, block_handle);
-    }));
-}
 
 pub type ElectionEndedCallback = unsafe extern "C" fn(
     *mut c_void,

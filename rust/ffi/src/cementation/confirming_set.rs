@@ -1,12 +1,7 @@
-use crate::{
-    core::{BlockCallback, BlockHandle, BlockHashCallback},
-    ledger::datastore::LedgerHandle,
-    utils::ContextWrapper,
-    VoidPointerCallback,
-};
-use rsnano_core::{BlockEnum, BlockHash};
+use crate::ledger::datastore::LedgerHandle;
+use rsnano_core::BlockHash;
 use rsnano_node::cementation::ConfirmingSet;
-use std::{ffi::c_void, ops::Deref, sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc, time::Duration};
 
 pub struct ConfirmingSetHandle(pub Arc<ConfirmingSet>);
 
@@ -32,39 +27,6 @@ pub extern "C" fn rsn_confirming_set_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_confirming_set_destroy(handle: *mut ConfirmingSetHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirming_set_add_cemented_observer(
-    handle: &mut ConfirmingSetHandle,
-    callback: BlockCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    let callback_wrapper = Box::new(move |block: &Arc<BlockEnum>| {
-        let block_handle = Box::into_raw(Box::new(BlockHandle(Arc::new(block.deref().clone()))));
-        callback(context_wrapper.get_context(), block_handle);
-        drop(Box::from_raw(block_handle));
-    });
-    (*handle).0.add_cemented_observer(callback_wrapper);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_confirming_set_add_already_cemented_observer(
-    handle: &mut ConfirmingSetHandle,
-    callback: BlockHashCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    let callback_wrapper = Box::new(move |block_hash: BlockHash| {
-        callback(
-            context_wrapper.get_context(),
-            block_hash.as_bytes().as_ptr(),
-        );
-    });
-    (*handle).0.add_already_cemented_observer(callback_wrapper);
 }
 
 #[no_mangle]

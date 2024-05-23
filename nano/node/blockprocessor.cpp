@@ -1,6 +1,5 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/rsnano.hpp"
-#include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
@@ -17,70 +16,6 @@
 #include <memory>
 
 #include <magic_enum.hpp>
-
-namespace
-{
-void blocks_rolled_back_wrapper (void * context, rsnano::BlockVecHandle * rolled_back, rsnano::BlockHandle * initial_block)
-{
-	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> *> (context);
-	auto initial = nano::block_handle_to_block (initial_block);
-	rsnano::block_vec blocks{ rolled_back };
-	auto vec{ blocks.to_vector () };
-	(*callback) (vec, initial);
-}
-
-void blocks_rolled_back_delete (void * context)
-{
-	auto callback = static_cast<std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> *> (context);
-	delete callback;
-}
-
-void block_rolled_back_wrapper (void * context, rsnano::BlockHandle * block_handle)
-{
-	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
-	auto block{ nano::block_handle_to_block (block_handle) };
-	(*callback) (block);
-}
-
-void block_rolled_back_delete (void * context)
-{
-	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
-	delete callback;
-}
-
-void block_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto * dto)
-{
-	auto callback = static_cast<std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
-	auto block{ nano::block_handle_to_block (dto->block) };
-	(*callback) (static_cast<nano::block_status> (dto->status), block, static_cast<nano::block_source> (dto->source));
-}
-
-void block_processed_delete (void * context)
-{
-	auto callback = static_cast<std::function<void (nano::block_status, std::shared_ptr<nano::block> const &, nano::block_source)> *> (context);
-	delete callback;
-}
-
-void batch_processed_wrapper (void * context, rsnano::BlockProcessedInfoDto const * dto, std::size_t len)
-{
-	auto callback = static_cast<std::function<void (nano::block_processor::processed_batch_t const &)> *> (context);
-	std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>> blocks{};
-	for (auto i = 0; i < len; ++i)
-	{
-		auto block{ nano::block_handle_to_block (dto->block) };
-		blocks.emplace_back (static_cast<nano::block_status> (dto->status), block, static_cast<nano::block_source> (dto->source));
-		++dto;
-	}
-
-	(*callback) (blocks);
-}
-
-void batch_processed_delete (void * context)
-{
-	auto callback = static_cast<std::function<void (nano::block_processor::processed_batch_t const &)> *> (context);
-	delete callback;
-}
-}
 
 /*
  * block_processor

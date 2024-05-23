@@ -30,24 +30,6 @@ pub unsafe extern "C" fn rsn_bandwidth_limiter_destroy(limiter: *mut BandwidthLi
     drop(Box::from_raw(limiter));
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bandwidth_limiter_should_pass(
-    limiter: &BandwidthLimiterHandle,
-    message_size: usize,
-) -> bool {
-    limiter.0.should_pass(message_size)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bandwidth_limiter_reset(
-    limiter: &BandwidthLimiterHandle,
-    limit_burst_ratio: f64,
-    limit: usize,
-) -> i32 {
-    limiter.0.reset(limit_burst_ratio, limit);
-    0
-}
-
 pub struct OutboundBandwidthLimiterHandle(pub Arc<OutboundBandwidthLimiter>);
 
 impl Deref for OutboundBandwidthLimiterHandle {

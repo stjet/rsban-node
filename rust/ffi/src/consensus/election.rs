@@ -105,26 +105,8 @@ pub unsafe extern "C" fn rsn_election_qualified_root(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_is_quorum(handle: &ElectionHandle) -> bool {
-    handle.0.is_quorum.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_confirmation_request_count(handle: &ElectionHandle) -> u32 {
     handle.0.confirmation_request_count.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_confirmation_request_count_inc(handle: &ElectionHandle) {
-    handle
-        .0
-        .confirmation_request_count
-        .fetch_add(1, Ordering::SeqCst);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_failed(handle: &ElectionHandle) -> bool {
-    handle.0.failed()
 }
 
 #[no_mangle]
@@ -199,58 +181,6 @@ pub extern "C" fn rsn_election_lock_lock(
         std::mem::transmute::<MutexGuard<ElectionData>, MutexGuard<'static, ElectionData>>(guard)
     };
     handle.0 = Some(guard);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_final_weight(
-    handle: &ElectionLockHandle,
-    weight: *mut u8,
-) {
-    handle.0.as_ref().unwrap().final_weight.copy_bytes(weight);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_final_weight_set(
-    handle: &mut ElectionLockHandle,
-    weight: *const u8,
-) {
-    handle.0.as_mut().unwrap().final_weight = Amount::from_ptr(weight);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_add_block(
-    handle: &mut ElectionLockHandle,
-    block: &BlockHandle,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .last_blocks
-        .insert(block.hash(), Arc::clone(block));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_erase_block(
-    handle: &mut ElectionLockHandle,
-    hash: *const u8,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .last_blocks
-        .remove(&BlockHash::from_ptr(hash));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_(handle: &mut ElectionLockHandle, hash: *const u8) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .last_blocks
-        .remove(&BlockHash::from_ptr(hash));
 }
 
 #[no_mangle]

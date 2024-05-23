@@ -57,11 +57,6 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_total_queue_len(handle: &BlockProcessorHandle) -> usize {
-    handle.total_queue_len()
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_queue_len(
     handle: &BlockProcessorHandle,
     source: u8,
@@ -77,11 +72,6 @@ pub extern "C" fn rsn_block_processor_full(handle: &BlockProcessorHandle) -> boo
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_half_full(handle: &BlockProcessorHandle) -> bool {
     handle.half_full()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_start(handle: &BlockProcessorHandle) {
-    handle.start();
 }
 
 #[no_mangle]
@@ -151,59 +141,4 @@ pub extern "C" fn rsn_block_processor_force(
     block: &BlockHandle,
 ) {
     handle.force(Arc::clone(block));
-}
-
-#[repr(C)]
-pub struct BlockProcessedInfoDto {
-    pub status: u8,
-    pub block: *mut BlockHandle,
-    pub source: u8,
-}
-
-pub type BatchProcessedCallback = extern "C" fn(*mut c_void, *const BlockProcessedInfoDto, usize);
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_add_batch_processed_observer(
-    handle: &mut BlockProcessorHandle,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-    observer: BatchProcessedCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, drop_context);
-    handle.add_batch_processed_observer(Box::new(move |blocks| {
-        let dtos = blocks
-            .iter()
-            .map(|(status, context)| BlockProcessedInfoDto {
-                status: *status as u8,
-                block: BlockHandle::new(Arc::clone(&context.block)),
-                source: context.source as u8,
-            })
-            .collect::<Vec<_>>();
-
-        observer(context_wrapper.get_context(), dtos.as_ptr(), dtos.len());
-    }));
-}
-
-pub type BlockRolledBackCallback = extern "C" fn(*mut c_void, *mut BlockHandle);
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_add_rolled_back_observer(
-    handle: &mut BlockProcessorHandle,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-    observer: BlockRolledBackCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, drop_context);
-    handle.add_rolled_back_observer(Box::new(move |block| {
-        let block_handle = BlockHandle::new(Arc::new(block.clone()));
-        observer(context_wrapper.get_context(), block_handle);
-    }));
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_notify_block_rolled_back(
-    handle: &mut BlockProcessorHandle,
-    block: &BlockHandle,
-) {
-    handle.notify_block_rolled_back(block);
 }

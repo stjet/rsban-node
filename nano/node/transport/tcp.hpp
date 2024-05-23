@@ -157,6 +157,7 @@ namespace transport
 		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		void set_port (uint16_t port_a);
+		uint16_t port () const;
 		void set_observer (std::shared_ptr<nano::transport::tcp_listener> observer_a);
 		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
 		std::shared_ptr<nano::transport::channel_tcp> get_first_channel () const;

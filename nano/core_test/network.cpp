@@ -65,7 +65,7 @@ TEST (network, construction_with_specified_port)
 	auto const port = nano::test::speculatively_choose_a_free_tcp_bind_port ();
 	ASSERT_NE (port, 0);
 	auto const node = system.add_node (nano::node_config{ port });
-	EXPECT_EQ (port, node->network->port);
+	EXPECT_EQ (port, node->network->tcp_channels->port());
 	EXPECT_EQ (port, node->network->endpoint ().port ());
 	EXPECT_EQ (port, node->tcp_listener->endpoint ().port ());
 }
@@ -74,7 +74,7 @@ TEST (network, construction_without_specified_port)
 {
 	nano::test::system system{};
 	auto const node = system.add_node ();
-	auto const port = node->network->port.load ();
+	auto const port = node->network->tcp_channels->port ();
 	EXPECT_NE (0, port);
 	EXPECT_EQ (port, node->network->endpoint ().port ());
 	EXPECT_EQ (port, node->tcp_listener->endpoint ().port ());
@@ -842,9 +842,6 @@ TEST (network, loopback_channel)
 	ASSERT_EQ (channel1.get_network_version (), node1.network_params.network.protocol_version);
 	ASSERT_EQ (channel1.get_node_id (), node1.node_id.pub);
 	ASSERT_EQ (channel1.get_node_id_optional ().value_or (0), node1.node_id.pub);
-	nano::transport::inproc::channel channel2 (node2, node2);
-	++node1.network->port;
-	ASSERT_NE (channel1.get_remote_endpoint (), node1.network->endpoint ());
 }
 
 // Ensure the network filters messages with the incorrect magic number

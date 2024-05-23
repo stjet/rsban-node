@@ -110,6 +110,11 @@ pub extern "C" fn rsn_tcp_channels_set_sink(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_tcp_channels_port(handle: &TcpChannelsHandle) -> u16 {
+    handle.port()
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_set_port(handle: &mut TcpChannelsHandle, port: u16) {
     handle.set_port(port)
 }

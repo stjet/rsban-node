@@ -4,17 +4,18 @@ use crate::{
         LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
     },
     bootstrap::{
-        BootstrapAscending, BootstrapInitiator, BootstrapInitiatorExt,
+        BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
         BootstrapMessageVisitorFactory, BootstrapServer,
     },
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{
         AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt, ElectionBehavior,
-        ElectionEndCallback, ElectionStatusType, HintedScheduler, LocalVoteHistory,
-        ManualScheduler, OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher,
+        ElectionEndCallback, ElectionStatusType, HintedScheduler, HintedSchedulerExt,
+        LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
+        OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
         ProcessLiveDispatcherExt, RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache,
-        VoteGenerator, VoteProcessor, VoteProcessorQueue,
+        VoteGenerator, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
     },
     node_id_key_file::NodeIdKeyFile,
     representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
@@ -29,10 +30,10 @@ use crate::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
     },
     wallets::{Wallets, WalletsExt},
-    websocket::create_websocket_server,
+    websocket::{create_websocket_server, WebsocketListenerExt},
     work::{DistributedWorkFactory, HttpClient},
-    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry, BUILD_INFO,
-    VERSION_STRING,
+    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
+    BUILD_INFO, VERSION_STRING,
 };
 use reqwest::Url;
 use rsnano_core::{
@@ -1191,6 +1192,9 @@ pub trait NodeExt {
     fn ongoing_peer_store(&self);
     fn ongoing_online_weight_calculation_queue(&self);
     fn ongoing_online_weight_calculation(&self);
+    fn backup_wallet(&self);
+    fn search_receivable_all(&self);
+    fn bootstrap_wallet(&self);
 }
 
 impl NodeExt for Arc<Node> {
@@ -1216,6 +1220,74 @@ impl NodeExt for Arc<Node> {
         }
         self.ongoing_peer_store();
         self.ongoing_online_weight_calculation_queue();
+
+        if self.config.tcp_incoming_connections_max > 0
+            && !(self.flags.disable_bootstrap_listener && self.flags.disable_tcp_realtime)
+        {
+            let listener_w = Arc::downgrade(&self.tcp_listener);
+            self.tcp_listener
+                .start_with(Box::new(move |new_connection, ec| {
+                    let Some(listener_l) = listener_w.upgrade() else {
+                        return false;
+                    };
+                    if ec.is_ok() {
+                        listener_l.accept_action(ec, new_connection);
+                    }
+                    true
+                }))
+                .expect("could not start tcp listener");
+
+            if self.channels.port() != self.tcp_listener.endpoint().port() {
+                self.channels.set_port(self.tcp_listener.endpoint().port());
+            }
+
+            info!("Node peering port: {}", self.channels.port());
+        }
+
+        if !self.flags.disable_backup {
+            self.backup_wallet();
+        }
+
+        if !self.flags.disable_search_pending {
+            self.search_receivable_all();
+        }
+
+        if !self.flags.disable_wallet_bootstrap {
+            // Delay to start wallet lazy bootstrap
+            let node_w = Arc::downgrade(self);
+            self.workers.add_delayed_task(
+                Duration::from_secs(60),
+                Box::new(move || {
+                    if let Some(node) = node_w.upgrade() {
+                        node.bootstrap_wallet();
+                    }
+                }),
+            );
+        }
+
+        self.unchecked.start();
+        self.wallets.start();
+        self.rep_tiers.start();
+        self.vote_processor.start();
+        self.block_processor.start();
+        self.active.start();
+        self.vote_generator.start();
+        self.final_generator.start();
+        self.confirming_set.start();
+        self.hinted_scheduler.start();
+        self.manual_scheduler.start();
+        self.optimistic_scheduler.start();
+        self.priority_scheduler.start();
+        self.backlog_population.start();
+        self.bootstrap_server.start();
+        if !self.flags.disable_ascending_bootstrap {
+            self.ascendboot.start();
+        }
+        if let Some(ws_listener) = &self.websocket {
+            ws_listener.start();
+        }
+        self.telemetry.start();
+        self.local_block_broadcaster.start();
     }
 
     fn stop(&self) {
@@ -1430,6 +1502,47 @@ impl NodeExt for Arc<Node> {
         self.online_reps_sampler.sample(online);
         let trend = self.online_reps_sampler.calculate_trend();
         self.online_reps.lock().unwrap().set_trended(trend);
+    }
+
+    fn backup_wallet(&self) {
+        let mut backup_path = self.application_path.clone();
+        backup_path.push("backup");
+        if let Err(e) = self.wallets.backup(&backup_path) {
+            error!(error = ?e, "Could not create backup of wallets");
+        }
+
+        let node_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            Duration::from_secs(self.network_params.node.backup_interval_m as u64 * 60),
+            Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.backup_wallet();
+                }
+            }),
+        )
+    }
+
+    fn search_receivable_all(&self) {
+        // Reload wallets from disk
+        self.wallets.reload();
+        // Search pending
+        self.wallets.search_receivable_all();
+        let node_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            Duration::from_secs(self.network_params.node.search_pending_interval_s as u64),
+            Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.search_receivable_all();
+                }
+            }),
+        )
+    }
+
+    fn bootstrap_wallet(&self) {
+        let accounts: VecDeque<_> = self.wallets.get_accounts(128).drain(..).collect();
+        if !accounts.is_empty() {
+            self.bootstrap_initiator.bootstrap_wallet(accounts)
+        }
     }
 }
 

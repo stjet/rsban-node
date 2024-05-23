@@ -447,6 +447,11 @@ pub extern "C" fn rsn_node_ledger_pruning(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_node_bootstrap_wallet(handle: &NodeHandle) {
+    handle.0.bootstrap_wallet();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_node_collect_container_info(
     handle: &NodeHandle,
     name: *const c_char,

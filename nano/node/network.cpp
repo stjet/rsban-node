@@ -20,8 +20,7 @@ using namespace std::chrono_literals;
 nano::network::network (nano::node & node, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
 	node{ node },
 	syn_cookies{ make_shared<nano::syn_cookies> (syn_cookies_handle) },
-	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, mgr_handle, filter_handle) },
-	port{ port }
+	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, mgr_handle, filter_handle) }
 {
 }
 
@@ -34,15 +33,6 @@ void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> co
 	nano::keepalive message{ node.network_params.network };
 	std::array<nano::endpoint, 8> peers;
 	tcp_channels->random_fill (peers);
-	message.set_peers (peers);
-	channel_a->send (message);
-}
-
-void nano::network::send_keepalive_self (std::shared_ptr<nano::transport::channel> const & channel_a)
-{
-	nano::keepalive message{ node.network_params.network };
-	auto peers{ message.get_peers () };
-	fill_keepalive_self (peers);
 	message.set_peers (peers);
 	channel_a->send (message);
 }
@@ -119,25 +109,6 @@ std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_cha
 	return tcp_channels->random_channels (count_a, min_version_a, include_temporary_channels_a);
 }
 
-void nano::network::fill_keepalive_self (std::array<nano::endpoint, 8> & target_a) const
-{
-	tcp_channels->random_fill (target_a);
-	// We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
-	// Move these items to index 2 and 3 so they propagate
-	target_a[2] = target_a[0];
-	target_a[3] = target_a[1];
-	// Replace part of message with node external address or listening port
-	target_a[1] = nano::endpoint (boost::asio::ip::address_v6{}, 0); // For node v19 (response channels)
-	if (node.config->external_address != boost::asio::ip::address_v6{}.to_string () && node.config->external_port != 0)
-	{
-		target_a[0] = nano::endpoint (boost::asio::ip::make_address_v6 (node.config->external_address), node.config->external_port);
-	}
-	else
-	{
-		target_a[0] = nano::endpoint (boost::asio::ip::address_v6{}, port);
-	}
-}
-
 std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::account const & node_id_a)
 {
 	return tcp_channels->find_node_id (node_id_a);
@@ -145,7 +116,7 @@ std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::acc
 
 nano::endpoint nano::network::endpoint () const
 {
-	return nano::endpoint (boost::asio::ip::address_v6::loopback (), port);
+	return nano::endpoint (boost::asio::ip::address_v6::loopback (), tcp_channels->port());
 }
 
 void nano::network::cleanup (std::chrono::system_clock::time_point const & cutoff_a)
@@ -217,16 +188,6 @@ std::size_t nano::syn_cookies::cookies_size ()
 	return rsnano::rsn_syn_cookies_cookies_count (handle);
 }
 
-std::unique_ptr<nano::container_info_component> nano::syn_cookies::collect_container_info (std::string const & name)
-{
-	std::size_t syn_cookies_count = rsnano::rsn_syn_cookies_cookies_count (handle);
-	std::size_t syn_cookies_per_ip_count = rsnano::rsn_syn_cookies_cookies_per_ip_count (handle);
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "syn_cookies", syn_cookies_count, rsnano::rsn_syn_cookies_cookie_info_size () }));
-	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "syn_cookies_per_ip", syn_cookies_per_ip_count, rsnano::rsn_syn_cookies_cookies_per_ip_size () }));
-	return composite;
-}
-
 std::string nano::network::to_string (nano::networks network)
 {
 	rsnano::StringDto result;
@@ -237,17 +198,6 @@ std::string nano::network::to_string (nano::networks network)
 void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
 {
 	tcp_channels->on_new_channel (observer_a);
-}
-
-uint16_t nano::network::get_port ()
-{
-	return port;
-}
-
-void nano::network::set_port (uint16_t port_a)
-{
-	port = port_a;
-	tcp_channels->set_port (port_a);
 }
 
 nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :

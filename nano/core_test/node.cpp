@@ -3899,7 +3899,6 @@ TEST (node, pruning_depth_max_depth)
 	node1.process_confirmed (nano::election_status{ send2 });
 	ASSERT_TIMELY (5s, node1.block_confirmed (send2->hash ()));
 
-
 	node1.ledger_pruning (1, true);
 	ASSERT_EQ (1, node1.ledger.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.block_count ());

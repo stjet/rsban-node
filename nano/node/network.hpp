@@ -37,7 +37,6 @@ public:
 	/** Get cookie associated with endpoint and erases that cookie from this container */
 	std::optional<nano::uint256_union> cookie (nano::endpoint const &);
 
-	std::unique_ptr<container_info_component> collect_container_info (std::string const &);
 	std::size_t cookies_size ();
 	rsnano::SynCookiesHandle * handle;
 };
@@ -55,11 +54,9 @@ public:
 	void merge_peers (std::array<nano::endpoint, 8> const &);
 	void merge_peer (nano::endpoint const &);
 	void send_keepalive (std::shared_ptr<nano::transport::channel> const &);
-	void send_keepalive_self (std::shared_ptr<nano::transport::channel> const &);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	// Should we reach out to this endpoint with a keepalive message? If yes, register a new reachout attempt
 	bool track_reachout (nano::endpoint const &);
-	void fill_keepalive_self (std::array<nano::endpoint, 8> &) const;
 	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0, bool include_temporary_channels = false) const;
 	nano::endpoint endpoint () const;
@@ -71,8 +68,6 @@ public:
 
 	static std::string to_string (nano::networks);
 	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
-	uint16_t get_port ();
-	void set_port (uint16_t port_a);
 
 private: // Dependencies
 	nano::node & node;

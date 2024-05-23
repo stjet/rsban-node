@@ -291,68 +291,6 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 void nano::node::start ()
 {
 	rsnano::rsn_node_start (handle);
-
-	bool tcp_enabled (false);
-	if (config->tcp_incoming_connections_max > 0 && !(flags.disable_bootstrap_listener () && flags.disable_tcp_realtime ()))
-	{
-		auto listener_w{ tcp_listener->weak_from_this () };
-		tcp_listener->start ([listener_w] (std::shared_ptr<nano::transport::socket> const & new_connection, boost::system::error_code const & ec_a) {
-			auto listener_l{ listener_w.lock () };
-			if (!listener_l)
-			{
-				return false;
-			}
-			if (!ec_a)
-			{
-				listener_l->accept_action (ec_a, new_connection);
-			}
-			return true;
-		});
-		tcp_enabled = true;
-
-		if (network->get_port () != tcp_listener->endpoint ().port ())
-		{
-			network->set_port (tcp_listener->endpoint ().port ());
-		}
-
-		logger->info (nano::log::type::node, "Node peering port: {}", network->port.load ());
-	}
-
-	if (!flags.disable_backup ())
-	{
-		backup_wallet ();
-	}
-	if (!flags.disable_search_pending ())
-	{
-		search_receivable_all ();
-	}
-	if (!flags.disable_wallet_bootstrap ())
-	{
-		// Delay to start wallet lazy bootstrap
-		auto this_l (shared ());
-		workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::minutes (1), [this_l] () {
-			this_l->bootstrap_wallet ();
-		});
-	}
-	unchecked.start ();
-	wallets.start_actions ();
-	rep_tiers.start ();
-	vote_processor.start ();
-	block_processor.start ();
-	active.start ();
-	generator.start ();
-	final_generator.start ();
-	confirming_set.start ();
-	scheduler.start ();
-	backlog.start ();
-	bootstrap_server.start ();
-	if (!flags.disable_ascending_bootstrap ())
-	{
-		ascendboot.start ();
-	}
-	websocket.start ();
-	telemetry->start ();
-	local_block_broadcaster.start ();
 }
 
 void nano::node::stop ()
@@ -404,17 +342,6 @@ bool nano::node::is_stopped () const
 	return stopped;
 }
 
-void nano::node::keepalive_preconfigured ()
-{
-	for (auto const & peer : config->preconfigured_peers)
-	{
-		// can't use `network.port` here because preconfigured peers are referenced
-		// just by their address, so we rely on them listening on the default port
-		//
-		keepalive (peer, network_params.network.default_node_port);
-	}
-}
-
 nano::block_hash nano::node::latest (nano::account const & account_a)
 {
 	auto const transaction (store.tx_begin_read ());
@@ -453,37 +380,9 @@ nano::uint128_t nano::node::minimum_principal_weight ()
 	return online_reps.minimum_principal_weight ();
 }
 
-void nano::node::backup_wallet ()
-{
-	auto backup_path (application_path / "backup");
-	wallets.backup (backup_path);
-	auto this_l (shared ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.backup_interval, [this_l] () {
-		this_l->backup_wallet ();
-	});
-}
-
-void nano::node::search_receivable_all ()
-{
-	// Reload wallets from disk
-	wallets.reload ();
-	// Search pending
-	wallets.search_receivable_all ();
-	auto this_l (shared ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.node.search_pending_interval, [this_l] () {
-		this_l->search_receivable_all ();
-	});
-}
-
 void nano::node::bootstrap_wallet ()
 {
-	std::deque<nano::account> accounts;
-	auto accs{ wallets.get_accounts (128) };
-	std::copy (accs.begin (), accs.end (), std::back_inserter (accounts));
-	if (!accounts.empty ())
-	{
-		bootstrap_initiator.bootstrap_wallet (accounts);
-	}
+	rsnano::rsn_node_bootstrap_wallet (handle);
 }
 
 void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a)

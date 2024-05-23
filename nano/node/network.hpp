@@ -31,11 +31,6 @@ public:
 	// Returns boost::none if the IP is rate capped on syn cookie requests,
 	// or if the endpoint already has a syn cookie query
 	std::optional<nano::uint256_union> assign (nano::endpoint const &);
-	// Returns false if valid, true if invalid (true on error convention)
-	// Also removes the syn cookie from the store if valid
-	bool validate (nano::endpoint const &, nano::account const &, nano::signature const &);
-	/** Get cookie associated with endpoint and erases that cookie from this container */
-	std::optional<nano::uint256_union> cookie (nano::endpoint const &);
 
 	std::size_t cookies_size ();
 	rsnano::SynCookiesHandle * handle;
@@ -67,7 +62,6 @@ public:
 	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 	static std::string to_string (nano::networks);
-	void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
 private: // Dependencies
 	nano::node & node;

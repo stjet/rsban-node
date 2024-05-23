@@ -122,13 +122,6 @@ namespace transport
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 
-		void start ();
-		void stop ();
-
-		void set_sink (std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)>);
-
-		void erase (nano::tcp_endpoint const &);
-		void erase_temporary_channel (nano::tcp_endpoint const &);
 		std::size_t size () const;
 		float size_sqrt () const;
 		// Desired fanout for a given scale
@@ -136,8 +129,6 @@ namespace transport
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
 		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0, bool = false) const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
-		// Get the next peer for attempting a tcp connection
-		nano::tcp_endpoint bootstrap_peer ();
 		bool not_a_peer (nano::endpoint const &, bool);
 		void merge_peer (nano::endpoint const & peer_a);
 		void process_messages ();

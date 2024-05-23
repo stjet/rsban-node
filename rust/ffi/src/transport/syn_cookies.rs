@@ -77,20 +77,3 @@ pub unsafe extern "C" fn rsn_syn_cookies_cookie(
 pub unsafe extern "C" fn rsn_syn_cookies_cookies_count(handle: *mut SynCookiesHandle) -> usize {
     (*handle).0.cookies_count()
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_syn_cookies_cookies_per_ip_count(
-    handle: *mut SynCookiesHandle,
-) -> usize {
-    (*handle).0.cookies_per_ip_count()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_syn_cookies_cookie_info_size() -> usize {
-    SynCookies::cookie_info_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_syn_cookies_cookies_per_ip_size() -> usize {
-    SynCookies::cookies_per_ip_size()
-}

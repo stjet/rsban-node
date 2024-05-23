@@ -146,11 +146,6 @@ nano::active_transactions::~active_transactions ()
 	rsnano::rsn_active_transactions_destroy (handle);
 }
 
-void nano::active_transactions::start ()
-{
-	rsnano::rsn_active_transactions_start (handle);
-}
-
 void nano::active_transactions::stop ()
 {
 	rsnano::rsn_active_transactions_stop (handle);

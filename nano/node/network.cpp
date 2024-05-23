@@ -160,27 +160,9 @@ std::optional<nano::uint256_union> nano::syn_cookies::assign (nano::endpoint con
 	return std::nullopt;
 }
 
-bool nano::syn_cookies::validate (nano::endpoint const & endpoint_a, nano::account const & node_id, nano::signature const & sig)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	bool ok = rsnano::rsn_syn_cookies_validate (handle, &endpoint_dto, node_id.bytes.data (), sig.bytes.data ());
-	return !ok;
-}
-
 void nano::syn_cookies::purge (std::chrono::seconds const & cutoff_a)
 {
 	rsnano::rsn_syn_cookies_purge (handle, cutoff_a.count ());
-}
-
-std::optional<nano::uint256_union> nano::syn_cookies::cookie (const nano::endpoint & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	nano::uint256_union cookie;
-	if (rsnano::rsn_syn_cookies_cookie (handle, &endpoint_dto, cookie.bytes.data ()))
-	{
-		return cookie;
-	}
-	return std::nullopt;
 }
 
 std::size_t nano::syn_cookies::cookies_size ()
@@ -193,11 +175,6 @@ std::string nano::network::to_string (nano::networks network)
 	rsnano::StringDto result;
 	rsnano::rsn_network_to_string (static_cast<uint16_t> (network), &result);
 	return rsnano::convert_dto_to_string (result);
-}
-
-void nano::network::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
-{
-	tcp_channels->on_new_channel (observer_a);
 }
 
 nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :

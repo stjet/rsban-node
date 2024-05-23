@@ -262,18 +262,6 @@ nano::transport::tcp_channels::~tcp_channels ()
 	rsnano::rsn_tcp_channels_destroy (handle);
 }
 
-void nano::transport::tcp_channels::erase (nano::tcp_endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	rsnano::rsn_tcp_channels_erase_channel_by_endpoint (handle, &endpoint_dto);
-}
-
-void nano::transport::tcp_channels::erase_temporary_channel (nano::tcp_endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::endpoint_to_dto (endpoint_a) };
-	rsnano::rsn_tcp_channels_erase_temporary_channel (handle, &endpoint_dto);
-}
-
 std::size_t nano::transport::tcp_channels::size () const
 {
 	return rsnano::rsn_tcp_channels_channel_count (handle);
@@ -420,31 +408,9 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	return result;
 }
 
-nano::tcp_endpoint nano::transport::tcp_channels::bootstrap_peer ()
-{
-	rsnano::EndpointDto endpoint_dto;
-	rsnano::rsn_tcp_channels_bootstrap_peer (handle, &endpoint_dto);
-	return rsnano::dto_to_endpoint (endpoint_dto);
-}
-
 void nano::transport::tcp_channels::process_messages ()
 {
 	rsnano::rsn_tcp_channels_process_messages (handle);
-}
-
-void nano::transport::tcp_channels::start ()
-{
-}
-
-void nano::transport::tcp_channels::stop ()
-{
-	rsnano::rsn_tcp_channels_stop (handle);
-}
-
-void nano::transport::tcp_channels::set_sink (std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> sink)
-{
-	auto sink_handle = new std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> (sink);
-	rsnano::rsn_tcp_channels_set_sink (handle, sink_handle, sink_callback, delete_sink);
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)

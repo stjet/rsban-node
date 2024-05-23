@@ -55,7 +55,6 @@ public:
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
-	void start ();
 	void stop ();
 
 	/**

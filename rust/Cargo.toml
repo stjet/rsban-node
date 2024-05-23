@@ -6,6 +6,7 @@ members = [
 	"ledger",
 	"node",
 	"ffi",
+	"main",
 	"tools/load_test",
 	"tools/xtask",
 ]

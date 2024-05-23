@@ -39,14 +39,6 @@
 double constexpr nano::node::price_max;
 double constexpr nano::node::free_cutoff;
 
-namespace nano
-{
-extern unsigned char nano_bootstrap_weights_live[];
-extern std::size_t nano_bootstrap_weights_live_size;
-extern unsigned char nano_bootstrap_weights_beta[];
-extern std::size_t nano_bootstrap_weights_beta_size;
-}
-
 /*
  * configs
  */
@@ -297,39 +289,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 				});
 			}
 		});
-	}
-
-	if ((network_params.network.is_live_network () || network_params.network.is_beta_network ()) && !flags.inactive_node ())
-	{
-		auto const bootstrap_weights = get_bootstrap_weights ();
-		ledger.set_bootstrap_weight_max_blocks (bootstrap_weights.first);
-
-		logger->info (nano::log::type::node, "Initial bootstrap height: {}", ledger.get_bootstrap_weight_max_blocks ());
-		logger->info (nano::log::type::node, "Current ledger height:    {}", ledger.block_count ());
-
-		// Use bootstrap weights if initial bootstrap is not completed
-		const bool use_bootstrap_weight = ledger.block_count () < bootstrap_weights.first;
-		if (use_bootstrap_weight)
-		{
-			logger->info (nano::log::type::node, "Using predefined representative weights, since block count is less than bootstrap threshold");
-			ledger.set_bootstrap_weights (bootstrap_weights.second);
-
-			logger->info (nano::log::type::node, "************************************ Bootstrap weights ************************************");
-			// Sort the weights
-			auto weights{ ledger.get_bootstrap_weights () };
-			std::vector<std::pair<nano::account, nano::uint128_t>> sorted_weights (weights.begin (), weights.end ());
-			std::sort (sorted_weights.begin (), sorted_weights.end (), [] (auto const & entry1, auto const & entry2) {
-				return entry1.second > entry2.second;
-			});
-
-			for (auto const & rep : sorted_weights)
-			{
-				logger->info (nano::log::type::node, "Using bootstrap rep weight: {} -> {}",
-				rep.first.to_account (),
-				nano::uint128_union (rep.second).format_balance (Mxrb_ratio, 0, true));
-			}
-			logger->info (nano::log::type::node, "************************************ ================= ************************************");
-		}
 	}
 
 	{
@@ -1124,35 +1083,6 @@ int nano::node::store_version ()
 bool nano::node::init_error () const
 {
 	return store.init_error ();
-}
-
-std::pair<uint64_t, std::unordered_map<nano::account, nano::uint128_t>> nano::node::get_bootstrap_weights () const
-{
-	std::unordered_map<nano::account, nano::uint128_t> weights;
-	uint8_t const * weight_buffer = network_params.network.is_live_network () ? nano_bootstrap_weights_live : nano_bootstrap_weights_beta;
-	std::size_t weight_size = network_params.network.is_live_network () ? nano_bootstrap_weights_live_size : nano_bootstrap_weights_beta_size;
-	nano::bufferstream weight_stream ((uint8_t const *)weight_buffer, weight_size);
-	nano::uint128_union block_height;
-	uint64_t max_blocks = 0;
-	if (!nano::try_read (weight_stream, block_height))
-	{
-		max_blocks = nano::narrow_cast<uint64_t> (block_height.number ());
-		while (true)
-		{
-			nano::account account;
-			if (nano::try_read (weight_stream, account.bytes))
-			{
-				break;
-			}
-			nano::amount weight;
-			if (nano::try_read (weight_stream, weight.bytes))
-			{
-				break;
-			}
-			weights[account] = weight.number ();
-		}
-	}
-	return { max_blocks, weights };
 }
 
 void nano::node::bootstrap_block (const nano::block_hash & hash)

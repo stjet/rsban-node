@@ -25,6 +25,24 @@ pub trait StreamExt: Stream {
         Ok(u64::from_be_bytes(buffer))
     }
 
+    fn read_u64_le(&mut self) -> anyhow::Result<u64> {
+        let mut buffer = [0u8; 8];
+        self.read_bytes(&mut buffer, 8)?;
+        Ok(u64::from_le_bytes(buffer))
+    }
+
+    fn read_u128_le(&mut self) -> anyhow::Result<u128> {
+        let mut buffer = [0u8; 16];
+        self.read_bytes(&mut buffer, 16)?;
+        Ok(u128::from_le_bytes(buffer))
+    }
+
+    fn read_u128_be(&mut self) -> anyhow::Result<u128> {
+        let mut buffer = [0u8; 16];
+        self.read_bytes(&mut buffer, 16)?;
+        Ok(u128::from_be_bytes(buffer))
+    }
+
     fn read_u64_ne(&mut self) -> anyhow::Result<u64> {
         let mut buffer = [0u8; 8];
         self.read_bytes(&mut buffer, 8)?;

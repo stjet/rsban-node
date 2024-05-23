@@ -34,7 +34,11 @@ use crate::{
     NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry, BUILD_INFO,
     VERSION_STRING,
 };
-use rsnano_core::{work::WorkPoolImpl, KeyPair, Vote, VoteCode};
+use rsnano_core::{
+    utils::{BufferReader, Deserialize, StreamExt},
+    work::WorkPoolImpl,
+    Account, Amount, KeyPair, Networks, Vote, VoteCode,
+};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
@@ -43,6 +47,7 @@ use rsnano_store_lmdb::{
 };
 use std::{
     borrow::Borrow,
+    collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},
     path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
@@ -804,6 +809,47 @@ impl Node {
             }
         }
 
+        if (network_params.network.is_live_network() || network_params.network.is_beta_network())
+            && !flags.inactive_node
+        {
+            let (max_blocks, weights) =
+                get_bootstrap_weights(network_params.network.current_network);
+            ledger.set_bootstrap_weight_max_blocks(max_blocks);
+
+            info!(
+                "Initial bootstrap height: {}",
+                ledger.bootstrap_weight_max_blocks()
+            );
+            info!("Current ledger height:    {}", ledger.block_count());
+
+            // Use bootstrap weights if initial bootstrap is not completed
+            let use_bootstrap_weight = ledger.block_count() < max_blocks;
+            if use_bootstrap_weight {
+                info!("Using predefined representative weights, since block count is less than bootstrap threshold");
+                *ledger.bootstrap_weights.lock().unwrap() = weights;
+
+                info!("************************************ Bootstrap weights ************************************");
+                // Sort the weights
+                let mut sorted_weights = ledger
+                    .bootstrap_weights
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .map(|(account, weight)| (*account, *weight))
+                    .collect::<Vec<_>>();
+                sorted_weights.sort_by(|(_, weight_a), (_, weight_b)| weight_b.cmp(weight_a));
+
+                for (rep, weight) in sorted_weights {
+                    info!(
+                        "Using bootstrap rep weight: {} -> {}",
+                        rep.encode_account(),
+                        weight.format_balance(0)
+                    );
+                }
+                info!("************************************ ================= ************************************");
+            }
+        }
+
         Self {
             node_id,
             workers,
@@ -890,4 +936,63 @@ fn make_store(
         .txn_tracker(txn_tracker)
         .build()?;
     Ok(Arc::new(store))
+}
+
+fn get_bootstrap_weights(network: Networks) -> (u64, HashMap<Account, Amount>) {
+    let buffer = get_bootstrap_weights_bin(network);
+    deserialize_bootstrap_weights(buffer)
+}
+
+fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
+    if network == Networks::NanoLiveNetwork {
+        include_bytes!("../../../rep_weights_live.bin")
+    } else {
+        include_bytes!("../../../rep_weights_beta.bin")
+    }
+}
+
+fn deserialize_bootstrap_weights(buffer: &[u8]) -> (u64, HashMap<Account, Amount>) {
+    let mut reader = BufferReader::new(buffer);
+    let mut weights = HashMap::new();
+    let mut max_blocks = 0;
+    if let Ok(count) = reader.read_u128_be() {
+        max_blocks = count as u64;
+        loop {
+            let Ok(account) = Account::deserialize(&mut reader) else {
+                break;
+            };
+            let Ok(weight) = Amount::deserialize(&mut reader) else {
+                break;
+            };
+            weights.insert(account, weight);
+        }
+    }
+
+    (max_blocks, weights)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bootstrap_weights_bin() {
+        assert_eq!(
+            get_bootstrap_weights_bin(Networks::NanoLiveNetwork).len(),
+            6256,
+            "expected live weights don't match'"
+        );
+        assert_eq!(
+            get_bootstrap_weights_bin(Networks::NanoBetaNetwork).len(),
+            0,
+            "expected beta weights don't match'"
+        );
+    }
+
+    #[test]
+    fn bootstrap_weights() {
+        let (max_blocks, weights) = get_bootstrap_weights(Networks::NanoLiveNetwork);
+        assert_eq!(weights.len(), 130);
+        assert_eq!(max_blocks, 184_789_962);
+    }
 }

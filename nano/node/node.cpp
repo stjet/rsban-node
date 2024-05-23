@@ -30,12 +30,7 @@
 
 #include <boost/property_tree/json_parser.hpp>
 
-#include <algorithm>
-#include <iterator>
 #include <memory>
-
-double constexpr nano::node::price_max;
-double constexpr nano::node::free_cutoff;
 
 /*
  * configs
@@ -205,7 +200,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 		rsnano::rsn_node_vote_processor_queue (handle)
 	},
 	vote_processor (rsnano::rsn_node_vote_processor (handle)),
-	warmed_up (0),
 	block_processor (rsnano::rsn_node_block_processor (handle)),
 	online_reps (rsnano::rsn_node_online_reps (handle)),
 	history{ rsnano::rsn_node_history (handle) },
@@ -296,50 +290,11 @@ void nano::node::start ()
 void nano::node::stop ()
 {
 	rsnano::rsn_node_stop (handle);
-	// Ensure stop can only be called once
-	if (stopped.exchange (true))
-	{
-		return;
-	}
-
-	logger->info (nano::log::type::node, "Node stopping...");
-
-	// Cancels ongoing work generation tasks, which may be blocking other threads
-	// No tasks may wait for work generation in I/O threads, or termination signal capturing will be unable to call node::stop()
-	distributed_work.stop ();
-	backlog.stop ();
-	if (!flags.disable_ascending_bootstrap ())
-	{
-		ascendboot.stop ();
-	}
-	rep_crawler.stop ();
-	unchecked.stop ();
-	block_processor.stop ();
-	aggregator.stop ();
-	vote_processor.stop ();
-	rep_tiers.stop ();
-	scheduler.stop ();
-	active.stop ();
-	generator.stop ();
-	final_generator.stop ();
-	confirming_set.stop ();
-	telemetry->stop ();
-	websocket.stop ();
-	bootstrap_server.stop ();
-	bootstrap_initiator.stop ();
-	tcp_listener->stop ();
-	wallets.stop_actions ();
-	stats->stop ();
-	workers->stop ();
-	local_block_broadcaster.stop ();
-	network_threads.stop (); // Stop network last to avoid killing in-use sockets
-							 //
-	// work pool is not stopped on purpose due to testing setup
 }
 
 bool nano::node::is_stopped () const
 {
-	return stopped;
+	return rsnano::rsn_node_is_stopped (handle);
 }
 
 nano::block_hash nano::node::latest (nano::account const & account_a)
@@ -388,22 +343,6 @@ void nano::node::bootstrap_wallet ()
 void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a)
 {
 	rsnano::rsn_node_ledger_pruning (handle, batch_size_a, bootstrap_weight_reached_a);
-}
-
-int nano::node::price (nano::uint128_t const & balance_a, int amount_a)
-{
-	debug_assert (balance_a >= amount_a * nano::Gxrb_ratio);
-	auto balance_l (balance_a);
-	double result (0.0);
-	for (auto i (0); i < amount_a; ++i)
-	{
-		balance_l -= nano::Gxrb_ratio;
-		auto balance_scaled ((balance_l / nano::Mxrb_ratio).convert_to<double> ());
-		auto units (balance_scaled / 1000.0);
-		auto unit_price (((free_cutoff - units) / free_cutoff) * price_max);
-		result += std::min (std::max (0.0, unit_price), price_max);
-	}
-	return static_cast<int> (result * 100.0);
 }
 
 uint64_t nano::node::default_difficulty (nano::work_version const version_a) const
@@ -484,28 +423,7 @@ std::optional<uint64_t> nano::node::work_generate_blocking (nano::root const & r
 
 void nano::node::add_initial_peers ()
 {
-	if (flags.disable_add_initial_peers ())
-	{
-		logger->warn (nano::log::type::node, "Not adding initial peers because `disable_add_initial_peers` flag is set");
-		return;
-	}
-
-	std::vector<nano::endpoint> initial_peers;
-	{
-		auto transaction = store.tx_begin_read ();
-		for (auto i (store.peer ().begin (*transaction)), n (store.peer ().end ()); i != n; ++i)
-		{
-			nano::endpoint endpoint (boost::asio::ip::address_v6 (i->first.address_bytes ()), i->first.port ());
-			initial_peers.push_back (endpoint);
-		}
-	}
-
-	logger->info (nano::log::type::node, "Adding cached initial peers: {}", initial_peers.size ());
-
-	for (auto const & peer : initial_peers)
-	{
-		network->merge_peer (peer);
-	}
+	rsnano::rsn_node_add_initial_peers (handle);
 }
 
 void nano::node::start_election (std::shared_ptr<nano::block> const & block)
@@ -553,16 +471,6 @@ int nano::node::store_version ()
 bool nano::node::init_error () const
 {
 	return store.init_error ();
-}
-
-void nano::node::bootstrap_block (const nano::block_hash & hash)
-{
-	// If we are running pruning node check if block was not already pruned
-	if (!ledger.pruning_enabled () || !store.pruned ().exists (*store.tx_begin_read (), hash))
-	{
-		// We don't have the block, try to bootstrap it
-		// TODO: Use ascending bootstraper to bootstrap block hash
-	}
 }
 
 /** Convenience function to easily return the confirmation height of an account. */

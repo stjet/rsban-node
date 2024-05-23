@@ -1105,7 +1105,7 @@ impl Node {
         }
     }
 
-    fn add_initial_peers(&self) {
+    pub fn add_initial_peers(&self) {
         if self.flags.disable_add_initial_peers {
             warn!("Not adding initial peers because `disable_add_initial_peers` flag is set");
             return;
@@ -1180,6 +1180,10 @@ impl Node {
         }
 
         !finish_transaction || last_account_a.is_zero()
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.stopped.load(Ordering::SeqCst)
     }
 }
 
@@ -1295,6 +1299,42 @@ impl NodeExt for Arc<Node> {
         if self.stopped.swap(true, Ordering::SeqCst) {
             return;
         }
+        info!("Node stopping...");
+        // Cancels ongoing work generation tasks, which may be blocking other threads
+        // No tasks may wait for work generation in I/O threads, or termination signal capturing will be unable to call node::stop()
+        self.distributed_work.stop();
+        self.backlog_population.stop();
+        if !self.flags.disable_ascending_bootstrap {
+            self.ascendboot.stop();
+        }
+        self.rep_crawler.stop();
+        self.unchecked.stop();
+        self.block_processor.stop();
+        self.request_aggregator.stop();
+        self.vote_processor.stop();
+        self.rep_tiers.stop();
+        self.hinted_scheduler.stop();
+        self.manual_scheduler.stop();
+        self.optimistic_scheduler.stop();
+        self.priority_scheduler.stop();
+        self.active.stop();
+        self.vote_generator.stop();
+        self.final_generator.stop();
+        self.confirming_set.stop();
+        self.telemetry.stop();
+        if let Some(ws_listener) = &self.websocket {
+            ws_listener.stop();
+        }
+        self.bootstrap_server.stop();
+        self.bootstrap_initiator.stop();
+        self.tcp_listener.stop();
+        self.wallets.stop();
+        self.stats.stop();
+        self.workers.stop();
+        self.local_block_broadcaster.stop();
+        self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
+
+        // work pool is not stopped on purpose due to testing setup
     }
 
     fn ongoing_bootstrap(&self) {

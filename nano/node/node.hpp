@@ -107,10 +107,6 @@ public:
 	bool online () const;
 	bool init_error () const;
 	uint64_t get_confirmation_height (store::transaction const &, nano::account &);
-	/*
-	 * Attempts to bootstrap block. This is the best effort, there is no guarantee that the block will be bootstrapped.
-	 */
-	void bootstrap_block (nano::block_hash const &);
 	nano::account get_node_id () const;
 	nano::telemetry_data local_telemetry () const;
 
@@ -139,7 +135,6 @@ public:
 	nano::representative_register representative_register;
 	nano::rep_tiers rep_tiers;
 	nano::vote_processor_queue vote_processor_queue;
-	unsigned warmed_up;
 	nano::local_vote_history history;
 	nano::confirming_set confirming_set;
 	nano::vote_cache vote_cache;
@@ -168,11 +163,6 @@ public:
 	nano::network_threads network_threads;
 
 	std::chrono::steady_clock::time_point const startup_time;
-	std::chrono::seconds unchecked_cutoff = std::chrono::seconds (7 * 24 * 60 * 60); // Week
-	std::atomic<bool> unresponsive_work_peers{ false };
-	std::atomic<bool> stopped{ false };
-	static double constexpr price_max = 16.0;
-	static double constexpr free_cutoff = 1024.0;
 	// For tests only
 	unsigned node_seq;
 	// For tests only

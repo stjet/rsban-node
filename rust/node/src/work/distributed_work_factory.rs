@@ -136,6 +136,10 @@ impl DistributedWorkFactory {
     pub fn work_generation_enabled(&self) -> bool {
         self.work_pool.work_generation_enabled()
     }
+
+    pub fn stop(&self) {
+        //TODO
+    }
 }
 
 #[cfg(test)]

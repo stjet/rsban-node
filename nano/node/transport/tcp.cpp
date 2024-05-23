@@ -379,8 +379,9 @@ void nano::transport::tcp_channels::set_port (uint16_t port_a)
 	rsnano::rsn_tcp_channels_set_port (handle, port_a);
 }
 
-uint16_t nano::transport::tcp_channels::port () const{
-	return rsnano::rsn_tcp_channels_port(handle);
+uint16_t nano::transport::tcp_channels::port () const
+{
+	return rsnano::rsn_tcp_channels_port (handle);
 }
 
 void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::transport::tcp_listener> observer_a)

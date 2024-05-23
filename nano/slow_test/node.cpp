@@ -1545,7 +1545,7 @@ TEST (node, send_single_many_peers)
 	system.stop ();
 	for (auto node : system.nodes)
 	{
-		ASSERT_TRUE (node->stopped);
+		ASSERT_TRUE (node->is_stopped ());
 	}
 }
 }

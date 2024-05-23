@@ -55,18 +55,6 @@ pub unsafe extern "C" fn rsn_telemetry_stop(handle: &TelemetryHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_process(
-    handle: &TelemetryHandle,
-    message: &MessageHandle,
-    channel: &ChannelHandle,
-) {
-    let Message::TelemetryAck(ack) = &message.0.message else {
-        panic!("not a TelemetryAck")
-    };
-    handle.0.process(ack, channel);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_trigger(handle: &TelemetryHandle) {
     handle.0.trigger();
 }

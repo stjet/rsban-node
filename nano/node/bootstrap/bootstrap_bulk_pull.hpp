@@ -13,10 +13,6 @@ namespace transport
 {
 	class tcp_server;
 }
-namespace bootstrap
-{
-	class block_deserializer;
-};
 
 class pull_info
 {

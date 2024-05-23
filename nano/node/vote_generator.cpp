@@ -60,12 +60,6 @@ void nano::vote_generator::add (const root & root, const block_hash & hash)
 	rsnano::rsn_vote_generator_add (handle, root.bytes.data (), hash.bytes.data ());
 }
 
-std::size_t nano::vote_generator::generate (std::vector<std::shared_ptr<nano::block>> const & blocks_a, std::shared_ptr<nano::transport::channel> const & channel_a)
-{
-	rsnano::block_vec block_vec{ blocks_a };
-	return rsnano::rsn_vote_generator_generate (handle, block_vec.handle, channel_a->handle);
-}
-
 namespace
 {
 void call_reply_action (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle)
@@ -81,12 +75,6 @@ void drop_reply_action_context (void * context)
 	auto action = static_cast<std::function<void (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &)> *> (context);
 	delete action;
 }
-}
-
-void nano::vote_generator::set_reply_action (std::function<void (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &)> action_a)
-{
-	auto context = new std::function<void (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &)> (action_a);
-	rsnano::rsn_vote_generator_set_reply_action (handle, call_reply_action, context, drop_reply_action_context);
 }
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (nano::vote_generator & vote_generator, std::string const & name)

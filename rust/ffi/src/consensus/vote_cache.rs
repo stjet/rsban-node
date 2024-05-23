@@ -87,11 +87,6 @@ impl From<&VoteResultMapHandle> for HashMap<BlockHash, VoteCode> {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_result_map_create() -> *mut VoteResultMapHandle {
-    VoteResultMapHandle::new(&HashMap::new())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_result_map_destroy(handle: *mut VoteResultMapHandle) {
     drop(Box::from_raw(handle))
 }
@@ -110,18 +105,6 @@ pub unsafe extern "C" fn rsn_vote_result_map_get(
     let (block_hash, code) = &handle.0[index];
     block_hash.copy_bytes(hash);
     *code as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_result_map_insert(
-    handle: &mut VoteResultMapHandle,
-    hash: *const u8,
-    code: u8,
-) {
-    handle.0.push((
-        BlockHash::from_ptr(hash),
-        FromPrimitive::from_u8(code).unwrap(),
-    ));
 }
 
 #[no_mangle]
@@ -185,28 +168,6 @@ pub unsafe extern "C" fn rsn_vote_cache_top(
     Box::into_raw(Box::new(TopEntryVecHandle(result)))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_top_entry_vec_destroy(handle: *mut TopEntryVecHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_top_entry_vec_len(handle: &TopEntryVecHandle) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_top_entry_vec_get(
-    handle: &TopEntryVecHandle,
-    index: usize,
-    result: &mut TopEntryDto,
-) {
-    let entry = handle.0.get(index).unwrap();
-    result.hash = *entry.hash.as_bytes();
-    result.tally = entry.tally.to_be_bytes();
-    result.final_tally = entry.final_tally.to_be_bytes();
-}
-
 #[repr(C)]
 pub struct VoteCacheConfigDto {
     pub max_size: usize,
@@ -232,54 +193,6 @@ impl From<&VoteCacheConfigDto> for VoteCacheConfig {
             age_cutoff: Duration::from_secs(value.age_cutoff_s),
         }
     }
-}
-
-pub struct VoteCacheEntryHandle(CacheEntry);
-
-impl Deref for VoteCacheEntryHandle {
-    type Target = CacheEntry;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_destroy(handle: *mut VoteCacheEntryHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_cache_entry_size(handle: &VoteCacheEntryHandle) -> usize {
-    handle.size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_hash(handle: &VoteCacheEntryHandle, result: *mut u8) {
-    handle.hash.copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_tally(
-    handle: &VoteCacheEntryHandle,
-    result: *mut u8,
-) {
-    handle.tally().copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_final_tally(
-    handle: &VoteCacheEntryHandle,
-    result: *mut u8,
-) {
-    handle.final_tally().copy_bytes(result);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_entry_votes(
-    handle: &VoteCacheEntryHandle,
-) -> *mut VoteVecHandle {
-    VoteVecHandle::new(handle.votes())
 }
 
 pub struct VoteVecHandle(Vec<Arc<Vote>>);

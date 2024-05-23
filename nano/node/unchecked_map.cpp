@@ -124,33 +124,6 @@ std::size_t nano::unchecked_map::buffer_count () const
 	return rsnano::rsn_unchecked_map_buffer_count (handle);
 }
 
-void nano::unchecked_map::trigger (nano::hash_or_account const & dependency)
-{
-	rsnano::rsn_unchecked_map_trigger (handle, dependency.bytes.data ());
-}
-
-namespace
-{
-void satisfied_callback_wrapper (void * context, rsnano::UncheckedInfoHandle * unchecked_info_handle)
-{
-	auto callback = static_cast<std::function<void (nano::unchecked_info const &)> *> (context);
-	nano::unchecked_info unchecked_info{ unchecked_info_handle };
-	(*callback) (unchecked_info);
-}
-
-void drop_satisfied_callback_context (void * context)
-{
-	auto callback = static_cast<std::function<void (nano::unchecked_info const &)> *> (context);
-	delete callback;
-}
-}
-
-void nano::unchecked_map::set_satisfied_observer (const std::function<void (nano::unchecked_info const &)> callback)
-{
-	auto context = new std::function<void (nano::unchecked_info const &)> (callback);
-	rsnano::rsn_unchecked_map_set_satisfied_observer (handle, satisfied_callback_wrapper, context, drop_satisfied_callback_context);
-}
-
 std::unique_ptr<nano::container_info_component> nano::unchecked_map::collect_container_info (const std::string & name)
 {
 	auto composite = std::make_unique<container_info_composite> (name);

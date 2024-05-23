@@ -65,15 +65,6 @@ pub unsafe extern "C" fn rsn_unchecked_map_exists(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_trigger(
-    handle: *mut UncheckedMapHandle,
-    ptr: *const u8,
-) {
-    let dependency = HashOrAccount::from_ptr(ptr);
-    (*handle).0.trigger(&dependency)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_start(handle: *mut UncheckedMapHandle) {
     (*handle).0.start();
 }
@@ -212,24 +203,4 @@ pub unsafe extern "C" fn rsn_unchecked_map_for_each2(
         &mut notify_observers_callback,
         &notify_observers_callback2,
     );
-}
-
-pub type UncheckedMapSatisifiedCallback = extern "C" fn(*mut c_void, *mut UncheckedInfoHandle);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_set_satisfied_observer(
-    handle: *mut UncheckedMapHandle,
-    callback: UncheckedMapSatisifiedCallback,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, drop_context);
-    let callback_wrapper = Box::new(move |unchecked_info: &UncheckedInfo| {
-        callback(
-            context_wrapper.get_context(),
-            Box::into_raw(Box::new(UncheckedInfoHandle::new(unchecked_info.clone()))),
-        )
-    });
-
-    (*handle).0.set_satisfied_observer(callback_wrapper);
 }

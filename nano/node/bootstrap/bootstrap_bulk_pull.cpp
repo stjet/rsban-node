@@ -7,7 +7,6 @@
 #include "nano/node/messages.hpp"
 #include "nano/secure/common.hpp"
 
-#include <nano/node/bootstrap/block_deserializer.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_bulk_pull.hpp>
 #include <nano/node/bootstrap/bootstrap_connections.hpp>

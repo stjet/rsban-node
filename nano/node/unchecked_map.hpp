@@ -37,13 +37,6 @@ public:
 	std::size_t count () const;
 	std::size_t buffer_count () const;
 
-	/**
-	 * Trigger requested dependencies
-	 */
-	void trigger (nano::hash_or_account const & dependency);
-
-	void set_satisfied_observer (const std::function<void (nano::unchecked_info const &)>);
-
 	rsnano::UncheckedMapHandle * handle;
 
 public: // Container info

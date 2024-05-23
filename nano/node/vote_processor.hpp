@@ -45,10 +45,8 @@ public:
 	bool empty () const;
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
-	bool wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a);
 	/** Function blocks until the queue is empty */
 	void flush ();
-	void clear ();
 	void stop ();
 
 	rsnano::VoteProcessorQueueHandle * handle;

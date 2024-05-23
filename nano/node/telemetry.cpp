@@ -39,11 +39,6 @@ void nano::telemetry::stop ()
 	rsnano::rsn_telemetry_stop (handle);
 }
 
-void nano::telemetry::process (const nano::telemetry_ack & telemetry, const std::shared_ptr<nano::transport::channel> & channel)
-{
-	rsnano::rsn_telemetry_process (handle, telemetry.handle, channel->handle);
-}
-
 void nano::telemetry::trigger ()
 {
 	rsnano::rsn_telemetry_trigger (handle);

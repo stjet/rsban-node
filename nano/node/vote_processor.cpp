@@ -49,30 +49,9 @@ bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_
 	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle);
 }
 
-bool nano::vote_processor_queue::wait_and_take (std::deque<std::pair<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>>> & votes_a)
-{
-	auto queue_handle = rsnano::rsn_vote_processor_queue_wait_and_take (handle);
-	auto len = rsnano::rsn_raw_vote_processor_queue_len (queue_handle);
-	votes_a.clear ();
-	for (auto i = 0; i < len; ++i)
-	{
-		rsnano::VoteHandle * vote = nullptr;
-		rsnano::ChannelHandle * channel = nullptr;
-		rsnano::rsn_raw_vote_processor_queue_get (queue_handle, i, &vote, &channel);
-		votes_a.emplace_back (std::make_shared<nano::vote> (vote), nano::transport::channel_handle_to_channel (channel));
-	}
-	rsnano::rsn_raw_vote_processor_queue_destroy (queue_handle);
-	return len > 0;
-}
-
 void nano::vote_processor_queue::flush ()
 {
 	rsnano::rsn_vote_processor_queue_flush (handle);
-}
-
-void nano::vote_processor_queue::clear ()
-{
-	rsnano::rsn_vote_processor_queue_clear (handle);
 }
 
 void nano::vote_processor_queue::stop ()

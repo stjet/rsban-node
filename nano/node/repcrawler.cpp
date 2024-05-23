@@ -222,19 +222,9 @@ bool nano::rep_crawler::process (std::shared_ptr<nano::vote> const & vote, std::
 	return rsnano::rsn_rep_crawler_process (handle, vote->get_handle (), channel->handle);
 }
 
-nano::uint128_t nano::rep_crawler::total_weight () const
-{
-	return node.representative_register.total_weight ();
-}
-
 std::vector<nano::representative> nano::rep_crawler::representatives (std::size_t count, nano::uint128_t const minimum_weight, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version)
 {
 	return node.representative_register.representatives (count, minimum_weight, minimum_protocol_version);
-}
-
-std::vector<nano::representative> nano::rep_crawler::principal_representatives (std::size_t count, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version)
-{
-	return representatives (count, node.minimum_principal_weight (), minimum_protocol_version);
 }
 
 std::size_t nano::rep_crawler::representative_count ()

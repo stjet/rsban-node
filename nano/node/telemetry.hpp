@@ -56,11 +56,6 @@ public:
 	void stop ();
 
 	/**
-	 * Process telemetry message from network
-	 */
-	void process (nano::telemetry_ack const &, std::shared_ptr<nano::transport::channel> const &);
-
-	/**
 	 * Trigger manual telemetry request to all peers
 	 */
 	void trigger ();

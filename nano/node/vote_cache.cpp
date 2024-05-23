@@ -10,53 +10,7 @@
 #include <nano/node/vote_cache.hpp>
 
 #include <memory>
-#include <stdexcept>
 #include <vector>
-
-/*
- * vote_cache_entry
- */
-
-nano::vote_cache_entry::vote_cache_entry (rsnano::VoteCacheEntryHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::vote_cache_entry::~vote_cache_entry ()
-{
-	rsnano::rsn_vote_cache_entry_destroy (handle);
-}
-
-std::size_t nano::vote_cache_entry::size () const
-{
-	return rsnano::rsn_vote_cache_entry_size (handle);
-}
-
-nano::block_hash nano::vote_cache_entry::hash () const
-{
-	nano::block_hash result;
-	rsnano::rsn_vote_cache_entry_hash (handle, result.bytes.data ());
-	return result;
-}
-
-nano::uint128_t nano::vote_cache_entry::tally () const
-{
-	nano::amount result;
-	rsnano::rsn_vote_cache_entry_tally (handle, result.bytes.data ());
-	return result.number ();
-}
-
-nano::uint128_t nano::vote_cache_entry::final_tally () const
-{
-	nano::amount result;
-	rsnano::rsn_vote_cache_entry_final_tally (handle, result.bytes.data ());
-	return result.number ();
-}
-
-std::vector<std::shared_ptr<nano::vote>> nano::vote_cache_entry::votes () const
-{
-	return nano::into_vote_vec (rsnano::rsn_vote_cache_entry_votes (handle));
-}
 
 /*
  * vote_cache
@@ -76,18 +30,6 @@ nano::vote_cache::vote_cache (vote_cache_config const & config_a, nano::stats & 
 nano::vote_cache::~vote_cache ()
 {
 	rsnano::rsn_vote_cache_destroy (handle);
-}
-
-void nano::vote_cache::observe (const std::shared_ptr<nano::vote> & vote, nano::uint128_t rep_weight, nano::vote_source source, std::unordered_map<nano::block_hash, nano::vote_code> results)
-{
-	auto results_handle = rsnano::rsn_vote_result_map_create ();
-	for (auto const & it : results)
-	{
-		rsnano::rsn_vote_result_map_insert (results_handle, it.first.bytes.data (), static_cast<uint8_t> (it.second));
-	}
-	nano::amount weight{ rep_weight };
-	rsnano::rsn_vote_cache_observe (handle, vote->get_handle (), weight.bytes.data (), static_cast<uint8_t> (source), results_handle);
-	rsnano::rsn_vote_result_map_destroy (results_handle);
 }
 
 void nano::vote_cache::insert (
@@ -114,35 +56,9 @@ std::vector<std::shared_ptr<nano::vote>> nano::vote_cache::find (const nano::blo
 	return nano::into_vote_vec (rsnano::rsn_vote_cache_find (handle, hash.bytes.data ()));
 }
 
-bool nano::vote_cache::erase (const nano::block_hash & hash)
-{
-	return rsnano::rsn_vote_cache_erase (handle, hash.bytes.data ());
-}
-
 void nano::vote_cache::clear ()
 {
 	return rsnano::rsn_vote_cache_clear (handle);
-}
-
-std::vector<nano::vote_cache::top_entry> nano::vote_cache::top (const nano::uint128_t & min_tally)
-{
-	nano::amount min_tally_amount{ min_tally };
-	auto vec_handle = rsnano::rsn_vote_cache_top (handle, min_tally_amount.bytes.data ());
-
-	std::vector<top_entry> results;
-	auto len = rsnano::rsn_top_entry_vec_len (vec_handle);
-	for (auto i = 0; i < len; ++i)
-	{
-		rsnano::TopEntryDto dto;
-		rsnano::rsn_top_entry_vec_get (vec_handle, i, &dto);
-		results.push_back ({
-		nano::block_hash::from_bytes (&dto.hash[0]),
-		nano::amount::from_bytes (&dto.tally[0]).number (),
-		nano::amount::from_bytes (&dto.final_tally[0]).number (),
-		});
-	}
-	rsnano::rsn_top_entry_vec_destroy (vec_handle);
-	return results;
 }
 
 std::unique_ptr<nano::container_info_component> nano::vote_cache::collect_container_info (const std::string & name) const

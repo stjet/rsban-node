@@ -110,30 +110,3 @@ pub unsafe extern "C" fn rsn_vote_generator_add(
 ) {
     handle.add(&Root::from_ptr(root), &BlockHash::from_ptr(hash));
 }
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_generator_generate(
-    handle: &VoteGeneratorHandle,
-    blocks: &BlockVecHandle,
-    channel: &ChannelHandle,
-) -> usize {
-    handle.generate(&blocks.0, Arc::clone(channel))
-}
-
-pub type VoteGeneratorReplyAction = extern "C" fn(*mut c_void, *mut VoteHandle, *mut ChannelHandle);
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_generator_set_reply_action(
-    handle: &VoteGeneratorHandle,
-    action: VoteGeneratorReplyAction,
-    context: *mut c_void,
-    drop_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, drop_context);
-    handle.set_reply_action(Box::new(move |vote, channel| {
-        let ctx = context_wrapper.get_context();
-        let vote_handle = VoteHandle::new(Arc::clone(vote));
-        let channel_handle = ChannelHandle::new(Arc::clone(channel));
-        action(ctx, vote_handle, channel_handle);
-    }));
-}

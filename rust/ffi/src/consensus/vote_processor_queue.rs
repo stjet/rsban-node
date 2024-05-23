@@ -66,21 +66,8 @@ pub extern "C" fn rsn_vote_processor_queue_vote(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_processor_queue_wait_and_take(
-    handle: &VoteProcessorQueueHandle,
-) -> *mut RawVoteProcessorQueueHandle {
-    let new_votes = handle.0.wait_for_votes();
-    Box::into_raw(Box::new(RawVoteProcessorQueueHandle(new_votes)))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_flush(handle: &VoteProcessorQueueHandle) {
     handle.0.flush();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_processor_queue_clear(handle: &VoteProcessorQueueHandle) {
-    handle.0.clear();
 }
 
 #[no_mangle]
@@ -98,32 +85,4 @@ pub unsafe extern "C" fn rsn_vote_processor_collect_container_info(
             .0
             .collect_container_info(CStr::from_ptr(name).to_string_lossy().to_string()),
     )))
-}
-
-pub struct RawVoteProcessorQueueHandle(VecDeque<(Arc<Vote>, Arc<ChannelEnum>)>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_raw_vote_processor_queue_destroy(
-    handle: *mut RawVoteProcessorQueueHandle,
-) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_raw_vote_processor_queue_len(
-    handle: &RawVoteProcessorQueueHandle,
-) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_raw_vote_processor_queue_get(
-    handle: &RawVoteProcessorQueueHandle,
-    index: usize,
-    vote: *mut *mut VoteHandle,
-    channel: *mut *mut ChannelHandle,
-) {
-    let (v, c) = handle.0.get(index).unwrap();
-    *vote = VoteHandle::new(Arc::clone(v));
-    *channel = ChannelHandle::new(Arc::clone(c));
 }

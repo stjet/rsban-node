@@ -77,32 +77,6 @@ pub unsafe extern "C" fn rsn_outbound_bandwidth_limiter_destroy(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_outbound_bandwidth_limiter_should_pass(
-    limiter: &OutboundBandwidthLimiterHandle,
-    message_size: usize,
-    limit_type: u8,
-) -> bool {
-    limiter.0.should_pass(
-        message_size,
-        BandwidthLimitType::from_u8(limit_type).unwrap(),
-    )
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_outbound_bandwidth_limiter_reset(
-    limiter: &OutboundBandwidthLimiterHandle,
-    limit_burst_ratio: f64,
-    limit: usize,
-    limit_type: u8,
-) {
-    limiter.0.reset(
-        limit,
-        limit_burst_ratio,
-        BandwidthLimitType::from_u8(limit_type).unwrap(),
-    );
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_traffic_type_to_bandwidth_limit_type(traffic_type: u8) -> u8 {
     let traffic_type: TrafficType = FromPrimitive::from_u8(traffic_type).unwrap();
     BandwidthLimitType::from(traffic_type) as u8

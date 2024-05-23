@@ -1,4 +1,3 @@
-use rsnano_core::{Account, Signature};
 use rsnano_node::transport::SynCookies;
 use std::{net::SocketAddrV6, ops::Deref, sync::Arc, time::Duration};
 
@@ -33,22 +32,6 @@ pub unsafe extern "C" fn rsn_syn_cookies_assign(
         }
         None => false,
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_syn_cookies_validate(
-    handle: *mut SynCookiesHandle,
-    endpoint: *const EndpointDto,
-    node_id: *const u8,
-    signature: *const u8,
-) -> bool {
-    let endpoint = SocketAddrV6::from(&*endpoint);
-    let node_id = Account::from_ptr(node_id);
-    let signature = Signature::from_ptr(signature);
-    (*handle)
-        .0
-        .validate(&endpoint, &node_id, &signature)
-        .is_ok()
 }
 
 #[no_mangle]

@@ -1,8 +1,5 @@
 use crate::{
-    block_processing::{
-        BacklogPopulationHandle, BlockProcessorHandle, LocalBlockBroadcasterHandle,
-        UncheckedMapHandle,
-    },
+    block_processing::{BacklogPopulationHandle, BlockProcessorHandle, UncheckedMapHandle},
     bootstrap::{
         BootstrapAscendingHandle, BootstrapInitiatorHandle, BootstrapServerHandle,
         TcpListenerHandle,
@@ -388,15 +385,6 @@ pub extern "C" fn rsn_node_backlog_population(handle: &NodeHandle) -> *mut Backl
 pub extern "C" fn rsn_node_ascendboot(handle: &NodeHandle) -> *mut BootstrapAscendingHandle {
     Box::into_raw(Box::new(BootstrapAscendingHandle(Arc::clone(
         &handle.0.ascendboot,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_local_block_broadcaster(
-    handle: &NodeHandle,
-) -> *mut LocalBlockBroadcasterHandle {
-    Box::into_raw(Box::new(LocalBlockBroadcasterHandle(Arc::clone(
-        &handle.0.local_block_broadcaster,
     ))))
 }
 

@@ -35,16 +35,6 @@ pub unsafe extern "C" fn rsn_confirming_set_add(handle: &mut ConfirmingSetHandle
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_confirming_set_start(handle: &mut ConfirmingSetHandle) {
-    handle.0.start();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_confirming_set_stop(handle: &mut ConfirmingSetHandle) {
-    handle.0.stop();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_confirming_set_exists(
     handle: &mut ConfirmingSetHandle,
     hash: *const u8,

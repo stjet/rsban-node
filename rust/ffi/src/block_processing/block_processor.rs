@@ -57,14 +57,6 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_queue_len(
-    handle: &BlockProcessorHandle,
-    source: u8,
-) -> usize {
-    handle.queue_len(BlockSource::from_u8(source).unwrap())
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_full(handle: &BlockProcessorHandle) -> bool {
     handle.full()
 }
@@ -77,27 +69,6 @@ pub extern "C" fn rsn_block_processor_half_full(handle: &BlockProcessorHandle) -
 #[no_mangle]
 pub extern "C" fn rsn_block_processor_stop(handle: &BlockProcessorHandle) {
     handle.stop();
-}
-
-pub type BlocksRolledBackCallback =
-    extern "C" fn(*mut c_void, *mut BlockVecHandle, *mut BlockHandle);
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_set_blocks_rolled_back_callback(
-    handle: &BlockProcessorHandle,
-    callback: BlocksRolledBackCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context = ContextWrapper::new(context, delete_context);
-    handle.set_blocks_rolled_back_callback(Box::new(move |rolled_back, initial_block| {
-        let initial_block = BlockHandle::new(Arc::new(initial_block));
-        callback(
-            context.get_context(),
-            BlockVecHandle::new2(rolled_back),
-            initial_block,
-        );
-    }));
 }
 
 #[no_mangle]

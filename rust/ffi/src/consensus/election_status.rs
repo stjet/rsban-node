@@ -1,6 +1,5 @@
 use crate::core::BlockHandle;
 use num_traits::FromPrimitive;
-use rsnano_core::Amount;
 use rsnano_node::consensus::ElectionStatus;
 use std::ops::Deref;
 use std::ptr;
@@ -137,22 +136,6 @@ pub unsafe extern "C" fn rsn_election_status_set_winner(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_status_set_tally(
-    handle: *mut ElectionStatusHandle,
-    tally: *const u8,
-) {
-    (*handle).0.tally = Amount::from_ptr(tally);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_status_set_final_tally(
-    handle: *mut ElectionStatusHandle,
-    final_tally: *const u8,
-) {
-    (*handle).0.final_tally = Amount::from_ptr(final_tally);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_status_set_confirmation_request_count(
     handle: *mut ElectionStatusHandle,
     confirmation_request_count: u32,
@@ -168,14 +151,6 @@ pub unsafe extern "C" fn rsn_election_status_set_election_end(
     (*handle).0.election_end = UNIX_EPOCH
         .checked_add(Duration::from_millis(election_end as u64))
         .unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_status_set_election_duration(
-    handle: *mut ElectionStatusHandle,
-    election_duration: i64,
-) {
-    (*handle).0.election_duration = Duration::from_millis(election_duration as u64);
 }
 
 #[no_mangle]

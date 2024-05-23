@@ -2,11 +2,9 @@ mod block_processor;
 pub(crate) use block_processor::*;
 use rsnano_node::block_processing::BlockProcessorConfig;
 mod backlog_population;
-mod local_block_broadcaster;
 mod unchecked_map;
 
 pub use backlog_population::BacklogPopulationHandle;
-pub use local_block_broadcaster::LocalBlockBroadcasterHandle;
 pub use unchecked_map::UncheckedMapHandle;
 
 #[repr(C)]

@@ -4,12 +4,9 @@ use crate::{
     VoidPointerCallback,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{utils::system_time_as_nanoseconds, Account, Amount, BlockEnum, BlockHash};
-use rsnano_node::{
-    consensus::{
-        Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo, NEXT_ELECTION_ID,
-    },
-    stats::DetailType,
+use rsnano_core::{utils::system_time_as_nanoseconds, Account, BlockEnum, BlockHash};
+use rsnano_node::consensus::{
+    Election, ElectionBehavior, ElectionData, ElectionState, VoteInfo, NEXT_ELECTION_ID,
 };
 use std::{
     ffi::c_void,
@@ -90,11 +87,6 @@ pub extern "C" fn rsn_election_lock(handle: &ElectionHandle) -> *mut ElectionLoc
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_election_root(handle: &ElectionHandle, result: *mut u8) {
-    handle.root.copy_bytes(result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_election_qualified_root(
     handle: &ElectionHandle,
     root: *mut u8,
@@ -152,35 +144,8 @@ pub extern "C" fn rsn_election_lock_state_start_elapsed_ms(handle: &ElectionLock
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_election_lock_status_set(
-    handle: &mut ElectionLockHandle,
-    status: &ElectionStatusHandle,
-) {
-    let current = handle.0.as_mut().unwrap();
-    current.status = status.deref().clone();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_election_lock_state(handle: &ElectionLockHandle) -> u8 {
     handle.0.as_ref().unwrap().state as u8
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_unlock(handle: &mut ElectionLockHandle) {
-    handle.0.take();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_lock_lock(
-    handle: &mut ElectionLockHandle,
-    election: &ElectionHandle,
-) {
-    assert!(handle.0.is_none());
-    let guard = election.mutex.lock().unwrap();
-    let guard = unsafe {
-        std::mem::transmute::<MutexGuard<ElectionData>, MutexGuard<'static, ElectionData>>(guard)
-    };
-    handle.0 = Some(guard);
 }
 
 #[no_mangle]
@@ -274,19 +239,6 @@ pub unsafe extern "C" fn rsn_election_lock_votes(
     Box::into_raw(Box::new(VoteInfoCollectionHandle(votes)))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_election_lock_votes_erase(
-    handle: &mut ElectionLockHandle,
-    account: *const u8,
-) {
-    handle
-        .0
-        .as_mut()
-        .unwrap()
-        .last_votes
-        .remove(&Account::from_ptr(account));
-}
-
 pub struct VoteInfoCollectionHandle(Vec<(Account, VoteInfo)>);
 
 #[no_mangle]
@@ -375,10 +327,4 @@ pub extern "C" fn rsn_vote_info_with_relative_time(
         timestamp: handle.0.timestamp,
         hash: handle.0.hash,
     })
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_election_behaviour_into_stat_detail(behaviour: u8) -> u8 {
-    let detail: DetailType = ElectionBehavior::from_u8(behaviour).unwrap().into();
-    detail as u8
 }

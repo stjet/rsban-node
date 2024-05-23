@@ -92,24 +92,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_create(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_set_sink(
-    handle: &TcpChannelsHandle,
-    sink_handle: *mut c_void,
-    sink_callback: SinkCallback,
-    delete_sink: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(sink_handle, delete_sink);
-    let sink = Box::new(move |msg: DeserializedMessage, channel| unsafe {
-        sink_callback(
-            context_wrapper.get_context(),
-            MessageHandle::new(msg),
-            ChannelHandle::new(channel),
-        )
-    });
-    handle.set_sink(sink);
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_port(handle: &TcpChannelsHandle) -> u16 {
     handle.port()
 }
@@ -120,11 +102,6 @@ pub extern "C" fn rsn_tcp_channels_set_port(handle: &mut TcpChannelsHandle, port
 }
 
 pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHandle);
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_stop(handle: &mut TcpChannelsHandle) {
-    handle.0.stop();
-}
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_on_new_channel(
@@ -153,24 +130,8 @@ pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: 
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_erase_channel_by_endpoint(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) {
-    handle.erase_channel_by_endpoint(&SocketAddrV6::from(endpoint));
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
     handle.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_bootstrap_peer(
-    handle: &mut TcpChannelsHandle,
-    result: &mut EndpointDto,
-) {
-    *result = handle.bootstrap_peer().into();
 }
 
 #[no_mangle]
@@ -238,14 +199,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
         Some(channel) => ChannelHandle::new(channel),
         None => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_erase_temporary_channel(
-    handle: &TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) {
-    handle.erase_temporary_channel(&endpoint.into())
 }
 
 #[no_mangle]

@@ -105,6 +105,14 @@ impl PropertyTree for TestPropertyTree {
     }
 }
 
+pub fn as_nano_json(value: bool) -> &'static str {
+    if value {
+        "true"
+    } else {
+        "false"
+    }
+}
+
 #[derive(Clone)]
 pub struct SerdePropertyTree {
     pub value: Value,

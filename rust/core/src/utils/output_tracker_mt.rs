@@ -32,6 +32,10 @@ impl<T: Clone + 'static> OutputListenerMt<T> {
         }
     }
 
+    pub fn is_tracked(&self) -> bool {
+        self.trackers.lock().unwrap().len() > 0
+    }
+
     pub fn track(&self) -> Arc<OutputTrackerMt<T>> {
         let tracker = Arc::new(OutputTrackerMt::new());
         self.trackers.lock().unwrap().push(Arc::downgrade(&tracker));

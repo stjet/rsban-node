@@ -30,14 +30,15 @@ use crate::{
     },
     wallets::{Wallets, WalletsExt},
     websocket::create_websocket_server,
-    work::DistributedWorkFactory,
+    work::{DistributedWorkFactory, HttpClient},
     NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, Telemetry, BUILD_INFO,
     VERSION_STRING,
 };
+use reqwest::Url;
 use rsnano_core::{
-    utils::{BufferReader, Deserialize, StreamExt},
+    utils::{as_nano_json, BufferReader, Deserialize, SerdePropertyTree, StreamExt},
     work::WorkPoolImpl,
-    Account, Amount, KeyPair, Networks, Vote, VoteCode,
+    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
@@ -45,6 +46,7 @@ use rsnano_store_lmdb::{
     EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker,
     SyncStrategy, TransactionTracker,
 };
+use serde::Serialize;
 use std::{
     borrow::Borrow,
     collections::HashMap,
@@ -888,6 +890,73 @@ impl Node {
             }
         }));
 
+        if !config.callback_address.is_empty() {
+            let async_rt = Arc::clone(&async_rt);
+            let url: Url = format!(
+                "http://{}:{}/{}",
+                config.callback_address, config.callback_port, config.callback_target
+            )
+            .parse()
+            .unwrap();
+            active.add_election_end_callback(Box::new(
+                move |status, _weights, account, amount, is_state_send, is_state_epoch| {
+                    let block = Arc::clone(status.winner.as_ref().unwrap());
+                    if status.election_status_type == ElectionStatusType::ActiveConfirmedQuorum
+                        || status.election_status_type
+                            == ElectionStatusType::ActiveConfirmationHeight
+                    {
+                        let url = url.clone();
+                        async_rt.tokio.spawn(async move {
+                            let mut block_json = SerdePropertyTree::new();
+                            block.serialize_json(&mut block_json).unwrap();
+
+                            let message = RpcCallbackMessage {
+                                account: account.encode_account(),
+                                hash: block.hash().encode_hex(),
+                                block: block_json.value,
+                                amount: amount.to_string_dec(),
+                                sub_type: if is_state_send {
+                                    Some("send")
+                                } else if block.block_type() == BlockType::State {
+                                    if block.is_change() {
+                                        Some("change")
+                                    } else if is_state_epoch {
+                                        Some("epoch")
+                                    } else {
+                                        Some("receive")
+                                    }
+                                } else {
+                                    None
+                                },
+                                is_send: if is_state_send {
+                                    Some(as_nano_json(true))
+                                } else {
+                                    None
+                                },
+                            };
+
+                            let http_client = HttpClient::new();
+                            match http_client.post_json(url.clone(), &message).await {
+                                Ok(response) => {
+                                    if response.status().is_success() {
+                                    } else {
+                                        error!(
+                                            "Callback to {} failed [status: {:?}]",
+                                            url,
+                                            response.status()
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Unable to send callback: {} ({})", url, e);
+                                }
+                            }
+                        });
+                    }
+                },
+            ))
+        }
+
         Self {
             node_id,
             workers,
@@ -1007,6 +1076,18 @@ fn deserialize_bootstrap_weights(buffer: &[u8]) -> (u64, HashMap<Account, Amount
     }
 
     (max_blocks, weights)
+}
+
+#[derive(Serialize)]
+struct RpcCallbackMessage {
+    account: String,
+    hash: String,
+    block: serde_json::Value,
+    amount: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sub_type: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    is_send: Option<&'static str>,
 }
 
 #[cfg(test)]

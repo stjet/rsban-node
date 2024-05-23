@@ -1,11 +1,11 @@
 use reqwest::{IntoUrl, Method, StatusCode, Url};
-use rsnano_core::utils::{OutputListener, OutputTracker};
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 pub struct HttpClient {
     strategy: HttpClientStrategy,
-    request_listener: OutputListener<TrackedRequest>,
+    request_listener: OutputListenerMt<TrackedRequest>,
 }
 
 impl HttpClient {
@@ -22,7 +22,7 @@ impl HttpClient {
     fn new_with_strategy(strategy: HttpClientStrategy) -> Self {
         Self {
             strategy,
-            request_listener: OutputListener::new(),
+            request_listener: OutputListenerMt::new(),
         }
     }
 
@@ -54,7 +54,7 @@ impl HttpClient {
         }
     }
 
-    pub fn track_requests(&self) -> Rc<OutputTracker<TrackedRequest>> {
+    pub fn track_requests(&self) -> Arc<OutputTrackerMt<TrackedRequest>> {
         self.request_listener.track()
     }
 }

@@ -291,8 +291,6 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 void nano::node::start ()
 {
 	rsnano::rsn_node_start (handle);
-	ongoing_peer_store ();
-	ongoing_online_weight_calculation_queue ();
 
 	bool tcp_enabled (false);
 	if (config->tcp_incoming_connections_max > 0 && !(flags.disable_bootstrap_listener () && flags.disable_tcp_realtime ()))
@@ -455,31 +453,6 @@ nano::uint128_t nano::node::minimum_principal_weight ()
 	return online_reps.minimum_principal_weight ();
 }
 
-void nano::node::ongoing_peer_store ()
-{
-	auto endpoints{ network->tcp_channels->get_peers () };
-	bool stored (false);
-	if (!endpoints.empty ())
-	{
-		// Clear all peers then refresh with the current list of peers
-		auto transaction (store.tx_begin_write ({ tables::peers }));
-		store.peer ().clear (*transaction);
-		for (auto const & endpoint : endpoints)
-		{
-			store.peer ().put (*transaction, nano::endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () });
-		}
-		stored = true;
-	}
-
-	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + network_params.network.peer_dump_interval, [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->ongoing_peer_store ();
-		}
-	});
-}
-
 void nano::node::backup_wallet ()
 {
 	auto backup_path (application_path / "backup");
@@ -513,108 +486,9 @@ void nano::node::bootstrap_wallet ()
 	}
 }
 
-bool nano::node::collect_ledger_pruning_targets (std::deque<nano::block_hash> & pruning_targets_a, nano::account & last_account_a, uint64_t const batch_read_size_a, uint64_t const max_depth_a, uint64_t const cutoff_time_a)
-{
-	uint64_t read_operations (0);
-	bool finish_transaction (false);
-	auto const transaction (store.tx_begin_read ());
-	for (auto i (store.confirmation_height ().begin (*transaction, last_account_a)), n (store.confirmation_height ().end ()); i != n && !finish_transaction;)
-	{
-		++read_operations;
-		auto const & account (i->first);
-		nano::block_hash hash (i->second.frontier ());
-		uint64_t depth (0);
-		while (!hash.is_zero () && depth < max_depth_a)
-		{
-			auto block (ledger.block (*transaction, hash));
-			if (block != nullptr)
-			{
-				if (block->sideband ().timestamp () > cutoff_time_a || depth == 0)
-				{
-					hash = block->previous ();
-				}
-				else
-				{
-					break;
-				}
-			}
-			else
-			{
-				release_assert (depth != 0);
-				hash = 0;
-			}
-			if (++depth % batch_read_size_a == 0)
-			{
-				transaction->refresh ();
-			}
-		}
-		if (!hash.is_zero ())
-		{
-			pruning_targets_a.push_back (hash);
-		}
-		read_operations += depth;
-		if (read_operations >= batch_read_size_a)
-		{
-			last_account_a = account.number () + 1;
-			finish_transaction = true;
-		}
-		else
-		{
-			++i;
-		}
-	}
-	return !finish_transaction || last_account_a.is_zero ();
-}
-
 void nano::node::ledger_pruning (uint64_t const batch_size_a, bool bootstrap_weight_reached_a)
 {
-	uint64_t const max_depth (config->max_pruning_depth != 0 ? config->max_pruning_depth : std::numeric_limits<uint64_t>::max ());
-	uint64_t const cutoff_time (bootstrap_weight_reached_a ? nano::seconds_since_epoch () - config->max_pruning_age.count () : std::numeric_limits<uint64_t>::max ());
-	uint64_t pruned_count (0);
-	uint64_t transaction_write_count (0);
-	nano::account last_account (1); // 0 Burn account is never opened. So it can be used to break loop
-	std::deque<nano::block_hash> pruning_targets;
-	bool target_finished (false);
-	while ((transaction_write_count != 0 || !target_finished) && !stopped)
-	{
-		// Search pruning targets
-		while (pruning_targets.size () < batch_size_a && !target_finished && !stopped)
-		{
-			target_finished = collect_ledger_pruning_targets (pruning_targets, last_account, batch_size_a * 2, max_depth, cutoff_time);
-		}
-		// Pruning write operation
-		transaction_write_count = 0;
-		if (!pruning_targets.empty () && !stopped)
-		{
-			auto scoped_write_guard = ledger.wait (nano::store::writer::pruning);
-			auto write_transaction (store.tx_begin_write ({ tables::blocks, tables::pruned }));
-			while (!pruning_targets.empty () && transaction_write_count < batch_size_a && !stopped)
-			{
-				auto const & pruning_hash (pruning_targets.front ());
-				auto account_pruned_count (ledger.pruning_action (*write_transaction, pruning_hash, batch_size_a));
-				transaction_write_count += account_pruned_count;
-				pruning_targets.pop_front ();
-			}
-			pruned_count += transaction_write_count;
-
-			logger->debug (nano::log::type::prunning, "Pruned blocks: {}", pruned_count);
-		}
-	}
-
-	logger->debug (nano::log::type::prunning, "Total recently pruned block count: {}", pruned_count);
-}
-
-void nano::node::ongoing_ledger_pruning ()
-{
-	auto bootstrap_weight_reached (ledger.block_count () >= ledger.get_bootstrap_weight_max_blocks ());
-	ledger_pruning (flags.block_processor_batch_size () != 0 ? flags.block_processor_batch_size () : 2 * 1024, bootstrap_weight_reached);
-	auto const ledger_pruning_interval (bootstrap_weight_reached ? config->max_pruning_age : std::min (config->max_pruning_age, std::chrono::seconds (15 * 60)));
-	auto this_l (shared ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + ledger_pruning_interval, [this_l] () {
-		this_l->workers->push_task ([this_l] () {
-			this_l->ongoing_ledger_pruning ();
-		});
-	});
+	rsnano::rsn_node_ledger_pruning (handle, batch_size_a, bootstrap_weight_reached_a);
 }
 
 int nano::node::price (nano::uint128_t const & balance_a, int amount_a)
@@ -756,26 +630,9 @@ bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & ha
 	return block_confirmed_or_being_confirmed (*store.tx_begin_read (), hash_a);
 }
 
-void nano::node::ongoing_online_weight_calculation_queue ()
-{
-	std::weak_ptr<nano::node> node_w (shared_from_this ());
-	workers->add_timed_task (std::chrono::steady_clock::now () + (std::chrono::seconds (network_params.node.weight_period)), [node_w] () {
-		if (auto node_l = node_w.lock ())
-		{
-			node_l->ongoing_online_weight_calculation ();
-		}
-	});
-}
-
 bool nano::node::online () const
 {
 	return representative_register.total_weight () > online_reps.delta ();
-}
-
-void nano::node::ongoing_online_weight_calculation ()
-{
-	online_reps.sample ();
-	ongoing_online_weight_calculation_queue ();
 }
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)

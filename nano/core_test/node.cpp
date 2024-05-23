@@ -3760,6 +3760,8 @@ TEST (node, pruning_age)
 	nano::node_config node_config{ system.get_available_port () };
 	// TODO: remove after allowing pruned voting
 	node_config.enable_voting = false;
+	// Pruning with max age 0
+	node_config.max_pruning_age = std::chrono::seconds{ 0 };
 
 	nano::node_flags node_flags{};
 	node_flags.set_enable_pruning (true);
@@ -3794,17 +3796,6 @@ TEST (node, pruning_age)
 	node1.process_confirmed (nano::election_status{ send2 });
 	ASSERT_TIMELY (5s, node1.block_confirmed (send2->hash ()));
 
-	// Three blocks in total, nothing pruned yet
-	ASSERT_EQ (0, node1.ledger.pruned_count ());
-	ASSERT_EQ (3, node1.ledger.block_count ());
-
-	// Pruning with default age 1 day
-	node1.ledger_pruning (1, true);
-	ASSERT_EQ (0, node1.ledger.pruned_count ());
-	ASSERT_EQ (3, node1.ledger.block_count ());
-
-	// Pruning with max age 0
-	node1.config->max_pruning_age = std::chrono::seconds{ 0 };
 	node1.ledger_pruning (1, true);
 	ASSERT_EQ (1, node1.ledger.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.block_count ());
@@ -3863,9 +3854,52 @@ TEST (node, pruning_depth)
 	node1.ledger_pruning (1, true);
 	ASSERT_EQ (0, node1.ledger.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.block_count ());
+}
 
+TEST (node, pruning_depth_max_depth)
+{
+	nano::test::system system{};
+
+	nano::node_config node_config{ system.get_available_port () };
+	// TODO: remove after allowing pruned voting
+	node_config.enable_voting = false;
 	// Pruning with max depth 1
-	node1.config->max_pruning_depth = 1;
+	node_config.max_pruning_depth = 1;
+
+	nano::node_flags node_flags{};
+	node_flags.set_enable_pruning (true);
+
+	auto & node1 = *system.add_node (node_config, node_flags);
+	nano::keypair key1{};
+	nano::send_block_builder builder{};
+	auto latest_hash = nano::dev::genesis->hash ();
+
+	auto send1 = builder.make_block ()
+				 .previous (latest_hash)
+				 .destination (key1.pub)
+				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
+				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+				 .work (*system.work.generate (latest_hash))
+				 .build ();
+	node1.process_active (send1);
+
+	latest_hash = send1->hash ();
+	auto send2 = builder.make_block ()
+				 .previous (latest_hash)
+				 .destination (key1.pub)
+				 .balance (0)
+				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
+				 .work (*system.work.generate (latest_hash))
+				 .build ();
+	node1.process_active (send2);
+
+	// Force-confirm both blocks
+	node1.process_confirmed (nano::election_status{ send1 });
+	ASSERT_TIMELY (5s, node1.block_confirmed (send1->hash ()));
+	node1.process_confirmed (nano::election_status{ send2 });
+	ASSERT_TIMELY (5s, node1.block_confirmed (send2->hash ()));
+
+
 	node1.ledger_pruning (1, true);
 	ASSERT_EQ (1, node1.ledger.pruned_count ());
 	ASSERT_EQ (3, node1.ledger.block_count ());

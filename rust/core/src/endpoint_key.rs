@@ -59,6 +59,12 @@ impl Deserialize for EndpointKey {
     }
 }
 
+impl From<SocketAddrV6> for EndpointKey {
+    fn from(value: SocketAddrV6) -> Self {
+        Self::new(value.ip().octets(), value.port())
+    }
+}
+
 impl From<EndpointKey> for SocketAddrV6 {
     fn from(value: EndpointKey) -> Self {
         SocketAddrV6::new(Ipv6Addr::from(value.address), value.port, 0, 0)

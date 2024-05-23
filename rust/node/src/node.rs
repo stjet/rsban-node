@@ -1188,6 +1188,9 @@ pub trait NodeExt {
     fn ongoing_bootstrap(&self);
     fn ongoing_ledger_pruning(&self);
     fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool);
+    fn ongoing_peer_store(&self);
+    fn ongoing_online_weight_calculation_queue(&self);
+    fn ongoing_online_weight_calculation(&self);
 }
 
 impl NodeExt for Arc<Node> {
@@ -1211,6 +1214,8 @@ impl NodeExt for Arc<Node> {
         if !self.flags.disable_rep_crawler {
             self.rep_crawler.start();
         }
+        self.ongoing_peer_store();
+        self.ongoing_online_weight_calculation_queue();
     }
 
     fn stop(&self) {
@@ -1384,6 +1389,47 @@ impl NodeExt for Arc<Node> {
         }
 
         debug!("Total recently pruned block count: {}", pruned_count);
+    }
+
+    fn ongoing_peer_store(&self) {
+        let endpoints = self.channels.get_peers();
+        if !endpoints.is_empty() {
+            // Clear all peers then refresh with the current list of peers
+            let mut tx = self.ledger.rw_txn();
+            self.ledger.store.peer.clear(&mut tx);
+            for endpoint in endpoints {
+                self.ledger.store.peer.put(&mut tx, &endpoint.into());
+            }
+        }
+
+        let node_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            Duration::from_secs(self.network_params.network.peer_dump_interval_s as u64),
+            Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.ongoing_peer_store();
+                }
+            }),
+        );
+    }
+
+    fn ongoing_online_weight_calculation_queue(&self) {
+        let node_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            Duration::from_secs(self.network_params.node.weight_period),
+            Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.ongoing_online_weight_calculation();
+                }
+            }),
+        )
+    }
+
+    fn ongoing_online_weight_calculation(&self) {
+        let online = self.online_reps.lock().unwrap().online();
+        self.online_reps_sampler.sample(online);
+        let trend = self.online_reps_sampler.calculate_trend();
+        self.online_reps.lock().unwrap().set_trended(trend);
     }
 }
 

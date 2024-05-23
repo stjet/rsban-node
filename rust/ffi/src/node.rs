@@ -436,6 +436,17 @@ pub extern "C" fn rsn_node_stop(handle: &NodeHandle) {
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_node_ledger_pruning(
+    handle: &NodeHandle,
+    batch_size: u64,
+    bootstrap_weight_reached: bool,
+) {
+    handle
+        .0
+        .ledger_pruning(batch_size, bootstrap_weight_reached);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_node_collect_container_info(
     handle: &NodeHandle,
     name: *const c_char,

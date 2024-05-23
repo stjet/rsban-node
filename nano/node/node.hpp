@@ -88,13 +88,10 @@ public:
 	std::pair<nano::uint128_t, nano::uint128_t> balance_pending (nano::account const &, bool only_confirmed);
 	nano::uint128_t weight (nano::account const &);
 	nano::uint128_t minimum_principal_weight ();
-	void ongoing_peer_store ();
 	void backup_wallet ();
 	void search_receivable_all ();
 	void bootstrap_wallet ();
-	bool collect_ledger_pruning_targets (std::deque<nano::block_hash> &, nano::account &, uint64_t const, uint64_t const, uint64_t const);
 	void ledger_pruning (uint64_t const, bool);
-	void ongoing_ledger_pruning ();
 	int price (nano::uint128_t const &, int);
 	// The default difficulty updates to base only when the first epoch_2 block is processed
 	uint64_t default_difficulty (nano::work_version const) const;
@@ -110,8 +107,6 @@ public:
 	bool block_confirmed (nano::block_hash const &);
 	bool block_confirmed_or_being_confirmed (nano::store::transaction const &, nano::block_hash const &);
 	bool block_confirmed_or_being_confirmed (nano::block_hash const &);
-	void ongoing_online_weight_calculation ();
-	void ongoing_online_weight_calculation_queue ();
 	bool online () const;
 	bool init_error () const;
 	uint64_t get_confirmation_height (store::transaction const &, nano::account &);

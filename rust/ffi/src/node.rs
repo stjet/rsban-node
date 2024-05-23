@@ -431,6 +431,11 @@ pub extern "C" fn rsn_node_start(handle: &NodeHandle) {
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_node_stop(handle: &NodeHandle) {
+    handle.0.stop();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_node_collect_container_info(
     handle: &NodeHandle,
     name: *const c_char,

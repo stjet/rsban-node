@@ -17,7 +17,7 @@ use crate::{
         VoteGenerator, VoteProcessor, VoteProcessorQueue,
     },
     node_id_key_file::NodeIdKeyFile,
-    representatives::{RepCrawler, RepresentativeRegister},
+    representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
@@ -41,22 +41,22 @@ use rsnano_core::{
         Deserialize, SerdePropertyTree, StreamExt,
     },
     work::WorkPoolImpl,
-    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
+    Account, Amount, BlockHash, BlockType, KeyPair, Networks, Vote, VoteCode,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{Ledger, Writer};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker,
-    SyncStrategy, TransactionTracker,
+    SyncStrategy, Transaction, TransactionTracker,
 };
 use serde::Serialize;
 use std::{
     borrow::Borrow,
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     net::{Ipv6Addr, SocketAddrV6},
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicU32, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         Arc, Mutex, RwLock,
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -113,6 +113,7 @@ pub struct Node {
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
     warmed_up: AtomicU32,
+    stopped: AtomicBool,
 }
 
 impl Node {
@@ -1014,6 +1015,7 @@ impl Node {
             live_message_processor,
             network_threads,
             warmed_up: AtomicU32::new(0),
+            stopped: AtomicBool::new(false),
         }
     }
 
@@ -1124,11 +1126,68 @@ impl Node {
             self.channels.merge_peer(&peer);
         }
     }
+
+    fn collect_ledger_pruning_targets(
+        &self,
+        pruning_targets_a: &mut VecDeque<BlockHash>,
+        last_account_a: &mut Account,
+        batch_read_size_a: u64,
+        max_depth_a: u64,
+        cutoff_time_a: u64,
+    ) -> bool {
+        let mut read_operations = 0;
+        let mut finish_transaction = false;
+        let mut tx = self.ledger.read_txn();
+        let mut it = self
+            .ledger
+            .store
+            .confirmation_height
+            .begin_at_account(&tx, &last_account_a);
+        while let Some((&account, info)) = it.current() {
+            if finish_transaction {
+                break;
+            }
+            read_operations += 1;
+            let mut hash = info.frontier;
+            let mut depth = 0;
+            while !hash.is_zero() && depth < max_depth_a {
+                if let Some(block) = self.ledger.get_block(&tx, &hash) {
+                    if block.sideband().unwrap().timestamp > cutoff_time_a || depth == 0 {
+                        hash = block.previous();
+                    } else {
+                        break;
+                    }
+                } else {
+                    assert!(depth != 0);
+                    hash = BlockHash::zero();
+                }
+                depth += 1;
+                if depth % batch_read_size_a == 0 {
+                    tx.refresh();
+                }
+            }
+            if !hash.is_zero() {
+                pruning_targets_a.push_back(hash);
+            }
+            read_operations += depth;
+            if read_operations >= batch_read_size_a {
+                *last_account_a = account.inc().unwrap_or_default();
+                finish_transaction = true;
+            } else {
+                it.next();
+            }
+        }
+
+        !finish_transaction || last_account_a.is_zero()
+    }
 }
 
 pub trait NodeExt {
     fn start(&self);
+    fn stop(&self);
     fn ongoing_bootstrap(&self);
+    fn ongoing_ledger_pruning(&self);
+    fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool);
 }
 
 impl NodeExt for Arc<Node> {
@@ -1138,6 +1197,26 @@ impl NodeExt for Arc<Node> {
         self.add_initial_peers();
         if !self.flags.disable_legacy_bootstrap && !self.flags.disable_ongoing_bootstrap {
             self.ongoing_bootstrap();
+        }
+
+        if self.flags.enable_pruning {
+            let node_w = Arc::downgrade(self);
+            self.workers.push_task(Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.ongoing_ledger_pruning();
+                }
+            }));
+        }
+
+        if !self.flags.disable_rep_crawler {
+            self.rep_crawler.start();
+        }
+    }
+
+    fn stop(&self) {
+        // Ensure stop can only be called once
+        if self.stopped.swap(true, Ordering::SeqCst) {
+            return;
         }
     }
 
@@ -1218,6 +1297,93 @@ impl NodeExt for Arc<Node> {
                 }
             }),
         );
+    }
+
+    fn ongoing_ledger_pruning(&self) {
+        let bootstrap_weight_reached =
+            self.ledger.block_count() >= self.ledger.bootstrap_weight_max_blocks();
+        self.ledger_pruning(
+            if self.flags.block_processor_batch_size != 0 {
+                self.flags.block_processor_batch_size as u64
+            } else {
+                2 * 1024
+            },
+            bootstrap_weight_reached,
+        );
+        let ledger_pruning_interval = if bootstrap_weight_reached {
+            Duration::from_secs(self.config.max_pruning_age_s as u64)
+        } else {
+            Duration::from_secs(std::cmp::min(self.config.max_pruning_age_s as u64, 15 * 60))
+        };
+        let node_w = Arc::downgrade(self);
+        self.workers.add_delayed_task(
+            ledger_pruning_interval,
+            Box::new(move || {
+                if let Some(node) = node_w.upgrade() {
+                    node.ongoing_ledger_pruning()
+                }
+            }),
+        );
+    }
+
+    fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool) {
+        let max_depth = if self.config.max_pruning_depth != 0 {
+            self.config.max_pruning_depth
+        } else {
+            u64::MAX
+        };
+        let cutoff_time = if bootstrap_weight_reached_a {
+            (SystemTime::now() - Duration::from_secs(self.config.max_pruning_age_s as u64))
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        } else {
+            u64::MAX
+        };
+        let mut pruned_count = 0;
+        let mut transaction_write_count = 0;
+        let mut last_account = Account::from(1); // 0 Burn account is never opened. So it can be used to break loop
+        let mut pruning_targets = VecDeque::new();
+        let mut target_finished = false;
+        while (transaction_write_count != 0 || !target_finished)
+            && !self.stopped.load(Ordering::SeqCst)
+        {
+            // Search pruning targets
+            while pruning_targets.len() < batch_size_a as usize
+                && !target_finished
+                && !self.stopped.load(Ordering::SeqCst)
+            {
+                target_finished = self.collect_ledger_pruning_targets(
+                    &mut pruning_targets,
+                    &mut last_account,
+                    batch_size_a * 2,
+                    max_depth,
+                    cutoff_time,
+                );
+            }
+            // Pruning write operation
+            transaction_write_count = 0;
+            if !pruning_targets.is_empty() && !self.stopped.load(Ordering::SeqCst) {
+                let _scoped_write_guard = self.ledger.write_queue.wait(Writer::Pruning);
+                let mut tx = self.ledger.rw_txn();
+                while !pruning_targets.is_empty()
+                    && transaction_write_count < batch_size_a
+                    && !self.stopped.load(Ordering::SeqCst)
+                {
+                    let pruning_hash = pruning_targets.front().unwrap();
+                    let account_pruned_count =
+                        self.ledger
+                            .pruning_action(&mut tx, pruning_hash, batch_size_a);
+                    transaction_write_count += account_pruned_count;
+                    pruning_targets.pop_front();
+                }
+                pruned_count += transaction_write_count;
+
+                debug!("Pruned blocks: {}", pruned_count);
+            }
+        }
+
+        debug!("Total recently pruned block count: {}", pruned_count);
     }
 }
 

@@ -291,17 +291,6 @@ void nano::node::process_local_async (std::shared_ptr<nano::block> const & block
 void nano::node::start ()
 {
 	rsnano::rsn_node_start (handle);
-	if (flags.enable_pruning ())
-	{
-		auto this_l (shared ());
-		workers->push_task ([this_l] () {
-			this_l->ongoing_ledger_pruning ();
-		});
-	}
-	if (!flags.disable_rep_crawler ())
-	{
-		rep_crawler.start ();
-	}
 	ongoing_peer_store ();
 	ongoing_online_weight_calculation_queue ();
 
@@ -370,6 +359,7 @@ void nano::node::start ()
 
 void nano::node::stop ()
 {
+	rsnano::rsn_node_stop (handle);
 	// Ensure stop can only be called once
 	if (stopped.exchange (true))
 	{

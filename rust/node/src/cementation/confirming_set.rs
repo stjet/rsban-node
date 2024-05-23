@@ -84,10 +84,10 @@ impl<T: Environment + 'static> ConfirmingSet<T> {
         self.thread.len()
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.thread.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
-            name,
+            name.into(),
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "set".to_string(),

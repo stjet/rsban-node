@@ -36,7 +36,10 @@ use crate::{
 };
 use reqwest::Url;
 use rsnano_core::{
-    utils::{as_nano_json, BufferReader, Deserialize, SerdePropertyTree, StreamExt},
+    utils::{
+        as_nano_json, BufferReader, ContainerInfoComponent, Deserialize, SerdePropertyTree,
+        StreamExt,
+    },
     work::WorkPoolImpl,
     Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
 };
@@ -1007,6 +1010,70 @@ impl Node {
             live_message_processor,
             network_threads,
         }
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                self.work.collect_container_info("work"),
+                self.ledger.collect_container_info("ledger"),
+                self.active.collect_container_info("active"),
+                self.bootstrap_initiator
+                    .collect_container_info("bootstrap_initiator"),
+                self.tcp_listener.collect_container_info("tcp_listener"),
+                ContainerInfoComponent::Composite(
+                    "network".to_string(),
+                    vec![
+                        self.channels.collect_container_info("tcp_channels"),
+                        self.syn_cookies.collect_container_info("syn_cookies"),
+                        self.channels
+                            .excluded_peers
+                            .lock()
+                            .unwrap()
+                            .collect_container_info("excluded_peers"),
+                    ],
+                ),
+                self.telemetry.collect_container_info("telemetry"),
+                self.wallets.collect_container_info("wallets"),
+                self.vote_processor_queue
+                    .collect_container_info("vote_processor"),
+                self.rep_crawler.collect_container_info("rep_crawler"),
+                self.block_processor
+                    .collect_container_info("block_processor"),
+                self.online_reps
+                    .lock()
+                    .unwrap()
+                    .collect_container_info("online_reps"),
+                self.history.collect_container_info("history"),
+                self.confirming_set.collect_container_info("confirming_set"),
+                self.request_aggregator
+                    .collect_container_info("request_aggregator"),
+                ContainerInfoComponent::Composite(
+                    "election_scheduler".to_string(),
+                    vec![
+                        self.hinted_scheduler.collect_container_info("hinted"),
+                        self.manual_scheduler.collect_container_info("manual"),
+                        self.optimistic_scheduler
+                            .collect_container_info("optimistic"),
+                        self.priority_scheduler.collect_container_info("priority"),
+                    ],
+                ),
+                self.vote_cache
+                    .lock()
+                    .unwrap()
+                    .collect_container_info("vote_cache"),
+                self.vote_generator.collect_container_info("vote_generator"),
+                self.final_generator
+                    .collect_container_info("vote_generator_final"),
+                self.ascendboot
+                    .collect_container_info("bootstrap_ascending"),
+                self.unchecked.collect_container_info("unchecked"),
+                self.local_block_broadcaster
+                    .collect_container_info("local_block_broadcaster"),
+                self.rep_tiers.collect_container_info("rep_tiers"),
+            ],
+        )
     }
 }
 

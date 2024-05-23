@@ -6,8 +6,9 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::seconds_since_epoch, Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType,
-    ConfirmationHeightInfo, Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    utils::{seconds_since_epoch, ContainerInfo, ContainerInfoComponent},
+    Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType, ConfirmationHeightInfo,
+    Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -19,6 +20,7 @@ use rsnano_store_lmdb::{
 };
 use std::{
     collections::{HashMap, VecDeque},
+    mem::size_of,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -906,6 +908,20 @@ impl<T: Environment + 'static> Ledger<T> {
 
     pub fn pruned_count(&self) -> u64 {
         self.cache.pruned_count.load(Ordering::SeqCst)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "bootstrap_weights".to_string(),
+                    count: self.bootstrap_weights.lock().unwrap().len(),
+                    sizeof_element: size_of::<Account>() + size_of::<Amount>(),
+                }),
+                self.cache.rep_weights.collect_container_info("rep_weights"),
+            ],
+        )
     }
 }
 

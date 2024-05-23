@@ -26,7 +26,7 @@ use crate::{
         OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
         TcpMessageManagerHandle,
     },
-    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
+    utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
     websocket::WebsocketListenerHandle,
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
@@ -423,4 +423,13 @@ pub extern "C" fn rsn_node_network_threads(handle: &NodeHandle) -> *mut NetworkT
     Box::into_raw(Box::new(NetworkThreadsHandle(Arc::clone(
         &handle.0.network_threads,
     ))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_collect_container_info(
+    handle: &NodeHandle,
+    name: *const c_char,
+) -> *mut ContainerInfoComponentHandle {
+    let container_info = handle.0.collect_container_info(to_rust_string(name));
+    Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
 }

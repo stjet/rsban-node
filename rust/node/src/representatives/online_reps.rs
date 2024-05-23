@@ -1,5 +1,5 @@
 use primitive_types::U256;
-use rsnano_core::utils::nano_seconds_since_epoch;
+use rsnano_core::utils::{nano_seconds_since_epoch, ContainerInfo, ContainerInfoComponent};
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -115,6 +115,17 @@ impl OnlineReps {
             current += self.ledger.weight(account);
         }
         self.online = current;
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "reps".to_string(),
+                count: self.count(),
+                sizeof_element: Self::item_size(),
+            })],
+        )
     }
 }
 

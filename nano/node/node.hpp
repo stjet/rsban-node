@@ -73,7 +73,6 @@ public:
 	~node ();
 
 public:
-	void background (std::function<void ()> action_a);
 	bool copy_with_compaction (std::filesystem::path const &);
 	void keepalive (std::string const &, uint16_t);
 	void start ();

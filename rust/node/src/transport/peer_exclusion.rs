@@ -1,5 +1,6 @@
 #[cfg(test)]
 use mock_instant::Instant;
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
@@ -104,6 +105,17 @@ impl PeerExclusion {
         self.ordered_by_date
             .insert(*peer.address.ip(), peer.exclude_until);
         self.by_ip.insert(*peer.address.ip(), peer.clone());
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "peers".to_string(),
+                count: self.size(),
+                sizeof_element: Self::element_size(),
+            })],
+        )
     }
 }
 

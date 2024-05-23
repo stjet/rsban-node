@@ -5,7 +5,10 @@ use std::{
     time::Duration,
 };
 
-use crate::{Root, WorkVersion};
+use crate::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Root, WorkVersion,
+};
 use once_cell::sync::Lazy;
 
 use super::{
@@ -136,6 +139,17 @@ impl WorkPoolImpl {
 
     pub fn difficulty(&self, version: WorkVersion, root: &Root, work: u64) -> u64 {
         self.work_thresholds.difficulty(version, root, work)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "pending".to_string(),
+                count: self.size(),
+                sizeof_element: Self::pending_value_size(),
+            })],
+        )
     }
 }
 

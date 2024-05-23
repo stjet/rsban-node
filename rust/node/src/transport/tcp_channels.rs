@@ -250,11 +250,11 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().find_node_id(node_id)
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         self.tcp_channels
             .lock()
             .unwrap()
-            .collect_container_info(name)
+            .collect_container_info(name.into())
     }
 
     pub fn erase_temporary_channel(&self, endpoint: &SocketAddrV6) {

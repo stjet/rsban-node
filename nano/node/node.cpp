@@ -254,12 +254,6 @@ void delete_post_callback (void * callback_handle)
 }
 }
 
-void nano::node::background (std::function<void ()> action_a)
-{
-	auto context = new std::function<void ()> (std::move (action_a));
-	rsnano::rsn_async_runtime_post (async_rt.handle, call_post_callback, context, delete_post_callback);
-}
-
 bool nano::node::copy_with_compaction (std::filesystem::path const & destination)
 {
 	return store.copy_db (destination);
@@ -267,33 +261,7 @@ bool nano::node::copy_with_compaction (std::filesystem::path const & destination
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (node & node, std::string const & name)
 {
-	auto composite = std::make_unique<container_info_composite> (name);
-	composite->add_component (collect_container_info (node.work, "work"));
-	composite->add_component (node.ledger.collect_container_info ("ledger"));
-	composite->add_component (collect_container_info (node.active, "active"));
-	composite->add_component (collect_container_info (node.bootstrap_initiator, "bootstrap_initiator"));
-	composite->add_component (node.tcp_listener->collect_container_info ("tcp_listener"));
-	composite->add_component (collect_container_info (*node.network, "network"));
-	composite->add_component (node.telemetry->collect_container_info ("telemetry"));
-	composite->add_component (collect_container_info (*node.workers, "workers"));
-	composite->add_component (collect_container_info (*node.observers, "observers"));
-	composite->add_component (collect_container_info (node.wallets, "wallets"));
-	composite->add_component (collect_container_info (node.vote_processor_queue, "vote_processor"));
-	composite->add_component (node.rep_crawler.collect_container_info ("rep_crawler"));
-	composite->add_component (node.block_processor.collect_container_info ("block_processor"));
-	composite->add_component (collect_container_info (node.online_reps, "online_reps"));
-	composite->add_component (collect_container_info (node.history, "history"));
-	composite->add_component (node.confirming_set.collect_container_info ("confirming_set"));
-	composite->add_component (collect_container_info (node.aggregator, "request_aggregator"));
-	composite->add_component (node.scheduler.collect_container_info ("election_scheduler"));
-	composite->add_component (node.vote_cache.collect_container_info ("vote_cache"));
-	composite->add_component (collect_container_info (node.generator, "vote_generator"));
-	composite->add_component (collect_container_info (node.final_generator, "vote_generator_final"));
-	composite->add_component (node.ascendboot.collect_container_info ("bootstrap_ascending"));
-	composite->add_component (node.unchecked.collect_container_info ("unchecked"));
-	composite->add_component (node.local_block_broadcaster.collect_container_info ("local_block_broadcaster"));
-	composite->add_component (node.rep_tiers.collect_container_info ("rep_tiers"));
-	return composite;
+	return std::make_unique<container_info_composite> (rsnano::rsn_node_collect_container_info (node.handle, name.c_str ()));
 }
 
 void nano::node::process_active (std::shared_ptr<nano::block> const & incoming)

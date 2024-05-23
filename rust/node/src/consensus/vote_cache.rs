@@ -218,9 +218,9 @@ impl VoteCache {
         }
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
-            name,
+            name.into(),
             vec![ContainerInfoComponent::Leaf(ContainerInfo {
                 name: "cache".to_owned(),
                 count: self.size(),

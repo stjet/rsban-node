@@ -1,6 +1,10 @@
-use rsnano_core::{BlockHash, Root, Vote};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    BlockHash, Root, Vote,
+};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
+    mem::size_of,
     sync::{Arc, Mutex},
 };
 
@@ -127,8 +131,19 @@ impl LocalVoteHistory {
 
     pub fn container_info(&self) -> (usize, usize) {
         (
-            std::mem::size_of::<LocalVote>(),
+            size_of::<LocalVote>(),
             self.data.lock().unwrap().history.len(),
+        )
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "history".to_string(),
+                count: self.data.lock().unwrap().history.len(),
+                sizeof_element: size_of::<LocalVote>(),
+            })],
         )
     }
 }

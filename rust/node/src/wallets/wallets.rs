@@ -11,9 +11,11 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::get_env_or_default_string, work::WorkThresholds, Account, Amount, BlockDetails,
-    BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock, KeyDerivationFunction, Link, NoValue,
-    PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId, WorkVersion,
+    utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
+    work::WorkThresholds,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
+    KeyDerivationFunction, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
+    WalletId, WorkVersion,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -24,6 +26,7 @@ use rsnano_store_lmdb::{
 use std::{
     collections::{HashMap, HashSet},
     fs::Permissions,
+    mem::size_of,
     ops::Deref,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
@@ -804,6 +807,24 @@ impl<T: Environment + 'static> Wallets<T> {
     pub fn should_republish_vote(&self, voting_account: Account) -> bool {
         let guard = self.representatives.lock().unwrap();
         !guard.have_half_rep() && !guard.exists(&voting_account)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "items".to_string(),
+                    count: self.mutex.lock().unwrap().len(),
+                    sizeof_element: size_of::<usize>() * size_of::<WalletId>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "actions".to_string(),
+                    count: self.wallet_actions.len(),
+                    sizeof_element: size_of::<usize>() * 2,
+                }),
+            ],
+        )
     }
 }
 

@@ -1,3 +1,4 @@
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use rsnano_core::{Account, Amount};
 use rsnano_store_lmdb::{
     Environment, EnvironmentWrapper, LmdbRepWeightStore, LmdbWriteTransaction,
@@ -121,6 +122,17 @@ impl<T: Environment + 'static> RepWeights<T> {
 
     pub fn count(&self) -> usize {
         self.rep_amounts.lock().unwrap().len()
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "rep_amounts".to_string(),
+                count: self.count(),
+                sizeof_element: Self::item_size(),
+            })],
+        )
     }
 }
 

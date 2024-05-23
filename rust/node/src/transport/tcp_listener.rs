@@ -11,7 +11,10 @@ use crate::{
     utils::{first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
-use rsnano_core::KeyPair;
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    KeyPair,
+};
 use rsnano_ledger::Ledger;
 use std::{
     collections::HashMap,
@@ -220,6 +223,17 @@ impl TcpListener {
             .count_connections_for_ip(&ip);
 
         counted_connections >= self.network_params.network.max_peers_per_ip
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "connections".to_string(),
+                count: self.connection_count(),
+                sizeof_element: 1,
+            })],
+        )
     }
 }
 

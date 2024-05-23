@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    mem::size_of,
     net::SocketAddrV6,
     ops::Deref,
     sync::{
@@ -10,7 +11,10 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{utils::milliseconds_since_epoch, Account, BlockEnum, BlockHash, Root, Vote};
+use rsnano_core::{
+    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent},
+    Account, BlockEnum, BlockHash, Root, Vote,
+};
 use rsnano_ledger::{Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use tracing::trace;
@@ -178,6 +182,32 @@ impl VoteGenerator {
         hash: &BlockHash,
     ) -> bool {
         self.shared_state.should_vote(txn, root, hash)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let candidates_count;
+        let requests_count;
+        {
+            let guard = self.shared_state.queues.lock().unwrap();
+            candidates_count = guard.candidates.len();
+            requests_count = guard.requests.len();
+        }
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "candidates".to_string(),
+                    count: candidates_count,
+                    sizeof_element: size_of::<Root>() + size_of::<BlockHash>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "requests".to_string(),
+                    count: requests_count,
+                    sizeof_element: size_of::<Arc<ChannelEnum>>()
+                        + size_of::<Vec<(Root, BlockHash)>>(),
+                }),
+            ],
+        )
     }
 }
 

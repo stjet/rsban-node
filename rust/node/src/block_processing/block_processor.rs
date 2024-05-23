@@ -234,7 +234,7 @@ impl BlockProcessor {
         self.processor_loop.force(block);
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         self.processor_loop.collect_container_info(name)
     }
 }
@@ -619,10 +619,10 @@ impl BlockProcessorLoop {
         }
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
-            name,
+            name.into(),
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "blocks".to_owned(),

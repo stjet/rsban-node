@@ -7,7 +7,10 @@ use std::{
 
 use anyhow::Result;
 use rand::Rng;
-use rsnano_core::{validate_message, Account, Signature};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    validate_message, Account, Signature,
+};
 use rsnano_messages::Cookie;
 use tracing::debug;
 
@@ -118,6 +121,24 @@ impl SynCookies {
 
     pub fn cookies_per_ip_size() -> usize {
         std::mem::size_of::<usize>()
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "syn_cookies".to_string(),
+                    count: self.cookies_count(),
+                    sizeof_element: Self::cookie_info_size(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "syn_cookies_per_ip".to_string(),
+                    count: self.cookies_per_ip_count(),
+                    sizeof_element: Self::cookies_per_ip_size(),
+                }),
+            ],
+        )
     }
 }
 

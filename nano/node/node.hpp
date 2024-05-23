@@ -16,7 +16,6 @@
 #include <nano/node/confirming_set.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/election.hpp>
-#include <nano/node/local_block_broadcaster.hpp>
 #include <nano/node/local_vote_history.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node_observers.hpp>
@@ -157,7 +156,6 @@ public:
 	nano::request_aggregator aggregator;
 	nano::backlog_population backlog;
 	nano::bootstrap_ascending::service ascendboot;
-	nano::local_block_broadcaster local_block_broadcaster;
 	nano::process_live_dispatcher process_live_dispatcher;
 	nano::live_message_processor live_message_processor;
 	nano::network_threads network_threads;

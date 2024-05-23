@@ -113,24 +113,9 @@ rsnano::BlockProcessorHandle const * nano::block_processor::get_handle () const
 	return handle;
 }
 
-void nano::block_processor::start ()
-{
-	rsnano::rsn_block_processor_start (handle);
-}
-
 void nano::block_processor::stop ()
 {
 	rsnano::rsn_block_processor_stop (handle);
-}
-
-std::size_t nano::block_processor::size () const
-{
-	return rsnano::rsn_block_processor_total_queue_len (handle);
-}
-
-std::size_t nano::block_processor::size (nano::block_source source) const
-{
-	return rsnano::rsn_block_processor_queue_len (handle, static_cast<uint8_t> (source));
 }
 
 bool nano::block_processor::full () const
@@ -170,32 +155,6 @@ std::optional<nano::block_status> nano::block_processor::add_blocking (std::shar
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	rsnano::rsn_block_processor_force (handle, block_a->get_handle ());
-}
-
-void nano::block_processor::set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback)
-{
-	rsnano::rsn_block_processor_set_blocks_rolled_back_callback (
-	handle,
-	blocks_rolled_back_wrapper,
-	new std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> (callback),
-	blocks_rolled_back_delete);
-}
-
-void nano::block_processor::add_batch_processed_observer (std::function<void (nano::block_processor::processed_batch_t const &)> observer)
-{
-	auto context = new std::function<void (nano::block_processor::processed_batch_t const &)> (observer);
-	rsnano::rsn_block_processor_add_batch_processed_observer (handle, context, batch_processed_delete, batch_processed_wrapper);
-}
-
-void nano::block_processor::add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer)
-{
-	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (observer);
-	rsnano::rsn_block_processor_add_rolled_back_observer (handle, context, block_rolled_back_delete, block_rolled_back_wrapper);
-}
-
-void nano::block_processor::notify_block_rolled_back (std::shared_ptr<nano::block> const & block)
-{
-	rsnano::rsn_block_processor_notify_block_rolled_back (handle, block->get_handle ());
 }
 
 std::string_view nano::to_string (nano::block_source source)

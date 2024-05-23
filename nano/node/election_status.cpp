@@ -99,16 +99,6 @@ void nano::election_status::set_winner (std::shared_ptr<nano::block> winner)
 	rsnano::rsn_election_status_set_winner (handle, block_handle);
 }
 
-void nano::election_status::set_tally (nano::amount tally)
-{
-	rsnano::rsn_election_status_set_tally (handle, tally.bytes.data ());
-}
-
-void nano::election_status::set_final_tally (nano::amount final_tally)
-{
-	rsnano::rsn_election_status_set_final_tally (handle, final_tally.bytes.data ());
-}
-
 void nano::election_status::set_block_count (uint32_t block_count)
 {
 	rsnano::rsn_election_status_set_block_count (handle, block_count);
@@ -127,11 +117,6 @@ void nano::election_status::set_confirmation_request_count (uint32_t confirmatio
 void nano::election_status::set_election_end (std::chrono::milliseconds election_end)
 {
 	rsnano::rsn_election_status_set_election_end (handle, election_end.count ());
-}
-
-void nano::election_status::set_election_duration (std::chrono::milliseconds election_duration)
-{
-	rsnano::rsn_election_status_set_election_duration (handle, election_duration.count ());
 }
 
 void nano::election_status::set_election_status_type (nano::election_status_type election_status_type)

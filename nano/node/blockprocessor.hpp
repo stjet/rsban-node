@@ -88,11 +88,8 @@ public:
 	block_processor (nano::block_processor &&) = delete;
 	~block_processor ();
 
-	void start ();
 	void stop ();
 
-	std::size_t size () const;
-	std::size_t size (block_source) const;
 	bool full () const;
 	bool half_full () const;
 	void process_active (std::shared_ptr<nano::block> const & incoming);
@@ -104,12 +101,6 @@ public:
 
 public: // Events
 	using processed_batch_t = std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>>;
-
-	void set_blocks_rolled_back_callback (std::function<void (std::vector<std::shared_ptr<nano::block>> const &, std::shared_ptr<nano::block> const &)> callback);
-
-	void add_batch_processed_observer (std::function<void (processed_batch_t const &)> observer);
-	void add_rolled_back_observer (std::function<void (std::shared_ptr<nano::block> const &)> observer);
-	void notify_block_rolled_back (std::shared_ptr<nano::block> const & block);
 
 public:
 	rsnano::BlockProcessorHandle * handle;

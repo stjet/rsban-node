@@ -90,8 +90,6 @@ public:
 	rsnano::VoteInfoHandle * handle;
 };
 
-nano::stat::detail to_stat_detail (nano::election_behavior);
-
 struct election_extended_status final
 {
 	nano::election_status status;
@@ -116,14 +114,9 @@ public:
 	election_lock (nano::election const & election);
 	election_lock (election_lock const &) = delete;
 	~election_lock ();
-	void unlock ();
-	void lock ();
 	nano::election_status status () const;
-	void set_status (nano::election_status status);
 	bool state_change (nano::election_state expected_a, nano::election_state desired_a);
 
-	void insert_or_assign_last_block (std::shared_ptr<nano::block> const & block);
-	void erase_last_block (nano::block_hash const & hash);
 	size_t last_blocks_size () const;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::block>> last_blocks () const;
 	std::shared_ptr<nano::block> find_block (nano::block_hash const & hash);
@@ -132,11 +125,7 @@ public:
 	std::optional<nano::vote_info> find_vote (nano::account const & account) const;
 	size_t last_votes_size () const;
 	std::unordered_map<nano::account, nano::vote_info> last_votes () const;
-	void erase_vote (nano::account const & account);
-	void set_final_weight (nano::amount const & weight);
-	nano::amount final_weight () const;
 
-	nano::election & election;
 	rsnano::ElectionLockHandle * handle;
 };
 
@@ -151,10 +140,8 @@ public: // State transitions
 	void transition_active ();
 
 public: // Status
-	bool failed () const;
 	std::shared_ptr<nano::block> winner () const;
 	unsigned get_confirmation_request_count () const;
-	void inc_confirmation_request_count ();
 
 public: // Interface
 	election (nano::node &, std::shared_ptr<nano::block> const & block,
@@ -167,28 +154,19 @@ public: // Interface
 	election (election &&) = delete;
 	~election ();
 
-	std::shared_ptr<nano::block> find (nano::block_hash const &) const;
-
 	nano::vote_info get_last_vote (nano::account const & account);
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);
 	nano::election_status get_status () const;
 	std::chrono::milliseconds age () const;
 
 public: // Information
-	nano::root root () const;
 	nano::qualified_root qualified_root () const;
 	nano::election_behavior behavior () const;
-
-private:
-	std::chrono::milliseconds time_to_live () const;
-	bool is_quorum () const;
 
 public: // Logging
 	void operator() (nano::object_stream &) const;
 
 private: // Constants
-	static std::size_t constexpr max_blocks{ 10 };
-
 	friend class active_transactions;
 	friend class confirmation_solicitor;
 	friend class election_helper;

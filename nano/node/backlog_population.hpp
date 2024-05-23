@@ -40,14 +40,8 @@ public:
 	backlog_population (backlog_population &&) = delete;
 	~backlog_population ();
 
-	void start ();
-	void stop ();
-
 	/** Manually trigger backlog population */
 	void trigger ();
-
-	/** Notify about AEC vacancy */
-	void notify ();
 
 	void set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
 

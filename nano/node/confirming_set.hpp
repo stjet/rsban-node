@@ -29,15 +29,10 @@ public:
 	~confirming_set ();
 	// Adds a block to the set of blocks to be confirmed
 	void add (nano::block_hash const & hash);
-	void start ();
-	void stop ();
 	// Added blocks will remain in this set until after ledger has them marked as confirmed.
 	bool exists (nano::block_hash const & hash) const;
 	std::size_t size () const;
 
-	// Observers will be called once ledger has blocks marked as confirmed
-	void add_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const &);
-	void add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const &);
 	rsnano::ConfirmingSetHandle * handle;
 };
 }

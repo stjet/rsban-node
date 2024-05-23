@@ -54,24 +54,9 @@ nano::backlog_population::~backlog_population ()
 	rsnano::rsn_backlog_population_destroy (handle);
 }
 
-void nano::backlog_population::start ()
-{
-	rsnano::rsn_backlog_population_start (handle);
-}
-
-void nano::backlog_population::stop ()
-{
-	rsnano::rsn_backlog_population_stop (handle);
-}
-
 void nano::backlog_population::trigger ()
 {
 	rsnano::rsn_backlog_population_trigger (handle);
-}
-
-void nano::backlog_population::notify ()
-{
-	rsnano::rsn_backlog_population_notify (handle);
 }
 
 void nano::backlog_population::set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)> callback_a)

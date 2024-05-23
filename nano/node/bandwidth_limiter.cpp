@@ -28,16 +28,6 @@ nano::bandwidth_limiter::~bandwidth_limiter ()
 		rsnano::rsn_bandwidth_limiter_destroy (handle);
 }
 
-bool nano::bandwidth_limiter::should_pass (std::size_t message_size_a)
-{
-	return rsnano::rsn_bandwidth_limiter_should_pass (handle, message_size_a);
-}
-
-void nano::bandwidth_limiter::reset (std::size_t limit_a, double burst_ratio_a)
-{
-	rsnano::rsn_bandwidth_limiter_reset (handle, burst_ratio_a, limit_a);
-}
-
 /*
  * outbound_bandwidth_limiter
  */
@@ -60,16 +50,6 @@ nano::outbound_bandwidth_limiter::outbound_bandwidth_limiter (nano::outbound_ban
 nano::outbound_bandwidth_limiter::~outbound_bandwidth_limiter ()
 {
 	rsnano::rsn_outbound_bandwidth_limiter_destroy (handle);
-}
-
-bool nano::outbound_bandwidth_limiter::should_pass (std::size_t buffer_size, nano::bandwidth_limit_type type)
-{
-	return rsnano::rsn_outbound_bandwidth_limiter_should_pass (handle, buffer_size, static_cast<uint8_t> (type));
-}
-
-void nano::outbound_bandwidth_limiter::reset (std::size_t limit, double burst_ratio, nano::bandwidth_limit_type type)
-{
-	rsnano::rsn_outbound_bandwidth_limiter_reset (handle, burst_ratio, limit, static_cast<uint8_t> (type));
 }
 
 nano::bandwidth_limit_type nano::to_bandwidth_limit_type (const nano::transport::traffic_type & traffic_type)

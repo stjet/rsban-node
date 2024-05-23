@@ -23,8 +23,7 @@ using namespace std::chrono;
  */
 
 nano::election_lock::election_lock (nano::election const & election) :
-	handle{ rsnano::rsn_election_lock (election.handle) },
-	election{ *const_cast<nano::election *> (&election) } // hack!
+	handle{ rsnano::rsn_election_lock (election.handle) }
 {
 }
 
@@ -38,24 +37,9 @@ nano::election_status nano::election_lock::status () const
 	return { rsnano::rsn_election_lock_status (handle) };
 }
 
-void nano::election_lock::set_status (nano::election_status status)
-{
-	rsnano::rsn_election_lock_status_set (handle, status.handle);
-}
-
 bool nano::election_lock::state_change (nano::election_state expected_a, nano::election_state desired_a)
 {
 	return rsnano::rsn_election_lock_state_change (handle, static_cast<uint8_t> (expected_a), static_cast<uint8_t> (desired_a));
-}
-
-void nano::election_lock::insert_or_assign_last_block (std::shared_ptr<nano::block> const & block)
-{
-	rsnano::rsn_election_lock_add_block (handle, block->get_handle ());
-}
-
-void nano::election_lock::erase_last_block (nano::block_hash const & hash)
-{
-	rsnano::rsn_election_lock_erase_block (handle, hash.bytes.data ());
 }
 
 size_t nano::election_lock::last_blocks_size () const
@@ -126,33 +110,6 @@ std::unordered_map<nano::account, nano::vote_info> nano::election_lock::last_vot
 	rsnano::rsn_vote_info_collection_destroy (result_handle);
 
 	return result;
-}
-
-void nano::election_lock::erase_vote (nano::account const & account)
-{
-	rsnano::rsn_election_lock_votes_erase (handle, account.bytes.data ());
-}
-
-void nano::election_lock::set_final_weight (nano::amount const & weight)
-{
-	rsnano::rsn_election_lock_final_weight_set (handle, weight.bytes.data ());
-}
-
-nano::amount nano::election_lock::final_weight () const
-{
-	nano::amount weight;
-	rsnano::rsn_election_lock_final_weight (handle, weight.bytes.data ());
-	return weight;
-}
-
-void nano::election_lock::unlock ()
-{
-	rsnano::rsn_election_lock_unlock (handle);
-}
-
-void nano::election_lock::lock ()
-{
-	rsnano::rsn_election_lock_lock (handle, election.handle);
 }
 
 /*
@@ -240,27 +197,10 @@ nano::qualified_root nano::election::qualified_root () const
 	return result;
 }
 
-nano::root nano::election::root () const
-{
-	nano::root root;
-	rsnano::rsn_election_root (handle, root.bytes.data ());
-	return root;
-}
-
-bool nano::election::is_quorum () const
-{
-	return rsnano::rsn_election_is_quorum (handle);
-}
-
 void nano::election::transition_active ()
 {
 	auto guard{ lock () };
 	guard.state_change (nano::election_state::passive, nano::election_state::active);
-}
-
-bool nano::election::failed () const
-{
-	return rsnano::rsn_election_failed (handle);
 }
 
 nano::vote_info nano::election::get_last_vote (nano::account const & account)
@@ -292,34 +232,9 @@ nano::election_lock nano::election::lock () const
 	return nano::election_lock{ *this };
 }
 
-std::chrono::milliseconds nano::election::time_to_live () const
-{
-	switch (behavior ())
-	{
-		case election_behavior::normal:
-			return std::chrono::milliseconds (5 * 60 * 1000);
-		case election_behavior::hinted:
-		case election_behavior::optimistic:
-			return std::chrono::milliseconds (30 * 1000);
-	}
-	debug_assert (false);
-	return {};
-}
-
 unsigned nano::election::get_confirmation_request_count () const
 {
 	return rsnano::rsn_election_confirmation_request_count (handle);
-}
-
-void nano::election::inc_confirmation_request_count ()
-{
-	rsnano::rsn_election_confirmation_request_count_inc (handle);
-}
-
-std::shared_ptr<nano::block> nano::election::find (nano::block_hash const & hash_a) const
-{
-	nano::election_lock guard{ *this };
-	return guard.find_block (hash_a);
 }
 
 std::shared_ptr<nano::block> nano::election::winner () const
@@ -338,12 +253,6 @@ std::unordered_map<nano::account, nano::vote_info> nano::election::votes () cons
 {
 	nano::election_lock guard{ *this };
 	return guard.last_votes ();
-}
-
-nano::stat::detail nano::to_stat_detail (nano::election_behavior behavior)
-{
-	auto val = rsnano::rsn_election_behaviour_into_stat_detail (static_cast<uint8_t> (behavior));
-	return static_cast<nano::stat::detail> (val);
 }
 
 nano::election_behavior nano::election::behavior () const

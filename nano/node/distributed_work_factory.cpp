@@ -22,11 +22,6 @@ bool nano::distributed_work_factory::work_generation_enabled (bool secondary_wor
 	return rsnano::rsn_distributed_work_factory_enabled (handle);
 }
 
-bool nano::distributed_work_factory::work_generation_enabled (std::vector<std::pair<std::string, uint16_t>> const & work_peers) const
-{
-	return rsnano::rsn_distributed_work_factory_enabled (handle);
-}
-
 std::optional<uint64_t> nano::distributed_work_factory::make_blocking (nano::block & block_a, uint64_t difficulty_a)
 {
 	uint64_t result;
@@ -99,6 +94,3 @@ void nano::distributed_work_factory::cancel (nano::root const & root_a)
 	rsnano::rsn_distributed_work_factory_cancel (handle, root_a.bytes.data ());
 }
 
-void nano::distributed_work_factory::stop ()
-{
-}

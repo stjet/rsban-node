@@ -54,16 +54,6 @@ void nano::confirming_set::add (nano::block_hash const & hash)
 	rsnano::rsn_confirming_set_add (handle, hash.bytes.data ());
 }
 
-void nano::confirming_set::start ()
-{
-	rsnano::rsn_confirming_set_start (handle);
-}
-
-void nano::confirming_set::stop ()
-{
-	rsnano::rsn_confirming_set_stop (handle);
-}
-
 bool nano::confirming_set::exists (nano::block_hash const & hash) const
 {
 	return rsnano::rsn_confirming_set_exists (handle, hash.bytes.data ());
@@ -74,14 +64,3 @@ std::size_t nano::confirming_set::size () const
 	return rsnano::rsn_confirming_set_len (handle);
 }
 
-void nano::confirming_set::add_cemented_observer (std::function<void (std::shared_ptr<nano::block> const &)> const & callback_a)
-{
-	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (callback_a);
-	rsnano::rsn_confirming_set_add_cemented_observer (handle, block_callback, context, delete_block_callback_context);
-}
-
-void nano::confirming_set::add_block_already_cemented_observer (std::function<void (nano::block_hash const &)> const & callback_a)
-{
-	auto context = new std::function<void (nano::block_hash const &)> (callback_a);
-	rsnano::rsn_confirming_set_add_already_cemented_observer (handle, block_hash_callback, context, delete_block_hash_callback_context);
-}

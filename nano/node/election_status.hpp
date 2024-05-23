@@ -50,10 +50,7 @@ public:
 	unsigned get_voter_count () const;
 	election_status_type get_election_status_type () const;
 	void set_winner (std::shared_ptr<nano::block>);
-	void set_tally (nano::amount);
-	void set_final_tally (nano::amount);
 	void set_election_end (std::chrono::milliseconds);
-	void set_election_duration (std::chrono::milliseconds);
 	void set_confirmation_request_count (uint32_t);
 	void set_block_count (uint32_t);
 	void set_voter_count (uint32_t);

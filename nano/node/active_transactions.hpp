@@ -50,17 +50,12 @@ namespace nano
 class active_transactions final
 {
 public:
-	active_transactions (nano::node &, nano::confirming_set &, nano::block_processor &);
 	active_transactions (nano::node &, rsnano::ActiveTransactionsHandle * handle);
 	active_transactions (active_transactions const &) = delete;
 	~active_transactions ();
 
 	void stop ();
 
-	/**
-	 * Starts new election with a specified behavior type
-	 */
-	nano::election_insertion_result insert (std::shared_ptr<nano::block> const & block, nano::election_behavior behavior = nano::election_behavior::normal);
 	// Distinguishes replay votes, cannot be determined if the block is not in any election
 	std::unordered_map<nano::block_hash, nano::vote_code> vote (std::shared_ptr<nano::vote> const &, nano::vote_source = nano::vote_source::live);
 	// Is the root of this block in the roots container
@@ -71,7 +66,6 @@ public:
 	 */
 	bool active (nano::block_hash const &) const;
 	std::shared_ptr<nano::election> election (nano::qualified_root const &) const;
-	std::shared_ptr<nano::block> winner (nano::block_hash const &) const;
 	// Returns a list of elections sorted by difficulty
 	std::vector<std::shared_ptr<nano::election>> list_active (std::size_t = std::numeric_limits<std::size_t>::max ());
 	bool erase (nano::block const &);
@@ -94,14 +88,10 @@ public:
 
 	std::size_t election_winner_details_size ();
 	void add_election_winner_details (nano::block_hash const &, std::shared_ptr<nano::election> const &);
-	std::shared_ptr<nano::election> remove_election_winner_details (nano::block_hash const &);
 
 public: // Events
-	void add_vote_processed_observer (std::function<void (std::shared_ptr<nano::vote> const &, nano::vote_source, std::unordered_map<nano::block_hash, nano::vote_code> const &)> observer);
-
 	void process_confirmed (nano::election_status const & status_a, uint64_t iteration_a = 0);
 	nano::tally_t tally_impl (nano::election_lock & lock) const;
-	void remove_votes (nano::election & election, nano::election_lock & lock, nano::block_hash const & hash_a);
 	void force_confirm (nano::election & election);
 	// Returns true when the winning block is durably confirmed in the ledger.
 	// Later once the confirmation height processor has updated the confirmation height it will be confirmed on disk
@@ -109,7 +99,6 @@ public: // Events
 	bool confirmed (nano::election const & election) const;
 	bool confirmed_locked (nano::election_lock & lock) const;
 	std::vector<nano::vote_with_weight_info> votes_with_weight (nano::election & election) const;
-	bool publish (std::shared_ptr<nano::block> const & block_a, nano::election & election);
 	/*
 	 * Process vote. Internally uses cooldown to throttle non-final votes
 	 * If the election reaches consensus, it will be confirmed
@@ -120,7 +109,6 @@ public: // Events
 	void clear_recently_confirmed ();
 	std::size_t recently_confirmed_size ();
 	std::size_t recently_cemented_size ();
-	bool recently_confirmed (nano::block_hash const & hash);
 	nano::qualified_root lastest_recently_confirmed_root ();
 	void insert_recently_confirmed (std::shared_ptr<nano::block> const & block);
 	void insert_recently_cemented (nano::election_status const & status);

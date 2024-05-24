@@ -9,7 +9,7 @@ use crate::stats::{DetailType, StatType, Stats};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::Transaction;
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {
@@ -45,15 +45,8 @@ pub struct BacklogPopulation {
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
-pub type ActivateCallback = Box<
-    dyn Fn(
-            &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-            &Account,
-            &AccountInfo,
-            &ConfirmationHeightInfo,
-        ) + Send
-        + Sync,
->;
+pub type ActivateCallback =
+    Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo) + Send + Sync>;
 
 impl BacklogPopulation {
     pub fn new(config: BacklogPopulationConfig, ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
@@ -212,11 +205,7 @@ impl BacklogPopulationThread {
         }
     }
 
-    pub fn activate(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-        account: &Account,
-    ) {
+    pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
         let account_info = match self.ledger.store.account.get(txn, account) {
             Some(info) => info,
             None => {

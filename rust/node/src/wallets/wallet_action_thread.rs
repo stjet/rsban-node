@@ -1,6 +1,5 @@
 use super::Wallet;
 use rsnano_core::Amount;
-use rsnano_store_lmdb::{Environment, EnvironmentWrapper};
 use std::{
     collections::BTreeMap,
     sync::{
@@ -10,12 +9,12 @@ use std::{
     thread::JoinHandle,
 };
 
-pub struct WalletActionThread<T: Environment + 'static = EnvironmentWrapper> {
-    action_loop: Arc<WalletActionLoop<T>>,
+pub struct WalletActionThread {
+    action_loop: Arc<WalletActionLoop>,
     join_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
-impl<T: Environment + 'static> Drop for WalletActionThread<T> {
+impl Drop for WalletActionThread {
     fn drop(&mut self) {
         assert!(
             self.join_handle.lock().unwrap().is_none(),
@@ -24,7 +23,7 @@ impl<T: Environment + 'static> Drop for WalletActionThread<T> {
     }
 }
 
-impl<T: Environment + 'static> WalletActionThread<T> {
+impl WalletActionThread {
     pub fn new() -> Self {
         Self {
             action_loop: Arc::new(WalletActionLoop::new()),
@@ -56,8 +55,8 @@ impl<T: Environment + 'static> WalletActionThread<T> {
     pub fn queue_wallet_action(
         &self,
         amount: Amount,
-        wallet: Arc<Wallet<T>>,
-        action: Box<dyn Fn(Arc<Wallet<T>>) + Send>,
+        wallet: Arc<Wallet>,
+        action: Box<dyn Fn(Arc<Wallet>) + Send>,
     ) {
         self.action_loop.queue_wallet_action(amount, wallet, action);
     }
@@ -72,36 +71,33 @@ impl<T: Environment + 'static> WalletActionThread<T> {
 
     pub fn lock_safe(
         &self,
-    ) -> MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet<T>>, Box<dyn Fn(Arc<Wallet<T>>) + Send>)>>>
-    {
+    ) -> MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>> {
         self.action_loop.mutex.lock().unwrap()
     }
 
     pub unsafe fn lock(
         &self,
-    ) -> MutexGuard<
-        'static,
-        BTreeMap<Amount, Vec<(Arc<Wallet<T>>, Box<dyn Fn(Arc<Wallet<T>>) + Send>)>>,
-    > {
+    ) -> MutexGuard<'static, BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>
+    {
         let guard = self.action_loop.mutex.lock().unwrap();
         std::mem::transmute::<
-            MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet<T>>, Box<dyn Fn(Arc<Wallet<T>>) + Send>)>>>,
+            MutexGuard<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
             MutexGuard<
                 'static,
-                BTreeMap<Amount, Vec<(Arc<Wallet<T>>, Box<dyn Fn(Arc<Wallet<T>>) + Send>)>>,
+                BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>,
             >,
         >(guard)
     }
 }
 
-struct WalletActionLoop<T: Environment + 'static> {
-    mutex: Mutex<BTreeMap<Amount, Vec<(Arc<Wallet<T>>, Box<dyn Fn(Arc<Wallet<T>>) + Send>)>>>,
+struct WalletActionLoop {
+    mutex: Mutex<BTreeMap<Amount, Vec<(Arc<Wallet>, Box<dyn Fn(Arc<Wallet>) + Send>)>>>,
     stopped: AtomicBool,
     condition: Condvar,
     observer: Mutex<Box<dyn Fn(bool) + Send>>,
 }
 
-impl<T: Environment + 'static> WalletActionLoop<T> {
+impl WalletActionLoop {
     fn new() -> Self {
         Self {
             mutex: Mutex::new(BTreeMap::new()),
@@ -123,8 +119,8 @@ impl<T: Environment + 'static> WalletActionLoop<T> {
     fn queue_wallet_action(
         &self,
         amount: Amount,
-        wallet: Arc<Wallet<T>>,
-        action: Box<dyn Fn(Arc<Wallet<T>>) + Send>,
+        wallet: Arc<Wallet>,
+        action: Box<dyn Fn(Arc<Wallet>) + Send>,
     ) {
         {
             let mut guard = self.mutex.lock().unwrap();

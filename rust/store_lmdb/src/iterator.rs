@@ -1,9 +1,7 @@
-use std::{any::Any, ffi::c_uint};
-
-use crate::{lmdb_env::RoCursor, Environment, Transaction};
-
+use crate::{lmdb_env::RoCursor, LmdbDatabase, Transaction};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{BufferReader, Deserialize, FixedSizeSerialize};
+use std::{any::Any, ffi::c_uint};
 
 pub trait DbIterator<K, V> {
     fn is_end(&self) -> bool;
@@ -111,15 +109,15 @@ where
     }
 }
 
-pub struct LmdbIteratorImpl<E: Environment + 'static> {
+pub struct LmdbIteratorImpl {
     current: Option<(&'static [u8], &'static [u8])>,
-    cursor: Option<E::RoCursor>,
+    cursor: Option<RoCursor>,
 }
 
-impl<E: Environment + 'static> LmdbIteratorImpl<E> {
+impl LmdbIteratorImpl {
     pub fn new_iterator<K, V>(
-        txn: &dyn Transaction<Database = E::Database, RoCursor = E::RoCursor>,
-        dbi: E::Database,
+        txn: &dyn Transaction,
+        dbi: LmdbDatabase,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Box<dyn DbIterator<K, V>>
@@ -140,8 +138,8 @@ impl<E: Environment + 'static> LmdbIteratorImpl<E> {
     }
 
     pub fn new(
-        txn: &dyn Transaction<Database = E::Database, RoCursor = E::RoCursor>,
-        dbi: E::Database,
+        txn: &dyn Transaction,
+        dbi: LmdbDatabase,
         key_val: Option<&[u8]>,
         direction_asc: bool,
     ) -> Self {
@@ -183,7 +181,7 @@ impl<E: Environment + 'static> LmdbIteratorImpl<E> {
     }
 }
 
-impl<E: Environment + 'static> DbIteratorImpl for LmdbIteratorImpl<E> {
+impl DbIteratorImpl for LmdbIteratorImpl {
     fn current(&self) -> Option<(&[u8], &[u8])> {
         self.current
     }
@@ -193,7 +191,7 @@ impl<E: Environment + 'static> DbIteratorImpl for LmdbIteratorImpl<E> {
     }
 }
 
-impl<E: Environment + 'static> PartialEq for LmdbIteratorImpl<E> {
+impl PartialEq for LmdbIteratorImpl {
     fn eq(&self, other: &Self) -> bool {
         self.current.map(|(k, _)| k) == other.current.map(|(k, _)| k)
     }

@@ -601,14 +601,11 @@ pub unsafe extern "C" fn rsn_ledger_confirm(
     copy_block_array_dto(confirmed, result);
 }
 
-pub struct ReceivableIteratorHandle(ReceivableIterator<'static, EnvironmentWrapper>);
+pub struct ReceivableIteratorHandle(ReceivableIterator<'static>);
 
 impl ReceivableIteratorHandle {
-    pub unsafe fn new<'a>(it: ReceivableIterator<'a, EnvironmentWrapper>) -> *mut Self {
-        let it = std::mem::transmute::<
-            ReceivableIterator<'a, EnvironmentWrapper>,
-            ReceivableIterator<'static, EnvironmentWrapper>,
-        >(it);
+    pub unsafe fn new<'a>(it: ReceivableIterator<'a>) -> *mut Self {
+        let it = std::mem::transmute::<ReceivableIterator<'a>, ReceivableIterator<'static>>(it);
         Box::into_raw(Box::new(ReceivableIteratorHandle(it)))
     }
 }

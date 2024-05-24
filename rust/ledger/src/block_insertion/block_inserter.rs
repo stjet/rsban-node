@@ -1,10 +1,9 @@
-use std::sync::atomic::Ordering;
-
 use crate::Ledger;
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockSideband, PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{Environment, LmdbWriteTransaction};
+use rsnano_store_lmdb::LmdbWriteTransaction;
+use std::sync::atomic::Ordering;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct BlockInsertInstructions {
@@ -18,17 +17,17 @@ pub(crate) struct BlockInsertInstructions {
 }
 
 /// Inserts a new block into the ledger
-pub(crate) struct BlockInserter<'a, T: Environment + 'static> {
-    ledger: &'a Ledger<T>,
-    txn: &'a mut LmdbWriteTransaction<T>,
+pub(crate) struct BlockInserter<'a> {
+    ledger: &'a Ledger,
+    txn: &'a mut LmdbWriteTransaction,
     block: &'a mut BlockEnum,
     instructions: &'a BlockInsertInstructions,
 }
 
-impl<'a, T: Environment> BlockInserter<'a, T> {
+impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
-        ledger: &'a Ledger<T>,
-        txn: &'a mut LmdbWriteTransaction<T>,
+        ledger: &'a Ledger,
+        txn: &'a mut LmdbWriteTransaction,
         block: &'a mut BlockEnum,
         instructions: &'a BlockInsertInstructions,
     ) -> Self {
@@ -104,7 +103,6 @@ impl<'a, T: Environment> BlockInserter<'a, T> {
 mod tests {
     use super::*;
     use rsnano_core::{BlockBuilder, BlockHash};
-    use rsnano_store_lmdb::EnvironmentStub;
 
     #[test]
     fn insert_open_state_block() {
@@ -187,7 +185,7 @@ mod tests {
     }
 
     fn insert(
-        ledger: &Ledger<EnvironmentStub>,
+        ledger: &Ledger,
         block: &mut BlockEnum,
         instructions: &BlockInsertInstructions,
     ) -> InsertResult {

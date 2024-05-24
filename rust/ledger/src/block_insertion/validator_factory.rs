@@ -1,22 +1,18 @@
 use rsnano_core::{utils::seconds_since_epoch, Account, BlockEnum, PendingKey};
-use rsnano_store_lmdb::{Environment, Transaction};
+use rsnano_store_lmdb::Transaction;
 
 use crate::Ledger;
 
 use super::BlockValidator;
 
-pub(crate) struct BlockValidatorFactory<'a, T: Environment + 'static> {
-    ledger: &'a Ledger<T>,
-    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+pub(crate) struct BlockValidatorFactory<'a> {
+    ledger: &'a Ledger,
+    txn: &'a dyn Transaction,
     block: &'a BlockEnum,
 }
 
-impl<'a, T: Environment + 'static> BlockValidatorFactory<'a, T> {
-    pub(crate) fn new(
-        ledger: &'a Ledger<T>,
-        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        block: &'a BlockEnum,
-    ) -> Self {
+impl<'a> BlockValidatorFactory<'a> {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a BlockEnum) -> Self {
         Self { ledger, txn, block }
     }
 

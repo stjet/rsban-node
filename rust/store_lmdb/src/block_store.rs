@@ -1,7 +1,6 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, Environment, EnvironmentStub,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction, BLOCK_TEST_DATABASE,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction, BLOCK_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -16,17 +15,11 @@ use std::sync::Arc;
 
 pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
 
-pub struct LmdbBlockStore<T: Environment = EnvironmentWrapper> {
-    env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbBlockStore {
+    env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<BlockEnum>,
-}
-
-impl LmdbBlockStore<EnvironmentStub> {
-    pub fn configured_responses() -> ConfiguredBlockDatabaseBuilder {
-        ConfiguredBlockDatabaseBuilder::new()
-    }
 }
 
 pub struct ConfiguredBlockDatabaseBuilder {
@@ -53,8 +46,12 @@ impl ConfiguredBlockDatabaseBuilder {
     }
 }
 
-impl<T: Environment + 'static> LmdbBlockStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbBlockStore {
+    pub fn configured_responses() -> ConfiguredBlockDatabaseBuilder {
+        ConfiguredBlockDatabaseBuilder::new()
+    }
+
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("blocks"), DatabaseFlags::empty())?;
@@ -66,7 +63,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         })
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
@@ -75,7 +72,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         self.put_listener.track()
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, block: &BlockEnum) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &BlockEnum) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit(block.clone());
 
@@ -92,19 +89,11 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn exists(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> bool {
+    pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
         transaction.exists(self.database, hash.as_bytes())
     }
 
-    pub fn successor(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<BlockHash> {
+    pub fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
         self.block_raw_get(txn, hash).and_then(|data| {
             debug_assert!(data.len() >= 32);
             let block_type = BlockType::from_u8(data[0]).unwrap();
@@ -118,7 +107,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         })
     }
 
-    pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
+    pub fn successor_clear(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         let value = self.block_raw_get(txn, hash).unwrap();
         let block_type = BlockType::from_u8(value[0]).unwrap();
 
@@ -128,22 +117,14 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         self.raw_put(txn, &data, hash)
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<BlockEnum> {
+    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         self.block_raw_get(txn, hash).map(|bytes| {
             BlockEnum::deserialize_with_sideband(bytes)
                 .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
         })
     }
 
-    pub fn get_no_sideband(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> Option<BlockEnum> {
+    pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
@@ -153,40 +134,27 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         }
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, hash: &BlockHash) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, hash: &BlockHash) {
         txn.delete(self.database, hash.as_bytes(), None).unwrap();
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn begin(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> BlockIterator {
-        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, None, true)
+    pub fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
-    pub fn begin_at_hash(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &BlockHash,
-    ) -> BlockIterator {
-        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
+    pub fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
     }
 
     pub fn end(&self) -> BlockIterator {
-        LmdbIteratorImpl::<T>::null_iterator()
+        LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn random(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> Option<BlockEnum> {
+    pub fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {
@@ -198,7 +166,7 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, BlockIterator, BlockIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, BlockIterator, BlockIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
@@ -212,14 +180,14 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
         });
     }
 
-    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction<T>, data: &[u8], hash: &BlockHash) {
+    pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {
         txn.put(self.database, hash.as_bytes(), data, WriteFlags::empty())
             .unwrap();
     }
 
     pub fn block_raw_get<'a>(
         &self,
-        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &'a dyn Transaction,
         hash: &BlockHash,
     ) -> Option<&'a [u8]> {
         match txn.get(self.database, hash.as_bytes()) {
@@ -231,16 +199,13 @@ impl<T: Environment + 'static> LmdbBlockStore<T> {
 }
 
 /// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a, T: Environment + 'static> {
-    transaction: &'a mut LmdbWriteTransaction<T>,
-    block_store: &'a LmdbBlockStore<T>,
+struct BlockPredecessorMdbSet<'a> {
+    transaction: &'a mut LmdbWriteTransaction,
+    block_store: &'a LmdbBlockStore,
 }
 
-impl<'a, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
-    fn new(
-        transaction: &'a mut LmdbWriteTransaction<T>,
-        block_store: &'a LmdbBlockStore<T>,
-    ) -> Self {
+impl<'a> BlockPredecessorMdbSet<'a> {
+    fn new(transaction: &'a mut LmdbWriteTransaction, block_store: &'a LmdbBlockStore) -> Self {
         Self {
             transaction,
             block_store,
@@ -264,7 +229,7 @@ impl<'a, T: Environment + 'static> BlockPredecessorMdbSet<'a, T> {
     }
 }
 
-impl<'a, T: Environment> BlockVisitor for BlockPredecessorMdbSet<'a, T> {
+impl<'a> BlockVisitor for BlockPredecessorMdbSet<'a> {
     fn send_block(&mut self, block: &SendBlock) {
         self.fill_value(block);
     }
@@ -295,22 +260,22 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::lmdb_env::DatabaseStub;
-    use crate::{EnvironmentStub, PutEvent};
+    use crate::PutEvent;
     use rsnano_core::BlockBuilder;
 
     use super::*;
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbBlockStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbBlockStore,
     }
 
     impl Fixture {
         fn new() -> Self {
-            Self::with_env(LmdbEnv::create_null())
+            Self::with_env(LmdbEnv::new_null())
         }
 
-        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+        fn with_env(env: LmdbEnv) -> Self {
             let env = Arc::new(env);
             Self {
                 env: env.clone(),
@@ -334,7 +299,7 @@ mod tests {
     fn load_block_by_hash() {
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .database("blocks", DatabaseStub(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
@@ -358,7 +323,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: LmdbDatabase::new_null(42),
                 key: block.hash().as_bytes().to_vec(),
                 value: block.serialize_with_sideband(),
                 flags: lmdb::WriteFlags::empty(),
@@ -375,7 +340,7 @@ mod tests {
         };
         block.set_sideband(sideband.clone());
 
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .database("blocks", DatabaseStub(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
@@ -395,7 +360,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: DatabaseStub(100),
+                database: LmdbDatabase::new_null(100),
                 key: expected_block.hash().as_bytes().to_vec(),
                 value: expected_block.serialize_with_sideband(),
                 flags: WriteFlags::empty(),
@@ -407,7 +372,7 @@ mod tests {
     fn random() -> anyhow::Result<()> {
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .database("blocks", DatabaseStub(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
@@ -443,7 +408,7 @@ mod tests {
     fn can_be_nulled() {
         let block = BlockBuilder::state().with_sideband().build();
         let configured_responses = LmdbBlockStore::configured_responses().block(&block).build();
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .configured_database(configured_responses)
             .build();
         let txn = env.tx_begin_read();

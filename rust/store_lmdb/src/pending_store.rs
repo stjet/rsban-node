@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, ConfiguredDatabase, Environment,
-    EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction,
-    Transaction, PENDING_TEST_DATABASE,
+    iterator::DbIterator, parallel_traversal_u512, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    PENDING_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 #[cfg(feature = "output_tracking")]
@@ -15,17 +15,17 @@ use rsnano_core::{
 
 pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
 
-pub struct LmdbPendingStore<T: Environment = EnvironmentWrapper> {
-    env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbPendingStore {
+    env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<(PendingKey, PendingInfo)>,
     #[cfg(feature = "output_tracking")]
     delete_listener: OutputListenerMt<PendingKey>,
 }
 
-impl<T: Environment + 'static> LmdbPendingStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbPendingStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("pending"), DatabaseFlags::empty())?;
@@ -40,7 +40,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         })
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
@@ -54,7 +54,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         self.delete_listener.track()
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey, pending: &PendingInfo) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey, pending: &PendingInfo) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit((key.clone(), pending.clone()));
         let key_bytes = key.to_bytes();
@@ -68,18 +68,14 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, key: &PendingKey) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, key: &PendingKey) {
         #[cfg(feature = "output_tracking")]
         self.delete_listener.emit(key.clone());
         let key_bytes = key.to_bytes();
         txn.delete(self.database, &key_bytes, None).unwrap();
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        key: &PendingKey,
-    ) -> Option<PendingInfo> {
+    pub fn get(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         let key_bytes = key.to_bytes();
         match txn.get(self.database, &key_bytes) {
             Ok(bytes) => {
@@ -93,36 +89,21 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
         }
     }
 
-    pub fn begin(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> PendingIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
+    pub fn begin(&self, txn: &dyn Transaction) -> PendingIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_key(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        key: &PendingKey,
-    ) -> PendingIterator {
+    pub fn begin_at_key(&self, txn: &dyn Transaction, key: &PendingKey) -> PendingIterator {
         let key_bytes = key.to_bytes();
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(&key_bytes), true)
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
-    pub fn exists(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        key: &PendingKey,
-    ) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, key: &PendingKey) -> bool {
         let iterator = self.begin_at_key(txn, key);
         iterator.current().map(|(k, _)| k == key).unwrap_or(false)
     }
 
-    pub fn any(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: &Account,
-    ) -> bool {
+    pub fn any(&self, txn: &dyn Transaction, account: &Account) -> bool {
         let key = PendingKey::new(*account, BlockHash::zero());
         let iterator = self.begin_at_key(txn, &key);
         iterator
@@ -133,7 +114,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, PendingIterator, PendingIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
@@ -148,7 +129,7 @@ impl<T: Environment + 'static> LmdbPendingStore<T> {
     }
 
     pub fn end(&self) -> PendingIterator {
-        LmdbIteratorImpl::<T>::null_iterator()
+        LmdbIteratorImpl::null_iterator()
     }
 }
 
@@ -186,11 +167,11 @@ impl ConfiguredPendingDatabaseBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
+    use crate::{DeleteEvent, PutEvent};
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbPendingStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbPendingStore,
     }
 
     impl Fixture {
@@ -199,7 +180,7 @@ mod tests {
         }
 
         pub fn with_stored_data(entries: Vec<(PendingKey, PendingInfo)>) -> Self {
-            let env = LmdbEnv::create_null_with()
+            let env = LmdbEnv::new_null_with()
                 .configured_database(ConfiguredPendingDatabaseBuilder::create(entries))
                 .build();
 
@@ -251,7 +232,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: PENDING_TEST_DATABASE,
+                database: PENDING_TEST_DATABASE.into(),
                 key: pending_key.to_bytes().to_vec(),
                 value: pending.to_bytes().to_vec(),
                 flags: WriteFlags::empty()
@@ -271,7 +252,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: PENDING_TEST_DATABASE,
+                database: PENDING_TEST_DATABASE.into(),
                 key: pending_key.to_bytes().to_vec()
             }]
         )

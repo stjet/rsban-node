@@ -1,21 +1,20 @@
-use std::sync::Arc;
-
 use crate::{
-    iterator::DbIterator, Environment, EnvironmentWrapper, LmdbEnv, LmdbIteratorImpl,
-    LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
+    Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;
+use std::sync::Arc;
 
 pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
 
-pub struct LmdbOnlineWeightStore<T: Environment = EnvironmentWrapper> {
-    _env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbOnlineWeightStore {
+    _env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
 }
 
-impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbOnlineWeightStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("online_weight"), DatabaseFlags::empty())?;
@@ -25,11 +24,11 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
         })
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, time: u64, amount: &Amount) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, time: u64, amount: &Amount) {
         let time_bytes = time.to_be_bytes();
         let amount_bytes = amount.to_be_bytes();
         txn.put(
@@ -41,33 +40,24 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
         .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, time: u64) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, time: u64) {
         let time_bytes = time.to_be_bytes();
         txn.delete(self.database, &time_bytes, None).unwrap();
     }
 
-    pub fn begin(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> OnlineWeightIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
+    pub fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn rbegin(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> OnlineWeightIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, false)
+    pub fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, false)
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
         txn.clear_db(self.database).unwrap();
     }
 }
@@ -75,11 +65,11 @@ impl<T: Environment + 'static> LmdbOnlineWeightStore<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub, PutEvent};
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent, PutEvent};
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbOnlineWeightStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbOnlineWeightStore,
     }
 
     impl Fixture {
@@ -89,7 +79,7 @@ mod tests {
 
         fn with_stored_data(entries: Vec<(u64, Amount)>) -> Self {
             let mut env =
-                LmdbEnv::create_null_with().database("online_weight", DatabaseStub::default());
+                LmdbEnv::new_null_with().database("online_weight", DatabaseStub::default());
 
             for (key, value) in entries {
                 env = env.entry(&key.to_be_bytes(), &value.to_be_bytes())
@@ -98,7 +88,7 @@ mod tests {
             Self::with_env(env.build().build())
         }
 
-        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+        fn with_env(env: LmdbEnv) -> Self {
             let env = Arc::new(env);
             Self {
                 env: env.clone(),
@@ -140,7 +130,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: LmdbDatabase::new_null(42),
                 key: time.to_be_bytes().to_vec(),
                 value: amount.to_be_bytes().to_vec(),
                 flags: WriteFlags::empty(),
@@ -186,7 +176,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: Default::default(),
+                database: LmdbDatabase::new_null(42),
                 key: time.to_be_bytes().to_vec()
             }]
         );

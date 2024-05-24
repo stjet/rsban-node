@@ -3,9 +3,7 @@ use rsnano_core::{
     work::WorkThresholds, Account, KeyDerivationFunction, KeyPair, Root, WorkVersion,
 };
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{
-    Environment, EnvironmentWrapper, LmdbWalletStore, LmdbWriteTransaction, Transaction,
-};
+use rsnano_store_lmdb::{LmdbWalletStore, LmdbWriteTransaction, Transaction};
 use std::{
     collections::HashSet,
     path::Path,
@@ -13,18 +11,18 @@ use std::{
 };
 use tracing::warn;
 
-pub struct Wallet<T: Environment = EnvironmentWrapper> {
+pub struct Wallet {
     pub representatives: Mutex<HashSet<Account>>,
-    pub store: Arc<LmdbWalletStore<T>>,
+    pub store: Arc<LmdbWalletStore>,
     ledger: Arc<Ledger>,
     work_thresholds: WorkThresholds,
 }
 
-impl<T: Environment + 'static> Wallet<T> {
+impl Wallet {
     pub fn new(
         ledger: Arc<Ledger>,
         work_thresholds: WorkThresholds,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         fanout: usize,
         kdf: KeyDerivationFunction,
         representative: Account,
@@ -44,7 +42,7 @@ impl<T: Environment + 'static> Wallet<T> {
     pub fn new_from_json(
         ledger: Arc<Ledger>,
         work_thresholds: WorkThresholds,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         fanout: usize,
         kdf: KeyDerivationFunction,
         wallet_path: &Path,
@@ -63,7 +61,7 @@ impl<T: Environment + 'static> Wallet<T> {
 
     pub fn work_update(
         &self,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         account: &Account,
         root: &Root,
         work: u64,
@@ -81,11 +79,7 @@ impl<T: Environment + 'static> Wallet<T> {
         }
     }
 
-    pub fn deterministic_check(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        index: u32,
-    ) -> u32 {
+    pub fn deterministic_check(&self, txn: &dyn Transaction, index: u32) -> u32 {
         let mut result = index;
         let block_txn = self.ledger.read_txn();
         let mut i = index + 1;

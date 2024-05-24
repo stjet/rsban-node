@@ -73,7 +73,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
         config: lmdb_config,
         use_no_mem_init: false,
     };
-    let lmdb = Arc::new(LmdbEnv::with_options(wallets_path, &options).unwrap());
+    let lmdb = Arc::new(LmdbEnv::new_with_options(wallets_path, &options).unwrap());
 
     let network_params = NetworkParams::try_from(network_params).unwrap();
     let work = WorkThresholds::from(work_thresholds);

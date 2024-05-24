@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{utils::ContainerInfoComponent, Account, BlockEnum};
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{LmdbReadTransaction, RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::max,
     sync::{Arc, Condvar, Mutex},
@@ -45,11 +45,7 @@ impl PriorityScheduler {
         }
     }
 
-    pub fn activate(
-        &self,
-        account: &Account,
-        tx: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> bool {
+    pub fn activate(&self, account: &Account, tx: &dyn Transaction) -> bool {
         debug_assert!(!account.is_zero());
         let Some(info) = self.ledger.account_info(tx, account) else {
             return false; // Not activated

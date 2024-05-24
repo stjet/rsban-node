@@ -4,18 +4,18 @@ use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, BlockEnum, BlockHash, ConfirmationHeightInfo,
     PendingInfo, PendingKey,
 };
-use rsnano_store_lmdb::{Environment, Transaction};
+use rsnano_store_lmdb::Transaction;
 
-pub(crate) struct RollbackPlannerFactory<'a, T: Environment + 'static> {
-    ledger: &'a Ledger<T>,
-    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+pub(crate) struct RollbackPlannerFactory<'a> {
+    ledger: &'a Ledger,
+    txn: &'a dyn Transaction,
     head_block: &'a BlockEnum,
 }
 
-impl<'a, T: Environment + 'static> RollbackPlannerFactory<'a, T> {
+impl<'a> RollbackPlannerFactory<'a> {
     pub(crate) fn new(
-        ledger: &'a Ledger<T>,
-        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        ledger: &'a Ledger,
+        txn: &'a dyn Transaction,
         head_block: &'a BlockEnum,
     ) -> Self {
         Self {

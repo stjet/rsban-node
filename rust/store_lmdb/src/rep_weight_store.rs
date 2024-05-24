@@ -1,6 +1,6 @@
 use crate::{
-    lmdb_env::RoCursor, ConfiguredDatabase, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbWriteTransaction, Transaction, REP_WEIGHT_TEST_DATABASE,
+    ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor, Transaction,
+    REP_WEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
@@ -12,17 +12,17 @@ use rsnano_core::{
 };
 use std::{marker::PhantomData, sync::Arc};
 
-pub struct LmdbRepWeightStore<T: Environment = EnvironmentWrapper> {
-    _env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbRepWeightStore {
+    _env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     delete_listener: OutputListenerMt<Account>,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<(Account, Amount)>,
 }
 
-impl<T: Environment + 'static> LmdbRepWeightStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbRepWeightStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("rep_weights"), DatabaseFlags::empty())?;
@@ -46,11 +46,7 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
         self.put_listener.track()
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: Account,
-    ) -> Option<Amount> {
+    pub fn get(&self, txn: &dyn Transaction, account: Account) -> Option<Amount> {
         match txn.get(self.database, account.as_bytes()) {
             Ok(bytes) => {
                 let mut stream = BufferReader::new(bytes);
@@ -63,7 +59,7 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
         }
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, representative: Account, weight: Amount) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, representative: Account, weight: Amount) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit((representative, weight));
 
@@ -76,7 +72,7 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
         .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, representative: Account) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, representative: Account) {
         #[cfg(feature = "output_tracking")]
         self.delete_listener.emit(representative);
 
@@ -84,17 +80,11 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
             .unwrap();
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn iter<'a>(
-        &self,
-        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> RepWeightIterator<'a, T> {
+    pub fn iter<'a>(&self, txn: &'a dyn Transaction) -> RepWeightIterator<'a> {
         let cursor = txn.open_ro_cursor(self.database).unwrap();
         RepWeightIterator {
             cursor,
@@ -104,13 +94,13 @@ impl<T: Environment + 'static> LmdbRepWeightStore<T> {
     }
 }
 
-pub struct RepWeightIterator<'a, T: Environment + 'static> {
+pub struct RepWeightIterator<'a> {
     _lifetime: PhantomData<&'a ()>,
-    cursor: T::RoCursor,
+    cursor: RoCursor,
     operation: MDB_cursor_op,
 }
 
-impl<'a, T: Environment + 'static> Iterator for RepWeightIterator<'a, T> {
+impl<'a> Iterator for RepWeightIterator<'a> {
     type Item = (Account, Amount);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -165,7 +155,7 @@ mod tests {
     use lmdb::WriteFlags;
 
     use super::*;
-    use crate::{DeleteEvent, EnvironmentStub, LmdbEnv, PutEvent};
+    use crate::{DeleteEvent, LmdbEnv, PutEvent};
 
     #[test]
     fn count() {
@@ -189,7 +179,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: REP_WEIGHT_TEST_DATABASE,
+                database: REP_WEIGHT_TEST_DATABASE.into(),
                 key: account.as_bytes().to_vec(),
                 value: weight.to_be_bytes().to_vec(),
                 flags: WriteFlags::empty()
@@ -221,7 +211,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: REP_WEIGHT_TEST_DATABASE,
+                database: REP_WEIGHT_TEST_DATABASE.into(),
                 key: account.as_bytes().to_vec()
             }]
         )
@@ -251,8 +241,8 @@ mod tests {
     }
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbRepWeightStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbRepWeightStore,
     }
 
     impl Fixture {
@@ -261,7 +251,7 @@ mod tests {
         }
 
         pub fn with_stored_data(entries: Vec<(Account, Amount)>) -> Self {
-            let env = LmdbEnv::create_null_with()
+            let env = LmdbEnv::new_null_with()
                 .configured_database(ConfiguredRepWeightDatabaseBuilder::create(entries))
                 .build();
             let env = Arc::new(env);

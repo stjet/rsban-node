@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rsn_mdb_env_create(
     };
     let path_str = CStr::from_ptr(path).to_str().unwrap();
     let path = Path::new(path_str);
-    match LmdbEnv::with_options(path, &options) {
+    match LmdbEnv::new_with_options(path, &options) {
         Ok(env) => {
             *error = false;
             Box::into_raw(Box::new(LmdbEnvHandle(Arc::new(env))))
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_mdb_env_create2(
         Arc::new(NullTransactionTracker::new())
     };
 
-    let env = LmdbEnv::with_txn_tracker(path, &options, txn_tracker);
+    let env = LmdbEnv::new_with_txn_tracker(path, &options, txn_tracker);
     match env {
         Ok(e) => {
             *error = false;

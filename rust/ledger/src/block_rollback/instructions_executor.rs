@@ -1,20 +1,20 @@
 use super::rollback_planner::RollbackInstructions;
 use crate::Ledger;
 use rsnano_core::{Account, Amount};
-use rsnano_store_lmdb::{Environment, LmdbWriteTransaction};
+use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::sync::atomic::Ordering;
 
 /// Updates the ledger according to the RollbackInstructions
-pub(crate) struct RollbackInstructionsExecutor<'a, T: Environment + 'static> {
-    ledger: &'a Ledger<T>,
-    txn: &'a mut LmdbWriteTransaction<T>,
+pub(crate) struct RollbackInstructionsExecutor<'a> {
+    ledger: &'a Ledger,
+    txn: &'a mut LmdbWriteTransaction,
     instructions: &'a RollbackInstructions,
 }
 
-impl<'a, T: Environment> RollbackInstructionsExecutor<'a, T> {
+impl<'a> RollbackInstructionsExecutor<'a> {
     pub(crate) fn new(
-        ledger: &'a Ledger<T>,
-        txn: &'a mut LmdbWriteTransaction<T>,
+        ledger: &'a Ledger,
+        txn: &'a mut LmdbWriteTransaction,
         instructions: &'a RollbackInstructions,
     ) -> Self {
         Self {

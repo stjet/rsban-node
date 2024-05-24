@@ -4,7 +4,6 @@ use rsnano_core::{
     BlockHash,
 };
 use rsnano_ledger::{Ledger, Writer};
-use rsnano_store_lmdb::{Environment, EnvironmentWrapper};
 use std::{
     collections::{HashSet, VecDeque},
     sync::{Arc, Condvar, Mutex},
@@ -13,13 +12,13 @@ use std::{
 };
 
 /// Set of blocks to be durably confirmed
-pub struct ConfirmingSet<T: Environment + 'static = EnvironmentWrapper> {
-    thread: Arc<ConfirmingSetThread<T>>,
+pub struct ConfirmingSet {
+    thread: Arc<ConfirmingSetThread>,
     join_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
-impl<T: Environment + 'static> ConfirmingSet<T> {
-    pub fn new(ledger: Arc<Ledger<T>>, batch_time: Duration) -> Self {
+impl ConfirmingSet {
+    pub fn new(ledger: Arc<Ledger>, batch_time: Duration) -> Self {
         Self {
             join_handle: Mutex::new(None),
             thread: Arc::new(ConfirmingSetThread {
@@ -104,22 +103,22 @@ impl<T: Environment + 'static> ConfirmingSet<T> {
     }
 }
 
-impl<T: Environment + 'static> Drop for ConfirmingSet<T> {
+impl Drop for ConfirmingSet {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
-pub struct ConfirmingSetThread<T: Environment + 'static = EnvironmentWrapper> {
+pub struct ConfirmingSetThread {
     mutex: Mutex<ConfirmingSetImpl>,
     condition: Condvar,
-    ledger: Arc<Ledger<T>>,
+    ledger: Arc<Ledger>,
     batch_time: Duration,
     cemented_observers: Mutex<Vec<BlockCallback>>,
     already_cemented_observers: Mutex<Vec<BlockHashCallback>>,
 }
 
-impl<T: Environment + 'static> ConfirmingSetThread<T> {
+impl ConfirmingSetThread {
     fn stop(&self) {
         {
             let mut guard = self.mutex.lock().unwrap();

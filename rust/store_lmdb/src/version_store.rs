@@ -1,16 +1,13 @@
-use crate::{
-    Environment, EnvironmentWrapper, LmdbEnv, LmdbWriteTransaction, Transaction,
-    STORE_VERSION_CURRENT,
-};
+use crate::{LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction, STORE_VERSION_CURRENT};
 use core::panic;
 use lmdb::{DatabaseFlags, WriteFlags};
 use std::{path::Path, sync::Arc};
 
-pub struct LmdbVersionStore<T: Environment = EnvironmentWrapper> {
-    _env: Arc<LmdbEnv<T>>,
+pub struct LmdbVersionStore {
+    _env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    db_handle: T::Database,
+    db_handle: LmdbDatabase,
 }
 
 pub struct UpgradeInfo {
@@ -18,8 +15,8 @@ pub struct UpgradeInfo {
     pub is_fully_upgraded: bool,
 }
 
-impl<T: Environment + 'static> LmdbVersionStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbVersionStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let db_handle = env
             .environment
             .create_db(Some("meta"), DatabaseFlags::empty())?;
@@ -29,18 +26,18 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
         })
     }
 
-    pub fn try_read_version(env: &LmdbEnv<T>) -> Option<i32> {
+    pub fn try_read_version(env: &LmdbEnv) -> Option<i32> {
         match env.environment.open_db(Some("meta")) {
             Ok(db) => {
                 let txn = env.tx_begin_read();
-                load_version::<T>(&txn, db)
+                load_version(&txn, db)
             }
             Err(_) => None,
         }
     }
 
     pub fn check_upgrade(path: &Path) -> anyhow::Result<UpgradeInfo> {
-        let env = LmdbEnv::<T>::new(path)?;
+        let env = LmdbEnv::new(path)?;
         let info = match LmdbVersionStore::try_read_version(&env) {
             Some(version) => UpgradeInfo {
                 is_fresh_db: false,
@@ -54,11 +51,11 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
         Ok(info)
     }
 
-    pub fn db_handle(&self) -> T::Database {
+    pub fn db_handle(&self) -> LmdbDatabase {
         self.db_handle
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction<T>, version: i32) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, version: i32) {
         let db = self.db_handle();
 
         let key_bytes = version_key();
@@ -68,19 +65,13 @@ impl<T: Environment + 'static> LmdbVersionStore<T> {
             .unwrap();
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> Option<i32> {
+    pub fn get(&self, txn: &dyn Transaction) -> Option<i32> {
         let db = self.db_handle();
-        load_version::<T>(txn, db)
+        load_version(txn, db)
     }
 }
 
-fn load_version<T: Environment + 'static>(
-    txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    db: T::Database,
-) -> Option<i32> {
+fn load_version(txn: &dyn Transaction, db: LmdbDatabase) -> Option<i32> {
     let key_bytes = version_key();
     match txn.get(db, &key_bytes) {
         Ok(value) => Some(i32::from_be_bytes(value[28..].try_into().unwrap())),

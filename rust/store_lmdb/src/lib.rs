@@ -13,11 +13,7 @@ mod wallet_store;
 pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
-pub use lmdb_env::{
-    ConfiguredDatabase, DatabaseStub, EnvOptions, Environment, EnvironmentOptions, EnvironmentStub,
-    EnvironmentWrapper, LmdbEnv, RoCursorWrapper, RwTransaction, TestDbFile, TestLmdbEnv,
-};
-use lmdb_env::{InactiveTransaction, RoCursor, RoTransaction};
+pub use lmdb_env::*;
 
 mod account_store;
 pub use account_store::{ConfiguredAccountDatabaseBuilder, LmdbAccountStore};
@@ -71,21 +67,19 @@ use rsnano_core::utils::{OutputListener, OutputTracker};
 use std::rc::Rc;
 
 pub trait Transaction {
-    type Database;
-    type RoCursor: RoCursor;
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
     fn refresh_if_needed(&mut self, max_age: Duration);
-    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]>;
-    fn exists(&self, db: Self::Database, key: &[u8]) -> bool {
+    fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]>;
+    fn exists(&self, db: LmdbDatabase, key: &[u8]) -> bool {
         match self.get(db, key) {
             Ok(_) => true,
             Err(lmdb::Error::NotFound) => false,
             Err(e) => panic!("exists failed: {:?}", e),
         }
     }
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor>;
-    fn count(&self, database: Self::Database) -> u64;
+    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor>;
+    fn count(&self, database: LmdbDatabase) -> u64;
 }
 
 pub trait TransactionTracker: Send + Sync {
@@ -122,25 +116,25 @@ impl TransactionTracker for NullTransactionTracker {
     }
 }
 
-enum RoTxnState<T, U>
-where
-    T: RoTransaction<InactiveTxnType = U>,
-    U: InactiveTransaction<RoTxnType = T>,
-{
-    Inactive(U),
-    Active(T),
+enum RoTxnState {
+    Inactive(InactiveTransaction),
+    Active(RoTransaction),
     Transitioning,
 }
 
-pub struct LmdbReadTransaction<T: Environment + 'static = EnvironmentWrapper> {
+pub struct LmdbReadTransaction {
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RoTxnState<T::RoTxnImpl, T::InactiveTxnImpl>,
+    txn: RoTxnState,
     start: Instant,
 }
 
-impl<T: Environment + 'static> LmdbReadTransaction<T> {
-    pub fn new(txn_id: u64, env: &T, callbacks: Arc<dyn TransactionTracker>) -> lmdb::Result<Self> {
+impl LmdbReadTransaction {
+    pub fn new(
+        txn_id: u64,
+        env: &LmdbEnvironment,
+        callbacks: Arc<dyn TransactionTracker>,
+    ) -> lmdb::Result<Self> {
         let txn = env.begin_ro_txn()?;
         callbacks.txn_start(txn_id, false);
 
@@ -152,7 +146,7 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
         })
     }
 
-    pub fn txn(&self) -> &T::RoTxnImpl {
+    pub fn txn(&self) -> &RoTransaction {
         match &self.txn {
             RoTxnState::Active(t) => t,
             _ => panic!("LMDB read transaction not active"),
@@ -181,7 +175,7 @@ impl<T: Environment + 'static> LmdbReadTransaction<T> {
     }
 }
 
-impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
+impl Drop for LmdbReadTransaction {
     fn drop(&mut self) {
         let t = mem::replace(&mut self.txn, RoTxnState::Transitioning);
         // This uses commit rather than abort, as it is needed when opening databases with a read only transaction
@@ -192,10 +186,7 @@ impl<T: Environment + 'static> Drop for LmdbReadTransaction<T> {
     }
 }
 
-impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
-    type Database = T::Database;
-    type RoCursor = T::RoCursor;
-
+impl Transaction for LmdbReadTransaction {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -211,29 +202,29 @@ impl<T: Environment + 'static> Transaction for LmdbReadTransaction<T> {
         }
     }
 
-    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+    fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
         self.txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
         self.txn().open_ro_cursor(database)
     }
 
-    fn count(&self, database: Self::Database) -> u64 {
+    fn count(&self, database: LmdbDatabase) -> u64 {
         self.txn().count(database)
     }
 }
 
-enum RwTxnState<T: RwTransaction> {
+enum RwTxnState {
     Inactive,
-    Active(T),
+    Active(RwTransaction),
     Transitioning,
 }
 
 #[cfg(feature = "output_tracking")]
 #[derive(Clone, Debug, PartialEq)]
-pub struct PutEvent<T> {
-    database: T,
+pub struct PutEvent {
+    database: LmdbDatabase,
     key: Vec<u8>,
     value: Vec<u8>,
     flags: lmdb::WriteFlags,
@@ -241,32 +232,33 @@ pub struct PutEvent<T> {
 
 #[cfg(feature = "output_tracking")]
 #[derive(Clone, Debug, PartialEq)]
-pub struct DeleteEvent<T> {
-    database: T,
+pub struct DeleteEvent {
+    database: LmdbDatabase,
     key: Vec<u8>,
 }
 
-pub struct LmdbWriteTransaction<T: Environment + 'static = EnvironmentWrapper> {
-    env: &'static T,
+pub struct LmdbWriteTransaction {
+    env: &'static LmdbEnvironment,
     txn_id: u64,
     callbacks: Arc<dyn TransactionTracker>,
-    txn: RwTxnState<T::RwTxnType>,
+    txn: RwTxnState,
     #[cfg(feature = "output_tracking")]
-    put_listener: OutputListener<PutEvent<T::Database>>,
+    put_listener: OutputListener<PutEvent>,
     #[cfg(feature = "output_tracking")]
-    delete_listener: OutputListener<DeleteEvent<T::Database>>,
+    delete_listener: OutputListener<DeleteEvent>,
     #[cfg(feature = "output_tracking")]
-    clear_listener: OutputListener<T::Database>,
+    clear_listener: OutputListener<LmdbDatabase>,
     start: Instant,
 }
 
-impl<T: Environment> LmdbWriteTransaction<T> {
+impl LmdbWriteTransaction {
     pub fn new<'a>(
         txn_id: u64,
-        env: &'a T,
+        env: &'a LmdbEnvironment,
         callbacks: Arc<dyn TransactionTracker>,
     ) -> lmdb::Result<Self> {
-        let env = unsafe { std::mem::transmute::<&'a T, &'static T>(env) };
+        let env =
+            unsafe { std::mem::transmute::<&'a LmdbEnvironment, &'static LmdbEnvironment>(env) };
         let mut tx = Self {
             env,
             txn_id,
@@ -284,14 +276,14 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         Ok(tx)
     }
 
-    pub fn rw_txn(&self) -> &T::RwTxnType {
+    pub fn rw_txn(&self) -> &RwTransaction {
         match &self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
         }
     }
 
-    pub fn rw_txn_mut(&mut self) -> &mut T::RwTxnType {
+    pub fn rw_txn_mut(&mut self) -> &mut RwTransaction {
         match &mut self.txn {
             RwTxnState::Active(t) => t,
             _ => panic!("txn not active"),
@@ -323,17 +315,17 @@ impl<T: Environment> LmdbWriteTransaction<T> {
     }
 
     #[cfg(feature = "output_tracking")]
-    pub fn track_puts(&self) -> Rc<OutputTracker<PutEvent<T::Database>>> {
+    pub fn track_puts(&self) -> Rc<OutputTracker<PutEvent>> {
         self.put_listener.track()
     }
 
     #[cfg(feature = "output_tracking")]
-    pub fn track_deletions(&self) -> Rc<OutputTracker<DeleteEvent<T::Database>>> {
+    pub fn track_deletions(&self) -> Rc<OutputTracker<DeleteEvent>> {
         self.delete_listener.track()
     }
 
     #[cfg(feature = "output_tracking")]
-    pub fn track_clears(&self) -> Rc<OutputTracker<T::Database>> {
+    pub fn track_clears(&self) -> Rc<OutputTracker<LmdbDatabase>> {
         self.clear_listener.track()
     }
 
@@ -341,13 +333,13 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         &mut self,
         name: Option<&str>,
         flags: lmdb::DatabaseFlags,
-    ) -> lmdb::Result<T::Database> {
+    ) -> lmdb::Result<LmdbDatabase> {
         self.rw_txn().create_db(name, flags)
     }
 
     pub fn put(
         &mut self,
-        database: T::Database,
+        database: LmdbDatabase,
         key: &[u8],
         value: &[u8],
         flags: lmdb::WriteFlags,
@@ -364,7 +356,7 @@ impl<T: Environment> LmdbWriteTransaction<T> {
 
     pub fn delete(
         &mut self,
-        database: T::Database,
+        database: LmdbDatabase,
         key: &[u8],
         flags: Option<&[u8]>,
     ) -> lmdb::Result<()> {
@@ -376,23 +368,20 @@ impl<T: Environment> LmdbWriteTransaction<T> {
         self.rw_txn_mut().del(database, key, flags)
     }
 
-    pub fn clear_db(&mut self, database: T::Database) -> lmdb::Result<()> {
+    pub fn clear_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
         #[cfg(feature = "output_tracking")]
         self.clear_listener.emit(database);
         self.rw_txn_mut().clear_db(database)
     }
 }
 
-impl<T: Environment> Drop for LmdbWriteTransaction<T> {
+impl Drop for LmdbWriteTransaction {
     fn drop(&mut self) {
         self.commit();
     }
 }
 
-impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
-    type Database = T::Database;
-    type RoCursor = T::RoCursor;
-
+impl Transaction for LmdbWriteTransaction {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -402,15 +391,15 @@ impl<T: Environment> Transaction for LmdbWriteTransaction<T> {
         self.renew();
     }
 
-    fn get(&self, database: Self::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
+    fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
         self.rw_txn().get(database, key)
     }
 
-    fn open_ro_cursor(&self, database: Self::Database) -> lmdb::Result<Self::RoCursor> {
+    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
         self.rw_txn().open_ro_cursor(database)
     }
 
-    fn count(&self, database: Self::Database) -> u64 {
+    fn count(&self, database: LmdbDatabase) -> u64 {
         self.rw_txn().count(database)
     }
 
@@ -471,15 +460,14 @@ pub const CONFIRMATION_HEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(7);
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lmdb_env::DatabaseStub;
 
     #[test]
     fn tracks_deletes() {
-        let env = LmdbEnv::create_null();
+        let env = LmdbEnv::new_null();
         let mut txn = env.tx_begin_write();
         let delete_tracker = txn.track_deletions();
 
-        let database = DatabaseStub(42);
+        let database = LmdbDatabase::new_null(42);
         let key = vec![1, 2, 3];
         txn.delete(database, &key, None).unwrap();
 
@@ -488,11 +476,11 @@ mod test {
 
     #[test]
     fn tracks_clears() {
-        let env = LmdbEnv::create_null();
+        let env = LmdbEnv::new_null();
         let mut txn = env.tx_begin_write();
         let clear_tracker = txn.track_clears();
 
-        let database = DatabaseStub(42);
+        let database = LmdbDatabase::new_null(42);
         txn.clear_db(database).unwrap();
 
         assert_eq!(clear_tracker.output(), vec![database])

@@ -49,9 +49,7 @@ impl TransactionHandle {
         }
     }
 
-    pub fn as_txn(
-        &self,
-    ) -> &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper> {
+    pub fn as_txn(&self) -> &dyn Transaction {
         match &self.0 {
             TransactionType::Read(t) => t,
             TransactionType::Write(t) => t,
@@ -134,9 +132,7 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh_if_needed(
         .refresh_if_needed(Duration::from_millis(max_age_ms));
 }
 
-pub(crate) unsafe fn into_read_txn_handle(
-    txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-) -> *mut TransactionHandle {
+pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {
     TransactionHandle::new(TransactionType::ReadRef(std::mem::transmute::<
         &LmdbReadTransaction,
         &'static LmdbReadTransaction,

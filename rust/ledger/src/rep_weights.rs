@@ -1,20 +1,18 @@
 use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use rsnano_core::{Account, Amount};
-use rsnano_store_lmdb::{
-    Environment, EnvironmentWrapper, LmdbRepWeightStore, LmdbWriteTransaction,
-};
+use rsnano_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
 use std::collections::HashMap;
 use std::mem::size_of;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-pub struct RepWeights<T: Environment + 'static = EnvironmentWrapper> {
+pub struct RepWeights {
     rep_amounts: Mutex<HashMap<Account, Amount>>,
-    store: Arc<LmdbRepWeightStore<T>>,
+    store: Arc<LmdbRepWeightStore>,
     min_weight: Amount,
 }
 
-impl<T: Environment + 'static> RepWeights<T> {
-    pub fn new(store: Arc<LmdbRepWeightStore<T>>, min_weight: Amount) -> Self {
+impl RepWeights {
+    pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount) -> Self {
         RepWeights {
             rep_amounts: Mutex::new(HashMap::new()),
             store,
@@ -31,7 +29,7 @@ impl<T: Environment + 'static> RepWeights<T> {
     }
 
     /// Only use this method when loading rep weights from the database table
-    pub fn copy_from(&self, other: &RepWeights<T>) {
+    pub fn copy_from(&self, other: &RepWeights) {
         let mut guard_this = self.rep_amounts.lock().unwrap();
         let guard_other = other.rep_amounts.lock().unwrap();
         for (account, amount) in guard_other.iter() {
@@ -42,7 +40,7 @@ impl<T: Environment + 'static> RepWeights<T> {
 
     pub fn representation_add(
         &self,
-        tx: &mut LmdbWriteTransaction<T>,
+        tx: &mut LmdbWriteTransaction,
         representative: Account,
         amount: Amount,
     ) {
@@ -68,7 +66,7 @@ impl<T: Environment + 'static> RepWeights<T> {
 
     fn put_store(
         &self,
-        tx: &mut LmdbWriteTransaction<T>,
+        tx: &mut LmdbWriteTransaction,
         representative: Account,
         previous_weight: Amount,
         new_weight: Amount,
@@ -95,7 +93,7 @@ impl<T: Environment + 'static> RepWeights<T> {
 
     pub fn representation_add_dual(
         &self,
-        tx: &mut LmdbWriteTransaction<T>,
+        tx: &mut LmdbWriteTransaction,
         rep_1: Account,
         amount_1: Amount,
         rep_2: Account,
@@ -143,7 +141,7 @@ mod tests {
 
     #[test]
     fn representation_changes() {
-        let env = Arc::new(LmdbEnv::create_null());
+        let env = Arc::new(LmdbEnv::new_null());
         let store = Arc::new(LmdbRepWeightStore::new(env).unwrap());
         let account = Account::from(1);
         let rep_weights = RepWeights::new(store, Amount::zero());
@@ -162,7 +160,7 @@ mod tests {
         let weight = Amount::from(100);
 
         let env = Arc::new(
-            LmdbEnv::create_null_with()
+            LmdbEnv::new_null_with()
                 .configured_database(ConfiguredRepWeightDatabaseBuilder::create(vec![(
                     representative,
                     weight,
@@ -193,7 +191,7 @@ mod tests {
         let weight = Amount::from(100);
 
         let env = Arc::new(
-            LmdbEnv::create_null_with()
+            LmdbEnv::new_null_with()
                 .configured_database(ConfiguredRepWeightDatabaseBuilder::create(vec![
                     (rep1, weight),
                     (rep2, weight),
@@ -222,7 +220,7 @@ mod tests {
 
     #[test]
     fn add_below_min_weight() {
-        let env = Arc::new(LmdbEnv::create_null());
+        let env = Arc::new(LmdbEnv::new_null());
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let put_tracker = store.track_puts();
         let mut txn = env.tx_begin_write();
@@ -242,7 +240,7 @@ mod tests {
         let representative = Account::from(1);
         let weight = Amount::from(11);
         let env = Arc::new(
-            LmdbEnv::create_null_with()
+            LmdbEnv::new_null_with()
                 .configured_database(ConfiguredRepWeightDatabaseBuilder::create(vec![(
                     representative,
                     weight,

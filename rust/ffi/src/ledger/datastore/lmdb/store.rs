@@ -60,7 +60,7 @@ pub unsafe extern "C" fn rsn_lmdb_store_create_v2(
         Arc::new(NullTransactionTracker::new())
     };
 
-    let store = LmdbStore::<EnvironmentWrapper>::open(path)
+    let store = LmdbStore::open(path)
         .options(&options)
         .txn_tracker(txn_tracker)
         .backup_before_upgrade(backup_before_upgrade)

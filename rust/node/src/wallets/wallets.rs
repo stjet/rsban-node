@@ -20,8 +20,8 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
-    create_backup_file, BinaryDbIterator, DbIterator, Environment, EnvironmentWrapper, KeyType,
-    LmdbEnv, LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
+    create_backup_file, BinaryDbIterator, DbIterator, KeyType, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, RwTransaction, Transaction,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -46,14 +46,14 @@ pub enum WalletsError {
     BadPublicKey,
 }
 
-pub type WalletsIterator<T> = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl<T>>;
+pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
 
-pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
-    pub handle: Option<T::Database>,
-    pub send_action_ids_handle: Option<T::Database>,
+pub struct Wallets {
+    pub handle: Option<LmdbDatabase>,
+    pub send_action_ids_handle: Option<LmdbDatabase>,
     enable_voting: bool,
-    env: Arc<LmdbEnv<T>>,
-    pub mutex: Mutex<HashMap<WalletId, Arc<Wallet<T>>>>,
+    env: Arc<LmdbEnv>,
+    pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
     pub node_config: NodeConfig,
     ledger: Arc<Ledger>,
     last_log: Mutex<Option<Instant>>,
@@ -62,7 +62,7 @@ pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
     network_params: NetworkParams,
     pub delayed_work: Mutex<HashMap<Account, Root>>,
     workers: Arc<dyn ThreadPool>,
-    pub wallet_actions: WalletActionThread<T>,
+    pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
@@ -72,10 +72,10 @@ pub struct Wallets<T: Environment + 'static = EnvironmentWrapper> {
     confirming_set: Arc<ConfirmingSet>,
 }
 
-impl<T: Environment + 'static> Wallets<T> {
+impl Wallets {
     pub fn new(
         enable_voting: bool,
-        env: Arc<LmdbEnv<T>>,
+        env: Arc<LmdbEnv>,
         ledger: Arc<Ledger>,
         node_config: &NodeConfig,
         kdf_work: u32,
@@ -142,7 +142,7 @@ impl<T: Environment + 'static> Wallets<T> {
             if node_config.backup_before_upgrade {
                 let txn = wallets.env.tx_begin_read();
                 for wallet in guard.values() {
-                    if wallet.store.version(&txn) != LmdbWalletStore::<T>::VERSION_CURRENT {
+                    if wallet.store.version(&txn) != LmdbWalletStore::VERSION_CURRENT {
                         backup_required = true;
                         break;
                     }
@@ -168,7 +168,7 @@ impl<T: Environment + 'static> Wallets<T> {
         *self.start_election.lock().unwrap() = Some(callback);
     }
 
-    pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
+    pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
         self.handle = Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
         self.send_action_ids_handle = Some(unsafe {
             txn.rw_txn_mut()
@@ -181,13 +181,9 @@ impl<T: Environment + 'static> Wallets<T> {
         self.representatives.lock().unwrap().voting_reps()
     }
 
-    pub fn get_store_it(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        hash: &str,
-    ) -> WalletsIterator<T> {
+    pub fn get_store_it(&self, txn: &dyn Transaction, hash: &str) -> WalletsIterator {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
-        WalletsIterator::new(LmdbIteratorImpl::<T>::new(
+        WalletsIterator::new(LmdbIteratorImpl::new(
             txn,
             self.handle.unwrap(),
             Some(&hash_bytes),
@@ -195,10 +191,7 @@ impl<T: Environment + 'static> Wallets<T> {
         ))
     }
 
-    pub fn get_wallet_ids(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> Vec<WalletId> {
+    pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
         let mut i = self.get_store_it(txn, &beginning);
@@ -212,7 +205,7 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn get_block_hash(
         &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &dyn Transaction,
         id: &str,
     ) -> anyhow::Result<Option<BlockHash>> {
         match txn.get(self.send_action_ids_handle.unwrap(), id.as_bytes()) {
@@ -226,7 +219,7 @@ impl<T: Environment + 'static> Wallets<T> {
 
     pub fn set_block_hash(
         &self,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         id: &str,
         hash: &BlockHash,
     ) -> anyhow::Result<()> {
@@ -288,7 +281,7 @@ impl<T: Environment + 'static> Wallets<T> {
         }
     }
 
-    pub fn work_cache_blocking(&self, wallet: &Wallet<T>, account: &Account, root: &Root) {
+    pub fn work_cache_blocking(&self, wallet: &Wallet, account: &Account, root: &Root) {
         if self.distributed_work.work_generation_enabled() {
             let difficulty = self.work_thresholds.threshold_base(WorkVersion::Work1);
             if let Some(work) = self.distributed_work.make_blocking(
@@ -311,9 +304,9 @@ impl<T: Environment + 'static> Wallets<T> {
     }
 
     fn get_wallet<'a>(
-        guard: &'a HashMap<WalletId, Arc<Wallet<T>>>,
+        guard: &'a HashMap<WalletId, Arc<Wallet>>,
         wallet_id: &WalletId,
-    ) -> Result<&'a Arc<Wallet<T>>, WalletsError> {
+    ) -> Result<&'a Arc<Wallet>, WalletsError> {
         guard.get(wallet_id).ok_or(WalletsError::WalletNotFound)
     }
 
@@ -535,8 +528,8 @@ impl<T: Environment + 'static> Wallets<T> {
 
     fn prepare_send(
         &self,
-        tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        wallet: &Arc<Wallet<T>>,
+        tx: &dyn Transaction,
+        wallet: &Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -575,9 +568,9 @@ impl<T: Environment + 'static> Wallets<T> {
 
     fn prepare_send_with_id(
         &self,
-        tx: &mut LmdbWriteTransaction<T>,
+        tx: &mut LmdbWriteTransaction,
         id: &str,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -828,7 +821,7 @@ impl<T: Environment + 'static> Wallets<T> {
     }
 }
 
-impl<T: Environment> Drop for Wallets<T> {
+impl Drop for Wallets {
     fn drop(&mut self) {
         self.stop();
     }
@@ -837,11 +830,11 @@ impl<T: Environment> Drop for Wallets<T> {
 const GENERATE_PRIORITY: Amount = Amount::MAX;
 const HIGH_PRIORITY: Amount = Amount::raw(u128::MAX - 1);
 
-pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
+pub trait WalletsExt {
     fn deterministic_insert(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        tx: &mut LmdbWriteTransaction<T>,
+        wallet: &Arc<Wallet>,
+        tx: &mut LmdbWriteTransaction,
         generate_work: bool,
     ) -> PublicKey;
 
@@ -858,7 +851,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
     ) -> Result<PublicKey, WalletsError>;
 
-    fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account;
+    fn insert_adhoc(&self, wallet: &Arc<Wallet>, key: &RawKey, generate_work: bool) -> Account;
 
     fn insert_adhoc2(
         &self,
@@ -867,11 +860,11 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
         generate_work: bool,
     ) -> Result<Account, WalletsError>;
 
-    fn work_ensure(&self, wallet: &Arc<Wallet<T>>, account: Account, root: Root);
+    fn work_ensure(&self, wallet: &Arc<Wallet>, account: Account, root: Root);
 
     fn action_complete(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         block: Option<Arc<BlockEnum>>,
         account: Account,
         generate_work: bool,
@@ -889,15 +882,15 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn change_seed_wallet(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        tx: &mut LmdbWriteTransaction<T>,
+        wallet: &Arc<Wallet>,
+        tx: &mut LmdbWriteTransaction,
         prv_key: &RawKey,
         count: u32,
     ) -> PublicKey;
 
     fn send_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -908,7 +901,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn change_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         source: Account,
         representative: Account,
         work: u64,
@@ -917,7 +910,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn receive_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         send_hash: BlockHash,
         representative: Account,
         amount: Amount,
@@ -928,7 +921,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn receive_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         hash: BlockHash,
         representative: Account,
         amount: Amount,
@@ -952,7 +945,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn receive_sync(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         block: &BlockEnum,
         representative: Account,
         amount: Amount,
@@ -960,7 +953,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn send_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -992,8 +985,8 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn search_receivable(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        wallet: &Arc<Wallet>,
+        wallet_tx: &dyn Transaction,
     ) -> Result<(), ()>;
 
     fn receive_confirmed(&self, hash: BlockHash, destinaton: Account);
@@ -1004,16 +997,16 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn enter_password_wallet(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        wallet_tx: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        wallet: &Arc<Wallet>,
+        wallet_tx: &dyn Transaction,
         password: &str,
     ) -> Result<(), ()>;
 
-    fn enter_initial_password(&self, wallet: &Arc<Wallet<T>>);
+    fn enter_initial_password(&self, wallet: &Arc<Wallet>);
     fn create(&self, wallet_id: WalletId);
     fn change_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         representative: Account,
         action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
@@ -1023,7 +1016,7 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
 
     fn change_sync_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         representative: Account,
     ) -> Result<(), ()>;
@@ -1050,11 +1043,11 @@ pub trait WalletsExt<T: Environment = EnvironmentWrapper> {
     fn initialize2(&self);
 }
 
-impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
+impl WalletsExt for Arc<Wallets> {
     fn deterministic_insert(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        tx: &mut LmdbWriteTransaction<T>,
+        wallet: &Arc<Wallet>,
+        tx: &mut LmdbWriteTransaction,
         generate_work: bool,
     ) -> PublicKey {
         if !wallet.store.valid_password(tx) {
@@ -1105,7 +1098,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         Ok(self.deterministic_insert(wallet, &mut tx, generate_work))
     }
 
-    fn insert_adhoc(&self, wallet: &Arc<Wallet<T>>, key: &RawKey, generate_work: bool) -> Account {
+    fn insert_adhoc(&self, wallet: &Arc<Wallet>, key: &RawKey, generate_work: bool) -> Account {
         let mut tx = self.env.tx_begin_write();
         if !wallet.store.valid_password(&tx) {
             return PublicKey::zero();
@@ -1142,7 +1135,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         Ok(self.insert_adhoc(wallet, key, generate_work))
     }
 
-    fn work_ensure(&self, wallet: &Arc<Wallet<T>>, account: Account, root: Root) {
+    fn work_ensure(&self, wallet: &Arc<Wallet>, account: Account, root: Root) {
         let precache_delay = if self.network_params.network.is_dev_network() {
             Duration::from_secs(1)
         } else {
@@ -1174,7 +1167,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn action_complete(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         block: Option<Arc<BlockEnum>>,
         account: Account,
         generate_work: bool,
@@ -1237,8 +1230,8 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn change_seed_wallet(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        tx: &mut LmdbWriteTransaction<T>,
+        wallet: &Arc<Wallet>,
+        tx: &mut LmdbWriteTransaction,
         prv_key: &RawKey,
         mut count: u32,
     ) -> PublicKey {
@@ -1273,7 +1266,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn send_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -1319,7 +1312,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn change_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         source: Account,
         representative: Account,
         mut work: u64,
@@ -1384,7 +1377,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn receive_action(
         &self,
-        wallet: &Arc<Wallet<T>>,
+        wallet: &Arc<Wallet>,
         send_hash: BlockHash,
         representative: Account,
         amount: Amount,
@@ -1480,7 +1473,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn receive_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         hash: BlockHash,
         representative: Account,
         amount: Amount,
@@ -1545,7 +1538,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn receive_sync(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         block: &BlockEnum,
         representative: Account,
         amount: Amount,
@@ -1576,7 +1569,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn send_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         account: Account,
         amount: Amount,
@@ -1675,11 +1668,8 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn search_receivable(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        wallet_tx: &dyn Transaction<
-            Database = <T as Environment>::Database,
-            RoCursor = <T as Environment>::RoCursor,
-        >,
+        wallet: &Arc<Wallet>,
+        wallet_tx: &dyn Transaction,
     ) -> Result<(), ()> {
         if !wallet.store.valid_password(wallet_tx) {
             info!("Stopping search, wallet is locked");
@@ -1810,11 +1800,8 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn enter_password_wallet(
         &self,
-        wallet: &Arc<Wallet<T>>,
-        wallet_tx: &dyn Transaction<
-            Database = <T as Environment>::Database,
-            RoCursor = <T as Environment>::RoCursor,
-        >,
+        wallet: &Arc<Wallet>,
+        wallet_tx: &dyn Transaction,
         password: &str,
     ) -> Result<(), ()> {
         if !wallet.store.attempt_password(wallet_tx, password) {
@@ -1836,7 +1823,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
         }
     }
 
-    fn enter_initial_password(&self, wallet: &Arc<Wallet<T>>) {
+    fn enter_initial_password(&self, wallet: &Arc<Wallet>) {
         let password = wallet.store.password();
         if password.is_zero() {
             let mut tx = self.env.tx_begin_write();
@@ -1873,7 +1860,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn change_async_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         representative: Account,
         action: Box<dyn Fn(Option<BlockEnum>) + Send + Sync>,
@@ -1894,7 +1881,7 @@ impl<T: Environment> WalletsExt<T> for Arc<Wallets<T>> {
 
     fn change_sync_wallet(
         &self,
-        wallet: Arc<Wallet<T>>,
+        wallet: Arc<Wallet>,
         source: Account,
         representative: Account,
     ) -> Result<(), ()> {

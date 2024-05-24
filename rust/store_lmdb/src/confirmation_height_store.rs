@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, Environment, EnvironmentWrapper,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     CONFIRMATION_HEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -12,26 +12,26 @@ use std::sync::Arc;
 
 pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
 
-pub struct LmdbConfirmationHeightStore<T: Environment = EnvironmentWrapper> {
-    env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbConfirmationHeightStore {
+    env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
 }
 
-impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbConfirmationHeightStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("confirmation_height"), DatabaseFlags::empty())?;
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
     pub fn put(
         &self,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         account: &Account,
         info: &ConfirmationHeightInfo,
     ) {
@@ -44,11 +44,7 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         .unwrap();
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: &Account,
-    ) -> Option<ConfirmationHeightInfo> {
+    pub fn get(&self, txn: &dyn Transaction, account: &Account) -> Option<ConfirmationHeightInfo> {
         match txn.get(self.database, account.as_bytes()) {
             Err(lmdb::Error::NotFound) => None,
             Ok(bytes) => {
@@ -61,51 +57,41 @@ impl<T: Environment + 'static> LmdbConfirmationHeightStore<T> {
         }
     }
 
-    pub fn exists(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: &Account,
-    ) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         txn.exists(self.database, account.as_bytes())
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, account: &Account) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, account: &Account) {
         txn.delete(self.database, account.as_bytes(), None).unwrap();
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
         txn.clear_db(self.database).unwrap()
     }
 
-    pub fn begin(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
+    pub fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
     pub fn begin_at_account(
         &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        txn: &dyn Transaction,
         account: &Account,
     ) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(account.as_bytes()), true)
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(account.as_bytes()), true)
     }
 
     pub fn end(&self) -> ConfirmationHeightIterator {
-        LmdbIteratorImpl::<T>::null_iterator()
+        LmdbIteratorImpl::null_iterator()
     }
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, ConfirmationHeightIterator, ConfirmationHeightIterator)
+        action: &(dyn Fn(&LmdbReadTransaction, ConfirmationHeightIterator, ConfirmationHeightIterator)
               + Send
               + Sync),
     ) {
@@ -158,22 +144,21 @@ impl ConfiguredConfirmationHeightDatabaseBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{lmdb_env::DatabaseStub, EnvironmentStub, PutEvent};
+    use super::*;
+    use crate::{lmdb_env::DatabaseStub, PutEvent};
     use rsnano_core::BlockHash;
 
-    use super::*;
-
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbConfirmationHeightStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbConfirmationHeightStore,
     }
 
     impl Fixture {
         fn new() -> Self {
-            Self::with_env(LmdbEnv::create_null())
+            Self::with_env(LmdbEnv::new_null())
         }
 
-        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+        fn with_env(env: LmdbEnv) -> Self {
             let env = Arc::new(env);
             Self {
                 env: env.clone(),
@@ -206,7 +191,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: Default::default(),
+                database: LmdbDatabase::new_null(42),
                 key: account.as_bytes().to_vec(),
                 value: info.to_bytes().to_vec(),
                 flags: WriteFlags::empty(),
@@ -219,7 +204,7 @@ mod tests {
         let account = Account::from(1);
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
 
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .database("confirmation_height", DatabaseStub(100))
             .entry(account.as_bytes(), &info.to_bytes())
             .build()
@@ -237,7 +222,7 @@ mod tests {
         let account = Account::from(1);
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
 
-        let env = LmdbEnv::create_null_with()
+        let env = LmdbEnv::new_null_with()
             .database("confirmation_height", DatabaseStub(100))
             .entry(account.as_bytes(), &info.to_bytes())
             .build()
@@ -261,6 +246,6 @@ mod tests {
 
         fixture.store.clear(&mut txn);
 
-        assert_eq!(clear_tracker.output(), vec![Default::default()])
+        assert_eq!(clear_tracker.output(), vec![LmdbDatabase::new_null(42)])
     }
 }

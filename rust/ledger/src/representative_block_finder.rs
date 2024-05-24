@@ -1,17 +1,14 @@
 use rsnano_core::{BlockEnum, BlockHash};
-use rsnano_store_lmdb::{Environment, LmdbStore, Transaction};
+use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 /// Goes back in the block history until it finds a block with representative information
-pub struct RepresentativeBlockFinder<'a, T: Environment + 'static> {
-    txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    store: &'a LmdbStore<T>,
+pub struct RepresentativeBlockFinder<'a> {
+    txn: &'a dyn Transaction,
+    store: &'a LmdbStore,
 }
 
-impl<'a, T: Environment + 'static> RepresentativeBlockFinder<'a, T> {
-    pub fn new(
-        txn: &'a dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        store: &'a LmdbStore<T>,
-    ) -> Self {
+impl<'a> RepresentativeBlockFinder<'a> {
+    pub fn new(txn: &'a dyn Transaction, store: &'a LmdbStore) -> Self {
         Self { txn, store }
     }
 

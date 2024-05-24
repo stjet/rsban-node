@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, lmdb_env::EnvironmentWrapper, parallel_traversal, ConfiguredDatabase,
-    Environment, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -14,17 +14,17 @@ use std::sync::Arc;
 
 pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
 
-pub struct LmdbAccountStore<T: Environment = EnvironmentWrapper> {
-    env: Arc<LmdbEnv<T>>,
+pub struct LmdbAccountStore {
+    env: Arc<LmdbEnv>,
 
     /// U256 (arbitrary key) -> blob
-    database: T::Database,
+    database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<(Account, AccountInfo)>,
 }
 
-impl<T: Environment + 'static> LmdbAccountStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbAccountStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("accounts"), DatabaseFlags::empty())?;
@@ -41,13 +41,13 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         self.put_listener.track()
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
     pub fn put(
         &self,
-        transaction: &mut LmdbWriteTransaction<T>,
+        transaction: &mut LmdbWriteTransaction,
         account: &Account,
         info: &AccountInfo,
     ) {
@@ -63,11 +63,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
             .unwrap();
     }
 
-    pub fn get(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: &Account,
-    ) -> Option<AccountInfo> {
+    pub fn get(&self, transaction: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
         let result = transaction.get(self.database, account.as_bytes());
         match result {
             Err(lmdb::Error::NotFound) => None,
@@ -79,7 +75,7 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
         }
     }
 
-    pub fn del(&self, transaction: &mut LmdbWriteTransaction<T>, account: &Account) {
+    pub fn del(&self, transaction: &mut LmdbWriteTransaction, account: &Account) {
         transaction
             .delete(self.database, account.as_bytes(), None)
             .unwrap();
@@ -87,27 +83,19 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
 
     pub fn begin_account(
         &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
+        transaction: &dyn Transaction,
         account: &Account,
     ) -> AccountIterator {
-        LmdbIteratorImpl::<T>::new_iterator(
-            transaction,
-            self.database,
-            Some(account.as_bytes()),
-            true,
-        )
+        LmdbIteratorImpl::new_iterator(transaction, self.database, Some(account.as_bytes()), true)
     }
 
-    pub fn begin(
-        &self,
-        transaction: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> AccountIterator {
-        LmdbIteratorImpl::<T>::new_iterator(transaction, self.database, None, true)
+    pub fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
+        LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, AccountIterator, AccountIterator) + Send + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, AccountIterator, AccountIterator) + Send + Sync),
     ) {
         parallel_traversal(&|start, end, is_last| {
             let txn = self.env.tx_begin_read();
@@ -122,21 +110,14 @@ impl<T: Environment + 'static> LmdbAccountStore<T> {
     }
 
     pub fn end(&self) -> AccountIterator {
-        LmdbIteratorImpl::<T>::null_iterator()
+        LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn exists(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        account: &Account,
-    ) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
         !self.begin_account(txn, account).is_end()
     }
 }
@@ -174,16 +155,15 @@ impl ConfiguredAccountDatabaseBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
-
-    use crate::{DeleteEvent, EnvironmentStub, PutEvent};
+    use crate::{DeleteEvent, PutEvent};
     use rsnano_core::{Amount, BlockHash};
+    use std::sync::Mutex;
 
     use super::*;
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbAccountStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbAccountStore,
     }
 
     impl Fixture {
@@ -192,13 +172,13 @@ mod tests {
         }
 
         fn with_stored_accounts(accounts: Vec<(Account, AccountInfo)>) -> Self {
-            let env = LmdbEnv::create_null_with()
+            let env = LmdbEnv::new_null_with()
                 .configured_database(ConfiguredAccountDatabaseBuilder::create(accounts))
                 .build();
             Self::with_env(env)
         }
 
-        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+        fn with_env(env: LmdbEnv) -> Self {
             let env = Arc::new(env);
             let store = LmdbAccountStore::new(env.clone()).unwrap();
 
@@ -230,7 +210,7 @@ mod tests {
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
-                database: ACCOUNT_TEST_DATABASE,
+                database: ACCOUNT_TEST_DATABASE.into(),
                 key: account.as_bytes().to_vec(),
                 value: info.to_bytes().to_vec(),
                 flags: lmdb::WriteFlags::empty()
@@ -275,7 +255,7 @@ mod tests {
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
-                database: ACCOUNT_TEST_DATABASE,
+                database: ACCOUNT_TEST_DATABASE.into(),
                 key: account.as_bytes().to_vec()
             }]
         )

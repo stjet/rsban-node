@@ -1,8 +1,7 @@
 use crate::{
-    lmdb_env::{EnvironmentWrapper, RoCursor, RoTransaction, RwTransaction},
-    EnvOptions, Environment, EnvironmentStub, LmdbAccountStore, LmdbBlockStore,
-    LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore, LmdbOnlineWeightStore, LmdbPeerStore,
-    LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction, LmdbRepWeightStore, LmdbVersionStore,
+    EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbDatabase,
+    LmdbEnv, LmdbFinalVoteStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
+    LmdbPrunedStore, LmdbReadTransaction, LmdbRepWeightStore, LmdbVersionStore,
     LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_CURRENT,
     STORE_VERSION_MINIMUM,
 };
@@ -23,18 +22,18 @@ pub enum Vacuuming {
     NotNeeded,
 }
 
-pub struct LmdbStore<T: Environment = EnvironmentWrapper> {
-    pub env: Arc<LmdbEnv<T>>,
-    pub block: Arc<LmdbBlockStore<T>>,
-    pub account: Arc<LmdbAccountStore<T>>,
-    pub pending: Arc<LmdbPendingStore<T>>,
-    pub online_weight: Arc<LmdbOnlineWeightStore<T>>,
-    pub pruned: Arc<LmdbPrunedStore<T>>,
-    pub rep_weight: Arc<LmdbRepWeightStore<T>>,
-    pub peer: Arc<LmdbPeerStore<T>>,
-    pub confirmation_height: Arc<LmdbConfirmationHeightStore<T>>,
-    pub final_vote: Arc<LmdbFinalVoteStore<T>>,
-    pub version: Arc<LmdbVersionStore<T>>,
+pub struct LmdbStore {
+    pub env: Arc<LmdbEnv>,
+    pub block: Arc<LmdbBlockStore>,
+    pub account: Arc<LmdbAccountStore>,
+    pub pending: Arc<LmdbPendingStore>,
+    pub online_weight: Arc<LmdbOnlineWeightStore>,
+    pub pruned: Arc<LmdbPrunedStore>,
+    pub rep_weight: Arc<LmdbRepWeightStore>,
+    pub peer: Arc<LmdbPeerStore>,
+    pub confirmation_height: Arc<LmdbConfirmationHeightStore>,
+    pub final_vote: Arc<LmdbFinalVoteStore>,
+    pub version: Arc<LmdbVersionStore>,
 }
 
 pub struct LmdbStoreBuilder<'a> {
@@ -69,7 +68,7 @@ impl<'a> LmdbStoreBuilder<'a> {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<LmdbStore<EnvironmentWrapper>> {
+    pub fn build(self) -> anyhow::Result<LmdbStore> {
         let default_options = Default::default();
         let options = self.options.unwrap_or(&default_options);
 
@@ -81,15 +80,11 @@ impl<'a> LmdbStoreBuilder<'a> {
     }
 }
 
-impl LmdbStore<EnvironmentStub> {
+impl LmdbStore {
     pub fn create_null() -> Self {
-        let options = EnvOptions::default();
-        let txn_tracker = Arc::new(NullTransactionTracker::new());
-        LmdbStore::new("nulled_data.ldb", &options, txn_tracker, false).unwrap()
+        Self::new_with_env(LmdbEnv::new_null()).unwrap()
     }
-}
 
-impl<T: Environment + 'static> LmdbStore<T> {
     pub fn open(path: &Path) -> LmdbStoreBuilder<'_> {
         LmdbStoreBuilder::new(path)
     }
@@ -101,10 +96,14 @@ impl<T: Environment + 'static> LmdbStore<T> {
         backup_before_upgrade: bool,
     ) -> anyhow::Result<Self> {
         let path = path.as_ref();
-        upgrade_if_needed::<T>(path, backup_before_upgrade)?;
+        upgrade_if_needed(path, backup_before_upgrade)?;
 
-        let env = Arc::new(LmdbEnv::<T>::with_txn_tracker(path, options, txn_tracker)?);
+        let env = LmdbEnv::new_with_txn_tracker(path, options, txn_tracker)?;
+        Self::new_with_env(env)
+    }
 
+    fn new_with_env(env: LmdbEnv) -> anyhow::Result<Self> {
+        let env = Arc::new(env);
         Ok(Self {
             block: Arc::new(LmdbBlockStore::new(env.clone())?),
             account: Arc::new(LmdbAccountStore::new(env.clone())?),
@@ -119,19 +118,17 @@ impl<T: Environment + 'static> LmdbStore<T> {
             env,
         })
     }
-}
 
-impl<T: Environment + 'static> LmdbStore<T> {
     pub fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
         copy_db(&self.env, destination)
     }
 
-    pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction<T> {
+    pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction {
         // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
         self.env.tx_begin_write()
     }
 
-    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction<T>) -> anyhow::Result<()> {
+    pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
         let tables = [
             self.account.database(),
             self.block.database(),
@@ -172,26 +169,23 @@ impl<T: Environment + 'static> LmdbStore<T> {
             .serialize_txn_tracker(json, min_read_time, min_write_time)
     }
 
-    pub fn tx_begin_read(&self) -> LmdbReadTransaction<T> {
+    pub fn tx_begin_read(&self) -> LmdbReadTransaction {
         self.env.tx_begin_read()
     }
 
-    pub fn tx_begin_write(&self) -> LmdbWriteTransaction<T> {
+    pub fn tx_begin_write(&self) -> LmdbWriteTransaction {
         self.env.tx_begin_write()
     }
 }
 
-fn upgrade_if_needed<T: Environment + 'static>(
-    path: &Path,
-    backup_before_upgrade: bool,
-) -> Result<(), anyhow::Error> {
-    let upgrade_info = LmdbVersionStore::<T>::check_upgrade(path)?;
+fn upgrade_if_needed(path: &Path, backup_before_upgrade: bool) -> Result<(), anyhow::Error> {
+    let upgrade_info = LmdbVersionStore::check_upgrade(path)?;
     if upgrade_info.is_fully_upgraded {
         debug!("No database upgrade needed");
         return Ok(());
     }
 
-    let env = Arc::new(LmdbEnv::<T>::new(path)?);
+    let env = Arc::new(LmdbEnv::new(path)?);
     if !upgrade_info.is_fresh_db && backup_before_upgrade {
         create_backup_file(&env)?;
     }
@@ -210,10 +204,10 @@ fn upgrade_if_needed<T: Environment + 'static>(
     Ok(())
 }
 
-fn rebuild_table<T: Environment + 'static>(
-    env: &LmdbEnv<T>,
-    rw_txn: &mut LmdbWriteTransaction<T>,
-    db: T::Database,
+fn rebuild_table(
+    env: &LmdbEnv,
+    rw_txn: &mut LmdbWriteTransaction,
+    db: LmdbDatabase,
 ) -> anyhow::Result<()> {
     let temp = unsafe {
         rw_txn
@@ -229,11 +223,11 @@ fn rebuild_table<T: Environment + 'static>(
     Ok(())
 }
 
-fn copy_table<T: Environment + 'static>(
-    env: &LmdbEnv<T>,
-    rw_txn: &mut LmdbWriteTransaction<T>,
-    source: T::Database,
-    target: T::Database,
+fn copy_table(
+    env: &LmdbEnv,
+    rw_txn: &mut LmdbWriteTransaction,
+    source: LmdbDatabase,
+    target: LmdbDatabase,
 ) -> anyhow::Result<()> {
     let ro_txn = env.tx_begin_read();
     {
@@ -249,7 +243,7 @@ fn copy_table<T: Environment + 'static>(
     Ok(())
 }
 
-fn do_upgrades<T: Environment + 'static>(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Vacuuming> {
+fn do_upgrades(env: Arc<LmdbEnv>) -> anyhow::Result<Vacuuming> {
     let version_store = LmdbVersionStore::new(env.clone())?;
     let mut txn = env.tx_begin_write();
 
@@ -280,7 +274,7 @@ fn do_upgrades<T: Environment + 'static>(env: Arc<LmdbEnv<T>>) -> anyhow::Result
     Ok(Vacuuming::NotNeeded)
 }
 
-fn vacuum_after_upgrade<T: Environment>(env: Arc<LmdbEnv<T>>, path: &Path) -> anyhow::Result<()> {
+fn vacuum_after_upgrade(env: Arc<LmdbEnv>, path: &Path) -> anyhow::Result<()> {
     // Vacuum the database. This is not a required step and may actually fail if there isn't enough storage space.
     let mut vacuum_path = path.to_owned();
     vacuum_path.pop();
@@ -302,7 +296,7 @@ fn vacuum_after_upgrade<T: Environment>(env: Arc<LmdbEnv<T>>, path: &Path) -> an
         }
     }
 }
-fn copy_db<T: Environment>(env: &LmdbEnv<T>, destination: &Path) -> anyhow::Result<()> {
+fn copy_db(env: &LmdbEnv, destination: &Path) -> anyhow::Result<()> {
     let c_path = CString::new(destination.as_os_str().to_str().unwrap()).unwrap();
     let status =
         unsafe { lmdb_sys::mdb_env_copy2(env.environment.env(), c_path.as_ptr(), MDB_CP_COMPACT) };
@@ -318,7 +312,7 @@ fn ensure_success(status: i32) -> Result<(), anyhow::Error> {
 }
 
 /// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory
-pub fn create_backup_file<T: Environment>(env: &LmdbEnv<T>) -> anyhow::Result<()> {
+pub fn create_backup_file(env: &LmdbEnv) -> anyhow::Result<()> {
     let source_path = env.file_path()?;
     let backup_path = backup_file_path(&source_path)?;
 
@@ -380,7 +374,7 @@ mod tests {
     #[test]
     fn create_store() -> anyhow::Result<()> {
         let file = TestDbFile::random();
-        let _ = LmdbStore::<EnvironmentWrapper>::open(&file.path).build()?;
+        let _ = LmdbStore::open(&file.path).build()?;
         Ok(())
     }
 
@@ -403,15 +397,13 @@ mod tests {
     #[test]
     fn writes_db_version_for_new_store() {
         let file = TestDbFile::random();
-        let store = LmdbStore::<EnvironmentWrapper>::open(&file.path)
-            .build()
-            .unwrap();
+        let store = LmdbStore::open(&file.path).build().unwrap();
         let txn = store.tx_begin_read();
         assert_eq!(store.version.get(&txn), Some(STORE_VERSION_MINIMUM));
     }
 
     fn assert_upgrade_fails(path: &Path, error_msg: &str) {
-        match LmdbStore::<EnvironmentWrapper>::open(path).build() {
+        match LmdbStore::open(path).build() {
             Ok(_) => panic!("store should not be created!"),
             Err(e) => {
                 assert_eq!(e.to_string(), error_msg);
@@ -420,7 +412,7 @@ mod tests {
     }
 
     fn set_store_version(file: &TestDbFile, current_version: i32) -> Result<(), anyhow::Error> {
-        let env = Arc::new(LmdbEnv::<EnvironmentWrapper>::new(&file.path)?);
+        let env = Arc::new(LmdbEnv::new(&file.path)?);
         let version_store = LmdbVersionStore::new(env.clone())?;
         let mut txn = env.tx_begin_write();
         version_store.put(&mut txn, current_version);

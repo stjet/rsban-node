@@ -1,36 +1,35 @@
-use std::sync::Arc;
-
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, Environment, EnvironmentWrapper, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, parallel_traversal_u512, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
+use std::sync::Arc;
 
 pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
-pub struct LmdbFinalVoteStore<T: Environment = EnvironmentWrapper> {
-    env: Arc<LmdbEnv<T>>,
-    database: T::Database,
+pub struct LmdbFinalVoteStore {
+    env: Arc<LmdbEnv>,
+    database: LmdbDatabase,
 }
 
-impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
-    pub fn new(env: Arc<LmdbEnv<T>>) -> anyhow::Result<Self> {
+impl LmdbFinalVoteStore {
+    pub fn new(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         let database = env
             .environment
             .create_db(Some("final_votes"), DatabaseFlags::empty())?;
         Ok(Self { env, database })
     }
 
-    pub fn database(&self) -> T::Database {
+    pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
     pub fn put(
         &self,
-        txn: &mut LmdbWriteTransaction<T>,
+        txn: &mut LmdbWriteTransaction,
         root: &QualifiedRoot,
         hash: &BlockHash,
     ) -> bool {
@@ -53,27 +52,16 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         }
     }
 
-    pub fn begin(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> FinalVoteIterator {
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, None, true)
+    pub fn begin(&self, txn: &dyn Transaction) -> FinalVoteIterator {
+        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_root(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        root: &QualifiedRoot,
-    ) -> FinalVoteIterator {
+    pub fn begin_at_root(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> FinalVoteIterator {
         let key_bytes = root.to_bytes();
-        LmdbIteratorImpl::<T>::new_iterator(txn, self.database, Some(&key_bytes), true)
+        LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
 
-    pub fn get(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-        root: Root,
-    ) -> Vec<BlockHash> {
+    pub fn get(&self, txn: &dyn Transaction, root: Root) -> Vec<BlockHash> {
         let mut result = Vec::new();
         let key_start = QualifiedRoot {
             root,
@@ -93,7 +81,7 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         result
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction<T>, root: &Root) {
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, root: &Root) {
         let mut final_vote_qualified_roots = Vec::new();
 
         let mut it = self.begin_at_root(
@@ -117,22 +105,17 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
         }
     }
 
-    pub fn count(
-        &self,
-        txn: &dyn Transaction<Database = T::Database, RoCursor = T::RoCursor>,
-    ) -> u64 {
+    pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
     }
 
-    pub fn clear(&self, txn: &mut LmdbWriteTransaction<T>) {
+    pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
         txn.clear_db(self.database).unwrap();
     }
 
     pub fn for_each_par(
         &self,
-        action: &(dyn Fn(&LmdbReadTransaction<T>, FinalVoteIterator, FinalVoteIterator)
-              + Send
-              + Sync),
+        action: &(dyn Fn(&LmdbReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
     ) {
         parallel_traversal_u512(&|start, end, is_last| {
             let transaction = self.env.tx_begin_read();
@@ -147,20 +130,20 @@ impl<T: Environment + 'static> LmdbFinalVoteStore<T> {
     }
 
     pub fn end(&self) -> FinalVoteIterator {
-        LmdbIteratorImpl::<T>::null_iterator()
+        LmdbIteratorImpl::null_iterator()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, EnvironmentStub};
+    use crate::{lmdb_env::DatabaseStub, DeleteEvent};
 
     const TEST_DATABASE: DatabaseStub = DatabaseStub(100);
 
     struct Fixture {
-        env: Arc<LmdbEnv<EnvironmentStub>>,
-        store: LmdbFinalVoteStore<EnvironmentStub>,
+        env: Arc<LmdbEnv>,
+        store: LmdbFinalVoteStore,
     }
 
     impl Fixture {
@@ -169,14 +152,14 @@ mod tests {
         }
 
         fn with_stored_entries(entries: Vec<(QualifiedRoot, BlockHash)>) -> Self {
-            let mut env = LmdbEnv::create_null_with().database("final_votes", TEST_DATABASE);
+            let mut env = LmdbEnv::new_null_with().database("final_votes", TEST_DATABASE);
             for (key, value) in entries {
                 env = env.entry(&key.to_bytes(), value.as_bytes());
             }
             Self::with_env(env.build().build())
         }
 
-        fn with_env(env: LmdbEnv<EnvironmentStub>) -> Self {
+        fn with_env(env: LmdbEnv) -> Self {
             let env = Arc::new(env);
             Self {
                 env: env.clone(),
@@ -210,7 +193,7 @@ mod tests {
             delete_tracker.output(),
             vec![DeleteEvent {
                 key: root.to_bytes().to_vec(),
-                database: TEST_DATABASE,
+                database: TEST_DATABASE.into(),
             }]
         )
     }
@@ -237,6 +220,6 @@ mod tests {
 
         fixture.store.clear(&mut txn);
 
-        assert_eq!(clear_tracker.output(), vec![TEST_DATABASE]);
+        assert_eq!(clear_tracker.output(), vec![TEST_DATABASE.into()]);
     }
 }

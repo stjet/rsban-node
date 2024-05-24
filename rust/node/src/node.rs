@@ -47,8 +47,8 @@ use rsnano_core::{
 use rsnano_ledger::{Ledger, Writer};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
-    EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker,
-    SyncStrategy, Transaction, TransactionTracker,
+    EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy, Transaction,
+    TransactionTracker,
 };
 use serde::Serialize;
 use std::{
@@ -280,7 +280,8 @@ impl Node {
             config: wallets_lmdb_config,
             use_no_mem_init: false,
         };
-        let wallets_env = Arc::new(LmdbEnv::with_options(wallets_path, &wallets_options).unwrap());
+        let wallets_env =
+            Arc::new(LmdbEnv::new_with_options(wallets_path, &wallets_options).unwrap());
 
         let wallets = Arc::new(
             Wallets::new(
@@ -1632,7 +1633,7 @@ fn make_store(
         use_no_mem_init: true,
     };
 
-    let store = LmdbStore::<EnvironmentWrapper>::open(&path)
+    let store = LmdbStore::open(&path)
         .options(&options)
         .backup_before_upgrade(backup_before_upgrade)
         .txn_tracker(txn_tracker)

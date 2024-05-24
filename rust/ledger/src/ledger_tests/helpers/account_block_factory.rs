@@ -5,7 +5,7 @@ use rsnano_core::{
     BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
     LegacySendBlockBuilder, StateBlockBuilder,
 };
-use rsnano_store_lmdb::{RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::Transaction;
 
 /// Test helper that creates blocks for a single account
 pub(crate) struct AccountBlockFactory<'a> {
@@ -32,10 +32,7 @@ impl<'a> AccountBlockFactory<'a> {
         self.key.public_key().into()
     }
 
-    pub(crate) fn info(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> Option<AccountInfo> {
+    pub(crate) fn info(&self, txn: &dyn Transaction) -> Option<AccountInfo> {
         self.ledger.account_info(txn, &self.account())
     }
 
@@ -47,10 +44,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn epoch_v1(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> StateBlockBuilder {
+    pub(crate) fn epoch_v1(&self, txn: &dyn Transaction) -> StateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -71,10 +65,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&DEV_GENESIS_KEY)
     }
 
-    pub(crate) fn legacy_change(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> LegacyChangeBlockBuilder {
+    pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> LegacyChangeBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::legacy_change()
             .previous(info.head)
@@ -82,10 +73,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn legacy_send(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> LegacySendBlockBuilder {
+    pub(crate) fn legacy_send(&self, txn: &dyn Transaction) -> LegacySendBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::legacy_send()
             .previous(info.head)
@@ -97,7 +85,7 @@ impl<'a> AccountBlockFactory<'a> {
 
     pub(crate) fn legacy_receive(
         &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
+        txn: &dyn Transaction,
         send_hash: BlockHash,
     ) -> LegacyReceiveBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
@@ -107,10 +95,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn send(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> StateBlockBuilder {
+    pub(crate) fn send(&self, txn: &dyn Transaction) -> StateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -122,11 +107,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn receive(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-        send_hash: BlockHash,
-    ) -> StateBlockBuilder {
+    pub(crate) fn receive(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
         let amount_sent = self.ledger.amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
@@ -138,10 +119,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn change(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-    ) -> StateBlockBuilder {
+    pub(crate) fn change(&self, txn: &dyn Transaction) -> StateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -152,11 +130,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn open(
-        &self,
-        txn: &dyn Transaction<Database = lmdb::Database, RoCursor = RoCursorWrapper>,
-        send_hash: BlockHash,
-    ) -> StateBlockBuilder {
+    pub(crate) fn open(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
         let amount_sent = self.ledger.amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
             .account(self.account())

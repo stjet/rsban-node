@@ -261,11 +261,6 @@ mod tests {
         (block, instructions)
     }
 
-    fn state_block_instructions(previous: &BlockEnum) -> (BlockEnum, BlockInsertInstructions) {
-        let block = BlockBuilder::state().previous(previous.hash()).build();
-        state_block_instructions_for(previous, block)
-    }
-
     fn state_block_instructions_for(
         previous: &BlockEnum,
         block: BlockEnum,

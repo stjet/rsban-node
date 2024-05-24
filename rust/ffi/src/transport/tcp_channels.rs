@@ -32,8 +32,6 @@ impl Deref for TcpChannelsHandle {
     }
 }
 
-pub type SinkCallback = unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
-
 #[repr(C)]
 pub struct TcpChannelsOptionsDto {
     pub node_config: *const NodeConfigDto,

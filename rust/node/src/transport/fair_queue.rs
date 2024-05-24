@@ -369,8 +369,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::transport::ChannelFake;
-
     use super::*;
 
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -550,7 +548,7 @@ mod tests {
         let all = queue.next_batch(999);
         assert_eq!(all.len(), 4);
 
-        let channel1_results = all
+        let _channel1_results = all
             .iter()
             .filter(|i| Arc::ptr_eq(i.1.channel.as_ref().unwrap(), &channel1));
         assert!(queue.is_empty());

@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use rsnano_core::{Amount, PendingKey};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 

@@ -2,27 +2,14 @@ use super::{
     election::{ElectionHandle, ElectionLockHandle},
     election_status::ElectionStatusHandle,
     recently_cemented_cache::{RecentlyCementedCachedDto, RecentlyCementedCachedRawData},
-    vote_cache::{VoteCacheHandle, VoteResultMapHandle},
-    vote_generator::VoteGeneratorHandle,
+    vote_cache::VoteResultMapHandle,
     vote_with_weight_info::VoteWithWeightInfoVecHandle,
-    LocalVoteHistoryHandle, VoteHandle,
+    VoteHandle,
 };
-use crate::{
-    block_processing::BlockProcessorHandle,
-    cementation::ConfirmingSetHandle,
-    core::BlockHandle,
-    ledger::datastore::{lmdb::TransactionType, LedgerHandle, TransactionHandle},
-    representatives::{OnlineRepsHandle, RepresentativeRegisterHandle},
-    transport::TcpChannelsHandle,
-    utils::{ContextWrapper, ThreadPoolHandle},
-    wallets::LmdbWalletsHandle,
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
-};
+use crate::{core::BlockHandle, utils::ContextWrapper, VoidPointerCallback};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, VoteSource};
-use rsnano_node::consensus::{
-    ActiveTransactions, ActiveTransactionsExt, Election, ElectionBehavior,
-};
+use rsnano_node::consensus::{ActiveTransactions, ActiveTransactionsExt, Election};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);

@@ -1,6 +1,6 @@
 use crate::ledger_tests::helpers::upgrade_genesis_to_epoch_v1;
 use crate::ledger_tests::LedgerContext;
-use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, BlockStatus, DEV_GENESIS_HASH};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
     Amount, BlockBuilder, BlockDetails, Epoch, PendingKey,

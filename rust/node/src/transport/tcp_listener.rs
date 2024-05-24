@@ -8,7 +8,7 @@ use crate::{
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    utils::{first_ipv6_subnet_address, is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
+    utils::{is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
 use rsnano_core::{

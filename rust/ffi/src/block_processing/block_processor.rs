@@ -1,11 +1,7 @@
 use super::unchecked_map::UncheckedMapHandle;
 use crate::{
-    core::{BlockHandle, BlockVecHandle},
-    ledger::datastore::LedgerHandle,
-    transport::ChannelHandle,
-    utils::ContextWrapper,
-    work::WorkThresholdsDto,
-    NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
+    core::BlockHandle, ledger::datastore::LedgerHandle, transport::ChannelHandle,
+    work::WorkThresholdsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
 use num_traits::FromPrimitive;
 use rsnano_core::work::WorkThresholds;
@@ -13,7 +9,7 @@ use rsnano_node::{
     block_processing::{BlockProcessor, BlockSource},
     config::NodeConfig,
 };
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 pub struct BlockProcessorHandle(pub Arc<BlockProcessor>);
 

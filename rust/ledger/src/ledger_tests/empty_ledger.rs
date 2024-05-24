@@ -1,7 +1,6 @@
 use super::LedgerContext;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_core::{utils::seconds_since_epoch, Account, Amount, BlockType};
-use std::sync::atomic::Ordering;
 
 #[test]
 fn account_balance_is_zero_for_unknown_account() {

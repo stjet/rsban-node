@@ -30,8 +30,10 @@ pub enum BufferDropPolicy {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
-pub enum EndpointType {
+pub enum SocketEndpoint {
+    /// Socket was created by accepting an incoming connection
     Server,
+    /// Socket was created by initiating an outgoing connection
     Client,
 }
 
@@ -64,7 +66,7 @@ pub trait SocketObserver: Send + Sync {
     fn write_error(&self) {}
     fn write_successful(&self, _len: usize) {}
     fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _endpoint_type: EndpointType) {}
+    fn inactive_connection_dropped(&self, _endpoint_type: SocketEndpoint) {}
 }
 
 #[derive(Default)]
@@ -137,7 +139,7 @@ impl SocketObserver for CompositeSocketObserver {
         }
     }
 
-    fn inactive_connection_dropped(&self, endpoint_type: EndpointType) {
+    fn inactive_connection_dropped(&self, endpoint_type: SocketEndpoint) {
         for child in &self.children {
             child.inactive_connection_dropped(endpoint_type);
         }
@@ -172,7 +174,7 @@ pub struct Socket {
     idle_timeout: Duration,
 
     thread_pool: Arc<dyn ThreadPool>,
-    endpoint_type: EndpointType,
+    endpoint_type: SocketEndpoint,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
 
@@ -202,7 +204,7 @@ pub struct Socket {
 impl Socket {
     pub fn create_null() -> Arc<Socket> {
         let thread_pool = Arc::new(ThreadPoolImpl::create_null());
-        SocketBuilder::endpoint_type(EndpointType::Client, thread_pool, Weak::new()).build()
+        SocketBuilder::endpoint_type(SocketEndpoint::Client, thread_pool, Weak::new()).build()
     }
 
     pub fn is_closed(&self) -> bool {
@@ -258,7 +260,7 @@ impl Socket {
         self.socket_type.store(socket_type as u8, Ordering::SeqCst);
     }
 
-    pub fn endpoint_type(&self) -> EndpointType {
+    pub fn endpoint_type(&self) -> SocketEndpoint {
         self.endpoint_type
     }
 
@@ -344,7 +346,7 @@ impl SocketExtensions for Arc<Socket> {
 
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let self_clone = self.clone();
-        debug_assert!(self.endpoint_type == EndpointType::Client);
+        debug_assert!(self.endpoint_type == SocketEndpoint::Client);
 
         self.start();
         self.set_default_timeout();
@@ -634,7 +636,7 @@ impl SocketExtensions for Arc<Socket> {
                     let mut condition_to_disconnect = false;
 
                     // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-                    if socket.endpoint_type == EndpointType::Server
+                    if socket.endpoint_type == SocketEndpoint::Server
                         && (now - socket.last_receive_time_or_init.load(Ordering::SeqCst))
                             > socket
                                 .silent_connection_tolerance_time
@@ -695,7 +697,7 @@ impl AsyncBufferReader for Arc<Socket> {
 }
 
 pub struct SocketBuilder {
-    endpoint_type: EndpointType,
+    endpoint_type: SocketEndpoint,
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
@@ -715,7 +717,7 @@ pub fn alive_sockets() -> usize {
 
 impl SocketBuilder {
     pub fn endpoint_type(
-        endpoint_type: EndpointType,
+        endpoint_type: SocketEndpoint,
         thread_pool: Arc<dyn ThreadPool>,
         async_runtime: Weak<AsyncRuntime>,
     ) -> Self {

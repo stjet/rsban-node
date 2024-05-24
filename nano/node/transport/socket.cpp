@@ -13,8 +13,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <iterator>
-#include <limits>
 #include <memory>
 #include <utility>
 
@@ -41,7 +39,7 @@ bool is_temporary_error (boost::system::error_code const & ec_a)
  * socket
  */
 
-nano::transport::socket::socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
+nano::transport::socket::socket (rsnano::async_runtime & async_rt_a, nano::transport::socket_endpoint endpoint_type_a, nano::stats & stats_a,
 std::shared_ptr<nano::thread_pool> const & workers_a,
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
@@ -165,19 +163,19 @@ std::chrono::seconds nano::transport::socket::get_default_timeout_value () const
 	return std::chrono::seconds{ rsnano::rsn_socket_default_timeout_value (handle) };
 }
 
-nano::transport::socket::type_t nano::transport::socket::type () const
+nano::transport::socket_type nano::transport::socket::type () const
 {
-	return static_cast<nano::transport::socket::type_t> (rsnano::rsn_socket_type (handle));
+	return static_cast<nano::transport::socket_type> (rsnano::rsn_socket_type (handle));
 }
 
-void nano::transport::socket::type_set (nano::transport::socket::type_t type_a)
+void nano::transport::socket::type_set (nano::transport::socket_type type_a)
 {
 	rsnano::rsn_socket_set_type (handle, static_cast<uint8_t> (type_a));
 }
 
-nano::transport::socket::endpoint_type_t nano::transport::socket::endpoint_type () const
+nano::transport::socket_endpoint nano::transport::socket::endpoint_type () const
 {
-	return static_cast<nano::transport::socket::endpoint_type_t> (rsnano::rsn_socket_endpoint_type (handle));
+	return static_cast<nano::transport::socket_endpoint> (rsnano::rsn_socket_endpoint_type (handle));
 }
 
 void nano::transport::socket::close ()
@@ -241,7 +239,7 @@ boost::asio::ip::network_v6 nano::transport::socket_functions::get_ipv6_subnet_a
 
 std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (nano::node & node_a, std::size_t write_queue_size)
 {
-	return std::make_shared<nano::transport::socket> (node_a.async_rt, nano::transport::socket::endpoint_type_t::client, *node_a.stats, node_a.workers,
+	return std::make_shared<nano::transport::socket> (node_a.async_rt, nano::transport::socket_endpoint::client, *node_a.stats, node_a.workers,
 	node_a.config->tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
 	node_a.network_params.network.idle_timeout,

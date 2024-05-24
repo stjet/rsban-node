@@ -1,9 +1,9 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelTcp, CompositeSocketObserver, EndpointType,
-    MessageDeserializer, NetworkFilter, NullSocketObserver, NullTcpServerObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketExtensions,
-    SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver,
-    TrafficType, TransportType,
+    BufferDropPolicy, ChannelEnum, ChannelTcp, CompositeSocketObserver, MessageDeserializer,
+    NetworkFilter, NullSocketObserver, NullTcpServerObserver, OutboundBandwidthLimiter,
+    PeerExclusion, Socket, SocketBuilder, SocketEndpoint, SocketExtensions, SocketObserver,
+    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TrafficType,
+    TransportType,
 };
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelEntry},
@@ -893,7 +893,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         let socket_stats = Arc::new(SocketStats::new(self.stats.clone()));
 
         let socket = SocketBuilder::endpoint_type(
-            EndpointType::Client,
+            SocketEndpoint::Client,
             self.workers.clone(),
             Weak::clone(&self.async_rt),
         )

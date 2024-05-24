@@ -54,6 +54,20 @@ class server_socket;
 void async_read_adapter (void * context_a, rsnano::ErrorCodeDto const * error_a, std::size_t size_a);
 void async_read_delete_context (void * context_a);
 
+enum class socket_type
+{
+	undefined,
+	bootstrap,
+	realtime,
+	realtime_response_server // special type for tcp channel response server
+};
+
+enum class socket_endpoint
+{
+	server, // Socket was created by accepting an incoming connection
+	client // Socket was created by initiating an outgoing connection
+};
+
 /** Socket class for tcp clients and newly accepted connections */
 class socket : public std::enable_shared_from_this<nano::transport::socket>
 {
@@ -62,25 +76,11 @@ class socket : public std::enable_shared_from_this<nano::transport::socket>
 public:
 	static std::size_t constexpr default_max_queue_size = 128;
 
-	enum class type_t
-	{
-		undefined,
-		bootstrap,
-		realtime,
-		realtime_response_server // special type for tcp channel response server
-	};
-
-	enum class endpoint_type_t
-	{
-		server,
-		client
-	};
-
 	/**
 	 * Constructor
 	 * @param endpoint_type_a The endpoint's type: either server or client
 	 */
-	explicit socket (rsnano::async_runtime & async_rt_a, endpoint_type_t endpoint_type_a, nano::stats & stats_a,
+	explicit socket (rsnano::async_runtime & async_rt_a, nano::transport::socket_endpoint endpoint_type_a, nano::stats & stats_a,
 	std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 	std::chrono::seconds idle_timeout_a,
@@ -93,8 +93,14 @@ public:
 
 	void start ();
 
-	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void (boost::system::error_code const &)>);
-	void async_write (nano::shared_const_buffer const &, std::function<void (boost::system::error_code const &, std::size_t)> = {}, nano::transport::traffic_type = nano::transport::traffic_type::generic);
+	void async_connect (
+			boost::asio::ip::tcp::endpoint const &, 
+			std::function<void (boost::system::error_code const &)>);
+
+	void async_write (
+			nano::shared_const_buffer const &, 
+			std::function<void (boost::system::error_code const &, std::size_t)> = {}, 
+			nano::transport::traffic_type = nano::transport::traffic_type::generic);
 
 	virtual void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
@@ -107,12 +113,12 @@ public:
 	void set_timeout (std::chrono::seconds);
 	bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
 	bool full (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
-	type_t type () const;
-	void type_set (type_t type_a);
-	endpoint_type_t endpoint_type () const;
+	nano::transport::socket_type type () const;
+	void type_set (nano::transport::socket_type type_a);
+	nano::transport::socket_endpoint endpoint_type () const;
 	bool is_realtime_connection ()
 	{
-		return type () == nano::transport::socket::type_t::realtime || type () == nano::transport::socket::type_t::realtime_response_server;
+		return type () == nano::transport::socket_type::realtime || type () == nano::transport::socket_type::realtime_response_server;
 	}
 	bool is_bootstrap_connection ();
 	bool is_closed ();

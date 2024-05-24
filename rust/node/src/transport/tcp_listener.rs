@@ -1,5 +1,5 @@
 use super::{
-    CompositeSocketObserver, ConnectionsPerAddress, EndpointType, Socket, SocketBuilder,
+    CompositeSocketObserver, ConnectionsPerAddress, Socket, SocketBuilder, SocketEndpoint,
     SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt,
     TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
@@ -296,7 +296,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
 
         let socket = SocketBuilder::endpoint_type(
-            EndpointType::Server,
+            SocketEndpoint::Server,
             Arc::clone(&self.workers),
             Arc::downgrade(&self.runtime),
         )
@@ -375,7 +375,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
             // Prepare new connection
             let new_connection = SocketBuilder::endpoint_type(
-                EndpointType::Server,
+                SocketEndpoint::Server,
                 Arc::clone(&this_l.workers),
                 Arc::downgrade(&this_l.runtime),
             )

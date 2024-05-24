@@ -12,7 +12,6 @@ use rsnano_core::{
     validate_message, Account, Signature,
 };
 use rsnano_messages::Cookie;
-use tracing::debug;
 
 /// Node ID cookies for node ID handshakes
 pub struct SynCookies {
@@ -77,7 +76,6 @@ impl SynCookies {
     }
 
     pub fn purge(&self, cutoff: Duration) {
-        debug!("Purging syn cookies, cutoff: {}s", cutoff.as_secs());
         let mut lock = self.data.lock().unwrap();
         let now = Instant::now();
         //todo use drain_filter once it is stabelized

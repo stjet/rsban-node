@@ -1027,7 +1027,6 @@ impl TcpChannelsImpl {
     }
 
     pub fn purge(&mut self, cutoff: SystemTime) {
-        debug!("Performing periodic channel cleanup");
         self.channels.close_idle_channels(cutoff);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations

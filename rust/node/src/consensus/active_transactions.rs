@@ -32,7 +32,7 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
-use tracing::trace;
+use tracing::{debug, trace};
 
 const ELECTION_MAX_BLOCKS: usize = 10;
 
@@ -655,11 +655,13 @@ impl ActiveTransactions {
         *guard.count_by_behavior_mut(election.behavior) -= 1;
 
         let election_winner: BlockHash;
+        let election_state;
         let blocks;
         {
             let election_guard = election.mutex.lock().unwrap();
             blocks = election_guard.last_blocks.clone();
             election_winner = election_guard.status.winner.as_ref().unwrap().hash();
+            election_state = election_guard.state;
         }
 
         for hash in blocks.keys() {
@@ -672,6 +674,17 @@ impl ActiveTransactions {
         self.stats
             .inc(self.completion_type(election), election.behavior.into());
         trace!(election = ?election, "active stopped");
+
+        debug!(
+            "Erased election for blocks: {} (behavior: {:?}, state: {:?})",
+            blocks
+                .keys()
+                .map(|k| k.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+            election.behavior,
+            election_state
+        );
 
         drop(guard);
 
@@ -1552,6 +1565,12 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
                 self.stats
                     .inc(StatType::ActiveStarted, election_behavior.into());
                 trace!(behavior = ?election_behavior, ?election, "active started");
+
+                debug!(
+                    "Started new election for block: {} (behavior: {:?})",
+                    hash, election_behavior
+                );
+
                 election_result = Some(election);
             } else {
                 // result is not set

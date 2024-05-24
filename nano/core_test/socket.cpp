@@ -58,11 +58,11 @@ TEST (socket, max_connections)
 	client3->async_connect (dst_endpoint, connect_handler);
 
 	auto get_tcp_accept_failures = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_failure, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::accept_failure, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY_EQ (5s, get_tcp_accept_failures (), 1);
@@ -153,11 +153,11 @@ TEST (socket, max_connections_per_ip)
 	}
 
 	auto get_tcp_max_per_ip = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_ip, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_ip_connections);
@@ -227,11 +227,11 @@ TEST (socket, max_connections_per_subnetwork)
 	}
 
 	auto get_tcp_max_per_subnetwork = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_subnetwork, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_subnetwork, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_subnetwork_connections);
@@ -289,11 +289,11 @@ TEST (socket, disabled_max_peers_per_ip)
 	}
 
 	auto get_tcp_max_per_ip = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_max_per_ip, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_ip, nano::stat::dir::in);
 	};
 
 	auto get_tcp_accept_successes = [&node] () {
-		return node->stats->count (nano::stat::type::tcp, nano::stat::detail::tcp_accept_success, nano::stat::dir::in);
+		return node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::accept_success, nano::stat::dir::in);
 	};
 
 	ASSERT_TIMELY_EQ (5s, get_tcp_accept_successes (), max_ip_connections + 1);

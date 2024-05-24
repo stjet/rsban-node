@@ -118,6 +118,7 @@ pub enum StatType {
     Ipc,
     Tcp,
     TcpChannels,
+    TcpListener,
     Channel,
     Socket,
     ConfirmationHeight,
@@ -327,18 +328,20 @@ pub enum DetailType {
     MergePeer,
 
     // tcp
-    TcpAcceptSuccess,
-    TcpAcceptFailure,
     TcpWriteDrop,
     TcpWriteNoSocketDrop,
-    TcpExcluded,
-    TcpMaxPerIp,
-    TcpMaxPerSubnetwork,
     TcpSilentConnectionDrop,
     TcpIoTimeoutDrop,
     TcpConnectError,
     TcpReadError,
     TcpWriteError,
+
+    // tcp_listener
+    AcceptSuccess,
+    AcceptFailure,
+    MaxPerIp,
+    MaxPerSubnetwork,
+    Excluded,
 
     // tcp_server
     Handshake,

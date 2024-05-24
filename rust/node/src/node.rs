@@ -1246,6 +1246,8 @@ impl NodeExt for Arc<Node> {
             }
 
             info!("Node peering port: {}", self.channels.port());
+        } else {
+            warn!("Node peering is disabled");
         }
 
         if !self.flags.disable_backup {

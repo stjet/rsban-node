@@ -399,7 +399,7 @@ impl TcpServerExt for Arc<TcpServer> {
             //debug_assert!(guard.port() != 0);
         }
 
-        debug!("Starting TCP server ({})", guard.port());
+        debug!("Starting server: {}", guard.port());
         self.receive_message();
     }
 
@@ -582,7 +582,7 @@ impl TcpServerExt for Arc<TcpServer> {
                 Direction::In,
             );
             debug!(
-                "Handshake attempted with disabled realtime TCP ({})",
+                "Handshake attempted with disabled realtime mode ({})",
                 self.remote_endpoint()
             );
             return HandshakeStatus::Abort;

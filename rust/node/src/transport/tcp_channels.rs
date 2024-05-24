@@ -345,7 +345,7 @@ impl TcpChannels {
         }
         if result {
             self.stats
-                .inc_dir(StatType::Tcp, DetailType::TcpMaxPerIp, Direction::Out);
+                .inc_dir(StatType::Tcp, DetailType::MaxPerIp, Direction::Out);
         }
         result
     }
@@ -436,11 +436,8 @@ impl TcpChannels {
                 >= self.network.network.max_peers_per_subnetwork;
 
         if is_max {
-            self.stats.inc_dir(
-                StatType::Tcp,
-                DetailType::TcpMaxPerSubnetwork,
-                Direction::Out,
-            );
+            self.stats
+                .inc_dir(StatType::Tcp, DetailType::MaxPerSubnetwork, Direction::Out);
         }
 
         is_max

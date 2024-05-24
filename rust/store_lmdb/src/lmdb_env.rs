@@ -25,17 +25,8 @@ use std::{
 };
 use tracing::debug;
 
-// Thin Wrappers + Embedded Stubs
-// --------------------------------------------------------------------------------
-
-//todo don't use static lifetimes!
 pub struct RoCursor {
     strategy: RoCursorStrategy,
-}
-
-enum RoCursorStrategy {
-    Real(RoCursorWrapper),
-    Nulled(RoCursorStub),
 }
 
 impl RoCursor {
@@ -59,6 +50,14 @@ impl RoCursor {
             RoCursorStrategy::Nulled(s) => s.get(key, data, op),
         }
     }
+}
+
+// Thin Wrappers + Embedded Stubs
+// --------------------------------------------------------------------------------
+
+enum RoCursorStrategy {
+    Real(RoCursorWrapper),
+    Nulled(RoCursorStub),
 }
 
 //todo don't use static lifetimes!
@@ -181,10 +180,10 @@ impl RwTransaction {
         data: &[u8],
         flags: lmdb::WriteFlags,
     ) -> lmdb::Result<()> {
-        match &mut self.strategy {
-            RwTransactionStrategy::Real(s) => s.put(database.as_real(), &key, &data, flags),
-            RwTransactionStrategy::Nulled(s) => s.put(database.as_nulled(), key, data, flags),
+        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
+            s.put(database.as_real(), &key, &data, flags)?;
         }
+        Ok(())
     }
 
     pub fn del(
@@ -193,10 +192,10 @@ impl RwTransaction {
         key: &[u8],
         flags: Option<&[u8]>,
     ) -> lmdb::Result<()> {
-        match &mut self.strategy {
-            RwTransactionStrategy::Real(s) => s.del(database.as_real(), &key, flags),
-            RwTransactionStrategy::Nulled(s) => s.del(database.as_nulled(), key, flags),
+        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
+            s.del(database.as_real(), &key, flags)?;
         }
+        Ok(())
     }
 
     pub unsafe fn create_db(
@@ -215,17 +214,17 @@ impl RwTransaction {
     }
 
     pub unsafe fn drop_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
-        match &mut self.strategy {
-            RwTransactionStrategy::Real(s) => s.drop_db(database.as_real()),
-            RwTransactionStrategy::Nulled(s) => s.drop_db(database.as_nulled()),
+        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
+            s.drop_db(database.as_real())?;
         }
+        Ok(())
     }
 
     pub fn clear_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
-        match &mut self.strategy {
-            RwTransactionStrategy::Real(s) => s.clear_db(database.as_real()),
-            RwTransactionStrategy::Nulled(s) => s.clear_db(database.as_nulled()),
+        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
+            s.clear_db(database.as_real())?;
         }
+        Ok(())
     }
 
     pub fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
@@ -246,15 +245,15 @@ impl RwTransaction {
     pub fn count(&self, database: LmdbDatabase) -> u64 {
         match &self.strategy {
             RwTransactionStrategy::Real(s) => s.count(database.as_real()),
-            RwTransactionStrategy::Nulled(s) => s.count(database.as_nulled()),
+            RwTransactionStrategy::Nulled(_) => 0,
         }
     }
 
     pub fn commit(self) -> lmdb::Result<()> {
-        match self.strategy {
-            RwTransactionStrategy::Real(s) => s.commit(),
-            RwTransactionStrategy::Nulled(s) => s.commit(),
+        if let RwTransactionStrategy::Real(s) = self.strategy {
+            s.commit()?;
         }
+        Ok(())
     }
 }
 
@@ -339,33 +338,6 @@ impl RwTransactionStub {
         }
     }
 
-    fn put(
-        &mut self,
-        _database: DatabaseStub,
-        _key: &[u8],
-        _data: &[u8],
-        _flags: lmdb::WriteFlags,
-    ) -> lmdb::Result<()> {
-        Ok(())
-    }
-
-    fn del(
-        &mut self,
-        _database: DatabaseStub,
-        _key: &[u8],
-        _flags: Option<&[u8]>,
-    ) -> lmdb::Result<()> {
-        Ok(())
-    }
-
-    fn clear_db(&mut self, _database: DatabaseStub) -> lmdb::Result<()> {
-        Ok(())
-    }
-
-    fn commit(self) -> lmdb::Result<()> {
-        Ok(())
-    }
-
     fn open_ro_cursor(&self, database: DatabaseStub) -> lmdb::Result<RoCursorStub> {
         Ok(RoCursorStub {
             current: Cell::new(0),
@@ -377,14 +349,6 @@ impl RwTransactionStub {
                 .cloned()
                 .unwrap_or_default(),
         })
-    }
-
-    fn count(&self, _database: DatabaseStub) -> u64 {
-        0
-    }
-
-    unsafe fn drop_db(&mut self, _database: DatabaseStub) -> lmdb::Result<()> {
-        Ok(())
     }
 
     unsafe fn create_db(
@@ -695,10 +659,10 @@ impl LmdbEnvironment {
     }
 
     pub fn sync(&self, force: bool) -> lmdb::Result<()> {
-        match &self.strategy {
-            EnvironmentStrategy::Real(s) => s.sync(force),
-            EnvironmentStrategy::Nulled(s) => s.sync(force),
+        if let EnvironmentStrategy::Real(s) = &self.strategy {
+            s.sync(force)?;
         }
+        Ok(())
     }
 
     pub fn stat(&self) -> lmdb::Result<Stat> {
@@ -812,16 +776,8 @@ impl EnvironmentStub {
             .unwrap_or_default())
     }
 
-    fn env(&self) -> *mut MDB_env {
-        todo!()
-    }
-
     fn open_db(&self, name: Option<&str>) -> lmdb::Result<DatabaseStub> {
         self.create_db(name, DatabaseFlags::empty())
-    }
-
-    fn sync(&self, _force: bool) -> lmdb::Result<()> {
-        Ok(())
     }
 
     fn stat(&self) -> lmdb::Result<Stat> {

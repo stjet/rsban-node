@@ -260,4 +260,62 @@ mod tests {
         );
         assert_eq!(last_ipv6_subnet_address(&address, 32), expected);
     }
+
+    #[test]
+    fn reserved_adresses() {
+        //valid
+        assert_eq!(
+            reserved_address(&"[2001::]:1".parse().unwrap(), false),
+            false
+        );
+
+        // 0 port
+        assert_eq!(
+            reserved_address(&"[2001::]:0".parse().unwrap(), false),
+            true
+        );
+
+        //loopback
+        assert_eq!(reserved_address(&"[::1]:1".parse().unwrap(), false), false);
+
+        //private network
+        assert_eq!(
+            reserved_address(&"[::ffff:10.0.0.0]:1".parse().unwrap(), false),
+            true
+        );
+        assert_eq!(
+            reserved_address(&"[::ffff:10.0.0.0]:1".parse().unwrap(), true),
+            false
+        );
+    }
+
+    #[test]
+    fn ipv6_bind_subnetwork() {
+        let address = "a41d:b7b2:8298:cf45:672e:bd1a:e7fb:f713".parse().unwrap();
+        let subnet = ipv4_address_or_ipv6_subnet(&address);
+        assert_eq!(subnet, "a41d:b7b2:8298::".parse::<Ipv6Addr>().unwrap());
+    }
+
+    #[test]
+    fn ipv4_subnetwork() {
+        // Ipv4 should return initial address
+        let address = "::ffff:192.168.1.1".parse().unwrap();
+        let subnet = ipv4_address_or_ipv6_subnet(&address);
+        assert_eq!(address, subnet);
+    }
+
+    #[test]
+    fn network_range_ipv6() {
+        let address = "a719:0f12:536e:d88a:1331:ba53:4598:04e5".parse().unwrap();
+        let subnet = map_address_to_subnetwork(&address);
+        assert_eq!(subnet, "a719:0f12::".parse::<Ipv6Addr>().unwrap());
+    }
+
+    #[test]
+    fn network_range_ipv4() {
+        // Default settings test
+        let address = "::ffff:80.67.148.225".parse().unwrap();
+        let subnet = map_address_to_subnetwork(&address);
+        assert_eq!(subnet, "::ffff:80.67.148.0".parse::<Ipv6Addr>().unwrap());
+    }
 }

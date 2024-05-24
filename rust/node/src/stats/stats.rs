@@ -150,6 +150,7 @@ pub enum StatType {
     LocalBlockBroadcaster,
     RepTiers,
     SynCookies,
+    PeerHistory,
 
     BootstrapAscending,
     BootstrapAscendingAccounts,
@@ -178,6 +179,8 @@ pub enum DetailType {
     Ignored,
     Update,
     Updated,
+    Inserted,
+    Erased,
     Request,
     Broadcast,
     Cleanup,
@@ -325,7 +328,10 @@ pub enum DetailType {
     // network
     LoopKeepalive,
     LoopReachout,
+    LoopReachoutCached,
     MergePeer,
+    ReachoutLive,
+    ReachoutCached,
 
     // tcp
     TcpWriteDrop,

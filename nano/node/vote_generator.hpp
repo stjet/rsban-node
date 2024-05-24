@@ -3,7 +3,6 @@
 #include <nano/lib/locks.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/processing_queue.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/wallet.hpp>
 #include <nano/secure/common.hpp>

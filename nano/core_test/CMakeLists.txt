@@ -30,7 +30,6 @@ add_executable(
   node.cpp
   object_stream.cpp
   optimistic_scheduler.cpp
-  processing_queue.cpp
   processor_service.cpp
   rep_crawler.cpp
   peer_container.cpp

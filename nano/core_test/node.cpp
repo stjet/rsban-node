@@ -2848,6 +2848,7 @@ TEST (node, peers)
 	ASSERT_TIMELY (10s, node2->network->empty ());
 }
 
+// Tests that the node connects to peers from the peer cache when it starts
 TEST (node, peer_cache_restart)
 {
 	nano::test::system system (1);

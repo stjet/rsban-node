@@ -30,11 +30,6 @@ void nano::store::lmdb::peer::put (nano::store::write_transaction const & transa
 	rsnano::rsn_lmdb_peer_store_put (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
 }
 
-void nano::store::lmdb::peer::del (nano::store::write_transaction const & transaction, nano::endpoint_key const & endpoint)
-{
-	rsnano::rsn_lmdb_peer_store_del (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
-}
-
 bool nano::store::lmdb::peer::exists (nano::store::transaction const & transaction, nano::endpoint_key const & endpoint) const
 {
 	return rsnano::rsn_lmdb_peer_store_exists (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
@@ -50,13 +45,3 @@ void nano::store::lmdb::peer::clear (nano::store::write_transaction const & tran
 	rsnano::rsn_lmdb_peer_store_clear (handle, transaction.get_rust_handle ());
 }
 
-nano::store::iterator<nano::endpoint_key, nano::no_value> nano::store::lmdb::peer::begin (nano::store::transaction const & transaction) const
-{
-	auto it_handle{ rsnano::rsn_lmdb_peer_store_begin (handle, transaction.get_rust_handle ()) };
-	return to_iterator (it_handle);
-}
-
-nano::store::iterator<nano::endpoint_key, nano::no_value> nano::store::lmdb::peer::end () const
-{
-	return nano::store::iterator<nano::endpoint_key, nano::no_value> (nullptr);
-}

@@ -342,6 +342,7 @@ pub enum DetailType {
     MaxPerIp,
     MaxPerSubnetwork,
     Excluded,
+    EraseDead,
 
     // tcp_server
     Handshake,

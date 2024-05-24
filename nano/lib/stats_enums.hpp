@@ -238,6 +238,7 @@ enum class detail : uint8_t
 	max_per_ip,
 	max_per_subnetwork,
 	excluded,
+	erase_dead,
 
 	// tcp_server
 	handshake,

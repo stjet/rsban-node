@@ -156,7 +156,7 @@ impl TcpListener {
 
     pub fn connection_count(&self) -> usize {
         let mut data = self.data.lock().unwrap();
-        cleanup(&mut data);
+        self.cleanup(&mut data);
         data.connections.len()
     }
 
@@ -226,6 +226,17 @@ impl TcpListener {
         counted_connections >= self.network_params.network.max_peers_per_ip
     }
 
+    fn cleanup(&self, data: &mut std::sync::MutexGuard<'_, TcpListenerData>) {
+        data.connections.retain(|_, conn| {
+            let retain = conn.strong_count() > 0;
+            if !retain {
+                self.stats.inc(StatType::TcpListener, DetailType::EraseDead);
+                debug!("Evicting dead connection");
+            }
+            retain
+        })
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -236,10 +247,6 @@ impl TcpListener {
             })],
         )
     }
-}
-
-fn cleanup(data: &mut std::sync::MutexGuard<'_, TcpListenerData>) {
-    data.connections.retain(|_, conn| conn.strong_count() > 0)
 }
 
 pub trait TcpListenerExt {
@@ -427,17 +434,16 @@ impl TcpListenerExt for Arc<TcpListener> {
                     if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
                         this_clone.stats.inc_dir (StatType::TcpListener, DetailType::MaxPerIp, Direction::In);
-                        debug!("Max connections per IP (max_peers_per_ip) was reached for {}, unable to open new connection", remote_ip_address);
+                        debug!("Max connections per IP reached (ip: {}), unable to open new connection", remote_ip_address);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }
 
                     if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
                         let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        let remote_subnet = first_ipv6_subnet_address(&remote_ip_address, this_clone.network_params.network.max_peers_per_subnetwork as u8);
                         this_clone.stats.inc_dir(StatType::TcpListener, DetailType::MaxPerSubnetwork, Direction::In);
-                        debug!("Max connections per subnetwork (max_peers_per_subnetwork) was reached for subnetwork {} (remote IP: {}), unable to open new connection",
-                            remote_subnet, remote_ip_address);
+                        debug!("Max connections per subnetwork reached (ip: {}), unable to open new connection",
+                            remote_ip_address);
                         this_clone.on_connection_requeue_delayed (callback);
                         return;
                     }

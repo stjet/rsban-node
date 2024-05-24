@@ -901,8 +901,9 @@ impl Node {
 
         if !config.callback_address.is_empty() {
             let async_rt = Arc::clone(&async_rt);
+            let stats = Arc::clone(&stats);
             let url: Url = format!(
-                "http://{}:{}/{}",
+                "http://{}:{}{}",
                 config.callback_address, config.callback_port, config.callback_target
             )
             .parse()
@@ -915,6 +916,7 @@ impl Node {
                             == ElectionStatusType::ActiveConfirmationHeight
                     {
                         let url = url.clone();
+                        let stats = Arc::clone(&stats);
                         async_rt.tokio.spawn(async move {
                             let mut block_json = SerdePropertyTree::new();
                             block.serialize_json(&mut block_json).unwrap();
@@ -948,16 +950,31 @@ impl Node {
                             match http_client.post_json(url.clone(), &message).await {
                                 Ok(response) => {
                                     if response.status().is_success() {
+                                        stats.inc_dir(
+                                            StatType::HttpCallback,
+                                            DetailType::Initiate,
+                                            Direction::Out,
+                                        );
                                     } else {
                                         error!(
                                             "Callback to {} failed [status: {:?}]",
                                             url,
                                             response.status()
                                         );
+                                        stats.inc_dir(
+                                            StatType::Error,
+                                            DetailType::HttpCallback,
+                                            Direction::Out,
+                                        );
                                     }
                                 }
                                 Err(e) => {
                                     error!("Unable to send callback: {} ({})", url, e);
+                                    stats.inc_dir(
+                                        StatType::Error,
+                                        DetailType::HttpCallback,
+                                        Direction::Out,
+                                    );
                                 }
                             }
                         });

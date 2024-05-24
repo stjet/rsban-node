@@ -703,9 +703,9 @@ namespace transport
 			ASSERT_TRUE (node->network->tcp_channels->track_reachout (endpoint));
 		}
 		ASSERT_EQ (0, node->network->size ());
-		ASSERT_EQ (0, node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
+		ASSERT_EQ (0, node->stats->count (nano::stat::type::tcp, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
 		ASSERT_FALSE (node->network->tcp_channels->track_reachout (nano::endpoint (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"), system.get_available_port ())));
-		ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
+		ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
 	}
 }
 }

@@ -111,13 +111,14 @@ pub fn ipv4_address_or_ipv6_subnet(input: &Ipv6Addr) -> Ipv6Addr {
     if is_ipv4_mapped(input) {
         input.clone()
     } else {
+        // Assuming /48 subnet prefix for IPv6 as it's relatively easy to acquire such a /48 address range
         first_ipv6_subnet_address(input, 48)
     }
 }
 
 pub fn map_address_to_subnetwork(input: &Ipv6Addr) -> Ipv6Addr {
     const IPV6_SUBNET_PREFIX_LENGTH: u8 = 32; // Equivalent to network prefix /32.
-    const IPV4_SUBNET_PREFIX_LENGTH: u8 = (128 - 32) + 24; // Limits for /24 IPv4 subnetwork
+    const IPV4_SUBNET_PREFIX_LENGTH: u8 = (128 - 32) + 24; // Limits for /24 IPv4 subnetwork (we're using mapped IPv4 to IPv6 addresses, hence (128 - 32))
     if is_ipv4_mapped(input) {
         first_ipv6_subnet_address(input, IPV4_SUBNET_PREFIX_LENGTH)
     } else {
@@ -291,6 +292,7 @@ mod tests {
 
     #[test]
     fn ipv6_bind_subnetwork() {
+        // IPv6 address within the same /48 subnet should return the network prefix
         let address = "a41d:b7b2:8298:cf45:672e:bd1a:e7fb:f713".parse().unwrap();
         let subnet = ipv4_address_or_ipv6_subnet(&address);
         assert_eq!(subnet, "a41d:b7b2:8298::".parse::<Ipv6Addr>().unwrap());
@@ -298,7 +300,7 @@ mod tests {
 
     #[test]
     fn ipv4_subnetwork() {
-        // Ipv4 should return initial address
+        // IPv4 mapped as IPv6 address should return the original IPv4 address
         let address = "::ffff:192.168.1.1".parse().unwrap();
         let subnet = ipv4_address_or_ipv6_subnet(&address);
         assert_eq!(address, subnet);

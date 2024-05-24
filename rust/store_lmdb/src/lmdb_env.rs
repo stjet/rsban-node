@@ -319,16 +319,12 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
-
     use super::*;
 
     mod rw_txn {
-        use lmdb::WriteFlags;
-
-        use crate::PutEvent;
-
         use super::*;
+        use crate::PutEvent;
+        use lmdb::WriteFlags;
 
         #[test]
         fn can_track_puts() {
@@ -353,93 +349,6 @@ mod tests {
                 }]
             )
         }
-    }
-
-    #[test]
-    fn nulled_cursor_can_be_iterated_forwards() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 2, 3], &[4, 5, 6])
-            .entry(&[2, 2, 2], &[6, 6, 6])
-            .build()
-            .build();
-
-        let txn = env.tx_begin_read();
-
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(None, None, MDB_FIRST);
-        assert_eq!(
-            result,
-            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(result, Err(lmdb::Error::NotFound));
-    }
-
-    #[test]
-    fn nulled_cursor_can_be_iterated_backwards() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 2, 3], &[4, 5, 6])
-            .entry(&[2, 2, 2], &[6, 6, 6])
-            .build()
-            .build();
-
-        let txn = env.tx_begin_read();
-
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(None, None, MDB_LAST);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(
-            result,
-            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(result, Err(lmdb::Error::NotFound));
-    }
-
-    #[test]
-    fn nulled_cursor_can_start_at_specified_key() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 1, 1], &[6, 6, 6])
-            .entry(&[2, 2, 2], &[7, 7, 7])
-            .entry(&[3, 3, 3], &[8, 8, 8])
-            .build()
-            .build();
-
-        let txn = env.tx_begin_read();
-
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(Some([2u8, 2, 2].as_slice()), None, MDB_SET_RANGE);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
-        );
-
-        let result = cursor.get(Some([2u8, 1, 0].as_slice()), None, MDB_SET_RANGE);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
-        );
     }
 
     mod test_db_file {

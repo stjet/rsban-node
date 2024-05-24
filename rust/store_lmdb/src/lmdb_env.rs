@@ -471,6 +471,98 @@ pub struct EnvironmentOptions<'a> {
     pub file_mode: u32,
 }
 
+pub struct LmdbEnvironment {
+    strategy: EnvironmentStrategy,
+}
+
+enum EnvironmentStrategy {
+    Nulled(EnvironmentStub),
+    Real(EnvironmentWrapper),
+}
+
+enum LmdbDatabase {
+    Real(lmdb::Database),
+    Nulled(DatabaseStub),
+}
+
+pub struct LmdbRoTransaction {
+    strategy: RoTransactionStrategy,
+}
+
+enum RoTransactionStrategy {
+    Real(RoTransactionWrapper),
+    Nulled(RoTransactionStub),
+}
+
+enum RwTransactionStrategy {
+    Real(RwTransactionWrapper),
+    Nulled(RwTransactionStub),
+}
+
+pub struct LmdbRwTransaction {
+    strategy: RwTransactionStrategy,
+}
+
+impl LmdbEnvironment {
+    pub fn begin_ro_txn(&self) -> lmdb::Result<LmdbRoTransaction> {
+        let strategy = match &self.strategy {
+            EnvironmentStrategy::Real(s) => RoTransactionStrategy::Real(s.begin_ro_txn()?),
+            EnvironmentStrategy::Nulled(s) => RoTransactionStrategy::Nulled(s.begin_ro_txn()?),
+        };
+        Ok(LmdbRoTransaction { strategy })
+    }
+
+    pub fn begin_rw_txn(&self) -> lmdb::Result<LmdbRwTransaction> {
+        let strategy = match &self.strategy {
+            EnvironmentStrategy::Real(s) => RwTransactionStrategy::Real(s.begin_rw_txn()?),
+            EnvironmentStrategy::Nulled(s) => RwTransactionStrategy::Nulled(s.begin_rw_txn()?),
+        };
+        Ok(LmdbRwTransaction { strategy })
+    }
+
+    pub fn create_db(
+        &self,
+        name: Option<&str>,
+        flags: DatabaseFlags,
+    ) -> lmdb::Result<LmdbDatabase> {
+        let database = match &self.strategy {
+            EnvironmentStrategy::Real(s) => LmdbDatabase::Real(s.create_db(name, flags)?),
+            EnvironmentStrategy::Nulled(s) => LmdbDatabase::Nulled(s.create_db(name, flags)?),
+        };
+
+        Ok(database)
+    }
+
+    pub fn env(&self) -> *mut MDB_env {
+        match &self.strategy {
+            EnvironmentStrategy::Real(s) => s.env(),
+            EnvironmentStrategy::Nulled(_) => unimplemented!(),
+        }
+    }
+
+    pub fn open_db(&self, name: Option<&str>) -> lmdb::Result<LmdbDatabase> {
+        let database = match &self.strategy {
+            EnvironmentStrategy::Real(s) => LmdbDatabase::Real(s.open_db(name)?),
+            EnvironmentStrategy::Nulled(s) => LmdbDatabase::Nulled(s.open_db(name)?),
+        };
+        Ok(database)
+    }
+
+    pub fn sync(&self, force: bool) -> lmdb::Result<()> {
+        match &self.strategy {
+            EnvironmentStrategy::Real(s) => s.sync(force),
+            EnvironmentStrategy::Nulled(s) => s.sync(force),
+        }
+    }
+
+    pub fn stat(&self) -> lmdb::Result<Stat> {
+        match &self.strategy {
+            EnvironmentStrategy::Real(s) => s.stat(),
+            EnvironmentStrategy::Nulled(s) => s.stat(),
+        }
+    }
+}
+
 pub trait Environment: Send + Sync {
     type RoTxnImpl: RoTransaction<
         InactiveTxnType = Self::InactiveTxnImpl,

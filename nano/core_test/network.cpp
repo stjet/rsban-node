@@ -763,7 +763,7 @@ TEST (network, duplicate_revert_publish)
 	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 }
 
-TEST (network, tcp_no_connect_excluded_peers)
+TEST (network, tcp_no_accept_excluded_peers)
 {
 	nano::test::system system (1);
 	auto node0 (system.nodes[0]);

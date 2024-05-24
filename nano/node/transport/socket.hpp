@@ -94,13 +94,13 @@ public:
 	void start ();
 
 	void async_connect (
-			boost::asio::ip::tcp::endpoint const &, 
-			std::function<void (boost::system::error_code const &)>);
+	boost::asio::ip::tcp::endpoint const &,
+	std::function<void (boost::system::error_code const &)>);
 
 	void async_write (
-			nano::shared_const_buffer const &, 
-			std::function<void (boost::system::error_code const &, std::size_t)> = {}, 
-			nano::transport::traffic_type = nano::transport::traffic_type::generic);
+	nano::shared_const_buffer const &,
+	std::function<void (boost::system::error_code const &, std::size_t)> = {},
+	nano::transport::traffic_type = nano::transport::traffic_type::generic);
 
 	virtual void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;

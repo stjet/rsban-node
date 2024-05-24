@@ -63,4 +63,3 @@ std::size_t nano::confirming_set::size () const
 {
 	return rsnano::rsn_confirming_set_len (handle);
 }
-

@@ -7,6 +7,7 @@ extern crate anyhow;
 mod iterator;
 mod lmdb_config;
 mod lmdb_env;
+mod nullable_lmdb;
 mod rep_weight_store;
 mod wallet_store;
 
@@ -28,6 +29,7 @@ mod final_vote_store;
 pub use final_vote_store::LmdbFinalVoteStore;
 
 mod online_weight_store;
+pub use nullable_lmdb::*;
 pub use online_weight_store::LmdbOnlineWeightStore;
 
 mod pending_store;
@@ -449,13 +451,13 @@ where
 pub const STORE_VERSION_MINIMUM: i32 = 24;
 pub const STORE_VERSION_CURRENT: i32 = 24;
 
-pub const BLOCK_TEST_DATABASE: DatabaseStub = DatabaseStub(1);
-pub const FRONTIER_TEST_DATABASE: DatabaseStub = DatabaseStub(2);
-pub const ACCOUNT_TEST_DATABASE: DatabaseStub = DatabaseStub(3);
-pub const PENDING_TEST_DATABASE: DatabaseStub = DatabaseStub(4);
-pub const PRUNED_TEST_DATABASE: DatabaseStub = DatabaseStub(5);
-pub const REP_WEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(6);
-pub const CONFIRMATION_HEIGHT_TEST_DATABASE: DatabaseStub = DatabaseStub(7);
+pub const BLOCK_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(1);
+pub const FRONTIER_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(2);
+pub const ACCOUNT_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(3);
+pub const PENDING_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(4);
+pub const PRUNED_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(5);
+pub const REP_WEIGHT_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(6);
+pub const CONFIRMATION_HEIGHT_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(7);
 
 #[cfg(test)]
 mod test {

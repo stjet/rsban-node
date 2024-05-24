@@ -1,12 +1,12 @@
+use crate::nullable_lmdb::{ConfiguredDatabase, EnvironmentOptions, LmdbDatabase, LmdbEnvironment};
 use crate::{
     LmdbConfig, LmdbReadTransaction, LmdbWriteTransaction, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
 };
 use anyhow::bail;
-use lmdb::{DatabaseFlags, EnvironmentFlags, Stat, Transaction};
-use lmdb_sys::{MDB_env, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE, MDB_SUCCESS};
+use lmdb::EnvironmentFlags;
+use lmdb_sys::MDB_SUCCESS;
 use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTree};
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::ops::Deref;
@@ -25,769 +25,6 @@ use std::{
 };
 use tracing::debug;
 
-pub struct RoCursor {
-    strategy: RoCursorStrategy,
-}
-
-impl RoCursor {
-    pub fn iter_start(
-        &mut self,
-    ) -> impl Iterator<Item = lmdb::Result<(&'static [u8], &'static [u8])>> {
-        match &mut self.strategy {
-            RoCursorStrategy::Real(s) => s.iter_start(),
-            RoCursorStrategy::Nulled(_) => todo!(),
-        }
-    }
-
-    pub fn get(
-        &self,
-        key: Option<&[u8]>,
-        data: Option<&[u8]>,
-        op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        match &self.strategy {
-            RoCursorStrategy::Real(s) => s.get(key, data, op),
-            RoCursorStrategy::Nulled(s) => s.get(key, data, op),
-        }
-    }
-}
-
-// Thin Wrappers + Embedded Stubs
-// --------------------------------------------------------------------------------
-
-enum RoCursorStrategy {
-    Real(RoCursorWrapper),
-    Nulled(RoCursorStub),
-}
-
-//todo don't use static lifetimes!
-pub struct RoCursorWrapper(lmdb::RoCursor<'static>);
-
-impl RoCursorWrapper {
-    fn iter_start(&mut self) -> lmdb::Iter<'static> {
-        lmdb::Cursor::iter_start(&mut self.0)
-    }
-
-    fn get(
-        &self,
-        key: Option<&[u8]>,
-        data: Option<&[u8]>,
-        op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        lmdb::Cursor::get(&self.0, key, data, op)
-    }
-}
-
-pub struct RoCursorStub {
-    database: ConfiguredDatabase,
-    current: Cell<i32>,
-    ascending: Cell<bool>,
-}
-
-pub struct NullIter {}
-
-impl Iterator for NullIter {
-    type Item = lmdb::Result<(&'static [u8], &'static [u8])>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl RoCursorStub {
-    fn iter_start(&mut self) -> NullIter {
-        NullIter {}
-    }
-
-    fn get(
-        &self,
-        key: Option<&[u8]>,
-        _data: Option<&[u8]>,
-        op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        if op == MDB_FIRST {
-            self.current.set(0);
-            self.ascending.set(true);
-        } else if op == MDB_LAST {
-            let entry_count = self.database.entries.len();
-            self.ascending.set(false);
-            self.current.set((entry_count as i32) - 1);
-        } else if op == MDB_NEXT {
-            if self.ascending.get() {
-                self.current.set(self.current.get() + 1);
-            } else {
-                self.current.set(self.current.get() - 1);
-            }
-        } else if op == MDB_SET_RANGE {
-            self.current.set(
-                self.database
-                    .entries
-                    .keys()
-                    .enumerate()
-                    .find_map(|(i, k)| {
-                        if Some(k.as_slice()) >= key {
-                            Some(i as i32)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(i32::MAX),
-            );
-        } else {
-            unimplemented!()
-        }
-
-        let current = self.current.get();
-        if current < 0 {
-            return Err(lmdb::Error::NotFound);
-        }
-
-        self.database
-            .entries
-            .iter()
-            .nth(current as usize)
-            .map(|(k, v)| unsafe {
-                (
-                    Some(std::mem::transmute::<&'_ [u8], &'static [u8]>(k.as_slice())),
-                    std::mem::transmute::<&'_ [u8], &'static [u8]>(v.as_slice()),
-                )
-            })
-            .ok_or(lmdb::Error::NotFound)
-    }
-}
-
-pub struct RwTransaction {
-    strategy: RwTransactionStrategy,
-}
-
-enum RwTransactionStrategy {
-    Real(RwTransactionWrapper),
-    Nulled(RwTransactionStub),
-}
-
-impl RwTransaction {
-    pub fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
-        match &self.strategy {
-            RwTransactionStrategy::Real(s) => s.get(database.as_real(), &key),
-            RwTransactionStrategy::Nulled(s) => s.get(database.as_nulled(), key),
-        }
-    }
-
-    pub fn put(
-        &mut self,
-        database: LmdbDatabase,
-        key: &[u8],
-        data: &[u8],
-        flags: lmdb::WriteFlags,
-    ) -> lmdb::Result<()> {
-        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.put(database.as_real(), &key, &data, flags)?;
-        }
-        Ok(())
-    }
-
-    pub fn del(
-        &mut self,
-        database: LmdbDatabase,
-        key: &[u8],
-        flags: Option<&[u8]>,
-    ) -> lmdb::Result<()> {
-        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.del(database.as_real(), &key, flags)?;
-        }
-        Ok(())
-    }
-
-    pub unsafe fn create_db(
-        &self,
-        name: Option<&str>,
-        flags: DatabaseFlags,
-    ) -> lmdb::Result<LmdbDatabase> {
-        match &self.strategy {
-            RwTransactionStrategy::Real(s) => {
-                s.create_db(name, flags).map(|db| LmdbDatabase::Real(db))
-            }
-            RwTransactionStrategy::Nulled(s) => {
-                s.create_db(name, flags).map(|db| LmdbDatabase::Nulled(db))
-            }
-        }
-    }
-
-    pub unsafe fn drop_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
-        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.drop_db(database.as_real())?;
-        }
-        Ok(())
-    }
-
-    pub fn clear_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
-        if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.clear_db(database.as_real())?;
-        }
-        Ok(())
-    }
-
-    pub fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
-        match &self.strategy {
-            RwTransactionStrategy::Real(s) => {
-                s.open_ro_cursor(database.as_real()).map(|c| RoCursor {
-                    strategy: RoCursorStrategy::Real(c),
-                })
-            }
-            RwTransactionStrategy::Nulled(s) => {
-                s.open_ro_cursor(database.as_nulled()).map(|c| RoCursor {
-                    strategy: RoCursorStrategy::Nulled(c),
-                })
-            }
-        }
-    }
-
-    pub fn count(&self, database: LmdbDatabase) -> u64 {
-        match &self.strategy {
-            RwTransactionStrategy::Real(s) => s.count(database.as_real()),
-            RwTransactionStrategy::Nulled(_) => 0,
-        }
-    }
-
-    pub fn commit(self) -> lmdb::Result<()> {
-        if let RwTransactionStrategy::Real(s) = self.strategy {
-            s.commit()?;
-        }
-        Ok(())
-    }
-}
-
-pub struct RwTransactionWrapper(lmdb::RwTransaction<'static>);
-
-impl RwTransactionWrapper {
-    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(&self.0, database, &key)
-    }
-
-    fn put(
-        &mut self,
-        database: lmdb::Database,
-        key: &[u8],
-        data: &[u8],
-        flags: lmdb::WriteFlags,
-    ) -> lmdb::Result<()> {
-        lmdb::RwTransaction::put(&mut self.0, database, &key, &data, flags)
-    }
-
-    fn del(
-        &mut self,
-        database: lmdb::Database,
-        key: &[u8],
-        flags: Option<&[u8]>,
-    ) -> lmdb::Result<()> {
-        lmdb::RwTransaction::del(&mut self.0, database, &key, flags)
-    }
-
-    fn clear_db(&mut self, database: lmdb::Database) -> lmdb::Result<()> {
-        lmdb::RwTransaction::clear_db(&mut self.0, database)
-    }
-
-    fn commit(self) -> lmdb::Result<()> {
-        self.0.commit()
-    }
-
-    fn open_ro_cursor(&self, database: lmdb::Database) -> lmdb::Result<RoCursorWrapper> {
-        let cursor = lmdb::Transaction::open_ro_cursor(&self.0, database);
-        cursor.map(|c| {
-            // todo: don't use static lifetime
-            let c =
-                unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(c) };
-            RoCursorWrapper(c)
-        })
-    }
-
-    fn count(&self, database: lmdb::Database) -> u64 {
-        let stat = lmdb::Transaction::stat(&self.0, database);
-        stat.unwrap().entries() as u64
-    }
-
-    unsafe fn drop_db(&mut self, database: lmdb::Database) -> lmdb::Result<()> {
-        lmdb::RwTransaction::drop_db(&mut self.0, database)
-    }
-
-    unsafe fn create_db(
-        &self,
-        name: Option<&str>,
-        flags: DatabaseFlags,
-    ) -> lmdb::Result<lmdb::Database> {
-        lmdb::RwTransaction::create_db(&self.0, name, flags)
-    }
-}
-
-pub struct RwTransactionStub {
-    databases: Vec<ConfiguredDatabase>,
-}
-
-impl RwTransactionStub {
-    fn get_database(&self, database: DatabaseStub) -> Option<&ConfiguredDatabase> {
-        self.databases.iter().find(|d| d.dbi == database)
-    }
-
-    fn get(&self, database: DatabaseStub, key: &[u8]) -> lmdb::Result<&[u8]> {
-        let Some(db) = self.get_database(database) else {
-            return Err(lmdb::Error::NotFound);
-        };
-        match db.entries.get(key) {
-            Some(value) => Ok(value),
-            None => Err(lmdb::Error::NotFound),
-        }
-    }
-
-    fn open_ro_cursor(&self, database: DatabaseStub) -> lmdb::Result<RoCursorStub> {
-        Ok(RoCursorStub {
-            current: Cell::new(0),
-            ascending: Cell::new(true),
-            database: self
-                .databases
-                .iter()
-                .find(|db| db.dbi == database)
-                .cloned()
-                .unwrap_or_default(),
-        })
-    }
-
-    unsafe fn create_db(
-        &self,
-        _name: Option<&str>,
-        _flags: DatabaseFlags,
-    ) -> lmdb::Result<DatabaseStub> {
-        Ok(DatabaseStub(42))
-    }
-}
-
-pub struct InactiveTransaction {
-    strategy: InactiveTransactionStrategy,
-}
-
-enum InactiveTransactionStrategy {
-    Real(InactiveTransactionWrapper),
-    Nulled(NullInactiveTransaction),
-}
-
-impl InactiveTransaction {
-    pub fn renew(self) -> lmdb::Result<RoTransaction> {
-        match self.strategy {
-            InactiveTransactionStrategy::Real(s) => Ok(RoTransaction {
-                strategy: RoTransactionStrategy::Real(s.renew()?),
-            }),
-            InactiveTransactionStrategy::Nulled(s) => Ok(RoTransaction {
-                strategy: RoTransactionStrategy::Nulled(s.renew()?),
-            }),
-        }
-    }
-}
-
-pub struct RoTransaction {
-    strategy: RoTransactionStrategy,
-}
-
-enum RoTransactionStrategy {
-    Real(RoTransactionWrapper),
-    Nulled(RoTransactionStub),
-}
-
-impl RoTransaction {
-    pub fn reset(self) -> InactiveTransaction {
-        match self.strategy {
-            RoTransactionStrategy::Real(s) => InactiveTransaction {
-                strategy: InactiveTransactionStrategy::Real(s.reset()),
-            },
-            RoTransactionStrategy::Nulled(s) => InactiveTransaction {
-                strategy: InactiveTransactionStrategy::Nulled(s.reset()),
-            },
-        }
-    }
-
-    pub fn commit(self) -> lmdb::Result<()> {
-        match self.strategy {
-            RoTransactionStrategy::Real(s) => s.commit(),
-            RoTransactionStrategy::Nulled(s) => s.commit(),
-        }
-    }
-
-    pub fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
-        match &self.strategy {
-            RoTransactionStrategy::Real(s) => s.get(database.as_real(), key),
-            RoTransactionStrategy::Nulled(s) => s.get(database.as_nulled(), key),
-        }
-    }
-
-    pub fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
-        let cursor_strategy = match &self.strategy {
-            RoTransactionStrategy::Real(s) => {
-                RoCursorStrategy::Real(s.open_ro_cursor(database.as_real())?)
-            }
-            RoTransactionStrategy::Nulled(s) => {
-                RoCursorStrategy::Nulled(s.open_ro_cursor(database.as_nulled())?)
-            }
-        };
-        Ok(RoCursor {
-            strategy: cursor_strategy,
-        })
-    }
-
-    pub fn count(&self, database: LmdbDatabase) -> u64 {
-        match &self.strategy {
-            RoTransactionStrategy::Real(s) => s.count(database.as_real()),
-            RoTransactionStrategy::Nulled(s) => s.count(database.as_nulled()),
-        }
-    }
-}
-
-pub struct InactiveTransactionWrapper {
-    inactive: lmdb::InactiveTransaction<'static>,
-}
-
-impl InactiveTransactionWrapper {
-    fn renew(self) -> lmdb::Result<RoTransactionWrapper> {
-        self.inactive.renew().map(RoTransactionWrapper)
-    }
-}
-
-pub struct RoTransactionWrapper(lmdb::RoTransaction<'static>);
-
-impl RoTransactionWrapper {
-    fn reset(self) -> InactiveTransactionWrapper {
-        InactiveTransactionWrapper {
-            inactive: self.0.reset(),
-        }
-    }
-
-    fn commit(self) -> lmdb::Result<()> {
-        lmdb::Transaction::commit(self.0)
-    }
-
-    fn get(&self, database: lmdb::Database, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(&self.0, database, &&*key)
-    }
-
-    fn open_ro_cursor(&self, database: lmdb::Database) -> lmdb::Result<RoCursorWrapper> {
-        lmdb::Transaction::open_ro_cursor(&self.0, database).map(|c| {
-            //todo don't use static lifetime
-            let c =
-                unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(c) };
-            RoCursorWrapper(c)
-        })
-    }
-
-    fn count(&self, database: lmdb::Database) -> u64 {
-        let stat = lmdb::Transaction::stat(&self.0, database);
-        stat.unwrap().entries() as u64
-    }
-}
-pub struct RoTransactionStub {
-    databases: Vec<ConfiguredDatabase>,
-}
-
-impl RoTransactionStub {
-    fn get_database(&self, database: DatabaseStub) -> Option<&ConfiguredDatabase> {
-        self.databases.iter().find(|d| d.dbi == database)
-    }
-}
-pub struct NullInactiveTransaction {
-    databases: Vec<ConfiguredDatabase>,
-}
-
-impl NullInactiveTransaction {
-    fn renew(self) -> lmdb::Result<RoTransactionStub> {
-        Ok(RoTransactionStub {
-            databases: self.databases,
-        })
-    }
-}
-
-impl RoTransactionStub {
-    fn reset(self) -> NullInactiveTransaction
-    where
-        Self: Sized,
-    {
-        NullInactiveTransaction {
-            databases: self.databases,
-        }
-    }
-
-    fn commit(self) -> lmdb::Result<()> {
-        Ok(())
-    }
-
-    fn get(&self, database: DatabaseStub, key: &[u8]) -> lmdb::Result<&[u8]> {
-        let Some(db) = self.get_database(database) else {
-            return Err(lmdb::Error::NotFound);
-        };
-        match db.entries.get(key) {
-            Some(value) => Ok(value),
-            None => Err(lmdb::Error::NotFound),
-        }
-    }
-
-    fn open_ro_cursor(&self, database: DatabaseStub) -> lmdb::Result<RoCursorStub> {
-        match self.get_database(database) {
-            Some(db) => Ok(RoCursorStub {
-                current: Cell::new(0),
-                database: db.clone(),
-                ascending: Cell::new(true),
-            }),
-
-            None => Ok(RoCursorStub {
-                current: Cell::new(0),
-                ascending: Cell::new(true),
-                database: ConfiguredDatabase {
-                    dbi: database,
-                    db_name: "test_database".to_string(),
-                    entries: Default::default(),
-                },
-            }),
-        }
-    }
-
-    fn count(&self, database: DatabaseStub) -> u64 {
-        self.get_database(database)
-            .map(|db| db.entries.len())
-            .unwrap_or_default() as u64
-    }
-}
-
-pub struct EnvironmentOptions<'a> {
-    pub max_dbs: u32,
-    pub map_size: usize,
-    pub flags: EnvironmentFlags,
-    pub path: &'a Path,
-    pub file_mode: u32,
-}
-
-pub struct LmdbEnvironment {
-    strategy: EnvironmentStrategy,
-}
-
-enum EnvironmentStrategy {
-    Nulled(EnvironmentStub),
-    Real(EnvironmentWrapper),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Copy)]
-pub enum LmdbDatabase {
-    Real(lmdb::Database),
-    Nulled(DatabaseStub),
-}
-
-impl LmdbDatabase {
-    pub fn new_null(id: u32) -> Self {
-        Self::Nulled(DatabaseStub(id))
-    }
-
-    fn as_real(&self) -> lmdb::Database {
-        let Self::Real(db) = &self else {
-            panic!("database handle was not a real handle");
-        };
-        db.clone()
-    }
-
-    fn as_nulled(&self) -> DatabaseStub {
-        let Self::Nulled(db) = &self else {
-            panic!("database handle was not a nulled handle");
-        };
-        db.clone()
-    }
-}
-
-impl LmdbEnvironment {
-    pub fn new(options: EnvironmentOptions) -> lmdb::Result<Self> {
-        Ok(Self {
-            strategy: EnvironmentStrategy::Real(EnvironmentWrapper::build(options)?),
-        })
-    }
-
-    pub fn new_null() -> lmdb::Result<Self> {
-        Ok(Self {
-            strategy: EnvironmentStrategy::Nulled(EnvironmentStub::build(EnvironmentOptions {
-                max_dbs: 42,
-                map_size: 42,
-                flags: EnvironmentFlags::all(),
-                path: &PathBuf::new(),
-                file_mode: 0,
-            })?),
-        })
-    }
-
-    pub fn begin_ro_txn(&self) -> lmdb::Result<RoTransaction> {
-        let strategy = match &self.strategy {
-            EnvironmentStrategy::Real(s) => RoTransactionStrategy::Real(s.begin_ro_txn()?),
-            EnvironmentStrategy::Nulled(s) => RoTransactionStrategy::Nulled(s.begin_ro_txn()?),
-        };
-        Ok(RoTransaction { strategy })
-    }
-
-    pub fn begin_rw_txn(&self) -> lmdb::Result<RwTransaction> {
-        let strategy = match &self.strategy {
-            EnvironmentStrategy::Real(s) => RwTransactionStrategy::Real(s.begin_rw_txn()?),
-            EnvironmentStrategy::Nulled(s) => RwTransactionStrategy::Nulled(s.begin_rw_txn()?),
-        };
-        Ok(RwTransaction { strategy })
-    }
-
-    pub fn create_db(
-        &self,
-        name: Option<&str>,
-        flags: DatabaseFlags,
-    ) -> lmdb::Result<LmdbDatabase> {
-        let database = match &self.strategy {
-            EnvironmentStrategy::Real(s) => LmdbDatabase::Real(s.create_db(name, flags)?),
-            EnvironmentStrategy::Nulled(s) => LmdbDatabase::Nulled(s.create_db(name, flags)?),
-        };
-
-        Ok(database)
-    }
-
-    pub fn env(&self) -> *mut MDB_env {
-        match &self.strategy {
-            EnvironmentStrategy::Real(s) => s.env(),
-            EnvironmentStrategy::Nulled(_) => unimplemented!(),
-        }
-    }
-
-    pub fn open_db(&self, name: Option<&str>) -> lmdb::Result<LmdbDatabase> {
-        let database = match &self.strategy {
-            EnvironmentStrategy::Real(s) => LmdbDatabase::Real(s.open_db(name)?),
-            EnvironmentStrategy::Nulled(s) => LmdbDatabase::Nulled(s.open_db(name)?),
-        };
-        Ok(database)
-    }
-
-    pub fn sync(&self, force: bool) -> lmdb::Result<()> {
-        if let EnvironmentStrategy::Real(s) = &self.strategy {
-            s.sync(force)?;
-        }
-        Ok(())
-    }
-
-    pub fn stat(&self) -> lmdb::Result<Stat> {
-        match &self.strategy {
-            EnvironmentStrategy::Real(s) => s.stat(),
-            EnvironmentStrategy::Nulled(s) => s.stat(),
-        }
-    }
-}
-
-pub struct EnvironmentWrapper(lmdb::Environment);
-
-impl EnvironmentWrapper {
-    fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
-        let env = lmdb::Environment::new()
-            .set_max_dbs(options.max_dbs)
-            .set_map_size(options.map_size)
-            .set_flags(options.flags)
-            .open_with_permissions(options.path, options.file_mode.try_into().unwrap())?;
-        Ok(Self(env))
-    }
-
-    fn begin_ro_txn(&self) -> lmdb::Result<RoTransactionWrapper> {
-        self.0.begin_ro_txn().map(|txn| {
-            // todo: don't use static life time
-            let txn = unsafe {
-                std::mem::transmute::<lmdb::RoTransaction<'_>, lmdb::RoTransaction<'static>>(txn)
-            };
-            RoTransactionWrapper(txn)
-        })
-    }
-
-    fn begin_rw_txn(&self) -> lmdb::Result<RwTransactionWrapper> {
-        self.0.begin_rw_txn().map(|txn| {
-            // todo: don't use static life time
-            let txn = unsafe {
-                std::mem::transmute::<lmdb::RwTransaction<'_>, lmdb::RwTransaction<'static>>(txn)
-            };
-            RwTransactionWrapper(txn)
-        })
-    }
-
-    fn create_db(&self, name: Option<&str>, flags: DatabaseFlags) -> lmdb::Result<lmdb::Database> {
-        self.0.create_db(name, flags)
-    }
-
-    fn env(&self) -> *mut MDB_env {
-        self.0.env()
-    }
-
-    fn open_db(&self, name: Option<&str>) -> lmdb::Result<lmdb::Database> {
-        self.0.open_db(name)
-    }
-
-    fn sync(&self, force: bool) -> lmdb::Result<()> {
-        self.0.sync(force)
-    }
-
-    fn stat(&self) -> lmdb::Result<Stat> {
-        self.0.stat()
-    }
-}
-
-pub struct EnvironmentStub {
-    databases: Vec<ConfiguredDatabase>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct DatabaseStub(pub u32);
-
-impl Default for DatabaseStub {
-    fn default() -> Self {
-        Self(42)
-    }
-}
-
-impl From<DatabaseStub> for LmdbDatabase {
-    fn from(value: DatabaseStub) -> Self {
-        Self::Nulled(value)
-    }
-}
-
-impl EnvironmentStub {
-    fn build(_options: EnvironmentOptions) -> lmdb::Result<Self>
-    where
-        Self: Sized,
-    {
-        Ok(Self {
-            databases: Vec::new(),
-        })
-    }
-
-    fn begin_ro_txn(&self) -> lmdb::Result<RoTransactionStub> {
-        Ok(RoTransactionStub {
-            databases: self.databases.clone(), //todo  don't clone!
-        })
-    }
-
-    fn begin_rw_txn(&self) -> lmdb::Result<RwTransactionStub> {
-        Ok(RwTransactionStub {
-            databases: self.databases.clone(), //todo  don't clone!
-        })
-    }
-
-    fn create_db(&self, name: Option<&str>, _flags: DatabaseFlags) -> lmdb::Result<DatabaseStub> {
-        Ok(self
-            .databases
-            .iter()
-            .find(|x| name == Some(&x.db_name))
-            .map(|x| x.dbi)
-            .unwrap_or_default())
-    }
-
-    fn open_db(&self, name: Option<&str>) -> lmdb::Result<DatabaseStub> {
-        self.create_db(name, DatabaseFlags::empty())
-    }
-
-    fn stat(&self) -> lmdb::Result<Stat> {
-        todo!()
-    }
-}
-
-// Environment
-// --------------------------------------------------------------------------------
-
 #[derive(Default, Debug)]
 pub struct EnvOptions {
     pub config: LmdbConfig,
@@ -799,7 +36,7 @@ pub struct NullLmdbEnvBuilder {
 }
 
 impl NullLmdbEnvBuilder {
-    pub fn database(self, name: impl Into<String>, dbi: DatabaseStub) -> NullDatabaseBuilder {
+    pub fn database(self, name: impl Into<String>, dbi: LmdbDatabase) -> NullDatabaseBuilder {
         NullDatabaseBuilder {
             data: ConfiguredDatabase {
                 dbi,
@@ -818,7 +55,8 @@ impl NullLmdbEnvBuilder {
         {
             panic!(
                 "trying to duplicated database for {} / {}",
-                db.dbi.0, db.db_name
+                db.dbi.as_nulled(),
+                db.db_name
             );
         }
         self.databases.push(db);
@@ -826,37 +64,8 @@ impl NullLmdbEnvBuilder {
     }
 
     pub fn build(self) -> LmdbEnv {
-        let env = EnvironmentStub {
-            databases: self.databases,
-        };
-        LmdbEnv::new_null_with_env(env)
-    }
-}
-
-#[derive(Clone)]
-pub struct ConfiguredDatabase {
-    pub dbi: DatabaseStub,
-    pub db_name: String,
-    pub entries: BTreeMap<Vec<u8>, Vec<u8>>,
-}
-
-impl ConfiguredDatabase {
-    pub fn new(dbi: DatabaseStub, name: impl Into<String>) -> Self {
-        Self {
-            dbi,
-            db_name: name.into(),
-            entries: BTreeMap::new(),
-        }
-    }
-}
-
-impl Default for ConfiguredDatabase {
-    fn default() -> Self {
-        Self {
-            dbi: DatabaseStub(42),
-            db_name: "nulled_database".to_string(),
-            entries: Default::default(),
-        }
+        let env = LmdbEnvironment::new_null_with(self.databases);
+        LmdbEnv::new_with_env(env)
     }
 }
 
@@ -888,21 +97,13 @@ static NEXT_ENV_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl LmdbEnv {
     pub fn new_null() -> Self {
-        Self::new_null_with_env(EnvironmentStub {
-            databases: Vec::new(),
-        })
+        Self::new_with_env(LmdbEnvironment::new_null())
     }
 
     pub fn new_null_with() -> NullLmdbEnvBuilder {
         NullLmdbEnvBuilder {
             databases: Vec::new(),
         }
-    }
-
-    pub fn new_null_with_env(env: EnvironmentStub) -> Self {
-        Self::new_with_env(LmdbEnvironment {
-            strategy: EnvironmentStrategy::Nulled(env),
-        })
     }
 
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
@@ -1118,7 +319,7 @@ impl Deref for TestLmdbEnv {
 
 #[cfg(test)]
 mod tests {
-    use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_SET_RANGE};
+    use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 
     use super::*;
 
@@ -1157,7 +358,7 @@ mod tests {
     #[test]
     fn nulled_cursor_can_be_iterated_forwards() {
         let env = LmdbEnv::new_null_with()
-            .database("foo", DatabaseStub(42))
+            .database("foo", LmdbDatabase::new_null(42))
             .entry(&[1, 2, 3], &[4, 5, 6])
             .entry(&[2, 2, 2], &[6, 6, 6])
             .build()
@@ -1186,7 +387,7 @@ mod tests {
     #[test]
     fn nulled_cursor_can_be_iterated_backwards() {
         let env = LmdbEnv::new_null_with()
-            .database("foo", DatabaseStub(42))
+            .database("foo", LmdbDatabase::new_null(42))
             .entry(&[1, 2, 3], &[4, 5, 6])
             .entry(&[2, 2, 2], &[6, 6, 6])
             .build()
@@ -1215,7 +416,7 @@ mod tests {
     #[test]
     fn nulled_cursor_can_start_at_specified_key() {
         let env = LmdbEnv::new_null_with()
-            .database("foo", DatabaseStub(42))
+            .database("foo", LmdbDatabase::new_null(42))
             .entry(&[1, 1, 1], &[6, 6, 6])
             .entry(&[2, 2, 2], &[7, 7, 7])
             .entry(&[3, 3, 3], &[8, 8, 8])

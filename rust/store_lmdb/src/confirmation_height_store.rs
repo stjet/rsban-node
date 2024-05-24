@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     CONFIRMATION_HEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -145,7 +145,7 @@ impl ConfiguredConfirmationHeightDatabaseBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, PutEvent};
+    use crate::PutEvent;
     use rsnano_core::BlockHash;
 
     struct Fixture {
@@ -205,7 +205,7 @@ mod tests {
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
 
         let env = LmdbEnv::new_null_with()
-            .database("confirmation_height", DatabaseStub(100))
+            .database("confirmation_height", LmdbDatabase::new_null(100))
             .entry(account.as_bytes(), &info.to_bytes())
             .build()
             .build();
@@ -223,7 +223,7 @@ mod tests {
         let info = ConfirmationHeightInfo::new(1, BlockHash::from(2));
 
         let env = LmdbEnv::new_null_with()
-            .database("confirmation_height", DatabaseStub(100))
+            .database("confirmation_height", LmdbDatabase::new_null(100))
             .entry(account.as_bytes(), &info.to_bytes())
             .build()
             .build();

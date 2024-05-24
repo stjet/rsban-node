@@ -1,6 +1,7 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction, BLOCK_TEST_DATABASE,
+    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    BLOCK_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -259,7 +260,6 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::lmdb_env::DatabaseStub;
     use crate::PutEvent;
     use rsnano_core::BlockBuilder;
 
@@ -300,7 +300,7 @@ mod tests {
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
         let env = LmdbEnv::new_null_with()
-            .database("blocks", DatabaseStub(100))
+            .database("blocks", LmdbDatabase::new_null(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
             .build();
@@ -341,7 +341,7 @@ mod tests {
         block.set_sideband(sideband.clone());
 
         let env = LmdbEnv::new_null_with()
-            .database("blocks", DatabaseStub(100))
+            .database("blocks", LmdbDatabase::new_null(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
             .build();
@@ -373,7 +373,7 @@ mod tests {
         let block = BlockBuilder::legacy_open().with_sideband().build();
 
         let env = LmdbEnv::new_null_with()
-            .database("blocks", DatabaseStub(100))
+            .database("blocks", LmdbDatabase::new_null(100))
             .entry(block.hash().as_bytes(), &block.serialize_with_sideband())
             .build()
             .build();

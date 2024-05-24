@@ -1,6 +1,6 @@
 use crate::{
-    ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor, Transaction,
-    REP_WEIGHT_TEST_DATABASE,
+    nullable_lmdb::ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor,
+    Transaction, REP_WEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};

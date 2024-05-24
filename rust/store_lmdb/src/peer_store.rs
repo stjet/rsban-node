@@ -64,7 +64,7 @@ impl LmdbPeerStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, PutEvent};
+    use crate::{DeleteEvent, PutEvent};
     use rsnano_core::NoValue;
 
     struct Fixture {
@@ -78,7 +78,7 @@ mod tests {
         }
 
         fn with_stored_data(entries: Vec<EndpointKey>) -> Self {
-            let mut env = LmdbEnv::new_null_with().database("peers", DatabaseStub::default());
+            let mut env = LmdbEnv::new_null_with().database("peers", LmdbDatabase::new_null(42));
 
             for entry in entries {
                 env = env.entry(&entry.to_bytes(), &[]);

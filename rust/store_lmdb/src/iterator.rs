@@ -1,4 +1,4 @@
-use crate::{lmdb_env::RoCursor, LmdbDatabase, Transaction};
+use crate::{nullable_lmdb::RoCursor, LmdbDatabase, Transaction};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{BufferReader, Deserialize, FixedSizeSerialize};
 use std::{any::Any, ffi::c_uint};

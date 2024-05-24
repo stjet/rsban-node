@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};

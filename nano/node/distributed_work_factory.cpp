@@ -93,4 +93,3 @@ void nano::distributed_work_factory::cancel (nano::root const & root_a)
 {
 	rsnano::rsn_distributed_work_factory_cancel (handle, root_a.bytes.data ());
 }
-

@@ -14,7 +14,7 @@ mod wallet_store;
 
 pub use lmdb_env::LmdbEnvHandle;
 pub use pending_store::{PendingInfoDto, PendingKeyDto};
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, RoCursorWrapper, Transaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
 use std::{ops::Deref, time::Duration};
 pub use store::LmdbStoreHandle;
 pub use wallet_store::LmdbWalletStoreHandle;

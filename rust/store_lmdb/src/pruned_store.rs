@@ -1,6 +1,7 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction, PRUNED_TEST_DATABASE,
+    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    PRUNED_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};

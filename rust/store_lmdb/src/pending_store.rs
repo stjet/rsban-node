@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, ConfiguredDatabase, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal_u512, LmdbDatabase,
+    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     PENDING_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};

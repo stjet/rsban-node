@@ -11,7 +11,6 @@ use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
 use rsnano_ledger::{BlockStatus, Ledger, ReceivableIterator, Writer};
 use rsnano_node::stats::LedgerStats;
-use rsnano_store_lmdb::EnvironmentWrapper;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
 
 pub struct LedgerHandle(pub Arc<Ledger>);

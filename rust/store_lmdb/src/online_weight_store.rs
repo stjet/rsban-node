@@ -65,7 +65,7 @@ impl LmdbOnlineWeightStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent, PutEvent};
+    use crate::{DeleteEvent, PutEvent};
 
     struct Fixture {
         env: Arc<LmdbEnv>,
@@ -79,7 +79,7 @@ mod tests {
 
         fn with_stored_data(entries: Vec<(u64, Amount)>) -> Self {
             let mut env =
-                LmdbEnv::new_null_with().database("online_weight", DatabaseStub::default());
+                LmdbEnv::new_null_with().database("online_weight", LmdbDatabase::new_null(42));
 
             for (key, value) in entries {
                 env = env.entry(&key.to_be_bytes(), &value.to_be_bytes())

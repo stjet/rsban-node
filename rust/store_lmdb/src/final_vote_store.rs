@@ -137,9 +137,9 @@ impl LmdbFinalVoteStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lmdb_env::DatabaseStub, DeleteEvent};
+    use crate::DeleteEvent;
 
-    const TEST_DATABASE: DatabaseStub = DatabaseStub(100);
+    const TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(100);
 
     struct Fixture {
         env: Arc<LmdbEnv>,

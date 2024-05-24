@@ -9,8 +9,7 @@ use super::{
 use crate::{FfiPropertyTree, LmdbConfigDto, StringDto, TxnTrackingConfigDto};
 use rsnano_node::{config::DiagnosticsConfig, utils::LongRunningTransactionLogger};
 use rsnano_store_lmdb::{
-    EnvOptions, EnvironmentWrapper, LmdbConfig, LmdbStore, NullTransactionTracker,
-    TransactionTracker,
+    EnvOptions, LmdbConfig, LmdbStore, NullTransactionTracker, TransactionTracker,
 };
 use std::{
     ffi::{c_void, CStr},

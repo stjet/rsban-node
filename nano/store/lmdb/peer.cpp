@@ -44,4 +44,3 @@ void nano::store::lmdb::peer::clear (nano::store::write_transaction const & tran
 {
 	rsnano::rsn_lmdb_peer_store_clear (handle, transaction.get_rust_handle ());
 }
-

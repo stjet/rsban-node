@@ -20,6 +20,10 @@ impl LmdbEnvironment {
         )?)))
     }
 
+    pub fn new_with(env: lmdb::Environment) -> Self {
+        Self(EnvironmentStrategy::Real(EnvironmentWrapper::new(env)))
+    }
+
     pub fn new_null() -> Self {
         Self(EnvironmentStrategy::Nulled(EnvironmentStub {
             databases: Vec::new(),
@@ -92,6 +96,10 @@ enum EnvironmentStrategy {
 struct EnvironmentWrapper(lmdb::Environment);
 
 impl EnvironmentWrapper {
+    fn new(env: lmdb::Environment) -> Self {
+        Self(env)
+    }
+
     fn build(options: EnvironmentOptions) -> lmdb::Result<Self> {
         let env = lmdb::Environment::new()
             .set_max_dbs(options.max_dbs)

@@ -1,6 +1,6 @@
 use super::ConfiguredDatabase;
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
-use std::cell::Cell;
+use std::{cell::Cell, collections::btree_map};
 
 pub struct RoCursor(RoCursorStrategy);
 
@@ -14,15 +14,13 @@ impl RoCursor {
     }
 
     pub fn new(cursor: lmdb::RoCursor<'static>) -> Self {
-        Self(RoCursorStrategy::Real(RoCursorWrapper(cursor)))
+        Self(RoCursorStrategy::Real(cursor))
     }
 
-    pub fn iter_start(
-        &mut self,
-    ) -> impl Iterator<Item = lmdb::Result<(&'static [u8], &'static [u8])>> {
+    pub fn iter_start(&mut self) -> Iter {
         match &mut self.0 {
-            RoCursorStrategy::Real(s) => s.iter_start(),
-            RoCursorStrategy::Nulled(_) => todo!(),
+            RoCursorStrategy::Real(s) => Iter::Real(lmdb::Cursor::iter_start(s)),
+            RoCursorStrategy::Nulled(s) => s.iter_start(),
         }
     }
 
@@ -33,33 +31,16 @@ impl RoCursor {
         op: u32,
     ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
         match &self.0 {
-            RoCursorStrategy::Real(s) => s.get(key, data, op),
+            RoCursorStrategy::Real(s) => lmdb::Cursor::get(s, key, data, op),
             RoCursorStrategy::Nulled(s) => s.get(key, data, op),
         }
     }
 }
 
 enum RoCursorStrategy {
-    Real(RoCursorWrapper),
+    //todo don't use static lifetimes!
+    Real(lmdb::RoCursor<'static>),
     Nulled(RoCursorStub),
-}
-
-//todo don't use static lifetimes!
-struct RoCursorWrapper(lmdb::RoCursor<'static>);
-
-impl RoCursorWrapper {
-    fn iter_start(&mut self) -> lmdb::Iter<'static> {
-        lmdb::Cursor::iter_start(&mut self.0)
-    }
-
-    fn get(
-        &self,
-        key: Option<&[u8]>,
-        data: Option<&[u8]>,
-        op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
-        lmdb::Cursor::get(&self.0, key, data, op)
-    }
 }
 
 struct RoCursorStub {
@@ -124,97 +105,209 @@ impl RoCursorStub {
             })
             .ok_or(lmdb::Error::NotFound)
     }
+
+    fn iter_start(&self) -> Iter {
+        Iter::Stub(self.database.entries.iter())
+    }
+}
+
+pub enum Iter<'a> {
+    Real(lmdb::Iter<'static>),
+    Stub(btree_map::Iter<'a, Vec<u8>, Vec<u8>>),
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = lmdb::Result<(&'static [u8], &'static [u8])>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Iter::Real(i) => i.next(),
+            Iter::Stub(iter) => iter.next().map(|(k, v)| unsafe {
+                Ok((
+                    std::mem::transmute::<&'a [u8], &'static [u8]>(k.as_slice()),
+                    std::mem::transmute::<&'a [u8], &'static [u8]>(v.as_slice()),
+                ))
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{LmdbDatabase, LmdbEnv};
+    use crate::{LmdbDatabase, LmdbEnv, LmdbEnvironment};
+    use lmdb::{DatabaseFlags, EnvironmentFlags, Transaction, WriteFlags};
+    use std::path::Path;
 
     #[test]
-    fn nulled_cursor_can_be_iterated_backwards() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 2, 3], &[4, 5, 6])
-            .entry(&[2, 2, 2], &[6, 6, 6])
-            .build()
-            .build();
+    fn iter() {
+        let _guard1 = FileDropGuard::new("/tmp/rsnano-cursor-test.ldb".as_ref());
+        let _guard2 = FileDropGuard::new("/tmp/rsnano-cursor-test.ldb-lock".as_ref());
+        let env = create_real_lmdb_env("/tmp/rsnano-cursor-test.ldb");
+        create_test_database(&env);
+        let env = LmdbEnvironment::new_with(env);
+        let database = env.open_db(Some("foo")).unwrap();
+        let tx = env.begin_ro_txn().unwrap();
+        let mut cursor = tx.open_ro_cursor(database).unwrap();
 
-        let txn = env.tx_begin_read();
+        let result: Vec<_> = cursor.iter_start().map(|i| i.unwrap()).collect();
 
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(None, None, MDB_LAST);
         assert_eq!(
             result,
-            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(
-            result,
-            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(result, Err(lmdb::Error::NotFound));
-    }
-
-    #[test]
-    fn nulled_cursor_can_start_at_specified_key() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 1, 1], &[6, 6, 6])
-            .entry(&[2, 2, 2], &[7, 7, 7])
-            .entry(&[3, 3, 3], &[8, 8, 8])
-            .build()
-            .build();
-
-        let txn = env.tx_begin_read();
-
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(Some([2u8, 2, 2].as_slice()), None, MDB_SET_RANGE);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
-        );
-
-        let result = cursor.get(Some([2u8, 1, 0].as_slice()), None, MDB_SET_RANGE);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [7u8, 7, 7].as_slice()))
+            vec![
+                (b"hello".as_ref(), b"world".as_ref()),
+                (b"hello2", b"world2")
+            ]
         );
     }
 
-    #[test]
-    fn nulled_cursor_can_be_iterated_forwards() {
-        let env = LmdbEnv::new_null_with()
-            .database("foo", LmdbDatabase::new_null(42))
-            .entry(&[1, 2, 3], &[4, 5, 6])
-            .entry(&[2, 2, 2], &[6, 6, 6])
-            .build()
-            .build();
+    mod nullability {
+        use super::*;
 
-        let txn = env.tx_begin_read();
+        const TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(42);
+        const TEST_DATABASE_NAME: &str = "foo";
 
-        let cursor = txn
-            .txn()
-            .open_ro_cursor(LmdbDatabase::new_null(42))
-            .unwrap();
-        let result = cursor.get(None, None, MDB_FIRST);
-        assert_eq!(
-            result,
-            Ok((Some([1u8, 2, 3].as_slice()), [4u8, 5, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(
-            result,
-            Ok((Some([2u8, 2, 2].as_slice()), [6u8, 6, 6].as_slice()))
-        );
-        let result = cursor.get(None, None, MDB_NEXT);
-        assert_eq!(result, Err(lmdb::Error::NotFound));
+        #[test]
+        fn iter_from_start() {
+            let env = nulled_env_with_foo_database();
+            let txn = env.tx_begin_read();
+            let mut cursor = txn.txn().open_ro_cursor(TEST_DATABASE).unwrap();
+
+            let result: Vec<([u8; 3], [u8; 3])> = cursor
+                .iter_start()
+                .map(|i| i.unwrap())
+                .map(|(k, v)| (k.try_into().unwrap(), v.try_into().unwrap()))
+                .collect();
+
+            assert_eq!(
+                result,
+                vec![
+                    ([1, 1, 1], [6, 6, 6]),
+                    ([2, 2, 2], [7, 7, 7]),
+                    ([3, 3, 3], [8, 8, 8])
+                ]
+            )
+        }
+
+        #[test]
+        fn nulled_cursor_can_be_iterated_forwards() {
+            let env = nulled_env_with_foo_database();
+            let txn = env.tx_begin_read();
+
+            let cursor = txn
+                .txn()
+                .open_ro_cursor(LmdbDatabase::new_null(42))
+                .unwrap();
+
+            let (k, v) = cursor.get(None, None, MDB_FIRST).unwrap();
+            assert_eq!(k, Some([1, 1, 1].as_slice()));
+            assert_eq!(v, [6, 6, 6].as_slice());
+
+            let (k, v) = cursor.get(None, None, MDB_NEXT).unwrap();
+            assert_eq!(k, Some([2, 2, 2].as_slice()));
+            assert_eq!(v, [7, 7, 7].as_slice());
+
+            let (k, v) = cursor.get(None, None, MDB_NEXT).unwrap();
+            assert_eq!(k, Some([3, 3, 3].as_slice()));
+            assert_eq!(v, [8, 8, 8].as_slice());
+
+            let result = cursor.get(None, None, MDB_NEXT);
+            assert_eq!(result, Err(lmdb::Error::NotFound));
+        }
+
+        #[test]
+        fn nulled_cursor_can_be_iterated_backwards() {
+            let env = nulled_env_with_foo_database();
+            let txn = env.tx_begin_read();
+            let cursor = txn.txn().open_ro_cursor(TEST_DATABASE).unwrap();
+
+            let (k, v) = cursor.get(None, None, MDB_LAST).unwrap();
+            assert_eq!(k, Some([3, 3, 3].as_slice()));
+            assert_eq!(v, [8, 8, 8].as_slice());
+
+            let (k, v) = cursor.get(None, None, MDB_NEXT).unwrap();
+            assert_eq!(k, Some([2, 2, 2].as_slice()));
+            assert_eq!(v, [7, 7, 7].as_slice());
+
+            let (k, v) = cursor.get(None, None, MDB_NEXT).unwrap();
+            assert_eq!(k, Some([1, 1, 1].as_slice()));
+            assert_eq!(v, [6, 6, 6].as_slice());
+
+            let result = cursor.get(None, None, MDB_NEXT);
+            assert_eq!(result, Err(lmdb::Error::NotFound));
+        }
+
+        #[test]
+        fn nulled_cursor_can_start_at_specified_key() {
+            let env = nulled_env_with_foo_database();
+            let txn = env.tx_begin_read();
+
+            let cursor = txn.txn().open_ro_cursor(TEST_DATABASE).unwrap();
+            let (k, v) = cursor
+                .get(Some([2u8, 2, 2].as_slice()), None, MDB_SET_RANGE)
+                .unwrap();
+            assert_eq!(k, Some([2, 2, 2].as_slice()));
+            assert_eq!(v, [7, 7, 7].as_slice());
+
+            let (k, v) = cursor
+                .get(Some([2u8, 1, 0].as_slice()), None, MDB_SET_RANGE)
+                .unwrap();
+            assert_eq!(k, Some([2, 2, 2].as_slice()));
+            assert_eq!(v, [7, 7, 7].as_slice());
+        }
+
+        fn nulled_env_with_foo_database() -> LmdbEnv {
+            LmdbEnv::new_null_with()
+                .database(TEST_DATABASE_NAME, TEST_DATABASE)
+                .entry(&[1, 1, 1], &[6, 6, 6])
+                .entry(&[2, 2, 2], &[7, 7, 7])
+                .entry(&[3, 3, 3], &[8, 8, 8])
+                .build()
+                .build()
+        }
+    }
+
+    fn create_test_database(env: &lmdb::Environment) {
+        env.create_db(Some("foo"), DatabaseFlags::empty()).unwrap();
+        let database = env.open_db(Some("foo")).unwrap();
+        {
+            let mut tx = env.begin_rw_txn().unwrap();
+            tx.put(database, b"hello", b"world", WriteFlags::empty())
+                .unwrap();
+            tx.put(database, b"hello2", b"world2", WriteFlags::empty())
+                .unwrap();
+            tx.commit().unwrap();
+        }
+    }
+
+    fn create_real_lmdb_env(path: impl AsRef<Path>) -> lmdb::Environment {
+        lmdb::Environment::new()
+            .set_max_dbs(1)
+            .set_map_size(1024 * 1024)
+            .set_flags(
+                EnvironmentFlags::NO_SUB_DIR
+                    | EnvironmentFlags::NO_TLS
+                    | EnvironmentFlags::NO_READAHEAD,
+            )
+            .open(path.as_ref())
+            .expect("Could not create LMDB environment")
+    }
+
+    struct FileDropGuard<'a> {
+        path: &'a Path,
+    }
+
+    impl<'a> FileDropGuard<'a> {
+        fn new(path: &'a Path) -> Self {
+            Self { path }
+        }
+    }
+
+    impl<'a> Drop for FileDropGuard<'a> {
+        fn drop(&mut self) {
+            if self.path.exists() {
+                let _ = std::fs::remove_file(self.path);
+            }
+        }
     }
 }

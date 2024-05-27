@@ -1,9 +1,14 @@
 use crate::{LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction};
 use lmdb::{DatabaseFlags, WriteFlags};
-use std::{array::TryFromSliceError, net::SocketAddrV6, ops::Deref, sync::Arc};
+use std::{
+    array::TryFromSliceError,
+    net::SocketAddrV6,
+    ops::Deref,
+    sync::Arc,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 pub struct LmdbPeerStore {
-    _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
 }
 
@@ -13,33 +18,30 @@ impl LmdbPeerStore {
             .environment
             .create_db(Some("peers"), DatabaseFlags::empty())?;
 
-        Ok(Self {
-            _env: env,
-            database,
-        })
+        Ok(Self { database })
     }
 
     pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6, time: SystemTime) {
         txn.put(
             self.database,
-            &EndpointKey2::from(endpoint),
-            &[0; 0],
+            &EndpointBytes::from(endpoint),
+            &TimeBytes::from(time),
             WriteFlags::empty(),
         )
         .unwrap();
     }
 
     pub fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6) {
-        txn.delete(self.database, &EndpointKey2::from(endpoint), None)
+        txn.delete(self.database, &EndpointBytes::from(endpoint), None)
             .unwrap();
     }
 
     pub fn exists(&self, txn: &dyn Transaction, endpoint: &SocketAddrV6) -> bool {
-        txn.exists(self.database, &EndpointKey2::from(endpoint))
+        txn.exists(self.database, &EndpointBytes::from(endpoint))
     }
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
@@ -53,18 +55,22 @@ impl LmdbPeerStore {
     pub fn iter<'txn>(
         &self,
         txn: &'txn dyn Transaction,
-    ) -> impl Iterator<Item = SocketAddrV6> + 'txn {
+    ) -> impl Iterator<Item = (SocketAddrV6, SystemTime)> + 'txn {
         txn.open_ro_cursor(self.database)
             .expect("Could not read peer store database")
             .iter_start()
             .map(|i| i.unwrap())
-            .map(|(k, _)| EndpointKey2::try_from(k).unwrap().into())
+            .map(|(k, v)| {
+                let peer: SocketAddrV6 = EndpointBytes::try_from(k).unwrap().into();
+                let time: SystemTime = TimeBytes::try_from(v).unwrap().into();
+                (peer, time)
+            })
     }
 }
 
-pub struct EndpointKey2([u8; 18]);
+pub struct EndpointBytes([u8; 18]);
 
-impl Deref for EndpointKey2 {
+impl Deref for EndpointBytes {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
@@ -72,7 +78,7 @@ impl Deref for EndpointKey2 {
     }
 }
 
-impl TryFrom<&[u8]> for EndpointKey2 {
+impl TryFrom<&[u8]> for EndpointBytes {
     type Error = TryFromSliceError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
@@ -81,7 +87,7 @@ impl TryFrom<&[u8]> for EndpointKey2 {
     }
 }
 
-impl From<&SocketAddrV6> for EndpointKey2 {
+impl From<&SocketAddrV6> for EndpointBytes {
     fn from(value: &SocketAddrV6) -> Self {
         let mut bytes = [0; 18];
         let (ip, port) = bytes.split_at_mut(16);
@@ -91,8 +97,8 @@ impl From<&SocketAddrV6> for EndpointKey2 {
     }
 }
 
-impl From<EndpointKey2> for SocketAddrV6 {
-    fn from(value: EndpointKey2) -> Self {
+impl From<EndpointBytes> for SocketAddrV6 {
+    fn from(value: EndpointBytes) -> Self {
         let (ip, port) = value.0.split_at(16);
         let ip: [u8; 16] = ip.try_into().unwrap();
         let port: [u8; 2] = port.try_into().unwrap();
@@ -100,11 +106,51 @@ impl From<EndpointKey2> for SocketAddrV6 {
     }
 }
 
+pub struct TimeBytes([u8; 8]);
+
+impl Deref for TimeBytes {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl TryFrom<&[u8]> for TimeBytes {
+    type Error = TryFromSliceError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        let buffer: [u8; 8] = value.try_into()?;
+        Ok(Self(buffer))
+    }
+}
+
+impl From<SystemTime> for TimeBytes {
+    fn from(value: SystemTime) -> Self {
+        Self(
+            (value
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as u64)
+                .to_be_bytes(),
+        )
+    }
+}
+
+impl From<TimeBytes> for SystemTime {
+    fn from(value: TimeBytes) -> Self {
+        UNIX_EPOCH + Duration::from_millis(u64::from_be_bytes(value.0))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{DeleteEvent, PutEvent};
-    use std::net::Ipv6Addr;
+    use std::{
+        net::Ipv6Addr,
+        time::{Duration, UNIX_EPOCH},
+    };
 
     #[test]
     fn empty_store() {
@@ -123,14 +169,15 @@ mod tests {
         let put_tracker = txn.track_puts();
 
         let key = TEST_PEER_A;
-        fixture.store.put(&mut txn, &key);
+        let time = UNIX_EPOCH + Duration::from_secs(1261440000);
+        fixture.store.put(&mut txn, &key, time);
 
         assert_eq!(
             put_tracker.output(),
             vec![PutEvent {
                 database: LmdbDatabase::new_null(42),
                 key: vec![0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0x3, 0xE8],
-                value: Vec::new(),
+                value: 1261440000000u64.to_be_bytes().to_vec(),
                 flags: WriteFlags::empty()
             }]
         )
@@ -166,7 +213,7 @@ mod tests {
             delete_tracker.output(),
             vec![DeleteEvent {
                 database: LmdbDatabase::new_null(42),
-                key: EndpointKey2::from(&TEST_PEER_A).to_vec()
+                key: EndpointBytes::from(&TEST_PEER_A).to_vec()
             }]
         )
     }
@@ -194,7 +241,7 @@ mod tests {
             let mut env = LmdbEnv::new_null_with().database("peers", LmdbDatabase::new_null(42));
 
             for entry in entries {
-                env = env.entry(&EndpointKey2::from(&entry), &[]);
+                env = env.entry(&EndpointBytes::from(&entry), &[]);
             }
 
             Self::with_env(env.build().build())

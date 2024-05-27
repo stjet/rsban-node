@@ -1,6 +1,6 @@
 use super::TransactionHandle;
 use rsnano_store_lmdb::LmdbPeerStore;
-use std::{net::SocketAddrV6, slice, sync::Arc};
+use std::{net::SocketAddrV6, slice, sync::Arc, time::SystemTime};
 
 pub struct LmdbPeerStoreHandle(Arc<LmdbPeerStore>);
 
@@ -23,7 +23,9 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_put(
     port: u16,
 ) {
     let endpoint = to_socket_addr_v6(address, port);
-    handle.0.put(txn.as_write_txn(), &endpoint);
+    handle
+        .0
+        .put(txn.as_write_txn(), &endpoint, SystemTime::now());
 }
 
 #[no_mangle]

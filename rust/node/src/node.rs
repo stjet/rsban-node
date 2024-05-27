@@ -1129,14 +1129,14 @@ impl Node {
             return;
         }
 
-        let initial_peers: Vec<SocketAddrV6> = {
+        let initial_peers: Vec<(SocketAddrV6, SystemTime)> = {
             let tx = self.ledger.read_txn();
             self.ledger.store.peer.iter(&tx).map(|i| i.into()).collect()
         };
 
         info!("Adding cached initial peers: {}", initial_peers.len());
 
-        for peer in initial_peers {
+        for (peer, _) in initial_peers {
             self.channels.merge_peer(&peer);
         }
     }
@@ -1531,7 +1531,10 @@ impl NodeExt for Arc<Node> {
             let mut tx = self.ledger.rw_txn();
             self.ledger.store.peer.clear(&mut tx);
             for endpoint in endpoints {
-                self.ledger.store.peer.put(&mut tx, &endpoint);
+                self.ledger
+                    .store
+                    .peer
+                    .put(&mut tx, &endpoint, SystemTime::now());
             }
         }
 

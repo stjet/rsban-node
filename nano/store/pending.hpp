@@ -29,6 +29,5 @@ public:
 	virtual store::iterator<nano::pending_key, nano::pending_info> begin (store::transaction const &, nano::pending_key const &) const = 0;
 	virtual store::iterator<nano::pending_key, nano::pending_info> begin (store::transaction const &) const = 0;
 	virtual store::iterator<nano::pending_key, nano::pending_info> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, store::iterator<nano::pending_key, nano::pending_info>, store::iterator<nano::pending_key, nano::pending_info>)> const & action_a) const = 0;
 };
 } // namespace nano::store

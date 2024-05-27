@@ -1,12 +1,11 @@
 use crate::{
-    iterator::DbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
-    Transaction,
+    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::Amount;
 use std::sync::Arc;
 
-pub type OnlineWeightIterator = Box<dyn DbIterator<u64, Amount>>;
+pub type OnlineWeightIterator<'txn> = BinaryDbIterator<'txn, u64, Amount>;
 
 pub struct LmdbOnlineWeightStore {
     _env: Arc<LmdbEnv>,
@@ -45,11 +44,11 @@ impl LmdbOnlineWeightStore {
         txn.delete(self.database, &time_bytes, None).unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> OnlineWeightIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn rbegin(&self, txn: &dyn Transaction) -> OnlineWeightIterator {
+    pub fn rbegin<'txn>(&self, txn: &'txn dyn Transaction) -> OnlineWeightIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, false)
     }
 

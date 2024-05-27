@@ -235,7 +235,7 @@ impl Ledger {
                 let mut account_count = 0;
                 let rep_weights =
                     RepWeights::new(Arc::clone(&self.store.rep_weight), Amount::zero());
-                while !i.eq(n.as_ref()) {
+                while !i.eq(&n) {
                     let info = i.current().unwrap().1;
                     block_count += info.block_count;
                     account_count += 1;
@@ -257,7 +257,7 @@ impl Ledger {
                 .confirmation_height
                 .for_each_par(&|_txn, mut i, n| {
                     let mut cemented_count = 0;
-                    while !i.eq(n.as_ref()) {
+                    while !i.eq(&n) {
                         cemented_count += i.current().unwrap().1.height;
                         i.next();
                     }

@@ -1,12 +1,14 @@
 use crate::{
-    iterator::DbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction,
-    Transaction,
+    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{EndpointKey, NoValue};
+use rsnano_core::{
+    utils::{BufferReader, Deserialize},
+    EndpointKey, NoValue,
+};
 use std::sync::Arc;
 
-pub type PeerIterator = Box<dyn DbIterator<EndpointKey, NoValue>>;
+pub type PeerIterator<'txn> = BinaryDbIterator<'txn, EndpointKey, NoValue>;
 
 pub struct LmdbPeerStore {
     _env: Arc<LmdbEnv>,
@@ -56,8 +58,22 @@ impl LmdbPeerStore {
         txn.clear_db(self.database).unwrap();
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> PeerIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> PeerIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
+    }
+
+    pub fn iter<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+    ) -> impl Iterator<Item = EndpointKey> + 'txn {
+        txn.open_ro_cursor(self.database)
+            .expect("Could not read peer store database")
+            .iter_start()
+            .map(|i| i.unwrap())
+            .map(|(k, _)| {
+                let mut reader = BufferReader::new(k);
+                EndpointKey::deserialize(&mut reader).unwrap()
+            })
     }
 }
 

@@ -1,50 +1,33 @@
 use crate::{nullable_lmdb::RoCursor, LmdbDatabase, Transaction};
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{BufferReader, Deserialize, FixedSizeSerialize};
-use std::{any::Any, ffi::c_uint};
+use std::ffi::c_uint;
 
-pub trait DbIterator<K, V> {
-    fn is_end(&self) -> bool;
-    fn current(&self) -> Option<(&K, &V)>;
-    fn next(&mut self);
-    fn eq(&self, other: &dyn DbIterator<K, V>) -> bool;
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-pub trait DbIteratorImpl: PartialEq {
-    fn current(&self) -> Option<(&[u8], &[u8])>;
-    fn next(&mut self);
-}
-
-pub struct BinaryDbIterator<K, V, I>
+pub struct BinaryDbIterator<'txn, K, V>
 where
     K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
-    I: DbIteratorImpl + PartialEq,
 {
-    iterator_impl: Option<I>,
+    iterator_impl: Option<LmdbIteratorImpl<'txn>>,
     current: Option<(K, V)>,
 }
 
-impl<K, V, I> PartialEq for BinaryDbIterator<K, V, I>
+impl<'txn, K, V> PartialEq for BinaryDbIterator<'txn, K, V>
 where
     K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
-    I: DbIteratorImpl + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.iterator_impl == other.iterator_impl
     }
 }
 
-impl<K, V, I> BinaryDbIterator<K, V, I>
+impl<'txn, K, V> BinaryDbIterator<'txn, K, V>
 where
     K: FixedSizeSerialize + Deserialize<Target = K>,
     V: Deserialize<Target = V>,
-    I: DbIteratorImpl + PartialEq,
 {
-    pub fn new(iterator_impl: I) -> Self {
+    pub fn new(iterator_impl: LmdbIteratorImpl<'txn>) -> Self {
         let mut result = Self {
             iterator_impl: Some(iterator_impl),
             current: None,
@@ -68,81 +51,62 @@ where
         };
     }
 
-    pub fn take_impl(&mut self) -> I {
+    pub fn take_impl(&mut self) -> LmdbIteratorImpl<'txn> {
         self.iterator_impl.take().unwrap()
     }
-}
 
-impl<K, V, I> DbIterator<K, V> for BinaryDbIterator<K, V, I>
-where
-    K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
-    V: Deserialize<Target = V> + 'static,
-    I: DbIteratorImpl + PartialEq + 'static,
-{
-    fn is_end(&self) -> bool {
+    pub fn is_end(&self) -> bool {
         self.iterator_impl.as_ref().unwrap().current().is_none()
     }
 
-    fn current(&self) -> Option<(&K, &V)> {
+    pub fn current(&self) -> Option<(&K, &V)> {
         self.current.as_ref().map(|(k, v)| (k, v))
     }
 
-    fn next(&mut self) {
+    pub fn next(&mut self) {
         self.iterator_impl.as_mut().unwrap().next();
         self.load_current();
     }
 
-    fn eq(&self, other: &dyn DbIterator<K, V>) -> bool {
-        let other = other
-            .as_any()
-            .downcast_ref::<BinaryDbIterator<K, V, I>>()
-            .unwrap();
+    pub fn eq(&self, other: &BinaryDbIterator<K, V>) -> bool {
         self.iterator_impl.eq(&other.iterator_impl)
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
 }
 
-pub struct LmdbIteratorImpl {
-    current: Option<(&'static [u8], &'static [u8])>,
-    cursor: Option<RoCursor>,
+pub struct LmdbIteratorImpl<'txn> {
+    current: Option<(&'txn [u8], &'txn [u8])>,
+    cursor: Option<RoCursor<'txn>>,
 }
 
-impl LmdbIteratorImpl {
+impl<'txn> LmdbIteratorImpl<'txn> {
     pub fn new_iterator<K, V>(
-        txn: &dyn Transaction,
+        txn: &'txn dyn Transaction,
         dbi: LmdbDatabase,
         key_val: Option<&[u8]>,
         direction_asc: bool,
-    ) -> Box<dyn DbIterator<K, V>>
+    ) -> BinaryDbIterator<'txn, K, V>
     where
         K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
         let iterator_impl = Self::new(txn, dbi, key_val, direction_asc);
-        Box::new(BinaryDbIterator::new(iterator_impl))
+        BinaryDbIterator::new(iterator_impl)
     }
 
-    pub fn null_iterator<K, V>() -> Box<dyn DbIterator<K, V>>
+    pub fn null_iterator<K, V>() -> BinaryDbIterator<'txn, K, V>
     where
         K: FixedSizeSerialize + Deserialize<Target = K> + 'static,
         V: Deserialize<Target = V> + 'static,
     {
-        Box::new(BinaryDbIterator::new(Self::null()))
+        BinaryDbIterator::new(Self::null())
     }
 
     pub fn new(
-        txn: &dyn Transaction,
+        txn: &'txn dyn Transaction,
         dbi: LmdbDatabase,
         key_val: Option<&[u8]>,
         direction_asc: bool,
-    ) -> Self {
+    ) -> LmdbIteratorImpl<'txn> {
         let operation = if key_val.is_some() {
             MDB_SET_RANGE
         } else if direction_asc {
@@ -173,25 +137,23 @@ impl LmdbIteratorImpl {
         };
     }
 
-    pub fn null() -> Self {
-        Self {
+    pub fn null() -> LmdbIteratorImpl<'static> {
+        LmdbIteratorImpl::<'static> {
             current: None,
             cursor: None,
         }
     }
-}
 
-impl DbIteratorImpl for LmdbIteratorImpl {
-    fn current(&self) -> Option<(&[u8], &[u8])> {
+    pub fn current(&self) -> Option<(&[u8], &[u8])> {
         self.current
     }
 
-    fn next(&mut self) {
+    pub fn next(&mut self) {
         self.load_current(None, MDB_NEXT);
     }
 }
 
-impl PartialEq for LmdbIteratorImpl {
+impl<'txn> PartialEq for LmdbIteratorImpl<'txn> {
     fn eq(&self, other: &Self) -> bool {
         self.current.map(|(k, _)| k) == other.current.map(|(k, _)| k)
     }

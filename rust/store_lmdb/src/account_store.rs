@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    nullable_lmdb::ConfiguredDatabase, parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -12,7 +12,7 @@ use rsnano_core::{
 };
 use std::sync::Arc;
 
-pub type AccountIterator = Box<dyn DbIterator<Account, AccountInfo>>;
+pub type AccountIterator<'txn> = BinaryDbIterator<'txn, Account, AccountInfo>;
 
 pub struct LmdbAccountStore {
     env: Arc<LmdbEnv>,
@@ -81,15 +81,15 @@ impl LmdbAccountStore {
             .unwrap();
     }
 
-    pub fn begin_account(
+    pub fn begin_account<'txn>(
         &self,
-        transaction: &dyn Transaction,
+        transaction: &'txn dyn Transaction,
         account: &Account,
-    ) -> AccountIterator {
+    ) -> AccountIterator<'txn> {
         LmdbIteratorImpl::new_iterator(transaction, self.database, Some(account.as_bytes()), true)
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction) -> AccountIterator {
+    pub fn begin<'txn>(&self, transaction: &'txn dyn Transaction) -> AccountIterator<'txn> {
         LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
@@ -342,7 +342,7 @@ mod tests {
 
         let balance_sum = Mutex::new(Amount::zero());
         fixture.store.for_each_par(&|_, mut begin, end| {
-            while !begin.eq(end.as_ref()) {
+            while !begin.eq(&end) {
                 if let Some((_, v)) = begin.current() {
                     *balance_sum.lock().unwrap() += v.balance
                 }

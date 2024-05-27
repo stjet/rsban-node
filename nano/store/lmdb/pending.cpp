@@ -101,23 +101,3 @@ nano::store::iterator<nano::pending_key, nano::pending_info> nano::store::lmdb::
 	return nano::store::iterator<nano::pending_key, nano::pending_info> (nullptr);
 }
 
-namespace
-{
-void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
-{
-	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const *> (context);
-	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
-	auto begin{ to_iterator (begin_handle) };
-	auto end{ to_iterator (end_handle) };
-	(*action) (txn, std::move (begin), std::move (end));
-}
-void for_each_par_delete_context (void * context)
-{
-}
-}
-
-void nano::store::lmdb::pending::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const & action_a) const
-{
-	auto context = (void *)&action_a;
-	rsnano::rsn_lmdb_pending_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
-}

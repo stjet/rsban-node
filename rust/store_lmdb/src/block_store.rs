@@ -1,7 +1,6 @@
 use crate::{
-    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
-    BLOCK_TEST_DATABASE,
+    nullable_lmdb::ConfiguredDatabase, parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction, BLOCK_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -14,7 +13,7 @@ use rsnano_core::{
 };
 use std::sync::Arc;
 
-pub type BlockIterator = Box<dyn DbIterator<BlockHash, BlockWithSideband>>;
+pub type BlockIterator<'txn> = BinaryDbIterator<'txn, BlockHash, BlockWithSideband>;
 
 pub struct LmdbBlockStore {
     env: Arc<LmdbEnv>,
@@ -143,11 +142,15 @@ impl LmdbBlockStore {
         txn.count(self.database)
     }
 
-    pub fn begin(&self, transaction: &dyn Transaction) -> BlockIterator {
+    pub fn begin<'txn>(&self, transaction: &'txn dyn Transaction) -> BlockIterator<'txn> {
         LmdbIteratorImpl::new_iterator(transaction, self.database, None, true)
     }
 
-    pub fn begin_at_hash(&self, transaction: &dyn Transaction, hash: &BlockHash) -> BlockIterator {
+    pub fn begin_at_hash<'txn>(
+        &self,
+        transaction: &'txn dyn Transaction,
+        hash: &BlockHash,
+    ) -> BlockIterator<'txn> {
         LmdbIteratorImpl::new_iterator(transaction, self.database, Some(hash.as_bytes()), true)
     }
 

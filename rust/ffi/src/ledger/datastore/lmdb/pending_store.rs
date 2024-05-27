@@ -1,14 +1,8 @@
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 use num::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockHash, Epoch, PendingInfo, PendingKey};
 use rsnano_store_lmdb::LmdbPendingStore;
-use std::{ffi::c_void, sync::Arc};
-
-use crate::VoidPointerCallback;
-
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use std::sync::Arc;
 
 pub struct LmdbPendingStoreHandle(Arc<LmdbPendingStore>);
 
@@ -155,21 +149,4 @@ pub unsafe extern "C" fn rsn_lmdb_pending_store_any(
     (*handle)
         .0
         .any((*txn).as_txn(), &Account::from_ptr(account))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pending_store_for_each_par(
-    handle: *mut LmdbPendingStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

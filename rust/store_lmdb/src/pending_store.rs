@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal_u512, LmdbDatabase,
+    nullable_lmdb::ConfiguredDatabase, parallel_traversal_u512, BinaryDbIterator, LmdbDatabase,
     LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     PENDING_TEST_DATABASE,
 };
@@ -13,7 +13,7 @@ use rsnano_core::{
     Account, BlockHash, PendingInfo, PendingKey,
 };
 
-pub type PendingIterator = Box<dyn DbIterator<PendingKey, PendingInfo>>;
+pub type PendingIterator<'txn> = BinaryDbIterator<'txn, PendingKey, PendingInfo>;
 
 pub struct LmdbPendingStore {
     env: Arc<LmdbEnv>,
@@ -89,11 +89,15 @@ impl LmdbPendingStore {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> PendingIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> PendingIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_key(&self, txn: &dyn Transaction, key: &PendingKey) -> PendingIterator {
+    pub fn begin_at_key<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        key: &PendingKey,
+    ) -> PendingIterator<'txn> {
         let key_bytes = key.to_bytes();
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }

@@ -27,6 +27,5 @@ public:
 	virtual store::iterator<nano::block_hash, std::nullptr_t> begin (store::transaction const & transaction_a, nano::block_hash const & hash_a) const = 0;
 	virtual store::iterator<nano::block_hash, std::nullptr_t> begin (store::transaction const & transaction_a) const = 0;
 	virtual store::iterator<nano::block_hash, std::nullptr_t> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, store::iterator<nano::block_hash, std::nullptr_t>, store::iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const = 0;
 };
 } // namespace nano::store

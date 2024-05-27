@@ -169,16 +169,23 @@ impl BacklogPopulationThread {
 
                 let mut count = 0u32;
                 let mut i = self.ledger.store.account.begin_account(&transaction, &next);
-                // 			auto const end = ledger.store.account ().end ();
-                while let Some((account, _)) = i.current() {
+                while let Some((&account, _)) = i.current() {
                     if count >= chunk_size {
                         break;
                     }
-                    transaction.refresh_if_needed(Duration::from_millis(500));
+                    if transaction.is_refresh_needed() {
+                        drop(i);
+                        transaction.refresh();
+                        i = self
+                            .ledger
+                            .store
+                            .account
+                            .begin_account(&transaction, &account);
+                    }
 
                     self.stats.inc(StatType::Backlog, DetailType::Total);
 
-                    self.activate(&transaction, account);
+                    self.activate(&transaction, &account);
                     next = (account.number().overflowing_add(U256::from(1)).0).into();
 
                     i.next();

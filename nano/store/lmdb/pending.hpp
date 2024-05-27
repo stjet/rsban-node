@@ -22,6 +22,5 @@ public:
 	nano::store::iterator<nano::pending_key, nano::pending_info> begin (nano::store::transaction const & transaction_a, nano::pending_key const & key_a) const override;
 	nano::store::iterator<nano::pending_key, nano::pending_info> begin (nano::store::transaction const & transaction_a) const override;
 	nano::store::iterator<nano::pending_key, nano::pending_info> end () const override;
-	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::pending_key, nano::pending_info>, nano::store::iterator<nano::pending_key, nano::pending_info>)> const & action_a) const override;
 };
 }

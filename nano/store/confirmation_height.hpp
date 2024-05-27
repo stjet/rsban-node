@@ -35,6 +35,5 @@ public:
 	virtual iterator<nano::account, nano::confirmation_height_info> begin (store::transaction const & transaction_a, nano::account const & account_a) const = 0;
 	virtual iterator<nano::account, nano::confirmation_height_info> begin (store::transaction const & transaction_a) const = 0;
 	virtual iterator<nano::account, nano::confirmation_height_info> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, iterator<nano::account, nano::confirmation_height_info>, iterator<nano::account, nano::confirmation_height_info>)> const &) const = 0;
 };
 } // namespace nano::store

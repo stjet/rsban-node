@@ -11,7 +11,7 @@ mod nullable_lmdb;
 mod rep_weight_store;
 mod wallet_store;
 
-pub use iterator::{BinaryDbIterator, DbIterator, DbIteratorImpl, LmdbIteratorImpl};
+pub use iterator::{BinaryDbIterator, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 
 pub use lmdb_env::*;
@@ -72,6 +72,7 @@ pub trait Transaction {
     fn as_any(&self) -> &dyn Any;
     fn refresh(&mut self);
     fn refresh_if_needed(&mut self, max_age: Duration);
+    fn is_refresh_needed(&self) -> bool;
     fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn exists(&self, db: LmdbDatabase, key: &[u8]) -> bool {
         match self.get(db, key) {
@@ -196,6 +197,10 @@ impl Transaction for LmdbReadTransaction {
     fn refresh(&mut self) {
         self.reset();
         self.renew();
+    }
+
+    fn is_refresh_needed(&self) -> bool {
+        self.start.elapsed() > Duration::from_millis(500)
     }
 
     fn refresh_if_needed(&mut self, max_age: Duration) {
@@ -403,6 +408,10 @@ impl Transaction for LmdbWriteTransaction {
 
     fn count(&self, database: LmdbDatabase) -> u64 {
         self.rw_txn().count(database)
+    }
+
+    fn is_refresh_needed(&self) -> bool {
+        self.start.elapsed() > Duration::from_millis(500)
     }
 
     fn refresh_if_needed(&mut self, max_age: Duration) {

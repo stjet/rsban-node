@@ -2,10 +2,10 @@ use super::ConfiguredDatabase;
 use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use std::{cell::Cell, collections::btree_map};
 
-pub struct RoCursor(RoCursorStrategy);
+pub struct RoCursor<'txn>(RoCursorStrategy<'txn>);
 
-impl RoCursor {
-    pub fn new_null(database: ConfiguredDatabase) -> Self {
+impl<'txn> RoCursor<'txn> {
+    pub fn new_null(database: &'txn ConfiguredDatabase) -> Self {
         Self(RoCursorStrategy::Nulled(RoCursorStub {
             database,
             current: Cell::new(0),
@@ -13,11 +13,11 @@ impl RoCursor {
         }))
     }
 
-    pub fn new(cursor: lmdb::RoCursor<'static>) -> Self {
+    pub fn new(cursor: lmdb::RoCursor<'txn>) -> Self {
         Self(RoCursorStrategy::Real(cursor))
     }
 
-    pub fn iter_start(&mut self) -> Iter {
+    pub fn iter_start(&mut self) -> Iter<'txn> {
         match &mut self.0 {
             RoCursorStrategy::Real(s) => Iter::Real(lmdb::Cursor::iter_start(s)),
             RoCursorStrategy::Nulled(s) => s.iter_start(),
@@ -29,7 +29,7 @@ impl RoCursor {
         key: Option<&[u8]>,
         data: Option<&[u8]>,
         op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
+    ) -> lmdb::Result<(Option<&'txn [u8]>, &'txn [u8])> {
         match &self.0 {
             RoCursorStrategy::Real(s) => lmdb::Cursor::get(s, key, data, op),
             RoCursorStrategy::Nulled(s) => s.get(key, data, op),
@@ -37,25 +37,25 @@ impl RoCursor {
     }
 }
 
-enum RoCursorStrategy {
+enum RoCursorStrategy<'txn> {
     //todo don't use static lifetimes!
-    Real(lmdb::RoCursor<'static>),
-    Nulled(RoCursorStub),
+    Real(lmdb::RoCursor<'txn>),
+    Nulled(RoCursorStub<'txn>),
 }
 
-struct RoCursorStub {
-    database: ConfiguredDatabase,
+struct RoCursorStub<'txn> {
+    database: &'txn ConfiguredDatabase,
     current: Cell<i32>,
     ascending: Cell<bool>,
 }
 
-impl RoCursorStub {
+impl<'txn> RoCursorStub<'txn> {
     fn get(
         &self,
         key: Option<&[u8]>,
         _data: Option<&[u8]>,
         op: u32,
-    ) -> lmdb::Result<(Option<&'static [u8]>, &'static [u8])> {
+    ) -> lmdb::Result<(Option<&'txn [u8]>, &'txn [u8])> {
         if op == MDB_FIRST {
             self.current.set(0);
             self.ascending.set(true);
@@ -97,16 +97,11 @@ impl RoCursorStub {
             .entries
             .iter()
             .nth(current as usize)
-            .map(|(k, v)| unsafe {
-                (
-                    Some(std::mem::transmute::<&'_ [u8], &'static [u8]>(k.as_slice())),
-                    std::mem::transmute::<&'_ [u8], &'static [u8]>(v.as_slice()),
-                )
-            })
+            .map(|(k, v)| (Some(k.as_slice()), v.as_slice()))
             .ok_or(lmdb::Error::NotFound)
     }
 
-    fn iter_start(&self) -> Iter {
+    fn iter_start(&self) -> Iter<'txn> {
         Iter::Stub(self.database.entries.iter())
     }
 }

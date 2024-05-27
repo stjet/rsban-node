@@ -1182,7 +1182,13 @@ impl Node {
                 }
                 depth += 1;
                 if depth % batch_read_size_a == 0 {
+                    drop(it);
                     tx.refresh();
+                    it = self
+                        .ledger
+                        .store
+                        .confirmation_height
+                        .begin_at_account(&tx, &account);
                 }
             }
             if !hash.is_zero() {

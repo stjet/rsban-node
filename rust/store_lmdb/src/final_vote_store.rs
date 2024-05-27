@@ -1,12 +1,12 @@
 use crate::{
-    iterator::DbIterator, parallel_traversal_u512, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    parallel_traversal_u512, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
     LmdbReadTransaction, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
 use std::sync::Arc;
 
-pub type FinalVoteIterator = Box<dyn DbIterator<QualifiedRoot, BlockHash>>;
+pub type FinalVoteIterator<'txn> = BinaryDbIterator<'txn, QualifiedRoot, BlockHash>;
 
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
@@ -52,11 +52,15 @@ impl LmdbFinalVoteStore {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> FinalVoteIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> FinalVoteIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_root(&self, txn: &dyn Transaction, root: &QualifiedRoot) -> FinalVoteIterator {
+    pub fn begin_at_root<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        root: &QualifiedRoot,
+    ) -> FinalVoteIterator<'txn> {
         let key_bytes = root.to_bytes();
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(&key_bytes), true)
     }
@@ -84,19 +88,21 @@ impl LmdbFinalVoteStore {
     pub fn del(&self, txn: &mut LmdbWriteTransaction, root: &Root) {
         let mut final_vote_qualified_roots = Vec::new();
 
-        let mut it = self.begin_at_root(
-            txn,
-            &QualifiedRoot {
-                root: *root,
-                previous: BlockHash::zero(),
-            },
-        );
-        while let Some((k, _)) = it.current() {
-            if k.root != *root {
-                break;
+        {
+            let mut it = self.begin_at_root(
+                txn,
+                &QualifiedRoot {
+                    root: *root,
+                    previous: BlockHash::zero(),
+                },
+            );
+            while let Some((k, _)) = it.current() {
+                if k.root != *root {
+                    break;
+                }
+                final_vote_qualified_roots.push(k.clone());
+                it.next();
             }
-            final_vote_qualified_roots.push(k.clone());
-            it.next();
         }
 
         for qualified_root in final_vote_qualified_roots {

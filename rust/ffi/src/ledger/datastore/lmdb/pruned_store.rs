@@ -1,11 +1,7 @@
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
-use crate::VoidPointerCallback;
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 use rsnano_core::BlockHash;
 use rsnano_store_lmdb::LmdbPrunedStore;
-use std::{ffi::c_void, sync::Arc};
+use std::sync::Arc;
 
 pub struct LmdbPrunedStoreHandle(Arc<LmdbPrunedStore>);
 
@@ -98,21 +94,4 @@ pub unsafe extern "C" fn rsn_lmdb_pruned_store_clear(
     txn: *mut TransactionHandle,
 ) {
     (*handle).0.clear((*txn).as_write_txn())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_pruned_store_for_each_par(
-    handle: *mut LmdbPrunedStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

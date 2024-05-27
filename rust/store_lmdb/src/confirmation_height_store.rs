@@ -1,6 +1,6 @@
 use crate::{
-    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    nullable_lmdb::ConfiguredDatabase, parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv,
+    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
     CONFIRMATION_HEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -10,7 +10,7 @@ use rsnano_core::{
 };
 use std::sync::Arc;
 
-pub type ConfirmationHeightIterator = Box<dyn DbIterator<Account, ConfirmationHeightInfo>>;
+pub type ConfirmationHeightIterator<'txn> = BinaryDbIterator<'txn, Account, ConfirmationHeightInfo>;
 
 pub struct LmdbConfirmationHeightStore {
     env: Arc<LmdbEnv>,
@@ -73,15 +73,15 @@ impl LmdbConfirmationHeightStore {
         txn.clear_db(self.database).unwrap()
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> ConfirmationHeightIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> ConfirmationHeightIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_account(
+    pub fn begin_at_account<'txn>(
         &self,
-        txn: &dyn Transaction,
+        txn: &'txn dyn Transaction,
         account: &Account,
-    ) -> ConfirmationHeightIterator {
+    ) -> ConfirmationHeightIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(account.as_bytes()), true)
     }
 

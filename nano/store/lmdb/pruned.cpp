@@ -74,23 +74,3 @@ nano::store::iterator<nano::block_hash, std::nullptr_t> nano::store::lmdb::prune
 	return nano::store::iterator<nano::block_hash, std::nullptr_t> (nullptr);
 }
 
-namespace
-{
-void for_each_par_wrapper (void * context, rsnano::TransactionHandle * txn_handle, rsnano::LmdbIteratorHandle * begin_handle, rsnano::LmdbIteratorHandle * end_handle)
-{
-	auto action = static_cast<std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, std::nullptr_t>, nano::store::iterator<nano::block_hash, std::nullptr_t>)> const *> (context);
-	nano::store::lmdb::read_transaction_impl txn{ txn_handle };
-	auto begin{ to_iterator (begin_handle) };
-	auto end{ to_iterator (end_handle) };
-	(*action) (txn, std::move (begin), std::move (end));
-}
-void for_each_par_delete_context (void * context)
-{
-}
-}
-
-void nano::store::lmdb::pruned::for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, std::nullptr_t>, nano::store::iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const
-{
-	auto context = (void *)&action_a;
-	rsnano::rsn_lmdb_pruned_store_for_each_par (handle, for_each_par_wrapper, context, for_each_par_delete_context);
-}

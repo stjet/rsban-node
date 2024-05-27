@@ -1,5 +1,5 @@
 use crate::{
-    iterator::DbIterator, Fan, LmdbDatabase, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
+    BinaryDbIterator, Fan, LmdbDatabase, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use anyhow::bail;
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -82,7 +82,7 @@ pub enum KeyType {
     Deterministic,
 }
 
-pub type WalletIterator = Box<dyn DbIterator<Account, WalletValue>>;
+pub type WalletIterator<'txn> = BinaryDbIterator<'txn, Account, WalletValue>;
 
 pub struct LmdbWalletStore {
     db_handle: Mutex<Option<LmdbDatabase>>,
@@ -382,7 +382,7 @@ impl LmdbWalletStore {
         }
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> WalletIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> WalletIterator<'txn> {
         LmdbIteratorImpl::new_iterator(
             txn,
             self.db_handle(),
@@ -391,15 +391,23 @@ impl LmdbWalletStore {
         )
     }
 
-    pub fn begin_at_account(&self, txn: &dyn Transaction, key: &Account) -> WalletIterator {
+    pub fn begin_at_account<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        key: &Account,
+    ) -> WalletIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.db_handle(), Some(key.as_bytes()), true)
     }
 
-    pub fn end(&self) -> WalletIterator {
+    pub fn end(&self) -> WalletIterator<'static> {
         LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn find(&self, txn: &dyn Transaction, account: &Account) -> WalletIterator {
+    pub fn find<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        account: &Account,
+    ) -> WalletIterator<'txn> {
         let result = self.begin_at_account(txn, account);
         if let Some((key, _)) = result.current() {
             if key == account {
@@ -432,14 +440,17 @@ impl LmdbWalletStore {
     }
 
     pub fn deterministic_clear(&self, txn: &mut LmdbWriteTransaction) {
-        let mut it = self.begin(txn);
-        while let Some((account, value)) = it.current() {
-            match Self::key_type(value) {
-                KeyType::Deterministic => {
-                    self.erase(txn, account);
-                    it = self.begin_at_account(txn, account);
+        {
+            let mut it = self.begin(txn);
+            while let Some((&account, value)) = it.current() {
+                match Self::key_type(value) {
+                    KeyType::Deterministic => {
+                        drop(it);
+                        self.erase(txn, &account);
+                        it = self.begin_at_account(txn, &account);
+                    }
+                    _ => it.next(),
                 }
-                _ => it.next(),
             }
         }
 
@@ -637,17 +648,38 @@ impl LmdbWalletStore {
     ) -> anyhow::Result<()> {
         debug_assert!(self.valid_password(txn));
         debug_assert!(other.valid_password(txn));
-        let mut it = other.begin(txn);
-        while let Some((k, _)) = it.current() {
-            let prv = other.fetch(txn, k)?;
-            if !prv.is_zero() {
-                self.insert_adhoc(txn, &prv);
-            } else {
-                self.insert_watch(txn, k)?;
-            }
-            other.erase(txn, k);
 
-            it.next();
+        enum KeyType {
+            Private((PublicKey, RawKey)),
+            WatchOnly(PublicKey),
+        }
+
+        let mut keys = Vec::new();
+        {
+            let mut it = other.begin(txn);
+            while let Some((k, _)) = it.current() {
+                let prv = other.fetch(txn, k)?;
+                if !prv.is_zero() {
+                    keys.push(KeyType::Private((*k, prv)));
+                } else {
+                    keys.push(KeyType::WatchOnly(*k));
+                }
+
+                it.next();
+            }
+        }
+
+        for k in keys {
+            match k {
+                KeyType::Private((pub_key, priv_key)) => {
+                    self.insert_adhoc(txn, &priv_key);
+                    other.erase(txn, &pub_key);
+                }
+                KeyType::WatchOnly(pub_key) => {
+                    self.insert_watch(txn, &pub_key).unwrap();
+                    other.erase(txn, &pub_key);
+                }
+            }
         }
 
         Ok(())

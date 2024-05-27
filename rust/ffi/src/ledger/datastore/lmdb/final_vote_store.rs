@@ -1,14 +1,7 @@
-use std::{ffi::c_void, sync::Arc};
-
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
 use rsnano_store_lmdb::LmdbFinalVoteStore;
-
-use crate::VoidPointerCallback;
-
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use std::{ffi::c_void, sync::Arc};
 
 pub struct LmdbFinalVoteStoreHandle(Arc<LmdbFinalVoteStore>);
 
@@ -114,21 +107,4 @@ pub unsafe extern "C" fn rsn_lmdb_final_vote_store_clear(
     txn: *mut TransactionHandle,
 ) {
     (*handle).0.clear((*txn).as_write_txn());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_final_vote_store_for_each_par(
-    handle: *mut LmdbFinalVoteStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

@@ -136,14 +136,9 @@ impl RwTransactionWrapper {
         lmdb::Transaction::commit(self.0)
     }
 
-    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
+    fn open_ro_cursor<'txn>(&'txn self, database: LmdbDatabase) -> lmdb::Result<RoCursor<'txn>> {
         let cursor = lmdb::Transaction::open_ro_cursor(&self.0, database.as_real());
-        cursor.map(|c| {
-            // todo: don't use static lifetime
-            let c =
-                unsafe { std::mem::transmute::<lmdb::RoCursor<'_>, lmdb::RoCursor<'static>>(c) };
-            RoCursor::new(c)
-        })
+        cursor.map(|c| RoCursor::new(c))
     }
 
     fn count(&self, database: lmdb::Database) -> u64 {
@@ -185,11 +180,7 @@ impl RwTransactionStub {
 
     fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
         Ok(RoCursor::new_null(
-            self.databases
-                .iter()
-                .find(|db| db.dbi == database)
-                .cloned()
-                .unwrap_or_default(),
+            self.databases.iter().find(|db| db.dbi == database).unwrap(),
         ))
     }
 

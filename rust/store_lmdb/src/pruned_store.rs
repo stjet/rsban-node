@@ -1,17 +1,15 @@
 use crate::{
-    iterator::DbIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal, LmdbDatabase,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
-    PRUNED_TEST_DATABASE,
+    nullable_lmdb::ConfiguredDatabase, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbWriteTransaction, Transaction, PRUNED_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{BlockHash, NoValue};
 use std::sync::Arc;
 
-pub type PrunedIterator = Box<dyn DbIterator<BlockHash, NoValue>>;
+pub type PrunedIterator<'txn> = BinaryDbIterator<'txn, BlockHash, NoValue>;
 
 pub struct LmdbPrunedStore {
-    env: Arc<LmdbEnv>,
     database: LmdbDatabase,
 }
 
@@ -20,7 +18,7 @@ impl LmdbPrunedStore {
         let database = env
             .environment
             .create_db(Some("pruned"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self { database })
     }
 
     pub fn database(&self) -> LmdbDatabase {
@@ -40,11 +38,15 @@ impl LmdbPrunedStore {
         txn.exists(self.database, hash.as_bytes())
     }
 
-    pub fn begin(&self, txn: &dyn Transaction) -> PrunedIterator {
+    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> PrunedIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
     }
 
-    pub fn begin_at_hash(&self, txn: &dyn Transaction, hash: &BlockHash) -> PrunedIterator {
+    pub fn begin_at_hash<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        hash: &BlockHash,
+    ) -> PrunedIterator<'txn> {
         LmdbIteratorImpl::new_iterator(txn, self.database, Some(hash.as_bytes()), true)
     }
 
@@ -66,24 +68,8 @@ impl LmdbPrunedStore {
         txn.clear_db(self.database).unwrap();
     }
 
-    pub fn end(&self) -> PrunedIterator {
+    pub fn end(&self) -> PrunedIterator<'static> {
         LmdbIteratorImpl::null_iterator()
-    }
-
-    pub fn for_each_par(
-        &self,
-        action: &(dyn Fn(&LmdbReadTransaction, PrunedIterator, PrunedIterator) + Send + Sync),
-    ) {
-        parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
-            let begin_it = self.begin_at_hash(&transaction, &start.into());
-            let end_it = if !is_last {
-                self.begin_at_hash(&transaction, &end.into())
-            } else {
-                self.end()
-            };
-            action(&transaction, begin_it, end_it);
-        });
     }
 }
 

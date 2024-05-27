@@ -23,6 +23,5 @@ public:
 	nano::store::iterator<nano::block_hash, std::nullptr_t> begin (nano::store::transaction const & transaction_a, nano::block_hash const & hash_a) const override;
 	nano::store::iterator<nano::block_hash, std::nullptr_t> begin (nano::store::transaction const & transaction_a) const override;
 	nano::store::iterator<nano::block_hash, std::nullptr_t> end () const override;
-	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::block_hash, std::nullptr_t>, nano::store::iterator<nano::block_hash, std::nullptr_t>)> const & action_a) const override;
 };
 }

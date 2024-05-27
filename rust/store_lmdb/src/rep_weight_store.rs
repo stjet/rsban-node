@@ -10,7 +10,7 @@ use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, Amount,
 };
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 pub struct LmdbRepWeightStore {
     _env: Arc<LmdbEnv>,
@@ -88,19 +88,17 @@ impl LmdbRepWeightStore {
         let cursor = txn.open_ro_cursor(self.database).unwrap();
         RepWeightIterator {
             cursor,
-            _lifetime: Default::default(),
             operation: MDB_FIRST,
         }
     }
 }
 
-pub struct RepWeightIterator<'a> {
-    _lifetime: PhantomData<&'a ()>,
-    cursor: RoCursor,
+pub struct RepWeightIterator<'txn> {
+    cursor: RoCursor<'txn>,
     operation: MDB_cursor_op,
 }
 
-impl<'a> Iterator for RepWeightIterator<'a> {
+impl<'txn> Iterator for RepWeightIterator<'txn> {
     type Item = (Account, Amount);
 
     fn next(&mut self) -> Option<Self::Item> {

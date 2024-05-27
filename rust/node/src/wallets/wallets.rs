@@ -20,8 +20,8 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
-    create_backup_file, BinaryDbIterator, DbIterator, KeyType, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbWalletStore, LmdbWriteTransaction, Transaction,
+    create_backup_file, BinaryDbIterator, KeyType, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbWalletStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -46,7 +46,7 @@ pub enum WalletsError {
     BadPublicKey,
 }
 
-pub type WalletsIterator = BinaryDbIterator<[u8; 64], NoValue, LmdbIteratorImpl>;
+pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 
 pub struct Wallets {
     pub handle: Option<LmdbDatabase>,
@@ -181,7 +181,11 @@ impl Wallets {
         self.representatives.lock().unwrap().voting_reps()
     }
 
-    pub fn get_store_it(&self, txn: &dyn Transaction, hash: &str) -> WalletsIterator {
+    pub fn get_store_it<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        hash: &str,
+    ) -> WalletsIterator<'txn> {
         let hash_bytes: [u8; 64] = hash.as_bytes().try_into().unwrap();
         WalletsIterator::new(LmdbIteratorImpl::new(
             txn,

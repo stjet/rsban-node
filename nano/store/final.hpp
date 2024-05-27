@@ -27,6 +27,5 @@ public:
 	virtual store::iterator<nano::qualified_root, nano::block_hash> begin (store::transaction const & transaction_a, nano::qualified_root const & root_a) const = 0;
 	virtual store::iterator<nano::qualified_root, nano::block_hash> begin (store::transaction const & transaction_a) const = 0;
 	virtual store::iterator<nano::qualified_root, nano::block_hash> end () const = 0;
-	virtual void for_each_par (std::function<void (store::read_transaction const &, store::iterator<nano::qualified_root, nano::block_hash>, store::iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const = 0;
 };
 } // namespace nano::store

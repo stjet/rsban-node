@@ -1,14 +1,8 @@
-use std::{ffi::c_void, sync::Arc};
-
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
+use crate::ConfirmationHeightInfoDto;
 use rsnano_core::{Account, ConfirmationHeightInfo};
 use rsnano_store_lmdb::LmdbConfirmationHeightStore;
-
-use crate::{ConfirmationHeightInfoDto, VoidPointerCallback};
-
-use super::{
-    iterator::{ForEachParCallback, ForEachParWrapper, LmdbIteratorHandle},
-    TransactionHandle,
-};
+use std::sync::Arc;
 
 pub struct LmdbConfirmationHeightStoreHandle(Arc<LmdbConfirmationHeightStore>);
 
@@ -119,21 +113,4 @@ pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_begin_at_account(
         .0
         .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
     LmdbIteratorHandle::new2(iterator)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_confirmation_height_store_for_each_par(
-    handle: *mut LmdbConfirmationHeightStoreHandle,
-    action: ForEachParCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let wrapper = ForEachParWrapper {
-        action,
-        context,
-        delete_context,
-    };
-    (*handle)
-        .0
-        .for_each_par(&|txn, begin, end| wrapper.execute(txn, begin, end));
 }

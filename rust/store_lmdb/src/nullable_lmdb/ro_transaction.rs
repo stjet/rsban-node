@@ -1,3 +1,5 @@
+use crate::EMPTY_DATABASE;
+
 use super::{ConfiguredDatabase, LmdbDatabase, RoCursor};
 
 pub struct RoTransaction {
@@ -122,14 +124,10 @@ impl RoTransactionStub {
         }
     }
 
-    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
+    fn open_ro_cursor<'txn>(&'txn self, database: LmdbDatabase) -> lmdb::Result<RoCursor<'txn>> {
         match self.get_database(database) {
-            Some(db) => Ok(RoCursor::new_null(db.clone())),
-            None => Ok(RoCursor::new_null(ConfiguredDatabase {
-                dbi: database,
-                db_name: "test_database".to_string(),
-                entries: Default::default(),
-            })),
+            Some(db) => Ok(RoCursor::new_null(db)),
+            None => Ok(RoCursor::new_null(&EMPTY_DATABASE)),
         }
     }
 

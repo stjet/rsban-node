@@ -20,7 +20,6 @@ public:
 	nano::store::iterator<nano::qualified_root, nano::block_hash> begin (nano::store::transaction const & transaction_a, nano::qualified_root const & root_a) const override;
 	nano::store::iterator<nano::qualified_root, nano::block_hash> begin (nano::store::transaction const & transaction_a) const override;
 	nano::store::iterator<nano::qualified_root, nano::block_hash> end () const override;
-	void for_each_par (std::function<void (nano::store::read_transaction const &, nano::store::iterator<nano::qualified_root, nano::block_hash>, nano::store::iterator<nano::qualified_root, nano::block_hash>)> const & action_a) const override;
 	rsnano::LmdbFinalVoteStoreHandle * handle;
 };
 }

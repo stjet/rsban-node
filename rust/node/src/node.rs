@@ -1531,7 +1531,7 @@ impl NodeExt for Arc<Node> {
             let mut tx = self.ledger.rw_txn();
             self.ledger.store.peer.clear(&mut tx);
             for endpoint in endpoints {
-                self.ledger.store.peer.put(&mut tx, &endpoint.into());
+                self.ledger.store.peer.put(&mut tx, &endpoint);
             }
         }
 

@@ -14,8 +14,12 @@ impl TomlConfig {
         Default::default()
     }
 
+    pub fn to_string(&self) -> String {
+        self.doc.to_string()
+    }
+
     pub fn write(&self, file: impl AsRef<Path>) -> Result<()> {
-        std::fs::write(file, self.doc.to_string().as_bytes())?;
+        std::fs::write(file, self.to_string().as_bytes())?;
         Ok(())
     }
 }

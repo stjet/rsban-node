@@ -1,5 +1,9 @@
-use crate::{LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction};
+use crate::{
+    ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction,
+    PEERS_TEST_DATABASE,
+};
 use lmdb::{DatabaseFlags, WriteFlags};
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use std::{
     array::TryFromSliceError,
     net::SocketAddrV6,
@@ -10,6 +14,7 @@ use std::{
 
 pub struct LmdbPeerStore {
     database: LmdbDatabase,
+    put_listener: OutputListenerMt<(SocketAddrV6, SystemTime)>,
 }
 
 impl LmdbPeerStore {
@@ -18,14 +23,22 @@ impl LmdbPeerStore {
             .environment
             .create_db(Some("peers"), DatabaseFlags::empty())?;
 
-        Ok(Self { database })
+        Ok(Self {
+            database,
+            put_listener: OutputListenerMt::new(),
+        })
     }
 
     pub fn database(&self) -> LmdbDatabase {
         self.database
     }
 
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<(SocketAddrV6, SystemTime)>> {
+        self.put_listener.track()
+    }
+
     pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6, time: SystemTime) {
+        self.put_listener.emit((endpoint.clone(), time));
         txn.put(
             self.database,
             &EndpointBytes::from(endpoint),
@@ -143,6 +156,30 @@ impl From<TimeBytes> for SystemTime {
     }
 }
 
+pub struct ConfiguredPeersDatabaseBuilder {
+    database: ConfiguredDatabase,
+}
+
+impl ConfiguredPeersDatabaseBuilder {
+    pub fn new() -> Self {
+        Self {
+            database: ConfiguredDatabase::new(PEERS_TEST_DATABASE, "peers"),
+        }
+    }
+
+    pub fn peer(mut self, endpoint: SocketAddrV6, time: SystemTime) -> Self {
+        self.database.entries.insert(
+            EndpointBytes::from(&endpoint).to_vec(),
+            TimeBytes::from(time).to_vec(),
+        );
+        self
+    }
+
+    pub fn build(self) -> ConfiguredDatabase {
+        self.database
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,6 +253,19 @@ mod tests {
                 key: EndpointBytes::from(&TEST_PEER_A).to_vec()
             }]
         )
+    }
+
+    #[test]
+    fn track_puts() {
+        let fixture = Fixture::new();
+        let mut tx = fixture.env.tx_begin_write();
+        let time = UNIX_EPOCH + Duration::from_secs(1261440000);
+        let put_tracker = fixture.store.track_puts();
+
+        fixture.store.put(&mut tx, &TEST_PEER_A, time);
+
+        let output = put_tracker.output();
+        assert_eq!(output, vec![(TEST_PEER_A, time)]);
     }
 
     const TEST_PEER_A: SocketAddrV6 =

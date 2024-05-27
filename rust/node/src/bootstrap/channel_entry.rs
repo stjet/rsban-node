@@ -1,5 +1,5 @@
 use crate::{
-    transport::{Channel, ChannelEnum, ChannelTcp, Socket, TcpServer},
+    transport::{Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TcpServer},
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 use rsnano_core::Account;
@@ -30,7 +30,7 @@ impl ChannelEntry {
     }
 
     pub fn endpoint(&self) -> SocketAddrV6 {
-        self.tcp_channel().remote_endpoint()
+        self.channel.remote_endpoint()
     }
 
     pub fn last_packet_sent(&self) -> SystemTime {
@@ -41,8 +41,10 @@ impl ChannelEntry {
         self.channel.get_last_bootstrap_attempt()
     }
 
-    pub fn socket(&self) -> &Arc<Socket> {
-        &self.tcp_channel().socket
+    pub fn close_socket(&self) {
+        if let ChannelEnum::Tcp(tcp) = self.channel.as_ref() {
+            tcp.socket.close();
+        }
     }
 
     pub fn node_id(&self) -> Option<Account> {
@@ -50,7 +52,7 @@ impl ChannelEntry {
     }
 
     pub fn network_version(&self) -> u8 {
-        self.tcp_channel().network_version()
+        self.channel.network_version()
     }
 
     pub fn ip_address(&self) -> Ipv6Addr {

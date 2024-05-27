@@ -1,23 +1,24 @@
+mod container_info;
 mod json;
 mod output_tracker;
 mod output_tracker_mt;
 mod rng;
+mod stream;
+mod system_time_factory;
+mod toml;
 
-use std::time::{Duration, SystemTime};
-
+pub use container_info::{ContainerInfo, ContainerInfoComponent};
 pub use json::*;
 pub use output_tracker::{OutputListener, OutputTracker};
 pub use output_tracker_mt::{OutputListenerMt, OutputTrackerMt};
-
-mod stream;
-pub use stream::*;
-
-mod toml;
-pub use toml::*;
-
-mod container_info;
-pub use container_info::{ContainerInfo, ContainerInfoComponent};
 pub use rng::NullableRng;
+use std::{
+    net::SocketAddrV6,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
+pub use stream::*;
+pub use system_time_factory::*;
+pub use toml::*;
 
 pub trait Serialize {
     fn serialize(&self, stream: &mut dyn BufferWriter);
@@ -171,4 +172,16 @@ impl NullLatch {
 
 impl Latch for NullLatch {
     fn wait(&self) {}
+}
+
+pub fn parse_endpoint(s: &str) -> SocketAddrV6 {
+    s.parse().unwrap()
+}
+
+pub fn create_test_endpoint() -> SocketAddrV6 {
+    parse_endpoint("[::ffff:10.0.0.1]:1234")
+}
+
+pub fn create_test_time() -> SystemTime {
+    UNIX_EPOCH + Duration::from_secs(1_000_000)
 }

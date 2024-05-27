@@ -12,20 +12,22 @@ use rsnano_core::{
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
-    ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredPendingDatabaseBuilder,
-    ConfiguredPrunedDatabaseBuilder, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore,
-    LmdbEnv, LmdbFinalVoteStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
-    LmdbPrunedStore, LmdbReadTransaction, LmdbRepWeightStore, LmdbStore, LmdbVersionStore,
-    LmdbWriteTransaction, Transaction,
+    ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredPeersDatabaseBuilder,
+    ConfiguredPendingDatabaseBuilder, ConfiguredPrunedDatabaseBuilder, LmdbAccountStore,
+    LmdbBlockStore, LmdbConfirmationHeightStore, LmdbEnv, LmdbFinalVoteStore,
+    LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore, LmdbPrunedStore, LmdbReadTransaction,
+    LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
+    net::SocketAddrV6,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
+    time::SystemTime,
 };
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -83,6 +85,7 @@ pub struct NullLedgerBuilder {
     accounts: ConfiguredAccountDatabaseBuilder,
     pending: ConfiguredPendingDatabaseBuilder,
     pruned: ConfiguredPrunedDatabaseBuilder,
+    peers: ConfiguredPeersDatabaseBuilder,
     confirmation_height: ConfiguredConfirmationHeightDatabaseBuilder,
     min_rep_weight: Amount,
 }
@@ -94,6 +97,7 @@ impl NullLedgerBuilder {
             accounts: ConfiguredAccountDatabaseBuilder::new(),
             pending: ConfiguredPendingDatabaseBuilder::new(),
             pruned: ConfiguredPrunedDatabaseBuilder::new(),
+            peers: ConfiguredPeersDatabaseBuilder::new(),
             confirmation_height: ConfiguredConfirmationHeightDatabaseBuilder::new(),
             min_rep_weight: Amount::zero(),
         }
@@ -107,6 +111,13 @@ impl NullLedgerBuilder {
     pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a BlockEnum>) -> Self {
         for b in blocks.into_iter() {
             self.blocks = self.blocks.block(b);
+        }
+        self
+    }
+
+    pub fn peers(mut self, peers: impl IntoIterator<Item = (SocketAddrV6, SystemTime)>) -> Self {
+        for (peer, time) in peers.into_iter() {
+            self.peers = self.peers.peer(peer, time)
         }
         self
     }
@@ -131,7 +142,7 @@ impl NullLedgerBuilder {
         self
     }
 
-    pub fn build(self) -> Ledger {
+    pub fn finish(self) -> Ledger {
         let env = Arc::new(
             LmdbEnv::new_null_with()
                 .configured_database(self.blocks.build())
@@ -139,6 +150,7 @@ impl NullLedgerBuilder {
                 .configured_database(self.pending.build())
                 .configured_database(self.pruned.build())
                 .configured_database(self.confirmation_height.build())
+                .configured_database(self.peers.build())
                 .build(),
         );
 
@@ -165,7 +177,7 @@ impl NullLedgerBuilder {
 }
 
 impl Ledger {
-    pub fn create_null() -> Self {
+    pub fn new_null() -> Self {
         Self::new(
             Arc::new(LmdbStore::create_null()),
             LedgerConstants::unit_test(),
@@ -174,7 +186,7 @@ impl Ledger {
         .unwrap()
     }
 
-    pub fn create_null_with() -> NullLedgerBuilder {
+    pub fn new_null_builder() -> NullLedgerBuilder {
         NullLedgerBuilder::new()
     }
 

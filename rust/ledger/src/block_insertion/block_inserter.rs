@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn insert_open_state_block() {
         let (mut block, instructions) = open_state_block_instructions();
-        let ledger = Ledger::create_null();
+        let ledger = Ledger::new_null();
 
         let result = insert(&ledger, &mut block, &instructions);
 
@@ -133,7 +133,7 @@ mod tests {
         let (mut block, mut instructions) = legacy_open_block_instructions();
         let pending_key = PendingKey::create_test_instance();
         instructions.delete_pending = Some(pending_key.clone());
-        let ledger = Ledger::create_null();
+        let ledger = Ledger::new_null();
 
         let result = insert(&ledger, &mut block, &instructions);
 
@@ -146,7 +146,7 @@ mod tests {
         let pending_key = PendingKey::create_test_instance();
         let pending_info = PendingInfo::create_test_instance();
         instructions.insert_pending = Some((pending_key.clone(), pending_info.clone()));
-        let ledger = Ledger::create_null();
+        let ledger = Ledger::new_null();
 
         let result = insert(&ledger, &mut block, &instructions);
 
@@ -173,7 +173,7 @@ mod tests {
             .build();
         let (mut state, instructions) = state_block_instructions_for(&open, state);
 
-        let ledger = Ledger::create_null_with().block(&open).build();
+        let ledger = Ledger::new_null_builder().block(&open).finish();
         insert(&ledger, &mut state, &instructions);
         assert_eq!(
             ledger

@@ -4,54 +4,41 @@ extern crate num_derive;
 #[macro_use]
 extern crate anyhow;
 
+mod account_store;
+mod block_store;
+mod confirmation_height_store;
+mod fan;
+mod final_vote_store;
 mod iterator;
 mod lmdb_config;
 mod lmdb_env;
 mod nullable_lmdb;
+mod online_weight_store;
+mod peer_store;
+mod pending_store;
+mod pruned_store;
 mod rep_weight_store;
+mod store;
+mod version_store;
 mod wallet_store;
 
+pub use account_store::{ConfiguredAccountDatabaseBuilder, LmdbAccountStore};
+pub use block_store::{ConfiguredBlockDatabaseBuilder, LmdbBlockStore};
+pub use confirmation_height_store::*;
+pub use fan::Fan;
+pub use final_vote_store::LmdbFinalVoteStore;
 pub use iterator::{BinaryDbIterator, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
-
 pub use lmdb_env::*;
-
-mod account_store;
-pub use account_store::{ConfiguredAccountDatabaseBuilder, LmdbAccountStore};
-
-mod block_store;
-pub use block_store::{ConfiguredBlockDatabaseBuilder, LmdbBlockStore};
-
-mod confirmation_height_store;
-pub use confirmation_height_store::*;
-
-mod final_vote_store;
-pub use final_vote_store::LmdbFinalVoteStore;
-
-mod online_weight_store;
 pub use nullable_lmdb::*;
 pub use online_weight_store::LmdbOnlineWeightStore;
-
-mod pending_store;
+pub use peer_store::*;
 pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
-
-mod peer_store;
-pub use peer_store::LmdbPeerStore;
-
-mod pruned_store;
 pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
-
-mod version_store;
-pub use version_store::LmdbVersionStore;
-
 pub use rep_weight_store::*;
-pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
-
-mod fan;
-pub use fan::Fan;
-
-mod store;
 pub use store::{create_backup_file, LmdbStore};
+pub use version_store::LmdbVersionStore;
+pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
 
 use std::{
     any::Any,
@@ -467,6 +454,7 @@ pub const PENDING_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(4);
 pub const PRUNED_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(5);
 pub const REP_WEIGHT_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(6);
 pub const CONFIRMATION_HEIGHT_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(7);
+pub const PEERS_TEST_DATABASE: LmdbDatabase = LmdbDatabase::new_null(8);
 
 #[cfg(test)]
 mod test {

@@ -1,9 +1,9 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelTcp, CompositeSocketObserver, MessageDeserializer,
-    NetworkFilter, NullSocketObserver, NullTcpServerObserver, OutboundBandwidthLimiter,
-    PeerExclusion, Socket, SocketBuilder, SocketEndpoint, SocketExtensions, SocketObserver,
-    SynCookies, TcpMessageManager, TcpServer, TcpServerFactory, TcpServerObserver, TrafficType,
-    TransportType,
+    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, CompositeSocketObserver,
+    MessageDeserializer, NetworkFilter, NullSocketObserver, NullTcpServerObserver,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketEndpoint,
+    SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory,
+    TcpServerObserver, TrafficType, TransportType,
 };
 use crate::{
     bootstrap::{BootstrapMessageVisitorFactory, ChannelEntry},
@@ -97,7 +97,6 @@ pub struct TcpChannels {
 
 impl Drop for TcpChannels {
     fn drop(&mut self) {
-        debug_assert_eq!(self.tcp_channels.lock().unwrap().channels.len(), 0);
         self.stop();
     }
 }
@@ -154,7 +153,7 @@ impl TcpChannels {
         *self.sink.write().unwrap() = sink;
     }
 
-    pub fn new_test_instance() -> Self {
+    pub fn new_null() -> Self {
         Self::new(TcpChannelsOptions::new_test_instance())
     }
 
@@ -188,15 +187,26 @@ impl TcpChannels {
             .push(callback);
     }
 
+    pub fn insert_fake(&self, endpoint: SocketAddrV6) -> Result<(), ()> {
+        let fake = Arc::new(ChannelEnum::Fake(ChannelFake::new(
+            SystemTime::now(),
+            self.get_next_channel_id(),
+            &self.async_rt.upgrade().unwrap(),
+            Arc::clone(&self.limiter),
+            Arc::clone(&self.stats),
+            endpoint,
+            self.network.network.protocol_info(),
+        )));
+        fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
+        self.insert(&fake, None)
+    }
+
     pub fn insert(
         &self,
         channel: &Arc<ChannelEnum>,
         server: Option<Arc<TcpServer>>,
     ) -> Result<(), ()> {
-        let ChannelEnum::Tcp(tcp_channel) = channel.as_ref() else {
-            panic!("not a tcp channel")
-        };
-        let endpoint = tcp_channel.remote_endpoint();
+        let endpoint = channel.remote_endpoint();
         if !self.not_a_peer(&endpoint, self.allow_local_peers)
             && !self.stopped.load(Ordering::SeqCst)
         {
@@ -509,10 +519,13 @@ impl TcpChannels {
         min_version: u8,
         include_temporary_channels: bool,
     ) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels
+        let mut result = self
+            .tcp_channels
             .lock()
             .unwrap()
-            .list(min_version, include_temporary_channels)
+            .list(min_version, include_temporary_channels);
+        result.sort_by_key(|i| i.remote_endpoint());
+        result
     }
 
     pub fn port(&self) -> u16 {
@@ -1017,7 +1030,7 @@ impl TcpChannelsImpl {
 
     pub fn close_channels(&mut self) {
         for channel in self.channels.iter() {
-            channel.socket().close();
+            channel.close_socket();
             // Remove response server
             if let Some(server) = &channel.response_server {
                 server.stop();
@@ -1059,7 +1072,7 @@ impl TcpChannelsImpl {
         self.channels
             .iter()
             .filter(|c| {
-                c.tcp_channel().network_version() >= min_version
+                c.network_version() >= min_version
                     && (include_temporary_channels || !c.channel.is_temporary())
                     && c.channel.is_alive()
             })

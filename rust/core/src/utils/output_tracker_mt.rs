@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, Mutex, Weak,
+};
 
 // Multi threaded output tracker
 pub struct OutputTrackerMt<T: Clone + 'static> {
@@ -23,12 +26,14 @@ impl<T: Clone + 'static> OutputTrackerMt<T> {
 
 pub struct OutputListenerMt<T: Clone + 'static> {
     trackers: Mutex<Vec<Weak<OutputTrackerMt<T>>>>,
+    count: AtomicUsize,
 }
 
 impl<T: Clone + 'static> OutputListenerMt<T> {
     pub fn new() -> Self {
         Self {
             trackers: Mutex::new(Vec::new()),
+            count: AtomicUsize::new(0),
         }
     }
 
@@ -38,11 +43,17 @@ impl<T: Clone + 'static> OutputListenerMt<T> {
 
     pub fn track(&self) -> Arc<OutputTrackerMt<T>> {
         let tracker = Arc::new(OutputTrackerMt::new());
-        self.trackers.lock().unwrap().push(Arc::downgrade(&tracker));
+        let mut guard = self.trackers.lock().unwrap();
+        guard.push(Arc::downgrade(&tracker));
+        self.count.store(guard.len(), Ordering::SeqCst);
         tracker
     }
 
     pub fn emit(&self, t: T) {
+        if self.count.load(Ordering::SeqCst) == 0 {
+            return;
+        }
+
         let mut guard = self.trackers.lock().unwrap();
         let mut should_clean = false;
         for tracker in guard.iter() {
@@ -55,6 +66,7 @@ impl<T: Clone + 'static> OutputListenerMt<T> {
 
         if should_clean {
             guard.retain(|t| t.strong_count() > 0);
+            self.count.store(guard.len(), Ordering::SeqCst);
         }
     }
 

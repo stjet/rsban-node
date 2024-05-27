@@ -1,5 +1,4 @@
-use std::sync::atomic::Ordering;
-
+use std::{net::SocketAddrV6, sync::atomic::Ordering};
 pub mod helpers;
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
@@ -7,6 +6,7 @@ use crate::{
     Ledger, LedgerCache, LedgerContext, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{
+    utils::{create_test_endpoint, create_test_time},
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, TestAccountChain,
     DEV_GENESIS_KEY, GXRB_RATIO,
 };
@@ -23,10 +23,10 @@ mod rollback_state;
 fn ledger_successor() {
     let mut chain = TestAccountChain::new_opened_chain();
     let send = chain.add_legacy_send().clone();
-    let ledger = Ledger::create_null_with()
+    let ledger = Ledger::new_null_builder()
         .blocks(chain.blocks())
         .account_info(&chain.account(), &chain.account_info())
-        .build();
+        .finish();
     let txn = ledger.read_txn();
 
     assert_eq!(
@@ -39,10 +39,10 @@ fn ledger_successor() {
 fn ledger_successor_genesis() {
     let mut genesis = TestAccountChain::genesis();
     genesis.add_legacy_send();
-    let ledger = Ledger::create_null_with()
+    let ledger = Ledger::new_null_builder()
         .blocks(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
-        .build();
+        .finish();
     let txn = ledger.read_txn();
 
     assert_eq!(
@@ -56,7 +56,7 @@ fn ledger_successor_genesis() {
 
 #[test]
 fn latest_root_empty() {
-    let ledger = Ledger::create_null();
+    let ledger = Ledger::new_null();
     let txn = ledger.read_txn();
     assert_eq!(ledger.latest_root(&txn, &Account::from(1)), Root::from(1));
 }
@@ -66,10 +66,10 @@ fn latest_root() {
     let mut genesis = TestAccountChain::genesis();
     genesis.add_legacy_send();
 
-    let ledger = Ledger::create_null_with()
+    let ledger = Ledger::new_null_builder()
         .blocks(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
-        .build();
+        .finish();
     let txn = ledger.rw_txn();
 
     assert_eq!(
@@ -747,4 +747,13 @@ fn sideband_height() {
     assert_sideband_height(&state_receive.hash(), 2);
 
     assert_sideband_height(&open.hash(), 1);
+}
+
+#[test]
+fn configured_peers_response() {
+    let endpoint = create_test_endpoint();
+    let now = create_test_time();
+    let ledger = Ledger::new_null_builder().peers([(endpoint, now)]).finish();
+    let tx = ledger.read_txn();
+    assert_eq!(ledger.store.peer.iter(&tx).next().unwrap(), (endpoint, now));
 }

@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn add_exists() {
-        let ledger = Arc::new(Ledger::create_null());
+        let ledger = Arc::new(Ledger::new_null());
         let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
         let hash = BlockHash::from(1);
         confirming_set.add(hash);
@@ -242,7 +242,7 @@ mod tests {
         let mut chain = TestAccountChain::genesis();
         let block_hash = chain.add_state().hash();
         let ledger = Arc::new(
-            Ledger::create_null_with()
+            Ledger::new_null_builder()
                 .blocks(chain.blocks())
                 .confirmation_height(
                     &chain.account(),
@@ -251,7 +251,7 @@ mod tests {
                         frontier: chain.open(),
                     },
                 )
-                .build(),
+                .finish(),
         );
         let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
         confirming_set.start();

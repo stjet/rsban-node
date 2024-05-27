@@ -155,11 +155,10 @@ impl ConfiguredAccountDatabaseBuilder {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{DeleteEvent, PutEvent};
     use rsnano_core::{Amount, BlockHash};
     use std::sync::Mutex;
-
-    use super::*;
 
     struct Fixture {
         env: Arc<LmdbEnv>,

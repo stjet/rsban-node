@@ -15,6 +15,7 @@ use std::{
 pub struct LmdbPeerStore {
     database: LmdbDatabase,
     put_listener: OutputListenerMt<(SocketAddrV6, SystemTime)>,
+    delete_listener: OutputListenerMt<SocketAddrV6>,
 }
 
 impl LmdbPeerStore {
@@ -26,6 +27,7 @@ impl LmdbPeerStore {
         Ok(Self {
             database,
             put_listener: OutputListenerMt::new(),
+            delete_listener: OutputListenerMt::new(),
         })
     }
 
@@ -37,7 +39,7 @@ impl LmdbPeerStore {
         self.put_listener.track()
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6, time: SystemTime) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, endpoint: SocketAddrV6, time: SystemTime) {
         self.put_listener.emit((endpoint.clone(), time));
         txn.put(
             self.database,
@@ -48,12 +50,17 @@ impl LmdbPeerStore {
         .unwrap();
     }
 
-    pub fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: &SocketAddrV6) {
+    pub fn track_deletions(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
+        self.delete_listener.track()
+    }
+
+    pub fn del(&self, txn: &mut LmdbWriteTransaction, endpoint: SocketAddrV6) {
+        self.delete_listener.emit(endpoint);
         txn.delete(self.database, &EndpointBytes::from(endpoint), None)
             .unwrap();
     }
 
-    pub fn exists(&self, txn: &dyn Transaction, endpoint: &SocketAddrV6) -> bool {
+    pub fn exists(&self, txn: &dyn Transaction, endpoint: SocketAddrV6) -> bool {
         txn.exists(self.database, &EndpointBytes::from(endpoint))
     }
 
@@ -100,8 +107,8 @@ impl TryFrom<&[u8]> for EndpointBytes {
     }
 }
 
-impl From<&SocketAddrV6> for EndpointBytes {
-    fn from(value: &SocketAddrV6) -> Self {
+impl From<SocketAddrV6> for EndpointBytes {
+    fn from(value: SocketAddrV6) -> Self {
         let mut bytes = [0; 18];
         let (ip, port) = bytes.split_at_mut(16);
         ip.copy_from_slice(&value.ip().octets());
@@ -169,7 +176,7 @@ impl ConfiguredPeersDatabaseBuilder {
 
     pub fn peer(mut self, endpoint: SocketAddrV6, time: SystemTime) -> Self {
         self.database.entries.insert(
-            EndpointBytes::from(&endpoint).to_vec(),
+            EndpointBytes::from(endpoint).to_vec(),
             TimeBytes::from(time).to_vec(),
         );
         self
@@ -195,7 +202,7 @@ mod tests {
         let txn = fixture.env.tx_begin_read();
         let store = &fixture.store;
         assert_eq!(store.count(&txn), 0);
-        assert_eq!(store.exists(&txn, &TEST_PEER_A), false);
+        assert_eq!(store.exists(&txn, TEST_PEER_A), false);
         assert_eq!(store.iter(&txn).next(), None);
     }
 
@@ -207,7 +214,7 @@ mod tests {
 
         let key = TEST_PEER_A;
         let time = UNIX_EPOCH + Duration::from_secs(1261440000);
-        fixture.store.put(&mut txn, &key, time);
+        fixture.store.put(&mut txn, key, time);
 
         assert_eq!(
             put_tracker.output(),
@@ -226,9 +233,9 @@ mod tests {
 
         let txn = fixture.env.tx_begin_read();
 
-        assert_eq!(fixture.store.exists(&txn, &TEST_PEER_A), true);
-        assert_eq!(fixture.store.exists(&txn, &TEST_PEER_B), true);
-        assert_eq!(fixture.store.exists(&txn, &UNKNOWN_PEER), false);
+        assert_eq!(fixture.store.exists(&txn, TEST_PEER_A), true);
+        assert_eq!(fixture.store.exists(&txn, TEST_PEER_B), true);
+        assert_eq!(fixture.store.exists(&txn, UNKNOWN_PEER), false);
     }
 
     #[test]
@@ -244,13 +251,13 @@ mod tests {
         let mut txn = fixture.env.tx_begin_write();
         let delete_tracker = txn.track_deletions();
 
-        fixture.store.del(&mut txn, &TEST_PEER_A);
+        fixture.store.del(&mut txn, TEST_PEER_A);
 
         assert_eq!(
             delete_tracker.output(),
             vec![DeleteEvent {
                 database: LmdbDatabase::new_null(42),
-                key: EndpointBytes::from(&TEST_PEER_A).to_vec()
+                key: EndpointBytes::from(TEST_PEER_A).to_vec()
             }]
         )
     }
@@ -262,10 +269,22 @@ mod tests {
         let time = UNIX_EPOCH + Duration::from_secs(1261440000);
         let put_tracker = fixture.store.track_puts();
 
-        fixture.store.put(&mut tx, &TEST_PEER_A, time);
+        fixture.store.put(&mut tx, TEST_PEER_A, time);
 
         let output = put_tracker.output();
         assert_eq!(output, vec![(TEST_PEER_A, time)]);
+    }
+
+    #[test]
+    fn track_deletes() {
+        let fixture = Fixture::new();
+        let mut tx = fixture.env.tx_begin_write();
+        let delete_tracker = fixture.store.track_deletions();
+
+        fixture.store.del(&mut tx, TEST_PEER_A);
+
+        let output = delete_tracker.output();
+        assert_eq!(output, vec![TEST_PEER_A]);
     }
 
     const TEST_PEER_A: SocketAddrV6 =
@@ -291,7 +310,7 @@ mod tests {
             let mut env = LmdbEnv::new_null_with().database("peers", LmdbDatabase::new_null(42));
 
             for entry in entries {
-                env = env.entry(&EndpointBytes::from(&entry), &[]);
+                env = env.entry(&EndpointBytes::from(entry), &[]);
             }
 
             Self::with_env(env.build().build())

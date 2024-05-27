@@ -25,7 +25,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_put(
     let endpoint = to_socket_addr_v6(address, port);
     handle
         .0
-        .put(txn.as_write_txn(), &endpoint, SystemTime::now());
+        .put(txn.as_write_txn(), endpoint, SystemTime::now());
 }
 
 #[no_mangle]
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn rsn_lmdb_peer_store_exists(
     port: u16,
 ) -> bool {
     let endpoint = to_socket_addr_v6(address, port);
-    handle.0.exists(txn.as_txn(), &endpoint)
+    handle.0.exists(txn.as_txn(), endpoint)
 }
 
 #[no_mangle]

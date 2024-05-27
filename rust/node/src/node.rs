@@ -1534,7 +1534,7 @@ impl NodeExt for Arc<Node> {
                 self.ledger
                     .store
                     .peer
-                    .put(&mut tx, &endpoint, SystemTime::now());
+                    .put(&mut tx, endpoint, SystemTime::now());
             }
         }
 

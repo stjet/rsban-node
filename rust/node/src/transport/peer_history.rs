@@ -3,7 +3,7 @@ use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::utils::SystemTimeFactory;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
-use std::{sync::Arc, time::Duration};
+use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tracing::debug;
 
 pub struct PeerHistoryConfig {
@@ -27,6 +27,7 @@ pub struct PeerHistory {
     ledger: Arc<Ledger>,
     time_factory: SystemTimeFactory,
     stats: Arc<Stats>,
+    erase_cutoff: Duration,
 }
 
 impl PeerHistory {
@@ -35,33 +36,39 @@ impl PeerHistory {
         ledger: Arc<Ledger>,
         time_factory: SystemTimeFactory,
         stats: Arc<Stats>,
+        erase_cutoff: Duration,
     ) -> Self {
         Self {
             channels,
             ledger,
             time_factory,
             stats,
+            erase_cutoff,
         }
     }
 
     fn run(&self) {
-        let live_peers = self.channels.list_channels(0, true);
+        self.stats.inc(StatType::PeerHistory, DetailType::Loop);
         let mut tx = self.ledger.rw_txn();
-        for peer in live_peers {
-            self.save_peer(&mut tx, &peer);
-        }
+        self.save_peers(&mut tx);
+        self.delete_old_peers(&mut tx);
+    }
 
-        // TODO: delete old peers
+    fn save_peers(&self, tx: &mut LmdbWriteTransaction) {
+        let live_peers = self.channels.list_channels(0, true);
+        for peer in live_peers {
+            self.save_peer(tx, &peer);
+        }
     }
 
     fn save_peer(&self, tx: &mut LmdbWriteTransaction, channel: &ChannelEnum) {
         let endpoint = channel.remote_endpoint();
-        let exists = self.ledger.store.peer.exists(tx, &endpoint);
+        let exists = self.ledger.store.peer.exists(tx, endpoint);
 
         self.ledger
             .store
             .peer
-            .put(tx, &endpoint, self.time_factory.now());
+            .put(tx, endpoint, self.time_factory.now());
 
         if !exists {
             self.stats.inc(StatType::PeerHistory, DetailType::Inserted);
@@ -69,6 +76,29 @@ impl PeerHistory {
         } else {
             self.stats.inc(StatType::PeerHistory, DetailType::Updated);
         }
+    }
+
+    fn delete_old_peers(&self, tx: &mut LmdbWriteTransaction) {
+        for peer in self.get_old_peers(tx) {
+            self.ledger.store.peer.del(tx, peer)
+        }
+    }
+
+    fn get_old_peers(&self, tx: &LmdbWriteTransaction) -> Vec<SocketAddrV6> {
+        let cutoff = self.time_factory.now() - self.erase_cutoff;
+        let now = self.time_factory.now();
+        self.ledger
+            .store
+            .peer
+            .iter(tx)
+            .filter_map(|(peer, time)| {
+                if time < cutoff || time > now {
+                    Some(peer)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -91,7 +121,7 @@ mod tests {
     fn no_peers() {
         let open_channels = Vec::new();
         let already_stored = Vec::new();
-        let (written, _) = run_peer_history(create_test_time(), open_channels, already_stored);
+        let (written, _, _) = run_peer_history(create_test_time(), open_channels, already_stored);
         assert_eq!(written, Vec::new());
     }
 
@@ -102,7 +132,7 @@ mod tests {
         let open_channels = vec![endpoint];
         let already_stored = Vec::new();
 
-        let (written, _) = run_peer_history(now, open_channels, already_stored);
+        let (written, _, _) = run_peer_history(now, open_channels, already_stored);
 
         assert_eq!(written, vec![(endpoint, now)]);
     }
@@ -116,12 +146,26 @@ mod tests {
         let open_channels = vec![endpoint1, endpoint2, endpoint3];
         let already_stored = Vec::new();
 
-        let (written, _) = run_peer_history(now, open_channels, already_stored);
+        let (written, deleted, _) = run_peer_history(now, open_channels, already_stored);
 
         assert_eq!(
             written,
             vec![(endpoint1, now), (endpoint2, now), (endpoint3, now)]
         );
+        assert_eq!(deleted, Vec::new());
+    }
+
+    #[test]
+    fn update_peer() {
+        let endpoint = parse_endpoint("[::ffff:10.0.0.1]:1234");
+        let now = create_test_time();
+        let open_channels = vec![endpoint];
+        let already_stored = vec![(endpoint, now)];
+
+        let (written, deleted, _) = run_peer_history(now, open_channels, already_stored);
+
+        assert_eq!(written, vec![(endpoint, now)]);
+        assert_eq!(deleted, Vec::new());
     }
 
     #[test]
@@ -161,7 +205,7 @@ mod tests {
         let open_channels = vec![endpoint];
         let already_stored = Vec::new();
 
-        let (_, stats) = run_peer_history(create_test_time(), open_channels, already_stored);
+        let (_, _, stats) = run_peer_history(create_test_time(), open_channels, already_stored);
         assert_eq!(
             stats.count(StatType::PeerHistory, DetailType::Inserted, Direction::In),
             1
@@ -178,7 +222,7 @@ mod tests {
         let open_channels = vec![endpoint];
         let already_stored = vec![(endpoint, create_test_time())];
 
-        let (_, stats) = run_peer_history(create_test_time(), open_channels, already_stored);
+        let (_, _, stats) = run_peer_history(create_test_time(), open_channels, already_stored);
         assert_eq!(
             stats.count(StatType::PeerHistory, DetailType::Inserted, Direction::In),
             0
@@ -189,11 +233,56 @@ mod tests {
         );
     }
 
+    #[test]
+    fn erase_entries_older_than_cutoff() {
+        let open_channels = Vec::new();
+        let endpoint = create_test_endpoint();
+        let now = create_test_time();
+        let already_stored = vec![(endpoint, now - Duration::from_secs(60 * 61))];
+
+        let (written, deleted, _) =
+            run_peer_history(create_test_time(), open_channels, already_stored);
+
+        assert_eq!(written, Vec::new());
+        assert_eq!(deleted, vec![endpoint]);
+    }
+
+    #[test]
+    fn erase_entries_newer_than_now() {
+        let open_channels = Vec::new();
+        let endpoint = create_test_endpoint();
+        let now = create_test_time();
+        let already_stored = vec![(endpoint, now + Duration::from_secs(60 * 61))];
+
+        let (written, deleted, _) =
+            run_peer_history(create_test_time(), open_channels, already_stored);
+
+        assert_eq!(written, Vec::new());
+        assert_eq!(deleted, vec![endpoint]);
+    }
+
+    #[test]
+    fn inc_loop_stats() {
+        let open_channels = Vec::new();
+        let already_stored = Vec::new();
+
+        let (_, _, stats) = run_peer_history(create_test_time(), open_channels, already_stored);
+
+        assert_eq!(
+            stats.count(StatType::PeerHistory, DetailType::Loop, Direction::In),
+            1
+        );
+    }
+
     fn run_peer_history(
         now: SystemTime,
         open_channels: Vec<SocketAddrV6>,
         already_stored: Vec<(SocketAddrV6, SystemTime)>,
-    ) -> (Vec<(SocketAddrV6, SystemTime)>, Arc<Stats>) {
+    ) -> (
+        Vec<(SocketAddrV6, SystemTime)>,
+        Vec<SocketAddrV6>,
+        Arc<Stats>,
+    ) {
         let channels = Arc::new(TcpChannels::new_null());
         for endpoint in open_channels {
             channels.insert_fake(endpoint).unwrap();
@@ -202,10 +291,18 @@ mod tests {
         let time_factory = SystemTimeFactory::new_null_with(now);
         let stats = Arc::new(Stats::default());
         let put_tracker = ledger.store.peer.track_puts();
-        let peer_history = PeerHistory::new(channels, ledger, time_factory, Arc::clone(&stats));
+        let delete_tracker = ledger.store.peer.track_deletions();
+        let erase_cutoff = Duration::from_secs(60 * 60);
+        let peer_history = PeerHistory::new(
+            channels,
+            ledger,
+            time_factory,
+            Arc::clone(&stats),
+            erase_cutoff,
+        );
 
         peer_history.run();
 
-        (put_tracker.output(), stats)
+        (put_tracker.output(), delete_tracker.output(), stats)
     }
 }

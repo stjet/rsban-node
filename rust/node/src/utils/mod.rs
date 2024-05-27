@@ -4,6 +4,7 @@ mod json;
 mod processing_queue;
 mod thread_pool;
 mod timer;
+mod timer_thread;
 mod toml;
 
 use std::{
@@ -25,6 +26,7 @@ pub use blake2b::*;
 pub use json::*;
 pub use processing_queue::*;
 pub use thread_pool::*;
+pub use timer_thread::*;
 pub use toml::*;
 
 mod long_running_transaction_logger;

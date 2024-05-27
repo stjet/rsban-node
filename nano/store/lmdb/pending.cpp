@@ -100,4 +100,3 @@ nano::store::iterator<nano::pending_key, nano::pending_info> nano::store::lmdb::
 {
 	return nano::store::iterator<nano::pending_key, nano::pending_info> (nullptr);
 }
-

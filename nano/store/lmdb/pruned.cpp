@@ -73,4 +73,3 @@ nano::store::iterator<nano::block_hash, std::nullptr_t> nano::store::lmdb::prune
 {
 	return nano::store::iterator<nano::block_hash, std::nullptr_t> (nullptr);
 }
-

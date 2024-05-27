@@ -78,4 +78,3 @@ nano::store::iterator<nano::account, nano::confirmation_height_info> nano::store
 {
 	return nano::store::iterator<nano::account, nano::confirmation_height_info> (nullptr);
 }
-

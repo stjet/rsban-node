@@ -22,12 +22,13 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, SocketObserver, SynCookies,
-        TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener, TcpListenerExt,
-        TcpMessageManager, TrafficType,
+        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerHistory, SocketObserver,
+        SynCookies, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener,
+        TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
-        AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TxnTrackingConfig,
+        AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
+        TxnTrackingConfig,
     },
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
@@ -39,7 +40,7 @@ use reqwest::Url;
 use rsnano_core::{
     utils::{
         as_nano_json, system_time_as_nanoseconds, BufferReader, ContainerInfoComponent,
-        Deserialize, SerdePropertyTree, StreamExt,
+        Deserialize, SerdePropertyTree, StreamExt, SystemTimeFactory,
     },
     work::WorkPoolImpl,
     Account, Amount, BlockHash, BlockType, KeyPair, Networks, Vote, VoteCode,
@@ -113,6 +114,7 @@ pub struct Node {
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
+    peer_history_thread: TimerThread<PeerHistory>,
     warmed_up: AtomicU32,
     stopped: AtomicBool,
 }
@@ -984,6 +986,16 @@ impl Node {
             ))
         }
 
+        let time_factory = SystemTimeFactory::default();
+
+        let peer_history = PeerHistory::new(
+            Arc::clone(&channels),
+            Arc::clone(&ledger),
+            time_factory,
+            Arc::clone(&stats),
+            Duration::from_secs(60 * 60),
+        );
+
         Self {
             node_id,
             workers,
@@ -1033,6 +1045,11 @@ impl Node {
             process_live_dispatcher,
             live_message_processor,
             network_threads,
+            peer_history_thread: TimerThread::new(
+                "Peer history",
+                peer_history,
+                Duration::from_secs(15),
+            ),
             warmed_up: AtomicU32::new(0),
             stopped: AtomicBool::new(false),
         }
@@ -1131,7 +1148,7 @@ impl Node {
 
         let initial_peers: Vec<(SocketAddrV6, SystemTime)> = {
             let tx = self.ledger.read_txn();
-            self.ledger.store.peer.iter(&tx).map(|i| i.into()).collect()
+            self.ledger.store.peer.iter(&tx).collect()
         };
 
         info!("Adding cached initial peers: {}", initial_peers.len());
@@ -1209,10 +1226,10 @@ impl Node {
 pub trait NodeExt {
     fn start(&self);
     fn stop(&self);
+    fn run(&self, callback: Box<dyn FnOnce(&Node)>);
     fn ongoing_bootstrap(&self);
     fn ongoing_ledger_pruning(&self);
     fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool);
-    fn ongoing_peer_store(&self);
     fn ongoing_online_weight_calculation_queue(&self);
     fn ongoing_online_weight_calculation(&self);
     fn backup_wallet(&self);
@@ -1224,7 +1241,6 @@ impl NodeExt for Arc<Node> {
     fn start(&self) {
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
-        self.add_initial_peers();
         if !self.flags.disable_legacy_bootstrap && !self.flags.disable_ongoing_bootstrap {
             self.ongoing_bootstrap();
         }
@@ -1241,7 +1257,6 @@ impl NodeExt for Arc<Node> {
         if !self.flags.disable_rep_crawler {
             self.rep_crawler.start();
         }
-        self.ongoing_peer_store();
         self.ongoing_online_weight_calculation_queue();
 
         if self.config.tcp_incoming_connections_max > 0
@@ -1313,6 +1328,9 @@ impl NodeExt for Arc<Node> {
         }
         self.telemetry.start();
         self.local_block_broadcaster.start();
+        self.peer_history_thread.start();
+
+        self.add_initial_peers();
     }
 
     fn stop(&self) {
@@ -1321,6 +1339,8 @@ impl NodeExt for Arc<Node> {
             return;
         }
         info!("Node stopping...");
+
+        self.peer_history_thread.stop();
         // Cancels ongoing work generation tasks, which may be blocking other threads
         // No tasks may wait for work generation in I/O threads, or termination signal capturing will be unable to call node::stop()
         self.distributed_work.stop();
@@ -1356,6 +1376,12 @@ impl NodeExt for Arc<Node> {
         self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
 
         // work pool is not stopped on purpose due to testing setup
+    }
+
+    fn run(&self, callback: Box<dyn FnOnce(&Node)>) {
+        self.start();
+        callback(self);
+        self.stop();
     }
 
     fn ongoing_bootstrap(&self) {
@@ -1524,31 +1550,6 @@ impl NodeExt for Arc<Node> {
         debug!("Total recently pruned block count: {}", pruned_count);
     }
 
-    fn ongoing_peer_store(&self) {
-        let endpoints = self.channels.get_peers();
-        if !endpoints.is_empty() {
-            // Clear all peers then refresh with the current list of peers
-            let mut tx = self.ledger.rw_txn();
-            self.ledger.store.peer.clear(&mut tx);
-            for endpoint in endpoints {
-                self.ledger
-                    .store
-                    .peer
-                    .put(&mut tx, endpoint, SystemTime::now());
-            }
-        }
-
-        let node_w = Arc::downgrade(self);
-        self.workers.add_delayed_task(
-            Duration::from_secs(self.network_params.network.peer_dump_interval_s as u64),
-            Box::new(move || {
-                if let Some(node) = node_w.upgrade() {
-                    node.ongoing_peer_store();
-                }
-            }),
-        );
-    }
-
     fn ongoing_online_weight_calculation_queue(&self) {
         let node_w = Arc::downgrade(self);
         self.workers.add_delayed_task(
@@ -1692,6 +1693,8 @@ struct RpcCallbackMessage {
 
 #[cfg(test)]
 mod tests {
+    use crate::transport::NullSocketObserver;
+
     use super::*;
 
     #[test]
@@ -1713,5 +1716,41 @@ mod tests {
         let (max_blocks, weights) = get_bootstrap_weights(Networks::NanoLiveNetwork);
         assert_eq!(weights.len(), 130);
         assert_eq!(max_blocks, 184_789_962);
+    }
+
+    #[test]
+    fn start_stop_node() {
+        create_test_node(|node| {
+            //TODO track initial peer loading
+            node.run(Box::new(|node| {}));
+        });
+    }
+
+    fn create_test_node<T: FnOnce(Arc<Node>)>(t: T) {
+        let async_rt = Arc::new(AsyncRuntime::default());
+        let app_path = PathBuf::from("/tmp/nano-test");
+        let config = NodeConfig::new_null();
+        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+        let flags = NodeFlags::default();
+        let work = Arc::new(WorkPoolImpl::new(
+            network_params.work.clone(),
+            1,
+            Duration::ZERO,
+        ));
+        let node = Node::new(
+            async_rt,
+            &app_path,
+            config,
+            network_params,
+            flags,
+            work,
+            Arc::new(NullSocketObserver::new()),
+            Box::new(|_, _, _, _, _, _| {}),
+            Box::new(|_, _| {}),
+            Box::new(|_, _, _| {}),
+        );
+
+        t(Arc::new(node));
+        std::fs::remove_dir_all(app_path).unwrap();
     }
 }

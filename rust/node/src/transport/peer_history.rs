@@ -1,24 +1,13 @@
 use super::{ChannelEnum, TcpChannels};
-use crate::stats::{DetailType, StatType, Stats};
+use crate::{
+    stats::{DetailType, StatType, Stats},
+    utils::Runnable,
+};
 use rsnano_core::utils::SystemTimeFactory;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tracing::debug;
-
-pub struct PeerHistoryConfig {
-    pub erase_cutoff: Duration,
-    pub check_interval: Duration,
-}
-
-impl Default for PeerHistoryConfig {
-    fn default() -> Self {
-        Self {
-            erase_cutoff: Duration::from_secs(60 * 60),
-            check_interval: Duration::from_secs(15),
-        }
-    }
-}
 
 /// Writes a snapshot of the current peers to the database,
 /// so that we can reconnect to them when the node is restarted
@@ -45,13 +34,6 @@ impl PeerHistory {
             stats,
             erase_cutoff,
         }
-    }
-
-    fn run(&self) {
-        self.stats.inc(StatType::PeerHistory, DetailType::Loop);
-        let mut tx = self.ledger.rw_txn();
-        self.save_peers(&mut tx);
-        self.delete_old_peers(&mut tx);
     }
 
     fn save_peers(&self, tx: &mut LmdbWriteTransaction) {
@@ -102,6 +84,15 @@ impl PeerHistory {
     }
 }
 
+impl Runnable for PeerHistory {
+    fn run(&mut self) {
+        self.stats.inc(StatType::PeerHistory, DetailType::Loop);
+        let mut tx = self.ledger.rw_txn();
+        self.save_peers(&mut tx);
+        self.delete_old_peers(&mut tx);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,13 +100,6 @@ mod tests {
     use rsnano_core::utils::{create_test_endpoint, create_test_time, parse_endpoint};
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
-
-    #[test]
-    fn config_defaults() {
-        let config = PeerHistoryConfig::default();
-        assert_eq!(config.erase_cutoff, Duration::from_secs(60 * 60));
-        assert_eq!(config.check_interval, Duration::from_secs(15));
-    }
 
     #[test]
     fn no_peers() {
@@ -293,7 +277,7 @@ mod tests {
         let put_tracker = ledger.store.peer.track_puts();
         let delete_tracker = ledger.store.peer.track_deletions();
         let erase_cutoff = Duration::from_secs(60 * 60);
-        let peer_history = PeerHistory::new(
+        let mut peer_history = PeerHistory::new(
             channels,
             ledger,
             time_factory,

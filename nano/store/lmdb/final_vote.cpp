@@ -82,4 +82,3 @@ nano::store::iterator<nano::qualified_root, nano::block_hash> nano::store::lmdb:
 {
 	return nano::store::iterator<nano::qualified_root, nano::block_hash> (nullptr);
 }
-

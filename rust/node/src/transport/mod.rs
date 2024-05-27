@@ -26,6 +26,7 @@ mod write_queue;
 
 pub use fair_queue::*;
 pub use message_processor::LiveMessageProcessor;
+pub use peer_history::*;
 use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 

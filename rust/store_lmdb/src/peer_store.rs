@@ -1,14 +1,10 @@
-use crate::{
-    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
-};
+use crate::{LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction};
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{
     utils::{BufferReader, Deserialize},
-    EndpointKey, NoValue,
+    EndpointKey,
 };
 use std::sync::Arc;
-
-pub type PeerIterator<'txn> = BinaryDbIterator<'txn, EndpointKey, NoValue>;
 
 pub struct LmdbPeerStore {
     _env: Arc<LmdbEnv>,
@@ -58,10 +54,6 @@ impl LmdbPeerStore {
         txn.clear_db(self.database).unwrap();
     }
 
-    pub fn begin<'txn>(&self, txn: &'txn dyn Transaction) -> PeerIterator<'txn> {
-        LmdbIteratorImpl::new_iterator(txn, self.database, None, true)
-    }
-
     pub fn iter<'txn>(
         &self,
         txn: &'txn dyn Transaction,
@@ -81,7 +73,6 @@ impl LmdbPeerStore {
 mod tests {
     use super::*;
     use crate::{DeleteEvent, PutEvent};
-    use rsnano_core::NoValue;
 
     struct Fixture {
         env: Arc<LmdbEnv>,
@@ -122,7 +113,7 @@ mod tests {
             store.exists(&txn, &EndpointKey::create_test_instance()),
             false
         );
-        assert!(store.begin(&txn).is_end());
+        assert_eq!(store.iter(&txn).next(), None);
     }
 
     #[test]
@@ -168,21 +159,6 @@ mod tests {
         let txn = fixture.env.tx_begin_read();
 
         assert_eq!(fixture.store.count(&txn), 2);
-    }
-
-    #[test]
-    fn iterate() {
-        let endpoint_a = EndpointKey::new([1; 16], 1000);
-        let endpoint_b = EndpointKey::new([2; 16], 2000);
-        let fixture = Fixture::with_stored_data(vec![endpoint_a.clone(), endpoint_b.clone()]);
-
-        let txn = fixture.env.tx_begin_read();
-        let mut it = fixture.store.begin(&txn);
-        assert_eq!(it.current(), Some((&endpoint_a, &NoValue {})));
-        it.next();
-        assert_eq!(it.current(), Some((&endpoint_b, &NoValue {})));
-        it.next();
-        assert_eq!(it.current(), None);
     }
 
     #[test]

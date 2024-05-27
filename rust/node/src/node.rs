@@ -1129,15 +1129,10 @@ impl Node {
             return;
         }
 
-        let mut initial_peers: Vec<SocketAddrV6> = Vec::new();
-        {
+        let initial_peers: Vec<SocketAddrV6> = {
             let tx = self.ledger.read_txn();
-            let mut it = self.ledger.store.peer.begin(&tx);
-            while let Some((endpoint_key, _)) = it.current() {
-                initial_peers.push(endpoint_key.into());
-                it.next();
-            }
-        }
+            self.ledger.store.peer.iter(&tx).map(|i| i.into()).collect()
+        };
 
         info!("Adding cached initial peers: {}", initial_peers.len());
 

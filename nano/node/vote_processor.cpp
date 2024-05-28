@@ -1,6 +1,4 @@
 #include "nano/lib/rsnano.hpp"
-#include "nano/node/transport/tcp.hpp"
-
 #include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
@@ -19,11 +17,6 @@
 
 using namespace std::chrono_literals;
 
-nano::vote_processor_queue::vote_processor_queue (std::size_t max_votes, nano::stats & stats_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::rep_tiers & rep_tiers_a)
-{
-	handle = rsnano::rsn_vote_processor_queue_create (max_votes, stats_a.handle, online_reps_a.get_handle (), ledger_a.handle, rep_tiers_a.handle);
-}
-
 nano::vote_processor_queue::vote_processor_queue (rsnano::VoteProcessorQueueHandle * handle) :
 	handle{ handle }
 {
@@ -32,11 +25,6 @@ nano::vote_processor_queue::vote_processor_queue (rsnano::VoteProcessorQueueHand
 nano::vote_processor_queue::~vote_processor_queue ()
 {
 	rsnano::rsn_vote_processor_queue_destroy (handle);
-}
-
-std::size_t nano::vote_processor_queue::size () const
-{
-	return rsnano::rsn_vote_processor_queue_len (handle);
 }
 
 bool nano::vote_processor_queue::empty () const
@@ -54,43 +42,6 @@ void nano::vote_processor_queue::flush ()
 	rsnano::rsn_vote_processor_queue_flush (handle);
 }
 
-void nano::vote_processor_queue::stop ()
-{
-	rsnano::rsn_vote_processor_queue_stop (handle);
-}
-
-namespace
-{
-void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	auto vote = std::make_shared<nano::vote> (vote_handle);
-	auto channel = nano::transport::channel_handle_to_channel (channel_handle);
-	(*observers)->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
-}
-
-void delete_vote_processed (void * context)
-{
-	auto observers = static_cast<std::shared_ptr<nano::node_observers> *> (context);
-	delete observers;
-}
-}
-
-nano::vote_processor::vote_processor (
-nano::vote_processor_queue & queue_a,
-nano::active_transactions & active_a,
-std::shared_ptr<nano::node_observers> observers_a,
-nano::stats & stats_a,
-nano::node_config & config_a,
-nano::logger & logger_a,
-nano::rep_crawler & rep_crawler_a,
-nano::network_params & network_params_a,
-nano::rep_tiers & rep_tiers_a)
-{
-	auto context = new std::shared_ptr<nano::node_observers> (observers_a);
-	handle = rsnano::rsn_vote_processor_create (queue_a.handle, active_a.handle, stats_a.handle, on_vote_processed, context, delete_vote_processed);
-}
-
 nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
 	handle{ handle }
 {
@@ -99,21 +50,6 @@ nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
 nano::vote_processor::~vote_processor ()
 {
 	rsnano::rsn_vote_processor_destroy (handle);
-}
-
-void nano::vote_processor::start ()
-{
-	rsnano::rsn_vote_processor_start (handle);
-}
-
-void nano::vote_processor::stop ()
-{
-	rsnano::rsn_vote_processor_stop (handle);
-}
-
-uint64_t nano::vote_processor::total_processed () const
-{
-	return rsnano::rsn_vote_processor_total_processed (handle);
 }
 
 nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel_a, bool validated)

@@ -209,7 +209,7 @@ where
         }
     }
 
-    pub fn len(&self, source: &Origin<S>) -> usize {
+    pub fn queue_len(&self, source: &Origin<S>) -> usize {
         self.queues
             .get(&source.into())
             .map(|q| q.len())
@@ -230,7 +230,7 @@ where
             .unwrap_or_default()
     }
 
-    pub fn total_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.queues.values().map(|q| q.len()).sum()
     }
 
@@ -320,7 +320,7 @@ where
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "total_size".to_string(),
-                    count: self.total_len(),
+                    count: self.len(),
                     sizeof_element: std::mem::size_of::<OriginEntry<S>>()
                         + std::mem::size_of::<Entry<R>>(),
                 }),
@@ -386,7 +386,7 @@ mod tests {
     fn empty() {
         let queue: FairQueue<i32, TestSource> =
             FairQueue::new(Box::new(|_| 999), Box::new(|_| 999));
-        assert_eq!(queue.total_len(), 0);
+        assert_eq!(queue.len(), 0);
         assert!(queue.is_empty());
     }
 
@@ -396,10 +396,10 @@ mod tests {
             FairQueue::new(Box::new(|_| 1), Box::new(|_| 1));
         queue.push(7, TestSource::Live.into());
 
-        assert_eq!(queue.total_len(), 1);
+        assert_eq!(queue.len(), 1);
         assert_eq!(queue.queues_len(), 1);
-        assert_eq!(queue.len(&TestSource::Live.into()), 1);
-        assert_eq!(queue.len(&TestSource::Bootstrap.into()), 0);
+        assert_eq!(queue.queue_len(&TestSource::Live.into()), 1);
+        assert_eq!(queue.queue_len(&TestSource::Bootstrap.into()), 0);
 
         let (result, origin) = queue.next().unwrap();
         assert_eq!(result, 7);
@@ -417,9 +417,9 @@ mod tests {
         queue.push(8, TestSource::Live.into());
         queue.push(9, TestSource::Live.into());
 
-        assert_eq!(queue.total_len(), 3);
+        assert_eq!(queue.len(), 3);
         assert_eq!(queue.queues_len(), 1);
-        assert_eq!(queue.len(&TestSource::Live.into()), 3);
+        assert_eq!(queue.queue_len(&TestSource::Live.into()), 3);
 
         let (result, origin) = queue.next().unwrap();
         assert_eq!(result, 7);
@@ -445,7 +445,7 @@ mod tests {
         queue.push(8, TestSource::Bootstrap.into());
         queue.push(9, TestSource::Unchecked.into());
 
-        assert_eq!(queue.total_len(), 3);
+        assert_eq!(queue.len(), 3);
         assert_eq!(queue.queues_len(), 3);
 
         let (result, origin) = queue.next().unwrap();
@@ -472,9 +472,9 @@ mod tests {
         queue.push(8, TestSource::Live.into());
         queue.push(9, TestSource::Live.into());
 
-        assert_eq!(queue.total_len(), 2);
+        assert_eq!(queue.len(), 2);
         assert_eq!(queue.queues_len(), 1);
-        assert_eq!(queue.len(&TestSource::Live.into()), 2);
+        assert_eq!(queue.queue_len(&TestSource::Live.into()), 2);
 
         let (result, origin) = queue.next().unwrap();
         assert_eq!(result, 7);
@@ -508,7 +508,7 @@ mod tests {
         queue.push(13, TestSource::Unchecked.into());
         queue.push(14, TestSource::Unchecked.into());
         queue.push(15, TestSource::Unchecked.into());
-        assert_eq!(queue.total_len(), 9);
+        assert_eq!(queue.len(), 9);
 
         // Processing 1x live, 2x bootstrap, 3x unchecked before moving to the next source
         assert_eq!(queue.next().unwrap().1.source, TestSource::Live);
@@ -536,14 +536,14 @@ mod tests {
         queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel2)));
         queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel3)));
         queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel1))); // Channel 1 has multiple entries
-        assert_eq!(queue.total_len(), 4);
+        assert_eq!(queue.len(), 4);
         assert_eq!(queue.queues_len(), 3); // Each <source, channel> pair is a separate queue
         assert_eq!(
-            queue.len(&Origin::new(TestSource::Live, Arc::clone(&channel1))),
+            queue.queue_len(&Origin::new(TestSource::Live, Arc::clone(&channel1))),
             2
         );
-        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel2)), 1);
-        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel3)), 1);
+        assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel2)), 1);
+        assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel3)), 1);
 
         let all = queue.next_batch(999);
         assert_eq!(all.len(), 4);
@@ -574,8 +574,8 @@ mod tests {
         assert!(queue.periodic_update(Duration::ZERO));
 
         // Only channel 3 should remain
-        assert_eq!(queue.total_len(), 1);
+        assert_eq!(queue.len(), 1);
         assert_eq!(queue.queues_len(), 1);
-        assert_eq!(queue.len(&Origin::new(TestSource::Live, channel3)), 1);
+        assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel3)), 1);
     }
 }

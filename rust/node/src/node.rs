@@ -22,9 +22,9 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheUpdater, SocketObserver,
-        SynCookies, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener,
-        TcpListenerExt, TcpMessageManager, TrafficType,
+        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        PeerCacheUpdater, SocketObserver, SynCookies, TcpChannels, TcpChannelsExtension,
+        TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -114,7 +114,8 @@ pub struct Node {
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
-    peer_history_thread: TimerThread<PeerCacheUpdater>,
+    peer_cache_updater: TimerThread<PeerCacheUpdater>,
+    peer_cache_connector: TimerThread<PeerCacheConnector>,
     warmed_up: AtomicU32,
     stopped: AtomicBool,
 }
@@ -988,7 +989,7 @@ impl Node {
 
         let time_factory = SystemTimeFactory::default();
 
-        let peer_history = PeerCacheUpdater::new(
+        let peer_cache_updater = PeerCacheUpdater::new(
             Arc::clone(&channels),
             Arc::clone(&ledger),
             time_factory,
@@ -996,7 +997,19 @@ impl Node {
             Duration::from_secs(60 * 60),
         );
 
+        let peer_cache_connector = PeerCacheConnector::new();
+
         Self {
+            peer_cache_updater: TimerThread::new(
+                "Peer history",
+                peer_cache_updater,
+                Duration::from_secs(15),
+            ),
+            peer_cache_connector: TimerThread::new_run_immedately(
+                "Net reachout",
+                peer_cache_connector,
+                network_params.network.merge_period,
+            ),
             node_id,
             workers,
             bootstrap_workers,
@@ -1045,11 +1058,6 @@ impl Node {
             process_live_dispatcher,
             live_message_processor,
             network_threads,
-            peer_history_thread: TimerThread::new(
-                "Peer history",
-                peer_history,
-                Duration::from_secs(15),
-            ),
             warmed_up: AtomicU32::new(0),
             stopped: AtomicBool::new(false),
         }
@@ -1226,7 +1234,6 @@ impl Node {
 pub trait NodeExt {
     fn start(&self);
     fn stop(&self);
-    fn run(&self, callback: Box<dyn FnOnce(&Node)>);
     fn ongoing_bootstrap(&self);
     fn ongoing_ledger_pruning(&self);
     fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool);
@@ -1328,7 +1335,8 @@ impl NodeExt for Arc<Node> {
         }
         self.telemetry.start();
         self.local_block_broadcaster.start();
-        self.peer_history_thread.start();
+        self.peer_cache_updater.start();
+        self.peer_cache_connector.start();
 
         self.add_initial_peers();
     }
@@ -1340,7 +1348,8 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
-        self.peer_history_thread.stop();
+        self.peer_cache_connector.stop();
+        self.peer_cache_updater.stop();
         // Cancels ongoing work generation tasks, which may be blocking other threads
         // No tasks may wait for work generation in I/O threads, or termination signal capturing will be unable to call node::stop()
         self.distributed_work.stop();
@@ -1376,12 +1385,6 @@ impl NodeExt for Arc<Node> {
         self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
 
         // work pool is not stopped on purpose due to testing setup
-    }
-
-    fn run(&self, callback: Box<dyn FnOnce(&Node)>) {
-        self.start();
-        callback(self);
-        self.stop();
     }
 
     fn ongoing_bootstrap(&self) {
@@ -1693,9 +1696,10 @@ struct RpcCallbackMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::transport::NullSocketObserver;
-
     use super::*;
+    use crate::{transport::NullSocketObserver, utils::TimerStartEvent};
+    use std::ops::Deref;
+    use uuid::Uuid;
 
     #[test]
     fn bootstrap_weights_bin() {
@@ -1719,38 +1723,106 @@ mod tests {
     }
 
     #[test]
-    fn start_stop_node() {
-        create_test_node(|node| {
-            //TODO track initial peer loading
-            node.run(Box::new(|node| {}));
-        });
+    fn start_peer_cache_updater() {
+        let node = TestNode::new();
+        let start_tracker = node.peer_cache_updater.track_start();
+
+        node.start();
+
+        assert_eq!(
+            start_tracker.output(),
+            vec![TimerStartEvent {
+                thread_name: "Peer history".to_string(),
+                interval: Duration::from_secs(15),
+                run_immediately: false
+            }]
+        );
     }
 
-    fn create_test_node<T: FnOnce(Arc<Node>)>(t: T) {
-        let async_rt = Arc::new(AsyncRuntime::default());
-        let app_path = PathBuf::from("/tmp/nano-test");
-        let config = NodeConfig::new_null();
-        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
-        let flags = NodeFlags::default();
-        let work = Arc::new(WorkPoolImpl::new(
-            network_params.work.clone(),
-            1,
-            Duration::ZERO,
-        ));
-        let node = Node::new(
-            async_rt,
-            &app_path,
-            config,
-            network_params,
-            flags,
-            work,
-            Arc::new(NullSocketObserver::new()),
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _| {}),
-        );
+    #[test]
+    fn start_peer_cache_connector() {
+        let node = TestNode::new();
+        let start_tracker = node.peer_cache_connector.track_start();
 
-        t(Arc::new(node));
-        std::fs::remove_dir_all(app_path).unwrap();
+        node.start();
+
+        assert_eq!(
+            start_tracker.output(),
+            vec![TimerStartEvent {
+                thread_name: "Net reachout".to_string(),
+                interval: node.network_params.network.merge_period,
+                run_immediately: true
+            }]
+        );
+    }
+
+    #[test]
+    fn stop_node() {
+        let node = TestNode::new();
+        node.start();
+
+        node.stop();
+
+        assert_eq!(
+            node.peer_cache_updater.is_running(),
+            false,
+            "peer_cache_updater running"
+        );
+        assert_eq!(
+            node.peer_cache_connector.is_running(),
+            false,
+            "peer_cache_connector running"
+        );
+    }
+
+    struct TestNode {
+        app_path: PathBuf,
+        node: Arc<Node>,
+    }
+
+    impl TestNode {
+        pub fn new() -> Self {
+            let async_rt = Arc::new(AsyncRuntime::default());
+            let mut app_path = std::env::temp_dir();
+            app_path.push(format!("rsnano-test-{}", Uuid::new_v4().simple()));
+            let config = NodeConfig::new_null();
+            let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+            let flags = NodeFlags::default();
+            let work = Arc::new(WorkPoolImpl::new(
+                network_params.work.clone(),
+                1,
+                Duration::ZERO,
+            ));
+
+            let node = Arc::new(Node::new(
+                async_rt,
+                &app_path,
+                config,
+                network_params,
+                flags,
+                work,
+                Arc::new(NullSocketObserver::new()),
+                Box::new(|_, _, _, _, _, _| {}),
+                Box::new(|_, _| {}),
+                Box::new(|_, _, _| {}),
+            ));
+
+            Self { node, app_path }
+        }
+    }
+
+    impl Drop for TestNode {
+        fn drop(&mut self) {
+            self.node.stop();
+            std::fs::remove_dir_all(&self.app_path).unwrap();
+        }
+    }
+
+    impl Deref for TestNode {
+        type Target = Arc<Node>;
+
+        fn deref(&self) -> &Self::Target {
+            &self.node
+        }
     }
 }

@@ -131,7 +131,7 @@ impl Node {
         socket_observer: Arc<dyn SocketObserver>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>,
+        on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) -> Self {
         let application_path = application_path.into();
         let node_id = NodeIdKeyFile::default()
@@ -240,7 +240,7 @@ impl Node {
         ));
 
         let vote_processor_queue = Arc::new(VoteProcessorQueue::new(
-            flags.vote_processor_capacity,
+            config.vote_processor.clone(),
             Arc::clone(&stats),
             Arc::clone(&online_reps),
             Arc::clone(&ledger),
@@ -773,6 +773,9 @@ impl Node {
             };
             let Some(online_reps) = online_reps_w.upgrade() else {
                 return;
+            };
+            let Some(channel) = &channel else {
+                return; // Channel expired when waiting for vote to be processed
             };
             let active_in_rep_crawler = rep_crawler.process(Arc::clone(vote), Arc::clone(channel));
             if active_in_rep_crawler {

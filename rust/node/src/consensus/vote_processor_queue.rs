@@ -1,7 +1,7 @@
-use super::{RepTier, RepTiers};
+use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::ChannelEnum,
+    stats::{DetailType, StatType, Stats},
+    transport::{ChannelEnum, FairQueue, Origin},
     OnlineReps,
 };
 use rsnano_core::{
@@ -13,14 +13,12 @@ use std::{
     collections::VecDeque,
     mem::size_of,
     sync::{Arc, Condvar, Mutex},
-    time::Duration,
 };
-use tracing::error;
 
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,
     condition: Condvar,
-    max_votes: usize,
+    config: VoteProcessorConfig,
     stats: Arc<Stats>,
     online_reps: Arc<Mutex<OnlineReps>>,
     ledger: Arc<Ledger>,
@@ -29,19 +27,31 @@ pub struct VoteProcessorQueue {
 
 impl VoteProcessorQueue {
     pub fn new(
-        max_votes: usize,
+        config: VoteProcessorConfig,
         stats: Arc<Stats>,
         online_reps: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
         rep_tiers: Arc<RepTiers>,
     ) -> Self {
+        let conf = config.clone();
         Self {
             data: Mutex::new(VoteProcessorQueueData {
                 stopped: false,
-                votes: VecDeque::new(),
+                queue: FairQueue::new(
+                    Box::new(move |origin| match origin.source {
+                        RepTier::Tier1 | RepTier::Tier2 | RepTier::Tier3 => conf.max_pr_queue,
+                        RepTier::None => conf.max_non_pr_queue,
+                    }),
+                    Box::new(move |origin| match origin.source {
+                        RepTier::Tier3 => conf.pr_priority * conf.pr_priority * conf.pr_priority,
+                        RepTier::Tier2 => conf.pr_priority * conf.pr_priority,
+                        RepTier::Tier1 => conf.pr_priority,
+                        RepTier::None => 1,
+                    }),
+                ),
             }),
             condition: Condvar::new(),
-            max_votes,
+            config,
             online_reps,
             stats,
             ledger,
@@ -50,85 +60,55 @@ impl VoteProcessorQueue {
     }
 
     pub fn len(&self) -> usize {
-        self.data.lock().unwrap().votes.len()
+        self.data.lock().unwrap().queue.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.data.lock().unwrap().votes.is_empty()
+        self.data.lock().unwrap().queue.is_empty()
     }
 
     pub fn vote(&self, vote_a: &Arc<Vote>, channel_a: &Arc<ChannelEnum>) -> bool {
-        let mut process = false;
-        let mut guard = self.data.lock().unwrap();
-        if !guard.stopped {
-            let tier = self.rep_tiers.tier(&vote_a.voting_account);
+        let tier = self.rep_tiers.tier(&vote_a.voting_account);
 
-            // Level 0 (< 0.1%)
-            if (guard.votes.len() as f32) < (6.0 / 9.0 * self.max_votes as f32) {
-                process = true;
-            }
-            // Level 1 (0.1-1%)
-            else if (guard.votes.len() as f32) < (7.0 / 9.0 * self.max_votes as f32) {
-                process = matches!(tier, RepTier::Tier1);
-            }
-            // Level 2 (1-5%)
-            else if (guard.votes.len() as f32) < (8.0 / 9.0 * self.max_votes as f32) {
-                process = matches!(tier, RepTier::Tier2);
-            }
-            // Level 3 (> 5%)
-            else if guard.votes.len() < self.max_votes {
-                process = matches!(tier, RepTier::Tier3);
-            }
-            if process {
-                guard
-                    .votes
-                    .push_back((Arc::clone(vote_a), Arc::clone(channel_a)));
-                drop(guard);
-                self.condition.notify_all();
-            } else {
-                self.stats
-                    .inc_dir(StatType::Vote, DetailType::VoteOverflow, Direction::In);
-            }
+        let added = {
+            let mut guard = self.data.lock().unwrap();
+            guard
+                .queue
+                .push(Arc::clone(vote_a), Origin::new(tier, Arc::clone(channel_a)))
+        };
+
+        if added {
+            self.stats.inc(StatType::VoteProcessor, DetailType::Process);
+            self.stats.inc(StatType::VoteProcessorTier, tier.into());
+            self.condition.notify_all();
+        } else {
+            self.stats
+                .inc(StatType::VoteProcessor, DetailType::Overfill);
+            self.stats.inc(StatType::VoteProcessorOverfill, tier.into());
         }
-        return !process;
+
+        added
     }
 
-    pub fn wait_for_votes(&self) -> VecDeque<(Arc<Vote>, Arc<ChannelEnum>)> {
+    pub fn wait_for_votes(&self, max_batch_size: usize) -> VecDeque<(Arc<Vote>, Origin<RepTier>)> {
         let mut guard = self.data.lock().unwrap();
         loop {
             if guard.stopped {
                 return VecDeque::new();
             }
 
-            if !guard.votes.is_empty() {
-                let mut votes = VecDeque::new();
-                std::mem::swap(&mut guard.votes, &mut votes);
-                drop(guard);
-                self.condition.notify_all();
-                return votes;
+            if !guard.queue.is_empty() {
+                return guard.queue.next_batch(max_batch_size);
             } else {
                 guard = self.condition.wait(guard).unwrap();
             }
         }
     }
 
-    pub fn flush(&self) {
-        let guard = self.data.lock().unwrap();
-        let result = self
-            .condition
-            .wait_timeout_while(guard, Duration::from_secs(60), |l| {
-                !l.stopped && !l.votes.is_empty()
-            });
-
-        if result.is_err() {
-            error!("vote_processor_queue::flush timeout while waiting for flush")
-        }
-    }
-
     pub fn clear(&self) {
         {
             let mut guard = self.data.lock().unwrap();
-            guard.votes.clear();
+            guard.queue.clear();
         }
         self.condition.notify_all();
     }
@@ -147,7 +127,7 @@ impl VoteProcessorQueue {
             name.into(),
             vec![ContainerInfoComponent::Leaf(ContainerInfo {
                 name: "votes".to_string(),
-                count: guard.votes.len(),
+                count: guard.queue.len(),
                 sizeof_element: size_of::<(Arc<Vote>, Arc<ChannelEnum>)>(),
             })],
         )
@@ -156,5 +136,5 @@ impl VoteProcessorQueue {
 
 struct VoteProcessorQueueData {
     stopped: bool,
-    votes: VecDeque<(Arc<Vote>, Arc<ChannelEnum>)>,
+    queue: FairQueue<Arc<Vote>, RepTier>,
 }

@@ -129,7 +129,11 @@ namespace
 			return;
 		}
 		auto vote = std::make_shared<nano::vote> (vote_handle);
-		auto channel = nano::transport::channel_handle_to_channel (channel_handle);
+		std::shared_ptr<nano::transport::channel> channel{};
+		if (channel_handle != nullptr)
+		{
+			channel = nano::transport::channel_handle_to_channel (channel_handle);
+		}
 		obs->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
 	}
 

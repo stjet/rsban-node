@@ -55,10 +55,8 @@ public:
 	~vote_processor_queue ();
 
 	bool empty () const;
-	/** Returns false if the vote was processed */
+	/** Returns true if the vote was queued for processing */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
-	/** Function blocks until the queue is empty */
-	void flush ();
 
 	rsnano::VoteProcessorQueueHandle * handle;
 };
@@ -71,7 +69,7 @@ public:
 	~vote_processor ();
 
 	/** Note: node.active.mutex lock is required */
-	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &, bool = false);
+	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
 
 	rsnano::VoteProcessorHandle * handle;
 };

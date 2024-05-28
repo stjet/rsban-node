@@ -17,12 +17,23 @@ use std::{
 use tracing::debug;
 
 // Higher number means higher priority
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum RepTier {
     None,  // Not a principal representatives
     Tier1, // (0.1-1%) of online stake
     Tier2, // (1-5%) of online stake
     Tier3, // (> 5%) of online stake
+}
+
+impl From<RepTier> for DetailType {
+    fn from(value: RepTier) -> Self {
+        match value {
+            RepTier::None => DetailType::None,
+            RepTier::Tier1 => DetailType::Tier1,
+            RepTier::Tier2 => DetailType::Tier2,
+            RepTier::Tier3 => DetailType::Tier3,
+        }
+    }
 }
 
 pub struct RepTiers {

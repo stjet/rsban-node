@@ -1,4 +1,4 @@
-use super::{rep_tiers::RepTiersHandle, VoteHandle};
+use super::{rep_tiers::RepTiersHandle, VoteHandle, VoteProcessorConfigDto};
 use crate::{
     ledger::datastore::LedgerHandle, representatives::OnlineRepsHandle, transport::ChannelHandle,
     StatHandle,
@@ -18,7 +18,7 @@ impl Deref for VoteProcessorQueueHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_processor_queue_create(
-    max_votes: usize,
+    config: &VoteProcessorConfigDto,
     stats: &StatHandle,
     online_reps: &OnlineRepsHandle,
     ledger: &LedgerHandle,
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_create(
 ) -> *mut VoteProcessorQueueHandle {
     Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::new(
         VoteProcessorQueue::new(
-            max_votes,
+            config.into(),
             Arc::clone(stats),
             Arc::clone(online_reps),
             Arc::clone(ledger),
@@ -57,11 +57,6 @@ pub extern "C" fn rsn_vote_processor_queue_vote(
     channel: &ChannelHandle,
 ) -> bool {
     handle.0.vote(vote, channel)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_vote_processor_queue_flush(handle: &VoteProcessorQueueHandle) {
-    handle.0.flush();
 }
 
 #[no_mangle]

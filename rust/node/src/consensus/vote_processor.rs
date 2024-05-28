@@ -3,9 +3,8 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::ChannelEnum,
 };
-use rsnano_core::{utils::TomlWriter, validate_message, Vote, VoteCode, VoteSource};
+use rsnano_core::{utils::TomlWriter, Vote, VoteCode, VoteSource};
 use std::{
-    collections::VecDeque,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
@@ -59,16 +58,19 @@ pub struct VoteProcessor {
     queue: Arc<VoteProcessorQueue>,
     active: Arc<ActiveTransactions>,
     stats: Arc<Stats>,
-    vote_processed: Mutex<Vec<Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>>>,
+    vote_processed:
+        Mutex<Vec<Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>>>,
     pub total_processed: AtomicU64,
 }
 
 impl VoteProcessor {
+    const MAX_BATCH_SIZE: usize = 1024 * 4;
+
     pub fn new(
         queue: Arc<VoteProcessorQueue>,
         active: Arc<ActiveTransactions>,
         stats: Arc<Stats>,
-        on_vote: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>,
+        on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) -> Self {
         Self {
             queue,
@@ -88,61 +90,38 @@ impl VoteProcessor {
     }
 
     pub fn run(&self) {
-        let mut start = Instant::now();
-        let mut log_this_iteration;
-
         loop {
-            let votes = self.queue.wait_for_votes();
-            if votes.is_empty() {
+            self.stats.inc(StatType::VoteProcessor, DetailType::Loop);
+
+            let batch = self.queue.wait_for_votes(Self::MAX_BATCH_SIZE);
+            if batch.is_empty() {
                 break; //stopped
             }
-            log_this_iteration = false;
-            // TODO: This is a temporary measure to prevent spamming the logs until we can implement a better solution
-            if votes.len() > 1024 * 4 {
-                /*
-                 * Only log the timing information for this iteration if
-                 * there are a sufficient number of items for it to be relevant
-                 */
-                log_this_iteration = true;
-                start = Instant::now();
+
+            let start = Instant::now();
+
+            for (vote, origin) in &batch {
+                self.vote_blocking(vote, &origin.channel);
             }
-            self.verify_votes(&votes);
-            self.total_processed.fetch_add(1, Ordering::SeqCst);
+
+            self.total_processed
+                .fetch_add(batch.len() as u64, Ordering::SeqCst);
 
             let elapsed_millis = start.elapsed().as_millis();
-            if log_this_iteration && elapsed_millis > 100 {
+            if batch.len() == Self::MAX_BATCH_SIZE && elapsed_millis > 100 {
                 debug!(
                     "Processed {} votes in {} milliseconds (rate of {} votes per second)",
-                    votes.len(),
+                    batch.len(),
                     elapsed_millis,
-                    (votes.len() * 1000) / elapsed_millis as usize
+                    (batch.len() * 1000) / elapsed_millis as usize
                 );
             }
         }
     }
 
-    fn verify_votes(&self, votes: &VecDeque<(Arc<Vote>, Arc<ChannelEnum>)>) {
-        for (vote, channel) in votes {
-            if validate_message(
-                &vote.voting_account,
-                vote.hash().as_bytes(),
-                &vote.signature,
-            )
-            .is_ok()
-            {
-                self.vote_blocking(vote, channel, true);
-            }
-        }
-    }
-
-    pub fn vote_blocking(
-        &self,
-        vote: &Arc<Vote>,
-        channel: &Arc<ChannelEnum>,
-        validated: bool,
-    ) -> VoteCode {
+    pub fn vote_blocking(&self, vote: &Arc<Vote>, channel: &Option<Arc<ChannelEnum>>) -> VoteCode {
         let mut result = VoteCode::Invalid;
-        if validated || vote.validate().is_ok() {
+        if vote.validate().is_ok() {
             let vote_results = self.active.vote(vote, VoteSource::Live);
 
             // Aggregate results for individual hashes
@@ -174,7 +153,7 @@ impl VoteProcessor {
 
     pub fn add_vote_processed_callback(
         &self,
-        callback: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>, VoteCode) + Send + Sync>,
+        callback: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) {
         self.vote_processed.lock().unwrap().push(callback);
     }

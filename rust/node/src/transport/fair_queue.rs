@@ -14,7 +14,7 @@ pub struct Origin<S> {
 }
 
 impl<S> Origin<S> {
-    fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
+    pub fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
         Self {
             source,
             channel: Some(channel),

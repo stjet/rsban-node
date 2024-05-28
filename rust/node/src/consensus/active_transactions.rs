@@ -1334,6 +1334,8 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
     /// Validate a vote and apply it to the current election if one exists
     /// Distinguishes replay votes, cannot be determined if the block is not in any election
     fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode> {
+        debug_assert!(vote.validate().is_ok());
+
         let mut results = HashMap::new();
         let mut process = HashMap::new();
         let mut inactive = Vec::new(); // Hashes that should be added to inactive vote cache

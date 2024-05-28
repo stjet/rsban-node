@@ -113,6 +113,9 @@ pub enum StatType {
     Network,
     TcpServer,
     Vote,
+    VoteProcessor,
+    VoteProcessorTier,
+    VoteProcessorOverfill,
     Election,
     HttpCallback,
     Ipc,
@@ -483,6 +486,11 @@ pub enum DetailType {
     BroadcastAggressive,
     EraseOld,
     EraseConfirmed,
+
+    // rep tiers
+    Tier1,
+    Tier2,
+    Tier3,
 }
 
 impl DetailType {

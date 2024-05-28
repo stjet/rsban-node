@@ -409,11 +409,11 @@ impl BlockProcessorLoop {
 
     // TODO: Remove and replace all checks with calls to size (block_source)
     pub fn total_queue_len(&self) -> usize {
-        self.mutex.lock().unwrap().queue.total_len()
+        self.mutex.lock().unwrap().queue.len()
     }
 
     pub fn queue_len(&self, source: BlockSource) -> usize {
-        self.mutex.lock().unwrap().queue.len(&source.into())
+        self.mutex.lock().unwrap().queue.queue_len(&source.into())
     }
 
     fn add_impl(
@@ -470,8 +470,8 @@ impl BlockProcessorLoop {
             if lock_a.should_log() {
                 info!(
                     "{} blocks (+ {} forced) in processing queue",
-                    lock_a.queue.total_len(),
-                    lock_a.queue.len(&BlockSource::Forced.into())
+                    lock_a.queue.len(),
+                    lock_a.queue.queue_len(&BlockSource::Forced.into())
                 );
             }
             let context = lock_a.next();
@@ -626,12 +626,12 @@ impl BlockProcessorLoop {
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "blocks".to_owned(),
-                    count: guard.queue.total_len(),
+                    count: guard.queue.len(),
                     sizeof_element: size_of::<Arc<BlockEnum>>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "forced".to_owned(),
-                    count: guard.queue.len(&BlockSource::Forced.into()),
+                    count: guard.queue.queue_len(&BlockSource::Forced.into()),
                     sizeof_element: size_of::<Arc<BlockEnum>>(),
                 }),
                 guard.queue.collect_container_info("queue"),

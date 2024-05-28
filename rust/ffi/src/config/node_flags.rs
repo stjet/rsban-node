@@ -127,7 +127,6 @@ pub unsafe extern "C" fn rsn_node_flags_generate_set_cache(
 
 #[repr(C)]
 pub struct NodeFlagsDto {
-    pub disable_add_initial_peers: bool,
     pub disable_backup: bool,
     pub disable_lazy_bootstrap: bool,
     pub disable_legacy_bootstrap: bool,
@@ -168,7 +167,6 @@ pub unsafe extern "C" fn rsn_node_flags_get(
 ) {
     let lock = (*handle).0.lock().unwrap();
     let result = &mut *result;
-    result.disable_add_initial_peers = lock.disable_add_initial_peers;
     result.disable_backup = lock.disable_backup;
     result.disable_lazy_bootstrap = lock.disable_lazy_bootstrap;
     result.disable_legacy_bootstrap = lock.disable_legacy_bootstrap;
@@ -210,7 +208,6 @@ pub unsafe extern "C" fn rsn_node_flags_set(
 ) {
     let flags = &*flags;
     let mut lock = (*handle).0.lock().unwrap();
-    lock.disable_add_initial_peers = flags.disable_add_initial_peers;
     lock.disable_backup = flags.disable_backup;
     lock.disable_lazy_bootstrap = flags.disable_lazy_bootstrap;
     lock.disable_legacy_bootstrap = flags.disable_legacy_bootstrap;

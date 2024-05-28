@@ -705,16 +705,6 @@ void nano::node_flags::set_rpc_overrides (const std::vector<std::string> & overr
 	rsnano::rsn_node_flags_rpc_config_set_overrides (handle, dtos.data (), dtos.size ());
 }
 
-bool nano::node_flags::disable_add_initial_peers () const
-{
-	return flags_dto ().disable_add_initial_peers;
-}
-
-void nano::node_flags::set_disable_add_initial_peers (bool value)
-{
-	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_add_initial_peers = value; });
-}
-
 bool nano::node_flags::disable_backup () const
 {
 	return flags_dto ().disable_backup;

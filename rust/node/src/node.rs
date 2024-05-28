@@ -1149,11 +1149,6 @@ impl Node {
     }
 
     pub fn add_initial_peers(&self) {
-        if self.flags.disable_add_initial_peers {
-            warn!("Not adding initial peers because `disable_add_initial_peers` flag is set");
-            return;
-        }
-
         let initial_peers: Vec<(SocketAddrV6, SystemTime)> = {
             let tx = self.ledger.read_txn();
             self.ledger.store.peer.iter(&tx).collect()

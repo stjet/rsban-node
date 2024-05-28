@@ -157,8 +157,6 @@ public:
 	void set_config_overrides (const std::vector<std::string> & overrides);
 	std::vector<std::string> rpc_config_overrides () const;
 	void set_rpc_overrides (const std::vector<std::string> & overrides);
-	bool disable_add_initial_peers () const;
-	void set_disable_add_initial_peers (bool value);
 	bool disable_backup () const;
 	void set_disable_backup (bool value);
 	bool disable_lazy_bootstrap () const;

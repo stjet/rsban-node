@@ -1,4 +1,4 @@
-use std::{net::SocketAddrV6, sync::atomic::Ordering};
+use std::sync::atomic::Ordering;
 pub mod helpers;
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
@@ -6,7 +6,7 @@ use crate::{
     Ledger, LedgerCache, LedgerContext, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{
-    utils::{create_test_endpoint, create_test_time},
+    utils::{create_test_time, TEST_ENDPOINT_1},
     Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, TestAccountChain,
     DEV_GENESIS_KEY, GXRB_RATIO,
 };
@@ -751,7 +751,7 @@ fn sideband_height() {
 
 #[test]
 fn configured_peers_response() {
-    let endpoint = create_test_endpoint();
+    let endpoint = TEST_ENDPOINT_1;
     let now = create_test_time();
     let ledger = Ledger::new_null_builder().peers([(endpoint, now)]).finish();
     let tx = ledger.read_txn();

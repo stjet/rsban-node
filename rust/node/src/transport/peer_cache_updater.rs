@@ -1,7 +1,7 @@
 use super::{ChannelEnum, TcpChannels};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    utils::Runnable,
+    utils::{CancellationToken, Runnable},
 };
 use rsnano_core::utils::SystemTimeFactory;
 use rsnano_ledger::Ledger;
@@ -85,7 +85,7 @@ impl PeerCacheUpdater {
 }
 
 impl Runnable for PeerCacheUpdater {
-    fn run(&mut self) {
+    fn run(&mut self, _cancel_token: &CancellationToken) {
         self.stats.inc(StatType::PeerHistory, DetailType::Loop);
         let mut tx = self.ledger.rw_txn();
         self.save_peers(&mut tx);
@@ -97,7 +97,9 @@ impl Runnable for PeerCacheUpdater {
 mod tests {
     use super::*;
     use crate::stats::Direction;
-    use rsnano_core::utils::{create_test_endpoint, create_test_time, parse_endpoint};
+    use rsnano_core::utils::{
+        create_test_time, parse_endpoint, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
+    };
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
 
@@ -112,7 +114,7 @@ mod tests {
     #[test]
     fn write_one_peer() {
         let now = create_test_time();
-        let endpoint = create_test_endpoint();
+        let endpoint = TEST_ENDPOINT_1;
         let open_channels = vec![endpoint];
         let already_stored = Vec::new();
 
@@ -123,25 +125,26 @@ mod tests {
 
     #[test]
     fn write_multiple_peers() {
-        let endpoint1 = parse_endpoint("[::ffff:10.0.0.1]:1111");
-        let endpoint2 = parse_endpoint("[::ffff:10.0.0.2]:2222");
-        let endpoint3 = parse_endpoint("[::ffff:10.0.0.3]:3333");
         let now = create_test_time();
-        let open_channels = vec![endpoint1, endpoint2, endpoint3];
+        let open_channels = vec![TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3];
         let already_stored = Vec::new();
 
         let (written, deleted, _) = run_peer_history(now, open_channels, already_stored);
 
         assert_eq!(
             written,
-            vec![(endpoint1, now), (endpoint2, now), (endpoint3, now)]
+            vec![
+                (TEST_ENDPOINT_1, now),
+                (TEST_ENDPOINT_2, now),
+                (TEST_ENDPOINT_3, now)
+            ]
         );
         assert_eq!(deleted, Vec::new());
     }
 
     #[test]
     fn update_peer() {
-        let endpoint = parse_endpoint("[::ffff:10.0.0.1]:1234");
+        let endpoint = TEST_ENDPOINT_1;
         let now = create_test_time();
         let open_channels = vec![endpoint];
         let already_stored = vec![(endpoint, now)];
@@ -155,19 +158,18 @@ mod tests {
     #[test]
     #[traced_test]
     fn log_when_new_peer_saved() {
-        let endpoint = create_test_endpoint();
-        let open_channels = vec![endpoint];
+        let open_channels = vec![TEST_ENDPOINT_1];
         let already_stored = Vec::new();
 
         run_peer_history(create_test_time(), open_channels, already_stored);
 
-        assert!(logs_contain("Saved new peer: [::ffff:10.0.0.1]:1234"));
+        assert!(logs_contain("Saved new peer: [::ffff:10:0:0:1]:1111"));
     }
 
     #[test]
     #[traced_test]
     fn dont_log_when_peer_updated() {
-        let endpoint = parse_endpoint("[::ffff:10.0.0.1]:1234");
+        let endpoint = TEST_ENDPOINT_1;
         let now = create_test_time();
         let open_channels = vec![endpoint];
         let already_stored = vec![(endpoint, now)];
@@ -185,7 +187,7 @@ mod tests {
 
     #[test]
     fn inc_stats_when_peer_inserted() {
-        let endpoint = create_test_endpoint();
+        let endpoint = TEST_ENDPOINT_1;
         let open_channels = vec![endpoint];
         let already_stored = Vec::new();
 
@@ -202,7 +204,7 @@ mod tests {
 
     #[test]
     fn inc_stats_when_peer_updated() {
-        let endpoint = create_test_endpoint();
+        let endpoint = TEST_ENDPOINT_1;
         let open_channels = vec![endpoint];
         let already_stored = vec![(endpoint, create_test_time())];
 
@@ -220,7 +222,7 @@ mod tests {
     #[test]
     fn erase_entries_older_than_cutoff() {
         let open_channels = Vec::new();
-        let endpoint = create_test_endpoint();
+        let endpoint = TEST_ENDPOINT_1;
         let now = create_test_time();
         let already_stored = vec![(endpoint, now - Duration::from_secs(60 * 61))];
 
@@ -234,7 +236,7 @@ mod tests {
     #[test]
     fn erase_entries_newer_than_now() {
         let open_channels = Vec::new();
-        let endpoint = create_test_endpoint();
+        let endpoint = TEST_ENDPOINT_1;
         let now = create_test_time();
         let already_stored = vec![(endpoint, now + Duration::from_secs(60 * 61))];
 
@@ -285,7 +287,7 @@ mod tests {
             erase_cutoff,
         );
 
-        peer_history.run();
+        peer_history.run(&CancellationToken::new());
 
         (put_tracker.output(), delete_tracker.output(), stats)
     }

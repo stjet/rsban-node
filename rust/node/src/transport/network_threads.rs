@@ -301,6 +301,7 @@ impl ReachoutLoop {
 
             if let Some(keepalive) = self.channels.sample_keepalive() {
                 for peer in keepalive.peers {
+                    self.stats.inc(StatType::Network, DetailType::ReachoutLive);
                     self.channels.merge_peer(peer);
 
                     // Throttle reachout attempts

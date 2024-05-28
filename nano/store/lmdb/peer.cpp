@@ -25,16 +25,6 @@ nano::store::lmdb::peer::~peer ()
 		rsnano::rsn_lmdb_peer_store_destroy (handle);
 }
 
-void nano::store::lmdb::peer::put (nano::store::write_transaction const & transaction, nano::endpoint_key const & endpoint)
-{
-	rsnano::rsn_lmdb_peer_store_put (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
-}
-
-bool nano::store::lmdb::peer::exists (nano::store::transaction const & transaction, nano::endpoint_key const & endpoint) const
-{
-	return rsnano::rsn_lmdb_peer_store_exists (handle, transaction.get_rust_handle (), endpoint.address_bytes ().data (), endpoint.port ());
-}
-
 size_t nano::store::lmdb::peer::count (nano::store::transaction const & transaction) const
 {
 	return rsnano::rsn_lmdb_peer_store_count (handle, transaction.get_rust_handle ());

@@ -1,41 +1,70 @@
-use crate::{transport::TcpChannelsExtension, utils::Runnable};
-use rsnano_ledger::Ledger;
-use std::{net::SocketAddrV6, sync::Arc, time::SystemTime};
-use tracing::info;
-
 use super::TcpChannels;
+use crate::stats::{DetailType, StatType};
+use crate::{
+    stats::Stats,
+    transport::TcpChannelsExtension,
+    utils::{CancellationToken, Runnable},
+};
+use rsnano_ledger::Ledger;
+use std::{net::SocketAddrV6, sync::Arc, time::Duration};
+use tracing::info;
 
 // Tries to connect to peers that are stored in the peer cache
 pub struct PeerCacheConnector {
     ledger: Arc<Ledger>,
     channels: Arc<TcpChannels>,
+    stats: Arc<Stats>,
     first_run: bool,
+    ///Delay between each connection attempt. This throttles new connections.
+    reach_out_delay: Duration,
 }
 
 impl PeerCacheConnector {
-    pub fn new(ledger: Arc<Ledger>, channels: Arc<TcpChannels>) -> Self {
+    pub fn new(
+        ledger: Arc<Ledger>,
+        channels: Arc<TcpChannels>,
+        stats: Arc<Stats>,
+        reach_out_delay: Duration,
+    ) -> Self {
         Self {
             ledger,
             channels,
+            stats,
             first_run: true,
+            reach_out_delay,
         }
+    }
+
+    fn load_peers_from_cache(&self) -> Vec<SocketAddrV6> {
+        let tx = self.ledger.read_txn();
+        self.ledger
+            .store
+            .peer
+            .iter(&tx)
+            .map(|(peer, _)| peer)
+            .collect()
     }
 }
 
 impl Runnable for PeerCacheConnector {
-    fn run(&mut self) {
-        let cached_peers: Vec<(SocketAddrV6, SystemTime)> = {
-            let tx = self.ledger.read_txn();
-            self.ledger.store.peer.iter(&tx).collect()
-        };
+    fn run(&mut self, cancel_token: &CancellationToken) {
+        self.stats
+            .inc(StatType::Network, DetailType::LoopReachoutCached);
+        let cached_peers = self.load_peers_from_cache();
 
         if self.first_run {
             info!("Adding cached initial peers: {}", cached_peers.len());
             self.first_run = false;
         }
 
-        for (peer, _) in cached_peers {
+        for peer in cached_peers {
+            self.stats
+                .inc(StatType::Network, DetailType::ReachoutCached);
             self.channels.merge_peer(peer);
+            // Throttle reachout attempts
+            if cancel_token.wait_for_cancellation(self.reach_out_delay) {
+                break;
+            }
         }
     }
 }
@@ -43,38 +72,29 @@ impl Runnable for PeerCacheConnector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::parse_endpoint;
+    use crate::stats::Direction;
+    use rsnano_core::utils::{
+        parse_endpoint, OutputTrackerMt, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
+    };
     use std::time::UNIX_EPOCH;
     use tracing_test::traced_test;
 
+    const REACHOUT_DELAY: Duration = Duration::from_secs(3);
+
     #[test]
     fn no_cached_peers() {
-        let ledger = Arc::new(Ledger::new_null());
-        let channels = Arc::new(TcpChannels::new_null());
-        let merge_tracker = channels.track_merge_peer();
-        let mut connector = PeerCacheConnector::new(ledger, channels);
-
-        connector.run();
-
-        assert_eq!(merge_tracker.output(), Vec::new());
+        let merged_peers = run_connector([]);
+        assert_eq!(merged_peers, Vec::new());
     }
 
     #[test]
     fn connect_to_cached_peers() {
         let peer1 = parse_endpoint("[::ffff:10.0.0.1]:1234");
         let peer2 = parse_endpoint("[::ffff:10.0.0.2]:1234");
-        let ledger = Arc::new(
-            Ledger::new_null_builder()
-                .peers([(peer1, UNIX_EPOCH), (peer2, UNIX_EPOCH)])
-                .finish(),
-        );
-        let channels = Arc::new(TcpChannels::new_null());
-        let merge_tracker = channels.track_merge_peer();
-        let mut connector = PeerCacheConnector::new(ledger, channels);
 
-        connector.run();
+        let merged_peers = run_connector([peer1, peer2]);
 
-        assert_eq!(merge_tracker.output(), [peer1, peer2]);
+        assert_eq!(merged_peers, [peer1, peer2]);
     }
 
     #[test]
@@ -82,15 +102,8 @@ mod tests {
     fn log_initial_peers() {
         let peer1 = parse_endpoint("[::ffff:10.0.0.1]:1234");
         let peer2 = parse_endpoint("[::ffff:10.0.0.2]:1234");
-        let ledger = Arc::new(
-            Ledger::new_null_builder()
-                .peers([(peer1, UNIX_EPOCH), (peer2, UNIX_EPOCH)])
-                .finish(),
-        );
-        let channels = Arc::new(TcpChannels::new_null());
-        let mut connector = PeerCacheConnector::new(ledger, channels);
 
-        connector.run();
+        run_connector([peer1, peer2]);
 
         assert!(logs_contain("Adding cached initial peers: 2"));
     }
@@ -98,12 +111,11 @@ mod tests {
     #[test]
     #[traced_test]
     fn log_initial_peers_only_once() {
-        let ledger = Arc::new(Ledger::new_null());
-        let channels = Arc::new(TcpChannels::new_null());
-        let mut connector = PeerCacheConnector::new(ledger, channels);
+        let (mut connector, _, _) = create_test_connector([]);
 
-        connector.run();
-        connector.run();
+        let cancel = CancellationToken::new_null();
+        connector.run(&cancel);
+        connector.run(&cancel);
 
         logs_assert(|lines| {
             match lines
@@ -115,5 +127,83 @@ mod tests {
                 c => Err(format!("Should only log once, but was {}", c)),
             }
         })
+    }
+
+    #[test]
+    fn wait_between_connection_attempts() {
+        let (mut connector, _, _) =
+            create_test_connector([TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3]);
+        let cancel_token = CancellationToken::new_null();
+        let wait_tracker = cancel_token.track_waits();
+
+        connector.run(&cancel_token);
+
+        assert_eq!(wait_tracker.output(), [REACHOUT_DELAY; 3]);
+    }
+
+    #[test]
+    fn cancel_during_connection_attempts() {
+        let (mut connector, merge_tracker, _) =
+            create_test_connector([TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3]);
+        let cancel_token = CancellationToken::new_null_with_uncancelled_waits(1);
+        let wait_tracker = cancel_token.track_waits();
+
+        connector.run(&cancel_token);
+
+        assert_eq!(merge_tracker.output(), [TEST_ENDPOINT_1, TEST_ENDPOINT_2]);
+        assert_eq!(wait_tracker.output(), [REACHOUT_DELAY; 2]);
+    }
+
+    #[test]
+    fn inc_stats_when_run() {
+        let (mut connector, _, stats) = create_test_connector([]);
+        connector.run(&CancellationToken::new_null());
+        assert_eq!(
+            stats.count(
+                StatType::Network,
+                DetailType::LoopReachoutCached,
+                Direction::In
+            ),
+            1
+        )
+    }
+
+    #[test]
+    fn inc_stats_for_each_reachout() {
+        let (mut connector, _, stats) = create_test_connector([TEST_ENDPOINT_1, TEST_ENDPOINT_2]);
+        connector.run(&CancellationToken::new_null());
+        assert_eq!(
+            stats.count(StatType::Network, DetailType::ReachoutCached, Direction::In),
+            2
+        )
+    }
+
+    fn run_connector(cached_peers: impl IntoIterator<Item = SocketAddrV6>) -> Vec<SocketAddrV6> {
+        let (mut connector, merge_tracker, _) = create_test_connector(cached_peers);
+        connector.run(&CancellationToken::new_null());
+        merge_tracker.output()
+    }
+
+    fn create_test_connector(
+        cached_peers: impl IntoIterator<Item = SocketAddrV6>,
+    ) -> (
+        PeerCacheConnector,
+        Arc<OutputTrackerMt<SocketAddrV6>>,
+        Arc<Stats>,
+    ) {
+        let ledger = ledger_with_peers(cached_peers);
+        let channels = Arc::new(TcpChannels::new_null());
+        let merge_tracker = channels.track_merge_peer();
+        let stats = Arc::new(Stats::default());
+        let connector = PeerCacheConnector::new(ledger, channels, stats.clone(), REACHOUT_DELAY);
+        (connector, merge_tracker, stats)
+    }
+
+    fn ledger_with_peers(cached_peers: impl IntoIterator<Item = SocketAddrV6>) -> Arc<Ledger> {
+        Arc::new(
+            Ledger::new_null_builder()
+                .peers(cached_peers.into_iter().map(|peer| (peer, UNIX_EPOCH)))
+                .finish(),
+        )
     }
 }

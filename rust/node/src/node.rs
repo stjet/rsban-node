@@ -23,8 +23,8 @@ use crate::{
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
         NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
-        PeerCacheUpdater, SocketObserver, SynCookies, TcpChannels, TcpChannelsExtension,
-        TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
+        PeerCacheUpdater, SocketObserver, SynCookies, TcpChannels, TcpChannelsOptions, TcpListener,
+        TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -997,8 +997,12 @@ impl Node {
             Duration::from_secs(60 * 60),
         );
 
-        let peer_cache_connector =
-            PeerCacheConnector::new(Arc::clone(&ledger), Arc::clone(&channels));
+        let peer_cache_connector = PeerCacheConnector::new(
+            Arc::clone(&ledger),
+            Arc::clone(&channels),
+            Arc::clone(&stats),
+            network_params.network.merge_period,
+        );
 
         Self {
             peer_cache_updater: TimerThread::new(

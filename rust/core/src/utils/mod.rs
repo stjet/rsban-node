@@ -13,7 +13,7 @@ pub use output_tracker::{OutputListener, OutputTracker};
 pub use output_tracker_mt::{OutputListenerMt, OutputTrackerMt};
 pub use rng::NullableRng;
 use std::{
-    net::SocketAddrV6,
+    net::{Ipv6Addr, SocketAddrV6},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 pub use stream::*;
@@ -178,9 +178,14 @@ pub fn parse_endpoint(s: &str) -> SocketAddrV6 {
     s.parse().unwrap()
 }
 
-pub fn create_test_endpoint() -> SocketAddrV6 {
-    parse_endpoint("[::ffff:10.0.0.1]:1234")
-}
+pub const TEST_ENDPOINT_1: SocketAddrV6 =
+    SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0xffff, 0x10, 0, 0, 1), 1111, 0, 0);
+
+pub const TEST_ENDPOINT_2: SocketAddrV6 =
+    SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0xffff, 0x10, 0, 0, 2), 2222, 0, 0);
+
+pub const TEST_ENDPOINT_3: SocketAddrV6 =
+    SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0xffff, 0x10, 0, 0, 3), 3333, 0, 0);
 
 pub fn create_test_time() -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(1_000_000)

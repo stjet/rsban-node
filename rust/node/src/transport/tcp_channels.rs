@@ -1505,16 +1505,15 @@ impl TcpEndpointAttemptContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::create_test_endpoint;
+    use rsnano_core::utils::TEST_ENDPOINT_1;
 
     #[test]
     fn track_merge_peer() {
         let channels = Arc::new(TcpChannels::new_null());
-        let peer = create_test_endpoint();
         let merge_tracker = channels.track_merge_peer();
 
-        channels.merge_peer(peer);
+        channels.merge_peer(TEST_ENDPOINT_1);
 
-        assert_eq!(merge_tracker.output(), vec![peer]);
+        assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
     }
 }

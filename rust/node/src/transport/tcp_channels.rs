@@ -18,7 +18,7 @@ use crate::{
 };
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, OutputListenerMt, OutputTrackerMt},
     KeyPair, PublicKey,
 };
 use rsnano_messages::*;
@@ -93,6 +93,7 @@ pub struct TcpChannels {
     pub publish_filter: Arc<NetworkFilter>,
     tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
     observer: Arc<dyn SocketObserver>,
+    merge_peer_listener: OutputListenerMt<SocketAddrV6>,
 }
 
 impl Drop for TcpChannels {
@@ -146,6 +147,7 @@ impl TcpChannels {
             tcp_server_factory,
             observer: options.observer,
             async_rt: Arc::downgrade(&options.async_rt),
+            merge_peer_listener: OutputListenerMt::new(),
         }
     }
 
@@ -571,6 +573,10 @@ impl TcpChannels {
             self.erase_channel_by_endpoint(&channel.remote_endpoint())
         }
     }
+
+    pub fn track_merge_peer(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
+        self.merge_peer_listener.track()
+    }
 }
 
 pub trait TcpChannelsExtension {
@@ -583,7 +589,7 @@ pub trait TcpChannelsExtension {
         socket: &Arc<Socket>,
     );
 
-    fn merge_peer(&self, peer: &SocketAddrV6);
+    fn merge_peer(&self, peer: SocketAddrV6);
     fn keepalive(&self);
     fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
     fn start_tcp(&self, endpoint: SocketAddrV6);
@@ -665,10 +671,11 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         }
     }
 
-    fn merge_peer(&self, peer: &SocketAddrV6) {
-        if !self.reachout_checked(peer, self.node_config.allow_local_peers) {
+    fn merge_peer(&self, peer: SocketAddrV6) {
+        self.merge_peer_listener.emit(peer);
+        if !self.reachout_checked(&peer, self.node_config.allow_local_peers) {
             self.stats.inc(StatType::Network, DetailType::MergePeer);
-            self.start_tcp(*peer);
+            self.start_tcp(peer);
         }
     }
 
@@ -1492,5 +1499,22 @@ impl TcpEndpointAttemptContainer {
     fn get_oldest(&self) -> Option<(SystemTime, SocketAddrV6)> {
         let (time, endpoints) = self.by_time.first_key_value()?;
         Some((*time, endpoints[0]))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_core::utils::create_test_endpoint;
+
+    #[test]
+    fn track_merge_peer() {
+        let channels = Arc::new(TcpChannels::new_null());
+        let peer = create_test_endpoint();
+        let merge_tracker = channels.track_merge_peer();
+
+        channels.merge_peer(peer);
+
+        assert_eq!(merge_tracker.output(), vec![peer]);
     }
 }

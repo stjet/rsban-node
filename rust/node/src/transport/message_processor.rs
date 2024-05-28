@@ -72,7 +72,7 @@ impl LiveMessageProcessor {
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
                     let new_endpoint =
                         SocketAddrV6::new(*channel.remote_endpoint().ip(), peer0.port(), 0, 0);
-                    self.channels.merge_peer(&new_endpoint);
+                    self.channels.merge_peer(new_endpoint);
 
                     // Remember this for future forwarding to other peers
                     channel.set_peering_endpoint(new_endpoint);

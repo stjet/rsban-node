@@ -307,7 +307,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
     fn bootstrap2(&self, endpoint_a: SocketAddrV6, add_to_peers: bool, id_a: String) {
         if add_to_peers {
             if !self.flags.disable_tcp_realtime {
-                self.channels.merge_peer(&endpoint_a);
+                self.channels.merge_peer(endpoint_a);
             }
         }
         if !self.stopped.load(Ordering::SeqCst) {

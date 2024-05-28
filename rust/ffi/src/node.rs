@@ -403,11 +403,6 @@ pub extern "C" fn rsn_node_is_stopped(handle: &NodeHandle) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_add_initial_peers(handle: &NodeHandle) {
-    handle.0.add_initial_peers();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_ledger_pruning(
     handle: &NodeHandle,
     batch_size: u64,

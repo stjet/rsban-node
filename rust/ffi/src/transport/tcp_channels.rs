@@ -290,7 +290,7 @@ pub extern "C" fn rsn_tcp_channels_keepalive(handle: &TcpChannelsHandle) {
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_merge_peer(handle: &TcpChannelsHandle, peer: &EndpointDto) {
-    handle.merge_peer(&peer.into());
+    handle.merge_peer(peer.into());
 }
 
 #[no_mangle]

@@ -97,7 +97,6 @@ public:
 	std::optional<uint64_t> work_generate_blocking (nano::block &, uint64_t);
 	std::optional<uint64_t> work_generate_blocking (nano::work_version const, nano::root const &, uint64_t, std::optional<nano::account> const & = std::nullopt);
 	void work_generate (nano::work_version const, nano::root const &, uint64_t, std::function<void (std::optional<uint64_t>)>, std::optional<nano::account> const & = std::nullopt, bool const = false);
-	void add_initial_peers ();
 	void start_election (std::shared_ptr<nano::block> const & block);
 	bool block_confirmed (nano::block_hash const &);
 	bool block_confirmed_or_being_confirmed (nano::store::transaction const &, nano::block_hash const &);

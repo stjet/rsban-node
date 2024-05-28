@@ -997,7 +997,8 @@ impl Node {
             Duration::from_secs(60 * 60),
         );
 
-        let peer_cache_connector = PeerCacheConnector::new();
+        let peer_cache_connector =
+            PeerCacheConnector::new(Arc::clone(&ledger), Arc::clone(&channels));
 
         Self {
             peer_cache_updater: TimerThread::new(
@@ -1145,19 +1146,6 @@ impl Node {
             self.ledger.store.online_weight.clear(&mut tx);
             self.ledger.store.peer.clear(&mut tx);
             info!("records of peers and online weight after a long period of inactivity");
-        }
-    }
-
-    pub fn add_initial_peers(&self) {
-        let initial_peers: Vec<(SocketAddrV6, SystemTime)> = {
-            let tx = self.ledger.read_txn();
-            self.ledger.store.peer.iter(&tx).collect()
-        };
-
-        info!("Adding cached initial peers: {}", initial_peers.len());
-
-        for (peer, _) in initial_peers {
-            self.channels.merge_peer(&peer);
         }
     }
 
@@ -1332,8 +1320,6 @@ impl NodeExt for Arc<Node> {
         self.local_block_broadcaster.start();
         self.peer_cache_updater.start();
         self.peer_cache_connector.start();
-
-        self.add_initial_peers();
     }
 
     fn stop(&self) {

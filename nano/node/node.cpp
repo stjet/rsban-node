@@ -417,11 +417,6 @@ std::optional<uint64_t> nano::node::work_generate_blocking (nano::root const & r
 	return work_generate_blocking (nano::work_version::work_1, root_a, difficulty_a);
 }
 
-void nano::node::add_initial_peers ()
-{
-	rsnano::rsn_node_add_initial_peers (handle);
-}
-
 void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 {
 	scheduler.manual.push (block);

@@ -9,8 +9,8 @@ mod message_deserializer;
 mod message_processor;
 mod network_filter;
 mod network_threads;
+mod peer_cache_updater;
 mod peer_exclusion;
-mod peer_history;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;
@@ -26,7 +26,7 @@ mod write_queue;
 
 pub use fair_queue::*;
 pub use message_processor::LiveMessageProcessor;
-pub use peer_history::*;
+pub use peer_cache_updater::*;
 use rsnano_messages::Message;
 pub use tokio_socket_facade::*;
 

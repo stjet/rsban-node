@@ -11,7 +11,7 @@ use tracing::debug;
 
 /// Writes a snapshot of the current peers to the database,
 /// so that we can reconnect to them when the node is restarted
-pub struct PeerHistory {
+pub struct PeerCacheUpdater {
     channels: Arc<TcpChannels>,
     ledger: Arc<Ledger>,
     time_factory: SystemTimeFactory,
@@ -19,7 +19,7 @@ pub struct PeerHistory {
     erase_cutoff: Duration,
 }
 
-impl PeerHistory {
+impl PeerCacheUpdater {
     pub fn new(
         channels: Arc<TcpChannels>,
         ledger: Arc<Ledger>,
@@ -84,7 +84,7 @@ impl PeerHistory {
     }
 }
 
-impl Runnable for PeerHistory {
+impl Runnable for PeerCacheUpdater {
     fn run(&mut self) {
         self.stats.inc(StatType::PeerHistory, DetailType::Loop);
         let mut tx = self.ledger.rw_txn();
@@ -277,7 +277,7 @@ mod tests {
         let put_tracker = ledger.store.peer.track_puts();
         let delete_tracker = ledger.store.peer.track_deletions();
         let erase_cutoff = Duration::from_secs(60 * 60);
-        let mut peer_history = PeerHistory::new(
+        let mut peer_history = PeerCacheUpdater::new(
             channels,
             ledger,
             time_factory,

@@ -22,7 +22,7 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerHistory, SocketObserver,
+        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheUpdater, SocketObserver,
         SynCookies, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener,
         TcpListenerExt, TcpMessageManager, TrafficType,
     },
@@ -114,7 +114,7 @@ pub struct Node {
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
-    peer_history_thread: TimerThread<PeerHistory>,
+    peer_history_thread: TimerThread<PeerCacheUpdater>,
     warmed_up: AtomicU32,
     stopped: AtomicBool,
 }
@@ -988,7 +988,7 @@ impl Node {
 
         let time_factory = SystemTimeFactory::default();
 
-        let peer_history = PeerHistory::new(
+        let peer_history = PeerCacheUpdater::new(
             Arc::clone(&channels),
             Arc::clone(&ledger),
             time_factory,

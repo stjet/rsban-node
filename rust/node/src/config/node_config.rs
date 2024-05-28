@@ -2,8 +2,11 @@ use super::{
     DiagnosticsConfig, HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
-    block_processing::BlockProcessorConfig, bootstrap::BootstrapAscendingConfig,
-    consensus::VoteCacheConfig, stats::StatsConfig, IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
+    block_processing::BlockProcessorConfig,
+    bootstrap::BootstrapAscendingConfig,
+    consensus::{VoteCacheConfig, VoteProcessorConfig},
+    stats::StatsConfig,
+    IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -102,6 +105,7 @@ pub struct NodeConfig {
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
     pub block_processor: BlockProcessorConfig,
+    pub vote_processor: VoteProcessorConfig,
 }
 
 #[derive(Clone)]
@@ -310,6 +314,7 @@ impl NodeConfig {
                 Duration::from_secs(60)
             },
             block_processor: BlockProcessorConfig::new(),
+            vote_processor: VoteProcessorConfig::default(),
         }
     }
 
@@ -501,6 +506,10 @@ impl NodeConfig {
 
         toml.put_child("block_processor", &mut |writer| {
             self.block_processor.serialize_toml(writer)
+        })?;
+
+        toml.put_child("vote_processor", &mut |writer| {
+            self.vote_processor.serialize_toml(writer)
         })?;
 
         Ok(())

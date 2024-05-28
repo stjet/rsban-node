@@ -2,7 +2,7 @@ use super::{vote_processor_queue::VoteProcessorQueueHandle, ActiveTransactionsHa
 use crate::{transport::ChannelHandle, utils::ContextWrapper, StatHandle, VoidPointerCallback};
 use rsnano_core::{Vote, VoteCode};
 use rsnano_node::{
-    consensus::{VoteProcessor, VoteProcessorExt},
+    consensus::{VoteProcessor, VoteProcessorConfig, VoteProcessorExt},
     transport::ChannelEnum,
 };
 use std::{
@@ -82,4 +82,31 @@ pub extern "C" fn rsn_vote_processor_vote_blocking(
 #[no_mangle]
 pub extern "C" fn rsn_vote_processor_total_processed(handle: &VoteProcessorHandle) -> u64 {
     handle.0.total_processed.load(Ordering::SeqCst)
+}
+
+#[repr(C)]
+pub struct VoteProcessorConfigDto {
+    pub max_pr_queue: usize,
+    pub max_non_pr_queue: usize,
+    pub pr_priority: usize,
+}
+
+impl From<&VoteProcessorConfigDto> for VoteProcessorConfig {
+    fn from(value: &VoteProcessorConfigDto) -> Self {
+        Self {
+            max_pr_queue: value.max_pr_queue,
+            max_non_pr_queue: value.max_non_pr_queue,
+            pr_priority: value.pr_priority,
+        }
+    }
+}
+
+impl From<&VoteProcessorConfig> for VoteProcessorConfigDto {
+    fn from(value: &VoteProcessorConfig) -> Self {
+        Self {
+            max_pr_queue: value.max_pr_queue,
+            max_non_pr_queue: value.max_non_pr_queue,
+            pr_priority: value.pr_priority,
+        }
+    }
 }

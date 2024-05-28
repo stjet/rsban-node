@@ -114,6 +114,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_cache = config.vote_cache.to_dto ();
 	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count ();
 	dto.block_processor = config.block_processor.to_dto ();
+	dto.vote_processor = config.vote_processor.to_dto ();
 	return dto;
 }
 
@@ -236,6 +237,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_cache = nano::vote_cache_config{ dto.vote_cache };
 	rep_crawler.query_timeout = std::chrono::milliseconds (dto.rep_crawler_query_timeout_ms);
 	block_processor = nano::block_processor_config{ dto.block_processor };
+	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -317,6 +319,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("block_processor");
 			block_processor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("vote_processor"))
+		{
+			auto config_l = toml.get_required_child ("vote_processor");
+			vote_processor.deserialize (config_l);
 		}
 
 		if (toml.has_key ("work_peers"))

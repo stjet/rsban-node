@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
@@ -55,4 +56,29 @@ nano::vote_processor::~vote_processor ()
 nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel_a, bool validated)
 {
 	return static_cast<nano::vote_code> (rsnano::rsn_vote_processor_vote_blocking (handle, vote->get_handle (), channel_a->handle, validated));
+}
+
+/*
+ * vote_processor_config
+ */
+
+nano::vote_processor_config::vote_processor_config (rsnano::VoteProcessorConfigDto const & dto) :
+	max_pr_queue{ dto.max_pr_queue },
+	max_non_pr_queue{ dto.max_non_pr_queue },
+	pr_priority{ dto.pr_priority }
+{
+}
+
+nano::error nano::vote_processor_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("max_pr_queue", max_pr_queue);
+	toml.get ("max_non_pr_queue", max_non_pr_queue);
+	toml.get ("pr_priority", pr_priority);
+
+	return toml.get_error ();
+}
+
+rsnano::VoteProcessorConfigDto nano::vote_processor_config::to_dto () const
+{
+	return { max_pr_queue, max_non_pr_queue, pr_priority };
 }

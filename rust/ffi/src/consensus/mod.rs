@@ -33,6 +33,8 @@ pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_cache::VoteCacheHandle;
 pub use vote_generator::VoteGeneratorHandle;
-pub use vote_processor::{VoteProcessorHandle, VoteProcessorVoteProcessedCallback};
+pub use vote_processor::{
+    VoteProcessorConfigDto, VoteProcessorHandle, VoteProcessorVoteProcessedCallback,
+};
 pub use vote_processor_queue::VoteProcessorQueueHandle;
 pub use vote_with_weight_info::VoteWithWeightInfoVecHandle;

@@ -382,7 +382,7 @@ enum class detail : uint8_t
 	broadcast_aggressive,
 	erase_old,
 	erase_confirmed,
-	
+
 	// rep tiers
 	tier_1,
 	tier_2,

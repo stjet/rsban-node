@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::ChannelEnum,
 };
-use rsnano_core::{validate_message, Vote, VoteCode, VoteSource};
+use rsnano_core::{utils::TomlWriter, validate_message, Vote, VoteCode, VoteSource};
 use std::{
     collections::VecDeque,
     sync::{
@@ -14,6 +14,45 @@ use std::{
     time::Instant,
 };
 use tracing::{debug, trace};
+
+#[derive(Clone)]
+pub struct VoteProcessorConfig {
+    pub max_pr_queue: usize,
+    pub max_non_pr_queue: usize,
+    pub pr_priority: usize,
+}
+
+impl Default for VoteProcessorConfig {
+    fn default() -> Self {
+        Self {
+            max_pr_queue: 256,
+            max_non_pr_queue: 32,
+            pr_priority: 3,
+        }
+    }
+}
+
+impl VoteProcessorConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "max_pr_queue",
+            self.max_pr_queue,
+            "Maximum number of votes to queue from principal representatives. \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "max_non_pr_queue",
+            self.max_non_pr_queue,
+            "Maximum number of votes to queue from non-principal representatives. \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "pr_priority",
+            self.pr_priority,
+            "Priority for votes from principal representatives. Higher priority gets processed more frequently. Non-principal representatives have a baseline priority of 1. \ntype:uint64",
+        )
+    }
+}
 
 pub struct VoteProcessor {
     thread: Mutex<Option<JoinHandle<()>>>,

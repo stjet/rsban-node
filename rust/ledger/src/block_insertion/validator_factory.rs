@@ -64,7 +64,9 @@ impl<'a> BlockValidatorFactory<'a> {
 
     fn load_previous_block(&self) -> Option<BlockEnum> {
         if !self.block.previous().is_zero() {
-            self.ledger.get_block(self.txn, &self.block.previous())
+            self.ledger
+                .any()
+                .get_block(self.txn, &self.block.previous())
         } else {
             None
         }

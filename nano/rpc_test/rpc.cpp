@@ -2420,7 +2420,7 @@ TEST (rpc, account_representative_set)
 	(void)node->wallets.insert_adhoc (wallet_id, key2.prv);
 	auto key2_open_block_hash = node->wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ());
 	ASSERT_TIMELY (5s, node->ledger.confirmed ().block_exists (*node->store.tx_begin_read (), key2_open_block_hash));
-	auto key2_open_block = node->ledger.block (*node->store.tx_begin_read (), key2_open_block_hash);
+	auto key2_open_block = node->ledger.any ().block_get (*node->store.tx_begin_read (), key2_open_block_hash);
 	ASSERT_EQ (nano::dev::genesis_key.pub, key2_open_block->representative_field ().value ());
 
 	// now change the representative of key2 to be genesis
@@ -2437,7 +2437,7 @@ TEST (rpc, account_representative_set)
 	nano::block_hash hash;
 	ASSERT_FALSE (hash.decode_hex (block_text1));
 	ASSERT_FALSE (hash.is_zero ());
-	auto block = node->ledger.block (*node->store.tx_begin_read (), hash);
+	auto block = node->ledger.any ().block_get (*node->store.tx_begin_read (), hash);
 	ASSERT_NE (block, nullptr);
 	ASSERT_TIMELY (5s, node->ledger.confirmed ().block_exists (*node->store.tx_begin_read (), hash));
 	ASSERT_EQ (key2.pub, block->representative_field ().value ());

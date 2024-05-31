@@ -346,7 +346,7 @@ impl Ledger {
         if hash.is_zero() {
             None
         } else {
-            self.get_block(txn, hash).map(|block| block.balance())
+            self.any().get_block(txn, hash).map(|block| block.balance())
         }
     }
 
@@ -393,7 +393,7 @@ impl Ledger {
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read();
-        match self.get_block(&txn, hash) {
+        match self.any().get_block(&txn, hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),
         }
@@ -452,12 +452,12 @@ impl Ledger {
 
     /// Return account containing block hash
     pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        self.get_block(txn, hash).map(|block| block.account())
+        self.any().get_block(txn, hash).map(|block| block.account())
     }
 
     /// Return absolute amount decrease or increase for block
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
-        let block = self.get_block(txn, hash)?;
+        let block = self.any().get_block(txn, hash)?;
         let block_balance = self.balance(txn, hash)?;
         if block.previous().is_zero() {
             return Some(block_balance);
@@ -484,13 +484,15 @@ impl Ledger {
     }
 
     pub fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
-        self.get_block(txn, hash)
+        self.any()
+            .get_block(txn, hash)
             .map(|block| block.epoch())
             .unwrap_or(Epoch::Epoch0)
     }
 
     pub fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
-        self.get_block(txn, hash)
+        self.any()
+            .get_block(txn, hash)
             .map(|block| block.sideband().unwrap().height)
             .unwrap_or_default()
     }
@@ -510,7 +512,7 @@ impl Ledger {
     ) -> Option<BlockEnum> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
-        let mut possible_receive_block = self.get_block(txn, &info.frontier);
+        let mut possible_receive_block = self.any().get_block(txn, &info.frontier);
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
@@ -519,7 +521,7 @@ impl Ledger {
                 return Some(current);
             }
 
-            possible_receive_block = self.get_block(txn, &current.previous());
+            possible_receive_block = self.any().get_block(txn, &current.previous());
         }
 
         None
@@ -588,7 +590,7 @@ impl Ledger {
         let genesis_hash = self.constants.genesis.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
-            if let Some(block) = self.get_block(txn, &hash) {
+            if let Some(block) = self.any().get_block(txn, &hash) {
                 assert!(self.confirmed().block_exists_or_pruned(txn, &hash));
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);
@@ -687,7 +689,7 @@ impl Ledger {
         let mut stack = Vec::new();
         stack.push(hash);
         while let Some(&hash) = stack.last() {
-            let block = self.get_block(txn, &hash).unwrap();
+            let block = self.any().get_block(txn, &hash).unwrap();
             let dependents = self.dependent_blocks(txn, &block);
             for dependent in dependents.iter() {
                 if !self.confirmed().block_exists_or_pruned(txn, dependent) {

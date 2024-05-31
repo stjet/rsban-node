@@ -282,12 +282,12 @@ impl RequestAggregator {
                 let final_vote_hashes = self.ledger.store.final_vote.get(&tx, *root);
                 if !final_vote_hashes.is_empty() {
                     generate_final_vote = true;
-                    block = self.ledger.get_block(&tx, &final_vote_hashes[0]);
+                    block = self.ledger.any().get_block(&tx, &final_vote_hashes[0]);
                     // Allow same root vote
                     if let Some(b) = &block {
                         if final_vote_hashes.len() > 1 {
                             to_generate_final.push(Arc::new(b.clone()));
-                            block = self.ledger.get_block(&tx, &final_vote_hashes[1]);
+                            block = self.ledger.any().get_block(&tx, &final_vote_hashes[1]);
                             debug_assert!(final_vote_hashes.len() == 2);
                         }
                     }
@@ -300,7 +300,7 @@ impl RequestAggregator {
 
                 // 4. Ledger by hash
                 if block.is_none() {
-                    block = self.ledger.get_block(&tx, hash);
+                    block = self.ledger.any().get_block(&tx, hash);
                     // Confirmation status. Generate final votes for confirmed
                     if let Some(b) = &block {
                         let confirmation_height_info = self
@@ -321,7 +321,7 @@ impl RequestAggregator {
 
                     // Search for account root
                     if let Some(successor) = successor {
-                        let successor_block = self.ledger.get_block(&tx, &successor).unwrap();
+                        let successor_block = self.ledger.any().get_block(&tx, &successor).unwrap();
                         block = Some(successor_block);
 
                         // 5. Votes in cache for successor

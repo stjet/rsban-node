@@ -421,7 +421,7 @@ impl SharedState {
     }
 
     fn should_vote(&self, txn: &mut LmdbWriteTransaction, root: &Root, hash: &BlockHash) -> bool {
-        let block = self.ledger.get_block(txn, hash);
+        let block = self.ledger.any().get_block(txn, hash);
         let should_vote = if self.is_final {
             match &block {
                 Some(block) => {

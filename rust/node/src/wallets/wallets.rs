@@ -588,7 +588,7 @@ impl Wallets {
         let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
 
         let mut block = match self.get_block_hash(tx, id) {
-            Ok(Some(hash)) => Some(self.ledger.get_block(&block_tx, &hash).unwrap()),
+            Ok(Some(hash)) => Some(self.ledger.any().get_block(&block_tx, &hash).unwrap()),
             Ok(None) => None,
             _ => {
                 return (None, true, false, details);
@@ -1727,7 +1727,7 @@ impl WalletsExt for Arc<Wallets> {
                                 true,
                             );
                         } else if !self.confirming_set.exists(&hash) {
-                            let block = self.ledger.get_block(&block_tx, &hash);
+                            let block = self.ledger.any().get_block(&block_tx, &hash);
                             if let Some(block) = block {
                                 // Request confirmation for block which is not being processed yet
                                 let guard = self.start_election.lock().unwrap();

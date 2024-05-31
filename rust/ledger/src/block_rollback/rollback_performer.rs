@@ -75,6 +75,7 @@ impl<'a> BlockRollbackPerformer<'a> {
 
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<BlockEnum> {
         self.ledger
+            .any()
             .get_block(self.txn, block_hash)
             .ok_or_else(|| anyhow!("block not found"))
     }

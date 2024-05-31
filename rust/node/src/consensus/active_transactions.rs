@@ -1298,7 +1298,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             * 4;
         let block = {
             let tx = self.ledger.read_txn();
-            self.ledger.get_block(&tx, &hash)
+            self.ledger.any().get_block(&tx, &hash)
         };
         if let Some(block) = block {
             trace!(block = ?block,"process confirmed");

@@ -70,7 +70,7 @@ impl PriorityScheduler {
                 .successor(tx, &conf_info.frontier)
                 .unwrap_or_default()
         };
-        let block = self.ledger.get_block(tx, &hash).unwrap();
+        let block = self.ledger.any().get_block(tx, &hash).unwrap();
         if !self.ledger.dependents_confirmed(tx, &block) {
             return false;
         }

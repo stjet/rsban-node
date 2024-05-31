@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use super::TransactionHandle;
-use crate::core::AccountInfoHandle;
+use crate::core::{AccountInfoHandle, BlockHandle};
 use rsnano_core::{Account, BlockHash};
 use rsnano_ledger::LedgerSetAny;
 
@@ -45,4 +47,16 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_exists_or_pruned(
     handle
         .0
         .block_exists_or_pruned(tx.as_txn(), &BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_get(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+) -> *mut BlockHandle {
+    match handle.0.get_block(tx.as_txn(), &BlockHash::from_ptr(hash)) {
+        Some(block) => BlockHandle::new(Arc::new(block)),
+        None => std::ptr::null_mut(),
+    }
 }

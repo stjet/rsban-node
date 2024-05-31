@@ -19,6 +19,7 @@ fn get_genesis_block() {
 
     let block = ctx
         .ledger
+        .any()
         .get_block(&txn, &DEV_GENESIS_HASH)
         .expect("genesis block not found");
 

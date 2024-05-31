@@ -116,7 +116,7 @@ impl HintedScheduler {
             tx.refresh_if_needed(Duration::from_millis(500));
 
             // Check if block exists
-            if let Some(block) = self.ledger.get_block(tx, &current_hash) {
+            if let Some(block) = self.ledger.any().get_block(tx, &current_hash) {
                 // Ensure block is not already confirmed
                 if self.confirming_set.exists(&current_hash)
                     || self

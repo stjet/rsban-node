@@ -560,7 +560,7 @@ TEST (ledger, unchecked_epoch_invalid)
 		auto info = node1.ledger.any ().account_get (*transaction, destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_NE (info->epoch (), nano::epoch::epoch_1);
-		auto epoch2_store = node1.ledger.block (*transaction, epoch2->hash ());
+		auto epoch2_store = node1.ledger.any ().block_get (*transaction, epoch2->hash ());
 		ASSERT_NE (nullptr, epoch2_store);
 		ASSERT_EQ (nano::epoch::epoch_0, epoch2_store->sideband ().details ().epoch ());
 		ASSERT_TRUE (epoch2_store->is_send ());

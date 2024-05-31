@@ -127,7 +127,7 @@ impl LedgerPruning {
             let mut hash = info.frontier;
             let mut depth = 0;
             while !hash.is_zero() && depth < max_depth_a {
-                if let Some(block) = self.ledger.get_block(&tx, &hash) {
+                if let Some(block) = self.ledger.any().get_block(&tx, &hash) {
                     if block.sideband().unwrap().timestamp > cutoff_time_a || depth == 0 {
                         hash = block.previous();
                     } else {

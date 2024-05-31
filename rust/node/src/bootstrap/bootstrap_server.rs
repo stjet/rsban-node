@@ -376,7 +376,7 @@ impl BootstrapServerImpl {
     ) -> Vec<BlockEnum> {
         let mut result = Vec::new();
         if !start_block.is_zero() {
-            let mut current = self.ledger.get_block(tx, &start_block);
+            let mut current = self.ledger.any().get_block(tx, &start_block);
             while let Some(c) = current.take() {
                 let successor = c.sideband().unwrap().successor;
                 result.push(c);
@@ -384,7 +384,7 @@ impl BootstrapServerImpl {
                 if result.len() == count {
                     break;
                 }
-                current = self.ledger.get_block(tx, &successor);
+                current = self.ledger.any().get_block(tx, &successor);
             }
         }
         result

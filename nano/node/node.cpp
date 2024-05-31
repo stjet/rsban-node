@@ -312,7 +312,7 @@ nano::uint128_t nano::node::balance (nano::account const & account_a)
 std::shared_ptr<nano::block> nano::node::block (nano::block_hash const & hash_a)
 {
 	auto const transaction (store.tx_begin_read ());
-	return ledger.block (*transaction, hash_a);
+	return ledger.any ().block_get (*transaction, hash_a);
 }
 
 bool nano::node::block_or_pruned_exists (nano::block_hash const & hash_a) const

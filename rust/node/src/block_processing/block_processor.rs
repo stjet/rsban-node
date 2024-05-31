@@ -591,7 +591,11 @@ impl BlockProcessorLoop {
             .ledger
             .successor_by_root(transaction, &block.qualified_root())
         {
-            let successor_block = self.ledger.get_block(transaction, &successor).unwrap();
+            let successor_block = self
+                .ledger
+                .any()
+                .get_block(transaction, &successor)
+                .unwrap();
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks
                 debug!("Rolling back: {} and replacing with: {}", successor, hash);

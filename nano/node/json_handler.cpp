@@ -971,7 +971,7 @@ void nano::json_handler::accounts_frontiers ()
 		auto account = account_impl (account_from_request.second.data ());
 		if (!ec)
 		{
-			auto latest = node.ledger.latest (*transaction, account);
+			auto latest = node.ledger.any ().account_head (*transaction, account);
 			if (!latest.is_zero ())
 			{
 				frontiers.put (account.to_account (), latest.to_string ());
@@ -1508,7 +1508,7 @@ void nano::json_handler::block_create ()
 		if (error == nano::wallets_error::none)
 		{
 			auto block_transaction (node.store.tx_begin_read ());
-			previous = node.ledger.latest (*block_transaction, account);
+			previous = node.ledger.any ().account_head (*block_transaction, account);
 			balance = node.ledger.account_balance (*block_transaction, account);
 		}
 		set_error (error);
@@ -1619,7 +1619,7 @@ void nano::json_handler::block_create ()
 			if (!previous_text.is_initialized () && !balance_text.is_initialized ())
 			{
 				auto transaction (node.store.tx_begin_read ());
-				previous = node.ledger.latest (*transaction, pub);
+				previous = node.ledger.any ().account_head (*transaction, pub);
 				balance = node.ledger.account_balance (*transaction, pub);
 			}
 			// Double check current balance if previous block is specified
@@ -2552,7 +2552,7 @@ void nano::json_handler::account_history ()
 			}
 			else
 			{
-				hash = node.ledger.latest (*transaction, account);
+				hash = node.ledger.any ().account_head (*transaction, account);
 			}
 		}
 	}
@@ -3607,7 +3607,7 @@ void nano::json_handler::republish ()
 					{
 						if (!node.ledger.pending_info (*transaction, nano::pending_key{ destination, hash }))
 						{
-							nano::block_hash previous (node.ledger.latest (*transaction, destination));
+							nano::block_hash previous (node.ledger.any ().account_head (*transaction, destination));
 							auto block_d (node.ledger.any ().block_get (*transaction, previous));
 							nano::block_hash source;
 							std::vector<nano::block_hash> hashes;
@@ -4560,7 +4560,7 @@ void nano::json_handler::wallet_frontiers ()
 		{
 			for (const auto & account : accounts)
 			{
-				auto latest (node.ledger.latest (*block_transaction, account));
+				auto latest (node.ledger.any ().account_head (*block_transaction, account));
 				if (!latest.is_zero ())
 				{
 					frontiers.put (account.to_account (), latest.to_string ());
@@ -4884,7 +4884,7 @@ void nano::json_handler::wallet_republish ()
 			auto block_transaction (node.store.tx_begin_read ());
 			for (const auto & account : accounts)
 			{
-				auto latest (node.ledger.latest (*block_transaction, account));
+				auto latest (node.ledger.any ().account_head (*block_transaction, account));
 				std::shared_ptr<nano::block> block;
 				std::vector<nano::block_hash> hashes;
 				while (!latest.is_zero () && hashes.size () < count)

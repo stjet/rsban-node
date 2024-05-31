@@ -79,3 +79,22 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_balance(
         None => false,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_account_head(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    account: *const u8,
+    head: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .account_head(tx.as_txn(), &Account::from_ptr(account))
+    {
+        Some(hash) => {
+            hash.copy_bytes(head);
+            true
+        }
+        None => false,
+    }
+}

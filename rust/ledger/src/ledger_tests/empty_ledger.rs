@@ -98,5 +98,5 @@ fn genesis_vote_weight() {
 fn latest_empty() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
-    assert_eq!(ctx.ledger.latest(&txn, &Account::from(1)), None);
+    assert_eq!(ctx.ledger.any().account_head(&txn, &Account::from(1)), None);
 }

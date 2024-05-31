@@ -47,6 +47,7 @@ public:
 	bool block_exists (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::shared_ptr<nano::block> block_get (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::optional<nano::amount> block_balance (store::transaction const & transaction, nano::block_hash const & hash) const;
+	nano::block_hash account_head (store::transaction const & transaction, nano::account const & account) const;
 
 	rsnano::LedgerSetAnyHandle * handle;
 };
@@ -95,7 +96,6 @@ public:
 	std::optional<nano::block_hash> successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept;
 	/* Returns the exact vote weight for the given representative by doing a database lookup */
 	nano::uint128_t weight_exact (store::transaction const &, nano::account const &) const;
-	nano::block_hash latest (store::transaction const &, nano::account const &);
 	nano::root latest_root (store::transaction const &, nano::account const &);
 	nano::block_hash representative (store::transaction const &, nano::block_hash const &);
 	std::string block_text (char const *);

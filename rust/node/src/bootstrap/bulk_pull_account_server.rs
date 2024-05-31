@@ -70,7 +70,8 @@ impl BulkPullAccountServerImpl {
             // Get account balance and frontier block hash
             let account_frontier_hash = self
                 .ledger
-                .latest(&stream_transaction, &self.request.account)
+                .any()
+                .account_head(&stream_transaction, &self.request.account)
                 .unwrap_or_default();
             let account_frontier_balance = self
                 .ledger

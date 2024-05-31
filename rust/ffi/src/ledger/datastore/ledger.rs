@@ -308,20 +308,6 @@ pub unsafe extern "C" fn rsn_ledger_amount(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_latest(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    account: *const u8,
-    result: *mut u8,
-) {
-    let latest = (*handle)
-        .0
-        .latest((*txn).as_txn(), &Account::from_ptr(account))
-        .unwrap_or_default();
-    latest.copy_bytes(result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_latest_root(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

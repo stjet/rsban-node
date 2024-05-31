@@ -88,7 +88,10 @@ impl Wallet {
             let prv = self.store.deterministic_key(txn, i);
             let pair = KeyPair::from_priv_key_bytes(prv.as_bytes()).unwrap();
             // Check if account received at least 1 block
-            let latest = self.ledger.latest(&block_txn, &pair.public_key());
+            let latest = self
+                .ledger
+                .any()
+                .account_head(&block_txn, &pair.public_key());
             match latest {
                 Some(_) => {
                     result = i;

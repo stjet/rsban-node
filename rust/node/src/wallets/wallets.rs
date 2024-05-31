@@ -1340,7 +1340,7 @@ impl WalletsExt for Arc<Wallets> {
             }
 
             let existing = wallet.store.find(&wallet_tx, &source);
-            if !existing.is_end() && self.ledger.latest(&block_tx, &source).is_some() {
+            if !existing.is_end() && self.ledger.any().account_head(&block_tx, &source).is_some() {
                 let info = self.ledger.account_info(&block_tx, &source).unwrap();
                 let prv = wallet.store.fetch(&wallet_tx, &source).unwrap();
                 if work == 0 {

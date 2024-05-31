@@ -464,11 +464,6 @@ impl Ledger {
         }
     }
 
-    /// Return latest block for account
-    pub fn latest(&self, txn: &dyn Transaction, account: &Account) -> Option<BlockHash> {
-        self.account_info(txn, account).map(|info| info.head)
-    }
-
     /// Return latest root for account, account number if there are no blocks for this account
     pub fn latest_root(&self, txn: &dyn Transaction, account: &Account) -> Root {
         match self.account_info(txn, account) {

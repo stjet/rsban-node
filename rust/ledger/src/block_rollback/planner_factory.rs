@@ -45,7 +45,8 @@ impl<'a> RollbackPlannerFactory<'a> {
 
     fn latest_block_for_destination(&self) -> Option<BlockHash> {
         self.ledger
-            .latest(self.txn, &self.head_block.destination_or_link())
+            .any()
+            .account_head(self.txn, &self.head_block.destination_or_link())
     }
 
     fn load_pending_receive(&self) -> Option<PendingInfo> {

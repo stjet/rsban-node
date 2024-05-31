@@ -205,14 +205,6 @@ std::optional<nano::uint128_t> nano::ledger::amount (store::transaction const & 
 	}
 }
 
-// Return latest block for account
-nano::block_hash nano::ledger::latest (store::transaction const & transaction_a, nano::account const & account_a)
-{
-	nano::block_hash latest_l;
-	rsnano::rsn_ledger_latest (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), latest_l.bytes.data ());
-	return latest_l;
-}
-
 // Return latest root for account, account number if there are no blocks for this account.
 nano::root nano::ledger::latest_root (store::transaction const & transaction_a, nano::account const & account_a)
 {
@@ -445,6 +437,19 @@ std::optional<nano::amount> nano::ledger_set_any::block_balance (store::transact
 	else
 	{
 		return std::nullopt;
+	}
+}
+
+nano::block_hash nano::ledger_set_any::account_head (store::transaction const & transaction, nano::account const & account) const
+{
+	nano::block_hash head;
+	if (rsnano::rsn_ledger_set_any_account_head (handle, transaction.get_rust_handle (), account.bytes.data (), head.bytes.data ()))
+	{
+		return head;
+	}
+	else
+	{
+		return { 0 };
 	}
 }
 

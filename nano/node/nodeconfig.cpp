@@ -717,6 +717,10 @@ bool nano::node_flags::disable_backup () const
 {
 	return flags_dto ().disable_backup;
 }
+void nano::node_flags::set_disable_activate_successors (bool value)
+{
+	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_activate_successors = value; });
+}
 void nano::node_flags::set_disable_backup (bool value)
 {
 	set_flag ([value] (rsnano::NodeFlagsDto & dto) { dto.disable_backup = value; });

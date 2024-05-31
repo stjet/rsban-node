@@ -1484,7 +1484,8 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             || status.election_status_type == ElectionStatusType::ActiveConfirmationHeight;
 
         // Next-block activations are only done for blocks with previously active elections
-        if cemented_bootstrap_count_reached && was_active {
+        if cemented_bootstrap_count_reached && was_active && !self.flags.disable_activate_successors
+        {
             let guard = self.activate_successors.lock().unwrap();
             (guard)(tx, block);
         }

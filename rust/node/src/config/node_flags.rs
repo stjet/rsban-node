@@ -4,6 +4,7 @@ use rsnano_ledger::GenerateCacheFlags;
 pub struct NodeFlags {
     pub config_overrides: Vec<String>,
     pub rpc_config_overrides: Vec<String>,
+    pub disable_activate_successors: bool,
     pub disable_backup: bool,
     pub disable_lazy_bootstrap: bool,
     pub disable_legacy_bootstrap: bool,
@@ -43,6 +44,7 @@ impl NodeFlags {
         Self {
             config_overrides: Vec::new(),
             rpc_config_overrides: Vec::new(),
+            disable_activate_successors: false,
             disable_backup: false,
             disable_lazy_bootstrap: false,
             disable_legacy_bootstrap: false,

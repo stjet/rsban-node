@@ -159,6 +159,7 @@ public:
 	void set_config_overrides (const std::vector<std::string> & overrides);
 	std::vector<std::string> rpc_config_overrides () const;
 	void set_rpc_overrides (const std::vector<std::string> & overrides);
+	void set_disable_activate_successors (bool value);
 	bool disable_backup () const;
 	void set_disable_backup (bool value);
 	bool disable_lazy_bootstrap () const;

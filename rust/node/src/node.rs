@@ -5,7 +5,7 @@ use crate::{
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
-        BootstrapMessageVisitorFactory, BootstrapServer,
+        BootstrapMessageVisitorFactory, BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
     },
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
@@ -18,6 +18,7 @@ use crate::{
         VoteGenerator, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
     },
     node_id_key_file::NodeIdKeyFile,
+    pruning::{LedgerPruning, LedgerPruningExt},
     representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
@@ -43,12 +44,12 @@ use rsnano_core::{
         Deserialize, SerdePropertyTree, StreamExt, SystemTimeFactory,
     },
     work::WorkPoolImpl,
-    Account, Amount, BlockHash, BlockType, KeyPair, Networks, Vote, VoteCode,
+    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
 };
-use rsnano_ledger::{Ledger, Writer};
+use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
-    EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy, Transaction,
+    EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
 };
 use serde::Serialize;
@@ -58,10 +59,10 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc, Mutex, RwLock,
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime},
 };
 use tracing::{debug, error, info, warn};
 
@@ -114,9 +115,10 @@ pub struct Node {
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
+    ledger_pruning: Arc<LedgerPruning>,
+    ongoing_bootstrap: Arc<OngoingBootstrap>,
     peer_cache_updater: TimerThread<PeerCacheUpdater>,
     peer_cache_connector: TimerThread<PeerCacheConnector>,
-    warmed_up: AtomicU32,
     stopped: AtomicBool,
 }
 
@@ -579,6 +581,16 @@ impl Node {
             }
         }));
 
+        let ongoing_bootstrap = Arc::new(OngoingBootstrap::new(
+            network_params.clone(),
+            Arc::clone(&bootstrap_initiator),
+            Arc::clone(&channels),
+            flags.clone(),
+            Arc::clone(&ledger),
+            Arc::clone(&stats),
+            Arc::clone(&workers),
+        ));
+
         debug!("Constructing node...");
 
         let manual_weak = Arc::downgrade(&manual_scheduler);
@@ -1007,6 +1019,13 @@ impl Node {
             network_params.network.merge_period,
         );
 
+        let ledger_pruning = Arc::new(LedgerPruning::new(
+            config.clone(),
+            flags.clone(),
+            Arc::clone(&ledger),
+            Arc::clone(&workers),
+        ));
+
         Self {
             peer_cache_updater: TimerThread::new(
                 "Peer history",
@@ -1018,6 +1037,7 @@ impl Node {
                 peer_cache_connector,
                 network_params.network.merge_period,
             ),
+            ongoing_bootstrap,
             node_id,
             workers,
             bootstrap_workers,
@@ -1065,8 +1085,8 @@ impl Node {
             local_block_broadcaster,
             process_live_dispatcher,
             live_message_processor,
+            ledger_pruning,
             network_threads,
-            warmed_up: AtomicU32::new(0),
             stopped: AtomicBool::new(false),
         }
     }
@@ -1156,77 +1176,19 @@ impl Node {
         }
     }
 
-    fn collect_ledger_pruning_targets(
-        &self,
-        pruning_targets_a: &mut VecDeque<BlockHash>,
-        last_account_a: &mut Account,
-        batch_read_size_a: u64,
-        max_depth_a: u64,
-        cutoff_time_a: u64,
-    ) -> bool {
-        let mut read_operations = 0;
-        let mut finish_transaction = false;
-        let mut tx = self.ledger.read_txn();
-        let mut it = self
-            .ledger
-            .store
-            .confirmation_height
-            .begin_at_account(&tx, &last_account_a);
-        while let Some((&account, info)) = it.current() {
-            if finish_transaction {
-                break;
-            }
-            read_operations += 1;
-            let mut hash = info.frontier;
-            let mut depth = 0;
-            while !hash.is_zero() && depth < max_depth_a {
-                if let Some(block) = self.ledger.get_block(&tx, &hash) {
-                    if block.sideband().unwrap().timestamp > cutoff_time_a || depth == 0 {
-                        hash = block.previous();
-                    } else {
-                        break;
-                    }
-                } else {
-                    assert!(depth != 0);
-                    hash = BlockHash::zero();
-                }
-                depth += 1;
-                if depth % batch_read_size_a == 0 {
-                    drop(it);
-                    tx.refresh();
-                    it = self
-                        .ledger
-                        .store
-                        .confirmation_height
-                        .begin_at_account(&tx, &account);
-                }
-            }
-            if !hash.is_zero() {
-                pruning_targets_a.push_back(hash);
-            }
-            read_operations += depth;
-            if read_operations >= batch_read_size_a {
-                *last_account_a = account.inc().unwrap_or_default();
-                finish_transaction = true;
-            } else {
-                it.next();
-            }
-        }
-
-        !finish_transaction || last_account_a.is_zero()
-    }
-
     pub fn is_stopped(&self) -> bool {
         self.stopped.load(Ordering::SeqCst)
+    }
+
+    pub fn ledger_pruning(&self, batch_size: u64, bootstrap_weight_reached: bool) {
+        self.ledger_pruning
+            .ledger_pruning(batch_size, bootstrap_weight_reached)
     }
 }
 
 pub trait NodeExt {
     fn start(&self);
     fn stop(&self);
-    fn ongoing_bootstrap(&self);
-    fn ongoing_ledger_pruning(&self);
-    fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool);
     fn ongoing_online_weight_calculation_queue(&self);
     fn ongoing_online_weight_calculation(&self);
     fn backup_wallet(&self);
@@ -1239,16 +1201,11 @@ impl NodeExt for Arc<Node> {
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
         if !self.flags.disable_legacy_bootstrap && !self.flags.disable_ongoing_bootstrap {
-            self.ongoing_bootstrap();
+            self.ongoing_bootstrap.ongoing_bootstrap();
         }
 
         if self.flags.enable_pruning {
-            let node_w = Arc::downgrade(self);
-            self.workers.push_task(Box::new(move || {
-                if let Some(node) = node_w.upgrade() {
-                    node.ongoing_ledger_pruning();
-                }
-            }));
+            self.ledger_pruning.start();
         }
 
         if !self.flags.disable_rep_crawler {
@@ -1336,6 +1293,7 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.ledger_pruning.stop();
         self.peer_cache_connector.stop();
         self.peer_cache_updater.stop();
         // Cancels ongoing work generation tasks, which may be blocking other threads
@@ -1373,172 +1331,6 @@ impl NodeExt for Arc<Node> {
         self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
 
         // work pool is not stopped on purpose due to testing setup
-    }
-
-    fn ongoing_bootstrap(&self) {
-        let mut next_wakeup =
-            Duration::from_secs(self.network_params.network.bootstrap_interval_s as u64);
-        if self.warmed_up.load(Ordering::SeqCst) < 3 {
-            // Re-attempt bootstrapping more aggressively on startup
-            next_wakeup = Duration::from_secs(5);
-            if !self.bootstrap_initiator.in_progress() && !self.channels.len() == 0 {
-                self.warmed_up.fetch_add(1, Ordering::SeqCst);
-            }
-        }
-        if self.network_params.network.is_dev_network() && self.flags.bootstrap_interval != 0 {
-            // For test purposes allow faster automatic bootstraps
-            next_wakeup = Duration::from_secs(self.flags.bootstrap_interval as u64);
-            self.warmed_up.fetch_add(1, Ordering::SeqCst);
-        }
-        // Differential bootstrap with max age (75% of all legacy attempts)
-        let mut frontiers_age = u32::MAX;
-        let bootstrap_weight_reached =
-            self.ledger.block_count() >= self.ledger.bootstrap_weight_max_blocks();
-        let previous_bootstrap_count =
-            self.stats
-                .count(StatType::Bootstrap, DetailType::Initiate, Direction::Out)
-                + self.stats.count(
-                    StatType::Bootstrap,
-                    DetailType::InitiateLegacyAge,
-                    Direction::Out,
-                );
-        /*
-        - Maximum value for 25% of attempts or if block count is below preconfigured value (initial bootstrap not finished)
-        - Node shutdown time minus 1 hour for start attempts (warm up)
-        - Default age value otherwise (1 day for live network, 1 hour for beta)
-        */
-        if bootstrap_weight_reached {
-            if self.warmed_up.load(Ordering::SeqCst) < 3 {
-                // Find last online weight sample (last active time for node)
-                let mut last_sample_time = UNIX_EPOCH;
-
-                {
-                    let tx = self.ledger.read_txn();
-                    let last_record = self.ledger.store.online_weight.rbegin(&tx);
-                    if let Some(last_record) = last_record.current() {
-                        last_sample_time = UNIX_EPOCH
-                            .checked_add(Duration::from_nanos(*last_record.0))
-                            .unwrap();
-                    }
-                }
-
-                let time_since_last_sample = SystemTime::now()
-                    .duration_since(last_sample_time)
-                    .unwrap_or(Duration::MAX);
-
-                if time_since_last_sample.as_secs() + 60 * 60 < u32::MAX as u64 {
-                    frontiers_age = std::cmp::max(
-                        (time_since_last_sample.as_secs() + 60 * 60) as u32,
-                        self.network_params.bootstrap.default_frontiers_age_seconds,
-                    );
-                }
-            } else if previous_bootstrap_count % 4 != 0 {
-                frontiers_age = self.network_params.bootstrap.default_frontiers_age_seconds;
-            }
-        }
-        // Bootstrap and schedule for next attempt
-        self.bootstrap_initiator.bootstrap(
-            false,
-            format!("auto_bootstrap_{}", previous_bootstrap_count),
-            frontiers_age,
-            Account::zero(),
-        );
-        let self_w = Arc::downgrade(self);
-        self.workers.add_delayed_task(
-            next_wakeup,
-            Box::new(move || {
-                if let Some(node) = self_w.upgrade() {
-                    node.ongoing_bootstrap();
-                }
-            }),
-        );
-    }
-
-    fn ongoing_ledger_pruning(&self) {
-        let bootstrap_weight_reached =
-            self.ledger.block_count() >= self.ledger.bootstrap_weight_max_blocks();
-        self.ledger_pruning(
-            if self.flags.block_processor_batch_size != 0 {
-                self.flags.block_processor_batch_size as u64
-            } else {
-                2 * 1024
-            },
-            bootstrap_weight_reached,
-        );
-        let ledger_pruning_interval = if bootstrap_weight_reached {
-            Duration::from_secs(self.config.max_pruning_age_s as u64)
-        } else {
-            Duration::from_secs(std::cmp::min(self.config.max_pruning_age_s as u64, 15 * 60))
-        };
-        let node_w = Arc::downgrade(self);
-        self.workers.add_delayed_task(
-            ledger_pruning_interval,
-            Box::new(move || {
-                if let Some(node) = node_w.upgrade() {
-                    node.ongoing_ledger_pruning()
-                }
-            }),
-        );
-    }
-
-    fn ledger_pruning(&self, batch_size_a: u64, bootstrap_weight_reached_a: bool) {
-        let max_depth = if self.config.max_pruning_depth != 0 {
-            self.config.max_pruning_depth
-        } else {
-            u64::MAX
-        };
-        let cutoff_time = if bootstrap_weight_reached_a {
-            (SystemTime::now() - Duration::from_secs(self.config.max_pruning_age_s as u64))
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-        } else {
-            u64::MAX
-        };
-        let mut pruned_count = 0;
-        let mut transaction_write_count = 0;
-        let mut last_account = Account::from(1); // 0 Burn account is never opened. So it can be used to break loop
-        let mut pruning_targets = VecDeque::new();
-        let mut target_finished = false;
-        while (transaction_write_count != 0 || !target_finished)
-            && !self.stopped.load(Ordering::SeqCst)
-        {
-            // Search pruning targets
-            while pruning_targets.len() < batch_size_a as usize
-                && !target_finished
-                && !self.stopped.load(Ordering::SeqCst)
-            {
-                target_finished = self.collect_ledger_pruning_targets(
-                    &mut pruning_targets,
-                    &mut last_account,
-                    batch_size_a * 2,
-                    max_depth,
-                    cutoff_time,
-                );
-            }
-            // Pruning write operation
-            transaction_write_count = 0;
-            if !pruning_targets.is_empty() && !self.stopped.load(Ordering::SeqCst) {
-                let _scoped_write_guard = self.ledger.write_queue.wait(Writer::Pruning);
-                let mut tx = self.ledger.rw_txn();
-                while !pruning_targets.is_empty()
-                    && transaction_write_count < batch_size_a
-                    && !self.stopped.load(Ordering::SeqCst)
-                {
-                    let pruning_hash = pruning_targets.front().unwrap();
-                    let account_pruned_count =
-                        self.ledger
-                            .pruning_action(&mut tx, pruning_hash, batch_size_a);
-                    transaction_write_count += account_pruned_count;
-                    pruning_targets.pop_front();
-                }
-                pruned_count += transaction_write_count;
-
-                debug!("Pruned blocks: {}", pruned_count);
-            }
-        }
-
-        debug!("Total recently pruned block count: {}", pruned_count);
     }
 
     fn ongoing_online_weight_calculation_queue(&self) {

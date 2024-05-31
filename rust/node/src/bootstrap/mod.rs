@@ -19,6 +19,7 @@ mod bulk_push_server;
 mod channel_entry;
 mod frontier_req_client;
 mod frontier_req_server;
+mod ongoing_bootstrap;
 mod pulls_cache;
 
 pub use ascending::*;
@@ -42,6 +43,7 @@ pub use bulk_push_server::BulkPushServer;
 pub use channel_entry::ChannelEntry;
 pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
+pub use ongoing_bootstrap::*;
 pub use pulls_cache::{PullInfo, PullsCache};
 use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
 use std::sync::Arc;

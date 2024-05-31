@@ -1,5 +1,3 @@
-#include "nano/lib/logging.hpp"
-
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/rpcconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
@@ -126,6 +124,7 @@ TEST (toml, daemon_config_deserialize_defaults)
 	[node.vote_processsor]
 	[node.websocket]
 	[node.lmdb]
+	[node.bootstrap_server]
 	[opencl]
 	[rpc]
 	[rpc.child_process]
@@ -259,6 +258,10 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.vote_processor.max_pr_queue, defaults.node.vote_processor.max_pr_queue);
 	ASSERT_EQ (conf.node.vote_processor.max_non_pr_queue, defaults.node.vote_processor.max_non_pr_queue);
 	ASSERT_EQ (conf.node.vote_processor.pr_priority, defaults.node.vote_processor.pr_priority);
+
+	ASSERT_EQ (conf.node.bootstrap_server.max_queue, defaults.node.bootstrap_server.max_queue);
+	ASSERT_EQ (conf.node.bootstrap_server.threads, defaults.node.bootstrap_server.threads);
+	ASSERT_EQ (conf.node.bootstrap_server.batch_size, defaults.node.bootstrap_server.batch_size);
 }
 
 TEST (toml, optional_child)
@@ -520,6 +523,11 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	max_pr_queue = 999
 	max_non_pr_queue = 999
 	pr_priority = 999
+	
+	[node.bootstrap_server]
+	max_queue = 999
+	threads = 999
+	batch_size = 999
 
 	[opencl]
 	device = 999
@@ -667,6 +675,10 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.vote_processor.max_pr_queue, defaults.node.vote_processor.max_pr_queue);
 	ASSERT_NE (conf.node.vote_processor.max_non_pr_queue, defaults.node.vote_processor.max_non_pr_queue);
 	ASSERT_NE (conf.node.vote_processor.pr_priority, defaults.node.vote_processor.pr_priority);
+
+	ASSERT_NE (conf.node.bootstrap_server.max_queue, defaults.node.bootstrap_server.max_queue);
+	ASSERT_NE (conf.node.bootstrap_server.threads, defaults.node.bootstrap_server.threads);
+	ASSERT_NE (conf.node.bootstrap_server.batch_size, defaults.node.bootstrap_server.batch_size);
 }
 
 /** There should be no required values **/

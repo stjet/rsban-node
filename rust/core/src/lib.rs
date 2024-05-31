@@ -256,7 +256,7 @@ pub trait FullHash {
     fn full_hash(&self) -> BlockHash;
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord)]
 pub struct NoValue {}
 
 impl utils::FixedSizeSerialize for NoValue {

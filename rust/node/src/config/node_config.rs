@@ -3,7 +3,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessorConfig,
-    bootstrap::BootstrapAscendingConfig,
+    bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
     consensus::{VoteCacheConfig, VoteProcessorConfig},
     stats::StatsConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
@@ -74,6 +74,7 @@ pub struct NodeConfig {
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_ascending: BootstrapAscendingConfig,
+    pub bootstrap_server: BootstrapServerConfig,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,
     pub confirming_set_batch_time: Duration,
@@ -272,6 +273,7 @@ impl NodeConfig {
             // Bootstrap traffic does not need bursts
             bootstrap_bandwidth_burst_ratio: 1.,
             bootstrap_ascending: Default::default(),
+            bootstrap_server: Default::default(),
             confirming_set_batch_time: Duration::from_millis(250),
             backup_before_upgrade: false,
             max_work_generate_multiplier: 64_f64,
@@ -490,6 +492,10 @@ impl NodeConfig {
 
         toml.put_child("bootstrap_ascending", &mut |writer| {
             self.bootstrap_ascending.serialize_toml(writer)
+        })?;
+
+        toml.put_child("bootstrap_server", &mut |writer| {
+            self.bootstrap_server.serialize_toml(writer)
         })?;
 
         toml.put_child("vote_cache", &mut |writer| {

@@ -26,6 +26,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.peering_port_defined = config.peering_port.has_value ();
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	dto.bootstrap_ascending = config.bootstrap_ascending.to_dto ();
+	dto.bootstrap_server = config.bootstrap_server.to_dto ();
 	std::copy (std::begin (config.receive_minimum.bytes), std::end (config.receive_minimum.bytes), std::begin (dto.receive_minimum));
 	std::copy (std::begin (config.online_weight_minimum.bytes), std::end (config.online_weight_minimum.bytes), std::begin (dto.online_weight_minimum));
 	std::copy (std::begin (config.representative_vote_weight_minimum.bytes), std::end (config.representative_vote_weight_minimum.bytes), std::begin (dto.representative_vote_weight_minimum));
@@ -153,6 +154,8 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
 	hinted_scheduler.load_dto (dto.hinted_scheduler);
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
+	bootstrap_ascending.load_dto (dto.bootstrap_ascending);
+	bootstrap_server.load_dto (dto.bootstrap_server);
 	std::copy (std::begin (dto.receive_minimum), std::end (dto.receive_minimum), std::begin (receive_minimum.bytes));
 	std::copy (std::begin (dto.online_weight_minimum), std::end (dto.online_weight_minimum), std::begin (online_weight_minimum.bytes));
 	std::copy (std::begin (dto.representative_vote_weight_minimum), std::end (dto.representative_vote_weight_minimum), std::begin (representative_vote_weight_minimum.bytes));
@@ -301,6 +304,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("bootstrap_ascending");
 			bootstrap_ascending.deserialize (config_l);
+		}
+
+		if (toml.has_key ("bootstrap_server"))
+		{
+			auto config_l = toml.get_required_child ("bootstrap_server");
+			bootstrap_server.deserialize (config_l);
 		}
 
 		if (toml.has_key ("vote_cache"))

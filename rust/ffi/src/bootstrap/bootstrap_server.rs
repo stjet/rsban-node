@@ -1,5 +1,5 @@
 use rsnano_messages::{DeserializedMessage, Message};
-use rsnano_node::bootstrap::BootstrapServer;
+use rsnano_node::bootstrap::{BootstrapServer, BootstrapServerConfig};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
@@ -15,16 +15,6 @@ impl Deref for BootstrapServerHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_server_create(
-    stats: &StatHandle,
-    ledger: &LedgerHandle,
-) -> *mut BootstrapServerHandle {
-    Box::into_raw(Box::new(BootstrapServerHandle(Arc::new(
-        BootstrapServer::new(Arc::clone(stats), Arc::clone(ledger)),
-    ))))
 }
 
 #[no_mangle]
@@ -76,4 +66,31 @@ pub unsafe extern "C" fn rsn_bootstrap_server_set_callback(
             let channel_handle = ChannelHandle::new(Arc::clone(channel));
             callback(context_wrapper.get_context(), msg_handle, channel_handle);
         }));
+}
+
+#[repr(C)]
+pub struct BootstrapServerConfigDto {
+    pub max_queue: usize,
+    pub threads: usize,
+    pub batch_size: usize,
+}
+
+impl From<&BootstrapServerConfig> for BootstrapServerConfigDto {
+    fn from(value: &BootstrapServerConfig) -> Self {
+        Self {
+            max_queue: value.max_queue,
+            threads: value.threads,
+            batch_size: value.batch_size,
+        }
+    }
+}
+
+impl From<&BootstrapServerConfigDto> for BootstrapServerConfig {
+    fn from(value: &BootstrapServerConfigDto) -> Self {
+        Self {
+            max_queue: value.max_queue,
+            threads: value.threads,
+            batch_size: value.batch_size,
+        }
+    }
 }

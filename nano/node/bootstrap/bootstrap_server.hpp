@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
+
 #include <nano/lib/observer_set.hpp>
 #include <nano/node/messages.hpp>
 
@@ -20,12 +22,21 @@ namespace transport
 	class channel;
 }
 
+class bootstrap_server_config final
+{
+public:
+	nano::error deserialize (nano::tomlconfig &);
+	void load_dto (rsnano::BootstrapServerConfigDto const & dto);
+	rsnano::BootstrapServerConfigDto to_dto () const;
+
+public:
+	size_t max_queue{ 16 };
+	size_t threads{ 1 };
+	size_t batch_size{ 64 };
+};
+
 /**
  * Processes bootstrap requests (`asc_pull_req` messages) and replies with bootstrap responses (`asc_pull_ack`)
- *
- * In order to ensure maximum throughput, there are two internal processing queues:
- * - One for doing ledger lookups and preparing responses (`request_queue`)
- * - One for sending back those responses over the network (`response_queue`)
  */
 class bootstrap_server final
 {
@@ -34,7 +45,6 @@ public:
 	using request_t = std::pair<nano::asc_pull_req, std::shared_ptr<nano::transport::channel>>; // <request, response channel>
 
 public:
-	bootstrap_server (nano::store::component &, nano::ledger &, nano::network_constants const &, nano::stats &);
 	bootstrap_server (rsnano::BootstrapServerHandle * handle);
 	bootstrap_server (bootstrap_server const &) = delete;
 	~bootstrap_server ();
@@ -48,7 +58,7 @@ public:
 	 */
 	bool request (nano::asc_pull_req const & message, std::shared_ptr<nano::transport::channel> channel);
 
-	void set_response_callback (std::function<void (nano::asc_pull_ack &, std::shared_ptr<nano::transport::channel> &)> callback);
+	void set_response_callback (std::function<void (nano::asc_pull_ack const &, std::shared_ptr<nano::transport::channel> &)> callback);
 
 	rsnano::BootstrapServerHandle * handle;
 

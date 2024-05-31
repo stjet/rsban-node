@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessorConfigDto,
+    bootstrap::BootstrapServerConfigDto,
     consensus::{VoteCacheConfigDto, VoteProcessorConfigDto},
     fill_ipc_config_dto, fill_stat_config_dto,
     utils::FfiToml,
@@ -67,6 +68,7 @@ pub struct NodeConfigDto {
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_ascending: BootstrapAscendingConfigDto,
+    pub bootstrap_server: BootstrapServerConfigDto,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,
     pub confirming_set_batch_time_ms: i64,
@@ -180,6 +182,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
     dto.bootstrap_bandwidth_burst_ratio = cfg.bootstrap_bandwidth_burst_ratio;
     dto.bootstrap_ascending = (&cfg.bootstrap_ascending).into();
+    dto.bootstrap_server = (&cfg.bootstrap_server).into();
     dto.confirming_set_batch_time_ms = cfg.confirming_set_batch_time.as_millis() as i64;
     dto.backup_before_upgrade = cfg.backup_before_upgrade;
     dto.max_work_generate_multiplier = cfg.max_work_generate_multiplier;
@@ -360,6 +363,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,
             bootstrap_bandwidth_burst_ratio: value.bootstrap_bandwidth_burst_ratio,
             bootstrap_ascending: (&value.bootstrap_ascending).into(),
+            bootstrap_server: (&value.bootstrap_server).into(),
             confirming_set_batch_time: Duration::from_millis(
                 value.confirming_set_batch_time_ms as u64,
             ),

@@ -212,6 +212,7 @@ impl Node {
         ));
 
         let bootstrap_server = Arc::new(BootstrapServer::new(
+            config.bootstrap_server.clone(),
             Arc::clone(&stats),
             Arc::clone(&ledger),
         ));

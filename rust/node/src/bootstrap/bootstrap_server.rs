@@ -1,9 +1,8 @@
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, TrafficType},
-    utils::ProcessingQueue,
+    transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
 };
-use rsnano_core::{BlockEnum, BlockHash, Frontier};
+use rsnano_core::{utils::TomlWriter, BlockEnum, BlockHash, Frontier, NoValue};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
@@ -12,22 +11,59 @@ use rsnano_messages::{
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::min,
-    collections::VecDeque,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Condvar, Mutex, MutexGuard,
+    },
+    thread::JoinHandle,
     time::Duration,
 };
 
+#[derive(Clone, Debug)]
+pub struct BootstrapServerConfig {
+    pub max_queue: usize,
+    pub threads: usize,
+    pub batch_size: usize,
+}
+
+impl Default for BootstrapServerConfig {
+    fn default() -> Self {
+        Self {
+            max_queue: 16,
+            threads: 1,
+            batch_size: 64,
+        }
+    }
+}
+
+impl BootstrapServerConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "max_queue",
+            self.max_queue,
+            "Maximum number of queued requests per peer. \ntype:uint64",
+        )?;
+        toml.put_usize(
+            "threads",
+            self.threads,
+            "Number of threads to process requests. \ntype:uint64",
+        )?;
+        toml.put_usize(
+            "batch_size",
+            self.batch_size,
+            "Maximum number of requests to process in a single batch. \ntype:uint64",
+        )
+    }
+}
+
 /**
  * Processes bootstrap requests (`asc_pull_req` messages) and replies with bootstrap responses (`asc_pull_ack`)
- *
- * In order to ensure maximum throughput, there are two internal processing queues:
- * - One for doing ledger lookups and preparing responses (`request_queue`)
- * - One for sending back those responses over the network (`response_queue`)
  */
 pub struct BootstrapServer {
+    config: BootstrapServerConfig,
     stats: Arc<Stats>,
-    request_queue: ProcessingQueue<(AscPullReq, Arc<ChannelEnum>)>,
-    on_response: Arc<Mutex<Option<Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>>>>,
+    threads: Mutex<Vec<JoinHandle<()>>>,
+    server_impl: Arc<BootstrapServerImpl>,
 }
 
 impl BootstrapServer {
@@ -35,41 +71,61 @@ impl BootstrapServer {
     const MAX_BLOCKS: usize = BlocksAckPayload::MAX_BLOCKS;
     const MAX_FRONTIERS: usize = AscPullAck::MAX_FRONTIERS;
 
-    pub fn new(stats: Arc<Stats>, ledger: Arc<Ledger>) -> Self {
-        let on_response = Arc::new(Mutex::new(None));
-        let server_impl = BootstrapServerImpl {
+    pub fn new(config: BootstrapServerConfig, stats: Arc<Stats>, ledger: Arc<Ledger>) -> Self {
+        let max_queue = config.max_queue;
+        let server_impl = Arc::new(BootstrapServerImpl {
             stats: Arc::clone(&stats),
             ledger,
-            on_response: Arc::clone(&on_response),
-        };
+            batch_size: config.batch_size,
+            on_response: Arc::new(Mutex::new(None)),
+            condition: Condvar::new(),
+            stopped: AtomicBool::new(false),
+            queue: Mutex::new(FairQueue::new(
+                Box::new(move |_| max_queue),
+                Box::new(|_| 1),
+            )),
+        });
+
         Self {
-            on_response,
+            config,
             stats: Arc::clone(&stats),
-            request_queue: ProcessingQueue::new(
-                stats,
-                StatType::BootstrapServer,
-                "Bootstrap serv".to_string(),
-                1,         // threads
-                1024 * 16, //max size
-                128,       // max batch
-                Box::new(move |batch| server_impl.process_batch(batch)),
-            ),
+            threads: Mutex::new(Vec::new()),
+            server_impl,
         }
     }
 
     pub fn start(&self) {
-        self.request_queue.start();
+        debug_assert!(self.threads.lock().unwrap().is_empty());
+
+        let mut threads = self.threads.lock().unwrap();
+        for _ in 0..self.config.threads {
+            let server_impl = Arc::clone(&self.server_impl);
+            threads.push(
+                std::thread::Builder::new()
+                    .name("Bootstrap serv".to_string())
+                    .spawn(move || {
+                        server_impl.run();
+                    })
+                    .unwrap(),
+            );
+        }
     }
 
     pub fn stop(&self) {
-        self.request_queue.stop();
+        self.server_impl.stopped.store(true, Ordering::SeqCst);
+        self.server_impl.condition.notify_all();
+
+        let mut threads = self.threads.lock().unwrap();
+        for thread in threads.drain(..) {
+            thread.join().unwrap();
+        }
     }
 
     pub fn set_response_callback(
         &self,
         cb: Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>,
     ) {
-        *self.on_response.lock().unwrap() = Some(cb);
+        *self.server_impl.on_response.lock().unwrap() = Some(cb);
     }
 }
 
@@ -92,8 +148,28 @@ impl BootstrapServer {
             return false;
         }
 
-        self.request_queue.add((message, channel));
-        return true;
+        let req_type = DetailType::from(&message.req_type);
+        let added = {
+            let mut guard = self.server_impl.queue.lock().unwrap();
+            guard.push(
+                (message, Arc::clone(&channel)),
+                Origin::new(NoValue {}, channel),
+            )
+        };
+
+        if added {
+            self.stats
+                .inc(StatType::BootstrapServer, DetailType::Request);
+            self.stats.inc(StatType::BootstrapServerRequest, req_type);
+
+            self.server_impl.condition.notify_one();
+        } else {
+            self.stats
+                .inc(StatType::BootstrapServer, DetailType::Overfill);
+            self.stats.inc(StatType::BootstrapServerOverfill, req_type);
+        }
+
+        added
     }
 
     fn verify(&self, message: &AscPullReq) -> bool {
@@ -105,16 +181,49 @@ impl BootstrapServer {
     }
 }
 
+impl Drop for BootstrapServer {
+    fn drop(&mut self) {
+        debug_assert!(self.threads.lock().unwrap().is_empty());
+    }
+}
+
 struct BootstrapServerImpl {
     stats: Arc<Stats>,
     ledger: Arc<Ledger>,
     on_response: Arc<Mutex<Option<Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>>>>,
+    stopped: AtomicBool,
+    condition: Condvar,
+    queue: Mutex<FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>>,
+    batch_size: usize,
 }
 
 impl BootstrapServerImpl {
-    fn process_batch(&self, batch: VecDeque<(AscPullReq, Arc<ChannelEnum>)>) {
+    fn run(&self) {
+        let mut queue = self.queue.lock().unwrap();
+        while !self.stopped.load(Ordering::SeqCst) {
+            if !queue.is_empty() {
+                self.stats.inc(StatType::BootstrapServer, DetailType::Loop);
+                queue = self.run_batch(queue);
+            } else {
+                queue = self
+                    .condition
+                    .wait_while(queue, |q| {
+                        q.is_empty() && !self.stopped.load(Ordering::SeqCst)
+                    })
+                    .unwrap();
+            }
+        }
+    }
+
+    fn run_batch<'a>(
+        &'a self,
+        mut queue: MutexGuard<'a, FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>>,
+    ) -> MutexGuard<'a, FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>> {
+        let batch = queue.next_batch(self.batch_size);
+        drop(queue);
+
         let mut tx = self.ledger.read_txn();
-        for (request, channel) in batch {
+        for ((request, channel), _) in batch {
             tx.refresh_if_needed(Duration::from_millis(500));
 
             if !channel.max(TrafficType::Bootstrap) {
@@ -128,6 +237,8 @@ impl BootstrapServerImpl {
                 );
             }
         }
+
+        self.queue.lock().unwrap()
     }
 
     fn process(&self, tx: &LmdbReadTransaction, message: AscPullReq) -> AscPullAck {
@@ -285,15 +396,14 @@ impl BootstrapServerImpl {
             DetailType::Response,
             Direction::Out,
         );
+        self.stats.inc(
+            StatType::BootstrapServerResponse,
+            DetailType::from(&response.pull_type),
+        );
 
         // Increase relevant stats depending on payload type
         match &response.pull_type {
             AscPullAckType::Blocks(blocks) => {
-                self.stats.inc_dir(
-                    StatType::BootstrapServer,
-                    DetailType::ResponseBlocks,
-                    Direction::Out,
-                );
                 self.stats.add(
                     StatType::BootstrapServer,
                     DetailType::Blocks,
@@ -302,19 +412,8 @@ impl BootstrapServerImpl {
                     false,
                 );
             }
-            AscPullAckType::AccountInfo(_) => {
-                self.stats.inc_dir(
-                    StatType::BootstrapServer,
-                    DetailType::ResponseAccountInfo,
-                    Direction::Out,
-                );
-            }
+            AscPullAckType::AccountInfo(_) => {}
             AscPullAckType::Frontiers(frontiers) => {
-                self.stats.inc_dir(
-                    StatType::BootstrapServer,
-                    DetailType::ResponseFrontiers,
-                    Direction::Out,
-                );
                 self.stats.add(
                     StatType::BootstrapServer,
                     DetailType::Frontiers,
@@ -348,5 +447,25 @@ impl BootstrapServerImpl {
             BufferDropPolicy::Limiter,
             TrafficType::Bootstrap,
         );
+    }
+}
+
+impl From<&AscPullAckType> for DetailType {
+    fn from(value: &AscPullAckType) -> Self {
+        match value {
+            AscPullAckType::Blocks(_) => DetailType::Blocks,
+            AscPullAckType::AccountInfo(_) => DetailType::AccountInfo,
+            AscPullAckType::Frontiers(_) => DetailType::Frontiers,
+        }
+    }
+}
+
+impl From<&AscPullReqType> for DetailType {
+    fn from(value: &AscPullReqType) -> Self {
+        match value {
+            AscPullReqType::Blocks(_) => DetailType::Blocks,
+            AscPullReqType::AccountInfo(_) => DetailType::AccountInfo,
+            AscPullReqType::Frontiers(_) => DetailType::Frontiers,
+        }
     }
 }

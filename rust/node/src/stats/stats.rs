@@ -139,6 +139,9 @@ pub enum StatType {
     BlockprocessorResult,
     BlockprocessorOverfill,
     BootstrapServer,
+    BootstrapServerRequest,
+    BootstrapServerOverfill,
+    BootstrapServerResponse,
     Active,
     ActiveStarted,
     ActiveConfirmed,
@@ -412,11 +415,9 @@ pub enum DetailType {
     Response,
     WriteError,
     Blocks,
-    ResponseBlocks,
-    ResponseAccountInfo,
     ChannelFull,
-    ResponseFrontiers,
     Frontiers,
+    AccountInfo,
 
     // backlog
     Activated,

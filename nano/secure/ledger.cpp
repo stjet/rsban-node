@@ -63,6 +63,11 @@ nano::ledger_set_any nano::ledger::any () const
 	return { rsnano::rsn_ledger_any (handle) };
 }
 
+nano::ledger_set_confirmed nano::ledger::confirmed () const
+{
+	return { rsnano::rsn_ledger_confirmed (handle) };
+}
+
 nano::store::write_guard nano::ledger::wait (nano::store::writer writer)
 {
 	auto guard_handle = rsnano::rsn_ledger_wait (handle, static_cast<uint8_t> (writer));
@@ -140,16 +145,6 @@ nano::block_hash nano::ledger::representative (store::transaction const & transa
 	nano::block_hash result;
 	rsnano::rsn_ledger_representative (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
 	return result;
-}
-
-bool nano::ledger::block_or_pruned_exists (nano::block_hash const & hash_a) const
-{
-	return rsnano::rsn_ledger_block_or_pruned_exists (handle, hash_a.bytes.data ());
-}
-
-bool nano::ledger::block_or_pruned_exists (store::transaction const & transaction_a, nano::block_hash const & hash_a) const
-{
-	return rsnano::rsn_ledger_block_or_pruned_exists_txn (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 std::string nano::ledger::block_text (char const * hash_a)
@@ -295,11 +290,6 @@ nano::link nano::ledger::epoch_link (nano::epoch epoch_a) const
 void nano::ledger::update_account (store::write_transaction const & transaction_a, nano::account const & account_a, nano::account_info const & old_a, nano::account_info const & new_a)
 {
 	rsnano::rsn_ledger_update_account (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), old_a.handle, new_a.handle);
-}
-
-bool nano::ledger::block_confirmed (store::transaction const & transaction_a, nano::block_hash const & hash_a) const
-{
-	return rsnano::rsn_ledger_block_confirmed (handle, transaction_a.get_rust_handle (), hash_a.bytes.data ());
 }
 
 uint64_t nano::ledger::pruning_action (store::write_transaction & transaction_a, nano::block_hash const & hash_a, uint64_t const batch_size_a)
@@ -452,4 +442,29 @@ std::optional<nano::account_info> nano::ledger_set_any::account_get (store::tran
 	{
 		return std::nullopt;
 	}
+}
+
+bool nano::ledger_set_any::block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return rsnano::rsn_ledger_set_any_block_exists_or_pruned (handle, transaction.get_rust_handle (), hash.bytes.data ());
+}
+
+nano::ledger_set_confirmed::ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle) :
+	handle{ handle }
+{
+}
+
+nano::ledger_set_confirmed::~ledger_set_confirmed ()
+{
+	rsnano::rsn_ledger_set_confirmed_destroy (handle);
+}
+
+bool nano::ledger_set_confirmed::block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return rsnano::rsn_ledger_set_confirmed_block_exists_or_pruned (handle, transaction.get_rust_handle (), hash.bytes.data ());
+}
+
+bool nano::ledger_set_confirmed::block_exists (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return rsnano::rsn_ledger_set_confirmed_block_exists (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }

@@ -315,6 +315,11 @@ std::shared_ptr<nano::block> nano::node::block (nano::block_hash const & hash_a)
 	return ledger.block (*transaction, hash_a);
 }
 
+bool nano::node::block_or_pruned_exists (nano::block_hash const & hash_a) const
+{
+	return ledger.any ().block_exists_or_pruned (*ledger.store.tx_begin_read (), hash_a);
+}
+
 std::pair<nano::uint128_t, nano::uint128_t> nano::node::balance_pending (nano::account const & account_a, bool only_confirmed_a)
 {
 	std::pair<nano::uint128_t, nano::uint128_t> result;
@@ -429,12 +434,12 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
 	auto transaction (store.tx_begin_read ());
-	return ledger.block_confirmed (*transaction, hash_a);
+	return ledger.confirmed ().block_exists (*transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::store::transaction const & transaction, nano::block_hash const & hash_a)
 {
-	return confirming_set.exists (hash_a) || ledger.block_confirmed (transaction, hash_a);
+	return confirming_set.exists (hash_a) || ledger.confirmed ().block_exists (transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & hash_a)

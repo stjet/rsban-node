@@ -130,7 +130,7 @@ bool nano::test::block_or_pruned_all_exists (nano::node & node, std::vector<nano
 {
 	return std::all_of (hashes.begin (), hashes.end (),
 	[&] (const auto & hash) {
-		return node.ledger.block_or_pruned_exists (hash);
+		return node.block_or_pruned_exists (hash);
 	});
 }
 
@@ -143,7 +143,7 @@ bool nano::test::block_or_pruned_none_exists (nano::node & node, std::vector<nan
 {
 	return std::none_of (hashes.begin (), hashes.end (),
 	[&] (const auto & hash) {
-		return node.ledger.block_or_pruned_exists (hash);
+		return node.block_or_pruned_exists (hash);
 	});
 }
 

@@ -318,7 +318,7 @@ TEST (ledger, epoch_open_pending)
 	node1.block_processor.add (epoch_open);
 	// Waits for the block to get saved in the database
 	ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
-	ASSERT_FALSE (node1.ledger.block_or_pruned_exists (epoch_open->hash ()));
+	ASSERT_FALSE (node1.block_or_pruned_exists (epoch_open->hash ()));
 	// Open block should be inserted into unchecked
 	auto blocks = node1.unchecked.get (nano::hash_or_account (epoch_open->account_field ().value ()).hash);
 	ASSERT_EQ (blocks.size (), 1);
@@ -334,7 +334,7 @@ TEST (ledger, epoch_open_pending)
 				 .work (*pool.generate (nano::dev::genesis->hash ()))
 				 .build ();
 	node1.block_processor.add (send1);
-	ASSERT_TIMELY (10s, node1.ledger.block_or_pruned_exists (epoch_open->hash ()));
+	ASSERT_TIMELY (10s, node1.block_or_pruned_exists (epoch_open->hash ()));
 }
 
 TEST (ledger, block_hash_account_conflict)

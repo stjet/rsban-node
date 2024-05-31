@@ -1,5 +1,6 @@
 use super::{
     ledger_set_any::LedgerSetAnyHandle,
+    ledger_set_confirmed::LedgerSetConfirmedHandle,
     lmdb::{LmdbStoreHandle, PendingInfoDto, PendingKeyDto, TransactionHandle},
     write_queue::WriteGuardHandle,
 };
@@ -10,7 +11,9 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
-use rsnano_ledger::{BlockStatus, Ledger, LedgerSetAny, ReceivableIterator, Writer};
+use rsnano_ledger::{
+    BlockStatus, Ledger, LedgerSetAny, LedgerSetConfirmed, ReceivableIterator, Writer,
+};
 use rsnano_node::stats::LedgerStats;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
 
@@ -160,6 +163,15 @@ pub unsafe extern "C" fn rsn_ledger_get_cache_handle(
 pub unsafe extern "C" fn rsn_ledger_any(handle: &LedgerHandle) -> *mut LedgerSetAnyHandle {
     let any = std::mem::transmute::<LedgerSetAny, LedgerSetAny<'static>>(handle.any());
     Box::into_raw(Box::new(LedgerSetAnyHandle(any)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_confirmed(
+    handle: &LedgerHandle,
+) -> *mut LedgerSetConfirmedHandle {
+    let any =
+        std::mem::transmute::<LedgerSetConfirmed, LedgerSetConfirmed<'static>>(handle.confirmed());
+    Box::into_raw(Box::new(LedgerSetConfirmedHandle(any)))
 }
 
 #[no_mangle]

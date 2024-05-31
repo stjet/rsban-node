@@ -1023,7 +1023,7 @@ void nano::json_handler::accounts_receivable ()
 			for (auto current = node.ledger.receivable_upper_bound (*transaction, account, 0); !current.is_end () && peers_l.size () < count; ++current)
 			{
 				auto const & [key, info] = *current;
-				if (include_only_confirmed && !node.ledger.block_confirmed (*transaction, key.hash))
+				if (include_only_confirmed && !node.ledger.confirmed ().block_exists (*transaction, key.hash))
 				{
 					continue;
 				}
@@ -1135,7 +1135,7 @@ void nano::json_handler::block_info ()
 			response_l.put ("height", std::to_string (block->sideband ().height ()));
 			response_l.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 			response_l.put ("successor", block->sideband ().successor ().to_string ());
-			auto confirmed (node.ledger.block_confirmed (*transaction, hash));
+			auto confirmed (node.ledger.confirmed ().block_exists (*transaction, hash));
 			response_l.put ("confirmed", confirmed);
 
 			bool json_block_l = request.get<bool> ("json_block", false);
@@ -1174,7 +1174,7 @@ void nano::json_handler::block_confirm ()
 		auto block_l (node.ledger.block (*transaction, hash));
 		if (block_l != nullptr)
 		{
-			if (!node.ledger.block_confirmed (*transaction, hash))
+			if (!node.ledger.confirmed ().block_exists (*transaction, hash))
 			{
 				// Start new confirmation for unconfirmed (or not being confirmed) block
 				if (!node.confirming_set.exists (hash))
@@ -1282,7 +1282,7 @@ void nano::json_handler::blocks_info ()
 					entry.put ("height", std::to_string (block->sideband ().height ()));
 					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 					entry.put ("successor", block->sideband ().successor ().to_string ());
-					auto confirmed (node.ledger.block_confirmed (*transaction, hash));
+					auto confirmed (node.ledger.confirmed ().block_exists (*transaction, hash));
 					entry.put ("confirmed", confirmed);
 
 					if (json_block_l)
@@ -2578,7 +2578,7 @@ void nano::json_handler::account_history ()
 					entry.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 					entry.put ("height", std::to_string (block->sideband ().height ()));
 					entry.put ("hash", hash.to_string ());
-					entry.put ("confirmed", node.ledger.block_confirmed (*transaction, hash));
+					entry.put ("confirmed", node.ledger.confirmed ().block_exists (*transaction, hash));
 					if (output_raw)
 					{
 						entry.put ("work", nano::to_string_hex (block->block_work ()));
@@ -2996,7 +2996,7 @@ void nano::json_handler::receivable ()
 		for (auto current = node.ledger.receivable_upper_bound (*transaction, account, 0); !current.is_end () && (should_sort || peers_l.size () < count); ++current)
 		{
 			auto const & [key, info] = *current;
-			if (include_only_confirmed && !node.ledger.block_confirmed (*transaction, key.hash))
+			if (include_only_confirmed && !node.ledger.confirmed ().block_exists (*transaction, key.hash))
 			{
 				continue;
 			}
@@ -3333,7 +3333,7 @@ void nano::json_handler::receive ()
 	if (!ec)
 	{
 		auto block_transaction (node.store.tx_begin_read ());
-		if (node.ledger.block_or_pruned_exists (*block_transaction, hash))
+		if (node.ledger.confirmed ().block_exists_or_pruned (*block_transaction, hash))
 		{
 			auto pending_info = node.ledger.pending_info (*block_transaction, nano::pending_key (account, hash));
 			if (pending_info)
@@ -4778,7 +4778,7 @@ void nano::json_handler::wallet_receivable ()
 				for (auto current = node.ledger.receivable_upper_bound (*block_transaction, account, 0); !current.is_end () && peers_l.size () < count; ++current)
 				{
 					auto const & [key, info] = *current;
-					if (include_only_confirmed && !node.ledger.block_confirmed (*block_transaction, key.hash))
+					if (include_only_confirmed && !node.ledger.confirmed ().block_exists (*block_transaction, key.hash))
 					{
 						continue;
 					}
@@ -5385,7 +5385,7 @@ bool block_confirmed (nano::node & node, nano::store::transaction & transaction,
 		is_confirmed = true;
 	}
 	// Check whether the confirmation height is set
-	else if (node.ledger.block_confirmed (transaction, hash))
+	else if (node.ledger.confirmed ().block_exists (transaction, hash))
 	{
 		is_confirmed = true;
 	}

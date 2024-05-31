@@ -29,6 +29,7 @@ pub use ledger_cache::LedgerCache;
 pub use ledger_constants::{LedgerConstants, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 pub use ledger_context::LedgerContext;
 pub use ledger_set_any::*;
+pub use ledger_set_confirmed::*;
 pub use rep_weights::RepWeights;
 pub(crate) use representative_block_finder::RepresentativeBlockFinder;
 pub use write_queue::{WriteGuard, WriteQueue, Writer};

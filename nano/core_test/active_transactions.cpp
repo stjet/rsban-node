@@ -257,7 +257,7 @@ TEST (inactive_votes_cache, basic)
 	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
 	ASSERT_TIMELY_EQ (5s, node.vote_cache.size (), 1);
 	node.process_active (send);
-	ASSERT_TIMELY (5s, node.ledger.block_confirmed (*node.store.tx_begin_read (), send->hash ()));
+	ASSERT_TIMELY (5s, node.ledger.confirmed ().block_exists_or_pruned (*node.store.tx_begin_read (), send->hash ()));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 
@@ -1019,7 +1019,7 @@ TEST (active_transactions, confirmation_consistency)
 		auto block (node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::public_key (), node.config->receive_minimum.number ()));
 		ASSERT_NE (nullptr, block);
 		system.deadline_set (5s);
-		while (!node.ledger.block_confirmed (*node.store.tx_begin_read (), block->hash ()))
+		while (!node.ledger.confirmed ().block_exists_or_pruned (*node.store.tx_begin_read (), block->hash ()))
 		{
 			node.scheduler.priority.activate (nano::dev::genesis_key.pub, *node.store.tx_begin_read ());
 			ASSERT_NO_ERROR (system.poll (5ms));

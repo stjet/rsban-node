@@ -43,8 +43,21 @@ public:
 	~ledger_set_any ();
 
 	std::optional<nano::account_info> account_get (store::transaction const & transaction, nano::account const & account) const;
+	bool block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const;
 
 	rsnano::LedgerSetAnyHandle * handle;
+};
+
+class ledger_set_confirmed
+{
+public:
+	ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle);
+	~ledger_set_confirmed ();
+
+	bool block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const;
+	bool block_exists (store::transaction const & transaction, nano::block_hash const & hash) const;
+
+	rsnano::LedgerSetConfirmedHandle * handle;
 };
 
 class ledger final
@@ -57,6 +70,7 @@ public:
 	~ledger ();
 
 	ledger_set_any any () const;
+	ledger_set_confirmed confirmed () const;
 
 	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait (nano::store::writer writer);
 	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
@@ -81,12 +95,9 @@ public:
 	std::optional<nano::block_hash> successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept;
 	/* Returns the exact vote weight for the given representative by doing a database lookup */
 	nano::uint128_t weight_exact (store::transaction const &, nano::account const &) const;
-	bool block_confirmed (store::transaction const &, nano::block_hash const &) const;
 	nano::block_hash latest (store::transaction const &, nano::account const &);
 	nano::root latest_root (store::transaction const &, nano::account const &);
 	nano::block_hash representative (store::transaction const &, nano::block_hash const &);
-	bool block_or_pruned_exists (nano::block_hash const &) const;
-	bool block_or_pruned_exists (store::transaction const &, nano::block_hash const &) const;
 	std::string block_text (char const *);
 	std::string block_text (nano::block_hash const &);
 	std::pair<nano::block_hash, nano::block_hash> hash_root_random (store::transaction const &) const;

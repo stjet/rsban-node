@@ -10,15 +10,21 @@ impl<'a> LedgerSetConfirmed<'a> {
         Self { store }
     }
 
-    pub fn get_block(&self, tx: &impl Transaction, hash: &BlockHash) -> Option<BlockEnum> {
-        self.store.block.get(tx, hash)
+    pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+        let block = self.store.block.get(tx, hash)?;
+        let info = self.store.confirmation_height.get(tx, &block.account())?;
+        if block.sideband().unwrap().height <= info.height {
+            Some(block)
+        } else {
+            None
+        }
     }
 
-    pub fn account_head(&self, tx: &impl Transaction, account: &Account) -> Option<BlockHash> {
+    pub fn account_head(&self, tx: &dyn Transaction, account: &Account) -> Option<BlockHash> {
         self.store.account.get(tx, account).map(|i| i.head)
     }
 
-    pub fn account_height(&self, tx: &impl Transaction, account: &Account) -> u64 {
+    pub fn account_height(&self, tx: &dyn Transaction, account: &Account) -> u64 {
         let Some(head) = self.account_head(tx, account) else {
             return 0;
         };
@@ -27,7 +33,7 @@ impl<'a> LedgerSetConfirmed<'a> {
             .expect("Head block not in ledger!")
     }
 
-    pub fn block_balance(&self, tx: &impl Transaction, hash: &BlockHash) -> Option<Amount> {
+    pub fn block_balance(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         if hash.is_zero() {
             return None;
         }
@@ -35,15 +41,15 @@ impl<'a> LedgerSetConfirmed<'a> {
         self.get_block(tx, hash).map(|b| b.balance())
     }
 
-    pub fn block_exists(&self, tx: &impl Transaction, hash: &BlockHash) -> bool {
-        self.store.block.exists(tx, hash)
+    pub fn block_exists(&self, tx: &dyn Transaction, hash: &BlockHash) -> bool {
+        self.get_block(tx, hash).is_some()
     }
 
-    pub fn block_exists_or_pruned(&self, tx: &impl Transaction, hash: &BlockHash) -> bool {
+    pub fn block_exists_or_pruned(&self, tx: &dyn Transaction, hash: &BlockHash) -> bool {
         if self.store.pruned.exists(tx, hash) {
             true
         } else {
-            self.store.block.exists(tx, hash)
+            self.block_exists(tx, hash)
         }
     }
 }

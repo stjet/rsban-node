@@ -1,6 +1,6 @@
 use super::TransactionHandle;
 use crate::core::AccountInfoHandle;
-use rsnano_core::Account;
+use rsnano_core::{Account, BlockHash};
 use rsnano_ledger::LedgerSetAny;
 
 pub struct LedgerSetAnyHandle(pub LedgerSetAny<'static>);
@@ -23,4 +23,15 @@ pub unsafe extern "C" fn rsn_ledger_set_any_get_account(
         Some(info) => Box::into_raw(Box::new(AccountInfoHandle(info))),
         None => std::ptr::null_mut(),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_exists_or_pruned(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+) -> bool {
+    handle
+        .0
+        .block_exists_or_pruned(tx.as_txn(), &BlockHash::from_ptr(hash))
 }

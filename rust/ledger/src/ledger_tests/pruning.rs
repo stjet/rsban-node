@@ -39,7 +39,7 @@ fn pruning_action() {
 
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send1.hash()), false);
 
-    assert!(ctx.ledger.block_or_pruned_exists_txn(&txn, &send1.hash()),);
+    assert!(ctx.ledger.any().block_exists_or_pruned(&txn, &send1.hash()),);
 
     assert!(ctx.ledger.store.pruned.exists(&txn, &send1.hash()),);
 

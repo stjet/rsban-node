@@ -113,7 +113,7 @@ impl LazyData {
             };
 
             let mut retain = true;
-            if ledger.block_or_pruned_exists_txn(&txn, hash) {
+            if ledger.any().block_exists_or_pruned(&txn, hash) {
                 if let Some(balance) = ledger.balance(&txn, hash) {
                     if balance <= next_block.balance {
                         lazy_add(next_block.link, next_block.retry_limit);
@@ -167,7 +167,7 @@ impl LazyData {
             if attempt.stopped() {
                 break;
             }
-            if ledger.block_or_pruned_exists_txn(&txn, &hash) {
+            if ledger.any().block_exists_or_pruned(&txn, &hash) {
                 self.lazy_keys.remove(&hash);
             } else {
                 result = false;
@@ -354,7 +354,10 @@ impl BootstrapAttemptLazy {
         if !data.lazy_blocks_processed(&hash) {
             // Search for new dependencies
             if block.source_field().is_some()
-                && !self.ledger.block_or_pruned_exists(&block.source_or_link())
+                && !self
+                    .ledger
+                    .any()
+                    .block_exists_or_pruned(&self.ledger.read_txn(), &block.source_or_link())
                 && block.source_or_link()
                     != BlockHash::from_bytes(*self.network_params.ledger.genesis_account.as_bytes())
             {
@@ -400,7 +403,7 @@ impl BootstrapAttemptLazy {
         if !link.is_zero()
             && !self.ledger.is_epoch_link(&link)
             && !data.lazy_blocks_processed(&link.into())
-            && !self.ledger.block_or_pruned_exists_txn(&txn, &link.into())
+            && !self.ledger.any().block_exists_or_pruned(&txn, &link.into())
         {
             let previous = block.previous();
             // If state block previous is 0 then source block required
@@ -408,7 +411,7 @@ impl BootstrapAttemptLazy {
                 data.lazy_add(link.into(), retry_limit);
             }
             // In other cases previous block balance required to find out subtype of state block
-            else if self.ledger.block_or_pruned_exists_txn(&txn, &previous) {
+            else if self.ledger.any().block_exists_or_pruned(&txn, &previous) {
                 if let Some(previous_balance) = self.ledger.balance(&txn, &previous) {
                     if previous_balance <= balance {
                         data.lazy_add(link.into(), retry_limit);
@@ -457,7 +460,8 @@ impl BootstrapAttemptLazy {
                 if !data.lazy_blocks_processed(&pull_start.0.into())
                     && !self
                         .ledger
-                        .block_or_pruned_exists_txn(&txn, &pull_start.0.into())
+                        .any()
+                        .block_exists_or_pruned(&txn, &pull_start.0.into())
                 {
                     drop(data);
                     drop(lock);
@@ -501,7 +505,11 @@ impl BootstrapAttemptLazy {
         } else {
             drop(data);
             drop(lock);
-            if self.ledger.block_or_pruned_exists(hash) {
+            if self
+                .ledger
+                .any()
+                .block_exists_or_pruned(&self.ledger.read_txn(), hash)
+            {
                 result = true;
             }
         }

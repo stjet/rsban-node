@@ -176,7 +176,10 @@ impl OptimisticScheduler {
         if let Some(block) = self.ledger.head_block(tx, &account) {
             // Ensure block is not already confirmed
             if !self.confirming_set.exists(&block.hash())
-                || self.ledger.block_confirmed(tx, &block.hash())
+                || self
+                    .ledger
+                    .confirmed()
+                    .block_exists_or_pruned(tx, &block.hash())
             {
                 // Try to insert it into AEC
                 // We check for AEC vacancy inside our predicate

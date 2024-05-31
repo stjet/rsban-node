@@ -26,6 +26,17 @@ pub unsafe extern "C" fn rsn_ledger_set_any_get_account(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_exists(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+) -> bool {
+    handle
+        .0
+        .block_exists(tx.as_txn(), &BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_set_any_block_exists_or_pruned(
     handle: &LedgerSetAnyHandle,
     tx: &TransactionHandle,

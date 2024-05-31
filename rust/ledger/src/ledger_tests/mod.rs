@@ -525,7 +525,12 @@ mod dependents_confirmed {
 fn block_confirmed() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    assert_eq!(ctx.ledger.block_confirmed(&txn, &DEV_GENESIS_HASH), true);
+    assert_eq!(
+        ctx.ledger
+            .confirmed()
+            .block_exists_or_pruned(&txn, &DEV_GENESIS_HASH),
+        true
+    );
 
     let destination = ctx.block_factory();
     let mut send = ctx
@@ -535,13 +540,28 @@ fn block_confirmed() {
         .build();
 
     // Must be safe against non-existing blocks
-    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), false);
+    assert_eq!(
+        ctx.ledger
+            .confirmed()
+            .block_exists_or_pruned(&txn, &send.hash()),
+        false
+    );
 
     ctx.ledger.process(&mut txn, &mut send).unwrap();
-    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), false);
+    assert_eq!(
+        ctx.ledger
+            .confirmed()
+            .block_exists_or_pruned(&txn, &send.hash()),
+        false
+    );
 
     ctx.ledger.confirm(&mut txn, send.hash());
-    assert_eq!(ctx.ledger.block_confirmed(&txn, &send.hash()), true);
+    assert_eq!(
+        ctx.ledger
+            .confirmed()
+            .block_exists_or_pruned(&txn, &send.hash()),
+        true
+    );
 }
 
 #[test]

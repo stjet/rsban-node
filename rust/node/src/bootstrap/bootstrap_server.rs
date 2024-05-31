@@ -267,7 +267,7 @@ impl BootstrapServerImpl {
                 }
             }
             HashType::Block => {
-                if self.ledger.block_exists(tx, &request.start.into()) {
+                if self.ledger.any().block_exists(tx, &request.start.into()) {
                     return self.prepare_response(tx, id, request.start.into(), count);
                 }
             }

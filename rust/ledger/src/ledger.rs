@@ -341,17 +341,8 @@ impl Ledger {
             .store(max, Ordering::SeqCst)
     }
 
-    pub fn block_or_pruned_exists(&self, block: &BlockHash) -> bool {
-        let txn = self.store.tx_begin_read();
-        self.block_or_pruned_exists_txn(&txn, block)
-    }
-
     pub fn block_exists(&self, txn: &dyn Transaction, block: &BlockHash) -> bool {
         self.store.block.exists(txn, block)
-    }
-
-    pub fn block_or_pruned_exists_txn(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        self.store.pruned.exists(txn, hash) || self.block_exists(txn, hash)
     }
 
     /// Balance for account containing the given block at the time of the block.
@@ -392,33 +383,16 @@ impl Ledger {
         let mut result = Amount::zero();
 
         for (key, info) in self.account_receivable_upper_bound(txn, *account, BlockHash::zero()) {
-            if !only_confirmed || self.block_confirmed(txn, &key.send_block_hash) {
+            if !only_confirmed
+                || self
+                    .confirmed()
+                    .block_exists_or_pruned(txn, &key.send_block_hash)
+            {
                 result += info.amount;
             }
         }
 
         result
-    }
-
-    pub fn block_confirmed(&self, txn: &dyn Transaction, hash: &BlockHash) -> bool {
-        if self.store.pruned.exists(txn, hash) {
-            return true;
-        }
-
-        match self.get_block(txn, hash) {
-            Some(block) => {
-                let mut account = block.account();
-                let sideband = &block.sideband().unwrap();
-                if account.is_zero() {
-                    account = sideband.account;
-                }
-                match self.store.confirmation_height.get(txn, &account) {
-                    Some(info) => info.height >= sideband.height,
-                    None => false,
-                }
-            }
-            None => false,
-        }
     }
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
@@ -619,7 +593,7 @@ impl Ledger {
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.get_block(txn, &hash) {
-                assert!(self.block_confirmed(txn, &hash));
+                assert!(self.confirmed().block_exists_or_pruned(txn, &hash));
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);
                 hash = block.previous();
@@ -655,7 +629,7 @@ impl Ledger {
 
     fn is_dependency_confirmed(&self, txn: &dyn Transaction, dependency: &BlockHash) -> bool {
         if !dependency.is_zero() {
-            self.block_confirmed(txn, dependency)
+            self.confirmed().block_exists_or_pruned(txn, dependency)
         } else {
             true
         }
@@ -720,14 +694,14 @@ impl Ledger {
             let block = self.get_block(txn, &hash).unwrap();
             let dependents = self.dependent_blocks(txn, &block);
             for dependent in dependents.iter() {
-                if !self.block_confirmed(txn, dependent) {
+                if !self.confirmed().block_exists_or_pruned(txn, dependent) {
                     stack.push(*dependent);
                 }
             }
 
             if stack.last() == Some(&hash) {
                 stack.pop();
-                if !self.block_confirmed(txn, &hash) {
+                if !self.confirmed().block_exists_or_pruned(txn, &hash) {
                     self.confirm_block(txn, &block);
                     result.push_back(block);
                 }

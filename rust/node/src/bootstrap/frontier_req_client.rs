@@ -270,7 +270,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                         if latest == guard.frontier {
                             // In sync
                         } else {
-                            if self.ledger.block_or_pruned_exists(&latest) {
+                            if self
+                                .ledger
+                                .any()
+                                .block_exists_or_pruned(&self.ledger.read_txn(), &latest)
+                            {
                                 // We know about a block they don't.
                                 let frontier = guard.frontier;
                                 self.unsynced(&mut guard, frontier, latest);

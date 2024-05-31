@@ -161,7 +161,10 @@ impl BootstrapAttempt {
         let hash = block.hash();
         // If block already exists in the ledger, then we can avoid next part of long account chain
         if pull_blocks_processed % bootstrap_limits::PULL_COUNT_PER_CHECK == 0
-            && self.ledger.block_or_pruned_exists(&hash)
+            && self
+                .ledger
+                .any()
+                .block_exists_or_pruned(&self.ledger.read_txn(), &hash)
         {
             stop_pull = true;
         } else if let Some(p) = self.block_processor.upgrade() {

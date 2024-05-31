@@ -1411,7 +1411,8 @@ impl WalletsExt for Arc<Wallets> {
         let wallet_tx = self.env.tx_begin_read();
         if self
             .ledger
-            .block_or_pruned_exists_txn(&block_tx, &send_hash)
+            .any()
+            .block_exists_or_pruned(&block_tx, &send_hash)
         {
             if let Some(pending_info) = self
                 .ledger
@@ -1708,7 +1709,11 @@ impl WalletsExt for Arc<Wallets> {
                             hash,
                             info.source.encode_account()
                         );
-                        if self.ledger.block_confirmed(&block_tx, &hash) {
+                        if self
+                            .ledger
+                            .confirmed()
+                            .block_exists_or_pruned(&block_tx, &hash)
+                        {
                             let representative = wallet.store.representative(wallet_tx);
                             // Receive confirmed block
                             self.receive_async_wallet(
@@ -1768,7 +1773,11 @@ impl WalletsExt for Arc<Wallets> {
                         true,
                     );
                 } else {
-                    if !self.ledger.block_or_pruned_exists(&hash) {
+                    if !self
+                        .ledger
+                        .any()
+                        .block_exists_or_pruned(&self.ledger.read_txn(), &hash)
+                    {
                         warn!("Confirmed block is missing:  {}", hash);
                         debug_assert!(false);
                     } else {

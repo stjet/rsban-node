@@ -24,7 +24,8 @@ impl<'a> BlockValidatorFactory<'a> {
         let source_block_exists = !source_block.is_zero()
             && self
                 .ledger
-                .block_or_pruned_exists_txn(self.txn, &source_block);
+                .any()
+                .block_exists_or_pruned(self.txn, &source_block);
 
         let pending_receive_info = if source_block.is_zero() {
             None
@@ -40,7 +41,8 @@ impl<'a> BlockValidatorFactory<'a> {
             account,
             block_exists: self
                 .ledger
-                .block_or_pruned_exists_txn(self.txn, &self.block.hash()),
+                .any()
+                .block_exists_or_pruned(self.txn, &self.block.hash()),
             old_account_info: self.ledger.account_info(self.txn, &account),
             pending_receive_info,
             any_pending_exists: self.ledger.receivable_any(self.txn, account),

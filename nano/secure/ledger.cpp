@@ -99,11 +99,6 @@ std::shared_ptr<nano::block> nano::ledger::block (store::transaction const & tra
 	return store.block ().get (transaction, hash);
 }
 
-bool nano::ledger::block_exists (store::transaction const & transaction, nano::block_hash const & hash) const
-{
-	return store.block ().exists (transaction, hash);
-}
-
 // Balance for an account by account number
 nano::uint128_t nano::ledger::account_balance (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a) const
 {
@@ -447,6 +442,11 @@ std::optional<nano::account_info> nano::ledger_set_any::account_get (store::tran
 bool nano::ledger_set_any::block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const
 {
 	return rsnano::rsn_ledger_set_any_block_exists_or_pruned (handle, transaction.get_rust_handle (), hash.bytes.data ());
+}
+
+bool nano::ledger_set_any::block_exists (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	return rsnano::rsn_ledger_set_any_block_exists (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }
 
 nano::ledger_set_confirmed::ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle) :

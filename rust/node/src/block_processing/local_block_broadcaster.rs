@@ -157,7 +157,10 @@ impl LocalBlockBroadcaster {
                 return true;
             }
             if self.confirming_set.exists(&entry.block.hash())
-                || self.ledger.block_confirmed(&tx, &entry.block.hash())
+                || self
+                    .ledger
+                    .confirmed()
+                    .block_exists_or_pruned(&tx, &entry.block.hash())
             {
                 self.stats
                     .inc(StatType::LocalBlockBroadcaster, DetailType::EraseConfirmed);

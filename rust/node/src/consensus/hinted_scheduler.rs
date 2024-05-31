@@ -119,7 +119,10 @@ impl HintedScheduler {
             if let Some(block) = self.ledger.get_block(tx, &current_hash) {
                 // Ensure block is not already confirmed
                 if self.confirming_set.exists(&current_hash)
-                    || self.ledger.block_confirmed(tx, &current_hash)
+                    || self
+                        .ledger
+                        .confirmed()
+                        .block_exists_or_pruned(tx, &current_hash)
                 {
                     self.stats
                         .inc(StatType::Hinting, DetailType::AlreadyConfirmed);

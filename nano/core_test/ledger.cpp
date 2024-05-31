@@ -475,7 +475,7 @@ TEST (ledger, unchecked_epoch)
 	}
 	node1.block_processor.add (send1);
 	node1.block_processor.add (open1);
-	ASSERT_TIMELY (5s, node1.ledger.block_exists (*node1.store.tx_begin_read (), epoch1->hash ()));
+	ASSERT_TIMELY (5s, node1.ledger.any ().block_exists (*node1.store.tx_begin_read (), epoch1->hash ()));
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
 		ASSERT_TIMELY_EQ (10s, 0, node1.unchecked.count ());
@@ -550,10 +550,10 @@ TEST (ledger, unchecked_epoch_invalid)
 	node1.block_processor.add (send1);
 	node1.block_processor.add (open1);
 	// Waits for the last blocks to pass through block_processor and unchecked.put queues
-	ASSERT_TIMELY (10s, node1.ledger.block_exists (*node1.store.tx_begin_read (), epoch2->hash ()));
+	ASSERT_TIMELY (10s, node1.ledger.any ().block_exists (*node1.store.tx_begin_read (), epoch2->hash ()));
 	{
 		auto transaction = node1.store.tx_begin_read ();
-		ASSERT_FALSE (node1.ledger.block_exists (*transaction, epoch1->hash ()));
+		ASSERT_FALSE (node1.ledger.any ().block_exists (*transaction, epoch1->hash ()));
 		auto unchecked_count = node1.unchecked.count ();
 		ASSERT_EQ (unchecked_count, 0);
 		ASSERT_EQ (unchecked_count, node1.unchecked.count ());
@@ -619,7 +619,7 @@ TEST (ledger, unchecked_open)
 	}
 	node1.block_processor.add (send1);
 	// Waits for the send1 block to pass through block_processor and unchecked.put queues
-	ASSERT_TIMELY (5s, node1.ledger.block_exists (*node1.store.tx_begin_read (), open1->hash ()));
+	ASSERT_TIMELY (5s, node1.ledger.any ().block_exists (*node1.store.tx_begin_read (), open1->hash ()));
 	ASSERT_EQ (0, node1.unchecked.count ());
 }
 
@@ -690,6 +690,6 @@ TEST (ledger, unchecked_receive)
 		ASSERT_EQ (blocks.size (), 1);
 	}
 	node1.block_processor.add (send2);
-	ASSERT_TIMELY (10s, node1.ledger.block_exists (*node1.store.tx_begin_read (), receive1->hash ()));
+	ASSERT_TIMELY (10s, node1.ledger.any ().block_exists (*node1.store.tx_begin_read (), receive1->hash ()));
 	ASSERT_EQ (0, node1.unchecked.count ());
 }

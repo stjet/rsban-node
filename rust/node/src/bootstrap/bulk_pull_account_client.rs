@@ -134,7 +134,10 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
                                 this_l.pull_blocks.fetch_add(1, Ordering::SeqCst);
                                 {
                                     if !pending.is_zero() {
-                                        if !this_l.ledger.block_or_pruned_exists(&pending) {
+                                        if !this_l.ledger.any().block_exists_or_pruned(
+                                            &this_l.ledger.read_txn(),
+                                            &pending,
+                                        ) {
                                             this_l.bootstrap_initiator.bootstrap_lazy(
                                                 pending.into(),
                                                 false,

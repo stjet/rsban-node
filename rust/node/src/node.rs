@@ -820,7 +820,10 @@ impl Node {
             config.bandwidth_limit, config.bandwidth_limit_burst_ratio
         );
 
-        if !ledger.block_or_pruned_exists(&network_params.ledger.genesis.hash()) {
+        if !ledger
+            .any()
+            .block_exists_or_pruned(&ledger.read_txn(), &network_params.ledger.genesis.hash())
+        {
             error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
 
             if network_params.network.is_beta_network() {

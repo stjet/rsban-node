@@ -221,38 +221,6 @@ pub unsafe extern "C" fn rsn_ledger_account_receivable(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_block_confirmed(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> bool {
-    (*handle)
-        .0
-        .block_confirmed((*txn).as_txn(), &BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_block_or_pruned_exists(
-    handle: *mut LedgerHandle,
-    hash: *const u8,
-) -> bool {
-    (*handle)
-        .0
-        .block_or_pruned_exists(&BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_block_or_pruned_exists_txn(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    hash: *const u8,
-) -> bool {
-    (*handle)
-        .0
-        .block_or_pruned_exists_txn((*txn).as_txn(), &BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_block_text(
     handle: *mut LedgerHandle,
     hash: *const u8,

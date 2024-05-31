@@ -302,7 +302,7 @@ fn state_account() {
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
     assert_eq!(
-        ctx.ledger.account(&txn, &send.hash()),
+        ctx.ledger.any().block_account(&txn, &send.hash()),
         Some(*DEV_GENESIS_ACCOUNT)
     );
 }

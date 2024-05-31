@@ -385,9 +385,9 @@ fn pruning_safe_functions() {
     );
 
     assert_eq!(ctx.ledger.amount(&txn, &send2.hash()), None);
-    assert_eq!(ctx.ledger.account(&txn, &send1.hash()), None);
+    assert_eq!(ctx.ledger.any().block_account(&txn, &send1.hash()), None);
     assert_eq!(
-        ctx.ledger.account(&txn, &send2.hash()),
+        ctx.ledger.any().block_account(&txn, &send2.hash()),
         Some(genesis.account())
     );
 }

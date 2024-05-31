@@ -292,7 +292,8 @@ impl BootstrapServerImpl {
             HashType::Block => {
                 // Try to lookup account assuming target is block hash
                 self.ledger
-                    .account(tx, &request.target.into())
+                    .any()
+                    .block_account(tx, &request.target.into())
                     .unwrap_or_default()
             }
         };

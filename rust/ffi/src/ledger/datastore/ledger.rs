@@ -256,22 +256,6 @@ pub unsafe extern "C" fn rsn_ledger_weight_exact(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_account(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) -> bool {
-    match handle.account(txn.as_txn(), &BlockHash::from_ptr(hash)) {
-        Some(account) => {
-            account.copy_bytes(result);
-            true
-        }
-        None => false,
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_version(
     handle: &LedgerHandle,
     txn: &mut TransactionHandle,

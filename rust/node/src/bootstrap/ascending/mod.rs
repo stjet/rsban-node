@@ -546,7 +546,7 @@ impl BootstrapAscendingImpl {
                 let account = if block.previous().is_zero() {
                     block.account_field().unwrap()
                 } else {
-                    ledger.account(tx, &block.previous()).unwrap()
+                    ledger.any().block_account(tx, &block.previous()).unwrap()
                 };
                 let source = block.source_or_link();
 

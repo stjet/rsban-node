@@ -444,11 +444,6 @@ impl Ledger {
             .unwrap_or_default()
     }
 
-    /// Return account containing block hash
-    pub fn account(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        self.any().get_block(txn, hash).map(|block| block.account())
-    }
-
     /// Return absolute amount decrease or increase for block
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         let block = self.any().get_block(txn, hash)?;

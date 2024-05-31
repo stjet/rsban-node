@@ -177,20 +177,6 @@ bool nano::ledger::rollback (store::write_transaction const & transaction_a, nan
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-std::optional<nano::account> nano::ledger::account (store::transaction const & transaction, nano::block_hash const & hash) const
-{
-	nano::account result;
-	bool found = rsnano::rsn_ledger_account (handle, transaction.get_rust_handle (), hash.bytes.data (), result.bytes.data ());
-	if (found)
-	{
-		return result;
-	}
-	else
-	{
-		return std::nullopt;
-	}
-}
-
 std::optional<nano::uint128_t> nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
 {
 	nano::amount result;
@@ -450,6 +436,19 @@ nano::block_hash nano::ledger_set_any::account_head (store::transaction const & 
 	else
 	{
 		return { 0 };
+	}
+}
+
+std::optional<nano::account> nano::ledger_set_any::block_account (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	nano::account account;
+	if (rsnano::rsn_ledger_set_any_block_account (handle, transaction.get_rust_handle (), hash.bytes.data (), account.bytes.data ()))
+	{
+		return account;
+	}
+	else
+	{
+		return std::nullopt;
 	}
 }
 

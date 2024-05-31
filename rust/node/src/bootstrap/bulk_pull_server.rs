@@ -158,7 +158,8 @@ impl BulkPullServerImpl {
             if !self.request.end.is_zero() {
                 let account = self
                     .ledger
-                    .account(&transaction, &self.request.end)
+                    .any()
+                    .block_account(&transaction, &self.request.end)
                     .unwrap_or_default();
                 if account != self.request.start.into() {
                     debug!(

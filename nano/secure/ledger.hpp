@@ -48,6 +48,7 @@ public:
 	std::shared_ptr<nano::block> block_get (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::optional<nano::amount> block_balance (store::transaction const & transaction, nano::block_hash const & hash) const;
 	nano::block_hash account_head (store::transaction const & transaction, nano::account const & account) const;
+	std::optional<nano::account> block_account (store::transaction const & transaction, nano::block_hash const & hash) const;
 
 	rsnano::LedgerSetAnyHandle * handle;
 };
@@ -83,7 +84,6 @@ public:
 	 * Returns the account for a given hash
 	 * Returns std::nullopt if the block doesn't exist or has been pruned
 	 */
-	std::optional<nano::account> account (store::transaction const &, nano::block_hash const &) const;
 	std::optional<nano::uint128_t> amount (store::transaction const &, nano::block_hash const &);
 	nano::uint128_t account_balance (store::transaction const &, nano::account const &, bool = false) const;
 	nano::uint128_t account_receivable (store::transaction const &, nano::account const &, bool = false);

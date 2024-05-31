@@ -61,7 +61,8 @@ impl<'a> RollbackPlannerFactory<'a> {
 
     fn load_linked_account(&self) -> Account {
         self.ledger
-            .account(self.txn, &self.head_block.source_or_link())
+            .any()
+            .block_account(self.txn, &self.head_block.source_or_link())
             .unwrap_or_default()
     }
 
@@ -84,7 +85,8 @@ impl<'a> RollbackPlannerFactory<'a> {
 
     fn get_account(&self, block: &BlockEnum) -> anyhow::Result<Account> {
         self.ledger
-            .account(self.txn, &block.hash())
+            .any()
+            .block_account(self.txn, &block.hash())
             .ok_or_else(|| anyhow!("account not found"))
     }
 

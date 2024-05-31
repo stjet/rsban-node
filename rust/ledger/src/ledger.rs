@@ -1,8 +1,9 @@
 use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
+    ledger_set_confirmed::LedgerSetConfirmed,
     BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    RepWeights, RepresentativeBlockFinder, WriteQueue,
+    LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -313,6 +314,14 @@ impl Ledger {
             },
         );
         self.store.rep_weight.put(txn, genesis_account, Amount::MAX);
+    }
+
+    pub fn any(&self) -> LedgerSetAny {
+        LedgerSetAny::new(&self.store)
+    }
+
+    pub fn confirmed(&self) -> LedgerSetConfirmed {
+        LedgerSetConfirmed::new(&self.store)
     }
 
     pub fn pruning_enabled(&self) -> bool {

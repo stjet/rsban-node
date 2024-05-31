@@ -544,13 +544,6 @@ impl Ledger {
         }
     }
 
-    pub fn head_block(&self, txn: &dyn Transaction, account: &Account) -> Option<BlockEnum> {
-        self.store
-            .account
-            .get(txn, account)
-            .and_then(|info| self.store.block.get(txn, &info.head))
-    }
-
     pub fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
         self.store.block.successor(txn, hash)
     }

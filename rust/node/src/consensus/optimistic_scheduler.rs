@@ -173,7 +173,11 @@ impl OptimisticScheduler {
     }
 
     fn run_one(&self, tx: &LmdbReadTransaction, account: Account, _time: Instant) {
-        if let Some(block) = self.ledger.head_block(tx, &account) {
+        let any = self.ledger.any();
+        let Some(head) = any.account_head(tx, &account) else {
+            return;
+        };
+        if let Some(block) = any.get_block(&head) {
             // Ensure block is not already confirmed
             if !self.confirming_set.exists(&block.hash())
                 || self

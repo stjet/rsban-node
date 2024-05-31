@@ -1,15 +1,15 @@
 use super::LedgerContext;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_core::{utils::seconds_since_epoch, Account, Amount, BlockType};
+use rsnano_core::{utils::seconds_since_epoch, Account, BlockType};
 
 #[test]
-fn account_balance_is_zero_for_unknown_account() {
+fn account_balance_is_none_for_unknown_account() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
 
-    let balance = ctx.ledger.account_balance(&txn, &Account::zero(), false);
+    let balance = ctx.ledger.any().account_balance(&txn, &Account::zero());
 
-    assert_eq!(balance, Amount::zero());
+    assert_eq!(balance, None);
 }
 
 #[test]
@@ -30,11 +30,9 @@ fn genesis_account_balance() {
     let ctx = LedgerContext::empty();
     let txn = ctx.ledger.read_txn();
 
-    let balance = ctx
-        .ledger
-        .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false);
+    let balance = ctx.ledger.any().account_balance(&txn, &DEV_GENESIS_ACCOUNT);
 
-    assert_eq!(balance, LEDGER_CONSTANTS_STUB.genesis_amount);
+    assert_eq!(balance, Some(LEDGER_CONSTANTS_STUB.genesis_amount));
 }
 
 #[test]

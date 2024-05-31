@@ -1,13 +1,12 @@
-use std::{
-    ffi::c_void,
-    ops::{Deref, DerefMut},
-};
-
 use crate::utils::FfiStream;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{Deserialize, FixedSizeSerialize},
     Account, AccountInfo, Amount, BlockHash, Epoch,
+};
+use std::{
+    ffi::c_void,
+    ops::{Deref, DerefMut},
 };
 
 pub struct AccountInfoHandle(pub AccountInfo);

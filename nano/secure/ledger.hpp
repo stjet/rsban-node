@@ -36,6 +36,17 @@ class stats;
 // map of vote weight per block, ordered greater first
 using tally_t = std::map<nano::uint128_t, std::shared_ptr<nano::block>, std::greater<nano::uint128_t>>;
 
+class ledger_set_any
+{
+public:
+	ledger_set_any (rsnano::LedgerSetAnyHandle * handle);
+	~ledger_set_any ();
+
+	std::optional<nano::account_info> account_get (store::transaction const & transaction, nano::account const & account) const;
+
+	rsnano::LedgerSetAnyHandle * handle;
+};
+
 class ledger final
 {
 public:
@@ -44,6 +55,9 @@ public:
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;
 	~ledger ();
+
+	ledger_set_any any () const;
+
 	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait (nano::store::writer writer);
 	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
 	bool queue_contains (nano::store::writer writer);
@@ -52,7 +66,6 @@ public:
 	 * Returns std::nullopt if the block doesn't exist or has been pruned
 	 */
 	std::optional<nano::account> account (store::transaction const &, nano::block_hash const &) const;
-	std::optional<nano::account_info> account_info (store::transaction const & transaction, nano::account const & account) const;
 	std::optional<nano::uint128_t> amount (store::transaction const &, nano::block_hash const &);
 	std::optional<nano::uint128_t> balance (store::transaction const &, nano::block_hash const &) const;
 	std::shared_ptr<nano::block> block (store::transaction const & transaction, nano::block_hash const & hash) const;

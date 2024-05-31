@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, PendingKey};
+use rsnano_core::PendingKey;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::{
@@ -81,15 +81,15 @@ fn rollback_dependent_blocks_too() {
         .unwrap();
 
     assert_eq!(
-        ctx.ledger
-            .account_balance(&txn, &DEV_GENESIS_ACCOUNT, false),
-        LEDGER_CONSTANTS_STUB.genesis_amount
+        ctx.ledger.any().account_balance(&txn, &DEV_GENESIS_ACCOUNT),
+        Some(LEDGER_CONSTANTS_STUB.genesis_amount)
     );
 
     assert_eq!(
         ctx.ledger
-            .account_balance(&txn, &open.destination.account(), false),
-        Amount::zero()
+            .any()
+            .account_balance(&txn, &open.destination.account()),
+        None
     );
 
     assert!(ctx

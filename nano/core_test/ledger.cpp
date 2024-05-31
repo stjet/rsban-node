@@ -479,7 +479,7 @@ TEST (ledger, unchecked_epoch)
 	{
 		// Waits for the last blocks to pass through block_processor and unchecked.put queues
 		ASSERT_TIMELY_EQ (10s, 0, node1.unchecked.count ());
-		auto info = node1.ledger.account_info (*node1.store.tx_begin_read (), destination.pub);
+		auto info = node1.ledger.any ().account_get (*node1.store.tx_begin_read (), destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_EQ (info->epoch (), nano::epoch::epoch_1);
 	}
@@ -557,7 +557,7 @@ TEST (ledger, unchecked_epoch_invalid)
 		auto unchecked_count = node1.unchecked.count ();
 		ASSERT_EQ (unchecked_count, 0);
 		ASSERT_EQ (unchecked_count, node1.unchecked.count ());
-		auto info = node1.ledger.account_info (*transaction, destination.pub);
+		auto info = node1.ledger.any ().account_get (*transaction, destination.pub);
 		ASSERT_TRUE (info);
 		ASSERT_NE (info->epoch (), nano::epoch::epoch_1);
 		auto epoch2_store = node1.ledger.block (*transaction, epoch2->hash ());

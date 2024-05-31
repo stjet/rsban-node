@@ -191,7 +191,7 @@ TEST (wallet, spend_all_one)
 	nano::keypair key2;
 	ASSERT_NE (nullptr, node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max ()));
 	auto transaction (node1.store.tx_begin_read ());
-	auto info2 = node1.ledger.account_info (*transaction, nano::dev::genesis_key.pub);
+	auto info2 = node1.ledger.any ().account_get (*transaction, nano::dev::genesis_key.pub);
 	ASSERT_NE (latest1, info2->head ());
 	auto block (node1.ledger.block (*transaction, info2->head ()));
 	ASSERT_NE (nullptr, block);
@@ -228,7 +228,7 @@ TEST (wallet, spend)
 	ASSERT_EQ (nullptr, node1.wallets.send_action (wallet_id1, 0, key2.pub, 0));
 	ASSERT_NE (nullptr, node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max ()));
 	auto transaction (node1.store.tx_begin_read ());
-	auto info2 = node1.ledger.account_info (*transaction, nano::dev::genesis_key.pub);
+	auto info2 = node1.ledger.any ().account_get (*transaction, nano::dev::genesis_key.pub);
 	ASSERT_TRUE (info2);
 	ASSERT_NE (latest1, info2->head ());
 	auto block (node1.ledger.block (*transaction, info2->head ()));
@@ -257,7 +257,7 @@ TEST (wallet, spend_no_previous)
 	{
 		(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 		auto transaction (node->store.tx_begin_read ());
-		auto info1 = node->ledger.account_info (*transaction, nano::dev::genesis_key.pub);
+		auto info1 = node->ledger.any ().account_get (*transaction, nano::dev::genesis_key.pub);
 		ASSERT_TRUE (info1);
 		for (auto i (0); i < 50; ++i)
 		{

@@ -58,6 +58,11 @@ rsnano::LedgerHandle * nano::ledger::get_handle () const
 	return handle;
 }
 
+nano::ledger_set_any nano::ledger::any () const
+{
+	return { rsnano::rsn_ledger_any (handle) };
+}
+
 nano::store::write_guard nano::ledger::wait (nano::store::writer writer)
 {
 	auto guard_handle = rsnano::rsn_ledger_wait (handle, static_cast<uint8_t> (writer));
@@ -214,11 +219,6 @@ std::optional<nano::account> nano::ledger::account (store::transaction const & t
 	{
 		return std::nullopt;
 	}
-}
-
-std::optional<nano::account_info> nano::ledger::account_info (store::transaction const & transaction, nano::account const & account) const
-{
-	return store.account ().get (transaction, account);
 }
 
 std::optional<nano::uint128_t> nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
@@ -429,4 +429,27 @@ uint64_t nano::ledger::account_count () const
 uint64_t nano::ledger::pruned_count () const
 {
 	return cache.pruned_count ();
+}
+
+nano::ledger_set_any::ledger_set_any (rsnano::LedgerSetAnyHandle * handle) :
+	handle{ handle }
+{
+}
+
+nano::ledger_set_any::~ledger_set_any ()
+{
+	rsnano::rsn_ledger_set_any_destroy (handle);
+}
+
+std::optional<nano::account_info> nano::ledger_set_any::account_get (store::transaction const & transaction, nano::account const & account) const
+{
+	auto info_handle = rsnano::rsn_ledger_set_any_get_account (handle, transaction.get_rust_handle (), account.bytes.data ());
+	if (info_handle != nullptr)
+	{
+		return { info_handle };
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }

@@ -543,7 +543,11 @@ impl Wallets {
         let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
         let mut block = None;
         if wallet.store.valid_password(tx) {
-            let balance = self.ledger.account_balance(&block_tx, &source, false);
+            let balance = self
+                .ledger
+                .any()
+                .account_balance(&block_tx, &source)
+                .unwrap_or_default();
             if !balance.is_zero() && balance >= amount {
                 let info = self.ledger.account_info(&block_tx, &source).unwrap();
                 let prv_key = wallet.store.fetch(tx, &source).unwrap();
@@ -602,7 +606,11 @@ impl Wallets {
         } else {
             cached_block = false;
             if wallet.store.valid_password(tx) {
-                let balance = self.ledger.account_balance(&block_tx, &source, false);
+                let balance = self
+                    .ledger
+                    .any()
+                    .account_balance(&block_tx, &source)
+                    .unwrap_or_default();
                 if !balance.is_zero() && balance >= amount {
                     let info = self.ledger.account_info(&block_tx, &source).unwrap();
                     let prv_key = wallet.store.fetch(tx, &source).unwrap();

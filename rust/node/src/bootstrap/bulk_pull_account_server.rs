@@ -72,9 +72,11 @@ impl BulkPullAccountServerImpl {
                 .ledger
                 .latest(&stream_transaction, &self.request.account)
                 .unwrap_or_default();
-            let account_frontier_balance =
-                self.ledger
-                    .account_balance(&stream_transaction, &self.request.account, false);
+            let account_frontier_balance = self
+                .ledger
+                .any()
+                .account_balance(&stream_transaction, &self.request.account)
+                .unwrap_or_default();
 
             // Write the frontier block hash and balance into a buffer
             let mut send_buffer = Vec::new();

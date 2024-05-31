@@ -341,10 +341,6 @@ impl Ledger {
             .store(max, Ordering::SeqCst)
     }
 
-    pub fn block_exists(&self, txn: &dyn Transaction, block: &BlockHash) -> bool {
-        self.store.block.exists(txn, block)
-    }
-
     /// Balance for account containing the given block at the time of the block.
     pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         if hash.is_zero() {

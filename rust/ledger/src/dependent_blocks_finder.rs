@@ -97,7 +97,8 @@ impl<'a> DependentBlocksFinder<'a> {
             block.balance()
                 < self
                     .ledger
-                    .balance(self.txn, &block.previous())
+                    .any()
+                    .block_balance(self.txn, &block.previous())
                     .unwrap_or_default()
         }
     }

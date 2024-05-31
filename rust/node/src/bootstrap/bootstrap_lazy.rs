@@ -114,7 +114,7 @@ impl LazyData {
 
             let mut retain = true;
             if ledger.any().block_exists_or_pruned(&txn, hash) {
-                if let Some(balance) = ledger.balance(&txn, hash) {
+                if let Some(balance) = ledger.any().block_balance(&txn, hash) {
                     if balance <= next_block.balance {
                         lazy_add(next_block.link, next_block.retry_limit);
                     }
@@ -412,7 +412,7 @@ impl BootstrapAttemptLazy {
             }
             // In other cases previous block balance required to find out subtype of state block
             else if self.ledger.any().block_exists_or_pruned(&txn, &previous) {
-                if let Some(previous_balance) = self.ledger.balance(&txn, &previous) {
+                if let Some(previous_balance) = self.ledger.any().block_balance(&txn, &previous) {
                     if previous_balance <= balance {
                         data.lazy_add(link.into(), retry_limit);
                     }

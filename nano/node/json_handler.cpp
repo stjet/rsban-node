@@ -375,7 +375,7 @@ uint64_t nano::json_handler::difficulty_ledger (nano::block const & block_a)
 	// Send check
 	if (block_previous != nullptr)
 	{
-		auto is_send = node.ledger.balance (*transaction, previous) > block_a.balance_field ().value ().number ();
+		auto is_send = node.ledger.any ().block_balance (*transaction, previous) > block_a.balance_field ().value ().number ();
 		details = nano::block_details (nano::epoch::epoch_0, is_send, false, false);
 		details_found = true;
 	}
@@ -612,7 +612,7 @@ void nano::json_handler::account_info ()
 			{
 				if (info.block_count () != confirmation_height_info.height ())
 				{
-					confirmed_balance_l = node.ledger.balance (*transaction, confirmation_height_info.frontier ()).value_or (0);
+					confirmed_balance_l = node.ledger.any ().block_balance (*transaction, confirmation_height_info.frontier ()).value_or (0);
 				}
 				else
 				{
@@ -1130,8 +1130,8 @@ void nano::json_handler::block_info ()
 			{
 				response_l.put ("amount", amount.value ().convert_to<std::string> ());
 			}
-			auto balance = node.ledger.balance (*transaction, hash);
-			response_l.put ("balance", balance.value ().convert_to<std::string> ());
+			auto balance = node.ledger.any ().block_balance (*transaction, hash);
+			response_l.put ("balance", balance.value ().number ().convert_to<std::string> ());
 			response_l.put ("height", std::to_string (block->sideband ().height ()));
 			response_l.put ("local_timestamp", std::to_string (block->sideband ().timestamp ()));
 			response_l.put ("successor", block->sideband ().successor ().to_string ());
@@ -1626,7 +1626,7 @@ void nano::json_handler::block_create ()
 			else if (previous_text.is_initialized () && balance_text.is_initialized () && type == "send")
 			{
 				auto transaction (node.store.tx_begin_read ());
-				if (node.ledger.any ().block_exists (*transaction, previous) && node.ledger.balance (*transaction, previous) != balance.number ())
+				if (node.ledger.any ().block_exists (*transaction, previous) && node.ledger.any ().block_balance (*transaction, previous) != balance.number ())
 				{
 					ec = nano::error_rpc::block_create_balance_mismatch;
 				}
@@ -2401,7 +2401,7 @@ public:
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
 		auto balance (block_a.balance ().number ());
-		auto previous_balance = handler.node.ledger.balance (transaction, block_a.previous ());
+		auto previous_balance = handler.node.ledger.any ().block_balance (transaction, block_a.previous ());
 		if (!previous_balance)
 		{
 			if (raw)
@@ -2413,7 +2413,7 @@ public:
 				tree.put ("type", "unknown");
 			}
 		}
-		else if (balance < previous_balance.value ())
+		else if (balance < previous_balance.value ().number ())
 		{
 			if (should_ignore_account (block_a.link_field ().value ().as_account ()))
 			{
@@ -2429,7 +2429,7 @@ public:
 				tree.put ("type", "send");
 			}
 			tree.put ("account", block_a.link_field ().value ().to_account ());
-			tree.put ("amount", (previous_balance.value () - balance).convert_to<std::string> ());
+			tree.put ("amount", (previous_balance.value ().number () - balance).convert_to<std::string> ());
 		}
 		else
 		{
@@ -2440,7 +2440,7 @@ public:
 					tree.put ("subtype", "change");
 				}
 			}
-			else if (balance == previous_balance && handler.node.ledger.is_epoch_link (block_a.link_field ().value ()))
+			else if (balance == previous_balance.value ().number () && handler.node.ledger.is_epoch_link (block_a.link_field ().value ()))
 			{
 				if (raw && accounts_filter.empty ())
 				{
@@ -2468,7 +2468,7 @@ public:
 				{
 					tree.put ("account", source_account.value ().to_account ());
 				}
-				tree.put ("amount", (balance - previous_balance.value ()).convert_to<std::string> ());
+				tree.put ("amount", (balance - previous_balance.value ().number ()).convert_to<std::string> ());
 			}
 		}
 	}

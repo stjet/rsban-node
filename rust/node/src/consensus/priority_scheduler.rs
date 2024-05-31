@@ -75,10 +75,11 @@ impl PriorityScheduler {
             return false;
         }
 
-        let balance = self.ledger.balance(tx, &hash).unwrap();
+        let balance = self.ledger.any().block_balance(tx, &hash).unwrap();
         let previous_balance = self
             .ledger
-            .balance(tx, &conf_info.frontier)
+            .any()
+            .block_balance(tx, &conf_info.frontier)
             .unwrap_or_default();
         let balance_priority = max(balance, previous_balance);
 

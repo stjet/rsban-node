@@ -341,15 +341,6 @@ impl Ledger {
             .store(max, Ordering::SeqCst)
     }
 
-    /// Balance for account containing the given block at the time of the block.
-    pub fn balance(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
-        if hash.is_zero() {
-            None
-        } else {
-            self.any().get_block(txn, hash).map(|block| block.balance())
-        }
-    }
-
     /// Balance for account by account number
     pub fn account_balance(
         &self,
@@ -359,7 +350,10 @@ impl Ledger {
     ) -> Amount {
         if only_confirmed {
             match self.store.confirmation_height.get(txn, account) {
-                Some(info) => self.balance(txn, &info.frontier).unwrap_or_default(),
+                Some(info) => self
+                    .any()
+                    .block_balance(txn, &info.frontier)
+                    .unwrap_or_default(),
                 None => Amount::zero(),
             }
         } else {
@@ -458,11 +452,11 @@ impl Ledger {
     /// Return absolute amount decrease or increase for block
     pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         let block = self.any().get_block(txn, hash)?;
-        let block_balance = self.balance(txn, hash)?;
+        let block_balance = self.any().block_balance(txn, hash)?;
         if block.previous().is_zero() {
             return Some(block_balance);
         }
-        let previous_balance = self.balance(txn, &block.previous())?;
+        let previous_balance = self.any().block_balance(txn, &block.previous())?;
         if block_balance > previous_balance {
             Some(block_balance - previous_balance)
         } else {

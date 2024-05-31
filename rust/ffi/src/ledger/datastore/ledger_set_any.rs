@@ -60,3 +60,22 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_get(
         None => std::ptr::null_mut(),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_balance(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+    amount: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .block_balance(tx.as_txn(), &BlockHash::from_ptr(hash))
+    {
+        Some(balance) => {
+            balance.copy_bytes(amount);
+            true
+        }
+        None => false,
+    }
+}

@@ -267,7 +267,7 @@ fn block_destination_source() {
     let block6 = receive2;
 
     assert_eq!(
-        ledger.balance(&txn, &block6.hash()),
+        ledger.any().block_balance(&txn, &block6.hash()),
         Some(block6.balance_field().unwrap())
     );
     assert_eq!(block1.destination(), Some(dest_account));

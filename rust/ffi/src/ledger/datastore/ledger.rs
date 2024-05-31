@@ -175,21 +175,6 @@ pub unsafe extern "C" fn rsn_ledger_confirmed(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_balance(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) -> bool {
-    if let Some(balance) = handle.balance(txn.as_txn(), &BlockHash::from_ptr(hash)) {
-        balance.copy_bytes(result);
-        true
-    } else {
-        false
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_account_balance(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

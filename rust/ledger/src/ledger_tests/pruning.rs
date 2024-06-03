@@ -384,7 +384,7 @@ fn pruning_safe_functions() {
         send2.balance_field().unwrap()
     );
 
-    assert_eq!(ctx.ledger.amount(&txn, &send2.hash()), None);
+    assert_eq!(ctx.ledger.any().block_amount(&txn, &send2.hash()), None);
     assert_eq!(ctx.ledger.any().block_account(&txn, &send1.hash()), None);
     assert_eq!(
         ctx.ledger.any().block_account(&txn, &send2.hash()),

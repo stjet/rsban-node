@@ -108,10 +108,29 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_account(
 ) -> bool {
     match handle
         .0
-        .block_account(tx.as_txn(), &BlockHash::from_ptr(account))
+        .block_account(tx.as_txn(), &BlockHash::from_ptr(hash))
     {
         Some(acc) => {
             acc.copy_bytes(account);
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_amount(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+    amount: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .block_amount(tx.as_txn(), &BlockHash::from_ptr(hash))
+    {
+        Some(a) => {
+            a.copy_bytes(amount);
             true
         }
         None => false,

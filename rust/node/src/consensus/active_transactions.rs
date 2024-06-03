@@ -191,7 +191,10 @@ impl ActiveTransactions {
         // Trigger callback for confirmed block
         let block = status.winner.as_ref().unwrap();
         let account = block.account();
-        let amount = self.ledger.amount(&self.ledger.read_txn(), &block.hash());
+        let amount = self
+            .ledger
+            .any()
+            .block_amount(&self.ledger.read_txn(), &block.hash());
         let mut is_state_send = false;
         let mut is_state_epoch = false;
         if amount.is_some() {
@@ -261,7 +264,11 @@ impl ActiveTransactions {
     ) {
         let block = status.winner.as_ref().unwrap();
         let account = block.account();
-        let amount = self.ledger.amount(tx, &block.hash()).unwrap_or_default();
+        let amount = self
+            .ledger
+            .any()
+            .block_amount(tx, &block.hash())
+            .unwrap_or_default();
         let is_state_send = block.block_type() == BlockType::State && block.is_send();
         let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
 

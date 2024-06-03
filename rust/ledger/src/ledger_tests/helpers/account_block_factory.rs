@@ -109,7 +109,7 @@ impl<'a> AccountBlockFactory<'a> {
 
     pub(crate) fn receive(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
-        let amount_sent = self.ledger.amount(txn, &send_hash).unwrap();
+        let amount_sent = self.ledger.any().block_amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
             .account(self.account())
             .previous(receiver_info.head)
@@ -131,7 +131,7 @@ impl<'a> AccountBlockFactory<'a> {
     }
 
     pub(crate) fn open(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
-        let amount_sent = self.ledger.amount(txn, &send_hash).unwrap();
+        let amount_sent = self.ledger.any().block_amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
             .account(self.account())
             .previous(0)

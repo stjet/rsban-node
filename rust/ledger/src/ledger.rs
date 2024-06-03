@@ -444,21 +444,6 @@ impl Ledger {
             .unwrap_or_default()
     }
 
-    /// Return absolute amount decrease or increase for block
-    pub fn amount(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
-        let block = self.any().get_block(txn, hash)?;
-        let block_balance = self.any().block_balance(txn, hash)?;
-        if block.previous().is_zero() {
-            return Some(block_balance);
-        }
-        let previous_balance = self.any().block_balance(txn, &block.previous())?;
-        if block_balance > previous_balance {
-            Some(block_balance - previous_balance)
-        } else {
-            Some(previous_balance - block_balance)
-        }
-    }
-
     /// Return latest root for account, account number if there are no blocks for this account
     pub fn latest_root(&self, txn: &dyn Transaction, account: &Account) -> Root {
         match self.account_info(txn, account) {

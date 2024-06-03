@@ -276,22 +276,6 @@ pub unsafe extern "C" fn rsn_ledger_account_height(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_amount(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    hash: *const u8,
-    result: *mut u8,
-) -> bool {
-    match handle.amount(txn.as_txn(), &BlockHash::from_ptr(hash)) {
-        Some(amount) => {
-            amount.copy_bytes(result);
-            true
-        }
-        None => false,
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_latest_root(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

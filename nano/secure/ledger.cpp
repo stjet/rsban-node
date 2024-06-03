@@ -177,20 +177,6 @@ bool nano::ledger::rollback (store::write_transaction const & transaction_a, nan
 	return rollback (transaction_a, block_a, rollback_list);
 }
 
-std::optional<nano::uint128_t> nano::ledger::amount (store::transaction const & transaction_a, nano::block_hash const & hash_a)
-{
-	nano::amount result;
-	bool found = rsnano::rsn_ledger_amount (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), result.bytes.data ());
-	if (found)
-	{
-		return result.number ();
-	}
-	else
-	{
-		return std::nullopt;
-	}
-}
-
 // Return latest root for account, account number if there are no blocks for this account.
 nano::root nano::ledger::latest_root (store::transaction const & transaction_a, nano::account const & account_a)
 {
@@ -450,6 +436,20 @@ std::optional<nano::account> nano::ledger_set_any::block_account (store::transac
 	{
 		return std::nullopt;
 	}
+}
+
+std::optional<nano::amount> nano::ledger_set_any::block_amount (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	nano::amount amount;
+	if (rsnano::rsn_ledger_set_any_block_amount (handle, transaction.get_rust_handle (), hash.bytes.data (), amount.bytes.data ()))
+	{
+		return amount;
+	}
+	else
+	{
+		return std::nullopt;
+	}
+
 }
 
 nano::ledger_set_confirmed::ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle) :

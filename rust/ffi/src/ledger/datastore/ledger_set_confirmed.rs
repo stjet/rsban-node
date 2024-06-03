@@ -1,5 +1,5 @@
 use super::TransactionHandle;
-use rsnano_core::BlockHash;
+use rsnano_core::{Account, BlockHash};
 use rsnano_ledger::LedgerSetConfirmed;
 
 pub struct LedgerSetConfirmedHandle(pub LedgerSetConfirmed<'static>);

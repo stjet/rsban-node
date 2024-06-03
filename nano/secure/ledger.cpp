@@ -315,11 +315,6 @@ nano::epoch nano::ledger::version (store::transaction const & transaction, nano:
 	return static_cast<nano::epoch> (epoch);
 }
 
-uint64_t nano::ledger::height (store::transaction const & transaction, nano::block_hash const & hash) const
-{
-	return rsnano::rsn_ledger_account_height (handle, transaction.get_rust_handle (), hash.bytes.data ());
-}
-
 bool nano::ledger::receivable_any (store::transaction const & tx, nano::account const & account) const
 {
 	return rsnano::rsn_ledger_receivable_any (handle, tx.get_rust_handle (), account.bytes.data ());
@@ -471,3 +466,4 @@ bool nano::ledger_set_confirmed::block_exists (store::transaction const & transa
 {
 	return rsnano::rsn_ledger_set_confirmed_block_exists (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }
+

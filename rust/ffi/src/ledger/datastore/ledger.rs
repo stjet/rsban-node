@@ -265,17 +265,6 @@ pub unsafe extern "C" fn rsn_ledger_version(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_account_height(
-    handle: &LedgerHandle,
-    txn: &mut TransactionHandle,
-    hash: *const u8,
-) -> u64 {
-    handle
-        .0
-        .account_height(txn.as_txn(), &BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_latest_root(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

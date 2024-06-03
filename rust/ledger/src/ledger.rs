@@ -459,13 +459,6 @@ impl Ledger {
             .unwrap_or(Epoch::Epoch0)
     }
 
-    pub fn account_height(&self, txn: &dyn Transaction, hash: &BlockHash) -> u64 {
-        self.any()
-            .get_block(txn, hash)
-            .map(|block| block.sideband().unwrap().height)
-            .unwrap_or_default()
-    }
-
     pub fn is_epoch_link(&self, link: &Link) -> bool {
         self.constants.epochs.is_epoch_link(link)
     }

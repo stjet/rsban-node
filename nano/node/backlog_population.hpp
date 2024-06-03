@@ -30,7 +30,7 @@ public:
 	/** Manually trigger backlog population */
 	void trigger ();
 
-	void set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &, nano::account_info const &, nano::confirmation_height_info const &)>);
+	void set_activate_callback (std::function<void (nano::store::transaction const &, nano::account const &)>);
 
 private:
 	rsnano::BacklogPopulationHandle * handle;

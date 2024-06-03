@@ -47,18 +47,6 @@ pub extern "C" fn rsn_optimistic_scheduler_stop(handle: &OptimisticSchedulerHand
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_optimistic_scheduler_activate(
-    handle: &OptimisticSchedulerHandle,
-    account: *const u8,
-    account_info: &AccountInfoHandle,
-    conf_info: &ConfirmationHeightInfoDto,
-) -> bool {
-    handle
-        .0
-        .activate(Account::from_ptr(account), account_info, &conf_info.into())
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_optimistic_scheduler_notify(handle: &OptimisticSchedulerHandle) {
     handle.0.notify()
 }

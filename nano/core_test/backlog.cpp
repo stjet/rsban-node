@@ -21,9 +21,8 @@ TEST (backlog, population)
 	nano::test::system system{};
 	auto & node = *system.add_node ();
 
-	node.backlog.set_activate_callback ([&] (nano::store::transaction const & transaction, nano::account const & account, nano::account_info const & account_info, nano::confirmation_height_info const & conf_info) {
+	node.backlog.set_activate_callback ([&] (nano::store::transaction const & transaction, nano::account const & account) {
 		nano::lock_guard<nano::mutex> lock{ mutex };
-
 		activated.insert (account);
 	});
 

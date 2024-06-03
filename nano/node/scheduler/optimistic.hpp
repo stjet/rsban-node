@@ -52,11 +52,6 @@ public:
 	void stop ();
 
 	/**
-	 * Called from backlog population to process accounts with unconfirmed blocks
-	 */
-	bool activate (nano::account const &, nano::account_info const &, nano::confirmation_height_info const &);
-
-	/**
 	 * Notify about changes in AEC vacancy
 	 */
 	void notify ();

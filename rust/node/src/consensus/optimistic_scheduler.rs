@@ -6,10 +6,10 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, AccountInfo, ConfirmationHeightInfo,
+    Account,
 };
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
@@ -70,16 +70,15 @@ impl OptimisticScheduler {
         self.condition.notify_all();
     }
 
-    fn activate_predicate(
-        &self,
-        account_info: &AccountInfo,
-        conf_info: &ConfirmationHeightInfo,
-    ) -> bool {
-        if account_info.block_count - conf_info.height > self.config.gap_threshold {
-            // Chain with a big enough gap between account frontier and confirmation frontier
+    fn activate_predicate(&self, tx: &dyn Transaction, account: &Account) -> bool {
+        let unconfirmed_height = self.ledger.any().account_height(tx, account);
+        let confirmed_height = self.ledger.confirmed().account_height(tx, account);
+        // Account with nothing confirmed yet
+        if confirmed_height == 0 {
             true
-        } else if conf_info.height == 0 {
-            // Account with nothing confirmed yet
+        }
+        // Chain with a big enough gap between account frontier and confirmation frontier
+        else if unconfirmed_height - confirmed_height > self.config.gap_threshold {
             true
         } else {
             false
@@ -87,18 +86,12 @@ impl OptimisticScheduler {
     }
 
     /// Called from backlog population to process accounts with unconfirmed blocks
-    pub fn activate(
-        &self,
-        account: Account,
-        account_info: &AccountInfo,
-        conf_info: &ConfirmationHeightInfo,
-    ) -> bool {
+    pub fn activate(&self, tx: &dyn Transaction, account: &Account) -> bool {
         if !self.config.enabled {
             return false;
         }
 
-        debug_assert!(account_info.block_count >= conf_info.height);
-        if self.activate_predicate(account_info, conf_info) {
+        if self.activate_predicate(tx, account) {
             {
                 let mut candidates = self.candidates.lock().unwrap();
                 // Prevent duplicate candidate accounts
@@ -112,7 +105,7 @@ impl OptimisticScheduler {
 
                 self.stats
                     .inc(StatType::OptimisticScheduler, DetailType::Activated);
-                candidates.insert(account, Instant::now());
+                candidates.insert(*account, Instant::now());
             }
             true // Activated
         } else {

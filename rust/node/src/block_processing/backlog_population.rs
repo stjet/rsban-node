@@ -7,7 +7,7 @@ use std::{
 
 use crate::stats::{DetailType, StatType, Stats};
 use primitive_types::U256;
-use rsnano_core::{Account, AccountInfo, ConfirmationHeightInfo};
+use rsnano_core::Account;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::Transaction;
 
@@ -45,8 +45,7 @@ pub struct BacklogPopulation {
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
-pub type ActivateCallback =
-    Box<dyn Fn(&dyn Transaction, &Account, &AccountInfo, &ConfirmationHeightInfo) + Send + Sync>;
+pub type ActivateCallback = Box<dyn Fn(&dyn Transaction, &Account) + Send + Sync>;
 
 impl BacklogPopulation {
     pub fn new(config: BacklogPopulationConfig, ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
@@ -232,7 +231,7 @@ impl BacklogPopulationThread {
             self.stats.inc(StatType::Backlog, DetailType::Activated);
             let callback_lock = self.activate_callback.lock().unwrap();
             match callback_lock.deref() {
-                Some(callback) => callback(txn, account, &account_info, &conf_info),
+                Some(callback) => callback(txn, account),
                 None => {
                     debug_assert!(false)
                 }

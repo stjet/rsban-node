@@ -674,7 +674,7 @@ impl Node {
 
         let priority_w = Arc::downgrade(&priority_scheduler);
         let optimistic_w = Arc::downgrade(&optimistic_scheduler);
-        backlog_population.set_activate_callback(Box::new(move |tx, account, info, height| {
+        backlog_population.set_activate_callback(Box::new(move |tx, account| {
             let Some(priority) = priority_w.upgrade() else {
                 return;
             };
@@ -682,7 +682,7 @@ impl Node {
                 return;
             };
             priority.activate(account, tx);
-            optimistic.activate(*account, info, height);
+            optimistic.activate(tx, account);
         }));
 
         let ledger_w = Arc::downgrade(&ledger);

@@ -52,13 +52,8 @@ pub extern "C" fn rsn_backlog_population_trigger(handle: &BacklogPopulationHandl
     handle.0.trigger();
 }
 
-pub type BacklogPopulationActivateCallback = unsafe extern "C" fn(
-    *mut c_void,
-    *mut TransactionHandle,
-    *const u8,
-    *mut AccountInfoHandle,
-    *const ConfirmationHeightInfoDto,
-);
+pub type BacklogPopulationActivateCallback =
+    unsafe extern "C" fn(*mut c_void, *mut TransactionHandle, *const u8);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_backlog_population_set_activate_callback(
@@ -70,22 +65,15 @@ pub unsafe extern "C" fn rsn_backlog_population_set_activate_callback(
     let context_wrapper = ContextWrapper::new(context, delete_context);
     (*handle)
         .0
-        .set_activate_callback(Box::new(move |txn, account, account_info, conf_height| {
+        .set_activate_callback(Box::new(move |txn, account| {
             let txn_handle = into_read_txn_handle(txn);
-
-            let account_info_handle =
-                Box::into_raw(Box::new(AccountInfoHandle(account_info.clone())));
-            let conf_height_dto = conf_height.into();
 
             (callback)(
                 context_wrapper.get_context(),
                 txn_handle,
                 account.as_bytes().as_ptr(),
-                account_info_handle,
-                &conf_height_dto,
             );
 
             drop(Box::from_raw(txn_handle));
-            drop(Box::from_raw(account_info_handle));
         }));
 }

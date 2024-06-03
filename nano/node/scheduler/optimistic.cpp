@@ -41,11 +41,6 @@ void nano::scheduler::optimistic::notify ()
 	rsnano::rsn_optimistic_scheduler_notify (handle);
 }
 
-bool nano::scheduler::optimistic::activate (const nano::account & account, const nano::account_info & account_info, const nano::confirmation_height_info & conf_info)
-{
-	return rsnano::rsn_optimistic_scheduler_activate (handle, account.bytes.data (), account_info.handle, &conf_info.dto);
-}
-
 /*
  * optimistic_scheduler_config
  */

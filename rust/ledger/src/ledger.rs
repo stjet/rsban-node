@@ -349,7 +349,10 @@ impl Ledger {
     ) -> Amount {
         let mut result = Amount::zero();
 
-        for (key, info) in self.account_receivable_upper_bound(txn, *account, BlockHash::zero()) {
+        for (key, info) in
+            self.any()
+                .account_receivable_upper_bound(txn, *account, BlockHash::zero())
+        {
             if !only_confirmed
                 || self
                     .confirmed()
@@ -646,64 +649,10 @@ impl Ledger {
         self.observer.blocks_cemented(1);
     }
 
-    /// Returns the next receivable entry for the account 'account' with hash greater than 'hash'
-    pub fn account_receivable_upper_bound<'a>(
-        &'a self,
-        txn: &'a dyn Transaction,
-        account: Account,
-        hash: BlockHash,
-    ) -> AnyReceivableIterator<'a> {
-        AnyReceivableIterator::<'a> {
-            txn,
-            pending: self.store.pending.deref(),
-            requested_account: account,
-            actual_account: Some(account),
-            next_hash: hash.inc(),
-        }
-    }
-
-    /// Returns the next receivable entry for an account greater than 'account'
-    pub fn receivable_upper_bound<'a>(
-        &'a self,
-        txn: &'a dyn Transaction,
-        account: Account,
-    ) -> AnyReceivableIterator<'a> {
-        match account.inc() {
-            None => AnyReceivableIterator::<'a> {
-                txn,
-                pending: self.store.pending.deref(),
-                requested_account: Default::default(),
-                actual_account: None,
-                next_hash: None,
-            },
-            Some(account) => AnyReceivableIterator::<'a> {
-                txn,
-                pending: self.store.pending.deref(),
-                requested_account: account,
-                actual_account: None,
-                next_hash: Some(BlockHash::zero()),
-            },
-        }
-    }
-
-    /// Returns the next receivable entry for an account greater than or equal to 'account'
-    pub fn receivable_lower_bound<'a>(
-        &'a self,
-        txn: &'a dyn Transaction,
-        account: Account,
-    ) -> AnyReceivableIterator<'a> {
-        AnyReceivableIterator::<'a> {
-            txn,
-            pending: self.store.pending.deref(),
-            requested_account: account,
-            actual_account: None,
-            next_hash: Some(BlockHash::zero()),
-        }
-    }
-
     /// Returns whether there are any receivable entries for 'account'
     pub fn receivable_any(&self, txn: &dyn Transaction, account: Account) -> bool {
-        self.account_receivable_upper_bound(txn, account, BlockHash::zero())
+        self.any()
+            .account_receivable_upper_bound(txn, account, BlockHash::zero())
             .next()
             .is_some()
     }

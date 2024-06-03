@@ -37,7 +37,11 @@ impl DatabaseIterator {
                 }
             }
             TableType::Pending => {
-                if let Some((key, _)) = self.ledger.receivable_upper_bound(tx, self.current).next()
+                if let Some((key, _)) = self
+                    .ledger
+                    .any()
+                    .receivable_upper_bound(tx, self.current)
+                    .next()
                 {
                     self.current = key.receiving_account;
                 } else {

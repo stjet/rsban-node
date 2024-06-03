@@ -1697,7 +1697,7 @@ impl WalletsExt for Arc<Wallets> {
             let block_tx = self.ledger.read_txn();
             // Don't search pending for watch-only accounts
             if !wallet_value.key.is_zero() {
-                for (key, info) in self.ledger.account_receivable_upper_bound(
+                for (key, info) in self.ledger.any().account_receivable_upper_bound(
                     &block_tx,
                     *account,
                     BlockHash::zero(),

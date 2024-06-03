@@ -8,11 +8,15 @@ fn empty() {
 
     let mut iterator =
         ctx.ledger
+            .any()
             .account_receivable_upper_bound(&txn, Account::zero(), BlockHash::zero());
 
     assert_eq!(iterator.next(), None);
 
-    let mut iterator = ctx.ledger.receivable_upper_bound(&txn, Account::zero());
+    let mut iterator = ctx
+        .ledger
+        .any()
+        .receivable_upper_bound(&txn, Account::zero());
     assert_eq!(iterator.next(), None);
 }
 
@@ -36,14 +40,16 @@ fn reveivable_upper_bound_for_given_account() {
     // exact match
     let mut iterator = ctx
         .ledger
+        .any()
         .account_receivable_upper_bound(&txn, account, hash);
     assert_eq!(iterator.next(), Some((key_2.clone(), pending.clone())));
     assert_eq!(iterator.next(), None);
 
     // find higher
-    let mut iterator = ctx
-        .ledger
-        .account_receivable_upper_bound(&txn, account, BlockHash::from(0));
+    let mut iterator =
+        ctx.ledger
+            .any()
+            .account_receivable_upper_bound(&txn, account, BlockHash::from(0));
     assert_eq!(iterator.next(), Some((key_1.clone(), pending.clone())));
     assert_eq!(iterator.next(), Some((key_2.clone(), pending.clone())));
     assert_eq!(iterator.next(), None);
@@ -51,6 +57,7 @@ fn reveivable_upper_bound_for_given_account() {
     // too high
     let mut iterator =
         ctx.ledger
+            .any()
             .account_receivable_upper_bound(&txn, account, BlockHash::from(301));
     assert_eq!(iterator.next(), None);
 }
@@ -69,18 +76,18 @@ fn reveivable_upper_bound() {
     ctx.ledger.store.pending.put(&mut txn, &key_3, &pending);
 
     // same account
-    let mut iterator = ctx.ledger.receivable_upper_bound(&txn, 100.into());
+    let mut iterator = ctx.ledger.any().receivable_upper_bound(&txn, 100.into());
     assert_eq!(iterator.next(), Some((key_3.clone(), pending.clone())));
     assert_eq!(iterator.next(), None);
 
     // lower
-    let mut iterator = ctx.ledger.receivable_upper_bound(&txn, 99.into());
+    let mut iterator = ctx.ledger.any().receivable_upper_bound(&txn, 99.into());
     assert_eq!(iterator.next(), Some((key_1.clone(), pending.clone())));
     assert_eq!(iterator.next(), Some((key_2.clone(), pending.clone())));
     assert_eq!(iterator.next(), None);
 
     // too high
-    let mut iterator = ctx.ledger.receivable_upper_bound(&txn, 200.into());
+    let mut iterator = ctx.ledger.any().receivable_upper_bound(&txn, 200.into());
     assert_eq!(iterator.next(), None);
 }
 

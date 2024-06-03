@@ -149,7 +149,7 @@ impl BulkPullAccountServerImpl {
              * database for a prolonged period.
              */
             let tx = self.ledger.read_txn();
-            let mut stream = self.ledger.account_receivable_upper_bound(
+            let mut stream = self.ledger.any().account_receivable_upper_bound(
                 &tx,
                 self.current_key.receiving_account,
                 self.current_key.send_block_hash,

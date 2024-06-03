@@ -54,6 +54,9 @@ public:
 	std::optional<nano::pending_info> pending_get (store::transaction const & transaction, nano::pending_key const & key) const;
 	std::optional<nano::block_hash> block_successor (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::optional<nano::block_hash> block_successor (store::transaction const & transaction, nano::qualified_root const & root) const;
+	nano::receivable_iterator receivable_upper_bound (store::transaction const & transaction, nano::account const & account, nano::block_hash const & hash) const;
+	nano::receivable_iterator receivable_upper_bound (store::transaction const & transaction, nano::account const & account) const;
+
 	rsnano::LedgerSetAnyHandle * handle;
 };
 
@@ -124,12 +127,6 @@ public:
 	nano::epoch version (store::transaction const & transaction, nano::block_hash const & hash) const;
 	// Returns whether there are any receivable entries for 'account'
 	bool receivable_any (store::transaction const & tx, nano::account const & account) const;
-	// Returns the next receivable entry for an account greater than 'account'
-	nano::receivable_iterator receivable_upper_bound (store::transaction const & tx, nano::account const & account) const;
-	// Returns the next receivable entry for an account greater than or equal to 'account'
-	nano::receivable_iterator receivable_lower_bound (store::transaction const & tx, nano::account const & account) const;
-	// Returns the next receivable entry for the account 'account' with hash greater than 'hash'
-	nano::receivable_iterator receivable_upper_bound (store::transaction const & tx, nano::account const & account, nano::block_hash const & hash) const;
 	uint64_t cemented_count () const;
 	uint64_t block_count () const;
 	uint64_t account_count () const;

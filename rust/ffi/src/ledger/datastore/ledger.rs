@@ -450,41 +450,6 @@ pub unsafe extern "C" fn rsn_ledger_receivable_any(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_receivable_upper_bound(
-    handle: &LedgerHandle,
-    txn: &mut TransactionHandle,
-    account: *const u8,
-) -> *mut ReceivableIteratorHandle {
-    let it = handle.receivable_upper_bound(txn.as_txn(), Account::from_ptr(account));
-    ReceivableIteratorHandle::new(it)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_receivable_lower_bound(
-    handle: &LedgerHandle,
-    txn: &mut TransactionHandle,
-    account: *const u8,
-) -> *mut ReceivableIteratorHandle {
-    let it = handle.receivable_lower_bound(txn.as_txn(), Account::from_ptr(account));
-    ReceivableIteratorHandle::new(it)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_acocunt_receivable_upper_bound(
-    handle: &LedgerHandle,
-    txn: &mut TransactionHandle,
-    account: *const u8,
-    hash: *const u8,
-) -> *mut ReceivableIteratorHandle {
-    let it = handle.account_receivable_upper_bound(
-        txn.as_txn(),
-        Account::from_ptr(account),
-        BlockHash::from_ptr(hash),
-    );
-    ReceivableIteratorHandle::new(it)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_confirm(
     handle: &mut LedgerHandle,
     txn: &mut TransactionHandle,

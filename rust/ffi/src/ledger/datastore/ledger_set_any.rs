@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{lmdb::PendingInfoDto, TransactionHandle};
+use super::{ledger::ReceivableIteratorHandle, lmdb::PendingInfoDto, TransactionHandle};
 use crate::core::{AccountInfoHandle, BlockHandle};
 use rsnano_core::{Account, BlockHash, PendingKey, QualifiedRoot};
 use rsnano_ledger::LedgerSetAny;
@@ -212,4 +212,43 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_successor_root(
         }
         None => false,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_account_receivable_upper_bound(
+    handle: &LedgerSetAnyHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+    hash: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle.0.account_receivable_upper_bound(
+        txn.as_txn(),
+        Account::from_ptr(account),
+        BlockHash::from_ptr(hash),
+    );
+    ReceivableIteratorHandle::new(it)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_receivable_upper_bound(
+    handle: &LedgerSetAnyHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle
+        .0
+        .receivable_upper_bound(txn.as_txn(), Account::from_ptr(account));
+    ReceivableIteratorHandle::new(it)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_receivable_lower_bound(
+    handle: &LedgerSetAnyHandle,
+    txn: &mut TransactionHandle,
+    account: *const u8,
+) -> *mut ReceivableIteratorHandle {
+    let it = handle
+        .0
+        .receivable_lower_bound(txn.as_txn(), Account::from_ptr(account));
+    ReceivableIteratorHandle::new(it)
 }

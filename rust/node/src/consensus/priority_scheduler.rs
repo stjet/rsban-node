@@ -3,7 +3,10 @@ use crate::{
     consensus::ActiveTransactionsExt,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{utils::ContainerInfoComponent, Account, BlockEnum};
+use rsnano_core::{
+    utils::{seconds_since_epoch, ContainerInfoComponent},
+    Account, BlockEnum, QualifiedRoot, Root,
+};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
@@ -47,42 +50,59 @@ impl PriorityScheduler {
 
     pub fn activate(&self, account: &Account, tx: &dyn Transaction) -> bool {
         debug_assert!(!account.is_zero());
-        let Some(info) = self.ledger.account_info(tx, account) else {
-            return false; // Not activated
-        };
 
-        let conf_info = self
+        let head = self
             .ledger
-            .store
-            .confirmation_height
-            .get(tx, account)
+            .confirmed()
+            .account_head(tx, account)
             .unwrap_or_default();
-
-        if conf_info.height >= info.block_count {
-            return false; // Not activated
+        if self
+            .ledger
+            .any()
+            .account_head(tx, account)
+            .unwrap_or_default()
+            == head
+        {
+            return false;
         }
 
-        debug_assert!(conf_info.frontier != info.head);
-        let hash = if conf_info.height == 0 {
-            info.open_block
+        let root = if head.is_zero() {
+            Root::from(account)
         } else {
-            self.ledger
-                .any()
-                .block_successor(tx, &conf_info.frontier)
-                .unwrap_or_default()
+            head.into()
         };
-        let block = self.ledger.any().get_block(tx, &hash).unwrap();
+
+        let successor = self
+            .ledger
+            .any()
+            .block_successor_by_qualified_root(tx, &QualifiedRoot::new(root, head))
+            .unwrap();
+
+        let block = self.ledger.any().get_block(tx, &successor).unwrap();
+
         if !self.ledger.dependents_confirmed(tx, &block) {
             return false;
         }
 
-        let balance = self.ledger.any().block_balance(tx, &hash).unwrap();
         let previous_balance = self
             .ledger
-            .any()
-            .block_balance(tx, &conf_info.frontier)
+            .confirmed()
+            .block_balance(tx, &head)
             .unwrap_or_default();
-        let balance_priority = max(balance, previous_balance);
+        let balance_priority = max(block.balance(), previous_balance);
+
+        let time_priority = if !head.is_zero() {
+            self.ledger
+                .confirmed()
+                .get_block(tx, &head)
+                .unwrap()
+                .sideband()
+                .unwrap()
+                .timestamp
+        } else {
+            // New accounts get current timestamp i.e. lowest priority
+            seconds_since_epoch()
+        };
 
         self.stats
             .inc(StatType::ElectionScheduler, DetailType::Activated);
@@ -90,7 +110,7 @@ impl PriorityScheduler {
         trace!(
             account = account.encode_account(),
             ?block,
-            time = info.modified,
+            time = time_priority,
             priority = balance_priority.number(),
             "priority scheduler activated"
         );
@@ -98,7 +118,7 @@ impl PriorityScheduler {
         let mut guard = self.mutex.lock().unwrap();
         guard
             .buckets
-            .push(info.modified, Arc::new(block), balance_priority);
+            .push(time_priority, Arc::new(block), balance_priority);
         self.notify();
 
         true // Activated

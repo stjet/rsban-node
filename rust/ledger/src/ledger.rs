@@ -612,10 +612,6 @@ impl Ledger {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn pending_info(&self, txn: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
-        self.store.pending.get(txn, key)
-    }
-
     pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<BlockEnum> {
         let mut result = VecDeque::new();
         let mut stack = Vec::new();

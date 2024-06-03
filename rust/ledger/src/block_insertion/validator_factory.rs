@@ -31,7 +31,8 @@ impl<'a> BlockValidatorFactory<'a> {
             None
         } else {
             self.ledger
-                .pending_info(self.txn, &PendingKey::new(account, source_block))
+                .any()
+                .get_pending(self.txn, &PendingKey::new(account, source_block))
         };
 
         BlockValidator {

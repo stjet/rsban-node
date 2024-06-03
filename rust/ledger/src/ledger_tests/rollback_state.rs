@@ -28,7 +28,8 @@ fn rollback_send() {
     );
     assert_eq!(
         ctx.ledger
-            .pending_info(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
+            .any()
+            .get_pending(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
         None
     );
     assert_eq!(
@@ -67,7 +68,8 @@ fn rollback_receive() {
     );
     assert_eq!(
         ctx.ledger
-            .pending_info(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
+            .any()
+            .get_pending(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
         Some(PendingInfo {
             source: *DEV_GENESIS_ACCOUNT,
             amount: amount_sent,
@@ -94,7 +96,8 @@ fn rollback_received_send() {
 
     assert_eq!(
         ctx.ledger
-            .pending_info(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
+            .any()
+            .get_pending(&txn, &PendingKey::new(*DEV_GENESIS_ACCOUNT, send.hash())),
         None
     );
     assert_eq!(ctx.ledger.store.block.exists(&txn, &send.hash()), false);
@@ -173,7 +176,8 @@ fn rollback_open() {
     );
     assert_eq!(
         ctx.ledger
-            .pending_info(&txn, &PendingKey::new(destination.account(), send.hash()))
+            .any()
+            .get_pending(&txn, &PendingKey::new(destination.account(), send.hash()))
             .unwrap(),
         PendingInfo {
             source: *DEV_GENESIS_ACCOUNT,

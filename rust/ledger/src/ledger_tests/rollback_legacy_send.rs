@@ -45,7 +45,7 @@ fn remove_from_pending_store() {
 
     let send = rollback_send_block(&ctx, &mut txn);
 
-    let pending = ctx.ledger.pending_info(
+    let pending = ctx.ledger.any().get_pending(
         &txn,
         &PendingKey::new(send.destination.account(), send.send_block.hash()),
     );
@@ -97,7 +97,7 @@ fn rollback_dependent_blocks_too() {
         .account_info(&txn, &open.destination.account())
         .is_none());
 
-    let pending = ctx.ledger.pending_info(
+    let pending = ctx.ledger.any().get_pending(
         &txn,
         &PendingKey::new(open.destination.account(), *DEV_GENESIS_HASH),
     );

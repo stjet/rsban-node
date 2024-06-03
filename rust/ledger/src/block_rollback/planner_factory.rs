@@ -50,7 +50,7 @@ impl<'a> RollbackPlannerFactory<'a> {
     }
 
     fn load_pending_receive(&self) -> Option<PendingInfo> {
-        self.ledger.pending_info(
+        self.ledger.any().get_pending(
             self.txn,
             &PendingKey::new(
                 self.head_block.destination_or_link(),

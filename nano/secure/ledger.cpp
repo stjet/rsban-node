@@ -86,11 +86,6 @@ nano::uint128_t nano::ledger::account_receivable (store::transaction const & tra
 	return result.number ();
 }
 
-std::optional<nano::pending_info> nano::ledger::pending_info (store::transaction const & transaction, nano::pending_key const & key) const
-{
-	return store.pending ().get (transaction, key);
-}
-
 std::deque<std::shared_ptr<nano::block>> nano::ledger::confirm (nano::store::write_transaction const & transaction, nano::block_hash const & hash)
 {
 	rsnano::BlockArrayDto dto;
@@ -436,10 +431,10 @@ std::optional<nano::amount> nano::ledger_set_any::block_amount (store::transacti
 	{
 		return std::nullopt;
 	}
-
 }
 
-std::optional<nano::amount> nano::ledger_set_any::account_balance (store::transaction const & transaction, nano::account const & account) const{
+std::optional<nano::amount> nano::ledger_set_any::account_balance (store::transaction const & transaction, nano::account const & account) const
+{
 	nano::amount balance;
 	if (rsnano::rsn_ledger_set_any_account_balance (handle, transaction.get_rust_handle (), account.bytes.data (), balance.bytes.data ()))
 	{
@@ -449,8 +444,19 @@ std::optional<nano::amount> nano::ledger_set_any::account_balance (store::transa
 	{
 		return std::nullopt;
 	}
+}
 
-
+std::optional<nano::pending_info> nano::ledger_set_any::pending_get (store::transaction const & transaction, nano::pending_key const & key) const
+{
+	rsnano::PendingInfoDto info;
+	if (rsnano::rsn_ledger_set_any_pending_get (handle, transaction.get_rust_handle (), key.account.bytes.data (), key.hash.bytes.data (), &info))
+	{
+		return { info };
+	}
+	else
+	{
+		return std::nullopt;
+	}
 }
 
 nano::ledger_set_confirmed::ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle) :

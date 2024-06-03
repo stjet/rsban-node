@@ -1416,7 +1416,8 @@ impl WalletsExt for Arc<Wallets> {
         {
             if let Some(pending_info) = self
                 .ledger
-                .pending_info(&block_tx, &PendingKey::new(account, send_hash))
+                .any()
+                .get_pending(&block_tx, &PendingKey::new(account, send_hash))
             {
                 if let Ok(prv) = wallet.store.fetch(&wallet_tx, &account) {
                     if work == 0 {
@@ -1759,7 +1760,8 @@ impl WalletsExt for Arc<Wallets> {
                 let representative = wallet.store.representative(&wallet_tx);
                 let pending = self
                     .ledger
-                    .pending_info(&self.ledger.read_txn(), &PendingKey::new(destination, hash));
+                    .any()
+                    .get_pending(&self.ledger.read_txn(), &PendingKey::new(destination, hash));
                 if let Some(pending) = pending {
                     let amount = pending.amount;
                     self.receive_async_wallet(

@@ -3335,7 +3335,7 @@ TEST (rpc, pending_exists)
 	request.put ("hash", hash0.to_string ());
 	ASSERT_TRUE (pending_exists ("0"));
 
-	node->ledger.pending_info (*node->store.tx_begin_read (), nano::pending_key{ nano::dev::genesis_key.pub, block1->hash () });
+	node->ledger.any().pending_get (*node->store.tx_begin_read (), nano::pending_key{ nano::dev::genesis_key.pub, block1->hash () });
 	request.put ("hash", block1->hash ().to_string ());
 	ASSERT_TRUE (pending_exists ("1"));
 

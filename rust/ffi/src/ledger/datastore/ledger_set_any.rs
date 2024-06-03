@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use super::TransactionHandle;
+use super::{lmdb::PendingInfoDto, TransactionHandle};
 use crate::core::{AccountInfoHandle, BlockHandle};
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, BlockHash, PendingKey};
 use rsnano_ledger::LedgerSetAny;
 
 pub struct LedgerSetAnyHandle(pub LedgerSetAny<'static>);
@@ -150,6 +150,26 @@ pub unsafe extern "C" fn rsn_ledger_set_any_account_balance(
     {
         Some(a) => {
             a.copy_bytes(balance);
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_pending_get(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    account: *const u8,
+    hash: *const u8,
+    info: &mut PendingInfoDto,
+) -> bool {
+    match handle.0.get_pending(
+        tx.as_txn(),
+        &PendingKey::new(Account::from_ptr(account), BlockHash::from_ptr(hash)),
+    ) {
+        Some(i) => {
+            *info = i.into();
             true
         }
         None => false,

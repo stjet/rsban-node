@@ -32,7 +32,7 @@ TEST (system, system_genesis)
 	for (auto & i : system.nodes)
 	{
 		auto transaction (i->store.tx_begin_read ());
-		ASSERT_EQ (nano::dev::constants.genesis_amount, i->ledger.any().account_balance (*transaction, nano::dev::genesis_key.pub));
+		ASSERT_EQ (nano::dev::constants.genesis_amount, i->ledger.any ().account_balance (*transaction, nano::dev::genesis_key.pub));
 	}
 }
 
@@ -81,7 +81,7 @@ TEST (system, DISABLED_generate_send_existing)
 	ASSERT_EQ (info2->balance (), nano::dev::constants.genesis_amount / 3);
 	{
 		auto transaction (node1.store.tx_begin_read ());
-		ASSERT_NE (node1.ledger.any().block_amount (*transaction, info2->head ()), 0);
+		ASSERT_NE (node1.ledger.any ().block_amount (*transaction, info2->head ()), 0);
 	}
 	system.stop ();
 	runner.join ();

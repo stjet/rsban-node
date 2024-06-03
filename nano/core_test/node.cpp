@@ -100,7 +100,7 @@ TEST (node, balance)
 	auto wallet_id = node->wallets.first_wallet_id ();
 	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	auto transaction (node->store.tx_begin_write ());
-	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max (), node->ledger.any().account_balance (*transaction, nano::dev::genesis_key.pub).value().number());
+	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max (), node->ledger.any ().account_balance (*transaction, nano::dev::genesis_key.pub).value ().number ());
 }
 
 TEST (node, send_unkeyed)

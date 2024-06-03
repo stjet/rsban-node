@@ -3335,7 +3335,7 @@ TEST (rpc, pending_exists)
 	request.put ("hash", hash0.to_string ());
 	ASSERT_TRUE (pending_exists ("0"));
 
-	node->ledger.any().pending_get (*node->store.tx_begin_read (), nano::pending_key{ nano::dev::genesis_key.pub, block1->hash () });
+	node->ledger.any ().pending_get (*node->store.tx_begin_read (), nano::pending_key{ nano::dev::genesis_key.pub, block1->hash () });
 	request.put ("hash", block1->hash ().to_string ());
 	ASSERT_TRUE (pending_exists ("1"));
 
@@ -4170,7 +4170,7 @@ TEST (rpc, blocks_info_receive_hash)
 	};
 
 	ASSERT_TIMELY (5s, all_blocks_cemented ());
-	ASSERT_EQ (node->ledger.confirmed().account_balance (*node->store.tx_begin_read (), key1.pub), 10);
+	ASSERT_EQ (node->ledger.confirmed ().account_balance (*node->store.tx_begin_read (), key1.pub), 10);
 
 	// create the RPC request
 	boost::property_tree::ptree request;

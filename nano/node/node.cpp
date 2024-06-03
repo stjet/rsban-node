@@ -306,7 +306,7 @@ nano::block_hash nano::node::latest (nano::account const & account_a)
 nano::uint128_t nano::node::balance (nano::account const & account_a)
 {
 	auto const transaction (store.tx_begin_read ());
-	return ledger.any().account_balance (*transaction, account_a).value_or(0).number();
+	return ledger.any ().account_balance (*transaction, account_a).value_or (0).number ();
 }
 
 std::shared_ptr<nano::block> nano::node::block (nano::block_hash const & hash_a)
@@ -324,7 +324,7 @@ std::pair<nano::uint128_t, nano::uint128_t> nano::node::balance_pending (nano::a
 {
 	std::pair<nano::uint128_t, nano::uint128_t> result;
 	auto const transaction (store.tx_begin_read ());
-	result.first = only_confirmed_a ? ledger.confirmed().account_balance (*transaction, account_a).value_or(0).number() : ledger.any().account_balance(*transaction, account_a).value_or(0).number();
+	result.first = only_confirmed_a ? ledger.confirmed ().account_balance (*transaction, account_a).value_or (0).number () : ledger.any ().account_balance (*transaction, account_a).value_or (0).number ();
 	result.second = ledger.account_receivable (*transaction, account_a, only_confirmed_a);
 	return result;
 }
@@ -434,12 +434,12 @@ void nano::node::start_election (std::shared_ptr<nano::block> const & block)
 bool nano::node::block_confirmed (nano::block_hash const & hash_a)
 {
 	auto transaction (store.tx_begin_read ());
-	return ledger.confirmed ().block_exists (*transaction, hash_a);
+	return ledger.confirmed ().block_exists_or_pruned (*transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::store::transaction const & transaction, nano::block_hash const & hash_a)
 {
-	return confirming_set.exists (hash_a) || ledger.confirmed ().block_exists (transaction, hash_a);
+	return confirming_set.exists (hash_a) || ledger.confirmed ().block_exists_or_pruned (transaction, hash_a);
 }
 
 bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & hash_a)

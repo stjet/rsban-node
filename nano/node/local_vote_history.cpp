@@ -53,13 +53,3 @@ std::vector<std::shared_ptr<nano::vote>> nano::local_vote_history::votes (nano::
 	}
 	return votes;
 }
-
-bool nano::local_vote_history::exists (nano::root const & root_a) const
-{
-	return rsnano::rsn_local_vote_history_exists (handle, root_a.bytes.data ());
-}
-
-std::size_t nano::local_vote_history::size () const
-{
-	return rsnano::rsn_local_vote_history_size (handle);
-}

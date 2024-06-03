@@ -99,13 +99,7 @@ public:
 
 	rsnano::BlockProcessorHandle const * get_handle () const;
 
-public: // Events
-	using processed_batch_t = std::vector<std::tuple<nano::block_status, std::shared_ptr<nano::block>, nano::block_source>>;
-
 public:
 	rsnano::BlockProcessorHandle * handle;
-
-private:
-	friend std::unique_ptr<container_info_component> collect_container_info (block_processor & block_processor, std::string const & name);
 };
 }

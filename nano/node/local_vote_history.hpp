@@ -28,8 +28,6 @@ public:
 	void erase (nano::root const & root_a);
 
 	std::vector<std::shared_ptr<nano::vote>> votes (nano::root const & root_a, nano::block_hash const & hash_a, bool const is_final_a = false) const;
-	bool exists (nano::root const &) const;
-	std::size_t size () const;
 
 	rsnano::LocalVoteHistoryHandle * handle;
 

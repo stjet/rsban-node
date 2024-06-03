@@ -34,16 +34,6 @@ void delete_activate_callback (void * callback_ptr)
 }
 }
 
-nano::backlog_population::backlog_population (const config & config_a, nano::ledger & ledger_a, nano::stats & stats_a)
-{
-	rsnano::BacklogPopulationConfigDto config_dto;
-	config_dto.enabled = config_a.enabled;
-	config_dto.batch_size = config_a.batch_size;
-	config_dto.frequency = config_a.frequency;
-
-	handle = rsnano::rsn_backlog_population_create (&config_dto, ledger_a.get_handle (), stats_a.handle);
-}
-
 nano::backlog_population::backlog_population (rsnano::BacklogPopulationHandle * handle) :
 	handle{ handle }
 {

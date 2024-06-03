@@ -33,19 +33,6 @@
 #include <memory>
 
 /*
- * configs
- */
-
-nano::backlog_population::config nano::backlog_population_config (const nano::node_config & config)
-{
-	nano::backlog_population::config cfg{};
-	cfg.enabled = config.frontiers_confirmation != nano::frontiers_confirmation_mode::disabled;
-	cfg.frequency = config.backlog_scan_frequency;
-	cfg.batch_size = config.backlog_scan_batch_size;
-	return cfg;
-}
-
-/*
  * node
  */
 

@@ -441,15 +441,6 @@ pub unsafe extern "C" fn rsn_ledger_process(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_receivable_any(
-    handle: &LedgerHandle,
-    txn: &mut TransactionHandle,
-    account: *const u8,
-) -> bool {
-    handle.receivable_any(txn.as_txn(), Account::from_ptr(account))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_confirm(
     handle: &mut LedgerHandle,
     txn: &mut TransactionHandle,

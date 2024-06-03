@@ -297,11 +297,6 @@ nano::epoch nano::ledger::version (store::transaction const & transaction, nano:
 	return static_cast<nano::epoch> (epoch);
 }
 
-bool nano::ledger::receivable_any (store::transaction const & tx, nano::account const & account) const
-{
-	return rsnano::rsn_ledger_receivable_any (handle, tx.get_rust_handle (), account.bytes.data ());
-}
-
 uint64_t nano::ledger::cemented_count () const
 {
 	return cache.cemented_count ();

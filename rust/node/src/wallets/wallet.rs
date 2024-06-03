@@ -101,7 +101,11 @@ impl Wallet {
                 }
                 None => {
                     // Check if there are pending blocks for account
-                    if self.ledger.receivable_any(&block_txn, pair.public_key()) {
+                    if self
+                        .ledger
+                        .any()
+                        .receivable_exists(&block_txn, pair.public_key())
+                    {
                         result = i;
                         n = i + 64 + (i / 64);
                     }

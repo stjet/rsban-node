@@ -125,8 +125,6 @@ public:
 	uint64_t get_bootstrap_weight_max_blocks () const;
 	static nano::epoch version (nano::block const & block);
 	nano::epoch version (store::transaction const & transaction, nano::block_hash const & hash) const;
-	// Returns whether there are any receivable entries for 'account'
-	bool receivable_any (store::transaction const & tx, nano::account const & account) const;
 	uint64_t cemented_count () const;
 	uint64_t block_count () const;
 	uint64_t account_count () const;

@@ -100,7 +100,8 @@ fn reveivable_any() {
     let pending = PendingInfo::create_test_instance();
     ctx.ledger.store.pending.put(&mut txn, &key, &pending);
 
-    assert_eq!(ctx.ledger.receivable_any(&txn, 100.into()), true);
-    assert_eq!(ctx.ledger.receivable_any(&txn, 99.into()), false);
-    assert_eq!(ctx.ledger.receivable_any(&txn, 101.into()), false);
+    let any = ctx.ledger.any();
+    assert_eq!(any.receivable_exists(&txn, 100.into()), true);
+    assert_eq!(any.receivable_exists(&txn, 99.into()), false);
+    assert_eq!(any.receivable_exists(&txn, 101.into()), false);
 }

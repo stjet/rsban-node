@@ -46,7 +46,7 @@ impl<'a> BlockValidatorFactory<'a> {
                 .block_exists_or_pruned(self.txn, &self.block.hash()),
             old_account_info: self.ledger.account_info(self.txn, &account),
             pending_receive_info,
-            any_pending_exists: self.ledger.receivable_any(self.txn, account),
+            any_pending_exists: self.ledger.any().receivable_exists(self.txn, account),
             source_block_exists,
             previous_block,
             seconds_since_epoch: seconds_since_epoch(),

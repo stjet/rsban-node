@@ -649,14 +649,6 @@ impl Ledger {
         self.observer.blocks_cemented(1);
     }
 
-    /// Returns whether there are any receivable entries for 'account'
-    pub fn receivable_any(&self, txn: &dyn Transaction, account: Account) -> bool {
-        self.any()
-            .account_receivable_upper_bound(txn, account, BlockHash::zero())
-            .next()
-            .is_some()
-    }
-
     pub fn cemented_count(&self) -> u64 {
         self.cache.cemented_count.load(Ordering::SeqCst)
     }

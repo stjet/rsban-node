@@ -169,6 +169,12 @@ impl<'a> LedgerSetAny<'a> {
             next_hash: Some(BlockHash::zero()),
         }
     }
+
+    pub fn receivable_exists(&self, txn: &dyn Transaction, account: Account) -> bool {
+        self.account_receivable_upper_bound(txn, account, BlockHash::zero())
+            .next()
+            .is_some()
+    }
 }
 
 pub struct AnyReceivableIterator<'a> {

@@ -317,7 +317,7 @@ impl RequestAggregator {
                 // 5. Ledger by root
                 if block.is_none() && !root.is_zero() {
                     // Search for block root
-                    let successor = self.ledger.successor(&tx, &(*root).into());
+                    let successor = self.ledger.any().block_successor(&tx, &(*root).into());
 
                     // Search for account root
                     if let Some(successor) = successor {

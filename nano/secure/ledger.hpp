@@ -52,6 +52,8 @@ public:
 	std::optional<nano::amount> block_amount (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::optional<nano::amount> account_balance (store::transaction const & transaction, nano::account const & account) const;
 	std::optional<nano::pending_info> pending_get (store::transaction const & transaction, nano::pending_key const & key) const;
+	std::optional<nano::block_hash> block_successor (store::transaction const & transaction, nano::block_hash const & hash) const;
+	std::optional<nano::block_hash> block_successor (store::transaction const & transaction, nano::qualified_root const & root) const;
 	rsnano::LedgerSetAnyHandle * handle;
 };
 
@@ -90,7 +92,6 @@ public:
 	 * During bootstrap it returns the preconfigured bootstrap weights.
 	 */
 	nano::uint128_t weight (nano::account const &) const;
-	std::optional<nano::block_hash> successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept;
 	/* Returns the exact vote weight for the given representative by doing a database lookup */
 	nano::uint128_t weight_exact (store::transaction const &, nano::account const &) const;
 	nano::root latest_root (store::transaction const &, nano::account const &);

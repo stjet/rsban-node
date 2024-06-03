@@ -144,11 +144,6 @@ nano::uint128_t nano::ledger::weight_exact (store::transaction const & txn_a, na
 	return result.number ();
 }
 
-std::optional<nano::block_hash> nano::ledger::successor (store::transaction const & transaction, nano::block_hash const & hash) const noexcept
-{
-	return store.block ().successor (transaction, hash);
-}
-
 // Rollback blocks until `block_a' doesn't exist or it tries to penetrate the confirmation height
 bool nano::ledger::rollback (store::write_transaction const & transaction_a, nano::block_hash const & block_a, std::vector<std::shared_ptr<nano::block>> & list_a)
 {
@@ -452,6 +447,32 @@ std::optional<nano::pending_info> nano::ledger_set_any::pending_get (store::tran
 	if (rsnano::rsn_ledger_set_any_pending_get (handle, transaction.get_rust_handle (), key.account.bytes.data (), key.hash.bytes.data (), &info))
 	{
 		return { info };
+	}
+	else
+	{
+		return std::nullopt;
+	}
+}
+
+std::optional<nano::block_hash> nano::ledger_set_any::block_successor (store::transaction const & transaction, nano::block_hash const & hash) const
+{
+	nano::block_hash successor;
+	if (rsnano::rsn_ledger_set_any_block_successor (handle, transaction.get_rust_handle (), hash.bytes.data (), successor.bytes.data ()))
+	{
+		return successor;
+	}
+	else
+	{
+		return std::nullopt;
+	}
+}
+
+std::optional<nano::block_hash> nano::ledger_set_any::block_successor (store::transaction const & transaction, nano::qualified_root const & root) const
+{
+	nano::block_hash successor;
+	if (rsnano::rsn_ledger_set_any_block_successor_root (handle, transaction.get_rust_handle (), root.bytes.data (), successor.bytes.data ()))
+	{
+		return successor;
 	}
 	else
 	{

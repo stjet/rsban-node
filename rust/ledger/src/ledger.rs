@@ -9,7 +9,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, ContainerInfo, ContainerInfoComponent},
     Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType, ConfirmationHeightInfo,
-    Epoch, Link, PendingInfo, PendingKey, QualifiedRoot, Root,
+    Epoch, Link, PendingInfo, PendingKey, Root,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -491,23 +491,6 @@ impl Ledger {
             self.store.account.del(txn, account);
             debug_assert!(self.cache.account_count.load(Ordering::SeqCst) > 0);
             self.cache.account_count.fetch_sub(1, Ordering::SeqCst);
-        }
-    }
-
-    pub fn successor(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockHash> {
-        self.store.block.successor(txn, hash)
-    }
-
-    pub fn successor_by_root(
-        &self,
-        txn: &dyn Transaction,
-        root: &QualifiedRoot,
-    ) -> Option<BlockHash> {
-        if !root.previous.is_zero() {
-            self.store.block.successor(txn, &root.previous)
-        } else {
-            self.account_info(txn, &root.root.into())
-                .map(|info| info.open_block)
         }
     }
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::{lmdb::PendingInfoDto, TransactionHandle};
 use crate::core::{AccountInfoHandle, BlockHandle};
-use rsnano_core::{Account, BlockHash, PendingKey};
+use rsnano_core::{Account, BlockHash, PendingKey, QualifiedRoot};
 use rsnano_ledger::LedgerSetAny;
 
 pub struct LedgerSetAnyHandle(pub LedgerSetAny<'static>);
@@ -170,6 +170,44 @@ pub unsafe extern "C" fn rsn_ledger_set_any_pending_get(
     ) {
         Some(i) => {
             *info = i.into();
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_successor(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    hash: *const u8,
+    successor: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .block_successor(tx.as_txn(), &BlockHash::from_ptr(hash))
+    {
+        Some(i) => {
+            i.copy_bytes(successor);
+            true
+        }
+        None => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_block_successor_root(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    root: *const u8,
+    successor: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .block_successor_by_qualified_root(tx.as_txn(), &QualifiedRoot::from_ptr(root))
+    {
+        Some(i) => {
+            i.copy_bytes(successor);
             true
         }
         None => false,

@@ -67,7 +67,8 @@ impl PriorityScheduler {
             info.open_block
         } else {
             self.ledger
-                .successor(tx, &conf_info.frontier)
+                .any()
+                .block_successor(tx, &conf_info.frontier)
                 .unwrap_or_default()
         };
         let block = self.ledger.any().get_block(tx, &hash).unwrap();

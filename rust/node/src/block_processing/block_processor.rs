@@ -589,7 +589,8 @@ impl BlockProcessorLoop {
         let hash = block.hash();
         if let Some(successor) = self
             .ledger
-            .successor_by_root(transaction, &block.qualified_root())
+            .any()
+            .block_successor_by_qualified_root(transaction, &block.qualified_root())
         {
             let successor_block = self
                 .ledger

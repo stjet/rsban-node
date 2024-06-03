@@ -12,7 +12,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
 use rsnano_ledger::{
-    BlockStatus, Ledger, LedgerSetAny, LedgerSetConfirmed, ReceivableIterator, Writer,
+    AnyReceivableIterator, BlockStatus, Ledger, LedgerSetAny, LedgerSetConfirmed, Writer,
 };
 use rsnano_node::stats::LedgerStats;
 use std::{ops::Deref, ptr::null_mut, sync::Arc};
@@ -500,11 +500,12 @@ pub unsafe extern "C" fn rsn_ledger_confirm(
     copy_block_array_dto(confirmed, result);
 }
 
-pub struct ReceivableIteratorHandle(ReceivableIterator<'static>);
+pub struct ReceivableIteratorHandle(AnyReceivableIterator<'static>);
 
 impl ReceivableIteratorHandle {
-    pub unsafe fn new<'a>(it: ReceivableIterator<'a>) -> *mut Self {
-        let it = std::mem::transmute::<ReceivableIterator<'a>, ReceivableIterator<'static>>(it);
+    pub unsafe fn new<'a>(it: AnyReceivableIterator<'a>) -> *mut Self {
+        let it =
+            std::mem::transmute::<AnyReceivableIterator<'a>, AnyReceivableIterator<'static>>(it);
         Box::into_raw(Box::new(ReceivableIteratorHandle(it)))
     }
 }

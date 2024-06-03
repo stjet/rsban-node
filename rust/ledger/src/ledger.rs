@@ -2,8 +2,8 @@ use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     ledger_set_confirmed::LedgerSetConfirmed,
-    BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
+    AnyReceivableIterator, BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags,
+    LedgerCache, LedgerConstants, LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -652,8 +652,8 @@ impl Ledger {
         txn: &'a dyn Transaction,
         account: Account,
         hash: BlockHash,
-    ) -> ReceivableIterator<'a> {
-        ReceivableIterator::<'a> {
+    ) -> AnyReceivableIterator<'a> {
+        AnyReceivableIterator::<'a> {
             txn,
             pending: self.store.pending.deref(),
             requested_account: account,
@@ -667,16 +667,16 @@ impl Ledger {
         &'a self,
         txn: &'a dyn Transaction,
         account: Account,
-    ) -> ReceivableIterator<'a> {
+    ) -> AnyReceivableIterator<'a> {
         match account.inc() {
-            None => ReceivableIterator::<'a> {
+            None => AnyReceivableIterator::<'a> {
                 txn,
                 pending: self.store.pending.deref(),
                 requested_account: Default::default(),
                 actual_account: None,
                 next_hash: None,
             },
-            Some(account) => ReceivableIterator::<'a> {
+            Some(account) => AnyReceivableIterator::<'a> {
                 txn,
                 pending: self.store.pending.deref(),
                 requested_account: account,
@@ -691,8 +691,8 @@ impl Ledger {
         &'a self,
         txn: &'a dyn Transaction,
         account: Account,
-    ) -> ReceivableIterator<'a> {
-        ReceivableIterator::<'a> {
+    ) -> AnyReceivableIterator<'a> {
+        AnyReceivableIterator::<'a> {
             txn,
             pending: self.store.pending.deref(),
             requested_account: account,
@@ -736,42 +736,5 @@ impl Ledger {
                 self.cache.rep_weights.collect_container_info("rep_weights"),
             ],
         )
-    }
-}
-
-pub struct ReceivableIterator<'a> {
-    txn: &'a dyn Transaction,
-    pending: &'a LmdbPendingStore,
-    requested_account: Account,
-    actual_account: Option<Account>,
-    next_hash: Option<BlockHash>,
-}
-
-impl<'a> Iterator for ReceivableIterator<'a> {
-    type Item = (PendingKey, PendingInfo);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let hash = self.next_hash?;
-        let it = self.pending.begin_at_key(
-            self.txn,
-            &PendingKey::new(self.actual_account.unwrap_or(self.requested_account), hash),
-        );
-
-        let (key, info) = it.current()?;
-        match self.actual_account {
-            Some(account) => {
-                if key.receiving_account == account {
-                    self.next_hash = key.send_block_hash.inc();
-                    Some((key.clone(), info.clone()))
-                } else {
-                    None
-                }
-            }
-            None => {
-                self.actual_account = Some(key.receiving_account);
-                self.next_hash = key.send_block_hash.inc();
-                Some((key.clone(), info.clone()))
-            }
-        }
     }
 }

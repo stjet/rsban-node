@@ -191,8 +191,8 @@ impl BlockEnum {
         Self::State(StateBlock::create_test_instance())
     }
 
-    pub fn create_test_instance_with_key(key: KeyPair) -> Self {
-        Self::State(StateBlock::create_test_instance_with_key(key))
+    pub fn create_test_instance_with_key(key: impl Into<KeyPair>) -> Self {
+        Self::State(StateBlock::create_test_instance_with_key(key.into()))
     }
 
     pub fn block_type(&self) -> BlockType {

@@ -1,7 +1,9 @@
+use std::ops::Deref;
+
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockHash, PendingInfo, PendingKey, QualifiedRoot,
 };
-use rsnano_store_lmdb::{LmdbStore, Transaction};
+use rsnano_store_lmdb::{LmdbPendingStore, LmdbStore, Transaction};
 
 pub struct LedgerSetAny<'a> {
     store: &'a LmdbStore,
@@ -102,5 +104,106 @@ impl<'a> LedgerSetAny<'a> {
 
     pub fn get_pending(&self, tx: &dyn Transaction, key: &PendingKey) -> Option<PendingInfo> {
         self.store.pending.get(tx, key)
+    }
+
+    /// Returns the next receivable entry for the account 'account' with hash greater than 'hash'
+    pub fn account_receivable_upper_bound<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        account: Account,
+        hash: BlockHash,
+    ) -> AnyReceivableIterator<'txn>
+    where
+        'a: 'txn,
+    {
+        AnyReceivableIterator::<'txn> {
+            txn,
+            pending: self.store.pending.deref(),
+            requested_account: account,
+            actual_account: Some(account),
+            next_hash: hash.inc(),
+        }
+    }
+
+    /// Returns the next receivable entry for an account greater than 'account'
+    pub fn receivable_upper_bound<'txn>(
+        &self,
+        txn: &'txn dyn Transaction,
+        account: Account,
+    ) -> AnyReceivableIterator<'txn>
+    where
+        'a: 'txn,
+    {
+        match account.inc() {
+            None => AnyReceivableIterator::<'txn> {
+                txn,
+                pending: self.store.pending.deref(),
+                requested_account: Default::default(),
+                actual_account: None,
+                next_hash: None,
+            },
+            Some(account) => AnyReceivableIterator::<'txn> {
+                txn,
+                pending: self.store.pending.deref(),
+                requested_account: account,
+                actual_account: None,
+                next_hash: Some(BlockHash::zero()),
+            },
+        }
+    }
+
+    /// Returns the next receivable entry for an account greater than or equal to 'account'
+    pub fn receivable_lower_bound<'txn>(
+        &'a self,
+        txn: &'a dyn Transaction,
+        account: Account,
+    ) -> AnyReceivableIterator<'txn>
+    where
+        'a: 'txn,
+    {
+        AnyReceivableIterator::<'txn> {
+            txn,
+            pending: self.store.pending.deref(),
+            requested_account: account,
+            actual_account: None,
+            next_hash: Some(BlockHash::zero()),
+        }
+    }
+}
+
+pub struct AnyReceivableIterator<'a> {
+    pub txn: &'a dyn Transaction,
+    pub pending: &'a LmdbPendingStore,
+    pub requested_account: Account,
+    pub actual_account: Option<Account>,
+    pub next_hash: Option<BlockHash>,
+}
+
+impl<'a> Iterator for AnyReceivableIterator<'a> {
+    type Item = (PendingKey, PendingInfo);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let hash = self.next_hash?;
+        let it = self.pending.begin_at_key(
+            self.txn,
+            &PendingKey::new(self.actual_account.unwrap_or(self.requested_account), hash),
+        );
+
+        let (key, info) = it.current()?;
+        match self.actual_account {
+            Some(account) => {
+                if key.receiving_account == account {
+                    self.next_hash = key.send_block_hash.inc();
+                    Some((key.clone(), info.clone()))
+                } else {
+                    None
+                }
+            }
+            None => {
+                self.actual_account = Some(key.receiving_account);
+                self.next_hash = key.send_block_hash.inc();
+                Some((key.clone(), info.clone()))
+            }
+        }
     }
 }

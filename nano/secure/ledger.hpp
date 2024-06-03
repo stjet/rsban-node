@@ -50,6 +50,7 @@ public:
 	nano::block_hash account_head (store::transaction const & transaction, nano::account const & account) const;
 	std::optional<nano::account> block_account (store::transaction const & transaction, nano::block_hash const & hash) const;
 	std::optional<nano::amount> block_amount (store::transaction const & transaction, nano::block_hash const & hash) const;
+	std::optional<nano::amount> account_balance (store::transaction const & transaction, nano::account const & account) const;
 	rsnano::LedgerSetAnyHandle * handle;
 };
 
@@ -61,6 +62,7 @@ public:
 
 	bool block_exists_or_pruned (store::transaction const & transaction, nano::block_hash const & hash) const;
 	bool block_exists (store::transaction const & transaction, nano::block_hash const & hash) const;
+	std::optional<nano::amount> account_balance (store::transaction const & transaction, nano::account const & account) const;
 
 	rsnano::LedgerSetConfirmedHandle * handle;
 };
@@ -80,11 +82,6 @@ public:
 	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait (nano::store::writer writer);
 	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
 	bool queue_contains (nano::store::writer writer);
-	/**
-	 * Returns the account for a given hash
-	 * Returns std::nullopt if the block doesn't exist or has been pruned
-	 */
-	nano::uint128_t account_balance (store::transaction const &, nano::account const &, bool = false) const;
 	nano::uint128_t account_receivable (store::transaction const &, nano::account const &, bool = false);
 	/**
 	 * Returns the cached vote weight for the given representative.

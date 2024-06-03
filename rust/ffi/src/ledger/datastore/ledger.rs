@@ -175,21 +175,6 @@ pub unsafe extern "C" fn rsn_ledger_confirmed(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_account_balance(
-    handle: *mut LedgerHandle,
-    txn: *mut TransactionHandle,
-    account: *const u8,
-    only_confirmed: bool,
-    result: *mut u8,
-) {
-    let balance =
-        (*handle)
-            .0
-            .account_balance((*txn).as_txn(), &Account::from_ptr(account), only_confirmed);
-    balance.copy_bytes(result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_account_receivable(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,

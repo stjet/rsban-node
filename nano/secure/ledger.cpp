@@ -79,14 +79,6 @@ bool nano::ledger::queue_contains (nano::store::writer writer)
 	return rsnano::rsn_ledger_queue_contains (handle, static_cast<uint8_t> (writer));
 }
 
-// Balance for an account by account number
-nano::uint128_t nano::ledger::account_balance (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a) const
-{
-	nano::amount result;
-	rsnano::rsn_ledger_account_balance (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), only_confirmed_a, result.bytes.data ());
-	return result.number ();
-}
-
 nano::uint128_t nano::ledger::account_receivable (store::transaction const & transaction_a, nano::account const & account_a, bool only_confirmed_a)
 {
 	nano::amount result;
@@ -447,6 +439,20 @@ std::optional<nano::amount> nano::ledger_set_any::block_amount (store::transacti
 
 }
 
+std::optional<nano::amount> nano::ledger_set_any::account_balance (store::transaction const & transaction, nano::account const & account) const{
+	nano::amount balance;
+	if (rsnano::rsn_ledger_set_any_account_balance (handle, transaction.get_rust_handle (), account.bytes.data (), balance.bytes.data ()))
+	{
+		return balance;
+	}
+	else
+	{
+		return std::nullopt;
+	}
+
+
+}
+
 nano::ledger_set_confirmed::ledger_set_confirmed (rsnano::LedgerSetConfirmedHandle * handle) :
 	handle{ handle }
 {
@@ -467,3 +473,15 @@ bool nano::ledger_set_confirmed::block_exists (store::transaction const & transa
 	return rsnano::rsn_ledger_set_confirmed_block_exists (handle, transaction.get_rust_handle (), hash.bytes.data ());
 }
 
+std::optional<nano::amount> nano::ledger_set_confirmed::account_balance (store::transaction const & transaction, nano::account const & account) const
+{
+	nano::amount balance;
+	if (rsnano::rsn_ledger_set_confirmed_account_balance (handle, transaction.get_rust_handle (), account.bytes.data (), balance.bytes.data ()))
+	{
+		return balance;
+	}
+	else
+	{
+		return std::nullopt;
+	}
+}

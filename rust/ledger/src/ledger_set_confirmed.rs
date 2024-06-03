@@ -21,7 +21,8 @@ impl<'a> LedgerSetConfirmed<'a> {
     }
 
     pub fn account_head(&self, tx: &dyn Transaction, account: &Account) -> Option<BlockHash> {
-        self.store.account.get(tx, account).map(|i| i.head)
+        let info = self.store.confirmation_height.get(tx, account)?;
+        Some(info.frontier)
     }
 
     pub fn account_height(&self, tx: &dyn Transaction, account: &Account) -> u64 {
@@ -51,5 +52,10 @@ impl<'a> LedgerSetConfirmed<'a> {
         } else {
             self.block_exists(tx, hash)
         }
+    }
+
+    pub fn account_balance(&self, tx: &dyn Transaction, account: &Account) -> Option<Amount> {
+        let head = self.account_head(tx, account)?;
+        self.get_block(tx, &head).map(|b| b.balance())
     }
 }

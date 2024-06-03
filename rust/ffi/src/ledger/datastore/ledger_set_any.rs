@@ -136,3 +136,22 @@ pub unsafe extern "C" fn rsn_ledger_set_any_block_amount(
         None => false,
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_ledger_set_any_account_balance(
+    handle: &LedgerSetAnyHandle,
+    tx: &TransactionHandle,
+    account: *const u8,
+    balance: *mut u8,
+) -> bool {
+    match handle
+        .0
+        .account_balance(tx.as_txn(), &Account::from_ptr(account))
+    {
+        Some(a) => {
+            a.copy_bytes(balance);
+            true
+        }
+        None => false,
+    }
+}

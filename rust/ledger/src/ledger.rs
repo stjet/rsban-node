@@ -341,29 +341,6 @@ impl Ledger {
             .store(max, Ordering::SeqCst)
     }
 
-    /// Balance for account by account number
-    pub fn account_balance(
-        &self,
-        txn: &dyn Transaction,
-        account: &Account,
-        only_confirmed: bool,
-    ) -> Amount {
-        if only_confirmed {
-            match self.store.confirmation_height.get(txn, account) {
-                Some(info) => self
-                    .any()
-                    .block_balance(txn, &info.frontier)
-                    .unwrap_or_default(),
-                None => Amount::zero(),
-            }
-        } else {
-            match self.account_info(txn, account) {
-                Some(info) => info.balance,
-                None => Amount::zero(),
-            }
-        }
-    }
-
     pub fn account_receivable(
         &self,
         txn: &dyn Transaction,

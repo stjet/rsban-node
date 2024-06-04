@@ -1,11 +1,12 @@
 use super::{DetailType, Direction, Sample, StatType, StatsJsonWriter};
 use super::{StatFileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
+use bounded_vec_deque::BoundedVecDeque;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
 use std::{
     cmp::min,
-    collections::{BTreeMap, VecDeque},
+    collections::BTreeMap,
     sync::{atomic::AtomicU64, Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
@@ -147,15 +148,18 @@ impl Stats {
         {
             let lock = self.mutables.read().unwrap();
             if let Some(sampler) = lock.samplers.get(&key) {
-                sampler.add(value, self.config.max_samples);
+                sampler.add(value);
                 return;
             }
         }
         // Not found, create a new entry
         {
             let mut lock = self.mutables.write().unwrap();
-            let sampler = lock.samplers.entry(key).or_insert(SamplerEntry::new());
-            sampler.add(value, self.config.max_samples)
+            let sampler = lock
+                .samplers
+                .entry(key)
+                .or_insert(SamplerEntry::new(self.config.max_samples));
+            sampler.add(value)
         }
     }
 
@@ -339,22 +343,18 @@ impl From<&CounterEntry> for u64 {
 }
 
 struct SamplerEntry {
-    samples: Mutex<VecDeque<i64>>,
+    samples: Mutex<BoundedVecDeque<i64>>,
 }
 
 impl SamplerEntry {
-    pub fn new() -> Self {
+    pub fn new(max_samples: usize) -> Self {
         Self {
-            samples: Mutex::new(VecDeque::new()),
+            samples: Mutex::new(BoundedVecDeque::new(max_samples)),
         }
     }
 
-    fn add(&self, value: i64, max_samples: usize) {
-        let mut guard = self.samples.lock().unwrap();
-        guard.push_back(value);
-        while guard.len() > max_samples {
-            guard.pop_front();
-        }
+    fn add(&self, value: i64) {
+        self.samples.lock().unwrap().push_back(value);
     }
 
     fn collect(&self) -> Vec<i64> {

@@ -280,13 +280,11 @@ impl StatMutables {
             sink.write_header("samples", walltime)?;
         }
 
-        for (&key, value) in &self.samplers {
+        for (&key, entry) in &self.samplers {
             let type_str = key.stat_type.as_str();
             let sample = key.sample.as_str();
 
-            for datapoint in value.collect() {
-                sink.write_sampler_entry(time, type_str, sample, datapoint)?;
-            }
+            sink.write_sampler_entry(time, type_str, sample, entry.collect())?;
         }
         sink.inc_entries();
         sink.finalize();
@@ -310,11 +308,11 @@ impl StatMutables {
             sink.write_header("counters", walltime)?;
         }
 
-        for (&key, value) in &self.counters {
+        for (&key, entry) in &self.counters {
             let type_str = key.stat_type.as_str();
             let detail = key.detail.as_str();
             let dir = key.dir.as_str();
-            sink.write_counter_entry(time, type_str, detail, dir, value.into())?;
+            sink.write_counter_entry(time, type_str, detail, dir, entry.into())?;
         }
         sink.inc_entries();
         sink.finalize();

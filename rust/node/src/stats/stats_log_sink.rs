@@ -1,6 +1,7 @@
 use crate::utils::create_property_tree;
 use anyhow::Result;
 use chrono::{DateTime, Local};
+use num::bigint::ToBigInt;
 use rsnano_core::utils::PropertyTree;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
@@ -29,7 +30,7 @@ pub trait StatsLogSink {
         time: SystemTime,
         entry_type: &str,
         sample: &str,
-        value: i64,
+        values: Vec<i64>,
     ) -> Result<()>;
 
     /// Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported.
@@ -96,11 +97,24 @@ impl StatsLogSink for StatFileWriter {
 
     fn write_sampler_entry(
         &mut self,
-        _time: SystemTime,
-        _entry_type: &str,
-        _sample: &str,
-        _value: i64,
+        time: SystemTime,
+        entry_type: &str,
+        sample: &str,
+        values: Vec<i64>,
     ) -> Result<()> {
+        let time: chrono::DateTime<Local> = time.into();
+        write!(
+            &mut self.file,
+            "{},{entry_type},{sample}",
+            time.format("%H:%M:%S")
+        )?;
+
+        for value in values {
+            write!(&mut self.file, ",{}", value)?;
+        }
+
+        writeln!(&mut self.file, "")?;
+
         Ok(())
     }
 
@@ -210,11 +224,25 @@ impl StatsLogSink for StatsJsonWriter {
 
     fn write_sampler_entry(
         &mut self,
-        _time: SystemTime,
-        _entry_type: &str,
-        _sample: &str,
-        _value: i64,
+        time: SystemTime,
+        entry_type: &str,
+        sample: &str,
+        values: Vec<i64>,
     ) -> Result<()> {
+        let time: chrono::DateTime<Local> = time.into();
+        let mut entry = create_property_tree();
+        entry.put_string("time", &time.format("%H:%M:%S").to_string())?;
+        entry.put_string("type", entry_type)?;
+        entry.put_string("sample", sample)?;
+
+        let mut values_tree = create_property_tree();
+        for value in values {
+            let mut value_tree = create_property_tree();
+            value_tree.put_string("", &value.to_string())?;
+            values_tree.push_back("", value_tree.as_ref());
+        }
+        entry.add_child("values", values_tree.as_ref());
+        self.entries_tree.push_back("", entry.as_ref());
         Ok(())
     }
 }

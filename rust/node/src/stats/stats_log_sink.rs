@@ -29,6 +29,7 @@ pub trait StatsLogSink {
         time: SystemTime,
         sample: &str,
         values: Vec<i64>,
+        expected_min_max: (i64, i64),
     ) -> Result<()>;
 
     /// Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported.
@@ -98,6 +99,7 @@ impl StatsLogSink for StatFileWriter {
         time: SystemTime,
         sample: &str,
         values: Vec<i64>,
+        _expected_min_max: (i64, i64),
     ) -> Result<()> {
         let time: chrono::DateTime<Local> = time.into();
         write!(&mut self.file, "{},{sample}", time.format("%H:%M:%S"))?;
@@ -220,11 +222,14 @@ impl StatsLogSink for StatsJsonWriter {
         time: SystemTime,
         sample: &str,
         values: Vec<i64>,
+        expected_min_max: (i64, i64),
     ) -> Result<()> {
         let time: chrono::DateTime<Local> = time.into();
         let mut entry = create_property_tree();
         entry.put_string("time", &time.format("%H:%M:%S").to_string())?;
         entry.put_string("sample", sample)?;
+        entry.put_string("min", &expected_min_max.0.to_string())?;
+        entry.put_string("max", &expected_min_max.1.to_string())?;
 
         let mut values_tree = create_property_tree();
         for value in values {

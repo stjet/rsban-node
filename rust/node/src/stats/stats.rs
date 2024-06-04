@@ -142,7 +142,7 @@ impl Stats {
         self.add_dir(stat_type, detail, dir, 1)
     }
 
-    pub fn sample(&self, sample: Sample, value: i64) {
+    pub fn sample(&self, sample: Sample, expected_min_max: (i64, i64), value: i64) {
         let key = SamplerKey::new(sample);
         // This is a two-step process to avoid exclusively locking the mutex in the common case
         {
@@ -158,7 +158,7 @@ impl Stats {
             let sampler = lock
                 .samplers
                 .entry(key)
-                .or_insert(SamplerEntry::new(self.config.max_samples));
+                .or_insert(SamplerEntry::new(self.config.max_samples, expected_min_max));
             sampler.add(value)
         }
     }
@@ -285,7 +285,7 @@ impl StatMutables {
 
         for (&key, entry) in &self.samplers {
             let sample = key.sample.as_str();
-            sink.write_sampler_entry(time, sample, entry.collect())?;
+            sink.write_sampler_entry(time, sample, entry.collect(), entry.expected_min_max)?;
         }
         sink.inc_entries();
         sink.finalize();
@@ -341,12 +341,14 @@ impl From<&CounterEntry> for u64 {
 
 struct SamplerEntry {
     samples: Mutex<BoundedVecDeque<i64>>,
+    pub expected_min_max: (i64, i64),
 }
 
 impl SamplerEntry {
-    pub fn new(max_samples: usize) -> Self {
+    pub fn new(max_samples: usize, expected_min_max: (i64, i64)) -> Self {
         Self {
             samples: Mutex::new(BoundedVecDeque::new(max_samples)),
+            expected_min_max,
         }
     }
 

@@ -1285,6 +1285,7 @@ impl NodeExt for Arc<Node> {
             ws_listener.start();
         }
         self.telemetry.start();
+        self.stats.start();
         self.local_block_broadcaster.start();
         self.peer_cache_updater.start();
         self.peer_cache_connector.start();

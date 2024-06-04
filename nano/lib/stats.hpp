@@ -35,7 +35,7 @@ public:
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
 	/** Max number of samples to keep in the ring buffer */
-	size_t max_samples{ 1024*16 };
+	size_t max_samples{ 1024 * 16 };
 
 	/** How often to log sample array, in milliseconds. Default is 0 (no logging) */
 	std::chrono::milliseconds log_samples_interval{ 0 };

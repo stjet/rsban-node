@@ -1,18 +1,21 @@
+use super::{DetailType, Direction, JsonWriter, Sample, StatType};
+use super::{FileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
 use std::{
+    cmp::min,
     collections::{BTreeMap, VecDeque},
-    sync::{atomic::AtomicU64, Mutex, RwLock},
+    sync::{atomic::AtomicU64, Arc, Condvar, Mutex, RwLock},
+    thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
 
-use super::{DetailType, Direction, JsonWriter, Sample, StatType};
-use super::{FileWriter, StatsConfig, StatsLogSink};
-
 pub struct Stats {
     config: StatsConfig,
-    mutables: RwLock<StatMutables>,
+    mutables: Arc<RwLock<StatMutables>>,
+    thread: Mutex<Option<JoinHandle<()>>>,
+    stats_loop: Arc<StatsLoop>,
 }
 
 impl Default for Stats {
@@ -23,16 +26,66 @@ impl Default for Stats {
 
 impl Stats {
     pub fn new(config: StatsConfig) -> Self {
+        let mutables = Arc::new(RwLock::new(StatMutables {
+            counters: BTreeMap::new(),
+            samplers: BTreeMap::new(),
+            timestamp: Instant::now(),
+        }));
         Self {
-            config,
-            mutables: RwLock::new(StatMutables {
-                stopped: false,
-                counters: BTreeMap::new(),
-                samplers: BTreeMap::new(),
-                log_last_count_writeout: Instant::now(),
-                log_last_sample_writeout: Instant::now(),
-                timestamp: Instant::now(),
+            config: config.clone(),
+            thread: Mutex::new(None),
+            stats_loop: Arc::new(StatsLoop {
+                condition: Condvar::new(),
+                mutables: Arc::clone(&mutables),
+                config,
+                loop_state: Mutex::new(StatsLoopState {
+                    stopped: false,
+                    log_last_count_writeout: Instant::now(),
+                    log_last_sample_writeout: Instant::now(),
+                }),
             }),
+            mutables,
+        }
+    }
+
+    pub fn start(&self) {
+        let Some(interval) = self.calculate_run_interval() else {
+            return;
+        };
+
+        let stats_loop = Arc::clone(&self.stats_loop);
+        *self.thread.lock().unwrap() = Some(
+            std::thread::Builder::new()
+                .name("Stats".to_string())
+                .spawn(move || stats_loop.run(interval))
+                .unwrap(),
+        );
+    }
+
+    fn calculate_run_interval(&self) -> Option<Duration> {
+        let mut interval = if !self.config.log_counters_interval.is_zero() {
+            self.config.log_counters_interval
+        } else {
+            Duration::MAX
+        };
+
+        if !self.config.log_samples_interval.is_zero() {
+            interval = min(interval, self.config.log_samples_interval);
+        }
+
+        if interval != Duration::MAX {
+            Some(interval)
+        } else {
+            None
+        }
+    }
+
+    /// Stop stats being output
+    pub fn stop(&self) {
+        self.stats_loop.loop_state.lock().unwrap().stopped = true;
+        self.stats_loop.condition.notify_all();
+        if let Some(handle) = self.thread.lock().unwrap().take() {
+            handle.join().unwrap();
         }
     }
 
@@ -116,46 +169,6 @@ impl Stats {
         }
     }
 
-    fn update(&self) -> anyhow::Result<()> {
-        let mut lock = self.mutables.write().unwrap();
-        if !lock.stopped {
-            // Counters
-            if !self.config.log_counters_interval.is_zero()
-                && lock.log_last_count_writeout.elapsed() > self.config.log_counters_interval
-            {
-                let mut log_count = LOG_COUNT.lock().unwrap();
-                let writer = match log_count.as_mut() {
-                    Some(x) => x,
-                    None => {
-                        let writer = FileWriter::new(&self.config.log_counters_filename)?;
-                        log_count.get_or_insert(writer)
-                    }
-                };
-
-                lock.log_counters_impl(writer, &self.config, SystemTime::now())?;
-                lock.log_last_count_writeout = Instant::now();
-            }
-
-            // Samples
-            if !self.config.log_samples_interval.is_zero()
-                && lock.log_last_sample_writeout.elapsed() > self.config.log_samples_interval
-            {
-                let mut log_sample = LOG_SAMPLE.lock().unwrap();
-                let writer = match log_sample.as_mut() {
-                    Some(x) => x,
-                    None => {
-                        let writer = FileWriter::new(&self.config.log_samples_filename)?;
-                        log_sample.get_or_insert(writer)
-                    }
-                };
-                lock.log_samples_impl(writer, &self.config, SystemTime::now())?;
-                lock.log_last_sample_writeout = Instant::now();
-            }
-        }
-
-        Ok(())
-    }
-
     /// Log counters to the given log link
     pub fn log_counters(&self, sink: &mut dyn StatsLogSink) -> Result<()> {
         let now = SystemTime::now();
@@ -194,11 +207,6 @@ impl Stats {
             .get(&key)
             .map(|i| i.into())
             .unwrap_or_default()
-    }
-
-    /// Stop stats being output
-    pub fn stop(&self) {
-        self.mutables.write().unwrap().stopped = true;
     }
 
     pub fn dump(&self, category: StatCategory) -> String {
@@ -246,15 +254,9 @@ pub enum StatCategory {
 }
 
 struct StatMutables {
-    /// Whether stats should be output
-    stopped: bool,
-
     /// Stat entries are sorted by key to simplify processing of log output
     counters: BTreeMap<CounterKey, CounterEntry>,
     samplers: BTreeMap<SamplerKey, SamplerEntry>,
-
-    log_last_count_writeout: Instant,
-    log_last_sample_writeout: Instant,
 
     /// Time of last clear() call
     timestamp: Instant,
@@ -385,51 +387,72 @@ impl From<MessageType> for DetailType {
     }
 }
 
-/// Value and wall time of measurement
-#[derive(Clone)]
-pub struct StatDatapoint {
-    /// Value of the sample interval
-    value: u64,
-    /// When the sample was added. This is wall time (system_clock), suitable for display purposes.
-    timestamp: SystemTime, //todo convert back to Instant
+struct StatsLoop {
+    mutables: Arc<RwLock<StatMutables>>,
+    condition: Condvar,
+    loop_state: Mutex<StatsLoopState>,
+    config: StatsConfig,
 }
 
-impl Default for StatDatapoint {
-    fn default() -> Self {
-        Self {
-            value: 0,
-            timestamp: SystemTime::now(),
+impl StatsLoop {
+    fn run(&self, interval: Duration) {
+        let mut guard = self.loop_state.lock().unwrap();
+        while !guard.stopped {
+            guard = self
+                .condition
+                .wait_timeout_while(guard, interval, |g| !g.stopped)
+                .unwrap()
+                .0;
+
+            if !guard.stopped {
+                self.run_one(&mut guard).unwrap();
+            }
         }
+    }
+
+    fn run_one(&self, lock: &mut StatsLoopState) -> anyhow::Result<()> {
+        let stats = self.mutables.read().unwrap();
+        // Counters
+        if !self.config.log_counters_interval.is_zero()
+            && lock.log_last_count_writeout.elapsed() > self.config.log_counters_interval
+        {
+            let mut log_count = LOG_COUNT.lock().unwrap();
+            let writer = match log_count.as_mut() {
+                Some(x) => x,
+                None => {
+                    let writer = FileWriter::new(&self.config.log_counters_filename)?;
+                    log_count.get_or_insert(writer)
+                }
+            };
+
+            stats.log_counters_impl(writer, &self.config, SystemTime::now())?;
+            lock.log_last_count_writeout = Instant::now();
+        }
+
+        // Samples
+        if !self.config.log_samples_interval.is_zero()
+            && lock.log_last_sample_writeout.elapsed() > self.config.log_samples_interval
+        {
+            let mut log_sample = LOG_SAMPLE.lock().unwrap();
+            let writer = match log_sample.as_mut() {
+                Some(x) => x,
+                None => {
+                    let writer = FileWriter::new(&self.config.log_samples_filename)?;
+                    log_sample.get_or_insert(writer)
+                }
+            };
+            stats.log_samples_impl(writer, &self.config, SystemTime::now())?;
+            lock.log_last_sample_writeout = Instant::now();
+        }
+
+        Ok(())
     }
 }
 
-impl StatDatapoint {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub(crate) fn get_value(&self) -> u64 {
-        self.value
-    }
-
-    pub(crate) fn set_value(&mut self, value: u64) {
-        self.value = value;
-    }
-
-    pub(crate) fn get_timestamp(&self) -> SystemTime {
-        self.timestamp
-    }
-
-    pub(crate) fn set_timestamp(&mut self, timestamp: SystemTime) {
-        self.timestamp = timestamp;
-    }
-
-    pub(crate) fn add(&mut self, addend: u64, update_timestamp: bool) {
-        self.value += addend;
-        if update_timestamp {
-            self.timestamp = SystemTime::now();
-        }
-    }
+struct StatsLoopState {
+    stopped: bool,
+    log_last_count_writeout: Instant,
+    log_last_sample_writeout: Instant,
 }
 
 static LOG_COUNT: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));

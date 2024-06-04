@@ -11,8 +11,8 @@
 void nano::stats_config::load_dto (rsnano::StatConfigDto & dto)
 {
 	max_samples = dto.max_samples;
-	log_samples_interval = std::chrono::milliseconds{dto.log_samples_interval};
-	log_counters_interval = std::chrono::milliseconds{dto.log_counters_interval};
+	log_samples_interval = std::chrono::milliseconds{ dto.log_samples_interval };
+	log_counters_interval = std::chrono::milliseconds{ dto.log_counters_interval };
 	log_rotation_count = dto.log_rotation_count;
 	log_headers = dto.log_headers;
 	log_counters_filename = std::string (reinterpret_cast<const char *> (dto.log_counters_filename), dto.log_counters_filename_len);
@@ -23,8 +23,8 @@ rsnano::StatConfigDto nano::stats_config::to_dto () const
 {
 	rsnano::StatConfigDto dto{};
 	dto.max_samples = max_samples;
-	dto.log_samples_interval = log_samples_interval.count();
-	dto.log_counters_interval = log_counters_interval.count();
+	dto.log_samples_interval = log_samples_interval.count ();
+	dto.log_counters_interval = log_counters_interval.count ();
 	dto.log_rotation_count = log_rotation_count;
 	dto.log_headers = log_headers;
 	std::copy (log_counters_filename.begin (), log_counters_filename.end (), std::begin (dto.log_counters_filename));

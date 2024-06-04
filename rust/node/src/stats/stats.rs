@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use super::{histogram::StatHistogram, DetailType, Direction, StatType};
+use super::{histogram::StatHistogram, DetailType, Direction, JsonWriter, StatType};
 use super::{FileWriter, StatsConfig, StatsLogSink};
 
 pub struct Stats {
@@ -269,15 +269,6 @@ impl Stats {
             .get_entry(key_of(stat_type, detail, dir), interval, capacity);
     }
 
-    /// Disables sampling for a given type/detail/dir combination
-    pub fn disable_sampling(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
-        self.mutables
-            .lock()
-            .unwrap()
-            .get_entry_default(key_of(stat_type, detail, dir))
-            .sample_interval = 0;
-    }
-
     /// Returns current value for the given counter at the type level
     pub fn count(&self, stat_type: StatType, detail: DetailType, dir: Direction) -> u64 {
         self.mutables
@@ -291,6 +282,15 @@ impl Stats {
     /// Stop stats being output
     pub fn stop(&self) {
         self.mutables.lock().unwrap().stopped = true;
+    }
+
+    pub fn dump(&self, category: StatCategory) -> String {
+        let mut sink = JsonWriter::new();
+        match category {
+            StatCategory::Counters => self.log_counters(&mut sink).unwrap(),
+            StatCategory::Samples => self.log_samples(&mut sink).unwrap(),
+        }
+        sink.to_string()
     }
 }
 
@@ -315,6 +315,11 @@ pub fn stat_dir_as_str(key: u32) -> Result<&'static str> {
     let stat_dir: Direction =
         FromPrimitive::from_u32(key & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
     Ok(stat_dir.as_str())
+}
+
+pub enum StatCategory {
+    Counters,
+    Samples,
 }
 
 struct StatMutables {

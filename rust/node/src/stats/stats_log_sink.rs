@@ -1,11 +1,8 @@
+use crate::utils::create_property_tree;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use rsnano_core::utils::PropertyTree;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
-
-use crate::utils::create_property_tree;
-
-use super::histogram::StatHistogram;
 
 pub trait StatsLogSink {
     /// Called before logging starts
@@ -18,14 +15,21 @@ pub trait StatsLogSink {
     fn write_header(&mut self, header: &str, walltime: SystemTime) -> Result<()>;
 
     /// Write a counter or sampling entry to the log. Some log sinks may support writing histograms as well.
-    fn write_entry(
+    fn write_counter_entry(
         &mut self,
         time: SystemTime,
         entry_type: &str,
         detail: &str,
         dir: &str,
         value: u64,
-        histogram: Option<&StatHistogram>,
+    ) -> Result<()>;
+
+    fn write_sampler_entry(
+        &mut self,
+        time: SystemTime,
+        entry_type: &str,
+        sample: &str,
+        value: i64,
     ) -> Result<()>;
 
     /// Rotates the log (e.g. empty file). This is a no-op for sinks where rotation is not supported.
@@ -77,17 +81,26 @@ impl StatsLogSink for FileWriter {
         Ok(())
     }
 
-    fn write_entry(
+    fn write_counter_entry(
         &mut self,
         time: SystemTime,
         entry_type: &str,
         detail: &str,
         dir: &str,
         value: u64,
-        _histogram: Option<&StatHistogram>,
     ) -> Result<()> {
         let now = DateTime::<Local>::from(time).format("%H:%M:%S");
         writeln!(&mut self.file, "{now},{entry_type},{detail},{dir},{value}")?;
+        Ok(())
+    }
+
+    fn write_sampler_entry(
+        &mut self,
+        _time: SystemTime,
+        _entry_type: &str,
+        _sample: &str,
+        _value: i64,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -154,14 +167,13 @@ impl StatsLogSink for JsonWriter {
         Ok(())
     }
 
-    fn write_entry(
+    fn write_counter_entry(
         &mut self,
         time: SystemTime,
         entry_type: &str,
         detail: &str,
         dir: &str,
         value: u64,
-        histogram: Option<&StatHistogram>,
     ) -> Result<()> {
         let mut entry = create_property_tree();
         entry.put_string(
@@ -172,20 +184,6 @@ impl StatsLogSink for JsonWriter {
         entry.put_string("detail", detail)?;
         entry.put_string("dir", dir)?;
         entry.put_u64("value", value)?;
-        if let Some(histogram) = histogram {
-            let mut histogram_node = create_property_tree();
-            for bin in &histogram.get_bins() {
-                let mut bin_node = create_property_tree();
-                bin_node.put_u64("start_inclusive", bin.start_inclusive)?;
-                bin_node.put_u64("end_exclusive", bin.end_exclusive)?;
-                bin_node.put_u64("value", bin.value)?;
-
-                let local_time = DateTime::<Local>::from(bin.timestamp);
-                bin_node.put_string("time", &local_time.format("%H:%M:%S").to_string())?;
-                histogram_node.push_back("", bin_node.as_ref());
-            }
-            entry.put_child("histogram", histogram_node.as_ref());
-        }
         self.entries_tree.push_back("", entry.as_ref());
         Ok(())
     }
@@ -208,5 +206,15 @@ impl StatsLogSink for JsonWriter {
 
     fn to_object(&self) -> Option<&dyn Any> {
         Some(self.tree.as_ref().as_any())
+    }
+
+    fn write_sampler_entry(
+        &mut self,
+        _time: SystemTime,
+        _entry_type: &str,
+        _sample: &str,
+        _value: i64,
+    ) -> Result<()> {
+        Ok(())
     }
 }

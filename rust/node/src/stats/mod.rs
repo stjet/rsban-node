@@ -1,4 +1,3 @@
-mod histogram;
 mod ledger_stats;
 mod parse_message_error;
 mod socket_stats;

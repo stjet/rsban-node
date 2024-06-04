@@ -1,19 +1,18 @@
 use anyhow::Result;
-use bounded_vec_deque::BoundedVecDeque;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
 use std::{
-    collections::BTreeMap,
-    sync::Mutex,
+    collections::{BTreeMap, VecDeque},
+    sync::{atomic::AtomicU64, Mutex, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 
-use super::{histogram::StatHistogram, DetailType, Direction, JsonWriter, StatType};
+use super::{DetailType, Direction, JsonWriter, Sample, StatType};
 use super::{FileWriter, StatsConfig, StatsLogSink};
 
 pub struct Stats {
     config: StatsConfig,
-    mutables: Mutex<StatMutables>,
+    mutables: RwLock<StatMutables>,
 }
 
 impl Default for Stats {
@@ -28,9 +27,10 @@ impl Stats {
         let default_capacity = config.capacity;
         Self {
             config,
-            mutables: Mutex::new(StatMutables {
+            mutables: RwLock::new(StatMutables {
                 stopped: false,
-                entries: BTreeMap::new(),
+                counters: BTreeMap::new(),
+                samplers: BTreeMap::new(),
                 log_last_count_writeout: Instant::now(),
                 log_last_sample_writeout: Instant::now(),
                 timestamp: Instant::now(),
@@ -51,12 +51,36 @@ impl Stats {
             return;
         }
 
-        const NO_DETAIL_MASK: u32 = 0xffff00ff;
-        let key = Key::new(stat_type, detail, dir);
-        let _ = self.update(key, value);
+        let key = CounterKey::new(stat_type, detail, dir);
+        let all_key = CounterKey::new(key.stat_type, DetailType::All, key.dir);
 
-        if detail != DetailType::All {
-            let _ = self.update(Key::new(stat_type, DetailType::All, dir), value);
+        // This is a two-step process to avoid exclusively locking the mutex in the common case
+        {
+            let lock = self.mutables.read().unwrap();
+
+            if let Some(counter) = lock.counters.get(&key) {
+                counter.add(value);
+
+                if key != all_key {
+                    // The `all` counter should always be created together
+                    let all_counter = lock.counters.get(&all_key).unwrap();
+                    all_counter.add(value);
+                }
+
+                return;
+            }
+        }
+        // Not found, create a new entry
+        {
+            let mut lock = self.mutables.write().unwrap();
+
+            let counter = lock.counters.entry(key).or_insert(CounterEntry::new());
+            counter.add(value);
+
+            let all_counter = lock.counters.entry(all_key).or_insert(CounterEntry::new());
+            if key != all_key {
+                all_counter.add(value);
+            }
         }
     }
 
@@ -68,36 +92,54 @@ impl Stats {
         self.add_dir(stat_type, detail, dir, 1)
     }
 
+    pub fn sample(&self, stat_type: StatType, sample: Sample, value: i64) {
+        let key = SamplerKey::new(stat_type, sample);
+        // This is a two-step process to avoid exclusively locking the mutex in the common case
+        {
+            let lock = self.mutables.read().unwrap();
+            if let Some(sampler) = lock.samplers.get(&key) {
+                sampler.add(value, self.config.capacity);
+                return;
+            }
+        }
+        // Not found, create a new entry
+        {
+            let mut lock = self.mutables.write().unwrap();
+            let sampler = lock.samplers.entry(key).or_insert(SamplerEntry::new());
+            sampler.add(value, self.config.capacity)
+        }
+    }
+
+    pub fn samples(&self, stat_type: StatType, sample: Sample) -> Vec<i64> {
+        let key = SamplerKey::new(stat_type, sample);
+        let lock = self.mutables.read().unwrap();
+        if let Some(sampler) = lock.samplers.get(&key) {
+            sampler.collect()
+        } else {
+            Vec::new()
+        }
+    }
+
     fn has_interval_counter(&self) -> bool {
         self.config.log_interval_counters > 0
     }
 
-    fn has_sampling(&self, entry: &StatEntry) -> bool {
-        self.config.sampling_enabled && entry.sample_interval > 0
+    fn has_sampling(&self) -> bool {
+        self.config.sampling_enabled && self.config.interval > 0
     }
 
-    /// Update count and sample
-    ///
-    /// # Arguments
-    /// * `key` a key constructor from `StatType`, `DetailType` and `Direction`
-    /// * `value` Amount to add to the counter
-    fn update(&self, key: Key, value: u64) -> anyhow::Result<()> {
-        let mut lock = self.mutables.lock().unwrap();
+    fn update(&self) -> anyhow::Result<()> {
+        let mut lock = self.mutables.write().unwrap();
         if !lock.stopped {
-            {
-                // Counters
-                let entry = lock.get_entry_default(key);
-
-                // Only update timestamp when sampling is enabled as this has a performance impact
-                entry.counter.add(value, self.has_sampling(entry));
-
-                if !self.has_interval_counter() && !self.has_sampling(entry) {
-                    return Ok(());
-                }
+            if !self.has_interval_counter() && !self.has_sampling() {
+                return Ok(());
             }
 
+            // Only sample clock if necessary as this impacts node performance due to frequent usage
             let now = Instant::now();
             let duration = now - lock.log_last_count_writeout;
+
+            // Counters
             if self.has_interval_counter()
                 && duration.as_millis() > self.config.log_interval_counters as u128
             {
@@ -110,44 +152,25 @@ impl Stats {
                     }
                 };
 
-                lock.log_counters_impl(writer, &self.config)?;
+                lock.log_counters_impl(writer, &self.config, SystemTime::now())?;
                 lock.log_last_count_writeout = now;
             }
 
-            let entry = lock.get_entry_default(key);
-
             // Samples
-            if self.has_sampling(entry) {
-                entry.sample_current.add(value, false);
+            if self.has_sampling() {
+                let duration = now - lock.log_last_sample_writeout;
 
-                let duration = now - entry.sample_start_time;
-                if duration.as_millis() > entry.sample_interval as u128 {
-                    entry.sample_start_time = now;
-
-                    // Make a snapshot of samples for thread safety and to get a stable container
-                    entry.sample_current.set_timestamp(SystemTime::now());
-                    if let Some(samples) = entry.samples.as_mut() {
-                        samples.push_back(entry.sample_current.clone());
-                    }
-                    entry.sample_current.set_value(0);
-
-                    // Log sink
-                    let duration = now - lock.log_last_sample_writeout;
-                    if self.config.log_interval_samples > 0
-                        && duration.as_millis() > self.config.log_interval_samples as u128
-                    {
-                        let mut log_sample = LOG_SAMPLE.lock().unwrap();
-                        let writer = match log_sample.as_mut() {
-                            Some(x) => x,
-                            None => {
-                                let writer = FileWriter::new(&self.config.log_samples_filename)?;
-                                log_sample.get_or_insert(writer)
-                            }
-                        };
-
-                        lock.log_samples_impl(writer, &self.config)?;
-                        lock.log_last_sample_writeout = now;
-                    }
+                if duration.as_millis() > self.config.log_interval_samples as u128 {
+                    let mut log_sample = LOG_SAMPLE.lock().unwrap();
+                    let writer = match log_sample.as_mut() {
+                        Some(x) => x,
+                        None => {
+                            let writer = FileWriter::new(&self.config.log_samples_filename)?;
+                            log_sample.get_or_insert(writer)
+                        }
+                    };
+                    lock.log_samples_impl(writer, &self.config, SystemTime::now())?;
+                    lock.log_last_sample_writeout = now;
                 }
             }
         }
@@ -157,123 +180,47 @@ impl Stats {
 
     /// Log counters to the given log link
     pub fn log_counters(&self, sink: &mut dyn StatsLogSink) -> Result<()> {
-        let lock = self.mutables.lock().unwrap();
-        lock.log_counters_impl(sink, &self.config)
+        let now = SystemTime::now();
+        let lock = self.mutables.write().unwrap();
+        lock.log_counters_impl(sink, &self.config, now)
     }
 
     /// Log samples to the given log sink
     pub fn log_samples(&self, sink: &mut dyn StatsLogSink) -> Result<()> {
-        let lock = self.mutables.lock().unwrap();
-        lock.log_samples_impl(sink, &self.config)
-    }
-
-    /// Define histogram bins. Values are clamped into the first and last bins, but a catch-all bin on one or both
-    /// ends can be defined.
-    ///
-    /// # Examples:
-    ///
-    ///  // Uniform histogram, total range 12, and 12 bins (each bin has width 1)
-    ///  define_histogram (type::vote, detail::confirm_ack, dir::in, {1,13}, 12);
-    ///
-    ///  // Specific bins matching closed intervals [1,4] [5,19] [20,99]
-    ///  define_histogram (type::vote, detail::something, dir::out, {1,5,20,100});
-    ///
-    ///  // Logarithmic bins matching half-open intervals [1..10) [10..100) [100 1000)
-    ///  define_histogram(type::vote, detail::log, dir::out, {1,10,100,1000});
-    pub fn define_histogram(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-        intervals: &[u64],
-        bin_count: u64,
-    ) {
-        let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
-        entry.histogram = Some(StatHistogram::new(intervals, bin_count));
-    }
-
-    /// Update histogram
-    ///
-    /// # Examples:
-    ///
-    /// // Add 1 to the bin representing a 4-item vbh
-    ///  stats.update_histogram(type::vote, detail::confirm_ack, dir::in, 4, 1)
-    ///
-    ///  // Add 5 to the second bin where 17 falls
-    ///  stats.update_histogram(type::vote, detail::something, dir::in, 17, 5)
-    ///
-    ///  // Add 3 to the last bin as the histogram clamps. You can also add a final bin with maximum end value to effectively prevent this.
-    ///  stats.update_histogram(type::vote, detail::log, dir::out, 1001, 3)
-    pub fn update_histogram(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-        index: u64,
-        addend: u64,
-    ) {
-        let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
-        if let Some(histogram) = entry.histogram.as_mut() {
-            histogram.add(index, addend);
-        }
-    }
-
-    pub fn get_histogram(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-    ) -> Option<StatHistogram> {
-        let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
-        entry.histogram.clone()
+        let now = SystemTime::now();
+        let lock = self.mutables.write().unwrap();
+        lock.log_samples_impl(sink, &self.config, now)
     }
 
     /// Returns the duration since `clear()` was last called, or node startup if it's never called.
     pub fn last_reset(&self) -> Duration {
-        let lock = self.mutables.lock().unwrap();
+        let lock = self.mutables.read().unwrap();
         lock.timestamp.elapsed()
     }
 
     /// Clear all stats
     pub fn clear(&self) {
-        let mut lock = self.mutables.lock().unwrap();
-        lock.entries.clear();
+        let mut lock = self.mutables.write().unwrap();
+        lock.counters.clear();
+        lock.samplers.clear();
         lock.timestamp = Instant::now();
-    }
-
-    /// Call this to override the default sample interval and capacity, for a specific stat entry.
-    /// This must be called before any stat entries are added, as part of the node initialiation.
-    pub fn configure(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-        interval: usize,
-        capacity: usize,
-    ) {
-        self.mutables.lock().unwrap().get_entry(
-            Key::new(stat_type, detail, dir),
-            interval,
-            capacity,
-        );
     }
 
     /// Returns current value for the given counter at the type level
     pub fn count(&self, stat_type: StatType, detail: DetailType, dir: Direction) -> u64 {
+        let key = CounterKey::new(stat_type, detail, dir);
         self.mutables
-            .lock()
+            .read()
             .unwrap()
-            .get_entry_default(Key::new(stat_type, detail, dir))
-            .counter
-            .get_value()
+            .counters
+            .get(&key)
+            .map(|i| i.into())
+            .unwrap_or_default()
     }
 
     /// Stop stats being output
     pub fn stop(&self) {
-        self.mutables.lock().unwrap().stopped = true;
+        self.mutables.write().unwrap().stopped = true;
     }
 
     pub fn dump(&self, category: StatCategory) -> String {
@@ -287,19 +234,31 @@ impl Stats {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-struct Key {
+struct CounterKey {
     stat_type: StatType,
     detail: DetailType,
     dir: Direction,
 }
 
-impl Key {
+impl CounterKey {
     fn new(stat_type: StatType, detail: DetailType, dir: Direction) -> Self {
         Self {
             stat_type,
             detail,
             dir,
         }
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+struct SamplerKey {
+    stat_type: StatType,
+    sample: Sample,
+}
+
+impl SamplerKey {
+    fn new(stat_type: StatType, sample: Sample) -> Self {
+        Self { stat_type, sample }
     }
 }
 
@@ -313,7 +272,8 @@ struct StatMutables {
     stopped: bool,
 
     /// Stat entries are sorted by key to simplify processing of log output
-    entries: BTreeMap<Key, StatEntry>,
+    counters: BTreeMap<CounterKey, CounterEntry>,
+    samplers: BTreeMap<SamplerKey, SamplerEntry>,
 
     log_last_count_writeout: Instant,
     log_last_sample_writeout: Instant,
@@ -326,18 +286,13 @@ struct StatMutables {
 }
 
 impl StatMutables {
-    fn get_entry_default(&mut self, key: Key) -> &'_ mut StatEntry {
-        self.get_entry(key, self.default_interval, self.default_capacity)
-    }
-
-    fn get_entry(&mut self, key: Key, interval: usize, capacity: usize) -> &'_ mut StatEntry {
-        self.entries
-            .entry(key)
-            .or_insert_with(|| StatEntry::new(capacity, interval))
-    }
-
     /// Unlocked implementation of log_samples() to avoid using recursive locking
-    fn log_samples_impl(&self, sink: &mut dyn StatsLogSink, config: &StatsConfig) -> Result<()> {
+    fn log_samples_impl(
+        &self,
+        sink: &mut dyn StatsLogSink,
+        config: &StatsConfig,
+        time: SystemTime,
+    ) -> Result<()> {
         sink.begin()?;
         if sink.entries() >= config.log_rotation_count {
             sink.rotate()?;
@@ -348,16 +303,12 @@ impl StatMutables {
             sink.write_header("samples", walltime)?;
         }
 
-        for (&key, value) in &self.entries {
+        for (&key, value) in &self.samplers {
             let type_str = key.stat_type.as_str();
-            let detail = key.detail.as_str();
-            let dir = key.dir.as_str();
+            let sample = key.sample.as_str();
 
-            if let Some(samples) = &value.samples {
-                for datapoint in samples {
-                    let time = datapoint.get_timestamp();
-                    sink.write_entry(time, type_str, detail, dir, datapoint.get_value(), None)?;
-                }
+            for datapoint in value.collect() {
+                sink.write_sampler_entry(time, type_str, sample, datapoint)?;
             }
         }
         sink.inc_entries();
@@ -366,7 +317,12 @@ impl StatMutables {
     }
 
     /// Unlocked implementation of log_counters() to avoid using recursive locking
-    fn log_counters_impl(&self, sink: &mut dyn StatsLogSink, config: &StatsConfig) -> Result<()> {
+    fn log_counters_impl(
+        &self,
+        sink: &mut dyn StatsLogSink,
+        config: &StatsConfig,
+        time: SystemTime,
+    ) -> Result<()> {
         sink.begin()?;
         if sink.entries() >= config.log_rotation_count {
             sink.rotate()?;
@@ -377,24 +333,58 @@ impl StatMutables {
             sink.write_header("counters", walltime)?;
         }
 
-        for (&key, value) in &self.entries {
-            let time = value.counter.get_timestamp();
+        for (&key, value) in &self.counters {
             let type_str = key.stat_type.as_str();
             let detail = key.detail.as_str();
             let dir = key.dir.as_str();
-            let histogram = value.histogram.as_ref();
-            sink.write_entry(
-                time,
-                type_str,
-                detail,
-                dir,
-                value.counter.get_value(),
-                histogram,
-            )?;
+            sink.write_counter_entry(time, type_str, detail, dir, value.into())?;
         }
         sink.inc_entries();
         sink.finalize();
         Ok(())
+    }
+}
+
+struct CounterEntry(AtomicU64);
+
+impl CounterEntry {
+    fn new() -> Self {
+        Self(AtomicU64::new(0))
+    }
+
+    fn add(&self, value: u64) {
+        self.0.fetch_add(value, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+impl From<&CounterEntry> for u64 {
+    fn from(value: &CounterEntry) -> Self {
+        value.0.load(std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
+struct SamplerEntry {
+    samples: Mutex<VecDeque<i64>>,
+}
+
+impl SamplerEntry {
+    pub fn new() -> Self {
+        Self {
+            samples: Mutex::new(VecDeque::new()),
+        }
+    }
+
+    fn add(&self, value: i64, max_samples: usize) {
+        let mut guard = self.samples.lock().unwrap();
+        guard.push_back(value);
+        while guard.len() > max_samples {
+            guard.pop_front();
+        }
+    }
+
+    fn collect(&self) -> Vec<i64> {
+        let mut guard = self.samples.lock().unwrap();
+        guard.drain(..).collect()
     }
 }
 
@@ -467,116 +457,12 @@ impl StatDatapoint {
     }
 }
 
-pub struct StatEntry {
-    /// Sample interval in milliseconds. If 0, sampling is disabled.
-    pub sample_interval: usize,
-
-    /// Value within the current sample interval
-    pub sample_current: StatDatapoint,
-
-    /// Optional samples. Note that this doesn't allocate any memory unless sampling is configured, which sets the capacity.
-    pub samples: Option<BoundedVecDeque<StatDatapoint>>,
-
-    /// Counting value for this entry, including the time of last update. This is never reset and only increases.
-    pub counter: StatDatapoint,
-
-    /// Start time of current sample interval. This is a steady clock for measuring interval; the datapoint contains the wall time.
-    pub sample_start_time: Instant,
-
-    /// Optional histogram for this entry
-    pub histogram: Option<StatHistogram>,
-}
-
-impl StatEntry {
-    pub fn new(capacity: usize, interval: usize) -> Self {
-        Self {
-            sample_interval: interval,
-            sample_current: StatDatapoint::new(),
-            samples: if capacity > 0 {
-                Some(BoundedVecDeque::new(capacity))
-            } else {
-                None
-            },
-            counter: StatDatapoint::new(),
-            sample_start_time: Instant::now(),
-            histogram: None,
-        }
-    }
-}
-
 static LOG_COUNT: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
 static LOG_SAMPLE: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn specific_bins() {
-        let stats = Stats::new(StatsConfig::new());
-        stats.define_histogram(
-            StatType::Vote,
-            DetailType::ConfirmReq,
-            Direction::In,
-            &[1, 6, 10, 16],
-            0,
-        );
-        stats.update_histogram(StatType::Vote, DetailType::ConfirmReq, Direction::In, 1, 50);
-        let histogram_req = stats
-            .get_histogram(StatType::Vote, DetailType::ConfirmReq, Direction::In)
-            .unwrap();
-        assert_eq!(histogram_req.get_bins()[0].value, 50);
-    }
-
-    #[test]
-    fn uniform_distribution_and_clamping() {
-        // Uniform distribution (12 bins, width 1); also test clamping 100 to the last bin
-        let stats = Stats::new(StatsConfig::new());
-        stats.define_histogram(
-            StatType::Vote,
-            DetailType::ConfirmAck,
-            Direction::In,
-            &[1, 13],
-            12,
-        );
-        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In, 1, 1);
-        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In, 8, 10);
-        stats.update_histogram(
-            StatType::Vote,
-            DetailType::ConfirmAck,
-            Direction::In,
-            100,
-            1,
-        );
-
-        let histogram_ack = stats
-            .get_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::In)
-            .unwrap();
-        assert_eq!(histogram_ack.get_bins()[0].value, 1);
-        assert_eq!(histogram_ack.get_bins()[7].value, 10);
-        assert_eq!(histogram_ack.get_bins()[11].value, 1);
-    }
-
-    #[test]
-    fn uniform_distribution() {
-        // Uniform distribution (2 bins, width 5); add 1 to each bin
-        let stats = Stats::new(StatsConfig::new());
-        stats.define_histogram(
-            StatType::Vote,
-            DetailType::ConfirmAck,
-            Direction::Out,
-            &[1, 11],
-            2,
-        );
-        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out, 1, 1);
-        stats.update_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out, 6, 1);
-
-        let histogram_ack_out = stats
-            .get_histogram(StatType::Vote, DetailType::ConfirmAck, Direction::Out)
-            .unwrap();
-        assert_eq!(histogram_ack_out.get_bins()[0].value, 1);
-        assert_eq!(histogram_ack_out.get_bins()[1].value, 1);
-    }
 
     /// Test stat counting at both type and detail levels
     #[test]

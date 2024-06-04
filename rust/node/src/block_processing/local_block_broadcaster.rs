@@ -275,7 +275,7 @@ impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
                 let mut guard = self_l.mutex.lock().unwrap();
                 let erased = guard.local_blocks.remove(&block.hash());
                 if erased {
-                    self_l.stats.add(
+                    self_l.stats.add_dir(
                         StatType::LocalBlockBroadcaster,
                         DetailType::Rollback,
                         Direction::In,

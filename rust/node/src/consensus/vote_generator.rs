@@ -366,7 +366,7 @@ impl SharedState {
                 }
             }
             if !hashes.is_empty() {
-                self.stats.add(
+                self.stats.add_dir(
                     StatType::Requests,
                     DetailType::RequestsGeneratedHashes,
                     Direction::In,

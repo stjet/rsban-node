@@ -17,7 +17,7 @@ impl LedgerStats {
 
 impl LedgerObserver for LedgerStats {
     fn blocks_cemented(&self, cemented_count: u64) {
-        self.stats.add(
+        self.stats.add_dir(
             StatType::ConfirmationHeight,
             DetailType::BlocksConfirmed,
             Direction::In,

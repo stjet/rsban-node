@@ -200,7 +200,7 @@ impl RepTiersImpl {
             }
         }
 
-        self.stats.add(
+        self.stats.add_dir(
             StatType::RepTiers,
             DetailType::Processed,
             Direction::In,
@@ -208,7 +208,7 @@ impl RepTiersImpl {
             false,
         );
 
-        self.stats.add(
+        self.stats.add_dir(
             StatType::RepTiers,
             DetailType::Ignored,
             Direction::In,

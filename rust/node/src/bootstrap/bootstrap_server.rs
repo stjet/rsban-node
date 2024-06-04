@@ -403,7 +403,7 @@ impl BootstrapServerImpl {
         // Increase relevant stats depending on payload type
         match &response.pull_type {
             AscPullAckType::Blocks(blocks) => {
-                self.stats.add(
+                self.stats.add_dir(
                     StatType::BootstrapServer,
                     DetailType::Blocks,
                     Direction::Out,
@@ -413,7 +413,7 @@ impl BootstrapServerImpl {
             }
             AscPullAckType::AccountInfo(_) => {}
             AscPullAckType::Frontiers(frontiers) => {
-                self.stats.add(
+                self.stats.add_dir(
                     StatType::BootstrapServer,
                     DetailType::Frontiers,
                     Direction::Out,

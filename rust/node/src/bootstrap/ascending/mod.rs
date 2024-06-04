@@ -341,7 +341,7 @@ impl BootstrapAscending {
         let result = self.verify(response, tag);
         match result {
             VerifyResult::Ok => {
-                self.stats.add(
+                self.stats.add_dir(
                     StatType::BootstrapAscending,
                     DetailType::Blocks,
                     Direction::In,

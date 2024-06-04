@@ -1,18 +1,19 @@
 mod histogram;
+mod ledger_stats;
 mod parse_message_error;
 mod socket_stats;
 mod stats;
 mod stats_config;
+mod stats_enums;
 mod stats_log_sink;
 
-mod ledger_stats;
 pub use ledger_stats::LedgerStats;
-
 use rsnano_ledger::BlockStatus;
 use rsnano_messages::Message;
 pub use socket_stats::SocketStats;
-pub use stats::{stat_type_as_str, DetailType, Direction, StatType, Stats};
+pub use stats::*;
 pub use stats_config::StatsConfig;
+pub use stats_enums::*;
 pub use stats_log_sink::{FileWriter, JsonWriter, StatsLogSink};
 
 impl From<BlockStatus> for DetailType {

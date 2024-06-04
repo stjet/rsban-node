@@ -145,7 +145,7 @@ impl RequestAggregator {
                         let generated = self
                             .generator
                             .generate(&remaining.0, Arc::clone(&front.channel));
-                        self.stats.add(
+                        self.stats.add_dir(
                             StatType::Requests,
                             DetailType::RequestsCannotVote,
                             Direction::In,
@@ -158,7 +158,7 @@ impl RequestAggregator {
                         let generated = self
                             .final_generator
                             .generate(&remaining.1, Arc::clone(&front.channel));
-                        self.stats.add(
+                        self.stats.add_dir(
                             StatType::Requests,
                             DetailType::RequestsCannotVote,
                             Direction::In,
@@ -384,14 +384,14 @@ impl RequestAggregator {
         for vote in cached_votes {
             self.reply_action(&vote, channel);
         }
-        self.stats.add(
+        self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedHashes,
             Direction::In,
             cached_hashes.len() as u64,
             false,
         );
-        self.stats.add(
+        self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedVotes,
             Direction::In,

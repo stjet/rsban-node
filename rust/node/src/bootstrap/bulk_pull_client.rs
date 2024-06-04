@@ -228,11 +228,8 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
 
         if self.network_params.work.validate_entry_block(&block) {
             debug!("Insufficient work for bulk pull block: {}", block.hash());
-            self.stats.inc_detail_only(
-                StatType::Error,
-                DetailType::InsufficientWork,
-                Direction::In,
-            );
+            self.stats
+                .inc(StatType::Error, DetailType::InsufficientWork);
             return;
         }
         let hash = block.hash();

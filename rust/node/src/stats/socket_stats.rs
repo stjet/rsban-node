@@ -31,7 +31,7 @@ impl SocketObserver for SocketStats {
     }
 
     fn read_successful(&self, len: usize) {
-        let _ = self.stats.add(
+        let _ = self.stats.add_dir(
             StatType::TrafficTcp,
             DetailType::All,
             Direction::In,
@@ -47,7 +47,7 @@ impl SocketObserver for SocketStats {
     }
 
     fn write_successful(&self, len: usize) {
-        let _ = self.stats.add(
+        let _ = self.stats.add_dir(
             StatType::TrafficTcp,
             DetailType::All,
             Direction::Out,

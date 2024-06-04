@@ -85,17 +85,3 @@ pub unsafe extern "C" fn rsn_local_vote_history_votes(
 pub unsafe extern "C" fn rsn_local_vote_history_votes_destroy(handle: *mut LocalVotesResultHandle) {
     drop(Box::from_raw(handle));
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_local_vote_history_exists(
-    handle: &LocalVoteHistoryHandle,
-    root: *const u8,
-) -> bool {
-    let root = Root::from_ptr(root);
-    handle.exists(&root)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_local_vote_history_size(handle: &LocalVoteHistoryHandle) -> usize {
-    handle.size()
-}

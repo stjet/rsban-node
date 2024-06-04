@@ -1,9 +1,7 @@
 use num::FromPrimitive;
 use rsnano_ledger::BlockStatus;
 use rsnano_messages::MessageType;
-use rsnano_node::stats::{
-    DetailType, Direction, FileWriter, JsonWriter, StatType, Stats, StatsConfig, StatsLogSink,
-};
+use rsnano_node::stats::{DetailType, FileWriter, JsonWriter, Stats, StatsConfig, StatsLogSink};
 use std::{
     ffi::{c_void, CStr},
     ops::Deref,
@@ -128,27 +126,6 @@ pub unsafe extern "C" fn rsn_stat_log_sink_to_object(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_stat_type_to_string(key: u8, result: *mut *const u8) -> usize {
-    let type_str = StatType::from_u8(key).unwrap().as_str();
-    (*result) = type_str.as_ptr();
-    type_str.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_detail_to_string(key: u8, result: *mut *const u8) -> usize {
-    let type_str = DetailType::from_u8(key).unwrap().as_str();
-    (*result) = type_str.as_ptr();
-    type_str.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_dir_to_string(key: u8, result: *mut *const u8) -> usize {
-    let type_str = Direction::from_u8(key).unwrap().as_str();
-    (*result) = type_str.as_ptr();
-    type_str.len()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_stat_stop(handle: *mut StatHandle) {
     (*handle).0.stop();
 }
@@ -193,23 +170,6 @@ pub unsafe extern "C" fn rsn_stat_last_reset_s(handle: *mut StatHandle) -> u64 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_stat_clear(handle: *mut StatHandle) {
     (*handle).0.clear();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_stat_configure(
-    handle: *mut StatHandle,
-    stat_type: u8,
-    detail: u8,
-    dir: u8,
-    interval: usize,
-    capacity: usize,
-) {
-    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
-    let dir = FromPrimitive::from_u8(dir).unwrap();
-    (*handle)
-        .0
-        .configure(stat_type, detail, dir, interval, capacity);
 }
 
 #[no_mangle]

@@ -1,34 +1,8 @@
 use num_traits::FromPrimitive;
 use rsnano_node::transport::{
-    BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
-    TrafficType,
+    BandwidthLimitType, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig, TrafficType,
 };
-use std::{borrow::Borrow, ops::Deref, sync::Arc};
-
-pub struct BandwidthLimiterHandle(pub Arc<BandwidthLimiter>);
-
-impl Deref for BandwidthLimiterHandle {
-    type Target = Arc<BandwidthLimiter>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bandwidth_limiter_create(
-    limit_burst_ratio: f64,
-    limit: usize,
-) -> *mut BandwidthLimiterHandle {
-    Box::into_raw(Box::new(BandwidthLimiterHandle(Arc::new(
-        BandwidthLimiter::new(limit_burst_ratio, limit),
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bandwidth_limiter_destroy(limiter: *mut BandwidthLimiterHandle) {
-    drop(Box::from_raw(limiter));
-}
+use std::{ops::Deref, sync::Arc};
 
 pub struct OutboundBandwidthLimiterHandle(pub Arc<OutboundBandwidthLimiter>);
 
@@ -57,16 +31,6 @@ impl From<&OutboundBandwidthLimiterConfigDto> for OutboundBandwidthLimiterConfig
             bootstrap_burst_ratio: dto.bootstrap_burst_ratio,
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_outbound_bandwidth_limiter_create(
-    config: *const OutboundBandwidthLimiterConfigDto,
-) -> *mut OutboundBandwidthLimiterHandle {
-    let config = (*config).borrow().into();
-    Box::into_raw(Box::new(OutboundBandwidthLimiterHandle(Arc::new(
-        OutboundBandwidthLimiter::new(config),
-    ))))
 }
 
 #[no_mangle]

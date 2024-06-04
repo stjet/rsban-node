@@ -1,12 +1,10 @@
-use std::{ffi::c_void, sync::Arc};
-
 use crate::{
-    core::AccountInfoHandle,
-    ledger::datastore::{into_read_txn_handle, LedgerHandle, TransactionHandle},
+    ledger::datastore::{into_read_txn_handle, TransactionHandle},
     utils::ContextWrapper,
-    ConfirmationHeightInfoDto, StatHandle, VoidPointerCallback,
+    VoidPointerCallback,
 };
 use rsnano_node::block_processing::{BacklogPopulation, BacklogPopulationConfig};
+use std::{ffi::c_void, sync::Arc};
 
 #[repr(C)]
 pub struct BacklogPopulationConfigDto {
@@ -26,21 +24,6 @@ impl From<&BacklogPopulationConfigDto> for BacklogPopulationConfig {
 }
 
 pub struct BacklogPopulationHandle(pub Arc<BacklogPopulation>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_backlog_population_create(
-    config_dto: *const BacklogPopulationConfigDto,
-    ledger_handle: *mut LedgerHandle,
-    stats_handle: *mut StatHandle,
-) -> *mut BacklogPopulationHandle {
-    Box::into_raw(Box::new(BacklogPopulationHandle(Arc::new(
-        BacklogPopulation::new(
-            (&*config_dto).into(),
-            Arc::clone(&(*ledger_handle).0),
-            Arc::clone(&(*stats_handle).0),
-        ),
-    ))))
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_backlog_population_destroy(handle: *mut BacklogPopulationHandle) {

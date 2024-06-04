@@ -53,16 +53,6 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_get(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_del(
-    handle: *mut LmdbAccountStoreHandle,
-    txn: *mut TransactionHandle,
-    account: *const u8,
-) {
-    let account = Account::from_ptr(account);
-    (*handle).0.del((*txn).as_write_txn(), &account);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_account_store_begin_account(
     handle: *mut LmdbAccountStoreHandle,
     txn: *mut TransactionHandle,
@@ -80,12 +70,4 @@ pub unsafe extern "C" fn rsn_lmdb_account_store_begin(
 ) -> *mut LmdbIteratorHandle {
     let iterator = (*handle).0.begin((*txn).as_txn());
     LmdbIteratorHandle::new2(iterator)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_account_store_count(
-    handle: *mut LmdbAccountStoreHandle,
-    txn: *mut TransactionHandle,
-) -> usize {
-    (*handle).0.count((*txn).as_txn()) as usize
 }

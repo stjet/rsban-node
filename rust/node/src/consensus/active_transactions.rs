@@ -8,7 +8,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::{NodeConfig, NodeFlags},
     representatives::RepresentativeRegister,
-    stats::{DetailType, StatType, Stats},
+    stats::{DetailType, Sample, StatType, Stats},
     transport::{BufferDropPolicy, TcpChannels},
     utils::{HardenedConstants, ThreadPool},
     wallets::Wallets,
@@ -694,6 +694,12 @@ impl ActiveTransactions {
         );
 
         drop(guard);
+
+        self.stats.sample(
+            Sample::ActiveElectionDuration,
+            (0, 1000 * 60 * 10),
+            election.duration().as_millis() as i64,
+        ); // 0-10 minutes range
 
         (self.vacancy_update.lock().unwrap())();
 

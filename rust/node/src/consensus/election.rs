@@ -83,6 +83,10 @@ impl Election {
         }
     }
 
+    pub fn duration(&self) -> Duration {
+        self.election_start.elapsed()
+    }
+
     pub fn transition_active(&self) {
         let _ = self
             .mutex

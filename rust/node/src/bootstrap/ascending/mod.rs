@@ -19,7 +19,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     config::{NetworkConstants, NodeConfig},
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
 };
 pub use account_sets_config::*;
@@ -316,8 +316,18 @@ impl BootstrapAscending {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag
-
         if let Some(tag) = guard.tags.remove(message.id) {
+            self.stats
+                .inc(StatType::BootstrapAscending, DetailType::Reply);
+            self.stats.sample(
+                Sample::BootstrapTagDuration,
+                (
+                    0,
+                    self.config.bootstrap_ascending.timeout.as_millis() as i64,
+                ),
+                tag.time.elapsed().as_millis() as i64,
+            );
+
             guard.scoring.received_message(channel);
             drop(guard);
 
@@ -336,7 +346,7 @@ impl BootstrapAscending {
 
     fn process_blocks(&self, response: &BlocksAckPayload, tag: &AsyncTag) {
         self.stats
-            .inc(StatType::BootstrapAscending, DetailType::Reply);
+            .inc(StatType::BootstrapAscending, DetailType::Process);
 
         let result = self.verify(response, tag);
         match result {

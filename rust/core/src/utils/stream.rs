@@ -180,6 +180,10 @@ impl<'a> MutStreamAdapter<'a> {
     pub fn bytes_written(&self) -> usize {
         self.write_index
     }
+
+    pub fn written(&self) -> &[u8] {
+        &self.bytes[..self.write_index]
+    }
 }
 
 impl<'a> BufferWriter for MutStreamAdapter<'a> {

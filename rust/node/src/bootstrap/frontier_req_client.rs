@@ -55,17 +55,13 @@ impl FrontierReqClientData {
         if self.accounts.is_empty() {
             let max_size = 128;
             let txn = ledger.read_txn();
-            let mut it = ledger
-                .store
-                .account
-                .begin_account(&txn, &(self.current.number() + 1).into());
 
-            while let Some((account, info)) = it.current() {
-                if self.accounts.len() == max_size {
-                    break;
-                }
-                self.accounts.push_back((*account, info.head));
-                it.next();
+            for (account, info) in ledger
+                .any()
+                .accounts_range(&txn, self.current.inc().unwrap_or_default()..)
+                .take(max_size)
+            {
+                self.accounts.push_back((account, info.head));
             }
 
             /* If loop breaks before max_size, then accounts_end () is reached. Add empty record */

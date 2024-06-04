@@ -129,18 +129,17 @@ impl FrontierReqServerImpl {
             let max_size = 128;
             let transaction = self.ledger.read_txn();
             if !self.send_confirmed() {
-                let mut i = self.ledger.store.account.begin_account(
-                    &transaction,
-                    &self.current.number().overflowing_add(1.into()).0.into(),
-                );
-                while let Some((account, info)) = i.current() {
+                for (account, info) in self
+                    .ledger
+                    .any()
+                    .accounts_range(&transaction, self.current.inc().unwrap_or_default()..)
+                {
                     if self.accounts.len() >= max_size {
                         break;
                     }
                     if disable_age_filter || (now - info.modified) <= self.request.age as u64 {
-                        self.accounts.push_back((*account, info.head))
+                        self.accounts.push_back((account, info.head))
                     }
-                    i.next();
                 }
             } else {
                 let mut i = self.ledger.store.confirmation_height.begin_at_account(

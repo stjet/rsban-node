@@ -24,34 +24,10 @@ bool nano::store::lmdb::account::get (nano::store::transaction const & transacti
 	return !found;
 }
 
-std::optional<nano::account_info> nano::store::lmdb::account::get (nano::store::transaction const & tx, nano::account const & account)
-{
-	nano::account_info info{};
-	bool found = rsnano::rsn_lmdb_account_store_get (handle, tx.get_rust_handle (), account.bytes.data (), info.handle);
-	if (!found)
-	{
-		return {};
-	}
-	else
-	{
-		return info;
-	}
-}
-
-void nano::store::lmdb::account::del (nano::store::write_transaction const & transaction_a, nano::account const & account_a)
-{
-	rsnano::rsn_lmdb_account_store_del (handle, transaction_a.get_rust_handle (), account_a.bytes.data ());
-}
-
 bool nano::store::lmdb::account::exists (nano::store::transaction const & transaction_a, nano::account const & account_a)
 {
 	auto iterator (begin (transaction_a, account_a));
 	return iterator != end () && nano::account (iterator->first) == account_a;
-}
-
-size_t nano::store::lmdb::account::count (nano::store::transaction const & transaction_a)
-{
-	return rsnano::rsn_lmdb_account_store_count (handle, transaction_a.get_rust_handle ());
 }
 
 nano::store::iterator<nano::account, nano::account_info> to_account_iterator (rsnano::LmdbIteratorHandle * it_handle)

@@ -23,10 +23,7 @@ public:
 	virtual ~account (){};
 	virtual void put (store::write_transaction const &, nano::account const &, nano::account_info const &) = 0;
 	virtual bool get (store::transaction const &, nano::account const &, nano::account_info &) const = 0;
-	virtual std::optional<nano::account_info> get (store::transaction const &, nano::account const &) = 0;
-	virtual void del (store::write_transaction const &, nano::account const &) = 0;
 	virtual bool exists (store::transaction const &, nano::account const &) = 0;
-	virtual size_t count (store::transaction const &) = 0;
 	virtual nano::store::iterator<nano::account, nano::account_info> begin (store::transaction const &, nano::account const &) const = 0;
 	virtual nano::store::iterator<nano::account, nano::account_info> begin (store::transaction const &) const = 0;
 	virtual nano::store::iterator<nano::account, nano::account_info> end () const = 0;

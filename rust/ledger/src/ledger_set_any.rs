@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, RangeBounds};
 
 use rsnano_core::{
     Account, AccountInfo, Amount, BlockEnum, BlockHash, PendingInfo, PendingKey, QualifiedRoot,
@@ -174,6 +174,21 @@ impl<'a> LedgerSetAny<'a> {
         self.account_receivable_upper_bound(txn, account, BlockHash::zero())
             .next()
             .is_some()
+    }
+
+    pub fn accounts<'txn>(
+        &self,
+        tx: &'txn dyn Transaction,
+    ) -> impl Iterator<Item = (Account, AccountInfo)> + 'txn {
+        self.store.account.iter(tx)
+    }
+
+    pub fn accounts_range<'txn>(
+        &self,
+        tx: &'txn dyn Transaction,
+        range: impl RangeBounds<Account> + 'static,
+    ) -> impl Iterator<Item = (Account, AccountInfo)> + 'txn {
+        self.store.account.iter_range(tx, range)
     }
 }
 

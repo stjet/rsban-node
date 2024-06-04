@@ -167,19 +167,15 @@ impl BacklogPopulationThread {
                 let mut transaction = self.ledger.store.tx_begin_read();
 
                 let mut count = 0u32;
-                let mut i = self.ledger.store.account.begin_account(&transaction, &next);
-                while let Some((&account, _)) = i.current() {
+                let mut i = self.ledger.any().accounts_range(&transaction, next..);
+                while let Some((account, _)) = i.next() {
                     if count >= chunk_size {
                         break;
                     }
                     if transaction.is_refresh_needed() {
                         drop(i);
                         transaction.refresh();
-                        i = self
-                            .ledger
-                            .store
-                            .account
-                            .begin_account(&transaction, &account);
+                        i = self.ledger.any().accounts_range(&transaction, account..);
                     }
 
                     self.stats.inc(StatType::Backlog, DetailType::Total);
@@ -187,16 +183,15 @@ impl BacklogPopulationThread {
                     self.activate(&transaction, &account);
                     next = (account.number().overflowing_add(U256::from(1)).0).into();
 
-                    i.next();
                     count += 1;
                 }
                 done = next == Account::zero()
                     || self
                         .ledger
-                        .store
-                        .account
-                        .begin_account(&transaction, &next)
-                        .is_end();
+                        .any()
+                        .accounts_range(&transaction, next..)
+                        .next()
+                        .is_none();
             }
             lock = self.mutex.lock().unwrap();
             // Give the rest of the node time to progress without holding database lock

@@ -28,10 +28,8 @@ impl DatabaseIterator {
         match self.table {
             TableType::Account => {
                 let i = self.current.inc().unwrap_or(Account::zero());
-                if let Some((account, _)) =
-                    self.ledger.store.account.begin_account(tx, &i).current()
-                {
-                    self.current = *account;
+                if let Some((account, _)) = self.ledger.any().accounts_range(tx, i..).next() {
+                    self.current = account;
                 } else {
                     self.current = Account::zero();
                 }

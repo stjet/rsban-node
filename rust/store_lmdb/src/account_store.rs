@@ -1,7 +1,7 @@
 use crate::{
-    nullable_lmdb::ConfiguredDatabase, parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
-    ACCOUNT_TEST_DATABASE,
+    iterator::LmdbRangeIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal,
+    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
+    LmdbWriteTransaction, Transaction, ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 #[cfg(feature = "output_tracking")]
@@ -10,7 +10,7 @@ use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, AccountInfo,
 };
-use std::sync::Arc;
+use std::{ops::RangeBounds, sync::Arc};
 
 pub type AccountIterator<'txn> = BinaryDbIterator<'txn, Account, AccountInfo>;
 
@@ -81,6 +81,31 @@ impl LmdbAccountStore {
             .unwrap();
     }
 
+    pub fn iter<'txn>(
+        &self,
+        tx: &'txn dyn Transaction,
+    ) -> impl Iterator<Item = (Account, AccountInfo)> + 'txn {
+        tx.open_ro_cursor(self.database)
+            .unwrap()
+            .iter_start()
+            .map(|i| {
+                let (key, value) = i.unwrap();
+                let account = Account::from_bytes(key.try_into().unwrap());
+                let mut stream = BufferReader::new(value);
+                let info = AccountInfo::deserialize(&mut stream).unwrap();
+                (account, info)
+            })
+    }
+
+    pub fn iter_range<'txn>(
+        &self,
+        tx: &'txn dyn Transaction,
+        range: impl RangeBounds<Account> + 'static,
+    ) -> impl Iterator<Item = (Account, AccountInfo)> + 'txn {
+        let cursor = tx.open_ro_cursor(self.database).unwrap();
+        LmdbRangeIterator::new(cursor, range)
+    }
+
     pub fn begin_account<'txn>(
         &self,
         transaction: &'txn dyn Transaction,
@@ -115,10 +140,6 @@ impl LmdbAccountStore {
 
     pub fn count(&self, txn: &dyn Transaction) -> u64 {
         txn.count(self.database)
-    }
-
-    pub fn exists(&self, txn: &dyn Transaction, account: &Account) -> bool {
-        !self.begin_account(txn, account).is_end()
     }
 }
 
@@ -192,7 +213,6 @@ mod tests {
         let account = Account::from(1);
         let result = fixture.store.get(&txn, &account);
         assert_eq!(result, None);
-        assert_eq!(fixture.store.exists(&txn, &account), false);
         assert_eq!(fixture.store.count(&txn), 0);
     }
 

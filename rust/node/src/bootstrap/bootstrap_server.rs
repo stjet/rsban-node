@@ -330,15 +330,13 @@ impl BootstrapServerImpl {
         id: u64,
         request: FrontiersReqPayload,
     ) -> AscPullAck {
-        let mut it = self.ledger.store.account.begin_account(tx, &request.start);
-        let mut frontiers = Vec::new();
-        while let Some((account, info)) = it.current() {
-            frontiers.push(Frontier::new(*account, info.head));
-            if frontiers.len() >= request.count as usize {
-                break;
-            }
-            it.next();
-        }
+        let frontiers = self
+            .ledger
+            .any()
+            .accounts_range(tx, request.start..)
+            .map(|(account, info)| Frontier::new(account, info.head))
+            .take(request.count as usize)
+            .collect();
 
         AscPullAck {
             id,

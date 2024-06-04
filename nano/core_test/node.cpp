@@ -2447,7 +2447,7 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	nano::confirm_ack ack{ node1.network_params.network, vote_corrupt };
 	node2.network->tcp_channels->flood_message (ack, 1.0f);
 	// Wait for the rollback
-	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::rollback, nano::stat::detail::all));
+	ASSERT_TIMELY (5s, node1.stats->count (nano::stat::type::rollback));
 	// Send the vote with the correct block
 	nano::confirm_ack ack2{ node1.network_params.network, vote };
 	node2.network->tcp_channels->flood_message (ack2, 1.0f);

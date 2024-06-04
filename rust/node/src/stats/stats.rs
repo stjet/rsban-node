@@ -102,7 +102,6 @@ impl Stats {
         }
 
         let key = CounterKey::new(stat_type, detail, dir);
-        let all_key = CounterKey::new(key.stat_type, DetailType::All, key.dir);
 
         // This is a two-step process to avoid exclusively locking the mutex in the common case
         {
@@ -110,27 +109,14 @@ impl Stats {
 
             if let Some(counter) = lock.counters.get(&key) {
                 counter.add(value);
-
-                if key != all_key {
-                    // The `all` counter should always be created together
-                    let all_counter = lock.counters.get(&all_key).unwrap();
-                    all_counter.add(value);
-                }
-
                 return;
             }
         }
         // Not found, create a new entry
         {
             let mut lock = self.mutables.write().unwrap();
-
             let counter = lock.counters.entry(key).or_insert(CounterEntry::new());
             counter.add(value);
-
-            let all_counter = lock.counters.entry(all_key).or_insert(CounterEntry::new());
-            if key != all_key {
-                all_counter.add(value);
-            }
         }
     }
 
@@ -199,6 +185,20 @@ impl Stats {
         lock.counters.clear();
         lock.samplers.clear();
         lock.timestamp = Instant::now();
+    }
+    ///
+    /// Returns current value for the given counter at the type level
+    pub fn count_all(&self, stat_type: StatType, dir: Direction) -> u64 {
+        let guard = self.mutables.read().unwrap();
+        let start = CounterKey::new(stat_type, DetailType::All, dir);
+        let mut result = 0u64;
+        for (key, entry) in guard.counters.range(start..) {
+            if key.stat_type != stat_type {
+                break;
+            }
+            result += u64::from(entry);
+        }
+        result
     }
 
     /// Returns current value for the given counter at the type level

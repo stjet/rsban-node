@@ -172,6 +172,17 @@ pub unsafe extern "C" fn rsn_stat_clear(handle: *mut StatHandle) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_stat_count_all(
+    handle: *mut StatHandle,
+    stat_type: u8,
+    dir: u8,
+) -> u64 {
+    let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
+    let dir = FromPrimitive::from_u8(dir).unwrap();
+    (*handle).0.count_all(stat_type, dir)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_stat_count(
     handle: *mut StatHandle,
     stat_type: u8,

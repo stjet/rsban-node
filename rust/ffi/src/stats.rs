@@ -1,7 +1,9 @@
 use num::FromPrimitive;
 use rsnano_ledger::BlockStatus;
 use rsnano_messages::MessageType;
-use rsnano_node::stats::{DetailType, FileWriter, JsonWriter, Stats, StatsConfig, StatsLogSink};
+use rsnano_node::stats::{
+    DetailType, StatFileWriter, Stats, StatsConfig, StatsJsonWriter, StatsLogSink,
+};
 use std::{
     ffi::{c_void, CStr},
     ops::Deref,
@@ -92,13 +94,15 @@ pub struct StatLogSinkHandle(Box<dyn StatsLogSink>);
 pub unsafe extern "C" fn rsn_file_writer_create(filename: *const i8) -> *mut StatLogSinkHandle {
     let filename = CStr::from_ptr(filename).to_str().unwrap();
     Box::into_raw(Box::new(StatLogSinkHandle(Box::new(
-        FileWriter::new(filename).unwrap(),
+        StatFileWriter::new(filename).unwrap(),
     ))))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_json_writer_create() -> *mut StatLogSinkHandle {
-    Box::into_raw(Box::new(StatLogSinkHandle(Box::new(JsonWriter::new()))))
+    Box::into_raw(Box::new(StatLogSinkHandle(
+        Box::new(StatsJsonWriter::new()),
+    )))
 }
 
 #[no_mangle]

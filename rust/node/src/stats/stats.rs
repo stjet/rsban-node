@@ -1,5 +1,5 @@
-use super::{DetailType, Direction, JsonWriter, Sample, StatType};
-use super::{FileWriter, StatsConfig, StatsLogSink};
+use super::{DetailType, Direction, Sample, StatType, StatsJsonWriter};
+use super::{StatFileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
@@ -210,7 +210,7 @@ impl Stats {
     }
 
     pub fn dump(&self, category: StatCategory) -> String {
-        let mut sink = JsonWriter::new();
+        let mut sink = StatsJsonWriter::new();
         match category {
             StatCategory::Counters => self.log_counters(&mut sink).unwrap(),
             StatCategory::Samples => self.log_samples(&mut sink).unwrap(),
@@ -420,7 +420,7 @@ impl StatsLoop {
             let writer = match log_count.as_mut() {
                 Some(x) => x,
                 None => {
-                    let writer = FileWriter::new(&self.config.log_counters_filename)?;
+                    let writer = StatFileWriter::new(&self.config.log_counters_filename)?;
                     log_count.get_or_insert(writer)
                 }
             };
@@ -437,7 +437,7 @@ impl StatsLoop {
             let writer = match log_sample.as_mut() {
                 Some(x) => x,
                 None => {
-                    let writer = FileWriter::new(&self.config.log_samples_filename)?;
+                    let writer = StatFileWriter::new(&self.config.log_samples_filename)?;
                     log_sample.get_or_insert(writer)
                 }
             };
@@ -455,8 +455,8 @@ struct StatsLoopState {
     log_last_sample_writeout: Instant,
 }
 
-static LOG_COUNT: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
-static LOG_SAMPLE: Lazy<Mutex<Option<FileWriter>>> = Lazy::new(|| Mutex::new(None));
+static LOG_COUNT: Lazy<Mutex<Option<StatFileWriter>>> = Lazy::new(|| Mutex::new(None));
+static LOG_SAMPLE: Lazy<Mutex<Option<StatFileWriter>>> = Lazy::new(|| Mutex::new(None));
 
 #[cfg(test)]
 mod tests {

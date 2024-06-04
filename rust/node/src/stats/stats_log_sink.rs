@@ -49,13 +49,13 @@ pub trait StatsLogSink {
 }
 
 /// File sink with rotation support. This writes one counter per line and does not include histogram values.
-pub struct FileWriter {
+pub struct StatFileWriter {
     filename: PathBuf,
     file: File,
     log_entries: usize,
 }
 
-impl FileWriter {
+impl StatFileWriter {
     pub fn new(filename: impl Into<PathBuf>) -> Result<Self> {
         let filename = filename.into();
         let file = File::create(filename.clone())?;
@@ -67,7 +67,7 @@ impl FileWriter {
     }
 }
 
-impl StatsLogSink for FileWriter {
+impl StatsLogSink for StatFileWriter {
     fn begin(&mut self) -> Result<()> {
         Ok(())
     }
@@ -128,13 +128,13 @@ impl StatsLogSink for FileWriter {
 }
 
 /// JSON sink. The resulting JSON object is provided as both a property_tree::ptree (to_object) and a string (to_string)
-pub struct JsonWriter {
+pub struct StatsJsonWriter {
     tree: Box<dyn PropertyTree>,
     entries_tree: Box<dyn PropertyTree>,
     log_entries: usize,
 }
 
-impl JsonWriter {
+impl StatsJsonWriter {
     pub fn new() -> Self {
         Self {
             tree: create_property_tree(),
@@ -144,13 +144,13 @@ impl JsonWriter {
     }
 }
 
-impl Default for JsonWriter {
+impl Default for StatsJsonWriter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl StatsLogSink for JsonWriter {
+impl StatsLogSink for StatsJsonWriter {
     fn begin(&mut self) -> Result<()> {
         self.tree.clear()
     }

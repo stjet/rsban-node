@@ -408,7 +408,6 @@ impl BootstrapServerImpl {
                     DetailType::Blocks,
                     Direction::Out,
                     blocks.blocks().len() as u64,
-                    false,
                 );
             }
             AscPullAckType::AccountInfo(_) => {}
@@ -418,7 +417,6 @@ impl BootstrapServerImpl {
                     DetailType::Frontiers,
                     Direction::Out,
                     frontiers.len() as u64,
-                    false,
                 );
             }
         }

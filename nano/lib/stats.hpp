@@ -100,17 +100,8 @@ public:
 	stats (nano::stats const &) = delete;
 	stats (nano::stats &&) = delete;
 
-	/**
-	 * Call this to override the default sample interval and capacity, for a specific stat entry.
-	 * This must be called before any stat entries are added, as part of the node initialiation.
-	 */
-	void configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity);
-
 	/** Increments the given counter */
 	void inc (stat::type type, stat::dir dir = stat::dir::in);
-
-	/** Increments the counter for \detail, but doesn't update at the type level */
-	void inc_detail_only (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in);
 
 	/** Increments the given counter */
 	void inc (stat::type type, stat::detail detail, stat::dir dir = stat::dir::in);
@@ -128,7 +119,7 @@ public:
 	 * @param value The amount to add
 	 * @param detail_only If true, only update the detail-level counter
 	 */
-	void add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only = false);
+	void add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value);
 
 	/** Returns current value for the given counter at the type level */
 	uint64_t count (stat::type type, stat::dir dir = stat::dir::in);
@@ -150,15 +141,6 @@ public:
 
 	/** Returns a new JSON log sink */
 	[[nodiscard]] std::unique_ptr<stat_log_sink> log_sink_json () const;
-
-	/** Returns string representation of type */
-	static std::string type_to_string (stat::type type);
-
-	/** Returns string representation of detail */
-	static std::string detail_to_string (stat::detail detail);
-
-	/** Returns string representation of dir */
-	static std::string dir_to_string (stat::dir detail);
 
 	/** Stop stats being output */
 	void stop ();

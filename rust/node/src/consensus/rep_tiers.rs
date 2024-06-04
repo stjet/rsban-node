@@ -205,7 +205,6 @@ impl RepTiersImpl {
             DetailType::Processed,
             Direction::In,
             rep_amounts.len() as u64,
-            false,
         );
 
         self.stats.add_dir(
@@ -213,7 +212,6 @@ impl RepTiersImpl {
             DetailType::Ignored,
             Direction::In,
             ignored,
-            false,
         );
 
         debug!(

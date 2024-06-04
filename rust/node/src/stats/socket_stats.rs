@@ -19,45 +19,40 @@ impl SocketObserver for SocketStats {
     }
 
     fn connect_error(&self) {
-        let _ = self
-            .stats
+        self.stats
             .inc_dir(StatType::Tcp, DetailType::TcpConnectError, Direction::In);
     }
 
     fn read_error(&self) {
-        let _ = self
-            .stats
+        self.stats
             .inc_dir(StatType::Tcp, DetailType::TcpReadError, Direction::In);
     }
 
     fn read_successful(&self, len: usize) {
-        let _ = self.stats.add_dir(
+        self.stats.add_dir(
             StatType::TrafficTcp,
             DetailType::All,
             Direction::In,
             len as u64,
-            false,
         );
     }
 
     fn write_error(&self) {
-        let _ = self
-            .stats
+        self.stats
             .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
     }
 
     fn write_successful(&self, len: usize) {
-        let _ = self.stats.add_dir(
+        self.stats.add_dir(
             StatType::TrafficTcp,
             DetailType::All,
             Direction::Out,
             len as u64,
-            false,
         );
     }
 
     fn silent_connection_dropped(&self) {
-        let _ = self.stats.inc_dir(
+        self.stats.inc_dir(
             StatType::Tcp,
             DetailType::TcpSilentConnectionDrop,
             Direction::In,
@@ -65,7 +60,7 @@ impl SocketObserver for SocketStats {
     }
 
     fn inactive_connection_dropped(&self, endpoint_type: SocketEndpoint) {
-        let _ = self.stats.inc_dir(
+        self.stats.inc_dir(
             StatType::Tcp,
             DetailType::TcpIoTimeoutDrop,
             if endpoint_type == SocketEndpoint::Server {

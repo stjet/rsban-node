@@ -1,10 +1,9 @@
 use anyhow::Result;
 use bounded_vec_deque::BoundedVecDeque;
-use num::FromPrimitive;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     sync::Mutex,
     time::{Duration, Instant, SystemTime},
 };
@@ -31,7 +30,7 @@ impl Stats {
             config,
             mutables: Mutex::new(StatMutables {
                 stopped: false,
-                entries: HashMap::new(),
+                entries: BTreeMap::new(),
                 log_last_count_writeout: Instant::now(),
                 log_last_sample_writeout: Instant::now(),
                 timestamp: Instant::now(),
@@ -42,39 +41,31 @@ impl Stats {
     }
 
     /// Add `value` to given counter
-    pub fn add(&self, stat_type: StatType, detail: DetailType, value: u64, detail_only: bool) {
-        self.add_dir(stat_type, detail, Direction::In, value, detail_only)
+    pub fn add(&self, stat_type: StatType, detail: DetailType, value: u64) {
+        self.add_dir(stat_type, detail, Direction::In, value)
     }
 
     /// Add `value` to given counter
-    pub fn add_dir(
-        &self,
-        stat_type: StatType,
-        detail: DetailType,
-        dir: Direction,
-        value: u64,
-        detail_only: bool,
-    ) {
+    pub fn add_dir(&self, stat_type: StatType, detail: DetailType, dir: Direction, value: u64) {
         if value == 0 {
             return;
         }
 
         const NO_DETAIL_MASK: u32 = 0xffff00ff;
-        let key = key_of(stat_type, detail, dir);
+        let key = Key::new(stat_type, detail, dir);
         let _ = self.update(key, value);
 
-        // Optionally update at type-level as well
-        if !detail_only && (key & NO_DETAIL_MASK) != key {
-            let _ = self.update(key & NO_DETAIL_MASK, value);
+        if detail != DetailType::All {
+            let _ = self.update(Key::new(stat_type, DetailType::All, dir), value);
         }
     }
 
     pub fn inc(&self, stat_type: StatType, detail: DetailType) {
-        self.add_dir(stat_type, detail, Direction::In, 1, false)
+        self.add_dir(stat_type, detail, Direction::In, 1)
     }
 
     pub fn inc_dir(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
-        self.add_dir(stat_type, detail, dir, 1, false)
+        self.add_dir(stat_type, detail, dir, 1)
     }
 
     fn has_interval_counter(&self) -> bool {
@@ -90,7 +81,7 @@ impl Stats {
     /// # Arguments
     /// * `key` a key constructor from `StatType`, `DetailType` and `Direction`
     /// * `value` Amount to add to the counter
-    fn update(&self, key: u32, value: u64) -> anyhow::Result<()> {
+    fn update(&self, key: Key, value: u64) -> anyhow::Result<()> {
         let mut lock = self.mutables.lock().unwrap();
         if !lock.stopped {
             {
@@ -198,7 +189,7 @@ impl Stats {
         bin_count: u64,
     ) {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
+        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
         entry.histogram = Some(StatHistogram::new(intervals, bin_count));
     }
 
@@ -223,7 +214,7 @@ impl Stats {
         addend: u64,
     ) {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
+        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
         if let Some(histogram) = entry.histogram.as_mut() {
             histogram.add(index, addend);
         }
@@ -236,7 +227,7 @@ impl Stats {
         dir: Direction,
     ) -> Option<StatHistogram> {
         let mut lock = self.mutables.lock().unwrap();
-        let entry = lock.get_entry_default(key_of(stat_type, detail, dir));
+        let entry = lock.get_entry_default(Key::new(stat_type, detail, dir));
         entry.histogram.clone()
     }
 
@@ -263,10 +254,11 @@ impl Stats {
         interval: usize,
         capacity: usize,
     ) {
-        self.mutables
-            .lock()
-            .unwrap()
-            .get_entry(key_of(stat_type, detail, dir), interval, capacity);
+        self.mutables.lock().unwrap().get_entry(
+            Key::new(stat_type, detail, dir),
+            interval,
+            capacity,
+        );
     }
 
     /// Returns current value for the given counter at the type level
@@ -274,7 +266,7 @@ impl Stats {
         self.mutables
             .lock()
             .unwrap()
-            .get_entry_default(key_of(stat_type, detail, dir))
+            .get_entry_default(Key::new(stat_type, detail, dir))
             .counter
             .get_value()
     }
@@ -294,27 +286,21 @@ impl Stats {
     }
 }
 
-/// Constructs a key given type, detail and direction. This is used as input to update(...) and get_entry(...)
-fn key_of(stat_type: StatType, detail: DetailType, dir: Direction) -> u32 {
-    (stat_type as u32) << 16 | (detail as u32) << 8 | dir as u32
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+struct Key {
+    stat_type: StatType,
+    detail: DetailType,
+    dir: Direction,
 }
 
-pub fn stat_type_as_str(key: u32) -> Result<&'static str> {
-    let stat_type: StatType =
-        FromPrimitive::from_u32(key >> 16 & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
-    Ok(stat_type.as_str())
-}
-
-pub fn stat_detail_as_str(key: u32) -> Result<&'static str> {
-    let detail: DetailType =
-        FromPrimitive::from_u32(key >> 8 & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
-    Ok(detail.as_str())
-}
-
-pub fn stat_dir_as_str(key: u32) -> Result<&'static str> {
-    let stat_dir: Direction =
-        FromPrimitive::from_u32(key & 0x000000ff).ok_or_else(|| anyhow!("invalid key"))?;
-    Ok(stat_dir.as_str())
+impl Key {
+    fn new(stat_type: StatType, detail: DetailType, dir: Direction) -> Self {
+        Self {
+            stat_type,
+            detail,
+            dir,
+        }
+    }
 }
 
 pub enum StatCategory {
@@ -327,7 +313,7 @@ struct StatMutables {
     stopped: bool,
 
     /// Stat entries are sorted by key to simplify processing of log output
-    entries: HashMap<u32, StatEntry>,
+    entries: BTreeMap<Key, StatEntry>,
 
     log_last_count_writeout: Instant,
     log_last_sample_writeout: Instant,
@@ -340,11 +326,11 @@ struct StatMutables {
 }
 
 impl StatMutables {
-    fn get_entry_default(&mut self, key: u32) -> &'_ mut StatEntry {
+    fn get_entry_default(&mut self, key: Key) -> &'_ mut StatEntry {
         self.get_entry(key, self.default_interval, self.default_capacity)
     }
 
-    fn get_entry(&mut self, key: u32, interval: usize, capacity: usize) -> &'_ mut StatEntry {
+    fn get_entry(&mut self, key: Key, interval: usize, capacity: usize) -> &'_ mut StatEntry {
         self.entries
             .entry(key)
             .or_insert_with(|| StatEntry::new(capacity, interval))
@@ -363,9 +349,9 @@ impl StatMutables {
         }
 
         for (&key, value) in &self.entries {
-            let type_str = stat_type_as_str(key)?;
-            let detail = stat_detail_as_str(key)?;
-            let dir = stat_dir_as_str(key)?;
+            let type_str = key.stat_type.as_str();
+            let detail = key.detail.as_str();
+            let dir = key.dir.as_str();
 
             if let Some(samples) = &value.samples {
                 for datapoint in samples {
@@ -393,9 +379,9 @@ impl StatMutables {
 
         for (&key, value) in &self.entries {
             let time = value.counter.get_timestamp();
-            let type_str = stat_type_as_str(key)?;
-            let detail = stat_detail_as_str(key)?;
-            let dir = stat_dir_as_str(key)?;
+            let type_str = key.stat_type.as_str();
+            let detail = key.detail.as_str();
+            let dir = key.dir.as_str();
             let histogram = value.histogram.as_ref();
             sink.write_entry(
                 time,
@@ -596,8 +582,8 @@ mod tests {
     #[test]
     fn counting() {
         let stats = Stats::new(StatsConfig::new());
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 1, false);
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 5, false);
+        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 1);
+        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 5);
         stats.inc_dir(StatType::Ledger, DetailType::All, Direction::In);
         stats.inc_dir(StatType::Ledger, DetailType::Send, Direction::In);
         stats.inc_dir(StatType::Ledger, DetailType::Send, Direction::In);
@@ -615,7 +601,7 @@ mod tests {
             stats.count(StatType::Ledger, DetailType::Receive, Direction::In)
         );
 
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 0, false);
+        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 0);
         assert_eq!(
             10,
             stats.count(StatType::Ledger, DetailType::All, Direction::In)

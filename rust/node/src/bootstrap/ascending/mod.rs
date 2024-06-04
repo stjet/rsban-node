@@ -346,7 +346,6 @@ impl BootstrapAscending {
                     DetailType::Blocks,
                     Direction::In,
                     response.blocks().len() as u64,
-                    false,
                 );
 
                 for block in response.blocks() {

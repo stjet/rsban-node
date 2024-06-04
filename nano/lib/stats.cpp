@@ -155,46 +155,9 @@ void nano::stats::clear ()
 	rsnano::rsn_stat_clear (handle);
 }
 
-std::string nano::stats::type_to_string (stat::type type)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_type_to_string (static_cast<uint8_t> (type), &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-std::string nano::stats::detail_to_string (stat::detail detail)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_detail_to_string (static_cast<uint8_t> (detail), &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-std::string nano::stats::dir_to_string (stat::dir detail)
-{
-	uint8_t const * ptr;
-	auto len = rsnano::rsn_stat_dir_to_string (static_cast<uint8_t> (detail), &ptr);
-	return std::string (reinterpret_cast<const char *> (ptr), len);
-}
-
-void nano::stats::configure (stat::type type, stat::detail detail, stat::dir dir, size_t interval, size_t capacity)
-{
-	rsnano::rsn_stat_configure (
-	handle,
-	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
-	static_cast<uint8_t> (dir),
-	interval,
-	capacity);
-}
-
 void nano::stats::inc (stat::type type, stat::dir dir)
 {
 	add (type, dir, 1);
-}
-
-void nano::stats::inc_detail_only (stat::type type, stat::detail detail, stat::dir dir)
-{
-	add (type, detail, dir, 1, true);
 }
 
 void nano::stats::inc (stat::type type, stat::detail detail, stat::dir dir)
@@ -207,14 +170,13 @@ void nano::stats::add (stat::type type, stat::dir dir, uint64_t value)
 	add (type, stat::detail::all, dir, value);
 }
 
-void nano::stats::add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value, bool detail_only)
+void nano::stats::add (stat::type type, stat::detail detail, stat::dir dir, uint64_t value)
 {
 	rsnano::rsn_stat_add (handle,
 	static_cast<uint8_t> (type),
 	static_cast<uint8_t> (detail),
 	static_cast<uint8_t> (dir),
-	value,
-	detail_only);
+	value);
 }
 
 uint64_t nano::stats::count (stat::type type, stat::dir dir)

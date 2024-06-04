@@ -150,7 +150,6 @@ impl RequestAggregator {
                             DetailType::RequestsCannotVote,
                             Direction::In,
                             (remaining.0.len() - generated) as u64,
-                            false,
                         );
                     }
                     if !remaining.1.is_empty() {
@@ -163,7 +162,6 @@ impl RequestAggregator {
                             DetailType::RequestsCannotVote,
                             Direction::In,
                             (remaining.1.len() - generated) as u64,
-                            false,
                         );
                     }
                     guard = self.mutex.lock().unwrap();
@@ -389,14 +387,12 @@ impl RequestAggregator {
             DetailType::RequestsCachedHashes,
             Direction::In,
             cached_hashes.len() as u64,
-            false,
         );
         self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedVotes,
             Direction::In,
             cached_votes_len,
-            false,
         );
         (to_generate, to_generate_final)
     }

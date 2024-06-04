@@ -160,14 +160,11 @@ pub unsafe extern "C" fn rsn_stat_add(
     detail: u8,
     dir: u8,
     value: u64,
-    detail_only: bool,
 ) {
     let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
     let detail = FromPrimitive::from_u8(detail).unwrap();
     let dir = FromPrimitive::from_u8(dir).unwrap();
-    (*handle)
-        .0
-        .add_dir(stat_type, detail, dir, value, detail_only);
+    (*handle).0.add_dir(stat_type, detail, dir, value);
 }
 
 #[no_mangle]

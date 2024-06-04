@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
+use super::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{BlockEnum, BlockSubType};
 use rsnano_ledger::LedgerObserver;
-
-use super::{DetailType, Direction, StatType, Stats};
+use std::sync::Arc;
 
 pub struct LedgerStats {
     stats: Arc<Stats>,
@@ -22,7 +20,6 @@ impl LedgerObserver for LedgerStats {
             DetailType::BlocksConfirmed,
             Direction::In,
             cemented_count,
-            false,
         );
     }
 

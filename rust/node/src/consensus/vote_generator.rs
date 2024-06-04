@@ -371,7 +371,6 @@ impl SharedState {
                     DetailType::RequestsGeneratedHashes,
                     Direction::In,
                     hashes.len() as u64,
-                    false,
                 );
                 self.vote(&hashes, &roots, |vote| {
                     let action = self.reply_action.lock().unwrap();

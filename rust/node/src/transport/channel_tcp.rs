@@ -284,12 +284,12 @@ impl Channel for Arc<ChannelTcp> {
         if !is_droppable_by_limiter || should_pass {
             self.send_buffer(&buffer, callback, drop_policy, traffic_type);
             self.stats
-                .inc_dir(StatType::Message, message.into(), Direction::Out);
+                .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message sent");
         } else {
             let detail_type = message.into();
             self.stats
-                .inc_dir(StatType::Drop, detail_type, Direction::Out);
+                .inc_dir_aggregate(StatType::Drop, detail_type, Direction::Out);
             trace!(channel_id = self.channel_id, message = ?message, "Message dropped");
 
             if let Some(callback) = callback {

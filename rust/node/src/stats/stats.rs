@@ -5,7 +5,6 @@ use bounded_vec_deque::BoundedVecDeque;
 use once_cell::sync::Lazy;
 use rsnano_messages::MessageType;
 use std::{
-    cmp::min,
     collections::BTreeMap,
     sync::{atomic::AtomicU64, Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
@@ -50,7 +49,7 @@ impl Stats {
     }
 
     pub fn start(&self) {
-        let Some(interval) = self.calculate_run_interval() else {
+        if !self.should_run() {
             return;
         };
 
@@ -58,27 +57,13 @@ impl Stats {
         *self.thread.lock().unwrap() = Some(
             std::thread::Builder::new()
                 .name("Stats".to_string())
-                .spawn(move || stats_loop.run(interval))
+                .spawn(move || stats_loop.run())
                 .unwrap(),
         );
     }
 
-    fn calculate_run_interval(&self) -> Option<Duration> {
-        let mut interval = if !self.config.log_counters_interval.is_zero() {
-            self.config.log_counters_interval
-        } else {
-            Duration::MAX
-        };
-
-        if !self.config.log_samples_interval.is_zero() {
-            interval = min(interval, self.config.log_samples_interval);
-        }
-
-        if interval != Duration::MAX {
-            Some(interval)
-        } else {
-            None
-        }
+    fn should_run(&self) -> bool {
+        !self.config.log_counters_interval.is_zero() || !self.config.log_samples_interval.is_zero()
     }
 
     /// Stop stats being output
@@ -117,6 +102,50 @@ impl Stats {
             let mut lock = self.mutables.write().unwrap();
             let counter = lock.counters.entry(key).or_insert(CounterEntry::new());
             counter.add(value);
+
+            let all_key = CounterKey::new(stat_type, DetailType::All, dir);
+            if key != all_key {
+                lock.counters.entry(all_key).or_insert(CounterEntry::new());
+            }
+        }
+    }
+
+    pub fn add_dir_aggregate(
+        &self,
+        stat_type: StatType,
+        detail: DetailType,
+        dir: Direction,
+        value: u64,
+    ) {
+        if value == 0 {
+            return;
+        }
+
+        let key = CounterKey::new(stat_type, detail, dir);
+        let all_key = CounterKey::new(stat_type, DetailType::All, dir);
+
+        // This is a two-step process to avoid exclusively locking the mutex in the common case
+        {
+            let lock = self.mutables.read().unwrap();
+
+            if let Some(counter) = lock.counters.get(&key) {
+                counter.add(value);
+                if key != all_key {
+                    let all_counter = lock.counters.get(&all_key).unwrap();
+                    all_counter.add(value);
+                }
+                return;
+            }
+        }
+        // Not found, create a new entry
+        {
+            let mut lock = self.mutables.write().unwrap();
+            let counter = lock.counters.entry(key).or_insert(CounterEntry::new());
+            counter.add(value);
+            if key != all_key {
+                let all_counter = lock.counters.entry(all_key).or_insert(CounterEntry::new());
+                all_counter.add(value);
+            }
         }
     }
 
@@ -126,6 +155,10 @@ impl Stats {
 
     pub fn inc_dir(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
         self.add_dir(stat_type, detail, dir, 1)
+    }
+
+    pub fn inc_dir_aggregate(&self, stat_type: StatType, detail: DetailType, dir: Direction) {
+        self.add_dir_aggregate(stat_type, detail, dir, 1)
     }
 
     pub fn sample(&self, sample: Sample, expected_min_max: (i64, i64), value: i64) {
@@ -196,7 +229,9 @@ impl Stats {
             if key.stat_type != stat_type {
                 break;
             }
-            result += u64::from(entry);
+            if key.dir == dir && key.detail != DetailType::All {
+                result += u64::from(entry);
+            }
         }
         result
     }
@@ -392,12 +427,12 @@ struct StatsLoop {
 }
 
 impl StatsLoop {
-    fn run(&self, interval: Duration) {
+    fn run(&self) {
         let mut guard = self.loop_state.lock().unwrap();
         while !guard.stopped {
             guard = self
                 .condition
-                .wait_timeout_while(guard, interval, |g| !g.stopped)
+                .wait_timeout_while(guard, Duration::from_secs(1), |g| !g.stopped)
                 .unwrap()
                 .0;
 
@@ -461,14 +496,14 @@ mod tests {
 
     /// Test stat counting at both type and detail levels
     #[test]
-    fn counting() {
+    fn counters() {
         let stats = Stats::new(StatsConfig::new());
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 1);
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 5);
-        stats.inc_dir(StatType::Ledger, DetailType::All, Direction::In);
-        stats.inc_dir(StatType::Ledger, DetailType::Send, Direction::In);
-        stats.inc_dir(StatType::Ledger, DetailType::Send, Direction::In);
-        stats.inc_dir(StatType::Ledger, DetailType::Receive, Direction::In);
+        stats.add_dir_aggregate(StatType::Ledger, DetailType::All, Direction::In, 1);
+        stats.add_dir_aggregate(StatType::Ledger, DetailType::All, Direction::In, 5);
+        stats.inc_dir_aggregate(StatType::Ledger, DetailType::All, Direction::In);
+        stats.inc_dir_aggregate(StatType::Ledger, DetailType::Send, Direction::In);
+        stats.inc_dir_aggregate(StatType::Ledger, DetailType::Send, Direction::In);
+        stats.inc_dir_aggregate(StatType::Ledger, DetailType::Receive, Direction::In);
         assert_eq!(
             10,
             stats.count(StatType::Ledger, DetailType::All, Direction::In)
@@ -481,11 +516,30 @@ mod tests {
             1,
             stats.count(StatType::Ledger, DetailType::Receive, Direction::In)
         );
+    }
 
-        stats.add_dir(StatType::Ledger, DetailType::All, Direction::In, 0);
-        assert_eq!(
-            10,
-            stats.count(StatType::Ledger, DetailType::All, Direction::In)
-        );
+    #[test]
+    fn samples() {
+        let stats = Stats::new(StatsConfig::new());
+        stats.sample(Sample::ActiveElectionDuration, (1, 10), 5);
+        stats.sample(Sample::ActiveElectionDuration, (1, 10), 5);
+        stats.sample(Sample::ActiveElectionDuration, (1, 10), 11);
+        stats.sample(Sample::ActiveElectionDuration, (1, 10), 37);
+
+        stats.sample(Sample::BootstrapTagDuration, (1, 10), 2137);
+
+        let samples1 = stats.samples(Sample::ActiveElectionDuration);
+        assert_eq!(samples1, [5, 5, 11, 37]);
+
+        let samples2 = stats.samples(Sample::ActiveElectionDuration);
+        assert!(samples2.is_empty());
+
+        stats.sample(Sample::ActiveElectionDuration, (1, 10), 3);
+
+        let samples3 = stats.samples(Sample::ActiveElectionDuration);
+        assert_eq!(samples3, [3]);
+
+        let samples4 = stats.samples(Sample::BootstrapTagDuration);
+        assert_eq!(samples4, [2137]);
     }
 }

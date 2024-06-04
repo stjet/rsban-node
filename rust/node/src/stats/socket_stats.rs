@@ -43,7 +43,7 @@ impl SocketObserver for SocketStats {
     }
 
     fn write_successful(&self, len: usize) {
-        self.stats.add_dir(
+        self.stats.add_dir_aggregate(
             StatType::TrafficTcp,
             DetailType::All,
             Direction::Out,

@@ -31,7 +31,7 @@ void nano::scheduler::priority::stop ()
 	rsnano::rsn_election_scheduler_stop (handle);
 }
 
-bool nano::scheduler::priority::activate (nano::account const & account_a, store::transaction const & transaction)
+bool nano::scheduler::priority::activate (store::transaction const & transaction, nano::account const & account_a)
 {
 	return rsnano::rsn_election_scheduler_activate (handle, account_a.bytes.data (), transaction.get_rust_handle ());
 }

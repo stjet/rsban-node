@@ -48,7 +48,7 @@ impl PriorityScheduler {
         }
     }
 
-    pub fn activate(&self, account: &Account, tx: &dyn Transaction) -> bool {
+    pub fn activate(&self, tx: &dyn Transaction, account: &Account) -> bool {
         debug_assert!(!account.is_zero());
 
         let head = self
@@ -177,12 +177,12 @@ impl PriorityScheduler {
     }
 
     pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &BlockEnum) {
-        self.activate(&block.account(), tx);
+        self.activate(tx, &block.account());
 
         // Start or vote for the next unconfirmed block in the destination account
         if let Some(destination) = block.destination() {
             if block.is_send() && !destination.is_zero() && destination != block.account() {
-                self.activate(&destination, tx);
+                self.activate(tx, &destination);
             }
         }
     }

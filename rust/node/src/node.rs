@@ -681,7 +681,7 @@ impl Node {
             let Some(optimistic) = optimistic_w.upgrade() else {
                 return;
             };
-            priority.activate(account, tx);
+            priority.activate(tx, account);
             optimistic.activate(tx, account);
         }));
 

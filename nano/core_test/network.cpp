@@ -377,7 +377,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 	ASSERT_EQ (nano::block_status::progress, node1.process (block1));
 	{
 		auto tx{ node1.store.tx_begin_read () };
-		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);
+		node1.scheduler.priority.activate (*tx, nano::dev::genesis_key.pub);
 	}
 	nano::keypair key1;
 	auto vote = nano::test::make_vote (key1, { block1 }, 0, 0);
@@ -403,7 +403,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 	ASSERT_EQ (nano::block_status::progress, node1.process (block1));
 	{
 		auto tx{ node1.store.tx_begin_read () };
-		node1.scheduler.priority.activate (nano::dev::genesis_key.pub, *tx);
+		node1.scheduler.priority.activate (*tx, nano::dev::genesis_key.pub);
 	}
 	auto vote = nano::test::make_vote (nano::dev::genesis_key, { block1 }, 0, 0);
 	nano::confirm_ack con1{ nano::dev::network_params.network, vote };

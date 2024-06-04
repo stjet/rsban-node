@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rsn_election_scheduler_activate(
     account: *const u8,
     tx: &TransactionHandle,
 ) -> bool {
-    handle.0.activate(&Account::from_ptr(account), tx.as_txn())
+    handle.0.activate(tx.as_txn(), &Account::from_ptr(account))
 }
 
 #[no_mangle]

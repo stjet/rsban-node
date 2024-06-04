@@ -40,7 +40,7 @@ impl ProcessLiveDispatcher {
     fn process_live(&self, block: &BlockEnum, tx: &LmdbReadTransaction) {
         // Start collecting quorum on block
         if self.ledger.dependents_confirmed(tx, block) {
-            self.scheduler.activate(&block.account(), tx);
+            self.scheduler.activate(tx, &block.account());
         }
 
         if let Some(websocket) = &self.websocket {

@@ -23,8 +23,6 @@ impl Default for Stats {
 
 impl Stats {
     pub fn new(config: StatsConfig) -> Self {
-        let default_interval = config.interval;
-        let default_capacity = config.capacity;
         Self {
             config,
             mutables: RwLock::new(StatMutables {
@@ -34,8 +32,6 @@ impl Stats {
                 log_last_count_writeout: Instant::now(),
                 log_last_sample_writeout: Instant::now(),
                 timestamp: Instant::now(),
-                default_interval,
-                default_capacity,
             }),
         }
     }
@@ -98,7 +94,7 @@ impl Stats {
         {
             let lock = self.mutables.read().unwrap();
             if let Some(sampler) = lock.samplers.get(&key) {
-                sampler.add(value, self.config.capacity);
+                sampler.add(value, self.config.max_samples);
                 return;
             }
         }
@@ -106,7 +102,7 @@ impl Stats {
         {
             let mut lock = self.mutables.write().unwrap();
             let sampler = lock.samplers.entry(key).or_insert(SamplerEntry::new());
-            sampler.add(value, self.config.capacity)
+            sampler.add(value, self.config.max_samples)
         }
     }
 
@@ -120,28 +116,12 @@ impl Stats {
         }
     }
 
-    fn has_interval_counter(&self) -> bool {
-        self.config.log_interval_counters > 0
-    }
-
-    fn has_sampling(&self) -> bool {
-        self.config.sampling_enabled && self.config.interval > 0
-    }
-
     fn update(&self) -> anyhow::Result<()> {
         let mut lock = self.mutables.write().unwrap();
         if !lock.stopped {
-            if !self.has_interval_counter() && !self.has_sampling() {
-                return Ok(());
-            }
-
-            // Only sample clock if necessary as this impacts node performance due to frequent usage
-            let now = Instant::now();
-            let duration = now - lock.log_last_count_writeout;
-
             // Counters
-            if self.has_interval_counter()
-                && duration.as_millis() > self.config.log_interval_counters as u128
+            if !self.config.log_counters_interval.is_zero()
+                && lock.log_last_count_writeout.elapsed() > self.config.log_counters_interval
             {
                 let mut log_count = LOG_COUNT.lock().unwrap();
                 let writer = match log_count.as_mut() {
@@ -153,25 +133,23 @@ impl Stats {
                 };
 
                 lock.log_counters_impl(writer, &self.config, SystemTime::now())?;
-                lock.log_last_count_writeout = now;
+                lock.log_last_count_writeout = Instant::now();
             }
 
             // Samples
-            if self.has_sampling() {
-                let duration = now - lock.log_last_sample_writeout;
-
-                if duration.as_millis() > self.config.log_interval_samples as u128 {
-                    let mut log_sample = LOG_SAMPLE.lock().unwrap();
-                    let writer = match log_sample.as_mut() {
-                        Some(x) => x,
-                        None => {
-                            let writer = FileWriter::new(&self.config.log_samples_filename)?;
-                            log_sample.get_or_insert(writer)
-                        }
-                    };
-                    lock.log_samples_impl(writer, &self.config, SystemTime::now())?;
-                    lock.log_last_sample_writeout = now;
-                }
+            if !self.config.log_samples_interval.is_zero()
+                && lock.log_last_sample_writeout.elapsed() > self.config.log_samples_interval
+            {
+                let mut log_sample = LOG_SAMPLE.lock().unwrap();
+                let writer = match log_sample.as_mut() {
+                    Some(x) => x,
+                    None => {
+                        let writer = FileWriter::new(&self.config.log_samples_filename)?;
+                        log_sample.get_or_insert(writer)
+                    }
+                };
+                lock.log_samples_impl(writer, &self.config, SystemTime::now())?;
+                lock.log_last_sample_writeout = Instant::now();
             }
         }
 
@@ -280,9 +258,6 @@ struct StatMutables {
 
     /// Time of last clear() call
     timestamp: Instant,
-
-    default_interval: usize,
-    default_capacity: usize,
 }
 
 impl StatMutables {

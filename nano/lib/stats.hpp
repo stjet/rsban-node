@@ -34,20 +34,14 @@ public:
 	/** Reads the JSON statistics node */
 	nano::error deserialize_toml (nano::tomlconfig & toml);
 
-	/** If true, sampling of counters is enabled */
-	bool sampling_enabled{ false };
-
-	/** How many sample intervals to keep in the ring buffer */
-	size_t capacity{ 0 };
-
-	/** Sample interval in milliseconds */
-	size_t interval{ 0 };
+	/** Max number of samples to keep in the ring buffer */
+	size_t max_samples{ 1024*16 };
 
 	/** How often to log sample array, in milliseconds. Default is 0 (no logging) */
-	size_t log_interval_samples{ 0 };
+	std::chrono::milliseconds log_samples_interval{ 0 };
 
 	/** How often to log counters, in milliseconds. Default is 0 (no logging) */
-	size_t log_interval_counters{ 0 };
+	std::chrono::milliseconds log_counters_interval{ 0 };
 
 	/** Maximum number of log outputs before rotating the file */
 	size_t log_rotation_count{ 100 };

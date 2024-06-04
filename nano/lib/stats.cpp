@@ -10,11 +10,9 @@
 
 void nano::stats_config::load_dto (rsnano::StatConfigDto & dto)
 {
-	sampling_enabled = dto.sampling_enabled;
-	capacity = dto.capacity;
-	interval = dto.interval;
-	log_interval_samples = dto.log_interval_samples;
-	log_interval_counters = dto.log_interval_counters;
+	max_samples = dto.max_samples;
+	log_samples_interval = std::chrono::milliseconds{dto.log_samples_interval};
+	log_counters_interval = std::chrono::milliseconds{dto.log_counters_interval};
 	log_rotation_count = dto.log_rotation_count;
 	log_headers = dto.log_headers;
 	log_counters_filename = std::string (reinterpret_cast<const char *> (dto.log_counters_filename), dto.log_counters_filename_len);
@@ -24,11 +22,9 @@ void nano::stats_config::load_dto (rsnano::StatConfigDto & dto)
 rsnano::StatConfigDto nano::stats_config::to_dto () const
 {
 	rsnano::StatConfigDto dto{};
-	dto.sampling_enabled = sampling_enabled;
-	dto.capacity = capacity;
-	dto.interval = interval;
-	dto.log_interval_samples = log_interval_samples;
-	dto.log_interval_counters = log_interval_counters;
+	dto.max_samples = max_samples;
+	dto.log_samples_interval = log_samples_interval.count();
+	dto.log_counters_interval = log_counters_interval.count();
 	dto.log_rotation_count = log_rotation_count;
 	dto.log_headers = log_headers;
 	std::copy (log_counters_filename.begin (), log_counters_filename.end (), std::begin (dto.log_counters_filename));
@@ -41,20 +37,20 @@ rsnano::StatConfigDto nano::stats_config::to_dto () const
 
 nano::error nano::stats_config::deserialize_toml (nano::tomlconfig & toml)
 {
-	auto sampling_l (toml.get_optional_child ("sampling"));
-	if (sampling_l)
-	{
-		sampling_l->get<bool> ("enable", sampling_enabled);
-		sampling_l->get<size_t> ("capacity", capacity);
-		sampling_l->get<size_t> ("interval", interval);
-	}
+	toml.get<size_t> ("max_samples", max_samples);
 
 	auto log_l (toml.get_optional_child ("log"));
 	if (log_l)
 	{
 		log_l->get<bool> ("headers", log_headers);
-		log_l->get<size_t> ("interval_counters", log_interval_counters);
-		log_l->get<size_t> ("interval_samples", log_interval_samples);
+		auto counters_interval_l = log_counters_interval.count ();
+		log_l->get<long> ("interval_counters", counters_interval_l);
+		log_counters_interval = std::chrono::milliseconds{ counters_interval_l };
+
+		auto samples_interval_l = log_samples_interval.count ();
+		log_l->get<long> ("interval_samples", samples_interval_l);
+		log_samples_interval = std::chrono::milliseconds{ samples_interval_l };
+
 		log_l->get<size_t> ("rotation_count", log_rotation_count);
 		log_l->get<std::string> ("filename_counters", log_counters_filename);
 		log_l->get<std::string> ("filename_samples", log_samples_filename);

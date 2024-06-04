@@ -6,17 +6,16 @@ use std::{
     ffi::{c_void, CStr},
     ops::Deref,
     sync::Arc,
+    time::Duration,
 };
 
 use super::FfiPropertyTree;
 
 #[repr(C)]
 pub struct StatConfigDto {
-    pub sampling_enabled: bool,
-    pub capacity: usize,
-    pub interval: usize,
-    pub log_interval_samples: usize,
-    pub log_interval_counters: usize,
+    pub max_samples: usize,
+    pub log_samples_interval: usize,
+    pub log_counters_interval: usize,
     pub log_rotation_count: usize,
     pub log_headers: bool,
     pub log_counters_filename: [u8; 128],
@@ -26,11 +25,9 @@ pub struct StatConfigDto {
 }
 
 pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatsConfig) {
-    dto.sampling_enabled = config.sampling_enabled;
-    dto.capacity = config.capacity;
-    dto.interval = config.interval;
-    dto.log_interval_samples = config.log_interval_samples;
-    dto.log_interval_counters = config.log_interval_counters;
+    dto.max_samples = config.max_samples;
+    dto.log_samples_interval = config.log_samples_interval.as_millis() as usize;
+    dto.log_counters_interval = config.log_counters_interval.as_millis() as usize;
     dto.log_rotation_count = config.log_rotation_count;
     dto.log_headers = config.log_headers;
     let bytes = config.log_counters_filename.as_bytes();
@@ -44,11 +41,9 @@ pub fn fill_stat_config_dto(dto: &mut StatConfigDto, config: &StatsConfig) {
 impl From<&StatConfigDto> for StatsConfig {
     fn from(dto: &StatConfigDto) -> Self {
         Self {
-            sampling_enabled: dto.sampling_enabled,
-            capacity: dto.capacity,
-            interval: dto.interval,
-            log_interval_samples: dto.log_interval_samples,
-            log_interval_counters: dto.log_interval_counters,
+            max_samples: dto.max_samples,
+            log_samples_interval: Duration::from_millis(dto.log_samples_interval as u64),
+            log_counters_interval: Duration::from_millis(dto.log_counters_interval as u64),
             log_rotation_count: dto.log_rotation_count,
             log_headers: dto.log_headers,
             log_counters_filename: String::from_utf8_lossy(

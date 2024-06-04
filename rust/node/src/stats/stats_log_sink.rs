@@ -1,7 +1,6 @@
 use crate::utils::create_property_tree;
 use anyhow::Result;
 use chrono::{DateTime, Local};
-use num::bigint::ToBigInt;
 use rsnano_core::utils::PropertyTree;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
@@ -28,7 +27,6 @@ pub trait StatsLogSink {
     fn write_sampler_entry(
         &mut self,
         time: SystemTime,
-        entry_type: &str,
         sample: &str,
         values: Vec<i64>,
     ) -> Result<()>;
@@ -98,16 +96,11 @@ impl StatsLogSink for StatFileWriter {
     fn write_sampler_entry(
         &mut self,
         time: SystemTime,
-        entry_type: &str,
         sample: &str,
         values: Vec<i64>,
     ) -> Result<()> {
         let time: chrono::DateTime<Local> = time.into();
-        write!(
-            &mut self.file,
-            "{},{entry_type},{sample}",
-            time.format("%H:%M:%S")
-        )?;
+        write!(&mut self.file, "{},{sample}", time.format("%H:%M:%S"))?;
 
         for value in values {
             write!(&mut self.file, ",{}", value)?;
@@ -225,14 +218,12 @@ impl StatsLogSink for StatsJsonWriter {
     fn write_sampler_entry(
         &mut self,
         time: SystemTime,
-        entry_type: &str,
         sample: &str,
         values: Vec<i64>,
     ) -> Result<()> {
         let time: chrono::DateTime<Local> = time.into();
         let mut entry = create_property_tree();
         entry.put_string("time", &time.format("%H:%M:%S").to_string())?;
-        entry.put_string("type", entry_type)?;
         entry.put_string("sample", sample)?;
 
         let mut values_tree = create_property_tree();

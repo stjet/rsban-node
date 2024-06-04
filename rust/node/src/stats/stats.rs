@@ -142,8 +142,8 @@ impl Stats {
         self.add_dir(stat_type, detail, dir, 1)
     }
 
-    pub fn sample(&self, stat_type: StatType, sample: Sample, value: i64) {
-        let key = SamplerKey::new(stat_type, sample);
+    pub fn sample(&self, sample: Sample, value: i64) {
+        let key = SamplerKey::new(sample);
         // This is a two-step process to avoid exclusively locking the mutex in the common case
         {
             let lock = self.mutables.read().unwrap();
@@ -163,8 +163,8 @@ impl Stats {
         }
     }
 
-    pub fn samples(&self, stat_type: StatType, sample: Sample) -> Vec<i64> {
-        let key = SamplerKey::new(stat_type, sample);
+    pub fn samples(&self, sample: Sample) -> Vec<i64> {
+        let key = SamplerKey::new(sample);
         let lock = self.mutables.read().unwrap();
         if let Some(sampler) = lock.samplers.get(&key) {
             sampler.collect()
@@ -242,13 +242,12 @@ impl CounterKey {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 struct SamplerKey {
-    stat_type: StatType,
     sample: Sample,
 }
 
 impl SamplerKey {
-    fn new(stat_type: StatType, sample: Sample) -> Self {
-        Self { stat_type, sample }
+    fn new(sample: Sample) -> Self {
+        Self { sample }
     }
 }
 
@@ -285,10 +284,8 @@ impl StatMutables {
         }
 
         for (&key, entry) in &self.samplers {
-            let type_str = key.stat_type.as_str();
             let sample = key.sample.as_str();
-
-            sink.write_sampler_entry(time, type_str, sample, entry.collect())?;
+            sink.write_sampler_entry(time, sample, entry.collect())?;
         }
         sink.inc_entries();
         sink.finalize();

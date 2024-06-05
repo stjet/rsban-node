@@ -356,7 +356,7 @@ where
 
     fn cleanup(&mut self) {
         self.current_queue_key = None;
-        self.queues.retain(|k, _| k.is_alive());
+        self.queues.retain(|k, v| k.is_alive() || !v.is_empty());
     }
 
     fn update(&mut self) {
@@ -567,15 +567,20 @@ mod tests {
         queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel2)));
         queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel3)));
 
-        // Either closing or resetting the channel should remove it from the queue
+        // Either closing or resetting the channel should make it eligable for cleanup
         channel1.close();
         drop(channel2);
 
         assert!(queue.periodic_update(Duration::ZERO));
 
-        // Only channel 3 should remain
-        assert_eq!(queue.len(), 1);
+        // Until the queue is drained, the entries are still present
+        assert_eq!(queue.len(), 3);
+        assert_eq!(queue.queues_len(), 3);
+
+        queue.next_batch(999);
+        assert!(queue.periodic_update(Duration::ZERO));
+
+        assert!(queue.is_empty());
         assert_eq!(queue.queues_len(), 1);
-        assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel3)), 1);
     }
 }

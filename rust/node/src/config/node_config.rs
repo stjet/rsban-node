@@ -6,6 +6,7 @@ use crate::{
     bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
     consensus::{VoteCacheConfig, VoteProcessorConfig},
     stats::StatsConfig,
+    transport::TcpConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
@@ -106,6 +107,7 @@ pub struct NodeConfig {
     pub rep_crawler_query_timeout: Duration,
     pub block_processor: BlockProcessorConfig,
     pub vote_processor: VoteProcessorConfig,
+    pub tcp: TcpConfig,
 }
 
 #[derive(Clone)]
@@ -315,6 +317,11 @@ impl NodeConfig {
             },
             block_processor: BlockProcessorConfig::new(),
             vote_processor: VoteProcessorConfig::default(),
+            tcp: if network_params.network.is_dev_network() {
+                TcpConfig::for_dev_network()
+            } else {
+                Default::default()
+            },
         }
     }
 

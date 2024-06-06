@@ -5,6 +5,26 @@
 #include <nano/node/transport/tcp.hpp>
 #include <nano/node/transport/tcp_listener.hpp>
 #include <nano/node/transport/tcp_server.hpp>
+
+nano::transport::tcp_config::tcp_config(rsnano::TcpConfigDto const & dto):
+	max_inbound_connections { dto.max_inbound_connections},
+	max_outbound_connections { dto.max_outbound_connections},
+	max_attempts {dto.max_attempts},
+	max_attempts_per_ip { dto.max_attempts_per_ip},
+	connect_timeout {dto.connect_timeout_s}
+{
+}
+
+rsnano::TcpConfigDto nano::transport::tcp_config::to_dto() const{
+	rsnano::TcpConfigDto dto;
+	dto.max_inbound_connections = max_inbound_connections;
+	dto.max_outbound_connections = max_outbound_connections;
+	dto.max_attempts = max_attempts;
+	dto.max_attempts_per_ip = max_attempts_per_ip;
+	dto.connect_timeout_s = connect_timeout.count();
+	return dto;
+}
+
 /*
  * tcp_listener
  */

@@ -17,6 +17,7 @@ use num::FromPrimitive;
 use rsnano_core::{Account, Amount};
 use rsnano_node::{
     config::{NodeConfig, Peer},
+    transport::TcpConfig,
     NetworkParams,
 };
 use std::{
@@ -104,6 +105,40 @@ pub struct NodeConfigDto {
     pub rep_crawler_query_timeout_ms: i64,
     pub block_processor: BlockProcessorConfigDto,
     pub vote_processor: VoteProcessorConfigDto,
+    pub tcp: TcpConfigDto,
+}
+
+#[repr(C)]
+pub struct TcpConfigDto {
+    pub max_inbound_connections: usize,
+    pub max_outbound_connections: usize,
+    pub max_attempts: usize,
+    pub max_attempts_per_ip: usize,
+    pub connect_timeout_s: u64,
+}
+
+impl From<&TcpConfig> for TcpConfigDto {
+    fn from(value: &TcpConfig) -> Self {
+        Self {
+            max_inbound_connections: value.max_inbound_connections,
+            max_outbound_connections: value.max_outbound_connections,
+            max_attempts: value.max_attempts,
+            max_attempts_per_ip: value.max_attempts_per_ip,
+            connect_timeout_s: value.connect_timeout.as_secs(),
+        }
+    }
+}
+
+impl From<&TcpConfigDto> for TcpConfig {
+    fn from(value: &TcpConfigDto) -> Self {
+        Self {
+            max_inbound_connections: value.max_inbound_connections,
+            max_outbound_connections: value.max_outbound_connections,
+            max_attempts: value.max_attempts,
+            max_attempts_per_ip: value.max_attempts_per_ip,
+            connect_timeout: Duration::from_secs(value.connect_timeout_s),
+        }
+    }
 }
 
 #[repr(C)]
@@ -261,6 +296,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.rep_crawler_query_timeout_ms = cfg.rep_crawler_query_timeout.as_millis() as i64;
     dto.block_processor = (&cfg.block_processor).into();
     dto.vote_processor = (&cfg.vote_processor).into();
+    dto.tcp = (&cfg.tcp).into();
 }
 
 #[no_mangle]
@@ -400,6 +436,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             ),
             block_processor: (&value.block_processor).into(),
             vote_processor: (&value.vote_processor).into(),
+            tcp: (&value.tcp).into(),
         };
 
         Ok(cfg)

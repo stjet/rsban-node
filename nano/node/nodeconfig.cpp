@@ -115,6 +115,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count ();
 	dto.block_processor = config.block_processor.to_dto ();
 	dto.vote_processor = config.vote_processor.to_dto ();
+	dto.tcp = config.tcp.to_dto();
 	return dto;
 }
 
@@ -239,6 +240,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	rep_crawler.query_timeout = std::chrono::milliseconds (dto.rep_crawler_query_timeout_ms);
 	block_processor = nano::block_processor_config{ dto.block_processor };
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
+	tcp = nano::transport::tcp_config{dto.tcp};
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const

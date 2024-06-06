@@ -23,6 +23,39 @@ use std::{
 use tokio::{sync::Notify, task::spawn_blocking};
 use tracing::debug;
 
+#[derive(Clone, Debug)]
+pub struct TcpConfig {
+    pub max_inbound_connections: usize,
+    pub max_outbound_connections: usize,
+    pub max_attempts: usize,
+    pub max_attempts_per_ip: usize,
+    pub connect_timeout: Duration,
+}
+
+impl TcpConfig {
+    pub fn for_dev_network() -> Self {
+        Self {
+            max_inbound_connections: 128,
+            max_outbound_connections: 128,
+            max_attempts: 128,
+            max_attempts_per_ip: 128,
+            connect_timeout: Duration::from_secs(5),
+        }
+    }
+}
+
+impl Default for TcpConfig {
+    fn default() -> Self {
+        Self {
+            max_inbound_connections: 2048,
+            max_outbound_connections: 2048,
+            max_attempts: 60,
+            max_attempts_per_ip: 1,
+            connect_timeout: Duration::from_secs(60),
+        }
+    }
+}
+
 pub trait TcpServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, connection_id: usize);
     fn boostrap_server_exited(

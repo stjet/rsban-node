@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include <nano/node/common.hpp>
 
 namespace rsnano
@@ -11,6 +12,21 @@ namespace nano::transport
 {
 class socket;
 class tcp_server;
+
+class tcp_config
+{
+public:
+	tcp_config() = default;
+	explicit tcp_config(rsnano::TcpConfigDto const & dto);
+
+	rsnano::TcpConfigDto to_dto() const;
+
+	size_t max_inbound_connections;
+	size_t max_outbound_connections;
+	size_t max_attempts;
+	size_t max_attempts_per_ip;
+	std::chrono::seconds connect_timeout{ 0 };
+};
 
 /**
  * Server side portion of bootstrap sessions. Listens for new socket connections and spawns tcp_server objects when connected.

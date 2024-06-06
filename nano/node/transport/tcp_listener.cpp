@@ -29,15 +29,16 @@ rsnano::TcpConfigDto nano::transport::tcp_config::to_dto() const{
  * tcp_listener
  */
 
-nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::node & node_a, std::size_t max_inbound_connections)
+nano::transport::tcp_listener::tcp_listener (uint16_t port_a, nano::transport::tcp_config const & config, nano::node & node_a)
 {
-	auto config_dto{ node_a.config->to_dto () };
+	auto node_config_dto{ node_a.config->to_dto () };
 	auto network_params_dto{ node_a.network_params.to_dto () };
+	auto config_dto{config.to_dto()};
 
 	handle = rsnano::rsn_tcp_listener_create (
 	port_a,
-	max_inbound_connections,
 	&config_dto,
+	&node_config_dto,
 	node_a.network->tcp_channels->handle,
 	node_a.network->syn_cookies->handle,
 	&network_params_dto,

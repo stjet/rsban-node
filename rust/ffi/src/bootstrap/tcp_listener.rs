@@ -6,7 +6,7 @@ use crate::{
         EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
-    ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
+    ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, TcpConfigDto,
     VoidPointerCallback,
 };
 use rsnano_core::KeyPair;
@@ -30,8 +30,8 @@ impl Deref for TcpListenerHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_listener_create(
     port: u16,
-    max_inbound_connections: usize,
-    config: &NodeConfigDto,
+    config: &TcpConfigDto,
+    node_config: &NodeConfigDto,
     tcp_channels: &TcpChannelsHandle,
     syn_cookies: &SynCookiesHandle,
     network_params: &NetworkParamsDto,
@@ -51,8 +51,8 @@ pub unsafe extern "C" fn rsn_tcp_listener_create(
     );
     Box::into_raw(Box::new(TcpListenerHandle(Arc::new(TcpListener::new(
         port,
-        max_inbound_connections,
-        config.try_into().unwrap(),
+        config.into(),
+        node_config.try_into().unwrap(),
         Arc::clone(tcp_channels),
         Arc::clone(syn_cookies),
         network_params.try_into().unwrap(),
@@ -103,7 +103,7 @@ pub extern "C" fn rsn_tcp_listener_accept_action(
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_realtime_count(handle: &TcpListenerHandle) -> usize {
-    handle.0.get_realtime_count()
+    handle.0.realtime_count()
 }
 
 #[no_mangle]

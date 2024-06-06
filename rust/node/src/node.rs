@@ -437,7 +437,7 @@ impl Node {
         //
         let tcp_listener = Arc::new(TcpListener::new(
             channels.port(),
-            config.tcp_incoming_connections_max as usize,
+            config.tcp.clone(),
             config.clone(),
             Arc::clone(&channels),
             Arc::clone(&syn_cookies),

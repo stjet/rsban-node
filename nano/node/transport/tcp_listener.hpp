@@ -19,13 +19,25 @@ public:
 	tcp_config() = default;
 	explicit tcp_config(rsnano::TcpConfigDto const & dto);
 
+	explicit tcp_config (nano::network_constants const & network)
+	{
+		if (network.is_dev_network ())
+		{
+			max_inbound_connections = 128;
+			max_outbound_connections = 128;
+			max_attempts = 128;
+			max_attempts_per_ip = 128;
+			connect_timeout = std::chrono::seconds{ 5 };
+		}
+	}
+
 	rsnano::TcpConfigDto to_dto() const;
 
-	size_t max_inbound_connections;
-	size_t max_outbound_connections;
-	size_t max_attempts;
-	size_t max_attempts_per_ip;
-	std::chrono::seconds connect_timeout{ 0 };
+	size_t max_inbound_connections{ 2048 };
+	size_t max_outbound_connections{ 2048 };
+	size_t max_attempts{ 60 };
+	size_t max_attempts_per_ip { 1};
+	std::chrono::seconds connect_timeout{ 60 };
 };
 
 /**
@@ -34,7 +46,7 @@ public:
 class tcp_listener final : public std::enable_shared_from_this<tcp_listener>
 {
 public:
-	tcp_listener (uint16_t, nano::node &, std::size_t);
+	tcp_listener (uint16_t, tcp_config const & config, nano::node &);
 	tcp_listener (rsnano::TcpListenerHandle * handle);
 	tcp_listener (tcp_listener const &) = delete;
 	~tcp_listener ();

@@ -64,7 +64,7 @@ pub trait TcpServerObserver: Send + Sync {
         connection_id: usize,
         endpoint: SocketAddrV6,
     );
-    fn get_bootstrap_count(&self) -> usize;
+    fn bootstrap_count(&self) -> usize;
     fn inc_bootstrap_count(&self);
     fn inc_realtime_count(&self);
     fn dec_bootstrap_count(&self);
@@ -83,7 +83,7 @@ impl TcpServerObserver for NullTcpServerObserver {
     ) {
     }
 
-    fn get_bootstrap_count(&self) -> usize {
+    fn bootstrap_count(&self) -> usize {
         0
     }
 
@@ -230,7 +230,7 @@ impl TcpServer {
             return false;
         };
 
-        if observer.get_bootstrap_count() >= self.connections_max {
+        if observer.bootstrap_count() >= self.connections_max {
             return false;
         }
 

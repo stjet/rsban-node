@@ -1,6 +1,6 @@
 use super::{
     CompositeSocketObserver, ConnectionsPerAddress, Socket, SocketBuilder, SocketEndpoint,
-    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpServer, TcpServerExt,
+    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpConfig, TcpServer, TcpServerExt,
     TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
 use crate::{
@@ -24,15 +24,15 @@ use std::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tracing::{debug, error, warn};
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
-    max_inbound_connections: usize,
-    config: NodeConfig,
+    config: TcpConfig,
+    node_config: NodeConfig,
     tcp_channels: Weak<TcpChannels>,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
@@ -55,11 +55,14 @@ pub struct TcpListener {
 impl Drop for TcpListener {
     fn drop(&mut self) {
         debug_assert!(self.data.lock().unwrap().stopped);
+        debug_assert_eq!(self.connection_count(), 0);
+        debug_assert_eq!(self.attempt_count(), 0);
     }
 }
 
 struct TcpListenerData {
     connections: HashMap<usize, Weak<TcpServer>>,
+    attempts: Vec<Attempt>,
     stopped: bool,
     listening_socket: Option<Arc<ServerSocket>>, // TODO remove arc
 }
@@ -86,8 +89,8 @@ impl TcpListenerData {
 impl TcpListener {
     pub fn new(
         port: u16,
-        max_inbound_connections: usize,
-        config: NodeConfig,
+        config: TcpConfig,
+        node_config: NodeConfig,
         tcp_channels: Arc<TcpChannels>,
         syn_cookies: Arc<SynCookies>,
         network_params: NetworkParams,
@@ -105,12 +108,13 @@ impl TcpListener {
             Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&runtime)));
         Self {
             port: AtomicU16::new(port),
-            max_inbound_connections,
             config,
+            node_config,
             tcp_channels: Arc::downgrade(&tcp_channels),
             syn_cookies,
             data: Mutex::new(TcpListenerData {
                 connections: HashMap::new(),
+                attempts: Vec::new(),
                 stopped: false,
                 listening_socket: None,
             }),
@@ -132,6 +136,7 @@ impl TcpListener {
     }
 
     pub fn stop(&self) {
+        // Close sockets
         let mut conns = HashMap::new();
         {
             let mut guard = self.data.lock().unwrap();
@@ -148,9 +153,24 @@ impl TcpListener {
                     .close_connections();
             }
         }
+
+        // Close attempts
+        // TODO
     }
 
-    pub fn get_realtime_count(&self) -> usize {
+    /// Connects to the default peering port
+    pub fn connect_ip(&self, remote: IpAddr) {
+        self.connect(SocketAddr::new(
+            remote,
+            self.network_params.network.default_node_port,
+        ));
+    }
+
+    pub fn connect(&self, remote: SocketAddr) {
+        todo!()
+    }
+
+    pub fn realtime_count(&self) -> usize {
         self.realtime_count.load(Ordering::SeqCst)
     }
 
@@ -158,6 +178,10 @@ impl TcpListener {
         let mut data = self.data.lock().unwrap();
         self.cleanup(&mut data);
         data.connections.len()
+    }
+
+    pub fn attempt_count(&self) -> usize {
+        self.data.lock().unwrap().attempts.len()
     }
 
     pub fn endpoint(&self) -> SocketAddrV6 {
@@ -388,7 +412,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 Arc::downgrade(&this_l.runtime),
             )
             .default_timeout(Duration::from_secs(
-                this_l.config.tcp_io_timeout_s as u64,
+                this_l.node_config.tcp_io_timeout_s as u64,
             ))
             .idle_timeout(Duration::from_secs(
                 this_l
@@ -423,7 +447,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     data.evict_dead_connections();
                     drop(data);
 
-                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.max_inbound_connections {
+                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.config.max_inbound_connections {
                         this_clone.stats.inc_dir (StatType::TcpListener, DetailType::AcceptFailure, Direction::In);
                         debug!("Max_inbound_connections reached, unable to open new connection");
 
@@ -518,7 +542,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             let server = Arc::new(TcpServer::new(
                 Arc::clone(&self.runtime),
                 socket,
-                Arc::new(self.config.clone()),
+                Arc::new(self.node_config.clone()),
                 observer,
                 Arc::clone(&tcp_channels.publish_filter),
                 Arc::new(self.network_params.clone()),
@@ -569,7 +593,7 @@ impl TcpServerObserver for TcpListener {
         }
     }
 
-    fn get_bootstrap_count(&self) -> usize {
+    fn bootstrap_count(&self) -> usize {
         self.bootstrap_count.load(Ordering::SeqCst)
     }
 
@@ -593,4 +617,9 @@ impl TcpServerObserver for TcpListener {
 fn is_temporary_error(ec: ErrorCode) -> bool {
     return ec.val == 11 // would block
                         || ec.val ==  4; // interrupted system call
+}
+
+struct Attempt {
+    endpoint: SocketAddr,
+    start: Instant,
 }

@@ -3,6 +3,7 @@ use super::{StatFileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
 use bounded_vec_deque::BoundedVecDeque;
 use once_cell::sync::Lazy;
+use rsnano_core::utils::get_env_bool;
 use rsnano_messages::MessageType;
 use std::{
     collections::BTreeMap,
@@ -10,12 +11,14 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
+use tracing::debug;
 
 pub struct Stats {
     config: StatsConfig,
     mutables: Arc<RwLock<StatMutables>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     stats_loop: Arc<StatsLoop>,
+    enable_logging: bool,
 }
 
 impl Default for Stats {
@@ -45,6 +48,7 @@ impl Stats {
                 }),
             }),
             mutables,
+            enable_logging: get_env_bool("NANO_LOG_STATS").unwrap_or(false),
         }
     }
 
@@ -86,6 +90,8 @@ impl Stats {
             return;
         }
 
+        self.log_add(stat_type, detail, dir, value);
+
         let key = CounterKey::new(stat_type, detail, dir);
 
         // This is a two-step process to avoid exclusively locking the mutex in the common case
@@ -110,6 +116,15 @@ impl Stats {
         }
     }
 
+    fn log_add(&self, stat_type: StatType, detail: DetailType, dir: Direction, value: u64) {
+        if self.enable_logging {
+            debug!(
+                "Stat: {:?}::{:?}::{:?} += {}",
+                stat_type, detail, dir, value
+            );
+        }
+    }
+
     pub fn add_dir_aggregate(
         &self,
         stat_type: StatType,
@@ -120,6 +135,8 @@ impl Stats {
         if value == 0 {
             return;
         }
+
+        self.log_add(stat_type, detail, dir, value);
 
         let key = CounterKey::new(stat_type, detail, dir);
         let all_key = CounterKey::new(stat_type, DetailType::All, dir);
@@ -162,6 +179,7 @@ impl Stats {
     }
 
     pub fn sample(&self, sample: Sample, expected_min_max: (i64, i64), value: i64) {
+        self.log_sample(sample, value);
         let key = SamplerKey::new(sample);
         // This is a two-step process to avoid exclusively locking the mutex in the common case
         {
@@ -179,6 +197,12 @@ impl Stats {
                 .entry(key)
                 .or_insert(SamplerEntry::new(self.config.max_samples, expected_min_max));
             sampler.add(value)
+        }
+    }
+
+    fn log_sample(&self, sample: Sample, value: i64) {
+        if self.enable_logging {
+            debug!("Sample: {:?} -> {}", sample, value);
         }
     }
 

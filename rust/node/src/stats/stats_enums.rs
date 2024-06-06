@@ -3,7 +3,7 @@ use serde_variant::to_variant_name;
 
 /// Primary statistics type
 #[repr(u8)]
-#[derive(FromPrimitive, Serialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(FromPrimitive, Serialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum StatType {
     TrafficTcp,
@@ -73,7 +73,7 @@ impl StatType {
 
 // Optional detail type
 #[repr(u8)]
-#[derive(FromPrimitive, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(FromPrimitive, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum DetailType {
     All = 0,
@@ -404,7 +404,7 @@ impl DetailType {
 }
 
 /// Direction of the stat. If the direction is irrelevant, use In
-#[derive(FromPrimitive, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+#[derive(FromPrimitive, PartialEq, PartialOrd, Eq, Ord, Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum Direction {
     In,
@@ -421,7 +421,7 @@ impl Direction {
 }
 
 #[repr(u8)]
-#[derive(FromPrimitive, Serialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(FromPrimitive, Serialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Sample {
     ActiveElectionDuration,

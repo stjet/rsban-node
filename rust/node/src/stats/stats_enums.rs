@@ -25,6 +25,7 @@ pub enum StatType {
     Tcp,
     TcpChannels,
     TcpListener,
+    TcpListenerRejected,
     Channel,
     Socket,
     ConfirmationHeight,
@@ -254,10 +255,20 @@ pub enum DetailType {
     // tcp_listener
     AcceptSuccess,
     AcceptFailure,
+    AcceptRejected,
     MaxPerIp,
     MaxPerSubnetwork,
+    MaxAttempts,
+    MaxAttemptsPerIp,
     Excluded,
     EraseDead,
+    ConnectInitiate,
+    ConnectFailure,
+    ConnectError,
+    ConnectRejected,
+    ConnectSuccess,
+    AttemptTimeout,
+    NotAPeer,
 
     // tcp_server
     Handshake,

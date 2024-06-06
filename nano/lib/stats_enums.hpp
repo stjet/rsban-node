@@ -26,6 +26,7 @@ enum class type : uint8_t
 	tcp,
 	tcp_channels,
 	tcp_listener,
+	tcp_listener_rejected,
 	channel,
 	socket,
 	confirmation_height,
@@ -247,10 +248,20 @@ enum class detail : uint8_t
 	// tcp_listener
 	accept_success,
 	accept_failure,
+	accept_rejected,
 	max_per_ip,
 	max_per_subnetwork,
+	max_attempts,
+	max_attempts_per_ip,
 	excluded,
 	erase_dead,
+	connect_initiate,
+	connect_failure,
+	connect_error,
+	connect_rejected,
+	connect_success,
+	attempt_timeout,
+	not_a_peer,
 
 	// tcp_server
 	handshake,

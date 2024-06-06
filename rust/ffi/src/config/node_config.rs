@@ -52,7 +52,6 @@ pub struct NodeConfigDto {
     pub vote_minimum: [u8; 16],
     pub vote_generator_delay_ms: i64,
     pub vote_generator_threshold: u32,
-    block_process_timeout_s: i64,
     pub unchecked_cutoff_time_s: i64,
     pub tcp_io_timeout_s: i64,
     pub pow_sleep_interval_ns: i64,
@@ -163,7 +162,6 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.vote_generator_delay_ms = cfg.vote_generator_delay_ms;
     dto.vote_generator_threshold = cfg.vote_generator_threshold;
     dto.unchecked_cutoff_time_s = cfg.unchecked_cutoff_time_s;
-    dto.block_process_timeout_s = cfg.block_process_timeout_s;
     dto.tcp_io_timeout_s = cfg.tcp_io_timeout_s;
     dto.pow_sleep_interval_ns = cfg.pow_sleep_interval_ns;
     let bytes: &[u8] = cfg.external_address.as_bytes();
@@ -342,7 +340,6 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             vote_generator_delay_ms: value.vote_generator_delay_ms,
             vote_generator_threshold: value.vote_generator_threshold,
             unchecked_cutoff_time_s: value.unchecked_cutoff_time_s,
-            block_process_timeout_s: value.block_process_timeout_s,
             tcp_io_timeout_s: value.tcp_io_timeout_s,
             pow_sleep_interval_ns: value.pow_sleep_interval_ns,
             external_address: String::from_utf8_lossy(

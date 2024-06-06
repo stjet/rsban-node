@@ -100,7 +100,6 @@ public:
 	uint16_t external_port;
 	std::chrono::milliseconds block_processor_batch_max_time;
 	/** Time to wait for block processing result */
-	std::chrono::seconds block_process_timeout;
 	std::chrono::seconds unchecked_cutoff_time;
 	/** Timeout for initiated async operations */
 	std::chrono::seconds tcp_io_timeout;

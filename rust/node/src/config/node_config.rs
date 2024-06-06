@@ -55,7 +55,6 @@ pub struct NodeConfig {
     pub vote_minimum: Amount,
     pub vote_generator_delay_ms: i64,
     pub vote_generator_threshold: u32,
-    pub block_process_timeout_s: i64,
     pub unchecked_cutoff_time_s: i64,
     pub tcp_io_timeout_s: i64,
     pub pow_sleep_interval_ns: i64,
@@ -247,7 +246,6 @@ impl NodeConfig {
             vote_minimum: Amount::raw(*GXRB_RATIO),
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
-            block_process_timeout_s: 300,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours
             tcp_io_timeout_s: if network_params.network.is_dev_network() && !is_sanitizer_build() {
                 5
@@ -359,11 +357,6 @@ impl NodeConfig {
         toml.put_i64("vote_generator_delay", self.vote_generator_delay_ms, "Delay before votes are sent to allow for efficient bundling of hashes in votes.\ntype:milliseconds")?;
         toml.put_u32("vote_generator_threshold", self.vote_generator_threshold, "Number of bundled hashes required for an additional generator delay.\ntype:uint64,[1..11]")?;
         toml.put_i64("unchecked_cutoff_time", self.unchecked_cutoff_time_s, "Number of seconds before deleting an unchecked entry.\nWarning: lower values (e.g., 3600 seconds, or 1 hour) may result in unsuccessful bootstraps, especially a bootstrap from scratch.\ntype:seconds")?;
-        toml.put_i64(
-            "block_process_timeout",
-            self.block_process_timeout_s,
-            "Time to wait for block processing result.\ntype:seconds",
-        )?;
         toml.put_i64("tcp_io_timeout", self.tcp_io_timeout_s , "Timeout for TCP connect-, read- and write operations.\nWarning: a low value (e.g., below 5 seconds) may result in TCP connections failing.\ntype:seconds")?;
         toml.put_i64 ("pow_sleep_interval", self.pow_sleep_interval_ns, "Time to sleep between batch work generation attempts. Reduces max CPU usage at the expense of a longer generation time.\ntype:nanoseconds")?;
         toml.put_str("external_address", &self.external_address, "The external address of this node (NAT). If not set, the node will request this information via UPnP.\ntype:string,ip")?;

@@ -48,7 +48,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_generator_delay_ms = config.vote_generator_delay.count ();
 	dto.vote_generator_threshold = config.vote_generator_threshold;
 	dto.unchecked_cutoff_time_s = config.unchecked_cutoff_time.count ();
-	dto.block_process_timeout_s = config.block_process_timeout.count ();
 	dto.tcp_io_timeout_s = config.tcp_io_timeout.count ();
 	dto.pow_sleep_interval_ns = config.pow_sleep_interval.count ();
 	std::copy (config.external_address.begin (), config.external_address.end (), std::begin (dto.external_address));
@@ -177,7 +176,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_generator_delay = std::chrono::milliseconds (dto.vote_generator_delay_ms);
 	vote_generator_threshold = dto.vote_generator_threshold;
 	unchecked_cutoff_time = std::chrono::seconds (dto.unchecked_cutoff_time_s);
-	block_process_timeout = std::chrono::seconds (dto.block_process_timeout_s);
 	tcp_io_timeout = std::chrono::seconds (dto.tcp_io_timeout_s);
 	pow_sleep_interval = std::chrono::nanoseconds (dto.pow_sleep_interval_ns);
 	external_address = std::string (reinterpret_cast<const char *> (dto.external_address), dto.external_address_len);
@@ -419,10 +417,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		auto block_processor_batch_max_time_l = block_processor_batch_max_time.count ();
 		toml.get ("block_processor_batch_max_time", block_processor_batch_max_time_l);
 		block_processor_batch_max_time = std::chrono::milliseconds (block_processor_batch_max_time_l);
-
-		auto block_process_timeout_l = block_process_timeout.count ();
-		toml.get ("block_process_timeout", block_process_timeout_l);
-		block_process_timeout = std::chrono::seconds{ block_process_timeout_l };
 
 		auto unchecked_cutoff_time_l = static_cast<unsigned long> (unchecked_cutoff_time.count ());
 		toml.get ("unchecked_cutoff_time", unchecked_cutoff_time_l);

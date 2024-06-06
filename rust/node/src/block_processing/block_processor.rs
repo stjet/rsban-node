@@ -48,8 +48,7 @@ pub struct BlockProcessorContext {
     pub block: Arc<BlockEnum>,
     pub source: BlockSource,
     pub arrival: Instant,
-    pub result: Mutex<Option<BlockStatus>>,
-    condition: Condvar,
+    waiter: Arc<BlockProcessorWaiter>,
 }
 
 impl BlockProcessorContext {
@@ -58,27 +57,55 @@ impl BlockProcessorContext {
             block,
             source,
             arrival: Instant::now(),
-            result: Mutex::new(None),
+            waiter: Arc::new(BlockProcessorWaiter::new()),
+        }
+    }
+
+    pub fn set_result(&self, result: BlockStatus) {
+        self.waiter.set_result(result);
+    }
+
+    pub fn get_waiter(&self) -> Arc<BlockProcessorWaiter> {
+        self.waiter.clone()
+    }
+}
+
+impl Drop for BlockProcessorContext {
+    fn drop(&mut self) {
+        self.waiter.cancel()
+    }
+}
+
+pub struct BlockProcessorWaiter {
+    result: Mutex<(Option<BlockStatus>, bool)>, // (status, done)
+    condition: Condvar,
+}
+
+impl BlockProcessorWaiter {
+    pub fn new() -> Self {
+        Self {
+            result: Mutex::new((None, false)),
             condition: Condvar::new(),
         }
     }
 
     pub fn set_result(&self, result: BlockStatus) {
-        *self.result.lock().unwrap() = Some(result);
+        *self.result.lock().unwrap() = (Some(result), true);
         self.condition.notify_all();
     }
 
-    pub fn wait_result(&self, timeout: Duration) -> Option<BlockStatus> {
+    pub fn cancel(&self) {
+        self.result.lock().unwrap().1 = true;
+        self.condition.notify_all();
+    }
+
+    pub fn wait_result(&self) -> Option<BlockStatus> {
         let guard = self.result.lock().unwrap();
-        if guard.is_some() {
-            return *guard;
+        if guard.1 {
+            return guard.0;
         }
 
-        *self
-            .condition
-            .wait_timeout_while(guard, timeout, |i| i.is_none())
-            .unwrap()
-            .0
+        self.condition.wait_while(guard, |i| !i.1).unwrap().0
     }
 }
 
@@ -375,18 +402,17 @@ impl BlockProcessorLoop {
             source
         );
 
+        let hash = block.hash();
         let ctx = Arc::new(BlockProcessorContext::new(block, source));
-        let ctx_clone = Arc::clone(&ctx);
+        let waiter = ctx.get_waiter();
         self.add_impl(ctx, None);
 
-        match ctx_clone.wait_result(Duration::from_secs(
-            self.config.block_process_timeout_s as u64,
-        )) {
+        match waiter.wait_result() {
             Some(status) => Some(status),
             None => {
                 self.stats
                     .inc(StatType::Blockprocessor, DetailType::ProcessBlockingTimeout);
-                error!("Timeout processing block: {}", ctx_clone.block.hash());
+                error!("Block dropped when processing: {}", hash);
                 None
             }
         }

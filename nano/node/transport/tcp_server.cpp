@@ -17,6 +17,7 @@
 
 nano::transport::tcp_server::tcp_server (
 rsnano::async_runtime & async_rt,
+nano::transport::tcp_channels & channels,
 std::shared_ptr<nano::transport::socket> const & socket_a,
 nano::stats const & stats_a,
 nano::node_flags const & flags_a,
@@ -52,6 +53,7 @@ bool allow_bootstrap_a)
 	params.allow_bootstrap = allow_bootstrap_a;
 	params.syn_cookies = syn_cookies_a.handle;
 	params.node_id_priv = node_id_a.prv.bytes.data ();
+	params.tcp_channels = channels.handle;
 	handle = rsnano::rsn_tcp_server_create (&params);
 	debug_assert (socket_a != nullptr);
 }
@@ -144,11 +146,6 @@ bool nano::transport::tcp_server::is_stopped () const
 std::uintptr_t nano::transport::tcp_server::unique_id () const
 {
 	return rsnano::rsn_tcp_server_unique_id (handle);
-}
-
-void nano::transport::tcp_server::set_remote_node_id (nano::account account_a)
-{
-	rsnano::rsn_tcp_server_set_remote_node_id (handle, account_a.bytes.data ());
 }
 
 nano::tcp_endpoint nano::transport::tcp_server::get_remote_endpoint () const

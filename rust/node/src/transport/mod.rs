@@ -18,7 +18,6 @@ mod tcp_channels;
 mod tcp_listener;
 mod tcp_message_manager;
 mod tcp_server;
-mod tcp_server_factory;
 mod tcp_stream;
 mod tcp_stream_factory;
 mod token_bucket;
@@ -53,9 +52,8 @@ pub use tcp_channels::{
     AttemptEntry, TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions,
 };
 pub use tcp_listener::{TcpListener, TcpListenerExt};
-pub use tcp_message_manager::{TcpMessageItem, TcpMessageManager};
+pub use tcp_message_manager::TcpMessageManager;
 pub use tcp_server::*;
-pub use tcp_server_factory::TcpServerFactory;
 pub use tcp_stream::TcpStream;
 pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
@@ -72,8 +70,6 @@ pub enum TransportType {
 
 pub trait Channel {
     fn channel_id(&self) -> usize;
-    fn is_temporary(&self) -> bool;
-    fn set_temporary(&self, temporary: bool);
     fn get_last_bootstrap_attempt(&self) -> SystemTime; //todo switch back to Instant
     fn set_last_bootstrap_attempt(&self, time: SystemTime); //todo switch back to Instant
     fn get_last_packet_received(&self) -> SystemTime; //todo switch back to Instant

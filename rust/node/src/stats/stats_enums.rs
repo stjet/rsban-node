@@ -24,6 +24,7 @@ pub enum StatType {
     Ipc,
     Tcp,
     TcpChannels,
+    TcpChannelsRejected,
     TcpListener,
     TcpListenerRejected,
     Channel,
@@ -256,6 +257,7 @@ pub enum DetailType {
     AcceptSuccess,
     AcceptFailure,
     AcceptRejected,
+    CloseError,
     MaxPerIp,
     MaxPerSubnetwork,
     MaxAttempts,
@@ -269,6 +271,11 @@ pub enum DetailType {
     ConnectSuccess,
     AttemptTimeout,
     NotAPeer,
+
+    // tcp_channels
+    ChannelAccepted,
+    ChannelRejected,
+    ChannelDuplicate,
 
     // tcp_server
     Handshake,

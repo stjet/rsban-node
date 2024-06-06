@@ -94,27 +94,7 @@ pub extern "C" fn rsn_tcp_channels_port(handle: &TcpChannelsHandle) -> u16 {
     handle.port()
 }
 
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_set_port(handle: &mut TcpChannelsHandle, port: u16) {
-    handle.set_port(port)
-}
-
 pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHandle);
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_on_new_channel(
-    handle: &mut TcpChannelsHandle,
-    callback_handle: *mut c_void,
-    call_callback: NewChannelCallback,
-    delete_callback: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(callback_handle, delete_callback);
-    let callback = Arc::new(move |channel| {
-        let ctx = context_wrapper.get_context();
-        unsafe { call_callback(ctx, ChannelHandle::new(channel)) };
-    });
-    handle.0.on_new_channel(callback)
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_destroy(handle: *mut TcpChannelsHandle) {
@@ -130,16 +110,6 @@ pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
     handle.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_list_channels(
-    handle: &mut TcpChannelsHandle,
-    min_version: u8,
-    include_temporary_channels: bool,
-) -> *mut ChannelListHandle {
-    let channels = handle.list_channels(min_version, include_temporary_channels);
-    Box::into_raw(Box::new(ChannelListHandle(channels)))
 }
 
 #[no_mangle]
@@ -166,25 +136,9 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
     handle: &mut TcpChannelsHandle,
     count: usize,
     min_version: u8,
-    include_temporary_channels: bool,
 ) -> *mut ChannelListHandle {
-    let channels = handle.random_channels(count, min_version, include_temporary_channels);
+    let channels = handle.random_channels(count, min_version);
     Box::into_raw(Box::new(ChannelListHandle(channels)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_get_peers(
-    handle: &mut TcpChannelsHandle,
-) -> *mut EndpointListHandle {
-    let peers = handle.get_peers();
-    Box::into_raw(Box::new(EndpointListHandle(peers)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_get_first_channel(
-    handle: &mut TcpChannelsHandle,
-) -> *mut ChannelHandle {
-    ChannelHandle::new(handle.get_first_channel().unwrap())
 }
 
 #[no_mangle]
@@ -215,30 +169,8 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_set_observer(
-    handle: &mut TcpChannelsHandle,
-    observer: &TcpListenerHandle,
-) {
-    let observer: Weak<TcpListener> = Arc::downgrade(observer);
-    handle.set_observer(observer);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_set_message_visitor(
-    handle: &mut TcpChannelsHandle,
-    visitor_factory: &RequestResponseVisitorFactoryHandle,
-) {
-    handle.set_message_visitor_factory(visitor_factory.0.clone())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_get_next_channel_id(handle: &TcpChannelsHandle) -> usize {
     handle.get_next_channel_id()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_process_messages(handle: &TcpChannelsHandle) {
-    handle.process_messages();
 }
 
 #[no_mangle]
@@ -284,25 +216,8 @@ pub extern "C" fn rsn_tcp_channels_random_fanout(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_keepalive(handle: &TcpChannelsHandle) {
-    handle.keepalive();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_merge_peer(handle: &TcpChannelsHandle, peer: &EndpointDto) {
     handle.merge_peer(peer.into());
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_sample_keepalive(
-    handle: &TcpChannelsHandle,
-) -> *mut MessageHandle {
-    if let Some(keepalive) = handle.sample_keepalive() {
-        let msg = Message::Keepalive(keepalive);
-        return MessageHandle::new(DeserializedMessage::new(msg, Default::default()));
-    }
-
-    std::ptr::null_mut()
 }
 
 #[no_mangle]

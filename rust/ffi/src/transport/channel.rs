@@ -83,18 +83,8 @@ pub extern "C" fn rsn_channel_close(handle: &mut ChannelHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_is_temporary(handle: *mut ChannelHandle) -> bool {
-    as_channel(handle).is_temporary()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_is_alive(handle: *mut ChannelHandle) -> bool {
     as_channel(handle).is_alive()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_set_temporary(handle: *mut ChannelHandle, temporary: bool) {
-    as_channel(handle).set_temporary(temporary);
 }
 
 #[no_mangle]

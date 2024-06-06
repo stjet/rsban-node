@@ -244,7 +244,7 @@ impl Telemetry {
     }
 
     fn run_requests(&self) {
-        let peers = self.channels.random_list(usize::MAX, 0, true);
+        let peers = self.channels.random_list(usize::MAX, 0);
         for channel in peers {
             self.request(&channel);
         }
@@ -252,7 +252,7 @@ impl Telemetry {
 
     fn run_broadcasts(&self) {
         let telemetry = self.local_telemetry();
-        let peers = self.channels.random_list(usize::MAX, 0, true);
+        let peers = self.channels.random_list(usize::MAX, 0);
         let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
         for channel in peers {
             self.broadcast(&channel, &message);

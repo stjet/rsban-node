@@ -210,7 +210,7 @@ impl LocalBlockBroadcaster {
     }
 
     fn list_no_pr(&self, count: usize) -> Vec<Arc<ChannelEnum>> {
-        let mut channels = self.channels.random_list(usize::MAX, 0, true);
+        let mut channels = self.channels.random_list(usize::MAX, 0);
         {
             let guard = self.representatives.lock().unwrap();
             channels.retain(|c| !guard.is_pr(c));

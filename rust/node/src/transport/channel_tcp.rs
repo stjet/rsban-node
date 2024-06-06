@@ -12,7 +12,7 @@ use std::{
     fmt::Display,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
-        atomic::{AtomicBool, AtomicU8, Ordering},
+        atomic::{AtomicU8, Ordering},
         Arc, Mutex, MutexGuard, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},
@@ -32,10 +32,6 @@ pub struct ChannelTcp {
     channel_id: usize,
     channel_mutex: Mutex<TcpChannelData>,
     pub socket: Arc<Socket>,
-    /* Mark for temporary channels. Usually remote ports of these channels are ephemeral and received from incoming connections to server.
-    If remote part has open listening port, temporary channel will be replaced with direct connection to listening port soon.
-    But if other side is behing NAT or firewall this connection can be pemanent. */
-    temporary: AtomicBool,
     network_version: AtomicU8,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub async_rt: Weak<AsyncRuntime>,
@@ -66,8 +62,7 @@ impl ChannelTcp {
                 peering_endpoint: None,
             }),
             socket,
-            temporary: AtomicBool::new(false),
-            network_version: AtomicU8::new(0),
+            network_version: AtomicU8::new(protocol.version_using),
             limiter,
             async_rt: Arc::downgrade(async_rt),
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
@@ -207,14 +202,6 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
 }
 
 impl Channel for Arc<ChannelTcp> {
-    fn is_temporary(&self) -> bool {
-        self.temporary.load(Ordering::SeqCst)
-    }
-
-    fn set_temporary(&self, temporary: bool) {
-        self.temporary.store(temporary, Ordering::SeqCst);
-    }
-
     fn get_last_bootstrap_attempt(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt
     }
@@ -310,9 +297,7 @@ impl Channel for Arc<ChannelTcp> {
 impl Drop for ChannelTcp {
     fn drop(&mut self) {
         // Close socket. Exception: socket is used by bootstrap_server
-        if !self.temporary.load(Ordering::Relaxed) {
-            self.socket.close();
-        }
+        self.socket.close();
     }
 }
 

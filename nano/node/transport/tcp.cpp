@@ -49,21 +49,6 @@ nano::tcp_message_manager::~tcp_message_manager ()
 	rsnano::rsn_tcp_message_manager_destroy (handle);
 }
 
-void nano::tcp_message_manager::put_message (nano::tcp_message_item const & item_a)
-{
-	rsnano::rsn_tcp_message_manager_put_message (handle, item_a.handle);
-}
-
-nano::tcp_message_item nano::tcp_message_manager::get_message ()
-{
-	return nano::tcp_message_item{ rsnano::rsn_tcp_message_manager_get_message (handle) };
-}
-
-void nano::tcp_message_manager::stop ()
-{
-	rsnano::rsn_tcp_message_manager_stop (handle);
-}
-
 /*
  * channel_tcp
  */
@@ -122,17 +107,11 @@ size_t channel_id) :
 	tcp_channels_a,
 	channel_id))
 {
-	set_network_version (network_a.protocol_version);
 }
 
 uint8_t nano::transport::channel_tcp::get_network_version () const
 {
 	return rsnano::rsn_channel_tcp_network_version (handle);
-}
-
-void nano::transport::channel_tcp::set_network_version (uint8_t network_version_a)
-{
-	rsnano::rsn_channel_tcp_network_set_version (handle, network_version_a);
 }
 
 nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_remote_endpoint () const
@@ -278,9 +257,9 @@ std::size_t nano::transport::tcp_channels::fanout (float scale) const
 	return rsnano::rsn_tcp_channels_fanout (handle, scale);
 }
 
-std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a, bool include_tcp_temporary_channels_a)
+std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a)
 {
-	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, minimum_version_a, include_tcp_temporary_channels_a);
+	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, minimum_version_a);
 	auto vec = into_channel_vector (list_handle);
 	std::deque<std::shared_ptr<nano::transport::channel>> result;
 	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
@@ -294,22 +273,6 @@ std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_chann
 	std::deque<std::shared_ptr<nano::transport::channel>> result;
 	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
 	return result;
-}
-
-void nano::transport::tcp_channels::keepalive ()
-{
-	rsnano::rsn_tcp_channels_keepalive (handle);
-}
-
-std::optional<nano::keepalive> nano::transport::tcp_channels::sample_keepalive ()
-{
-	auto msg_handle = rsnano::rsn_tcp_channels_sample_keepalive (handle);
-	if (msg_handle != nullptr)
-	{
-		auto msg = nano::message_handle_to_message (msg_handle);
-		return *static_cast<nano::keepalive *> (msg.get ());
-	}
-	return std::nullopt;
 }
 
 void nano::transport::tcp_channels::flood_message (nano::message & msg, float scale)
@@ -329,26 +292,10 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 	return result;
 }
 
-std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version, bool include_temporary_channels_a) const
+std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version) const
 {
-	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, min_version, include_temporary_channels_a);
+	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, min_version);
 	return into_channel_vector (list_handle);
-}
-
-std::vector<nano::endpoint> nano::transport::tcp_channels::get_peers () const
-{
-	auto list_handle = rsnano::rsn_tcp_channels_get_peers (handle);
-	auto len = rsnano::rsn_endpoint_list_len (list_handle);
-	std::vector<nano::endpoint> endpoints;
-	endpoints.reserve (len);
-	for (auto i = 0; i < len; ++i)
-	{
-		rsnano::EndpointDto dto;
-		rsnano::rsn_endpoint_list_get (list_handle, i, &dto);
-		endpoints.push_back (rsnano::dto_to_udp_endpoint (dto));
-	}
-	rsnano::rsn_endpoint_list_destroy (list_handle);
-	return endpoints;
 }
 
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
@@ -362,29 +309,9 @@ void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> &
 	}
 }
 
-void nano::transport::tcp_channels::set_port (uint16_t port_a)
-{
-	rsnano::rsn_tcp_channels_set_port (handle, port_a);
-}
-
 uint16_t nano::transport::tcp_channels::port () const
 {
 	return rsnano::rsn_tcp_channels_port (handle);
-}
-
-void nano::transport::tcp_channels::set_observer (std::shared_ptr<nano::transport::tcp_listener> observer_a)
-{
-	rsnano::rsn_tcp_channels_set_observer (handle, observer_a->handle);
-}
-
-void nano::transport::tcp_channels::set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory)
-{
-	rsnano::rsn_tcp_channels_set_message_visitor (handle, visitor_factory.handle);
-}
-
-std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::get_first_channel () const
-{
-	return std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_tcp_channels_get_first_channel (handle));
 }
 
 std::size_t nano::transport::tcp_channels::get_next_channel_id ()
@@ -406,11 +333,6 @@ std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::fin
 		result = std::make_shared<nano::transport::channel_tcp> (channel_handle);
 	}
 	return result;
-}
-
-void nano::transport::tcp_channels::process_messages ()
-{
-	rsnano::rsn_tcp_channels_process_messages (handle);
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
@@ -435,18 +357,6 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();
 	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
-}
-
-void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::transport::channel>> & deque_a, uint8_t minimum_version_a, bool include_temporary_channels_a)
-{
-	auto list_handle = rsnano::rsn_tcp_channels_list_channels (handle, minimum_version_a, include_temporary_channels_a);
-	auto len = rsnano::rsn_channel_list_len (list_handle);
-	for (auto i = 0; i < len; ++i)
-	{
-		auto channel{ std::make_shared<nano::transport::channel_tcp> (rsnano::rsn_channel_list_get (list_handle, i)) };
-		deque_a.push_back (channel);
-	}
-	rsnano::rsn_channel_list_destroy (list_handle);
 }
 
 void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
@@ -490,69 +400,6 @@ void call_new_channel_callback (void * context, rsnano::ChannelHandle * channel_
 	auto channel = std::make_shared<nano::transport::channel_tcp> (channel_handle);
 	(*callback) (channel);
 }
-}
-
-void nano::transport::tcp_channels::on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a)
-{
-	auto callback_handle = new std::function<void (std::shared_ptr<nano::transport::channel>)> (observer_a);
-	rsnano::rsn_tcp_channels_on_new_channel (handle, callback_handle, call_new_channel_callback, delete_new_channel_callback);
-}
-
-nano::tcp_message_item::tcp_message_item () :
-	handle{ rsnano::rsn_tcp_message_item_empty () }
-{
-}
-
-nano::tcp_message_item::~tcp_message_item ()
-{
-	if (handle)
-		rsnano::rsn_tcp_message_item_destroy (handle);
-}
-
-nano::tcp_message_item::tcp_message_item (nano::tcp_message_item const & other_a) :
-	handle{ rsnano::rsn_tcp_message_item_clone (other_a.handle) }
-{
-}
-
-nano::tcp_message_item::tcp_message_item (nano::tcp_message_item && other_a) noexcept :
-	handle{ other_a.handle }
-{
-	other_a.handle = nullptr;
-}
-
-nano::tcp_message_item::tcp_message_item (rsnano::TcpMessageItemHandle * handle_a) :
-	handle{ handle_a }
-{
-}
-
-nano::tcp_endpoint nano::tcp_message_item::get_endpoint () const
-{
-	rsnano::EndpointDto endpoint_dto;
-	rsnano::rsn_tcp_message_item_endpoint (handle, &endpoint_dto);
-	return rsnano::dto_to_endpoint (endpoint_dto);
-}
-
-nano::account nano::tcp_message_item::get_node_id () const
-{
-	nano::account node_id;
-	rsnano::rsn_tcp_message_item_node_id (handle, node_id.bytes.data ());
-	return node_id;
-}
-
-nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item const & other_a)
-{
-	if (handle != nullptr)
-		rsnano::rsn_tcp_message_item_destroy (handle);
-	handle = rsnano::rsn_tcp_message_item_clone (other_a.handle);
-	return *this;
-}
-nano::tcp_message_item & nano::tcp_message_item::operator= (tcp_message_item && other_a)
-{
-	if (handle != nullptr)
-		rsnano::rsn_tcp_message_item_destroy (handle);
-	handle = other_a.handle;
-	other_a.handle = nullptr;
-	return *this;
 }
 
 std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_channel (rsnano::ChannelHandle * handle)

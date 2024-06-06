@@ -24,16 +24,6 @@ nano::transport::channel::~channel ()
 	rsnano::rsn_channel_destroy (handle);
 }
 
-bool nano::transport::channel::is_temporary () const
-{
-	return rsnano::rsn_channel_is_temporary (handle);
-}
-
-void nano::transport::channel::set_temporary (bool temporary)
-{
-	rsnano::rsn_channel_set_temporary (handle, temporary);
-}
-
 void nano::transport::channel::close ()
 {
 	rsnano::rsn_channel_close (handle);

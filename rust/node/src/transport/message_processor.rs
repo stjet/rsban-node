@@ -70,6 +70,7 @@ impl LiveMessageProcessor {
                 // Check for special node port data
                 let peer0 = keepalive.peers[0];
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
+                    // TODO: Remove this as we do not need to establish a second connection to the same peer
                     let new_endpoint =
                         SocketAddrV6::new(*channel.remote_endpoint().ip(), peer0.port(), 0, 0);
                     self.channels.merge_peer(new_endpoint);

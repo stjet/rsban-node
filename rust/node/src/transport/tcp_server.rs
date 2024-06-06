@@ -1,16 +1,16 @@
-use super::{MessageDeserializer, NetworkFilter};
+use super::{ChannelEnum, MessageDeserializer, NetworkFilter, TcpChannels};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
+        Socket, SocketExtensions, SocketType, SynCookies, TcpChannelsExtension, TcpMessageManager,
         TrafficType,
     },
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_core::{utils::MemoryStream, Account, KeyPair};
+use rsnano_core::{Account, KeyPair};
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -18,7 +18,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 use tokio::{sync::Notify, task::spawn_blocking};
 use tracing::debug;
@@ -95,6 +95,7 @@ impl TcpServerObserver for NullTcpServerObserver {
 
 pub struct TcpServer {
     async_rt: Weak<AsyncRuntime>,
+    channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     stopped: AtomicBool,
@@ -104,7 +105,6 @@ pub struct TcpServer {
 
     // Remote enpoint used to remove response channel even after socket closing
     remote_endpoint: Mutex<SocketAddrV6>,
-    pub remote_node_id: Mutex<Account>,
 
     network: Arc<NetworkParams>,
     last_telemetry_req: Mutex<Option<Instant>>,
@@ -122,6 +122,7 @@ pub struct TcpServer {
     syn_cookies: Arc<SynCookies>,
     node_id: KeyPair,
     protocol_info: ProtocolInfo,
+    channels: Weak<TcpChannels>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -129,6 +130,7 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 impl TcpServer {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
+        channels: &Arc<TcpChannels>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
         observer: Weak<dyn TcpServerObserver>,
@@ -149,14 +151,15 @@ impl TcpServer {
         );
         Self {
             async_rt: Arc::downgrade(&async_rt),
+            channels: Arc::downgrade(channels),
             socket,
+            channel: Mutex::new(None),
             config,
             observer,
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
             remote_endpoint: Mutex::new(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
-            remote_node_id: Mutex::new(Account::zero()),
             last_telemetry_req: Mutex::new(None),
             network,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
@@ -244,25 +247,6 @@ impl TcpServer {
         true
     }
 
-    pub fn to_realtime_connection(&self, node_id: &Account) -> bool {
-        let Some(observer) = self.observer.upgrade() else {
-            return false;
-        };
-
-        if self.socket.socket_type() == SocketType::Undefined && !self.disable_tcp_realtime {
-            {
-                let mut lk = self.remote_node_id.lock().unwrap();
-                *lk = *node_id;
-            }
-
-            observer.inc_realtime_count();
-            self.socket.set_socket_type(SocketType::Realtime);
-            debug!("Switched to realtime mode ({})", self.remote_endpoint());
-            return true;
-        }
-        false
-    }
-
     pub fn set_last_telemetry_req(&self) {
         let mut lk = self.last_telemetry_req.lock().unwrap();
         *lk = Some(Instant::now());
@@ -285,12 +269,9 @@ impl TcpServer {
     }
 
     pub fn queue_realtime(&self, message: DeserializedMessage) {
-        self.tcp_message_manager.put_message(TcpMessageItem {
-            message: Some(message),
-            endpoint: *self.remote_endpoint.lock().unwrap(),
-            node_id: *self.remote_node_id.lock().unwrap(),
-            socket: Some(Arc::clone(&self.socket)),
-        });
+        let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
+        channel.set_last_packet_received(SystemTime::now());
+        self.tcp_message_manager.put(message, channel);
     }
 
     pub fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {
@@ -402,6 +383,7 @@ pub trait TcpServerExt {
     fn start(&self);
     fn timeout(&self);
 
+    fn to_realtime_connection(&self, node_id: &Account) -> bool;
     fn initiate_handshake(&self);
     fn receive_message(&self);
     fn received_message(&self, message: DeserializedMessage);
@@ -438,6 +420,35 @@ impl TcpServerExt for Arc<TcpServer> {
         self.receive_message();
     }
 
+    fn to_realtime_connection(&self, node_id: &Account) -> bool {
+        let Some(observer) = self.observer.upgrade() else {
+            return false;
+        };
+
+        if self.disable_tcp_realtime {
+            return false;
+        }
+
+        if self.socket.socket_type() != SocketType::Undefined {
+            return false;
+        }
+
+        let Some(channels) = self.channels.upgrade() else {
+            return false;
+        };
+
+        let Some(channel) = channels.create(Arc::clone(&self.socket), Arc::clone(self), *node_id)
+        else {
+            return false;
+        };
+
+        *self.channel.lock().unwrap() = Some(channel);
+        observer.inc_realtime_count();
+        self.socket.set_socket_type(SocketType::Realtime);
+        debug!("Switched to realtime mode ({})", self.remote_endpoint());
+        return true;
+    }
+
     fn timeout(&self) {
         if self.socket.has_timed_out() {
             if let Some(observer) = self.observer.upgrade() {
@@ -458,13 +469,12 @@ impl TcpServerExt for Arc<TcpServer> {
 
         debug!("Initiating handshake query ({})", endpoint);
 
-        let mut stream = MemoryStream::new();
-        message.serialize(&mut stream);
-
+        let mut serializer = MessageSerializer::new(self.network.network.protocol_info());
+        let buffer = Arc::new(serializer.serialize(&message).to_vec());
         let self_w = Arc::downgrade(self);
 
         self.socket.async_write(
-            &Arc::new(stream.to_vec()),
+            &buffer,
             Some(Box::new(move |ec, _len| {
                 if let Some(self_l) = self_w.upgrade() {
                     if ec.is_ok() {
@@ -701,7 +711,18 @@ impl TcpServerExt for Arc<TcpServer> {
             DetailType::NodeIdHandshake,
             Direction::In,
         );
-        debug!("Handshake message received ({})", self.remote_endpoint());
+
+        let log_type = match (message.query.is_some(), message.response.is_some()) {
+            (true, true) => "query + response",
+            (true, false) => "query",
+            (false, true) => "response",
+            (false, false) => "none",
+        };
+        debug!(
+            "Handshake message received: {} ({})",
+            log_type,
+            self.remote_endpoint()
+        );
 
         if let Some(query) = &message.query {
             // Send response + our own query

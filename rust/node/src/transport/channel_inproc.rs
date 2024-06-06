@@ -35,7 +35,6 @@ pub type InboundCallback = Arc<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + S
 
 pub struct ChannelInProc {
     channel_id: usize,
-    temporary: AtomicBool,
     channel_mutex: Mutex<InProcChannelData>,
     network_constants: NetworkConstants,
     network_filter: Arc<NetworkFilter>,
@@ -69,7 +68,6 @@ impl ChannelInProc {
     ) -> Self {
         Self {
             channel_id,
-            temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(InProcChannelData {
                 last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
@@ -222,15 +220,6 @@ impl AsyncBufferReader for VecBufferReader {
 }
 
 impl Channel for ChannelInProc {
-    fn is_temporary(&self) -> bool {
-        self.temporary.load(Ordering::SeqCst)
-    }
-
-    fn set_temporary(&self, temporary: bool) {
-        self.temporary
-            .store(temporary, std::sync::atomic::Ordering::SeqCst);
-    }
-
     fn get_last_bootstrap_attempt(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt
     }

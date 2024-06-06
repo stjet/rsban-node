@@ -28,7 +28,6 @@ pub struct FakeChannelData {
 pub struct ChannelFake {
     channel_id: usize,
     async_rt: Weak<AsyncRuntime>,
-    temporary: AtomicBool,
     channel_mutex: Mutex<FakeChannelData>,
     limiter: Arc<OutboundBandwidthLimiter>,
     stats: Arc<Stats>,
@@ -51,7 +50,6 @@ impl ChannelFake {
         Self {
             channel_id,
             async_rt: Arc::downgrade(async_rt),
-            temporary: AtomicBool::new(false),
             channel_mutex: Mutex::new(FakeChannelData {
                 last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
@@ -88,14 +86,6 @@ impl ChannelFake {
 impl Channel for ChannelFake {
     fn channel_id(&self) -> usize {
         self.channel_id
-    }
-
-    fn is_temporary(&self) -> bool {
-        self.temporary.load(Ordering::SeqCst)
-    }
-
-    fn set_temporary(&self, temporary: bool) {
-        self.temporary.store(temporary, Ordering::SeqCst)
     }
 
     fn get_last_bootstrap_attempt(&self) -> SystemTime {

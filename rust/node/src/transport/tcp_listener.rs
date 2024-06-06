@@ -8,16 +8,19 @@ use crate::{
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    utils::{is_ipv4_mapped, AsyncRuntime, ErrorCode, ThreadPool},
+    utils::{
+        into_ipv6_socket_address, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
+        AsyncRuntime, ErrorCode, ThreadPool,
+    },
     NetworkParams,
 };
+use async_trait::async_trait;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     KeyPair,
 };
 use rsnano_ledger::Ledger;
 use std::{
-    collections::HashMap,
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
     sync::{
@@ -27,7 +30,66 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
-use tracing::{debug, error, warn};
+use tokio::{io::AsyncWriteExt, sync::oneshot};
+use tracing::{debug, error, info, warn};
+
+#[derive(PartialEq, Eq)]
+pub enum AcceptResult {
+    Invalid,
+    Accepted,
+    Rejected,
+    Error,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ConnectionType {
+    Inbound,
+    Outbound,
+}
+
+impl From<ConnectionType> for Direction {
+    fn from(value: ConnectionType) -> Self {
+        match value {
+            ConnectionType::Inbound => Direction::In,
+            ConnectionType::Outbound => Direction::Out,
+        }
+    }
+}
+
+impl From<ConnectionType> for SocketEndpoint {
+    fn from(value: ConnectionType) -> Self {
+        match value {
+            ConnectionType::Inbound => SocketEndpoint::Server,
+            ConnectionType::Outbound => SocketEndpoint::Client,
+        }
+    }
+}
+
+pub struct AcceptReturn {
+    result: AcceptResult,
+    socket: Option<Arc<Socket>>,
+    server: Option<Arc<TcpServer>>,
+}
+
+impl AcceptReturn {
+    fn error() -> Self {
+        Self::failed(AcceptResult::Error)
+    }
+
+    fn failed(result: AcceptResult) -> Self {
+        Self {
+            result,
+            socket: None,
+            server: None,
+        }
+    }
+}
+
+struct Connection {
+    endpoint: SocketAddrV6,
+    socket: Weak<Socket>,
+    server: Weak<TcpServer>,
+}
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
@@ -53,6 +115,7 @@ pub struct TcpListener {
     realtime_count: AtomicUsize,
     cleanup_thread: Mutex<Option<JoinHandle<()>>>,
     condition: Condvar,
+    close: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 impl Drop for TcpListener {
@@ -65,10 +128,10 @@ impl Drop for TcpListener {
 }
 
 struct TcpListenerData {
-    connections: HashMap<usize, Weak<TcpServer>>,
+    connections: Vec<Connection>,
     attempts: Vec<Attempt>,
     stopped: bool,
-    listening_socket: Option<Arc<ServerSocket>>, // TODO remove arc
+    local_addr: SocketAddr,
 }
 
 struct ServerSocket {
@@ -77,16 +140,37 @@ struct ServerSocket {
 }
 
 impl TcpListenerData {
-    fn evict_dead_connections(&self) {
-        let Some(socket) = &self.listening_socket else {
-            return;
-        };
+    fn count_per_type(&self, connection_type: ConnectionType) -> usize {
+        self.count_servers(|server| server.socket.endpoint_type() == connection_type.into())
+    }
 
-        socket
-            .connections_per_address
-            .lock()
-            .unwrap()
-            .evict_dead_connections();
+    fn count_per_ip(&self, ip: &Ipv6Addr) -> usize {
+        self.count_servers(|server| server.remote_endpoint().ip() == ip)
+    }
+
+    fn count_per_subnetwork(&self, ip: &Ipv6Addr) -> usize {
+        let subnet = map_address_to_subnetwork(ip);
+        self.count_servers(|server| {
+            map_address_to_subnetwork(server.remote_endpoint().ip()) == subnet
+        })
+    }
+
+    fn count_servers<P>(&self, predicate: P) -> usize
+    where
+        P: FnMut(&Arc<TcpServer>) -> bool,
+    {
+        self.connections
+            .iter()
+            .filter_map(|v| v.server.upgrade())
+            .filter(predicate)
+            .count()
+    }
+
+    fn count_attempts(&self, ip: &Ipv6Addr) -> usize {
+        self.attempts
+            .iter()
+            .filter(|a| a.endpoint.ip() == ip)
+            .count()
     }
 }
 
@@ -117,10 +201,10 @@ impl TcpListener {
             tcp_channels: Arc::downgrade(&tcp_channels),
             syn_cookies,
             data: Mutex::new(TcpListenerData {
-                connections: HashMap::new(),
+                connections: Vec::new(),
                 attempts: Vec::new(),
                 stopped: false,
-                listening_socket: None,
+                local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
             }),
             network_params,
             node_flags,
@@ -138,26 +222,21 @@ impl TcpListener {
             node_id,
             cleanup_thread: Mutex::new(None),
             condition: Condvar::new(),
+            close: Mutex::new(None),
         }
     }
 
     pub fn stop(&self) {
         // Close sockets
-        let mut conns = HashMap::new();
+        let mut conns = Vec::new();
         {
             let mut guard = self.data.lock().unwrap();
             guard.stopped = true;
             std::mem::swap(&mut conns, &mut guard.connections);
+        }
 
-            if let Some(socket) = guard.listening_socket.take() {
-                socket.socket.close_internal();
-                self.socket_facade.close_acceptor();
-                socket
-                    .connections_per_address
-                    .lock()
-                    .unwrap()
-                    .close_connections();
-            }
+        if let Some(close) = self.close.lock().unwrap().take() {
+            close.send(()).unwrap();
         }
         self.condition.notify_all();
 
@@ -166,19 +245,27 @@ impl TcpListener {
         }
 
         // Close attempts
-        // TODO
-    }
+        {
+            let mut attempts = Vec::new();
+            {
+                let mut guard = self.data.lock().unwrap();
+                std::mem::swap(&mut guard.attempts, &mut attempts);
+            }
+            self.runtime.tokio.block_on(async {
+                for attempt in attempts {
+                    let _ = attempt.join_handle.await;
+                }
+            })
+        }
 
-    /// Connects to the default peering port
-    pub fn connect_ip(&self, remote: IpAddr) {
-        self.connect(SocketAddr::new(
-            remote,
-            self.network_params.network.default_node_port,
-        ));
-    }
-
-    pub fn connect(&self, remote: SocketAddr) {
-        todo!()
+        for conn in conns {
+            if let Some(socket) = conn.socket.upgrade() {
+                socket.close();
+            }
+            if let Some(server) = conn.server.upgrade() {
+                server.stop();
+            }
+        }
     }
 
     pub fn realtime_count(&self) -> usize {
@@ -195,70 +282,13 @@ impl TcpListener {
         self.data.lock().unwrap().attempts.len()
     }
 
-    pub fn endpoint(&self) -> SocketAddrV6 {
+    pub fn endpoint(&self) -> SocketAddr {
         let guard = self.data.lock().unwrap();
-        if !guard.stopped && guard.listening_socket.is_some() {
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
+        if !guard.stopped {
+            guard.local_addr
         } else {
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)
         }
-    }
-
-    fn remove_connection(&self, connection_id: usize) {
-        let mut data = self.data.lock().unwrap();
-        data.connections.remove(&connection_id);
-    }
-
-    fn limit_reached_for_incoming_subnetwork_connections(
-        &self,
-        new_connection: &Arc<Socket>,
-    ) -> bool {
-        let endpoint = new_connection
-            .get_remote()
-            .expect("new connection has no remote endpoint set");
-        if self.node_flags.disable_max_peers_per_subnetwork || is_ipv4_mapped(&endpoint.ip()) {
-            // If the limit is disabled, then it is unreachable.
-            // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6 /64.
-            return false;
-        }
-
-        let guard = self.data.lock().unwrap();
-        let Some(socket) = &guard.listening_socket else {
-            return false;
-        };
-
-        let counted_connections = socket
-            .connections_per_address
-            .lock()
-            .unwrap()
-            .count_subnetwork_connections(
-                endpoint.ip(),
-                self.network_params
-                    .network
-                    .ipv6_subnetwork_prefix_for_limiting,
-            );
-
-        counted_connections >= self.network_params.network.max_peers_per_subnetwork
-    }
-
-    fn limit_reached_for_incoming_ip_connections(&self, new_connection: &Arc<Socket>) -> bool {
-        if self.node_flags.disable_max_peers_per_ip {
-            return false;
-        }
-
-        let guard = self.data.lock().unwrap();
-        let Some(socket) = &guard.listening_socket else {
-            return false;
-        };
-
-        let ip = new_connection.get_remote().unwrap().ip().clone();
-        let counted_connections = socket
-            .connections_per_address
-            .lock()
-            .unwrap()
-            .count_connections_for_ip(&ip);
-
-        counted_connections >= self.network_params.network.max_peers_per_ip
     }
 
     fn run_cleanup(&self) {
@@ -267,7 +297,7 @@ impl TcpListener {
             self.stats.inc(StatType::TcpListener, DetailType::Cleanup);
 
             self.cleanup(&mut guard);
-            self.timeout();
+            self.timeout(&mut guard);
 
             guard = self
                 .condition
@@ -279,21 +309,35 @@ impl TcpListener {
 
     fn cleanup(&self, data: &mut TcpListenerData) {
         // Erase dead connections
-        data.connections.retain(|_, conn| {
-            let retain = conn.strong_count() > 0;
+        data.connections.retain(|conn| {
+            let retain = conn.server.strong_count() > 0;
             if !retain {
                 self.stats.inc(StatType::TcpListener, DetailType::EraseDead);
                 debug!("Evicting dead connection");
             }
             retain
-        })
+        });
 
         // Erase completed attempts
-        // TODO
+        data.attempts
+            .retain(|attempt| !attempt.join_handle.is_finished())
     }
 
-    fn timeout(&self) {
-        // TODO
+    fn timeout(&self, data: &mut TcpListenerData) {
+        for attempt in &data.attempts {
+            if !attempt.join_handle.is_finished()
+                && attempt.start.elapsed() >= self.config.connect_timeout
+            {
+                attempt.join_handle.abort();
+                self.stats
+                    .inc(StatType::TcpListener, DetailType::AttemptTimeout);
+                debug!(
+                    "Connection attempt timed out: {} (started {}s ago)",
+                    attempt.endpoint,
+                    attempt.start.elapsed().as_secs()
+                );
+            }
+        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -306,118 +350,234 @@ impl TcpListener {
             })],
         )
     }
-}
 
-pub trait TcpListenerExt {
-    /// If we are unable to accept a socket, for any reason, we wait just a little (1ms) before rescheduling the next connection accept.
-    /// The intention is to throttle back the connection requests and break up any busy loops that could possibly form and
-    /// give the rest of the system a chance to recover.
-    fn on_connection_requeue_delayed(
+    fn check_limits(
         &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
-    );
-    fn start(&self) -> anyhow::Result<()>;
-    fn start_with(
-        &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
-    ) -> anyhow::Result<()>;
-    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>);
-    fn accept_action(&self, ec: ErrorCode, socket: Arc<Socket>);
-    fn as_observer(self) -> Arc<dyn TcpServerObserver>;
-}
+        ip: &Ipv6Addr,
+        connection_type: ConnectionType,
+        data: &mut TcpListenerData,
+    ) -> AcceptResult {
+        if data.stopped {
+            return AcceptResult::Rejected;
+        }
 
-impl TcpListenerExt for Arc<TcpListener> {
-    fn on_connection_requeue_delayed(
-        &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
-    ) {
-        let this_w = Arc::downgrade(self);
-        self.workers.add_delayed_task(
-            Duration::from_millis(1),
-            Box::new(move || {
-                if let Some(this_l) = this_w.upgrade() {
-                    this_l.on_connection(callback);
-                }
-            }),
-        );
-    }
-    fn start(&self) -> anyhow::Result<()> {
-        let self_w = Arc::downgrade(&self);
-        self.start_with(Box::new(move |socket, ec| {
-            if let Some(listener) = self_w.upgrade() {
-                listener.accept_action(ec, socket);
-                true
-            } else {
-                false
+        self.cleanup(data);
+
+        if let Some(channels) = self.tcp_channels.upgrade() {
+            if channels.excluded_peers.lock().unwrap().is_excluded_ip(ip) {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::Excluded,
+                    connection_type.into(),
+                );
+
+                debug!("Rejected connection from excluded peer: {}", ip);
+                return AcceptResult::Rejected;
             }
-        }))
+        }
+
+        if !self.node_flags.disable_max_peers_per_ip {
+            let count = data.count_per_ip(ip);
+            if count >= self.network_params.network.max_peers_per_ip {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerIp,
+                    connection_type.into(),
+                );
+                debug!("Max connections per IP reached (ip: {}, count: {}), unable to open new connection", ip, count);
+                return AcceptResult::Rejected;
+            }
+        }
+
+        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
+        if !self.node_flags.disable_max_peers_per_subnetwork
+            && !is_ipv4_or_v4_mapped_address(&(*ip).into())
+        {
+            let count = data.count_per_subnetwork(ip);
+            if count >= self.network_params.network.max_peers_per_subnetwork {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerSubnetwork,
+                    connection_type.into(),
+                );
+                debug!("Max connections per subnetwork reached (ip: {}, count: {}), unable to open new connection",
+                    ip, count);
+                return AcceptResult::Rejected;
+            }
+        }
+
+        match connection_type {
+            ConnectionType::Inbound => {
+                // Should be checked earlier (wait_available_slots)
+                debug_assert!(data.connections.len() <= self.config.max_inbound_connections);
+                let count = data.count_per_type(ConnectionType::Inbound);
+                if count >= self.config.max_inbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        connection_type.into(),
+                    );
+                    debug!(
+                        "Max inbound connections reached ({}), unable to accept new connection",
+                        count
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+            ConnectionType::Outbound => {
+                let count = data.count_per_type(ConnectionType::Outbound);
+                if count >= self.config.max_outbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        connection_type.into(),
+                    );
+                    debug!(
+                        "Max outbound connections reached ({}), unable to initiate new connection",
+                        count
+                    );
+                    return AcceptResult::Rejected;
+                }
+
+                if data.attempts.len() > self.config.max_attempts {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        connection_type.into(),
+                    );
+                    debug!(
+                        "Max connection attempts reached ({}), unable to initiate new connection",
+                        count
+                    );
+                    return AcceptResult::Rejected;
+                }
+
+                let count = data.count_attempts(ip);
+                if count >= self.config.max_attempts_per_ip {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttemptsPerIp,
+                        connection_type.into(),
+                    );
+                    debug!(
+                        "Connection attempt already in progress ({}), unable to initiate new connection",
+                        ip
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+        }
+
+        AcceptResult::Accepted
     }
 
-    fn start_with(
+    fn is_stopped(&self) -> bool {
+        self.data.lock().unwrap().stopped
+    }
+}
+
+#[async_trait]
+pub trait TcpListenerExt {
+    fn start(&self);
+    async fn run(&self, listener: tokio::net::TcpListener, close: oneshot::Receiver<()>);
+    fn connect_ip(&self, remote: Ipv6Addr) -> bool;
+    fn connect(&self, remote: SocketAddrV6) -> bool;
+    fn as_observer(self) -> Arc<dyn TcpServerObserver>;
+
+    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()>;
+
+    async fn accept_one(
         &self,
-        callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>,
-    ) -> anyhow::Result<()> {
-        error!("Starting TCP listener");
-        let mut data = self.data.lock().unwrap();
+        raw_stream: tokio::net::TcpStream,
+        connection_type: ConnectionType,
+    ) -> AcceptReturn;
 
-        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+    async fn wait_available_slots(&self);
+}
 
-        let socket = SocketBuilder::endpoint_type(
-            SocketEndpoint::Server,
-            Arc::clone(&self.workers),
-            Arc::downgrade(&self.runtime),
-        )
-        .default_timeout(Duration::MAX)
-        .silent_connection_tolerance_time(Duration::from_secs(
-            self.network_params
-                .network
-                .silent_connection_tolerance_time_s as u64,
+#[async_trait]
+impl TcpListenerExt for Arc<TcpListener> {
+    /// Connects to the default peering port
+    fn connect_ip(&self, remote: Ipv6Addr) -> bool {
+        self.connect(SocketAddrV6::new(
+            remote,
+            self.network_params.network.default_node_port,
+            0,
+            0,
         ))
-        .idle_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ))
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            Arc::clone(&self.socket_observer),
-        ])))
-        .build();
+    }
 
-        let listening_socket = Arc::new(ServerSocket {
-            socket,
-            connections_per_address: Mutex::new(Default::default()),
+    fn connect(&self, remote: SocketAddrV6) -> bool {
+        let mut guard = self.data.lock().unwrap();
+
+        if self.check_limits(remote.ip(), ConnectionType::Outbound, &mut guard)
+            != AcceptResult::Accepted
+        {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectRejected,
+                Direction::Out,
+            );
+            // Refusal reason should be logged earlier
+
+            return false; // Rejected
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::ConnectInitiate,
+            Direction::Out,
+        );
+        debug!("Initiate outgoing connection to: {}", remote);
+
+        let self_l = Arc::clone(self);
+        let join_handle = self.runtime.tokio.spawn(async move {
+            if let Err(e) = self_l.connect_impl(remote).await {
+                self_l.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::ConnectError,
+                    Direction::Out,
+                );
+                debug!("Error connecting to: {} ({:?})", remote, e);
+            }
         });
 
-        let ec = self.socket_facade.open(&SocketAddr::new(
-            IpAddr::V6(Ipv6Addr::UNSPECIFIED),
-            self.port.load(Ordering::SeqCst),
-        ));
-        let listening_port = self.socket_facade.listening_port();
-        if ec.is_err() {
-            error!(
-                "Error while binding for incoming TCP/bootstrap on port {}: {:?}",
-                listening_port, ec
-            );
-            bail!("Network: Error while binding for incoming TCP/bootstrap");
-        }
+        guard.attempts.push(Attempt {
+            endpoint: remote,
+            start: Instant::now(),
+            join_handle,
+        });
+        true // Attempt started
+    }
 
-        // the user can either specify a port value in the config or it can leave the choice up to the OS:
-        // (1): port specified
-        // (2): port not specified
+    fn start(&self) {
+        let (close_tx, close_rx) = oneshot::channel();
+        *self.close.lock().unwrap() = Some(close_tx);
+        let self_l = Arc::clone(self);
+        self.runtime.tokio.spawn(async move {
+            let port = self_l.port.load(Ordering::SeqCst);
+            let Ok(listener) = tokio::net::TcpListener::bind(SocketAddr::new(
+                IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+                port,
+            ))
+            .await
+            else {
+                error!("Error while binding for incoming connections on: {}", port);
+                return;
+            };
 
-        // (1) -- nothing to do
-        //
-        if self.port.load(Ordering::SeqCst) == listening_port {
-        }
-        // (2) -- OS port choice happened at TCP socket bind time, so propagate this port value back;
-        // the propagation is done here for the `tcp_listener` itself, whereas for `network`, the node does it
-        // after calling `tcp_listener.start ()`
-        //
-        else {
-            self.port.store(listening_port, Ordering::SeqCst);
-        }
-        data.listening_socket = Some(listening_socket);
-        drop(data);
-        self.on_connection(callback);
+            let addr = listener
+                .local_addr()
+                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
+            info!("Listening for incoming connections on: {}", addr);
+
+            if let Some(channels) = self_l.tcp_channels.upgrade() {
+                channels.set_port(addr.port());
+            }
+            self_l.data.lock().unwrap().local_addr = addr;
+
+            self_l.run(listener, close_rx).await
+        });
 
         let self_w = Arc::downgrade(self);
         *self.cleanup_thread.lock().unwrap() = Some(
@@ -430,192 +590,221 @@ impl TcpListenerExt for Arc<TcpListener> {
                 })
                 .unwrap(),
         );
-
-        Ok(())
     }
 
-    fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
-        let listening_socket = {
-            let guard = self.data.lock().unwrap();
-            let Some(s) = &guard.listening_socket else {
-                return;
-            };
-            Arc::clone(s)
+    async fn run(&self, listener: tokio::net::TcpListener, close: oneshot::Receiver<()>) {
+        let run_loop = async {
+            loop {
+                self.wait_available_slots().await;
+
+                let Ok((stream, _)) = listener.accept().await else {
+                    self.stats.inc_dir(
+                        StatType::TcpListener,
+                        DetailType::AcceptFailure,
+                        Direction::In,
+                    );
+                    continue;
+                };
+
+                let result = self.accept_one(stream, ConnectionType::Inbound).await;
+                if result.result != AcceptResult::Accepted {
+                    self.stats.inc_dir(
+                        StatType::TcpListener,
+                        DetailType::AcceptFailure,
+                        Direction::In,
+                    );
+                    // Refusal reason should be logged earlier
+                }
+
+                // Sleep for a while to prevent busy loop
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
         };
-        let this_w = Arc::downgrade(self);
-        self.socket_facade.post(Box::new(move || {
-            let Some(this_l) = this_w.upgrade() else {return;};
-            if !this_l.socket_facade.is_acceptor_open() {
-                error!("Socket acceptor is not open");
-                return;
+
+        tokio::select! {
+            _ = close =>{ },
+            _ = run_loop => {}
+        }
+    }
+
+    async fn wait_available_slots(&self) {
+        let last_log = Instant::now();
+        let log_interval = if self.network_params.network.is_dev_network() {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(15)
+        };
+        while self.connection_count() >= self.config.max_inbound_connections && !self.is_stopped() {
+            if last_log.elapsed() >= log_interval {
+                warn!(
+                    "Waiting for available slots to accept new connections (current: {} / max: {})",
+                    self.connection_count(),
+                    self.config.max_inbound_connections
+                );
             }
 
-            let socket_stats = Arc::new(SocketStats::new(
-                Arc::clone(&this_l.stats),
-            ));
-
-            // Prepare new connection
-            let new_connection = SocketBuilder::endpoint_type(
-                SocketEndpoint::Server,
-                Arc::clone(&this_l.workers),
-                Arc::downgrade(&this_l.runtime),
-            )
-            .default_timeout(Duration::from_secs(
-                this_l.node_config.tcp_io_timeout_s as u64,
-            ))
-            .idle_timeout(Duration::from_secs(
-                this_l
-                    .network_params
-                    .network
-                    .silent_connection_tolerance_time_s as u64,
-            ))
-            .silent_connection_tolerance_time(Duration::from_secs(
-                this_l
-                    .network_params
-                    .network
-                    .silent_connection_tolerance_time_s as u64,
-            ))
-            .observer(Arc::new(CompositeSocketObserver::new(vec![
-                socket_stats,
-                Arc::clone(&this_l.socket_observer),
-            ])))
-            .build();
-
-            let listening_socket_clone = Arc::clone(&listening_socket);
-            let connection_clone = Arc::clone(&new_connection);
-            let this_clone_w = Arc::downgrade(&this_l);
-            this_l.socket_facade.async_accept(
-                &new_connection,
-                Box::new(move |remote_endpoint, ec| {
-                    let Some(this_clone) = this_clone_w.upgrade() else { return; };
-                    let SocketAddr::V6(remote_endpoint) = remote_endpoint else {panic!("not a v6 address")};
-                    let socket_l = listening_socket_clone;
-                    connection_clone.set_remote(remote_endpoint);
-
-                    let data = this_clone.data.lock().unwrap();
-                    data.evict_dead_connections();
-                    drop(data);
-
-                    if socket_l.connections_per_address.lock().unwrap().count_connections() >= this_clone.config.max_inbound_connections {
-                        this_clone.stats.inc_dir (StatType::TcpListener, DetailType::AcceptFailure, Direction::In);
-                        debug!("Max_inbound_connections reached, unable to open new connection");
-
-                        this_clone.on_connection_requeue_delayed (callback);
-                        return;
-                    }
-
-                    if this_clone.limit_reached_for_incoming_ip_connections (&connection_clone) {
-                        let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        this_clone.stats.inc_dir (StatType::TcpListener, DetailType::MaxPerIp, Direction::In);
-                        debug!("Max connections per IP reached (ip: {}), unable to open new connection", remote_ip_address);
-                        this_clone.on_connection_requeue_delayed (callback);
-                        return;
-                    }
-
-                    if this_clone.limit_reached_for_incoming_subnetwork_connections (&connection_clone) {
-                        let remote_ip_address = connection_clone.get_remote().unwrap().ip().clone();
-                        this_clone.stats.inc_dir(StatType::TcpListener, DetailType::MaxPerSubnetwork, Direction::In);
-                        debug!("Max connections per subnetwork reached (ip: {}), unable to open new connection",
-                            remote_ip_address);
-                        this_clone.on_connection_requeue_delayed (callback);
-                        return;
-                    }
-                   			if ec.is_ok() {
-                    				// Make sure the new connection doesn't idle. Note that in most cases, the callback is going to start
-                    				// an IO operation immediately, which will start a timer.
-                    				connection_clone.start ();
-                    				connection_clone.set_timeout (Duration::from_secs(this_clone.network_params.network.idle_timeout_s as u64));
-                    				this_clone.stats.inc_dir (StatType::TcpListener, DetailType::AcceptSuccess, Direction::In);
-                                    socket_l.connections_per_address.lock().unwrap().insert(&connection_clone);
-                                    this_clone.socket_observer.socket_accepted(Arc::clone(&connection_clone));
-                    				if callback (connection_clone, ec)
-                    				{
-                    					this_clone.on_connection (callback);
-                    					return;
-                    				}
-                    				warn!("Stopping to accept connections");
-                    				return;
-                   			}
-
-                    			// accept error
-                    			this_clone.stats.inc_dir (StatType::TcpListener, DetailType::AcceptFailure, Direction::In);
-                    			error!("Unable to accept connection: ({:?})", ec);
-
-                    			if is_temporary_error (ec)
-                    			{
-                    				// if it is a temporary error, just retry it
-                    				this_clone.on_connection_requeue_delayed (callback);
-                    				return;
-                    			}
-
-                    			// if it is not a temporary error, check how the listener wants to handle this error
-                    			if callback(connection_clone, ec)
-                    			{
-                    				this_clone.on_connection_requeue_delayed (callback);
-                    				return;
-                    			}
-
-                    			// No requeue if we reach here, no incoming socket connections will be handled
-                    			warn!("Stopping to accept connections");
-                }),
-            );
-        }));
-    }
-
-    fn accept_action(&self, _ec: ErrorCode, socket: Arc<Socket>) {
-        let Some(remote) = socket.get_remote() else {
-            return;
-        };
-        let Some(tcp_channels) = self.tcp_channels.upgrade() else {
-            return;
-        };
-        if !tcp_channels
-            .excluded_peers
-            .lock()
-            .unwrap()
-            .is_excluded(&remote)
-        {
-            let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
-                Arc::clone(&self.runtime),
-                Arc::clone(&self.syn_cookies),
-                Arc::clone(&self.stats),
-                self.network_params.network.clone(),
-                Arc::clone(&self.node_id),
-                Arc::clone(&self.ledger),
-                Arc::clone(&self.workers),
-                Arc::clone(&self.block_processor),
-                Arc::clone(&self.bootstrap_initiator),
-                self.node_flags.clone(),
-            ));
-            let observer = Arc::downgrade(&self);
-            let server = Arc::new(TcpServer::new(
-                Arc::clone(&self.runtime),
-                socket,
-                Arc::new(self.node_config.clone()),
-                observer,
-                Arc::clone(&tcp_channels.publish_filter),
-                Arc::new(self.network_params.clone()),
-                Arc::clone(&self.stats),
-                Arc::clone(&tcp_channels.tcp_message_manager),
-                message_visitor_factory,
-                true,
-                Arc::clone(&self.syn_cookies),
-                self.node_id.deref().clone(),
-            ));
-
-            let mut data = self.data.lock().unwrap();
-            data.connections
-                .insert(server.unique_id(), Arc::downgrade(&server));
-            server.start();
-        } else {
-            self.stats
-                .inc_dir(StatType::TcpListener, DetailType::Excluded, Direction::In);
-            debug!("Rejected connection from excluded peer {}", remote);
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 
     fn as_observer(self) -> Arc<dyn TcpServerObserver> {
         self
+    }
+
+    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
+        let raw_listener = tokio::net::TcpSocket::new_v6()?;
+        let raw_stream = raw_listener.connect(endpoint.into()).await?;
+        let result = self.accept_one(raw_stream, ConnectionType::Outbound).await;
+        if result.result == AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectSuccess,
+                Direction::Out,
+            );
+            debug!("Successfully connected to: {}", endpoint);
+            result.server.unwrap().initiate_handshake();
+        } else {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectFailure,
+                Direction::Out,
+            );
+            // Refusal reason should be logged earlier
+        }
+        Ok(())
+    }
+
+    async fn accept_one(
+        &self,
+        mut raw_stream: tokio::net::TcpStream,
+        connection_type: ConnectionType,
+    ) -> AcceptReturn {
+        let Ok(remote_endpoint) = raw_stream.peer_addr() else {
+            return AcceptReturn::error();
+        };
+
+        let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
+
+        let Some(tcp_channels) = self.tcp_channels.upgrade() else {
+            return AcceptReturn::error();
+        };
+
+        let result = {
+            let mut guard = self.data.lock().unwrap();
+            self.check_limits(remote_endpoint.ip(), connection_type, &mut guard)
+        };
+
+        if result != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::AcceptRejected,
+                connection_type.into(),
+            );
+            debug!(
+                "Rejected connection from: {} ({:?})",
+                remote_endpoint, connection_type
+            );
+            // Rejection reason should be logged earlier
+
+            if let Err(e) = raw_stream.shutdown().await {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::CloseError,
+                    connection_type.into(),
+                );
+                debug!(
+                    "Error while clsoing socket after refusing connection: {:?} ({:?})",
+                    e, connection_type
+                )
+            }
+            drop(raw_stream);
+            return AcceptReturn::failed(result);
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::AcceptSuccess,
+            connection_type.into(),
+        );
+
+        debug!(
+            "Accepted connection: {} ({:?})",
+            remote_endpoint, connection_type
+        );
+
+        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+        let socket = SocketBuilder::endpoint_type(
+            connection_type.into(),
+            Arc::clone(&self.workers),
+            Arc::downgrade(&self.runtime),
+        )
+        .default_timeout(Duration::from_secs(
+            self.node_config.tcp_io_timeout_s as u64,
+        ))
+        .silent_connection_tolerance_time(Duration::from_secs(
+            self.network_params
+                .network
+                .silent_connection_tolerance_time_s as u64,
+        ))
+        .idle_timeout(Duration::from_secs(
+            self.network_params.network.idle_timeout_s as u64,
+        ))
+        .observer(Arc::new(CompositeSocketObserver::new(vec![
+            socket_stats,
+            Arc::clone(&self.socket_observer),
+        ])))
+        .use_existing_socket(raw_stream, remote_endpoint)
+        .build();
+
+        let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
+            Arc::clone(&self.runtime),
+            Arc::clone(&self.syn_cookies),
+            Arc::clone(&self.stats),
+            self.network_params.network.clone(),
+            Arc::clone(&self.node_id),
+            Arc::clone(&self.ledger),
+            Arc::clone(&self.workers),
+            Arc::clone(&self.block_processor),
+            Arc::clone(&self.bootstrap_initiator),
+            self.node_flags.clone(),
+        ));
+        let observer = Arc::downgrade(&self);
+        let server = Arc::new(TcpServer::new(
+            Arc::clone(&self.runtime),
+            &tcp_channels,
+            Arc::clone(&socket),
+            Arc::new(self.node_config.clone()),
+            observer,
+            Arc::clone(&tcp_channels.publish_filter),
+            Arc::new(self.network_params.clone()),
+            Arc::clone(&self.stats),
+            Arc::clone(&tcp_channels.tcp_message_manager),
+            message_visitor_factory,
+            true,
+            Arc::clone(&self.syn_cookies),
+            self.node_id.deref().clone(),
+        ));
+
+        self.data.lock().unwrap().connections.push(Connection {
+            endpoint: remote_endpoint,
+            socket: Arc::downgrade(&socket),
+            server: Arc::downgrade(&server),
+        });
+
+        socket.set_timeout(Duration::from_secs(
+            self.network_params.network.idle_timeout_s as u64,
+        ));
+
+        socket.start();
+        server.start();
+
+        self.socket_observer.socket_accepted(Arc::clone(&socket));
+
+        AcceptReturn {
+            result: AcceptResult::Accepted,
+            socket: Some(socket),
+            server: Some(server),
+        }
     }
 }
 
@@ -635,10 +824,6 @@ impl TcpServerObserver for TcpListener {
             self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
         } else if socket_type == super::SocketType::Realtime {
             self.realtime_count.fetch_sub(1, Ordering::SeqCst);
-            // Clear temporary channel
-            if let Some(tcp_channels) = self.tcp_channels.upgrade() {
-                tcp_channels.erase_temporary_channel(&endpoint);
-            }
         }
     }
 
@@ -669,6 +854,7 @@ fn is_temporary_error(ec: ErrorCode) -> bool {
 }
 
 struct Attempt {
-    endpoint: SocketAddr,
+    endpoint: SocketAddrV6,
     start: Instant,
+    join_handle: tokio::task::JoinHandle<()>,
 }

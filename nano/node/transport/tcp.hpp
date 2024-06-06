@@ -22,20 +22,6 @@ class node_flags;
 class network;
 class syn_cookies;
 class logger;
-class tcp_message_item final
-{
-public:
-	tcp_message_item ();
-	explicit tcp_message_item (rsnano::TcpMessageItemHandle * handle_a);
-	tcp_message_item (nano::tcp_message_item const & other_a);
-	tcp_message_item (nano::tcp_message_item && other_a) noexcept;
-	~tcp_message_item ();
-	tcp_message_item & operator= (tcp_message_item const & other_a);
-	tcp_message_item & operator= (tcp_message_item && other_a);
-	nano::tcp_endpoint get_endpoint () const;
-	nano::account get_node_id () const;
-	rsnano::TcpMessageItemHandle * handle;
-};
 
 class tcp_message_manager final
 {
@@ -45,10 +31,6 @@ public:
 	tcp_message_manager (tcp_message_manager const &) = delete;
 	tcp_message_manager (tcp_message_manager &&) = delete;
 	~tcp_message_manager ();
-	void put_message (nano::tcp_message_item const & item_a);
-	nano::tcp_message_item get_message ();
-	// Stop container and notify waiting threads
-	void stop ();
 	rsnano::TcpMessageManagerHandle * handle;
 };
 
@@ -88,7 +70,6 @@ namespace transport
 			channel{ handle_a } {};
 
 		uint8_t get_network_version () const override;
-		void set_network_version (uint8_t network_version_a);
 		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
 		size_t socket_id () const;
 
@@ -127,31 +108,21 @@ namespace transport
 		// Desired fanout for a given scale
 		std::size_t fanout (float scale = 1.0f) const;
 		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
-		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0, bool = false) const;
+		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0) const;
 		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		bool not_a_peer (nano::endpoint const &, bool);
 		void merge_peer (nano::endpoint const & peer_a);
-		void process_messages ();
 		// Should we reach out to this endpoint with a keepalive message
 		bool track_reachout (nano::endpoint const &);
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
-		void list (std::deque<std::shared_ptr<nano::transport::channel>> &, uint8_t = 0, bool = true);
-		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0, bool = true);
+		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0);
 		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);
-		void keepalive ();
-		std::optional<nano::keepalive> sample_keepalive ();
 		void flood_message (nano::message & msg, float scale);
 		// Connection start
 		void start_tcp (nano::endpoint const &);
-		void on_new_channel (std::function<void (std::shared_ptr<nano::transport::channel>)> observer_a);
 
-		std::vector<nano::endpoint> get_peers () const;
 		void random_fill (std::array<nano::endpoint, 8> &) const;
-		void set_port (uint16_t port_a);
 		uint16_t port () const;
-		void set_observer (std::shared_ptr<nano::transport::tcp_listener> observer_a);
-		void set_message_visitor_factory (nano::transport::request_response_visitor_factory & visitor_factory);
-		std::shared_ptr<nano::transport::channel_tcp> get_first_channel () const;
 		std::size_t get_next_channel_id ();
 
 		nano::tcp_message_manager tcp_message_manager;

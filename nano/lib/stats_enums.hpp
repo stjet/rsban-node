@@ -25,6 +25,7 @@ enum class type : uint8_t
 	ipc,
 	tcp,
 	tcp_channels,
+	tcp_channels_rejected,
 	tcp_listener,
 	tcp_listener_rejected,
 	channel,
@@ -249,6 +250,7 @@ enum class detail : uint8_t
 	accept_success,
 	accept_failure,
 	accept_rejected,
+	close_error,
 	max_per_ip,
 	max_per_subnetwork,
 	max_attempts,
@@ -262,6 +264,11 @@ enum class detail : uint8_t
 	connect_success,
 	attempt_timeout,
 	not_a_peer,
+
+	// tcp_channels
+	channel_accepted,
+	channel_rejected,
+	channel_duplicate,
 
 	// tcp_server
 	handshake,

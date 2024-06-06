@@ -104,9 +104,9 @@ bool nano::network::track_reachout (nano::endpoint const & endpoint_a)
 	return tcp_channels->track_reachout (endpoint_a);
 }
 
-std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a, bool include_temporary_channels_a) const
+std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a) const
 {
-	return tcp_channels->random_channels (count_a, min_version_a, include_temporary_channels_a);
+	return tcp_channels->random_channels (count_a, min_version_a);
 }
 
 std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::account const & node_id_a)

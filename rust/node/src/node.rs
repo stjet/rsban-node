@@ -453,6 +453,8 @@ impl Node {
             Arc::new(node_id.clone()),
         ));
 
+        channels.set_listener(Arc::downgrade(&tcp_listener));
+
         let hinted_scheduler = Arc::new(HintedScheduler::new(
             config.hinted_scheduler.clone(),
             Arc::clone(&active),
@@ -637,27 +639,10 @@ impl Node {
             },
         ));
 
-        channels.set_observer(Arc::downgrade(&Arc::clone(&tcp_listener).as_observer()));
-
         let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
             config.bootstrap_serving_threads as usize,
             "Bootstrap work".to_string(),
         ));
-
-        let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
-            Arc::clone(&async_rt),
-            Arc::clone(&syn_cookies),
-            Arc::clone(&stats),
-            network_params.network.clone(),
-            Arc::new(node_id.clone()),
-            Arc::clone(&ledger),
-            Arc::clone(&bootstrap_workers),
-            Arc::clone(&block_processor),
-            Arc::clone(&bootstrap_initiator),
-            flags.clone(),
-        ));
-
-        channels.set_message_visitor_factory(visitor_factory);
 
         process_live_dispatcher.connect(&block_processor);
 
@@ -1220,24 +1205,7 @@ impl NodeExt for Arc<Node> {
         if self.config.tcp_incoming_connections_max > 0
             && !(self.flags.disable_bootstrap_listener && self.flags.disable_tcp_realtime)
         {
-            let listener_w = Arc::downgrade(&self.tcp_listener);
-            self.tcp_listener
-                .start_with(Box::new(move |new_connection, ec| {
-                    let Some(listener_l) = listener_w.upgrade() else {
-                        return false;
-                    };
-                    if ec.is_ok() {
-                        listener_l.accept_action(ec, new_connection);
-                    }
-                    true
-                }))
-                .expect("could not start tcp listener");
-
-            if self.channels.port() != self.tcp_listener.endpoint().port() {
-                self.channels.set_port(self.tcp_listener.endpoint().port());
-            }
-
-            info!("Peering port: {}", self.channels.port());
+            self.tcp_listener.start();
         } else {
             warn!("Peering is disabled");
         }

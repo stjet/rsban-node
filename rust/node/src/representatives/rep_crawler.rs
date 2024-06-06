@@ -489,7 +489,7 @@ impl RepCrawlerImpl {
         };
 
         /* include channels with ephemeral remote ports */
-        let mut random_peers = self.channels.random_channels(required_peer_count, 0, true);
+        let mut random_peers = self.channels.random_channels(required_peer_count, 0);
 
         random_peers.retain(|channel| {
             match self

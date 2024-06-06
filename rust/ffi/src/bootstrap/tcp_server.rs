@@ -4,12 +4,13 @@ use super::{
 use crate::{
     messages::MessageHandle,
     transport::{
-        EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpMessageManagerHandle,
+        EndpointDto, NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
+        TcpMessageManagerHandle,
     },
     utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
-use rsnano_core::{Account, KeyPair};
+use rsnano_core::KeyPair;
 use rsnano_messages::{DeserializedMessage, Message, ProtocolInfo};
 use rsnano_node::{
     config::NodeConfig,
@@ -52,6 +53,7 @@ pub struct CreateTcpServerParams {
     pub allow_bootstrap: bool,
     pub syn_cookies: *mut SynCookiesHandle,
     pub node_id_priv: *const u8,
+    pub tcp_channels: *mut TcpChannelsHandle,
 }
 
 #[no_mangle]
@@ -67,8 +69,10 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
+    let channels = Arc::clone(&(*params.tcp_channels));
     let mut server = TcpServer::new(
         async_rt,
+        &channels,
         socket,
         config,
         observer,
@@ -119,15 +123,6 @@ pub unsafe extern "C" fn rsn_tcp_server_remote_endpoint(
     endpoint: *mut EndpointDto,
 ) {
     (*endpoint) = (*handle).remote_endpoint().into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_server_set_remote_node_id(
-    handle: *mut TcpServerHandle,
-    node_id: *const u8,
-) {
-    let mut lk = (*handle).remote_node_id.lock().unwrap();
-    *lk = Account::from_ptr(node_id);
 }
 
 #[no_mangle]

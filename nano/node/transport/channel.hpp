@@ -85,8 +85,6 @@ public:
 	channel (rsnano::ChannelHandle * handle_a);
 	channel (nano::transport::channel const &) = delete;
 	virtual ~channel ();
-	bool is_temporary () const;
-	void set_temporary (bool temporary);
 
 	virtual void send (nano::message & message_a,
 	std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,

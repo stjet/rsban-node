@@ -706,6 +706,8 @@ pub struct SocketBuilder {
     max_write_queue_len: usize,
     async_runtime: Weak<AsyncRuntime>,
     tcp_stream_factory: Arc<TcpStreamFactory>,
+    stream: Arc<Mutex<Option<Arc<TcpStream>>>>,
+    remote: Option<SocketAddrV6>,
 }
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
@@ -731,6 +733,8 @@ impl SocketBuilder {
             max_write_queue_len: Socket::MAX_QUEUE_SIZE,
             async_runtime,
             tcp_stream_factory: Arc::new(TcpStreamFactory::new()),
+            stream: Arc::new(Mutex::new(None)),
+            remote: None,
         }
     }
 
@@ -759,6 +763,16 @@ impl SocketBuilder {
         self
     }
 
+    pub fn use_existing_socket(
+        mut self,
+        stream: tokio::net::TcpStream,
+        remote: SocketAddrV6,
+    ) -> Self {
+        self.stream = Arc::new(Mutex::new(Some(Arc::new(TcpStream::new(stream)))));
+        self.remote = Some(remote);
+        self
+    }
+
     pub fn build(self) -> Arc<Socket> {
         let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
         let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
@@ -770,7 +784,7 @@ impl SocketBuilder {
         Arc::new({
             Socket {
                 socket_id,
-                remote: Mutex::new(None),
+                remote: Mutex::new(self.remote),
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
@@ -790,7 +804,7 @@ impl SocketBuilder {
                 runtime: self.async_runtime,
                 tcp_stream_factory: self.tcp_stream_factory,
                 current_action: Mutex::new(None),
-                stream: Arc::new(Mutex::new(None)),
+                stream: self.stream,
                 is_connecting: AtomicBool::new(false),
             }
         })

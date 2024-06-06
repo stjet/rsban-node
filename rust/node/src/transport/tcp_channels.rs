@@ -1,25 +1,24 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, CompositeSocketObserver,
-    MessageDeserializer, NetworkFilter, NullSocketObserver, NullTcpServerObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketBuilder, SocketEndpoint,
-    SocketExtensions, SocketObserver, SynCookies, TcpMessageManager, TcpServer, TcpServerFactory,
+    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, NetworkFilter, NullSocketObserver,
+    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions,
+    SocketObserver, SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer,
     TcpServerObserver, TrafficType, TransportType,
 };
 use crate::{
-    bootstrap::{BootstrapMessageVisitorFactory, ChannelEntry},
+    bootstrap::ChannelEntry,
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    transport::{Channel, SocketType},
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::Channel,
     utils::{
         ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, AsyncRuntime,
-        ErrorCode, ThreadPool, ThreadPoolImpl,
+        ThreadPool, ThreadPoolImpl,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, OutputListenerMt, OutputTrackerMt},
-    KeyPair, PublicKey,
+    Account, KeyPair, PublicKey,
 };
 use rsnano_messages::*;
 use std::{
@@ -31,10 +30,9 @@ use std::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, RwLock, Weak,
     },
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
-use tokio::task::spawn_blocking;
-use tracing::debug;
+use tracing::{debug, warn};
 
 pub struct TcpChannelsOptions {
     pub node_config: NodeConfig,
@@ -74,6 +72,7 @@ impl TcpChannelsOptions {
 
 pub struct TcpChannels {
     tcp_channels: Mutex<TcpChannelsImpl>,
+    tcp_listener: RwLock<Option<Weak<TcpListener>>>,
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
@@ -85,13 +84,12 @@ pub struct TcpChannels {
     network: Arc<NetworkParams>,
     pub excluded_peers: Arc<Mutex<PeerExclusion>>,
     limiter: Arc<OutboundBandwidthLimiter>,
-    async_rt: Weak<AsyncRuntime>,
+    async_rt: Arc<AsyncRuntime>,
     node_config: Arc<NodeConfig>,
     node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
     workers: Arc<dyn ThreadPool>,
     pub publish_filter: Arc<NetworkFilter>,
-    tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
     observer: Arc<dyn SocketObserver>,
     merge_peer_listener: OutputListenerMt<SocketAddrV6>,
 }
@@ -106,21 +104,9 @@ impl TcpChannels {
     pub fn new(options: TcpChannelsOptions) -> Self {
         let node_config = Arc::new(options.node_config);
         let network = Arc::new(options.network);
-        let observer: Arc<dyn TcpServerObserver> = Arc::new(NullTcpServerObserver {});
-        let tcp_server_factory = Arc::new(Mutex::new(TcpServerFactory {
-            async_rt: Arc::clone(&options.async_rt),
-            config: node_config.clone(),
-            observer: Arc::downgrade(&observer),
-            publish_filter: options.publish_filter.clone(),
-            network: network.clone(),
-            stats: options.stats.clone(),
-            tcp_message_manager: options.tcp_message_manager.clone(),
-            message_visitor_factory: None,
-            syn_cookies: Arc::clone(&options.syn_cookies),
-            node_id: options.node_id.clone(),
-        }));
 
         Self {
+            tcp_listener: RwLock::new(None),
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: node_config.allow_local_peers,
@@ -133,7 +119,6 @@ impl TcpChannels {
                 channels: Default::default(),
                 network_constants: network.network.clone(),
                 new_channel_observers: Vec::new(),
-                tcp_server_factory: tcp_server_factory.clone(),
             }),
             sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
@@ -144,11 +129,14 @@ impl TcpChannels {
             syn_cookies: options.syn_cookies,
             workers: options.workers,
             publish_filter: options.publish_filter,
-            tcp_server_factory,
             observer: options.observer,
-            async_rt: Arc::downgrade(&options.async_rt),
+            async_rt: options.async_rt,
             merge_peer_listener: OutputListenerMt::new(),
         }
+    }
+
+    pub fn set_listener(&self, listener: Weak<TcpListener>) {
+        *self.tcp_listener.write().unwrap() = Some(listener);
     }
 
     pub fn set_sink(&self, sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>) {
@@ -189,65 +177,76 @@ impl TcpChannels {
             .push(callback);
     }
 
-    pub fn insert_fake(&self, endpoint: SocketAddrV6) -> Result<(), ()> {
+    pub fn insert_fake(&self, endpoint: SocketAddrV6) {
         let fake = Arc::new(ChannelEnum::Fake(ChannelFake::new(
             SystemTime::now(),
             self.get_next_channel_id(),
-            &self.async_rt.upgrade().unwrap(),
+            &self.async_rt,
             Arc::clone(&self.limiter),
             Arc::clone(&self.stats),
             endpoint,
             self.network.network.protocol_info(),
         )));
         fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
-        self.insert(&fake, None)
+        let mut channels = self.tcp_channels.lock().unwrap();
+        channels
+            .channels
+            .insert(Arc::new(ChannelEntry::new(fake, None)));
     }
 
-    pub fn insert(
+    fn check(
         &self,
-        channel: &Arc<ChannelEnum>,
-        server: Option<Arc<TcpServer>>,
-    ) -> Result<(), ()> {
-        let endpoint = channel.remote_endpoint();
-        if !self.not_a_peer(&endpoint, self.allow_local_peers)
-            && !self.stopped.load(Ordering::SeqCst)
-        {
-            let mut lock = self.tcp_channels.lock().unwrap();
-            if !lock.channels.exists(&endpoint) {
-                let node_id = channel.get_node_id().unwrap_or_default();
-                if !channel.is_temporary() {
-                    lock.channels.remove_by_node_id(&node_id);
-                }
-
-                let wrapper = Arc::new(ChannelEntry::new(channel.clone(), server));
-                lock.channels.insert(wrapper);
-                lock.attempts.remove(&endpoint);
-                let observers = lock.new_channel_observers.clone();
-                drop(lock);
-                for observer in observers {
-                    observer(channel.clone());
-                }
-                return Ok(());
-            }
+        endpoint: &SocketAddrV6,
+        node_id: &Account,
+        channels: &TcpChannelsImpl,
+    ) -> bool {
+        if self.stopped.load(Ordering::SeqCst) {
+            return false; // Reject
         }
-        Err(())
+
+        if self.not_a_peer(endpoint, self.node_config.allow_local_peers) {
+            self.stats
+                .inc(StatType::TcpChannelsRejected, DetailType::NotAPeer);
+            debug!("Rejected invalid endpoint channel from: {}", endpoint);
+
+            return false; // Reject
+        }
+
+        let has_duplicate = channels.channels.iter().any(|entry| {
+            if entry.endpoint().ip() == endpoint.ip() {
+                // Only counsider channels with the same node id as duplicates if they come from the same IP
+                if entry.node_id() == Some(*node_id) {
+                    return true;
+                }
+            }
+
+            false
+        });
+
+        if has_duplicate {
+            self.stats
+                .inc(StatType::TcpChannelsRejected, DetailType::ChannelDuplicate);
+            debug!(
+                "Duplicate channel rejected from: {} ({})",
+                endpoint,
+                node_id.to_node_id()
+            );
+
+            return false; // Reject
+        }
+
+        true // OK
     }
 
     pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         self.tcp_channels.lock().unwrap().find_channel(endpoint)
     }
 
-    pub fn random_channels(
-        &self,
-        count: usize,
-        min_version: u8,
-        include_temporary_channels: bool,
-    ) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().random_channels(
-            count,
-            min_version,
-            include_temporary_channels,
-        )
+    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .random_channels(count, min_version)
     }
 
     pub fn get_peers(&self) -> Vec<SocketAddrV6> {
@@ -269,13 +268,6 @@ impl TcpChannels {
             .collect_container_info(name.into())
     }
 
-    pub fn erase_temporary_channel(&self, endpoint: &SocketAddrV6) {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .erase_temporary_channel(endpoint);
-    }
-
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         self.tcp_channels.lock().unwrap().random_fill(endpoints);
     }
@@ -284,17 +276,11 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().random_fanout(scale)
     }
 
-    pub fn random_list(
-        &self,
-        count: usize,
-        min_version: u8,
-        include_temporary_channels: bool,
-    ) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().random_channels(
-            count,
-            min_version,
-            include_temporary_channels,
-        )
+    pub fn random_list(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .random_channels(count, min_version)
     }
 
     pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {
@@ -314,29 +300,6 @@ impl TcpChannels {
                 TrafficType::Generic,
             )
         }
-    }
-
-    pub fn set_observer(&self, observer: Weak<dyn TcpServerObserver>) {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .tcp_server_factory
-            .lock()
-            .unwrap()
-            .observer = observer;
-    }
-
-    pub fn set_message_visitor_factory(
-        &self,
-        visitor_factory: Arc<BootstrapMessageVisitorFactory>,
-    ) {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .tcp_server_factory
-            .lock()
-            .unwrap()
-            .message_visitor_factory = Some(visitor_factory);
     }
 
     pub fn max_ip_or_subnetwork_connections(&self, endpoint: &SocketAddrV6) -> bool {
@@ -516,16 +479,8 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().bootstrap_peer()
     }
 
-    pub fn list_channels(
-        &self,
-        min_version: u8,
-        include_temporary_channels: bool,
-    ) -> Vec<Arc<ChannelEnum>> {
-        let mut result = self
-            .tcp_channels
-            .lock()
-            .unwrap()
-            .list(min_version, include_temporary_channels);
+    pub fn list_channels(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+        let mut result = self.tcp_channels.lock().unwrap().list(min_version);
         result.sort_by_key(|i| i.remote_endpoint());
         result
     }
@@ -577,96 +532,102 @@ impl TcpChannels {
     pub fn track_merge_peer(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
         self.merge_peer_listener.track()
     }
+
+    pub fn queue_message(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
+        if !self.stopped.load(Ordering::SeqCst) {
+            self.tcp_message_manager.put(message, channel);
+        }
+    }
 }
 
 pub trait TcpChannelsExtension {
-    fn process_messages(&self);
-    fn process_message(
+    fn create(
         &self,
-        message: &DeserializedMessage,
-        endpoint: &SocketAddrV6,
-        node_id: PublicKey,
-        socket: &Arc<Socket>,
-    );
+        socket: Arc<Socket>,
+        server: Arc<TcpServer>,
+        node_id: Account,
+    ) -> Option<Arc<ChannelEnum>>;
+
+    fn process_messages(&self);
 
     fn merge_peer(&self, peer: SocketAddrV6);
     fn keepalive(&self);
-    fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6);
     fn start_tcp(&self, endpoint: SocketAddrV6);
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
-    fn process_messages(&self) {
-        while !self.stopped.load(Ordering::SeqCst) {
-            let item = self.tcp_message_manager.get_message();
-            if let Some(message) = &item.message {
-                self.process_message(message, &item.endpoint, item.node_id, &item.socket.unwrap());
-            }
+    // This should be the only place in node where channels are created
+    fn create(
+        &self,
+        socket: Arc<Socket>,
+        server: Arc<TcpServer>,
+        node_id: Account,
+    ) -> Option<Arc<ChannelEnum>> {
+        let endpoint = socket.get_remote().unwrap();
+
+        let mut lock = self.tcp_channels.lock().unwrap();
+
+        if self.stopped.load(Ordering::SeqCst) {
+            return None;
         }
+
+        if !self.check(&endpoint, &node_id, &lock) {
+            self.stats
+                .inc(StatType::TcpChannels, DetailType::ChannelRejected);
+            debug!(
+                "Rejected new channel from: {} ({})",
+                endpoint,
+                node_id.to_node_id()
+            );
+            // Rejection reason should be logged earlier
+
+            return None;
+        }
+
+        self.stats
+            .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
+        debug!(
+            "Accepted new channel from: {} ({})",
+            endpoint,
+            node_id.to_node_id()
+        );
+
+        let tcp_channel = ChannelTcp::new(
+            socket,
+            SystemTime::now(),
+            Arc::clone(&self.stats),
+            self,
+            Arc::clone(&self.limiter),
+            &self.async_rt,
+            self.get_next_channel_id(),
+            self.network.network.protocol_info(),
+        );
+        tcp_channel.update_remote_endpoint();
+        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));
+        channel.set_node_id(node_id);
+
+        lock.attempts.remove(&endpoint);
+
+        let inserted = lock.channels.insert(Arc::new(ChannelEntry::new(
+            Arc::clone(&channel),
+            Some(server),
+        )));
+        debug_assert!(inserted);
+
+        let observers = lock.new_channel_observers.clone();
+        drop(lock);
+
+        for observer in observers {
+            observer(channel.clone());
+        }
+
+        Some(channel)
     }
 
-    fn process_message(
-        &self,
-        message: &DeserializedMessage,
-        endpoint: &SocketAddrV6,
-        node_id: PublicKey,
-        socket: &Arc<Socket>,
-    ) {
-        let Some(async_rt) = self.async_rt.upgrade() else {
-            return;
-        };
-        let socket_type = socket.socket_type();
-        if !self.stopped.load(Ordering::SeqCst)
-            && message.protocol.version_using >= self.network.network.protocol_version_min
-        {
-            if let Some(channel) = self.find_channel(endpoint) {
-                (self.sink.read().unwrap())(message.clone(), Arc::clone(&channel));
-                channel.set_last_packet_received(SystemTime::now());
-            } else {
-                if let Some(channel) = self.find_node_id(&node_id) {
-                    (self.sink.read().unwrap())(message.clone(), Arc::clone(&channel));
-                    channel.set_last_packet_received(SystemTime::now());
-                } else if !self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
-                    if !node_id.is_zero() {
-                        // Add temporary channel
-                        let channel_id = self.get_next_channel_id();
-                        let temporary_channel = Arc::new(ChannelTcp::new(
-                            Arc::clone(socket),
-                            SystemTime::now(),
-                            Arc::clone(&self.stats),
-                            self,
-                            self.limiter.clone(),
-                            &async_rt,
-                            channel_id,
-                            self.network.network.protocol_info(),
-                        ));
-                        temporary_channel.update_remote_endpoint();
-                        debug_assert!(*endpoint == temporary_channel.remote_endpoint());
-                        temporary_channel.set_node_id(node_id);
-                        temporary_channel.set_network_version(message.protocol.version_using);
-                        temporary_channel.set_temporary(true);
-                        let temporary_channel = Arc::new(ChannelEnum::Tcp(temporary_channel));
-                        debug_assert!(
-                            socket_type == SocketType::Realtime
-                                || socket_type == SocketType::RealtimeResponseServer,
-                        );
-                        // Don't insert temporary channels for response_server
-                        if socket_type == SocketType::Realtime {
-                            let _ = self.insert(&temporary_channel, None);
-                        }
-                        (self.sink.read().unwrap())(message.clone(), temporary_channel);
-                    } else {
-                        // Initial node_id_handshake request without node ID
-                        debug_assert!(
-                            message.message.message_type() == MessageType::NodeIdHandshake
-                        );
-                        self.stats.inc_dir(
-                            StatType::Message,
-                            DetailType::NodeIdHandshake,
-                            Direction::In,
-                        );
-                    }
-                }
+    fn process_messages(&self) {
+        while !self.stopped.load(Ordering::SeqCst) {
+            if let Some((message, channel)) = self.tcp_message_manager.next() {
+                (self.sink.read().unwrap())(message, channel)
             }
         }
     }
@@ -701,305 +662,23 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         }
     }
 
-    fn start_tcp_receive_node_id(&self, channel: &Arc<ChannelEnum>, endpoint: SocketAddrV6) {
-        let this_w = Arc::downgrade(self);
-        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-            return;
-        };
-        let Some(socket_l) = tcp.socket() else { return };
-        let channel_w = Arc::downgrade(channel);
-
-        let channel_w_clone = channel_w.clone();
-        let cleanup_node_id_handshake_socket = move || {
-            if let Some(channel_l) = channel_w_clone.upgrade() {
-                if let ChannelEnum::Tcp(tcp) = channel_l.as_ref() {
-                    if let Some(socket_l) = tcp.socket() {
-                        socket_l.close();
-                    }
-                }
-            }
-        };
-
-        let channel_clone = channel.clone();
-        let callback: Box<dyn FnOnce(ErrorCode, Option<DeserializedMessage>) + Send + Sync> =
-            Box::new(move |ec, message| {
-                let Some(this_l) = this_w.upgrade() else {
-                    return;
-                };
-                let Some(message) = message else {
-                    return;
-                };
-                let channel = channel_clone;
-                let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                    return;
-                };
-
-                if ec.is_err() {
-                    debug!("Error reading node_id_handshake from: {}", endpoint);
-                    cleanup_node_id_handshake_socket();
-                    return;
-                }
-                this_l.stats.inc_dir(
-                    StatType::Message,
-                    DetailType::NodeIdHandshake,
-                    Direction::In,
-                );
-
-                // the header type should in principle be checked after checking the network bytes and the version numbers, I will not change it here since the benefits do not outweight the difficulties
-
-                let Message::NodeIdHandshake(handshake) = &message.message else {
-                    debug!(
-                        "Error reading node_id_handshake message header from: {}",
-                        endpoint
-                    );
-                    cleanup_node_id_handshake_socket();
-                    return;
-                };
-
-                if message.protocol.network != this_l.network.network.current_network
-                    || message.protocol.version_using < this_l.network.network.protocol_version_min
-                {
-                    // error handling, either the networks bytes or the version is wrong
-                    if message.protocol.network == this_l.network.network.current_network {
-                        this_l.stats.inc_dir(
-                            StatType::Message,
-                            DetailType::InvalidNetwork,
-                            Direction::In,
-                        );
-                    } else {
-                        this_l.stats.inc_dir(
-                            StatType::Message,
-                            DetailType::OutdatedVersion,
-                            Direction::In,
-                        );
-                    }
-
-                    cleanup_node_id_handshake_socket();
-                    // Cleanup attempt
-                    {
-                        let mut guard = this_l.tcp_channels.lock().unwrap();
-                        guard.attempts.remove(&endpoint);
-                    }
-                    return;
-                }
-
-                let invalid_handshake = || {
-                    debug!("Error reading node_id_handshake from: {}", endpoint);
-                    cleanup_node_id_handshake_socket();
-                };
-
-                let Some(response) = handshake.response.as_ref() else {
-                    invalid_handshake();
-                    return;
-                };
-
-                let Some(query) = handshake.query.as_ref() else {
-                    invalid_handshake();
-                    return;
-                };
-
-                tcp.set_network_version(message.protocol.version_using);
-
-                let node_id = response.node_id;
-
-                if !this_l.verify_handshake_response(response, endpoint) {
-                    cleanup_node_id_handshake_socket();
-                    return;
-                }
-
-                /* If node ID is known, don't establish new connection
-                Exception: temporary channels from tcp_server */
-                if let Some(existing_channel) = this_l.find_node_id(&node_id) {
-                    if !existing_channel.is_temporary() {
-                        cleanup_node_id_handshake_socket();
-                        return;
-                    }
-                }
-                tcp.set_node_id(node_id);
-                tcp.set_last_packet_received(SystemTime::now());
-
-                let response = this_l.prepare_handshake_response(query, handshake.is_v2);
-                let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
-                    query: None,
-                    is_v2: response.v2.is_some(),
-                    response: Some(response),
-                });
-
-                debug!(
-                    "Node ID handshake response sent to {} (query: {:?})",
-                    endpoint, query.cookie
-                );
-
-                let channel_clone = channel.clone();
-                tcp.send(
-                    &handshake_response,
-                    Some(Box::new(move |ec, _| {
-                        let Some(this_l) = this_w.upgrade() else {
-                            return;
-                        };
-                        let channel = channel_clone;
-                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                            return;
-                        };
-                        if ec.is_err() {
-                            debug!(
-                                "Error sending node_id_handshake to: {} ({:?})",
-                                endpoint, ec
-                            );
-                            cleanup_node_id_handshake_socket();
-                            return;
-                        }
-                        // Insert new node ID connection
-                        let response_server = this_l
-                            .tcp_server_factory
-                            .lock()
-                            .unwrap()
-                            .create_tcp_server(&tcp, Arc::clone(&tcp.socket));
-                        let _ = this_l.insert(&channel, Some(response_server));
-                    })),
-                    BufferDropPolicy::Limiter,
-                    TrafficType::Generic,
-                );
-            });
-
-        if let Some(rt) = self.async_rt.upgrade() {
-            let deserializer = Arc::new(MessageDeserializer::new(
-                self.network.network.protocol_info(),
-                self.network.work.clone(),
-                self.publish_filter.clone(),
-                socket_l,
-            ));
-
-            let stats = Arc::clone(&self.stats);
-            rt.tokio.spawn(async move {
-                let result = deserializer.read().await;
-                spawn_blocking(Box::new(move || {
-                    match &result {
-                        Ok(payload) => stats.inc_dir(
-                            StatType::Message,
-                            payload.message.message_type().into(),
-                            Direction::In,
-                        ),
-                        Err(ParseMessageError::InsufficientWork) => stats.inc_dir(
-                            StatType::Filter,
-                            DetailType::DuplicatePublishMessage,
-                            Direction::In,
-                        ),
-                        Err(e) => stats.inc_dir(StatType::Error, (*e).into(), Direction::In),
-                    }
-
-                    match result {
-                        Ok(msg) => callback(ErrorCode::new(), Some(msg)),
-                        Err(ParseMessageError::DuplicatePublishMessage) => {
-                            callback(ErrorCode::new(), None)
-                        }
-                        Err(ParseMessageError::InsufficientWork) => {
-                            callback(ErrorCode::new(), None)
-                        }
-                        Err(_) => callback(ErrorCode::fault(), None),
-                    }
-                }));
-            });
-        }
-    }
-
     fn start_tcp(&self, endpoint: SocketAddrV6) {
-        let Some(async_rt) = self.async_rt.upgrade() else {
-            return;
+        let listener = {
+            let guard = self.tcp_listener.read().unwrap();
+
+            let Some(listener) = guard.as_ref() else {
+                warn!("Tcp listener not set!");
+                return;
+            };
+
+            let Some(listener) = listener.upgrade() else {
+                warn!("Tcp listener already dropped!");
+                return;
+            };
+            listener
         };
-        let socket_stats = Arc::new(SocketStats::new(self.stats.clone()));
 
-        let socket = SocketBuilder::endpoint_type(
-            SocketEndpoint::Client,
-            self.workers.clone(),
-            Weak::clone(&self.async_rt),
-        )
-        .default_timeout(Duration::from_secs(
-            self.node_config.tcp_io_timeout_s as u64,
-        ))
-        .silent_connection_tolerance_time(Duration::from_secs(
-            self.network.network.silent_connection_tolerance_time_s as u64,
-        ))
-        .idle_timeout(Duration::from_secs(
-            self.network.network.idle_timeout_s as u64,
-        ))
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            self.observer.clone(),
-        ])))
-        .build();
-
-        let channel_id = self.get_next_channel_id();
-        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
-            Arc::clone(&socket),
-            SystemTime::now(),
-            Arc::clone(&self.stats),
-            self,
-            self.limiter.clone(),
-            &async_rt,
-            channel_id,
-            self.network.network.protocol_info(),
-        ))));
-        let this_w = Arc::downgrade(self);
-        let socket_clone = Arc::clone(&socket);
-        socket.async_connect(
-            endpoint,
-            Box::new(move |ec| {
-                let _socket = socket_clone; //keep socket alive!
-                let Some(this_l) = this_w.upgrade() else {
-                    return;
-                };
-
-                if ec.is_err() {
-                    debug!("Error connecting to: {} ({:?})", endpoint, ec);
-                    return;
-                }
-
-                // TCP node ID handshake
-                let query = this_l.prepare_handshake_query(endpoint);
-                let message = Message::NodeIdHandshake(NodeIdHandshake {
-                    query: query.clone(),
-                    response: None,
-                    is_v2: query.is_some(),
-                });
-
-                let query_string = query
-                    .map(|q| format!("{:?}", q.cookie))
-                    .unwrap_or_else(|| "not_set".to_string());
-                debug!("Handshake sent to: {} (query {})", endpoint, query_string);
-
-                let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                    panic!("not a tcp channel")
-                };
-                tcp.update_remote_endpoint();
-                let this_w = Arc::downgrade(&this_l);
-                let channel_clone = Arc::clone(&channel);
-                tcp.send(
-                    &message,
-                    Some(Box::new(move |ec, _size| {
-                        let channel = channel_clone;
-                        let ChannelEnum::Tcp(tcp) = channel.as_ref() else {
-                            return;
-                        };
-                        if let Some(this_l) = this_w.upgrade() {
-                            if ec.is_ok() {
-                                this_l.start_tcp_receive_node_id(&channel, endpoint);
-                            } else {
-                                if let Some(socket) = tcp.socket() {
-                                    socket.close();
-                                }
-                                debug!(
-                                    "Error sending node_id_handshake to: {} ({:?})",
-                                    endpoint, ec
-                                );
-                            }
-                        }
-                    })),
-                    BufferDropPolicy::Limiter,
-                    TrafficType::Generic,
-                );
-            }),
-        );
+        listener.connect(endpoint);
     }
 }
 
@@ -1008,7 +687,6 @@ pub struct TcpChannelsImpl {
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
     new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
-    pub tcp_server_factory: Arc<Mutex<TcpServerFactory>>,
 }
 
 impl TcpChannelsImpl {
@@ -1060,13 +738,8 @@ impl TcpChannelsImpl {
         self.attempts.purge(cutoff);
     }
 
-    pub fn random_channels(
-        &self,
-        count: usize,
-        min_version: u8,
-        include_temporary_channels: bool,
-    ) -> Vec<Arc<ChannelEnum>> {
-        let mut channels = self.list(min_version, include_temporary_channels);
+    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+        let mut channels = self.list(min_version);
         let mut rng = thread_rng();
         channels.shuffle(&mut rng);
         if count > 0 {
@@ -1075,14 +748,10 @@ impl TcpChannelsImpl {
         channels
     }
 
-    pub fn list(&self, min_version: u8, include_temporary_channels: bool) -> Vec<Arc<ChannelEnum>> {
+    pub fn list(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
         self.channels
             .iter()
-            .filter(|c| {
-                c.network_version() >= min_version
-                    && (include_temporary_channels || !c.channel.is_temporary())
-                    && c.channel.is_alive()
-            })
+            .filter(|c| c.network_version() >= min_version && c.channel.is_alive())
             .map(|c| c.channel.clone())
             .collect()
     }
@@ -1119,19 +788,13 @@ impl TcpChannelsImpl {
             .map(|c| c.channel.clone())
     }
 
-    pub fn erase_temporary_channel(&mut self, endpoint: &SocketAddrV6) {
-        if let Some(channel) = self.channels.remove_by_endpoint(endpoint) {
-            channel.set_temporary(false);
-        }
-    }
-
     pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
-        self.random_channels(self.fanout(scale), 0, true)
+        self.random_channels(self.fanout(scale), 0)
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         // Don't include channels with ephemeral remote ports
-        let peers = self.random_channels(endpoints.len(), 0, false);
+        let peers = self.random_channels(endpoints.len(), 0);
         let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
@@ -1358,7 +1021,10 @@ impl ChannelContainer {
         while let Some((version, endpoints)) = self.by_network_version.first_key_value() {
             if *version < min_version {
                 for ep in endpoints {
-                    debug!("Closing channel with old protocol version: {}", ep);
+                    debug!(
+                        "Closing channel with old protocol version: {} (channels version: {}, min version: {})",
+                        ep, version, min_version
+                    );
                     if let Some(entry) = self.by_endpoint.get(ep) {
                         entry.channel.close();
                     }

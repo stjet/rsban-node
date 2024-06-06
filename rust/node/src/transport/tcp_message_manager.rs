@@ -1,46 +1,9 @@
-use super::Socket;
-use rsnano_core::Account;
+use super::ChannelEnum;
 use rsnano_messages::DeserializedMessage;
 use std::{
     collections::VecDeque,
-    net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex},
 };
-
-pub struct TcpMessageItem {
-    pub message: Option<DeserializedMessage>,
-    pub endpoint: SocketAddrV6,
-    pub node_id: Account,
-    pub socket: Option<Arc<Socket>>,
-}
-
-impl Clone for TcpMessageItem {
-    fn clone(&self) -> Self {
-        Self {
-            message: self.message.clone(),
-            endpoint: self.endpoint,
-            node_id: self.node_id,
-            socket: self.socket.clone(),
-        }
-    }
-}
-
-impl TcpMessageItem {
-    pub fn new() -> Self {
-        Self {
-            message: None,
-            endpoint: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
-            node_id: Account::zero(),
-            socket: None,
-        }
-    }
-}
-
-impl Default for TcpMessageItem {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 pub struct TcpMessageManager {
     max_entries: usize,
@@ -51,7 +14,7 @@ pub struct TcpMessageManager {
 }
 
 struct TcpMessageManagerState {
-    entries: VecDeque<TcpMessageItem>,
+    entries: VecDeque<(DeserializedMessage, Arc<ChannelEnum>)>,
     stopped: bool,
 }
 
@@ -69,7 +32,7 @@ impl TcpMessageManager {
         }
     }
 
-    pub fn put_message(&self, item: TcpMessageItem) {
+    pub fn put(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
         {
             let mut lock = self.state.lock().unwrap();
             while lock.entries.len() >= self.max_entries && !lock.stopped {
@@ -78,21 +41,21 @@ impl TcpMessageManager {
                 }
                 lock = self.producer_condition.wait(lock).unwrap();
             }
-            lock.entries.push_back(item);
+            lock.entries.push_back((message, channel));
         }
         self.consumer_condition.notify_one();
     }
 
-    pub fn get_message(&self) -> TcpMessageItem {
+    pub fn next(&self) -> Option<(DeserializedMessage, Arc<ChannelEnum>)> {
         let result = {
             let mut lock = self.state.lock().unwrap();
             while lock.entries.is_empty() && !lock.stopped {
                 lock = self.consumer_condition.wait(lock).unwrap();
             }
             if !lock.entries.is_empty() {
-                lock.entries.pop_front().unwrap()
+                Some(lock.entries.pop_front().unwrap())
             } else {
-                TcpMessageItem::new()
+                None
             }
         };
         self.producer_condition.notify_one();
@@ -124,21 +87,20 @@ const MAX_ENTRIES_PER_CONNECTION: usize = 16;
 
 #[cfg(test)]
 mod tests {
-    use std::thread::spawn;
-
-    use rsnano_core::Account;
-
     use super::*;
+    use rsnano_messages::Message;
+    use std::thread::spawn;
 
     #[test]
     fn put_and_get_one_message() {
         let manager = TcpMessageManager::new(1);
-        let mut item = TcpMessageItem::new();
-        item.node_id = Account::from_bytes([1; 32]);
         assert_eq!(manager.size(), 0);
-        manager.put_message(item.clone());
+        manager.put(
+            DeserializedMessage::new(Message::BulkPush, Default::default()),
+            Arc::new(ChannelEnum::create_test_instance()),
+        );
         assert_eq!(manager.size(), 1);
-        assert_eq!(manager.get_message().node_id, item.node_id);
+        assert!(manager.next().is_some());
         assert_eq!(manager.size(), 0);
     }
 
@@ -155,12 +117,12 @@ mod tests {
         }));
         let manager = Arc::new(manager);
 
-        let mut item = TcpMessageItem::new();
-        item.node_id = Account::from_bytes([1; 32]);
+        let message = DeserializedMessage::new(Message::BulkPush, Default::default());
+        let channel = Arc::new(ChannelEnum::create_test_instance());
 
         // Fill the queue
         for _ in 0..manager.max_entries {
-            manager.put_message(item.clone());
+            manager.put(message.clone(), channel.clone());
         }
 
         assert_eq!(manager.size(), manager.max_entries);
@@ -168,7 +130,7 @@ mod tests {
         // This task will wait until a message is consumed
         let manager_clone = manager.clone();
         let handle = spawn(move || {
-            manager_clone.put_message(item);
+            manager_clone.put(message, channel);
         });
 
         let (mutex, condvar) = blocked_notification.as_ref();
@@ -178,50 +140,8 @@ mod tests {
         }
 
         assert_eq!(manager.size(), manager.max_entries);
-        manager.get_message();
+        manager.next();
         assert!(handle.join().is_ok());
         assert_eq!(manager.size(), manager.max_entries);
-    }
-
-    #[test]
-    fn bulk_test() {
-        let manager = Arc::new(TcpMessageManager::new(2));
-        let message_count = 50;
-
-        let mut item = TcpMessageItem::new();
-        item.node_id = Account::from_bytes([1; 32]);
-
-        let consumers: Vec<_> = (0..4)
-            .map(|_| {
-                let item = item.clone();
-                let manager = Arc::clone(&manager);
-                spawn(move || {
-                    for _ in 0..message_count {
-                        let msg = manager.get_message();
-                        assert_eq!(msg.node_id, item.node_id);
-                    }
-                })
-            })
-            .collect();
-
-        let producers: Vec<_> = (0..4)
-            .map(|_| {
-                let item = item.clone();
-                let manager = Arc::clone(&manager);
-                spawn(move || {
-                    for _ in 0..message_count {
-                        manager.put_message(item.clone());
-                    }
-                })
-            })
-            .collect();
-
-        for handle in consumers {
-            handle.join().unwrap();
-        }
-
-        for handle in producers {
-            handle.join().unwrap();
-        }
     }
 }

@@ -37,7 +37,7 @@ impl PeerCacheUpdater {
     }
 
     fn save_peers(&self, tx: &mut LmdbWriteTransaction) {
-        let live_peers = self.channels.list_channels(0, true);
+        let live_peers = self.channels.list_channels(0);
         for peer in live_peers {
             self.save_peer(tx, &peer);
         }
@@ -271,7 +271,7 @@ mod tests {
     ) {
         let channels = Arc::new(TcpChannels::new_null());
         for endpoint in open_channels {
-            channels.insert_fake(endpoint).unwrap();
+            channels.insert_fake(endpoint);
         }
         let ledger = Arc::new(Ledger::new_null_builder().peers(already_stored).finish());
         let time_factory = SystemTimeFactory::new_null_with(now);

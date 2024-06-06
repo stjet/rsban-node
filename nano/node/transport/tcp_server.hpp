@@ -8,7 +8,6 @@
 #include <nano/node/messages.hpp>
 #include <nano/node/transport/socket.hpp>
 
-#include <atomic>
 #include <memory>
 
 namespace nano
@@ -30,6 +29,7 @@ class tcp_server final : public std::enable_shared_from_this<nano::transport::tc
 public:
 	tcp_server (
 	rsnano::async_runtime & async_rt,
+	nano::transport::tcp_channels & channels,
 	std::shared_ptr<nano::transport::socket> const & socket_a,
 	nano::stats const & stats_a,
 	nano::node_flags const & flags_a,
@@ -58,7 +58,6 @@ public:
 	std::optional<nano::keepalive> get_last_keepalive () const;
 	bool is_stopped () const;
 	std::size_t unique_id () const;
-	void set_remote_node_id (nano::account account_a);
 	nano::tcp_endpoint get_remote_endpoint () const;
 	std::shared_ptr<nano::transport::socket> const get_socket () const;
 

@@ -69,7 +69,11 @@ impl PeerExclusion {
 
     /// Checks if an endpoint is currently excluded.
     pub fn is_excluded(&mut self, endpoint: &SocketAddrV6) -> bool {
-        if let Some(peer) = self.by_ip.get(&endpoint.ip()).cloned() {
+        self.is_excluded_ip(endpoint.ip())
+    }
+
+    pub fn is_excluded_ip(&mut self, ip: &Ipv6Addr) -> bool {
+        if let Some(peer) = self.by_ip.get(ip).cloned() {
             if peer.has_expired() {
                 self.remove(&peer.address);
             }

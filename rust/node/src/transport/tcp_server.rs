@@ -5,11 +5,12 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         Socket, SocketExtensions, SocketType, SynCookies, TcpMessageItem, TcpMessageManager,
+        TrafficType,
     },
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_core::{Account, KeyPair};
+use rsnano_core::{utils::MemoryStream, Account, KeyPair};
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -368,6 +369,7 @@ pub trait TcpServerExt {
     fn start(&self);
     fn timeout(&self);
 
+    fn initiate_handshake(&self);
     fn receive_message(&self);
     fn received_message(&self, message: DeserializedMessage);
     fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
@@ -410,6 +412,52 @@ impl TcpServerExt for Arc<TcpServer> {
             }
             self.socket.close();
         }
+    }
+
+    fn initiate_handshake(&self) {
+        let endpoint = self.remote_endpoint();
+        let query = self.prepare_handshake_query(&endpoint);
+        let message = Message::NodeIdHandshake(NodeIdHandshake {
+            query,
+            response: None,
+            is_v2: true,
+        });
+
+        debug!("Initiating handshake query ({})", endpoint);
+
+        let mut stream = MemoryStream::new();
+        message.serialize(&mut stream);
+
+        let self_w = Arc::downgrade(self);
+
+        self.socket.async_write(
+            &Arc::new(stream.to_vec()),
+            Some(Box::new(move |ec, _len| {
+                if let Some(self_l) = self_w.upgrade() {
+                    if ec.is_ok() {
+                        self_l.stats.inc_dir(
+                            StatType::TcpServer,
+                            DetailType::Handshake,
+                            Direction::Out,
+                        );
+                        self_l.stats.inc_dir(
+                            StatType::TcpServer,
+                            DetailType::HandshakeInitiate,
+                            Direction::Out,
+                        );
+                    } else {
+                        self_l
+                            .stats
+                            .inc(StatType::TcpServer, DetailType::HandshakeNetworkError);
+                        debug!("Error sending handshake query: {:?} ({})", ec, endpoint);
+
+                        // Stop invalid handshake
+                        self_l.stop();
+                    }
+                }
+            })),
+            TrafficType::Generic,
+        );
     }
 
     fn receive_message(&self) {

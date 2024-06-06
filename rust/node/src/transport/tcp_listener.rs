@@ -22,8 +22,9 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Condvar, Mutex, Weak,
     },
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tracing::{debug, error, warn};
@@ -50,10 +51,13 @@ pub struct TcpListener {
     node_id: Arc<KeyPair>,
     bootstrap_count: AtomicUsize,
     realtime_count: AtomicUsize,
+    cleanup_thread: Mutex<Option<JoinHandle<()>>>,
+    condition: Condvar,
 }
 
 impl Drop for TcpListener {
     fn drop(&mut self) {
+        debug_assert!(self.cleanup_thread.lock().unwrap().is_none());
         debug_assert!(self.data.lock().unwrap().stopped);
         debug_assert_eq!(self.connection_count(), 0);
         debug_assert_eq!(self.attempt_count(), 0);
@@ -132,6 +136,8 @@ impl TcpListener {
             realtime_count: AtomicUsize::new(0),
             ledger,
             node_id,
+            cleanup_thread: Mutex::new(None),
+            condition: Condvar::new(),
         }
     }
 
@@ -152,6 +158,11 @@ impl TcpListener {
                     .unwrap()
                     .close_connections();
             }
+        }
+        self.condition.notify_all();
+
+        if let Some(handle) = self.cleanup_thread.lock().unwrap().take() {
+            handle.join().unwrap();
         }
 
         // Close attempts
@@ -250,7 +261,24 @@ impl TcpListener {
         counted_connections >= self.network_params.network.max_peers_per_ip
     }
 
-    fn cleanup(&self, data: &mut std::sync::MutexGuard<'_, TcpListenerData>) {
+    fn run_cleanup(&self) {
+        let mut guard = self.data.lock().unwrap();
+        while !guard.stopped {
+            self.stats.inc(StatType::TcpListener, DetailType::Cleanup);
+
+            self.cleanup(&mut guard);
+            self.timeout();
+
+            guard = self
+                .condition
+                .wait_timeout_while(guard, Duration::from_secs(1), |g| !g.stopped)
+                .unwrap()
+                .0;
+        }
+    }
+
+    fn cleanup(&self, data: &mut TcpListenerData) {
+        // Erase dead connections
         data.connections.retain(|_, conn| {
             let retain = conn.strong_count() > 0;
             if !retain {
@@ -259,6 +287,13 @@ impl TcpListener {
             }
             retain
         })
+
+        // Erase completed attempts
+        // TODO
+    }
+
+    fn timeout(&self) {
+        // TODO
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -383,8 +418,22 @@ impl TcpListenerExt for Arc<TcpListener> {
         data.listening_socket = Some(listening_socket);
         drop(data);
         self.on_connection(callback);
+
+        let self_w = Arc::downgrade(self);
+        *self.cleanup_thread.lock().unwrap() = Some(
+            std::thread::Builder::new()
+                .name("TCP listener".to_owned())
+                .spawn(move || {
+                    if let Some(self_l) = self_w.upgrade() {
+                        self_l.run_cleanup();
+                    }
+                })
+                .unwrap(),
+        );
+
         Ok(())
     }
+
     fn on_connection(&self, callback: Box<dyn Fn(Arc<Socket>, ErrorCode) -> bool + Send + Sync>) {
         let listening_socket = {
             let guard = self.data.lock().unwrap();

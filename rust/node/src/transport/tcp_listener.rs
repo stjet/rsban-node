@@ -9,8 +9,8 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{
-        into_ipv6_socket_address, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        AsyncRuntime, ErrorCode, ThreadPool,
+        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
+        map_address_to_subnetwork, AsyncRuntime, ErrorCode, ThreadPool,
     },
     NetworkParams,
 };
@@ -28,7 +28,7 @@ use std::{
         Arc, Condvar, Mutex, Weak,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 use tokio::{io::AsyncWriteExt, sync::oneshot};
 use tracing::{debug, error, info, warn};
@@ -120,6 +120,13 @@ impl TcpListenerData {
         self.attempts
             .iter()
             .filter(|a| a.endpoint.ip() == ip)
+            .count()
+    }
+
+    fn alive_connections_count(&self) -> usize {
+        self.connections
+            .iter()
+            .filter(|c| c.socket.strong_count() > 0)
             .count()
     }
 }
@@ -223,9 +230,8 @@ impl TcpListener {
     }
 
     pub fn connection_count(&self) -> usize {
-        let mut data = self.data.lock().unwrap();
-        self.cleanup(&mut data);
-        data.connections.len()
+        let data = self.data.lock().unwrap();
+        data.alive_connections_count()
     }
 
     pub fn attempt_count(&self) -> usize {
@@ -274,17 +280,17 @@ impl TcpListener {
     }
 
     fn timeout(&self, data: &mut TcpListenerData) {
+        let now = SystemTime::now();
         for attempt in &data.attempts {
-            if !attempt.join_handle.is_finished()
-                && attempt.start.elapsed() >= self.config.connect_timeout
-            {
+            let elapsed = now.duration_since(attempt.start).unwrap_or_default();
+            if !attempt.join_handle.is_finished() && elapsed >= self.config.connect_timeout {
                 attempt.join_handle.abort();
                 self.stats
                     .inc(StatType::TcpListener, DetailType::AttemptTimeout);
                 debug!(
                     "Connection attempt timed out: {} (started {}s ago)",
                     attempt.endpoint,
-                    attempt.start.elapsed().as_secs()
+                    elapsed.as_secs()
                 );
             }
         }
@@ -314,8 +320,6 @@ impl TcpListener {
         let Some(channels) = self.tcp_channels.upgrade() else {
             return AcceptResult::Rejected;
         };
-
-        self.cleanup(data);
 
         if let Some(channels) = self.tcp_channels.upgrade() {
             if channels.excluded_peers.lock().unwrap().is_excluded_ip(ip) {
@@ -368,7 +372,9 @@ impl TcpListener {
         match direction {
             ConnectionDirection::Inbound => {
                 // Should be checked earlier (wait_available_slots)
-                debug_assert!(data.connections.len() <= self.config.max_inbound_connections);
+                debug_assert!(
+                    data.alive_connections_count() <= self.config.max_inbound_connections
+                );
                 let count = channels.count_per_direction(ConnectionDirection::Inbound);
                 if count >= self.config.max_inbound_connections {
                     self.stats.inc_dir(
@@ -505,7 +511,9 @@ impl TcpListenerExt for Arc<TcpListener> {
 
         guard.attempts.push(Attempt {
             endpoint: remote,
-            start: Instant::now(),
+            address: ipv4_address_or_ipv6_subnet(remote.ip()),
+            subnetwork: map_address_to_subnetwork(remote.ip()),
+            start: SystemTime::now(),
             join_handle,
         });
         true // Attempt started
@@ -814,7 +822,9 @@ fn is_temporary_error(ec: ErrorCode) -> bool {
 }
 
 struct Attempt {
-    endpoint: SocketAddrV6,
-    start: Instant,
+    pub endpoint: SocketAddrV6,
+    pub address: Ipv6Addr,
+    pub subnetwork: Ipv6Addr,
+    pub start: SystemTime,
     join_handle: tokio::task::JoinHandle<()>,
 }

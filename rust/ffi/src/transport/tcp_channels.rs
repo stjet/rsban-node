@@ -3,23 +3,21 @@ use super::{
     OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
 };
 use crate::{
-    bootstrap::{RequestResponseVisitorFactoryHandle, TcpListenerHandle},
     messages::MessageHandle,
-    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
-use rsnano_messages::{DeserializedMessage, Message};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions, TcpListener},
+    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions},
     NetworkParams,
 };
 use std::{
     ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
-    sync::{Arc, Weak},
+    sync::Arc,
 };
 
 pub struct TcpChannelsHandle(pub Arc<TcpChannels>);
@@ -93,8 +91,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_create(
 pub extern "C" fn rsn_tcp_channels_port(handle: &TcpChannelsHandle) -> u16 {
     handle.port()
 }
-
-pub type NewChannelCallback = unsafe extern "C" fn(*mut c_void, *mut ChannelHandle);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_destroy(handle: *mut TcpChannelsHandle) {

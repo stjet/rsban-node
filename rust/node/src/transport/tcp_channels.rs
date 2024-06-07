@@ -472,7 +472,7 @@ impl TcpChannels {
         if self.flags.disable_tcp_realtime {
             return false;
         }
-        // Don't keepalive to nodes that already sent us something
+        // Don't connect to nodes that already sent us something
         if self.find_channel(endpoint).is_some() {
             return false;
         }
@@ -1099,7 +1099,7 @@ pub struct AttemptEntry {
     pub endpoint: SocketAddrV6,
     pub address: Ipv6Addr,
     pub subnetwork: Ipv6Addr,
-    pub last_attempt: SystemTime,
+    pub start: SystemTime,
 }
 
 impl AttemptEntry {
@@ -1108,7 +1108,7 @@ impl AttemptEntry {
             endpoint,
             address: ipv4_address_or_ipv6_subnet(endpoint.ip()),
             subnetwork: map_address_to_subnetwork(endpoint.ip()),
-            last_attempt: SystemTime::now(),
+            start: SystemTime::now(),
         }
     }
 }
@@ -1135,7 +1135,7 @@ impl TcpEndpointAttemptContainer {
             .or_default()
             .push(attempt.endpoint);
         self.by_time
-            .entry(attempt.last_attempt)
+            .entry(attempt.start)
             .or_default()
             .push(attempt.endpoint);
         self.by_endpoint.insert(attempt.endpoint, attempt);
@@ -1158,11 +1158,11 @@ impl TcpEndpointAttemptContainer {
                 self.by_subnetwork.remove(&attempt.subnetwork);
             }
 
-            let by_time = self.by_time.get_mut(&attempt.last_attempt).unwrap();
+            let by_time = self.by_time.get_mut(&attempt.start).unwrap();
             if by_time.len() > 1 {
                 by_time.retain(|x| x != endpoint);
             } else {
-                self.by_time.remove(&attempt.last_attempt);
+                self.by_time.remove(&attempt.start);
             }
         }
     }

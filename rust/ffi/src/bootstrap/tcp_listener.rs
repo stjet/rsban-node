@@ -1,20 +1,6 @@
-use super::BootstrapInitiatorHandle;
-use crate::{
-    block_processing::BlockProcessorHandle,
-    ledger::datastore::LedgerHandle,
-    transport::{
-        EndpointDto, SocketFfiObserver, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
-    },
-    utils::{AsyncRuntimeHandle, ContextWrapper, ThreadPoolHandle},
-    ErrorCodeDto, NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, TcpConfigDto,
-    VoidPointerCallback,
-};
-use rsnano_core::KeyPair;
-use rsnano_node::{
-    transport::{Socket, TcpListener, TcpListenerExt},
-    utils::ErrorCode,
-};
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use crate::transport::EndpointDto;
+use rsnano_node::transport::TcpListener;
+use std::{ops::Deref, sync::Arc};
 use tracing::debug;
 
 pub struct TcpListenerHandle(pub Arc<TcpListener>);
@@ -32,9 +18,6 @@ pub unsafe extern "C" fn rsn_tcp_listener_destroy(handle: *mut TcpListenerHandle
     debug!("calling TCP listener destroy");
     drop(Box::from_raw(handle))
 }
-
-pub type OnConnectionCallback =
-    extern "C" fn(*mut c_void, *mut SocketHandle, *const ErrorCodeDto) -> bool;
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_realtime_count(handle: &TcpListenerHandle) -> usize {

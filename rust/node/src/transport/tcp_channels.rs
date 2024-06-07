@@ -168,7 +168,31 @@ impl TcpChannels {
             .unwrap()
             .channels
             .iter()
-            .filter(|entry| entry.tcp_channel().socket.direction() == direction)
+            .filter(|entry| entry.channel.direction() == direction)
+            .count()
+    }
+
+    pub fn count_per_ip(&self, ip: &Ipv6Addr) -> usize {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .channels
+            .iter()
+            .filter(|entry| entry.channel.remote_endpoint().ip() == ip)
+            .count()
+    }
+
+    pub fn count_per_subnetwork(&self, ip: &Ipv6Addr) -> usize {
+        let subnet = map_address_to_subnetwork(ip);
+
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .channels
+            .iter()
+            .filter(|entry| {
+                map_address_to_subnetwork(entry.channel.remote_endpoint().ip()) == subnet
+            })
             .count()
     }
 

@@ -116,32 +116,6 @@ struct ServerSocket {
 }
 
 impl TcpListenerData {
-    fn count_per_type(&self, direction: ConnectionDirection) -> usize {
-        self.count_servers(|server| server.socket.direction() == direction)
-    }
-
-    fn count_per_ip(&self, ip: &Ipv6Addr) -> usize {
-        self.count_servers(|server| server.remote_endpoint().ip() == ip)
-    }
-
-    fn count_per_subnetwork(&self, ip: &Ipv6Addr) -> usize {
-        let subnet = map_address_to_subnetwork(ip);
-        self.count_servers(|server| {
-            map_address_to_subnetwork(server.remote_endpoint().ip()) == subnet
-        })
-    }
-
-    fn count_servers<P>(&self, predicate: P) -> usize
-    where
-        P: FnMut(&Arc<TcpServer>) -> bool,
-    {
-        self.connections
-            .iter()
-            .filter_map(|v| v.server.upgrade())
-            .filter(predicate)
-            .count()
-    }
-
     fn count_attempts(&self, ip: &Ipv6Addr) -> usize {
         self.attempts
             .iter()
@@ -258,7 +232,7 @@ impl TcpListener {
         self.data.lock().unwrap().attempts.len()
     }
 
-    pub fn endpoint(&self) -> SocketAddr {
+    pub fn local_address(&self) -> SocketAddr {
         let guard = self.data.lock().unwrap();
         if !guard.stopped {
             guard.local_addr
@@ -337,6 +311,10 @@ impl TcpListener {
             return AcceptResult::Rejected;
         }
 
+        let Some(channels) = self.tcp_channels.upgrade() else {
+            return AcceptResult::Rejected;
+        };
+
         self.cleanup(data);
 
         if let Some(channels) = self.tcp_channels.upgrade() {
@@ -353,7 +331,7 @@ impl TcpListener {
         }
 
         if !self.node_flags.disable_max_peers_per_ip {
-            let count = data.count_per_ip(ip);
+            let count = channels.count_per_ip(ip);
             if count >= self.network_params.network.max_peers_per_ip {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -372,7 +350,7 @@ impl TcpListener {
         if !self.node_flags.disable_max_peers_per_subnetwork
             && !is_ipv4_or_v4_mapped_address(&(*ip).into())
         {
-            let count = data.count_per_subnetwork(ip);
+            let count = channels.count_per_subnetwork(ip);
             if count >= self.network_params.network.max_peers_per_subnetwork {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -391,7 +369,7 @@ impl TcpListener {
             ConnectionDirection::Inbound => {
                 // Should be checked earlier (wait_available_slots)
                 debug_assert!(data.connections.len() <= self.config.max_inbound_connections);
-                let count = data.count_per_type(ConnectionDirection::Inbound);
+                let count = channels.count_per_direction(ConnectionDirection::Inbound);
                 if count >= self.config.max_inbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,
@@ -406,7 +384,7 @@ impl TcpListener {
                 }
             }
             ConnectionDirection::Outbound => {
-                let count = data.count_per_type(ConnectionDirection::Outbound);
+                let count = channels.count_per_direction(ConnectionDirection::Outbound);
                 if count >= self.config.max_outbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,

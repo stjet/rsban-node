@@ -1,6 +1,6 @@
 use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, OutboundBandwidthLimiter, Socket,
-    SocketExtensions, TcpChannels, TrafficType,
+    write_queue::WriteCallback, BufferDropPolicy, Channel, ConnectionDirection,
+    OutboundBandwidthLimiter, Socket, SocketExtensions, TcpChannels, TrafficType,
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
@@ -252,6 +252,10 @@ impl Channel for Arc<ChannelTcp> {
 
     fn network_version(&self) -> u8 {
         self.network_version.load(Ordering::Relaxed)
+    }
+
+    fn direction(&self) -> ConnectionDirection {
+        self.socket.direction()
     }
 
     fn send(

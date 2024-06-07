@@ -14,8 +14,8 @@ use std::{
 };
 
 use super::{
-    BandwidthLimitType, BufferDropPolicy, Channel, OutboundBandwidthLimiter, TrafficType,
-    WriteCallback,
+    BandwidthLimitType, BufferDropPolicy, Channel, ConnectionDirection, OutboundBandwidthLimiter,
+    TrafficType, WriteCallback,
 };
 
 pub struct FakeChannelData {
@@ -138,6 +138,10 @@ impl Channel for ChannelFake {
 
     fn network_version(&self) -> u8 {
         self.protocol.version_using
+    }
+
+    fn direction(&self) -> ConnectionDirection {
+        ConnectionDirection::Inbound
     }
 
     fn send(

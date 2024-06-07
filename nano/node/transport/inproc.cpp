@@ -155,4 +155,3 @@ std::string nano::transport::inproc::channel::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
 }
-

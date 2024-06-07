@@ -478,9 +478,10 @@ nano::telemetry_data nano::node::local_telemetry () const
 	return telemetry->local_telemetry ();
 }
 
-void nano::node::connect (nano::endpoint const & endpoint){
-	auto dto{ rsnano::udp_endpoint_to_dto(endpoint) };
-	rsnano::rsn_node_connect(handle, &dto);
+void nano::node::connect (nano::endpoint const & endpoint)
+{
+	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };
+	rsnano::rsn_node_connect (handle, &dto);
 }
 
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)

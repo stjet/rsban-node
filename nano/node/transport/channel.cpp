@@ -38,7 +38,7 @@ nano::tcp_endpoint nano::transport::channel::get_peering_endpoint () const
 {
 	rsnano::EndpointDto dto;
 	rsnano::rsn_channel_peering_endpoint (handle, &dto);
-	return rsnano::dto_to_endpoint(dto);
+	return rsnano::dto_to_endpoint (dto);
 }
 
 void nano::transport::channel::set_last_packet_sent (std::chrono::system_clock::time_point time)

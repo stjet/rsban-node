@@ -48,5 +48,5 @@ pub extern "C" fn rsn_tcp_listener_connection_count(handle: &TcpListenerHandle) 
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_listener_endpoint(handle: &TcpListenerHandle, result: &mut EndpointDto) {
-    *result = handle.0.endpoint().into()
+    *result = handle.0.local_address().into()
 }

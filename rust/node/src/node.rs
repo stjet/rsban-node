@@ -998,7 +998,11 @@ impl Node {
             Arc::clone(&ledger),
             time_factory,
             Arc::clone(&stats),
-            Duration::from_secs(60 * 60),
+            if network_params.network.is_dev_network() {
+                Duration::from_secs(10)
+            } else {
+                Duration::from_secs(60 * 60)
+            },
         );
 
         let peer_cache_connector = PeerCacheConnector::new(
@@ -1019,7 +1023,11 @@ impl Node {
             peer_cache_updater: TimerThread::new(
                 "Peer history",
                 peer_cache_updater,
-                Duration::from_secs(15),
+                if network_params.network.is_dev_network() {
+                    Duration::from_secs(1)
+                } else {
+                    Duration::from_secs(15)
+                },
             ),
             peer_cache_connector: TimerThread::new_run_immedately(
                 "Net reachout",

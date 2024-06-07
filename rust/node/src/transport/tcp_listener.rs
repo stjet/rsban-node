@@ -384,7 +384,10 @@ impl TcpListener {
                     DetailType::MaxPerIp,
                     connection_type.into(),
                 );
-                debug!("Max connections per IP reached (ip: {}, count: {}), unable to open new connection", ip, count);
+                debug!(
+                    "Max connections per IP reached ({}), unable to open new connection",
+                    ip
+                );
                 return AcceptResult::Rejected;
             }
         }
@@ -400,8 +403,10 @@ impl TcpListener {
                     DetailType::MaxPerSubnetwork,
                     connection_type.into(),
                 );
-                debug!("Max connections per subnetwork reached (ip: {}, count: {}), unable to open new connection",
-                    ip, count);
+                debug!(
+                    "Max connections per subnetwork reached ({}), unable to open new connection",
+                    ip
+                );
                 return AcceptResult::Rejected;
             }
         }
@@ -418,8 +423,8 @@ impl TcpListener {
                         connection_type.into(),
                     );
                     debug!(
-                        "Max inbound connections reached ({}), unable to accept new connection",
-                        count
+                        "Max inbound connections reached ({}), unable to accept new connection: {}",
+                        count, ip
                     );
                     return AcceptResult::Rejected;
                 }
@@ -433,8 +438,8 @@ impl TcpListener {
                         connection_type.into(),
                     );
                     debug!(
-                        "Max outbound connections reached ({}), unable to initiate new connection",
-                        count
+                        "Max outbound connections reached ({}), unable to initiate new connection: {}",
+                        count, ip
                     );
                     return AcceptResult::Rejected;
                 }
@@ -446,8 +451,8 @@ impl TcpListener {
                         connection_type.into(),
                     );
                     debug!(
-                        "Max connection attempts reached ({}), unable to initiate new connection",
-                        count
+                        "Max connection attempts reached ({}), unable to initiate new connection: {}",
+                        count, ip
                     );
                     return AcceptResult::Rejected;
                 }
@@ -460,8 +465,8 @@ impl TcpListener {
                         connection_type.into(),
                     );
                     debug!(
-                        "Connection attempt already in progress ({}), unable to initiate new connection",
-                        ip
+                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
+                        count, ip
                     );
                     return AcceptResult::Rejected;
                 }

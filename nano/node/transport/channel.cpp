@@ -34,6 +34,13 @@ std::chrono::system_clock::time_point nano::transport::channel::get_last_packet_
 	return rsnano::time_point_from_nanoseconds (rsnano::rsn_channel_get_last_packet_received (handle));
 }
 
+nano::tcp_endpoint nano::transport::channel::get_peering_endpoint () const
+{
+	rsnano::EndpointDto dto;
+	rsnano::rsn_channel_peering_endpoint (handle, &dto);
+	return rsnano::dto_to_endpoint(dto);
+}
+
 void nano::transport::channel::set_last_packet_sent (std::chrono::system_clock::time_point time)
 {
 	rsnano::rsn_channel_set_last_packet_sent2 (handle, time.time_since_epoch ().count ());

@@ -146,6 +146,14 @@ pub unsafe extern "C" fn rsn_channel_id(handle: *mut ChannelHandle) -> usize {
     as_channel(handle).channel_id()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_channel_peering_endpoint(
+    handle: &ChannelHandle,
+    result: *mut EndpointDto,
+) {
+    (*result) = handle.peering_endpoint().into()
+}
+
 pub type FfiInboundCallback =
     unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
 

@@ -98,6 +98,7 @@ public:
 	virtual nano::endpoint get_remote_endpoint () const = 0;
 	virtual nano::tcp_endpoint get_tcp_remote_endpoint () const = 0;
 	virtual nano::tcp_endpoint get_local_endpoint () const = 0;
+	virtual nano::tcp_endpoint get_peering_endpoint () const;
 	virtual nano::transport::transport_type get_type () const = 0;
 
 	virtual bool alive () const

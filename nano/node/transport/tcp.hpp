@@ -115,8 +115,6 @@ namespace transport
 		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0);
 		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);
 		void flood_message (nano::message & msg, float scale);
-		// Connection start
-		void start_tcp (nano::endpoint const &);
 
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		uint16_t port () const;

@@ -341,13 +341,6 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
 }
 
-void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	rsnano::rsn_tcp_channels_start_tcp (handle, &endpoint_dto);
-	return;
-}
-
 namespace
 {
 void message_received_callback (void * context, const rsnano::ErrorCodeDto * ec_dto, rsnano::MessageHandle * msg_handle)

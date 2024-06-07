@@ -1,8 +1,7 @@
 use super::{
     BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, NetworkFilter, NullSocketObserver,
-    NullTcpServerObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions,
-    SocketObserver, SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer,
-    TcpServerObserver, TrafficType, TransportType,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions, SocketObserver, SynCookies,
+    TcpListener, TcpListenerExt, TcpMessageManager, TcpServer, TrafficType, TransportType,
 };
 use crate::{
     bootstrap::ChannelEntry,
@@ -549,10 +548,9 @@ pub trait TcpChannelsExtension {
     ) -> Option<Arc<ChannelEnum>>;
 
     fn process_messages(&self);
-
     fn merge_peer(&self, peer: SocketAddrV6);
     fn keepalive(&self);
-    fn start_tcp(&self, endpoint: SocketAddrV6);
+    fn connect(&self, endpoint: SocketAddrV6);
 }
 
 impl TcpChannelsExtension for Arc<TcpChannels> {
@@ -636,7 +634,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         self.merge_peer_listener.emit(peer);
         if !self.reachout_checked(&peer, self.node_config.allow_local_peers) {
             self.stats.inc(StatType::Network, DetailType::MergePeer);
-            self.start_tcp(peer);
+            self.connect(peer);
         }
     }
 
@@ -662,7 +660,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
         }
     }
 
-    fn start_tcp(&self, endpoint: SocketAddrV6) {
+    fn connect(&self, endpoint: SocketAddrV6) {
         let listener = {
             let guard = self.tcp_listener.read().unwrap();
 

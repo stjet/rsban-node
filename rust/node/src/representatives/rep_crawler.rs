@@ -386,7 +386,7 @@ impl RepCrawler {
                                 )
                             }
                             None => {
-                                channels.start_tcp(endpoint);
+                                channels.merge_peer(endpoint);
                             }
                         }
                     }

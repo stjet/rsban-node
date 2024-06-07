@@ -85,31 +85,7 @@ TEST (network, construction_without_specified_port)
 // Disabled, because it is flakey with Tokio
 TEST (DISABLED_network, send_node_id_handshake_tcp)
 {
-	nano::test::system system (1);
-	auto node0 (system.nodes[0]);
-	ASSERT_EQ (0, node0->network->size ());
-	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	node1->start ();
-	system.nodes.push_back (node1);
-	auto initial (node0->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in));
-	auto initial_node1 (node1->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in));
-	auto initial_keepalive (node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in));
-	std::weak_ptr<nano::node> node_w (node0);
-	node0->network->tcp_channels->start_tcp (node1->network->endpoint ());
-	ASSERT_EQ (0, node0->network->size ());
-	ASSERT_EQ (0, node1->network->size ());
-	ASSERT_TIMELY (10s, node0->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in) >= initial + 2);
-	ASSERT_TIMELY (5s, node1->stats->count (nano::stat::type::message, nano::stat::detail::node_id_handshake, nano::stat::dir::in) >= initial_node1 + 2);
-	ASSERT_TIMELY (5s, node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) >= initial_keepalive + 2);
-	ASSERT_TIMELY (5s, node1->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) >= initial_keepalive + 2);
-	ASSERT_EQ (1, node0->network->size ());
-	ASSERT_EQ (1, node1->network->size ());
-	auto list1 (node0->network->tcp_channels->list (1));
-	ASSERT_EQ (nano::transport::transport_type::tcp, list1[0]->get_type ());
-	ASSERT_EQ (node1->get_node_id (), list1[0]->get_node_id ());
-	auto list2 (node1->network->tcp_channels->list (1));
-	ASSERT_EQ (nano::transport::transport_type::tcp, list2[0]->get_type ());
-	ASSERT_EQ (node0->get_node_id (), list2[0]->get_node_id ());
+	// TODO reimplement in Rust
 }
 
 TEST (network, last_contacted)
@@ -169,13 +145,13 @@ TEST (network, multi_keepalive)
 	system.nodes.push_back (node1);
 	ASSERT_EQ (0, node1->network->size ());
 	ASSERT_EQ (0, node0->network->size ());
-	node1->network->tcp_channels->start_tcp (node0->network->endpoint ());
+	node1->connect (node0->network->endpoint ());
 	ASSERT_TIMELY (10s, node0->network->size () == 1 && node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive) >= 1);
 	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
 	ASSERT_FALSE (node2->init_error ());
 	node2->start ();
 	system.nodes.push_back (node2);
-	node2->network->tcp_channels->start_tcp (node0->network->endpoint ());
+	node2->connect (node0->network->endpoint ());
 	// ASSERT_TIMELY (10s, node1->network->size () == 2 && node0->network->size () == 2 && node2->network->size () == 2 && node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive) >= 2);
 	std::this_thread::sleep_for (10s);
 	std::cout << "node0: " << node0->network->size () << ", node1: " << node1->network->size () << ", node2: " << node2->network->size () << std::endl;
@@ -768,7 +744,7 @@ TEST (network, cleanup_purge)
 	ASSERT_EQ (0, node1.network->size ());
 
 	std::weak_ptr<nano::node> node_w = node1.shared ();
-	node1.network->tcp_channels->start_tcp (node2->network->endpoint ());
+	node1.connect (node2->network->endpoint ());
 
 	ASSERT_TIMELY_EQ (3s, node1.network->size (), 1);
 	node1.network->cleanup (test_start);

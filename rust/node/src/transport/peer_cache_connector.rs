@@ -72,7 +72,7 @@ impl Runnable for PeerCacheConnector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{stats::Direction, transport::TcpListener};
+    use crate::stats::Direction;
     use rsnano_core::utils::{
         parse_endpoint, OutputTrackerMt, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
     };

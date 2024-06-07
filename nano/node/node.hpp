@@ -104,6 +104,7 @@ public:
 	uint64_t get_confirmation_height (store::transaction const &, nano::account &);
 	nano::account get_node_id () const;
 	nano::telemetry_data local_telemetry () const;
+	void connect (nano::endpoint const &);
 
 public:
 	nano::keypair node_id;

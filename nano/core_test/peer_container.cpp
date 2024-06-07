@@ -25,7 +25,7 @@ TEST (peer_container, no_self_incoming)
 {
 	nano::test::system system{ 1 };
 	auto & node = *system.nodes[0];
-	node.network->tcp_channels->start_tcp (node.network->endpoint ());
+	node.connect (node.network->endpoint ());
 	auto error = system.poll_until_true (2s, [&node] {
 		auto result = node.network->tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node.network->endpoint ()));
 		return result != nullptr;

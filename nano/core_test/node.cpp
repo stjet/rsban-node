@@ -245,7 +245,7 @@ TEST (node, node_receive_quorum)
 
 	(void)node2->wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	ASSERT_TRUE (node1.balance (key.pub).is_zero ());
-	node1.network->tcp_channels->start_tcp (node2->network->endpoint ());
+	node1.connect (node2->network->endpoint ());
 	while (node1.balance (key.pub).is_zero ())
 	{
 		ASSERT_NO_ERROR (system.poll ());

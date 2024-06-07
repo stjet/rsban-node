@@ -16,9 +16,9 @@ use crate::{
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
-        ChannelHandle, LiveMessageProcessorHandle, NetworkFilterHandle, NetworkThreadsHandle,
-        OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
-        TcpMessageManagerHandle,
+        ChannelHandle, EndpointDto, LiveMessageProcessorHandle, NetworkFilterHandle,
+        NetworkThreadsHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle,
+        TcpChannelsHandle, TcpMessageManagerHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -30,7 +30,7 @@ use rsnano_core::{Vote, VoteCode};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::ChannelEnum,
+    transport::{ChannelEnum, TcpChannelsExtension},
 };
 use std::{
     ffi::{c_char, c_void},
@@ -414,6 +414,11 @@ pub extern "C" fn rsn_node_ledger_pruning(
     handle
         .0
         .ledger_pruning(batch_size, bootstrap_weight_reached);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_connect(handle: &NodeHandle, endpoint: &EndpointDto) {
+    handle.0.channels.merge_peer(endpoint.into());
 }
 
 #[no_mangle]

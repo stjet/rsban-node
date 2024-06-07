@@ -189,14 +189,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_start_tcp(
-    handle: &TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) {
-    handle.start_tcp(endpoint.into());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_len_sqrt(handle: &TcpChannelsHandle) -> f32 {
     handle.len_sqrt()
 }

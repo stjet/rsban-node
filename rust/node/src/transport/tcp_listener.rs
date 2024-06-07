@@ -443,33 +443,6 @@ impl TcpListener {
                     );
                     return AcceptResult::Rejected;
                 }
-
-                if data.attempts.len() > self.config.max_attempts {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttempts,
-                        connection_type.into(),
-                    );
-                    debug!(
-                        "Max connection attempts reached ({}), unable to initiate new connection: {}",
-                        count, ip
-                    );
-                    return AcceptResult::Rejected;
-                }
-
-                let count = data.count_attempts(ip);
-                if count >= self.config.max_attempts_per_ip {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttemptsPerIp,
-                        connection_type.into(),
-                    );
-                    debug!(
-                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
-                        count, ip
-                    );
-                    return AcceptResult::Rejected;
-                }
             }
         }
 
@@ -514,6 +487,35 @@ impl TcpListenerExt for Arc<TcpListener> {
 
     fn connect(&self, remote: SocketAddrV6) -> bool {
         let mut guard = self.data.lock().unwrap();
+
+        let count = guard.attempts.len();
+        if count > self.config.max_attempts {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttempts,
+                Direction::Out,
+            );
+            debug!(
+                "Max connection attempts reached ({}), unable to initiate new connection: {}",
+                count,
+                remote.ip()
+            );
+            return false; // Rejected
+        }
+
+        let count = guard.count_attempts(remote.ip());
+        if count >= self.config.max_attempts_per_ip {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttemptsPerIp,
+                Direction::Out,
+            );
+            debug!(
+                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
+                        count, remote.ip()
+                    );
+            return false; // Rejected
+        }
 
         if self.check_limits(remote.ip(), ConnectionType::Outbound, &mut guard)
             != AcceptResult::Accepted

@@ -30,7 +30,8 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
-use tokio::{io::AsyncWriteExt, sync::oneshot};
+use tokio::io::AsyncWriteExt;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 #[derive(PartialEq, Eq)]
@@ -91,7 +92,7 @@ pub struct TcpListener {
     realtime_count: AtomicUsize,
     cleanup_thread: Mutex<Option<JoinHandle<()>>>,
     condition: Condvar,
-    close: Mutex<Option<oneshot::Sender<()>>>,
+    cancel_token: CancellationToken,
 }
 
 impl Drop for TcpListener {
@@ -179,7 +180,7 @@ impl TcpListener {
             node_id,
             cleanup_thread: Mutex::new(None),
             condition: Condvar::new(),
-            close: Mutex::new(None),
+            cancel_token: CancellationToken::new(),
         }
     }
 
@@ -192,27 +193,11 @@ impl TcpListener {
             std::mem::swap(&mut conns, &mut guard.connections);
         }
 
-        if let Some(close) = self.close.lock().unwrap().take() {
-            close.send(()).unwrap();
-        }
+        self.cancel_token.cancel();
         self.condition.notify_all();
 
         if let Some(handle) = self.cleanup_thread.lock().unwrap().take() {
             handle.join().unwrap();
-        }
-
-        // Close attempts
-        {
-            let mut attempts = Vec::new();
-            {
-                let mut guard = self.data.lock().unwrap();
-                std::mem::swap(&mut guard.attempts, &mut attempts);
-            }
-            self.runtime.tokio.block_on(async {
-                for attempt in attempts {
-                    let _ = attempt.join_handle.await;
-                }
-            })
         }
 
         for conn in conns {
@@ -253,7 +238,6 @@ impl TcpListener {
             self.stats.inc(StatType::TcpListener, DetailType::Cleanup);
 
             self.cleanup(&mut guard);
-            self.timeout(&mut guard);
 
             guard = self
                 .condition
@@ -273,27 +257,6 @@ impl TcpListener {
             }
             retain
         });
-
-        // Erase completed attempts
-        data.attempts
-            .retain(|attempt| !attempt.join_handle.is_finished())
-    }
-
-    fn timeout(&self, data: &mut TcpListenerData) {
-        let now = SystemTime::now();
-        for attempt in &data.attempts {
-            let elapsed = now.duration_since(attempt.start).unwrap_or_default();
-            if !attempt.join_handle.is_finished() && elapsed >= self.config.connect_timeout {
-                attempt.join_handle.abort();
-                self.stats
-                    .inc(StatType::TcpListener, DetailType::AttemptTimeout);
-                debug!(
-                    "Connection attempt timed out: {} (started {}s ago)",
-                    attempt.endpoint,
-                    elapsed.as_secs()
-                );
-            }
-        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -417,7 +380,7 @@ impl TcpListener {
 #[async_trait]
 pub trait TcpListenerExt {
     fn start(&self);
-    async fn run(&self, listener: tokio::net::TcpListener, close: oneshot::Receiver<()>);
+    async fn run(&self, listener: tokio::net::TcpListener);
     fn connect_ip(&self, remote: Ipv6Addr) -> bool;
     fn connect(&self, remote: SocketAddrV6) -> bool;
     fn as_observer(self) -> Arc<dyn TcpServerObserver>;
@@ -446,82 +409,110 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 
     fn connect(&self, remote: SocketAddrV6) -> bool {
-        let mut guard = self.data.lock().unwrap();
+        {
+            let mut guard = self.data.lock().unwrap();
 
-        let count = guard.attempts.len();
-        if count > self.config.max_attempts {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttempts,
-                Direction::Out,
-            );
-            debug!(
-                "Max connection attempts reached ({}), unable to initiate new connection: {}",
-                count,
-                remote.ip()
-            );
-            return false; // Rejected
-        }
+            let count = guard.attempts.len();
+            if count > self.config.max_attempts {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxAttempts,
+                    Direction::Out,
+                );
+                debug!(
+                    "Max connection attempts reached ({}), unable to initiate new connection: {}",
+                    count,
+                    remote.ip()
+                );
+                return false; // Rejected
+            }
 
-        let count = guard.count_attempts(remote.ip());
-        if count >= self.config.max_attempts_per_ip {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttemptsPerIp,
-                Direction::Out,
-            );
-            debug!(
+            let count = guard.count_attempts(remote.ip());
+            if count >= self.config.max_attempts_per_ip {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxAttemptsPerIp,
+                    Direction::Out,
+                );
+                debug!(
                         "Connection attempt already in progress ({}), unable to initiate new connection: {}",
                         count, remote.ip()
                     );
-            return false; // Rejected
-        }
+                return false; // Rejected
+            }
 
-        if self.check_limits(remote.ip(), ConnectionDirection::Outbound, &mut guard)
-            != AcceptResult::Accepted
-        {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectRejected,
-                Direction::Out,
-            );
-            // Refusal reason should be logged earlier
-
-            return false; // Rejected
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::ConnectInitiate,
-            Direction::Out,
-        );
-        debug!("Initiate outgoing connection to: {}", remote);
-
-        let self_l = Arc::clone(self);
-        let join_handle = self.runtime.tokio.spawn(async move {
-            if let Err(e) = self_l.connect_impl(remote).await {
-                self_l.stats.inc_dir(
+            if self.check_limits(remote.ip(), ConnectionDirection::Outbound, &mut guard)
+                != AcceptResult::Accepted
+            {
+                self.stats.inc_dir(
                     StatType::TcpListener,
-                    DetailType::ConnectError,
+                    DetailType::ConnectRejected,
                     Direction::Out,
                 );
-                debug!("Error connecting to: {} ({:?})", remote, e);
+                // Refusal reason should be logged earlier
+
+                return false; // Rejected
             }
+
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectInitiate,
+                Direction::Out,
+            );
+            debug!("Initiate outgoing connection to: {}", remote);
+
+            guard.attempts.push(Attempt {
+                endpoint: remote,
+                address: ipv4_address_or_ipv6_subnet(remote.ip()),
+                subnetwork: map_address_to_subnetwork(remote.ip()),
+                start: SystemTime::now(),
+            });
+        }
+
+        let self_l = Arc::clone(self);
+        self.runtime.tokio.spawn(async move {
+            tokio::select! {
+                result =  self_l.connect_impl(remote) =>{
+                    if let Err(e) = result {
+                        self_l.stats.inc_dir(
+                            StatType::TcpListener,
+                            DetailType::ConnectError,
+                            Direction::Out,
+                        );
+                        debug!("Error connecting to: {} ({:?})", remote, e);
+                    }
+
+                },
+                _ = tokio::time::sleep(self_l.config.connect_timeout) =>{
+                    self_l.stats
+                        .inc(StatType::TcpListener, DetailType::AttemptTimeout);
+                    debug!(
+                        "Connection attempt timed out: {}",
+                        remote,
+                    );
+
+                }
+                _ = self_l.cancel_token.cancelled() =>{
+                    debug!(
+                        "Connection attempt cancelled: {}",
+                        remote,
+                    );
+
+                }
+            }
+
+            self_l
+                .data
+                .lock()
+                .unwrap()
+                .attempts
+                .retain(|a| a.endpoint != remote);
         });
 
-        guard.attempts.push(Attempt {
-            endpoint: remote,
-            address: ipv4_address_or_ipv6_subnet(remote.ip()),
-            subnetwork: map_address_to_subnetwork(remote.ip()),
-            start: SystemTime::now(),
-            join_handle,
-        });
         true // Attempt started
     }
 
     fn start(&self) {
-        let (close_tx, close_rx) = oneshot::channel();
-        *self.close.lock().unwrap() = Some(close_tx);
         let self_l = Arc::clone(self);
         self.runtime.tokio.spawn(async move {
             let port = self_l.port.load(Ordering::SeqCst);
@@ -545,7 +536,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             }
             self_l.data.lock().unwrap().local_addr = addr;
 
-            self_l.run(listener, close_rx).await
+            self_l.run(listener).await
         });
 
         let self_w = Arc::downgrade(self);
@@ -561,7 +552,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         );
     }
 
-    async fn run(&self, listener: tokio::net::TcpListener, close: oneshot::Receiver<()>) {
+    async fn run(&self, listener: tokio::net::TcpListener) {
         let run_loop = async {
             loop {
                 self.wait_available_slots().await;
@@ -591,7 +582,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         };
 
         tokio::select! {
-            _ = close =>{ },
+            _ = self.cancel_token.cancelled() => { },
             _ = run_loop => {}
         }
     }
@@ -826,5 +817,4 @@ struct Attempt {
     pub address: Ipv6Addr,
     pub subnetwork: Ipv6Addr,
     pub start: SystemTime,
-    join_handle: tokio::task::JoinHandle<()>,
 }

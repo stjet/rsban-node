@@ -1,5 +1,5 @@
 use super::{
-    CompositeSocketObserver, ConnectionsPerAddress, Socket, SocketBuilder, SocketEndpoint,
+    CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Socket, SocketBuilder,
     SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpConfig, TcpServer, TcpServerExt,
     TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
 };
@@ -39,30 +39,6 @@ pub enum AcceptResult {
     Accepted,
     Rejected,
     Error,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum ConnectionType {
-    Inbound,
-    Outbound,
-}
-
-impl From<ConnectionType> for Direction {
-    fn from(value: ConnectionType) -> Self {
-        match value {
-            ConnectionType::Inbound => Direction::In,
-            ConnectionType::Outbound => Direction::Out,
-        }
-    }
-}
-
-impl From<ConnectionType> for SocketEndpoint {
-    fn from(value: ConnectionType) -> Self {
-        match value {
-            ConnectionType::Inbound => SocketEndpoint::Server,
-            ConnectionType::Outbound => SocketEndpoint::Client,
-        }
-    }
 }
 
 pub struct AcceptReturn {
@@ -140,8 +116,8 @@ struct ServerSocket {
 }
 
 impl TcpListenerData {
-    fn count_per_type(&self, connection_type: ConnectionType) -> usize {
-        self.count_servers(|server| server.socket.endpoint_type() == connection_type.into())
+    fn count_per_type(&self, direction: ConnectionDirection) -> usize {
+        self.count_servers(|server| server.socket.direction() == direction)
     }
 
     fn count_per_ip(&self, ip: &Ipv6Addr) -> usize {
@@ -354,7 +330,7 @@ impl TcpListener {
     fn check_limits(
         &self,
         ip: &Ipv6Addr,
-        connection_type: ConnectionType,
+        direction: ConnectionDirection,
         data: &mut TcpListenerData,
     ) -> AcceptResult {
         if data.stopped {
@@ -368,7 +344,7 @@ impl TcpListener {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
                     DetailType::Excluded,
-                    connection_type.into(),
+                    direction.into(),
                 );
 
                 debug!("Rejected connection from excluded peer: {}", ip);
@@ -382,7 +358,7 @@ impl TcpListener {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
                     DetailType::MaxPerIp,
-                    connection_type.into(),
+                    direction.into(),
                 );
                 debug!(
                     "Max connections per IP reached ({}), unable to open new connection",
@@ -401,7 +377,7 @@ impl TcpListener {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
                     DetailType::MaxPerSubnetwork,
-                    connection_type.into(),
+                    direction.into(),
                 );
                 debug!(
                     "Max connections per subnetwork reached ({}), unable to open new connection",
@@ -411,16 +387,16 @@ impl TcpListener {
             }
         }
 
-        match connection_type {
-            ConnectionType::Inbound => {
+        match direction {
+            ConnectionDirection::Inbound => {
                 // Should be checked earlier (wait_available_slots)
                 debug_assert!(data.connections.len() <= self.config.max_inbound_connections);
-                let count = data.count_per_type(ConnectionType::Inbound);
+                let count = data.count_per_type(ConnectionDirection::Inbound);
                 if count >= self.config.max_inbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,
                         DetailType::MaxAttempts,
-                        connection_type.into(),
+                        direction.into(),
                     );
                     debug!(
                         "Max inbound connections reached ({}), unable to accept new connection: {}",
@@ -429,13 +405,13 @@ impl TcpListener {
                     return AcceptResult::Rejected;
                 }
             }
-            ConnectionType::Outbound => {
-                let count = data.count_per_type(ConnectionType::Outbound);
+            ConnectionDirection::Outbound => {
+                let count = data.count_per_type(ConnectionDirection::Outbound);
                 if count >= self.config.max_outbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,
                         DetailType::MaxAttempts,
-                        connection_type.into(),
+                        direction.into(),
                     );
                     debug!(
                         "Max outbound connections reached ({}), unable to initiate new connection: {}",
@@ -467,7 +443,7 @@ pub trait TcpListenerExt {
     async fn accept_one(
         &self,
         raw_stream: tokio::net::TcpStream,
-        connection_type: ConnectionType,
+        direction: ConnectionDirection,
     ) -> AcceptReturn;
 
     async fn wait_available_slots(&self);
@@ -517,7 +493,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false; // Rejected
         }
 
-        if self.check_limits(remote.ip(), ConnectionType::Outbound, &mut guard)
+        if self.check_limits(remote.ip(), ConnectionDirection::Outbound, &mut guard)
             != AcceptResult::Accepted
         {
             self.stats.inc_dir(
@@ -613,7 +589,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     continue;
                 };
 
-                let result = self.accept_one(stream, ConnectionType::Inbound).await;
+                let result = self.accept_one(stream, ConnectionDirection::Inbound).await;
                 if result.result != AcceptResult::Accepted {
                     self.stats.inc_dir(
                         StatType::TcpListener,
@@ -661,7 +637,9 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
         let raw_listener = tokio::net::TcpSocket::new_v6()?;
         let raw_stream = raw_listener.connect(endpoint.into()).await?;
-        let result = self.accept_one(raw_stream, ConnectionType::Outbound).await;
+        let result = self
+            .accept_one(raw_stream, ConnectionDirection::Outbound)
+            .await;
         if result.result == AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
@@ -684,7 +662,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn accept_one(
         &self,
         mut raw_stream: tokio::net::TcpStream,
-        connection_type: ConnectionType,
+        direction: ConnectionDirection,
     ) -> AcceptReturn {
         let Ok(remote_endpoint) = raw_stream.peer_addr() else {
             return AcceptReturn::error();
@@ -698,18 +676,18 @@ impl TcpListenerExt for Arc<TcpListener> {
 
         let result = {
             let mut guard = self.data.lock().unwrap();
-            self.check_limits(remote_endpoint.ip(), connection_type, &mut guard)
+            self.check_limits(remote_endpoint.ip(), direction, &mut guard)
         };
 
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
                 DetailType::AcceptRejected,
-                connection_type.into(),
+                direction.into(),
             );
             debug!(
                 "Rejected connection from: {} ({:?})",
-                remote_endpoint, connection_type
+                remote_endpoint, direction
             );
             // Rejection reason should be logged earlier
 
@@ -717,11 +695,11 @@ impl TcpListenerExt for Arc<TcpListener> {
                 self.stats.inc_dir(
                     StatType::TcpListener,
                     DetailType::CloseError,
-                    connection_type.into(),
+                    direction.into(),
                 );
                 debug!(
                     "Error while clsoing socket after refusing connection: {:?} ({:?})",
-                    e, connection_type
+                    e, direction
                 )
             }
             drop(raw_stream);
@@ -731,17 +709,14 @@ impl TcpListenerExt for Arc<TcpListener> {
         self.stats.inc_dir(
             StatType::TcpListener,
             DetailType::AcceptSuccess,
-            connection_type.into(),
+            direction.into(),
         );
 
-        debug!(
-            "Accepted connection: {} ({:?})",
-            remote_endpoint, connection_type
-        );
+        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
 
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-        let socket = SocketBuilder::endpoint_type(
-            connection_type.into(),
+        let socket = SocketBuilder::new(
+            direction.into(),
             Arc::clone(&self.workers),
             Arc::downgrade(&self.runtime),
         )
@@ -761,7 +736,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             Arc::clone(&self.socket_observer),
         ])))
         .use_existing_socket(raw_stream, remote_endpoint)
-        .build();
+        .finish();
 
         let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
             Arc::clone(&self.runtime),

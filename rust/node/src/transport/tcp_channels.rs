@@ -1,7 +1,8 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, NetworkFilter, NullSocketObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions, SocketObserver, SynCookies,
-    TcpListener, TcpListenerExt, TcpMessageManager, TcpServer, TrafficType, TransportType,
+    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter,
+    NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions,
+    SocketObserver, SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer,
+    TrafficType, TransportType,
 };
 use crate::{
     bootstrap::ChannelEntry,
@@ -159,6 +160,16 @@ impl TcpChannels {
 
     fn close(&self) {
         self.tcp_channels.lock().unwrap().close_channels();
+    }
+
+    pub fn count_per_direction(&self, direction: ConnectionDirection) -> usize {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .channels
+            .iter()
+            .filter(|entry| entry.tcp_channel().socket.direction() == direction)
+            .count()
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {

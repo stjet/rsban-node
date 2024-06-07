@@ -1,5 +1,5 @@
 use crate::{
-    transport::{Channel, ChannelEnum, ChannelTcp, Socket, SocketExtensions, TcpServer},
+    transport::{ChannelEnum, ChannelTcp, SocketExtensions, TcpServer},
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 use rsnano_core::Account;

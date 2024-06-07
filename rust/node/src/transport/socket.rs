@@ -3,7 +3,10 @@ use super::{
     write_queue::{WriteCallback, WriteQueue},
     TcpStream, TcpStreamFactory, TrafficType,
 };
-use crate::utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl};
+use crate::{
+    stats,
+    utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl},
+};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::seconds_since_epoch;
@@ -29,12 +32,21 @@ pub enum BufferDropPolicy {
     NoSocketDrop,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive)]
-pub enum SocketEndpoint {
+#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
+pub enum ConnectionDirection {
     /// Socket was created by accepting an incoming connection
-    Server,
+    Inbound,
     /// Socket was created by initiating an outgoing connection
-    Client,
+    Outbound,
+}
+
+impl From<ConnectionDirection> for stats::Direction {
+    fn from(value: ConnectionDirection) -> Self {
+        match value {
+            ConnectionDirection::Inbound => stats::Direction::In,
+            ConnectionDirection::Outbound => stats::Direction::Out,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
@@ -65,7 +77,7 @@ pub trait SocketObserver: Send + Sync {
     fn write_error(&self) {}
     fn write_successful(&self, _len: usize) {}
     fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _endpoint_type: SocketEndpoint) {}
+    fn inactive_connection_dropped(&self, _direction: ConnectionDirection) {}
 }
 
 #[derive(Default)]
@@ -138,9 +150,9 @@ impl SocketObserver for CompositeSocketObserver {
         }
     }
 
-    fn inactive_connection_dropped(&self, endpoint_type: SocketEndpoint) {
+    fn inactive_connection_dropped(&self, direction: ConnectionDirection) {
         for child in &self.children {
-            child.inactive_connection_dropped(endpoint_type);
+            child.inactive_connection_dropped(direction);
         }
     }
 }
@@ -167,7 +179,7 @@ pub struct Socket {
     idle_timeout: Duration,
 
     thread_pool: Arc<dyn ThreadPool>,
-    endpoint_type: SocketEndpoint,
+    direction: ConnectionDirection,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
 
@@ -197,7 +209,7 @@ pub struct Socket {
 impl Socket {
     pub fn create_null() -> Arc<Socket> {
         let thread_pool = Arc::new(ThreadPoolImpl::create_null());
-        SocketBuilder::endpoint_type(SocketEndpoint::Client, thread_pool, Weak::new()).build()
+        SocketBuilder::new(ConnectionDirection::Outbound, thread_pool, Weak::new()).finish()
     }
 
     pub fn is_closed(&self) -> bool {
@@ -253,8 +265,8 @@ impl Socket {
         self.socket_type.store(socket_type as u8, Ordering::SeqCst);
     }
 
-    pub fn endpoint_type(&self) -> SocketEndpoint {
-        self.endpoint_type
+    pub fn direction(&self) -> ConnectionDirection {
+        self.direction
     }
 
     pub fn local_endpoint_v6(&self) -> SocketAddrV6 {
@@ -339,7 +351,7 @@ impl SocketExtensions for Arc<Socket> {
 
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let self_clone = self.clone();
-        debug_assert!(self.endpoint_type == SocketEndpoint::Client);
+        debug_assert!(self.direction == ConnectionDirection::Outbound);
 
         self.start();
         self.set_default_timeout();
@@ -629,7 +641,7 @@ impl SocketExtensions for Arc<Socket> {
                     let mut condition_to_disconnect = false;
 
                     // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-                    if socket.endpoint_type == SocketEndpoint::Server
+                    if socket.direction == ConnectionDirection::Inbound
                         && (now - socket.last_receive_time_or_init.load(Ordering::SeqCst))
                             > socket
                                 .silent_connection_tolerance_time
@@ -645,7 +657,7 @@ impl SocketExtensions for Arc<Socket> {
                     {
                         socket
                             .observer
-                            .inactive_connection_dropped(socket.endpoint_type);
+                            .inactive_connection_dropped(socket.direction);
                         condition_to_disconnect = true;
                     }
 
@@ -690,7 +702,7 @@ impl AsyncBufferReader for Arc<Socket> {
 }
 
 pub struct SocketBuilder {
-    endpoint_type: SocketEndpoint,
+    direction: ConnectionDirection,
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
@@ -711,13 +723,13 @@ pub fn alive_sockets() -> usize {
 }
 
 impl SocketBuilder {
-    pub fn endpoint_type(
-        endpoint_type: SocketEndpoint,
+    pub fn new(
+        endpoint_type: ConnectionDirection,
         thread_pool: Arc<dyn ThreadPool>,
         async_runtime: Weak<AsyncRuntime>,
     ) -> Self {
         Self {
-            endpoint_type,
+            direction: endpoint_type,
             thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
@@ -766,7 +778,7 @@ impl SocketBuilder {
         self
     }
 
-    pub fn build(self) -> Arc<Socket> {
+    pub fn finish(self) -> Arc<Socket> {
         let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
         let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
         debug!(socket_id, alive, "Creating socket");
@@ -784,7 +796,7 @@ impl SocketBuilder {
                 timeout_seconds: AtomicU64::new(u64::MAX),
                 idle_timeout: self.idle_timeout,
                 thread_pool: self.thread_pool,
-                endpoint_type: self.endpoint_type,
+                direction: self.direction,
                 silent_connection_tolerance_time: AtomicU64::new(
                     self.silent_connection_tolerance_time.as_secs(),
                 ),

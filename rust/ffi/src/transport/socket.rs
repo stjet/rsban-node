@@ -63,7 +63,7 @@ pub unsafe extern "C" fn rsn_socket_create(
     let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
     let runtime = Arc::downgrade(&async_rt.0);
-    let socket = SocketBuilder::endpoint_type(endpoint_type, thread_pool, runtime)
+    let socket = SocketBuilder::new(endpoint_type, thread_pool, runtime)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn rsn_socket_create(
             ffi_observer,
         ])))
         .max_write_queue_len(max_write_queue_len)
-        .build();
+        .finish();
     debug!(socket_id = socket.socket_id, "Socket created from FFI");
 
     SocketHandle::new(socket)
@@ -238,7 +238,7 @@ pub unsafe extern "C" fn rsn_socket_get_remote(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_endpoint_type(handle: *mut SocketHandle) -> u8 {
-    (*handle).endpoint_type() as u8
+    (*handle).direction() as u8
 }
 
 #[no_mangle]

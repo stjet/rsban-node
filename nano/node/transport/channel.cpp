@@ -29,24 +29,9 @@ void nano::transport::channel::close ()
 	rsnano::rsn_channel_close (handle);
 }
 
-std::chrono::system_clock::time_point nano::transport::channel::get_last_bootstrap_attempt () const
-{
-	return rsnano::time_point_from_nanoseconds (rsnano::rsn_channel_get_last_bootstrap_attempt (handle));
-}
-
-void nano::transport::channel::set_last_bootstrap_attempt ()
-{
-	rsnano::rsn_channel_set_last_bootstrap_attempt (handle);
-}
-
 std::chrono::system_clock::time_point nano::transport::channel::get_last_packet_received () const
 {
 	return rsnano::time_point_from_nanoseconds (rsnano::rsn_channel_get_last_packet_received (handle));
-}
-
-void nano::transport::channel::set_last_packet_sent ()
-{
-	rsnano::rsn_channel_set_last_packet_sent (handle);
 }
 
 void nano::transport::channel::set_last_packet_sent (std::chrono::system_clock::time_point time)
@@ -57,11 +42,6 @@ void nano::transport::channel::set_last_packet_sent (std::chrono::system_clock::
 std::chrono::system_clock::time_point nano::transport::channel::get_last_packet_sent () const
 {
 	return rsnano::time_point_from_nanoseconds (rsnano::rsn_channel_get_last_packet_sent (handle));
-}
-
-void nano::transport::channel::set_last_packet_received ()
-{
-	rsnano::rsn_channel_set_last_packet_received (handle);
 }
 
 boost::optional<nano::account> nano::transport::channel::get_node_id_optional () const

@@ -156,12 +156,3 @@ std::string nano::transport::inproc::channel::to_string () const
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
 }
 
-void nano::transport::inproc::channel::set_peering_endpoint (nano::endpoint endpoint)
-{
-	throw std::runtime_error ("set_peering_endpoint not yet implemented for inproc channel");
-}
-
-nano::endpoint nano::transport::inproc::channel::get_peering_endpoint () const
-{
-	return get_remote_endpoint ();
-}

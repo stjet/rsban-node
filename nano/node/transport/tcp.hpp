@@ -87,9 +87,6 @@ namespace transport
 			return nano::transport::transport_type::tcp;
 		}
 
-		bool max (nano::transport::traffic_type traffic_type) override;
-		nano::endpoint get_peering_endpoint () const override;
-		void set_peering_endpoint (nano::endpoint endpoint) override;
 		bool alive () const override;
 	};
 

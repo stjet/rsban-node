@@ -1494,7 +1494,7 @@ mod tests {
             start_tracker.output(),
             vec![TimerStartEvent {
                 thread_name: "Peer history".to_string(),
-                interval: Duration::from_secs(15),
+                interval: Duration::from_secs(1),
                 run_immediately: false
             }]
         );

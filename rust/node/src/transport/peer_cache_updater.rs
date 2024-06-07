@@ -44,7 +44,7 @@ impl PeerCacheUpdater {
     }
 
     fn save_peer(&self, tx: &mut LmdbWriteTransaction, channel: &ChannelEnum) {
-        let endpoint = channel.remote_endpoint();
+        let endpoint = channel.peering_endpoint();
         let exists = self.ledger.store.peer.exists(tx, endpoint);
 
         self.ledger
@@ -97,9 +97,7 @@ impl Runnable for PeerCacheUpdater {
 mod tests {
     use super::*;
     use crate::stats::Direction;
-    use rsnano_core::utils::{
-        create_test_time, parse_endpoint, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
-    };
+    use rsnano_core::utils::{create_test_time, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
 

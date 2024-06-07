@@ -100,24 +100,14 @@ public:
 	virtual nano::tcp_endpoint get_local_endpoint () const = 0;
 	virtual nano::transport::transport_type get_type () const = 0;
 
-	virtual bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic)
-	{
-		return false;
-	}
-
 	virtual bool alive () const
 	{
 		return true;
 	}
 
-	std::chrono::system_clock::time_point get_last_bootstrap_attempt () const;
-	void set_last_bootstrap_attempt ();
-
 	std::chrono::system_clock::time_point get_last_packet_received () const;
-	void set_last_packet_received ();
 
 	std::chrono::system_clock::time_point get_last_packet_sent () const;
-	void set_last_packet_sent ();
 	void set_last_packet_sent (std::chrono::system_clock::time_point time);
 
 	boost::optional<nano::account> get_node_id_optional () const;
@@ -127,8 +117,6 @@ public:
 	size_t channel_id () const;
 
 	virtual uint8_t get_network_version () const = 0;
-	virtual nano::endpoint get_peering_endpoint () const = 0;
-	virtual void set_peering_endpoint (nano::endpoint endpoint) = 0;
 	rsnano::ChannelHandle * handle;
 };
 

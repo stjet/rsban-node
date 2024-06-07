@@ -128,11 +128,6 @@ nano::tcp_endpoint nano::transport::channel_tcp::get_local_endpoint () const
 	return rsnano::dto_to_endpoint (ep_dto);
 }
 
-bool nano::transport::channel_tcp::max (nano::transport::traffic_type traffic_type)
-{
-	return rsnano::rsn_channel_tcp_max (handle, static_cast<uint8_t> (traffic_type));
-}
-
 void nano::transport::channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a)
 {
 	auto callback_ptr = static_cast<std::function<void (boost::system::error_code const &, std::size_t)> *> (context_a);
@@ -163,19 +158,6 @@ size_t nano::transport::channel_tcp::socket_id () const
 std::string nano::transport::channel_tcp::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());
-}
-
-nano::endpoint nano::transport::channel_tcp::get_peering_endpoint () const
-{
-	rsnano::EndpointDto dto;
-	rsnano::rsn_channel_tcp_peering_endpoint (handle, &dto);
-	return rsnano::dto_to_udp_endpoint (dto);
-}
-
-void nano::transport::channel_tcp::set_peering_endpoint (nano::endpoint endpoint)
-{
-	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };
-	rsnano::rsn_channel_tcp_set_peering_endpoint (handle, &dto);
 }
 
 bool nano::transport::channel_tcp::alive () const

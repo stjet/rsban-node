@@ -81,7 +81,9 @@ pub trait Channel {
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
     fn remote_endpoint(&self) -> SocketAddrV6;
+    fn peering_endpoint(&self) -> SocketAddrV6;
     fn network_version(&self) -> u8;
+
     fn send(
         &self,
         message: &Message,
@@ -138,6 +140,7 @@ impl ChannelEnum {
             _ => false,
         }
     }
+
     pub fn set_peering_endpoint(&self, address: SocketAddrV6) {
         if let Self::Tcp(tcp) = self {
             tcp.set_peering_endpoint(address);

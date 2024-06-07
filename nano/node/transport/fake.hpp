@@ -49,9 +49,6 @@ namespace transport
 				return nano::transport::transport_type::fake;
 			}
 
-			nano::endpoint get_peering_endpoint () const override;
-			void set_peering_endpoint (nano::endpoint endpoint) override;
-
 			bool alive () const override;
 		};
 	} // namespace fake

@@ -100,14 +100,6 @@ impl ChannelTcp {
         }
     }
 
-    pub fn peering_endpoint(&self) -> SocketAddrV6 {
-        let lock = self.channel_mutex.lock().unwrap();
-        match lock.peering_endpoint {
-            Some(addr) => addr,
-            None => lock.remote_endpoint,
-        }
-    }
-
     pub fn set_peering_endpoint(&self, address: SocketAddrV6) {
         let mut lock = self.channel_mutex.lock().unwrap();
         lock.peering_endpoint = Some(address);
@@ -248,6 +240,14 @@ impl Channel for Arc<ChannelTcp> {
 
     fn remote_endpoint(&self) -> SocketAddrV6 {
         self.channel_mutex.lock().unwrap().remote_endpoint
+    }
+
+    fn peering_endpoint(&self) -> SocketAddrV6 {
+        let lock = self.channel_mutex.lock().unwrap();
+        match lock.peering_endpoint {
+            Some(addr) => addr,
+            None => lock.remote_endpoint,
+        }
     }
 
     fn network_version(&self) -> u8 {

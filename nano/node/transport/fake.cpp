@@ -48,16 +48,6 @@ std::string nano::transport::fake::channel::to_string () const
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
 }
 
-void nano::transport::fake::channel::set_peering_endpoint (nano::endpoint endpoint)
-{
-	throw std::runtime_error ("setting peering endpoint not implemented for fake channel");
-}
-
-nano::endpoint nano::transport::fake::channel::get_peering_endpoint () const
-{
-	return get_remote_endpoint ();
-}
-
 bool nano::transport::fake::channel::alive () const
 {
 	return rsnano::rsn_channel_is_alive (handle);

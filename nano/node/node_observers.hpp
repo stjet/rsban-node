@@ -25,7 +25,6 @@ public:
 	nano::observer_set<std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>, nano::vote_code> vote;
 	nano::observer_set<nano::account const &, bool> account_balance;
 
-	nano::observer_set<std::shared_ptr<nano::transport::socket>> socket_connected;
-	nano::observer_set<nano::transport::socket &> socket_accepted;
+	nano::observer_set<nano::transport::socket &> socket_connected;
 };
 }

@@ -58,7 +58,6 @@ impl SocketType {
 
 pub trait SocketObserver: Send + Sync {
     fn socket_connected(&self, _socket: Arc<Socket>) {}
-    fn socket_accepted(&self, _socket: Arc<Socket>) {}
     fn disconnect_due_to_timeout(&self, _endpoint: SocketAddrV6) {}
     fn connect_error(&self) {}
     fn read_error(&self) {}
@@ -142,12 +141,6 @@ impl SocketObserver for CompositeSocketObserver {
     fn inactive_connection_dropped(&self, endpoint_type: SocketEndpoint) {
         for child in &self.children {
             child.inactive_connection_dropped(endpoint_type);
-        }
-    }
-
-    fn socket_accepted(&self, socket: Arc<Socket>) {
-        for child in &self.children {
-            child.socket_accepted(Arc::clone(&socket));
         }
     }
 }

@@ -798,7 +798,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         socket.start();
         server.start();
 
-        self.socket_observer.socket_accepted(Arc::clone(&socket));
+        self.socket_observer.socket_connected(Arc::clone(&socket));
 
         AcceptReturn {
             result: AcceptResult::Accepted,

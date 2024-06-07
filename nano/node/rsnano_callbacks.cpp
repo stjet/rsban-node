@@ -413,23 +413,12 @@ private:
 	rsnano::AsyncWriteCallbackHandle * callback_m;
 };
 
-void tcp_socket_accepted (void * handle_a, rsnano::SocketHandle * socket_a)
-{
-	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
-	auto callback = callback_weak->lock ();
-	if (callback)
-	{
-		auto socket{ std::make_shared<nano::transport::socket> (socket_a) };
-		callback->socket_accepted.notify (*socket);
-	}
-}
-
 void tcp_socket_connected (void * handle_a, rsnano::SocketHandle * socket_a)
 {
 	auto callback_weak{ static_cast<std::weak_ptr<nano::node_observers> *> (handle_a) };
 	auto callback = callback_weak->lock ();
 	if (callback)
-		callback->socket_connected.notify (std::make_shared<nano::transport::socket> (socket_a));
+		callback->socket_connected.notify (*std::make_shared<nano::transport::socket> (socket_a));
 }
 
 void tcp_socket_delete_callback (void * handle_a)
@@ -489,7 +478,6 @@ void rsnano::set_rsnano_callbacks ()
 	rsnano::rsn_callback_toml_drop_array (toml_drop_array);
 
 	rsnano::rsn_callback_tcp_socket_connected (tcp_socket_connected);
-	rsnano::rsn_callback_tcp_socket_accepted (tcp_socket_accepted);
 	rsnano::rsn_callback_delete_tcp_socket_callback (tcp_socket_delete_callback);
 
 	rsnano::rsn_callback_memory_intensive_instrumentation (nano::memory_intensive_instrumentation);

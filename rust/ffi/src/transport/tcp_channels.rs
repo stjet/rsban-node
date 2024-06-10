@@ -57,7 +57,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for NetworkOptions {
             Ok(Self {
                 node_config: NodeConfig::try_from(&*value.node_config)?,
                 publish_filter: (*value.publish_filter).0.clone(),
-                network: NetworkParams::try_from(&*value.network)?,
+                network_params: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),
                 stats: (*value.stats).0.clone(),
                 tcp_message_manager: (*value.tcp_message_manager).deref().clone(),

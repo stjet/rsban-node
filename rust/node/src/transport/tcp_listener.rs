@@ -6,6 +6,7 @@ use super::{
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    transport::TcpStream,
     utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
@@ -20,7 +21,6 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
-use tokio::io::AsyncWriteExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
@@ -432,7 +432,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
     async fn accept_one(
         &self,
-        mut raw_stream: tokio::net::TcpStream,
+        raw_stream: tokio::net::TcpStream,
         direction: ConnectionDirection,
     ) -> AcceptReturn {
         let Ok(remote_endpoint) = raw_stream.peer_addr() else {
@@ -445,42 +445,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return AcceptReturn::error();
         };
 
-        let result = tcp_channels.check_limits(remote_endpoint.ip(), direction);
-
-        if result != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::AcceptRejected,
-                direction.into(),
-            );
-            debug!(
-                "Rejected connection from: {} ({:?})",
-                remote_endpoint, direction
-            );
-            // Rejection reason should be logged earlier
-
-            if let Err(e) = raw_stream.shutdown().await {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::CloseError,
-                    direction.into(),
-                );
-                debug!(
-                    "Error while clsoing socket after refusing connection: {:?} ({:?})",
-                    e, direction
-                )
-            }
-            drop(raw_stream);
-            return AcceptReturn::failed(result);
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::AcceptSuccess,
-            direction.into(),
-        );
-
-        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+        let raw_stream = TcpStream::new(raw_stream);
 
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(
@@ -510,20 +475,18 @@ impl TcpListenerExt for Arc<TcpListener> {
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
+        if let Err(_) = tcp_channels
+            .accept_one(&socket, &response_server, direction)
+            .await
+        {
+            return AcceptReturn::error();
+        }
+
         self.data.lock().unwrap().connections.push(Connection {
             endpoint: remote_endpoint,
             socket: Arc::downgrade(&socket),
             server: Arc::downgrade(&response_server),
         });
-
-        socket.set_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ));
-
-        socket.start();
-        response_server.start();
-
-        self.socket_observer.socket_connected(Arc::clone(&socket));
 
         AcceptReturn {
             result: AcceptResult::Accepted,

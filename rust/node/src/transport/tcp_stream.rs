@@ -7,6 +7,58 @@ use std::{
 use async_trait::async_trait;
 use tokio::io::{AsyncWriteExt, ErrorKind};
 
+pub struct TcpStream {
+    stream: Box<dyn InternalTcpStream>,
+}
+
+impl TcpStream {
+    pub fn new(stream: tokio::net::TcpStream) -> Self {
+        Self {
+            stream: Box::new(TokioTcpStreamWrapper(stream)),
+        }
+    }
+
+    pub fn create_null() -> Self {
+        Self {
+            stream: Box::new(TcpStreamStub::new(Vec::new())),
+        }
+    }
+
+    pub fn create_null_with(incoming: Vec<u8>) -> Self {
+        Self {
+            stream: Box::new(TcpStreamStub::new(incoming)),
+        }
+    }
+
+    pub async fn shutdown(&mut self) -> tokio::io::Result<()> {
+        self.stream.shutdown().await
+    }
+
+    pub async fn readable(&self) -> tokio::io::Result<()> {
+        self.stream.readable().await
+    }
+
+    pub fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize> {
+        self.stream.try_read(buf)
+    }
+
+    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.stream.local_addr()
+    }
+
+    pub fn peer_addr(&self) -> std::io::Result<SocketAddr> {
+        self.stream.peer_addr()
+    }
+
+    pub async fn writable(&self) -> tokio::io::Result<()> {
+        self.stream.writable().await
+    }
+
+    pub fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize> {
+        self.stream.try_write(buf)
+    }
+}
+
 #[async_trait]
 trait InternalTcpStream: Send + Sync {
     async fn readable(&self) -> tokio::io::Result<()>;
@@ -114,58 +166,6 @@ impl InternalTcpStream for TcpStreamStub {
 
     async fn shutdown(&mut self) -> tokio::io::Result<()> {
         Ok(())
-    }
-}
-
-pub struct TcpStream {
-    stream: Box<dyn InternalTcpStream>,
-}
-
-impl TcpStream {
-    pub fn new(stream: tokio::net::TcpStream) -> Self {
-        Self {
-            stream: Box::new(TokioTcpStreamWrapper(stream)),
-        }
-    }
-
-    pub fn create_null() -> Self {
-        Self {
-            stream: Box::new(TcpStreamStub::new(Vec::new())),
-        }
-    }
-
-    pub fn create_null_with(incoming: Vec<u8>) -> Self {
-        Self {
-            stream: Box::new(TcpStreamStub::new(incoming)),
-        }
-    }
-
-    pub async fn shutdown(&mut self) -> tokio::io::Result<()> {
-        self.stream.shutdown().await
-    }
-
-    pub async fn readable(&self) -> tokio::io::Result<()> {
-        self.stream.readable().await
-    }
-
-    pub fn try_read(&self, buf: &mut [u8]) -> tokio::io::Result<usize> {
-        self.stream.try_read(buf)
-    }
-
-    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
-        self.stream.local_addr()
-    }
-
-    pub fn peer_addr(&self) -> std::io::Result<SocketAddr> {
-        self.stream.peer_addr()
-    }
-
-    pub async fn writable(&self) -> tokio::io::Result<()> {
-        self.stream.writable().await
-    }
-
-    pub fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize> {
-        self.stream.try_write(buf)
     }
 }
 

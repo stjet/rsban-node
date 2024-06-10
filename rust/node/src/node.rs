@@ -175,7 +175,7 @@ impl Node {
             node_config: config.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             async_rt: Arc::clone(&async_rt),
-            network: network_params.clone(),
+            network_params: network_params.clone(),
             stats: Arc::clone(&stats),
             tcp_message_manager: Arc::new(TcpMessageManager::new(
                 config.tcp_incoming_connections_max as usize,

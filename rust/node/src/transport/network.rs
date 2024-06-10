@@ -8,7 +8,7 @@ use super::{
 use crate::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::Channel,
+    transport::{Channel, ResponseServerExt},
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
         reserved_address, AsyncRuntime, ThreadPool, ThreadPoolImpl,
@@ -27,7 +27,7 @@ use std::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, RwLock, Weak,
     },
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 use tracing::{debug, warn};
 
@@ -35,7 +35,7 @@ pub struct NetworkOptions {
     pub node_config: NodeConfig,
     pub publish_filter: Arc<NetworkFilter>,
     pub async_rt: Arc<AsyncRuntime>,
-    pub network: NetworkParams,
+    pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
     pub tcp_message_manager: Arc<TcpMessageManager>,
     pub port: u16,
@@ -53,7 +53,7 @@ impl NetworkOptions {
             node_config: NodeConfig::new_null(),
             publish_filter: Arc::new(NetworkFilter::default()),
             async_rt: Arc::new(AsyncRuntime::default()),
-            network: DEV_NETWORK_PARAMS.clone(),
+            network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
             tcp_message_manager: Arc::new(TcpMessageManager::default()),
             port: 8088,
@@ -79,7 +79,7 @@ pub struct Network {
     stats: Arc<Stats>,
     sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
     next_channel_id: AtomicUsize,
-    network: Arc<NetworkParams>,
+    network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     async_rt: Arc<AsyncRuntime>,
     node_config: NodeConfig,
@@ -100,7 +100,7 @@ impl Drop for Network {
 impl Network {
     pub fn new(options: NetworkOptions) -> Self {
         let node_config = options.node_config;
-        let network = Arc::new(options.network);
+        let network = Arc::new(options.network_params);
 
         Self {
             tcp_listener: RwLock::new(None),
@@ -123,7 +123,7 @@ impl Network {
             stats: options.stats,
             sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
-            network,
+            network_params: network,
             limiter: options.limiter,
             node_id: options.node_id,
             syn_cookies: options.syn_cookies,
@@ -133,6 +133,65 @@ impl Network {
             async_rt: options.async_rt,
             merge_peer_listener: OutputListenerMt::new(),
         }
+    }
+
+    pub async fn accept_one(
+        &self,
+        socket: &Arc<Socket>,
+        response_server: &Arc<ResponseServer>,
+        direction: ConnectionDirection,
+    ) -> anyhow::Result<()> {
+        let Some(remote_endpoint) = socket.get_remote() else {
+            return Err(anyhow!("no remote endpoint"));
+        };
+
+        let result = self.check_limits(remote_endpoint.ip(), direction);
+
+        if result != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::AcceptRejected,
+                direction.into(),
+            );
+            debug!(
+                "Rejected connection from: {} ({:?})",
+                remote_endpoint, direction
+            );
+            // Rejection reason should be logged earlier
+
+            if let Err(e) = socket.shutdown().await {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::CloseError,
+                    direction.into(),
+                );
+                debug!(
+                    "Error while clsoing socket after refusing connection: {:?} ({:?})",
+                    e, direction
+                )
+            }
+            drop(socket);
+            return Err(anyhow!("check_limits failed"));
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::AcceptSuccess,
+            direction.into(),
+        );
+
+        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+
+        socket.set_timeout(Duration::from_secs(
+            self.network_params.network.idle_timeout_s as u64,
+        ));
+
+        socket.start();
+        response_server.start();
+
+        self.observer.socket_connected(Arc::clone(&socket));
+
+        Ok(())
     }
 
     pub fn set_listener(&self, listener: Weak<TcpListener>) {
@@ -185,7 +244,7 @@ impl Network {
             Arc::clone(&self.limiter),
             Arc::clone(&self.stats),
             endpoint,
-            self.network.network.protocol_info(),
+            self.network_params.network.protocol_info(),
         )));
         fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
         let mut channels = self.state.lock().unwrap();
@@ -348,7 +407,7 @@ impl Network {
 
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
-            if v2.genesis != self.network.ledger.genesis.hash() {
+            if v2.genesis != self.network_params.ledger.genesis.hash() {
                 self.stats.inc_dir(
                     StatType::Handshake,
                     DetailType::InvalidGenesis,
@@ -387,7 +446,7 @@ impl Network {
         v2: bool,
     ) -> NodeIdHandshakeResponse {
         if v2 {
-            let genesis = self.network.ledger.genesis.hash();
+            let genesis = self.network_params.ledger.genesis.hash();
             NodeIdHandshakeResponse::new_v2(&query_payload.cookie, &self.node_id, genesis)
         } else {
             NodeIdHandshakeResponse::new_v1(&query_payload.cookie, &self.node_id)
@@ -412,9 +471,9 @@ impl Network {
         let guard = self.state.lock().unwrap();
 
         let is_max = guard.channels.count_by_subnet(&subnet)
-            >= self.network.network.max_peers_per_subnetwork
+            >= self.network_params.network.max_peers_per_subnetwork
             || guard.attempts.count_by_subnetwork(&subnet)
-                >= self.network.network.max_peers_per_subnetwork;
+                >= self.network_params.network.max_peers_per_subnetwork;
 
         if is_max {
             self.stats
@@ -613,7 +672,7 @@ impl NetworkExt for Arc<Network> {
             Arc::clone(&self.limiter),
             &self.async_rt,
             self.get_next_channel_id(),
-            self.network.network.protocol_info(),
+            self.network_params.network.protocol_info(),
         );
         tcp_channel.update_remote_endpoint();
         let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));

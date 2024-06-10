@@ -216,15 +216,6 @@ impl Socket {
         self.closed.load(Ordering::SeqCst)
     }
 
-    pub async fn shutdown(&self) -> tokio::io::Result<()> {
-        let stream = self.stream.lock().unwrap().take();
-        if let Some(stream) = stream {
-            stream.shutdown().await
-        } else {
-            Ok(())
-        }
-    }
-
     fn set_last_completion(&self) {
         self.last_completion_time_or_init
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);
@@ -251,6 +242,15 @@ impl Socket {
 
     pub fn set_default_timeout_value(&self, seconds: u64) {
         self.timeout_seconds.store(seconds, Ordering::SeqCst);
+    }
+
+    pub async fn shutdown(&self) -> tokio::io::Result<()> {
+        let stream = self.stream.lock().unwrap().take();
+        if let Some(mut stream) = stream {
+            Arc::get_mut(&mut stream).unwrap().shutdown().await
+        } else {
+            Ok(())
+        }
     }
 
     pub fn close_internal(&self) {
@@ -777,12 +777,8 @@ impl SocketBuilder {
         self
     }
 
-    pub fn use_existing_socket(
-        mut self,
-        stream: tokio::net::TcpStream,
-        remote: SocketAddrV6,
-    ) -> Self {
-        self.stream = Arc::new(Mutex::new(Some(Arc::new(TcpStream::new(stream)))));
+    pub fn use_existing_socket(mut self, stream: TcpStream, remote: SocketAddrV6) -> Self {
+        self.stream = Arc::new(Mutex::new(Some(Arc::new(stream))));
         self.remote = Some(remote);
         self
     }

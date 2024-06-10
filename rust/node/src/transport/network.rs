@@ -276,8 +276,8 @@ impl Network {
         channels.channels.insert(fake, None);
     }
 
-    pub(crate) fn add_inbound_attempt(&self, remote: SocketAddrV6) -> bool {
-        self.state.lock().unwrap().add_inbound_attempt(remote)
+    pub(crate) fn add_outbound_attempt(&self, remote: SocketAddrV6) -> bool {
+        self.state.lock().unwrap().add_outbound_attempt(remote)
     }
 
     pub(crate) fn check_limits(
@@ -927,10 +927,10 @@ impl State {
         self.excluded_peers.peer_misbehaved(addr);
     }
 
-    pub fn add_inbound_attempt(&mut self, remote: SocketAddrV6) -> bool {
+    pub fn add_outbound_attempt(&mut self, remote: SocketAddrV6) -> bool {
         let count = self
             .attempts
-            .count_by_direction(ConnectionDirection::Inbound);
+            .count_by_direction(ConnectionDirection::Outbound);
         if count > self.config.max_attempts {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,

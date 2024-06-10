@@ -234,7 +234,8 @@ pub trait TcpListenerExt {
 
     async fn accept_one(
         &self,
-        raw_stream: tokio::net::TcpStream,
+        socket: Arc<Socket>,
+        response_server: Arc<ResponseServer>,
         direction: ConnectionDirection,
     ) -> anyhow::Result<()>;
 
@@ -262,7 +263,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false;
         };
 
-        if !channels.add_inbound_attempt(remote) {
+        if !channels.add_outbound_attempt(remote) {
             return false;
         }
 
@@ -360,7 +361,44 @@ impl TcpListenerExt for Arc<TcpListener> {
                     continue;
                 };
 
-                let _ = self.accept_one(stream, ConnectionDirection::Inbound).await;
+                let raw_stream = TcpStream::new(stream);
+
+                let Ok(remote_endpoint) = raw_stream.peer_addr() else {
+                    continue;
+                };
+
+                let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
+                let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+                let socket = SocketBuilder::new(
+                    ConnectionDirection::Inbound,
+                    Arc::clone(&self.workers),
+                    Arc::downgrade(&self.runtime),
+                )
+                .default_timeout(Duration::from_secs(
+                    self.node_config.tcp_io_timeout_s as u64,
+                ))
+                .silent_connection_tolerance_time(Duration::from_secs(
+                    self.network_params
+                        .network
+                        .silent_connection_tolerance_time_s as u64,
+                ))
+                .idle_timeout(Duration::from_secs(
+                    self.network_params.network.idle_timeout_s as u64,
+                ))
+                .observer(Arc::new(CompositeSocketObserver::new(vec![
+                    socket_stats,
+                    Arc::clone(&self.socket_observer),
+                ])))
+                .use_existing_socket(raw_stream, remote_endpoint)
+                .finish();
+
+                let response_server = self
+                    .response_server_factory
+                    .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
+
+                let _ = self
+                    .accept_one(socket, response_server, ConnectionDirection::Inbound)
+                    .await;
 
                 // Sleep for a while to prevent busy loop
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -400,30 +438,13 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
         let raw_listener = tokio::net::TcpSocket::new_v6()?;
         let raw_stream = raw_listener.connect(endpoint.into()).await?;
-        self.accept_one(raw_stream, ConnectionDirection::Outbound)
-            .await
-    }
-
-    async fn accept_one(
-        &self,
-        raw_stream: tokio::net::TcpStream,
-        direction: ConnectionDirection,
-    ) -> anyhow::Result<()> {
-        let Ok(remote_endpoint) = raw_stream.peer_addr() else {
-            return Err(anyhow!("No peer address"));
-        };
+        let raw_stream = TcpStream::new(raw_stream);
+        let remote_endpoint = raw_stream.peer_addr()?;
 
         let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
-
-        let Some(tcp_channels) = self.network.upgrade() else {
-            return Err(anyhow!("No network"));
-        };
-
-        let raw_stream = TcpStream::new(raw_stream);
-
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(
-            direction.into(),
+            ConnectionDirection::Inbound,
             Arc::clone(&self.workers),
             Arc::downgrade(&self.runtime),
         )
@@ -449,7 +470,23 @@ impl TcpListenerExt for Arc<TcpListener> {
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
-        tcp_channels
+        self.accept_one(socket, response_server, ConnectionDirection::Outbound)
+            .await
+    }
+
+    async fn accept_one(
+        &self,
+        socket: Arc<Socket>,
+        response_server: Arc<ResponseServer>,
+        direction: ConnectionDirection,
+    ) -> anyhow::Result<()> {
+        let remote_endpoint = socket.get_remote().unwrap();
+
+        let Some(network) = self.network.upgrade() else {
+            return Err(anyhow!("No network"));
+        };
+
+        network
             .accept_one(&socket, &response_server, direction)
             .await?;
 

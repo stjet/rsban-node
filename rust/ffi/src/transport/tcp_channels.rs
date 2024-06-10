@@ -10,7 +10,7 @@ use crate::{
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, TcpChannels, TcpChannelsExtension, TcpChannelsOptions},
+    transport::{ChannelEnum, Network, NetworkExt, NetworkOptions},
     NetworkParams,
 };
 use std::{
@@ -20,10 +20,10 @@ use std::{
     sync::Arc,
 };
 
-pub struct TcpChannelsHandle(pub Arc<TcpChannels>);
+pub struct TcpChannelsHandle(pub Arc<Network>);
 
 impl Deref for TcpChannelsHandle {
-    type Target = Arc<TcpChannels>;
+    type Target = Arc<Network>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -47,7 +47,7 @@ pub struct TcpChannelsOptionsDto {
     pub socket_observer: *mut c_void,
 }
 
-impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
+impl TryFrom<&TcpChannelsOptionsDto> for NetworkOptions {
     type Error = anyhow::Error;
 
     fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
@@ -81,9 +81,7 @@ impl TryFrom<&TcpChannelsOptionsDto> for TcpChannelsOptions {
 pub unsafe extern "C" fn rsn_tcp_channels_create(
     options: &TcpChannelsOptionsDto,
 ) -> *mut TcpChannelsHandle {
-    let channels = Arc::new(TcpChannels::new(
-        TcpChannelsOptions::try_from(options).unwrap(),
-    ));
+    let channels = Arc::new(Network::new(NetworkOptions::try_from(options).unwrap()));
     Box::into_raw(Box::new(TcpChannelsHandle(channels)))
 }
 

@@ -1,6 +1,6 @@
 use rsnano_messages::{Keepalive, Message};
 
-use super::{SynCookies, TcpChannels, TcpChannelsExtension};
+use super::{Network, NetworkExt, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
@@ -19,7 +19,7 @@ pub struct NetworkThreads {
     reachout_thread: Option<JoinHandle<()>>,
     processing_threads: Vec<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     config: NodeConfig,
     flags: NodeFlags,
     network_params: NetworkParams,
@@ -30,7 +30,7 @@ pub struct NetworkThreads {
 
 impl NetworkThreads {
     pub fn new(
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         config: NodeConfig,
         flags: NodeFlags,
         network_params: NetworkParams,
@@ -44,7 +44,7 @@ impl NetworkThreads {
             reachout_thread: None,
             processing_threads: Vec::new(),
             stopped: Arc::new((Condvar::new(), Mutex::new(false))),
-            channels,
+            network,
             config,
             flags,
             network_params,
@@ -61,7 +61,7 @@ impl NetworkThreads {
             stats: Arc::clone(&self.stats),
             flags: self.flags.clone(),
             syn_cookies: Arc::clone(&self.syn_cookies),
-            channels: Arc::clone(&self.channels),
+            network: Arc::clone(&self.network),
         };
 
         self.cleanup_thread = Some(
@@ -73,7 +73,7 @@ impl NetworkThreads {
 
         let keepalive = KeepaliveLoop {
             stopped: self.stopped.clone(),
-            channels: Arc::clone(&self.channels),
+            network: Arc::clone(&self.network),
             network_params: self.network_params.clone(),
             stats: Arc::clone(&self.stats),
             keepalive_factory: Arc::clone(&self.keepalive_factory),
@@ -90,7 +90,7 @@ impl NetworkThreads {
             stopped: self.stopped.clone(),
             network_params: self.network_params.clone(),
             stats: Arc::clone(&self.stats),
-            channels: Arc::clone(&self.channels),
+            network: Arc::clone(&self.network),
         };
 
         self.reachout_thread = Some(
@@ -102,7 +102,7 @@ impl NetworkThreads {
 
         if !self.flags.disable_tcp_realtime {
             for _ in 0..self.config.network_threads {
-                let channels = Arc::clone(&self.channels);
+                let channels = Arc::clone(&self.network);
                 self.processing_threads.push(
                     std::thread::Builder::new()
                         .name("Pkt processing".to_string())
@@ -117,7 +117,7 @@ impl NetworkThreads {
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
         self.stopped.0.notify_all();
-        self.channels.stop();
+        self.network.stop();
         for t in self.processing_threads.drain(..) {
             t.join().unwrap();
         }
@@ -148,7 +148,7 @@ struct CleanupLoop {
     stats: Arc<Stats>,
     flags: NodeFlags,
     syn_cookies: Arc<SynCookies>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
 }
 
 impl CleanupLoop {
@@ -170,7 +170,7 @@ impl CleanupLoop {
             self.stats.inc(StatType::Network, DetailType::LoopCleanup);
 
             if !self.flags.disable_connection_cleanup {
-                self.channels.purge(
+                self.network.purge(
                     SystemTime::now()
                         - Duration::from_secs(self.network_params.network.cleanup_cutoff_s() as u64),
                 );
@@ -186,14 +186,14 @@ impl CleanupLoop {
 }
 
 pub struct KeepaliveFactory {
-    pub channels: Arc<TcpChannels>,
+    pub network: Arc<Network>,
     pub config: NodeConfig,
 }
 
 impl KeepaliveFactory {
     pub fn create_keepalive_self(&self) -> Keepalive {
         let mut result = Keepalive::default();
-        self.channels.random_fill(&mut result.peers);
+        self.network.random_fill(&mut result.peers);
         // We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
         // Move these items to index 2 and 3 so they propagate
         result.peers[2] = result.peers[0];
@@ -215,11 +215,11 @@ impl KeepaliveFactory {
             let external_address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
             if !external_address.ip().is_unspecified() {
                 result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.network.port(), 0, 0);
                 result.peers[1] = external_address;
             } else {
                 result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.channels.port(), 0, 0);
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.network.port(), 0, 0);
             }
         }
         result
@@ -230,7 +230,7 @@ struct KeepaliveLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network_params: NetworkParams,
     stats: Arc<Stats>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     keepalive_factory: Arc<KeepaliveFactory>,
 }
 
@@ -254,7 +254,7 @@ impl KeepaliveLoop {
             self.flood_keepalive(0.75);
             self.flood_keepalive_self(0.25);
 
-            self.channels.keepalive();
+            self.network.keepalive();
 
             stopped = self.stopped.1.lock().unwrap();
         }
@@ -262,14 +262,14 @@ impl KeepaliveLoop {
 
     fn flood_keepalive(&self, scale: f32) {
         let mut keepalive = Keepalive::default();
-        self.channels.random_fill(&mut keepalive.peers);
-        self.channels
+        self.network.random_fill(&mut keepalive.peers);
+        self.network
             .flood_message(&Message::Keepalive(keepalive), scale);
     }
 
     fn flood_keepalive_self(&self, scale: f32) {
         let keepalive = self.keepalive_factory.create_keepalive_self();
-        self.channels
+        self.network
             .flood_message(&Message::Keepalive(keepalive), scale);
     }
 }
@@ -278,7 +278,7 @@ struct ReachoutLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network_params: NetworkParams,
     stats: Arc<Stats>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
 }
 
 impl ReachoutLoop {
@@ -299,10 +299,10 @@ impl ReachoutLoop {
 
             self.stats.inc(StatType::Network, DetailType::LoopReachout);
 
-            if let Some(keepalive) = self.channels.sample_keepalive() {
+            if let Some(keepalive) = self.network.sample_keepalive() {
                 for peer in keepalive.peers {
                     self.stats.inc(StatType::Network, DetailType::ReachoutLive);
-                    self.channels.merge_peer(peer);
+                    self.network.merge_peer(peer);
 
                     // Throttle reachout attempts
                     std::thread::sleep(self.network_params.network.merge_period);

@@ -1,5 +1,5 @@
 use crate::{
-    transport::{SocketExtensions, TcpServer, TcpServerExt},
+    transport::{ResponseServer, SocketExtensions, TcpServerExt},
     utils::{ErrorCode, ThreadPool},
 };
 use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType};
@@ -30,7 +30,7 @@ pub struct BulkPullServer {
 impl BulkPullServer {
     pub fn new(
         request: BulkPull,
-        connection: Arc<TcpServer>,
+        connection: Arc<ResponseServer>,
         ledger: Arc<Ledger>,
         thread_pool: Arc<dyn ThreadPool>,
     ) -> Self {
@@ -99,7 +99,7 @@ impl BulkPullServer {
 
 struct BulkPullServerImpl {
     ledger: Arc<Ledger>,
-    connection: Arc<TcpServer>,
+    connection: Arc<ResponseServer>,
     thread_pool: Weak<dyn ThreadPool>,
     include_start: bool,
     sent_count: u32,

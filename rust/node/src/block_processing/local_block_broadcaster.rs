@@ -3,7 +3,7 @@ use crate::{
     cementation::ConfirmingSet,
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
+    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -32,7 +32,7 @@ pub struct LocalBlockBroadcaster {
     mutex: Mutex<LocalBlockBroadcasterData>,
     condition: Condvar,
     limiter: BandwidthLimiter,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     representatives: Arc<Mutex<RepresentativeRegister>>,
 }
 
@@ -46,7 +46,7 @@ impl LocalBlockBroadcaster {
     pub fn new(
         block_processor: Arc<BlockProcessor>,
         stats: Arc<Stats>,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         representatives: Arc<Mutex<RepresentativeRegister>>,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
@@ -55,7 +55,7 @@ impl LocalBlockBroadcaster {
         Self {
             block_processor,
             stats,
-            channels,
+            network,
             ledger,
             confirming_set,
             representatives,
@@ -199,7 +199,7 @@ impl LocalBlockBroadcaster {
             )
         }
 
-        for i in self.list_no_pr(self.channels.fanout(1.0)) {
+        for i in self.list_no_pr(self.network.fanout(1.0)) {
             i.send(
                 &message,
                 None,
@@ -210,7 +210,7 @@ impl LocalBlockBroadcaster {
     }
 
     fn list_no_pr(&self, count: usize) -> Vec<Arc<ChannelEnum>> {
-        let mut channels = self.channels.random_list(usize::MAX, 0);
+        let mut channels = self.network.random_list(usize::MAX, 0);
         {
             let guard = self.representatives.lock().unwrap();
             channels.retain(|c| !guard.is_pr(c));

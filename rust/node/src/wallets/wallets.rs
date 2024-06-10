@@ -3,7 +3,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     cementation::ConfirmingSet,
     config::NodeConfig,
-    transport::{BufferDropPolicy, TcpChannels},
+    transport::{BufferDropPolicy, Network},
     utils::ThreadPool,
     work::DistributedWorkFactory,
     NetworkParams, OnlineReps,
@@ -67,7 +67,7 @@ pub struct Wallets {
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
     kdf: KeyDerivationFunction,
-    tcp_channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
 }
@@ -85,7 +85,7 @@ impl Wallets {
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
         online_reps: Arc<Mutex<OnlineReps>>,
-        tcp_channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         confirming_set: Arc<ConfirmingSet>,
     ) -> anyhow::Result<Self> {
         let kdf = KeyDerivationFunction::new(kdf_work);
@@ -111,7 +111,7 @@ impl Wallets {
             )),
             online_reps,
             kdf: kdf.clone(),
-            tcp_channels,
+            network,
             start_election: Mutex::new(None),
             confirming_set,
         };
@@ -601,7 +601,7 @@ impl Wallets {
         if let Some(block) = &block {
             cached_block = true;
             let msg = Message::Publish(Publish::new(block.clone()));
-            self.tcp_channels
+            self.network
                 .flood_message2(&msg, BufferDropPolicy::NoLimiterDrop, 1.0);
         } else {
             cached_block = false;

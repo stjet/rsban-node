@@ -1,8 +1,8 @@
-use super::TcpChannels;
+use super::Network;
 use crate::stats::{DetailType, StatType};
 use crate::{
     stats::Stats,
-    transport::TcpChannelsExtension,
+    transport::NetworkExt,
     utils::{CancellationToken, Runnable},
 };
 use rsnano_ledger::Ledger;
@@ -12,7 +12,7 @@ use tracing::info;
 // Tries to connect to peers that are stored in the peer cache
 pub struct PeerCacheConnector {
     ledger: Arc<Ledger>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     stats: Arc<Stats>,
     first_run: bool,
     ///Delay between each connection attempt. This throttles new connections.
@@ -22,13 +22,13 @@ pub struct PeerCacheConnector {
 impl PeerCacheConnector {
     pub fn new(
         ledger: Arc<Ledger>,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         stats: Arc<Stats>,
         reach_out_delay: Duration,
     ) -> Self {
         Self {
             ledger,
-            channels,
+            network,
             stats,
             first_run: true,
             reach_out_delay,
@@ -60,7 +60,7 @@ impl Runnable for PeerCacheConnector {
         for peer in cached_peers {
             self.stats
                 .inc(StatType::Network, DetailType::ReachoutCached);
-            self.channels.merge_peer(peer);
+            self.network.merge_peer(peer);
             // Throttle reachout attempts
             if cancel_token.wait_for_cancellation(self.reach_out_delay) {
                 break;
@@ -192,10 +192,10 @@ mod tests {
         Arc<Stats>,
     ) {
         let ledger = ledger_with_peers(cached_peers);
-        let channels = Arc::new(TcpChannels::new_null());
-        let merge_tracker = channels.track_merge_peer();
+        let network = Arc::new(Network::new_null());
+        let merge_tracker = network.track_merge_peer();
         let stats = Arc::new(Stats::default());
-        let connector = PeerCacheConnector::new(ledger, channels, stats.clone(), REACHOUT_DELAY);
+        let connector = PeerCacheConnector::new(ledger, network, stats.clone(), REACHOUT_DELAY);
         (connector, merge_tracker, stats)
     }
 

@@ -20,7 +20,7 @@ use crate::{
     bootstrap::ascending::ordered_tags::QueryType,
     config::{NetworkConstants, NodeConfig},
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
+    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
 pub use account_sets_config::*;
 pub use bootstrap_ascending_config::*;
@@ -52,7 +52,7 @@ pub struct BootstrapAscending {
     block_processor: Arc<BlockProcessor>,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     thread: Mutex<Option<JoinHandle<()>>>,
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
     mutex: Mutex<BootstrapAscendingImpl>,
@@ -68,7 +68,7 @@ impl BootstrapAscending {
         block_processor: Arc<BlockProcessor>,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         config: NodeConfig,
         network_constants: NetworkConstants,
     ) -> Self {
@@ -94,7 +94,7 @@ impl BootstrapAscending {
             ),
             config,
             stats,
-            channels,
+            network,
             ledger,
         }
     }
@@ -289,7 +289,7 @@ impl BootstrapAscending {
     fn run_timeouts(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
-            guard.scoring.sync(&self.channels.list_channels(0));
+            guard.scoring.sync(&self.network.list_channels(0));
             guard.scoring.timeout();
             guard
                 .throttle

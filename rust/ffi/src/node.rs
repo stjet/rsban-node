@@ -30,7 +30,7 @@ use rsnano_core::{Vote, VoteCode};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelEnum, TcpChannelsExtension},
+    transport::{ChannelEnum, NetworkExt},
 };
 use std::{
     ffi::{c_char, c_void},
@@ -187,7 +187,7 @@ pub extern "C" fn rsn_node_syn_cookies(handle: &NodeHandle) -> *mut SynCookiesHa
 
 #[no_mangle]
 pub extern "C" fn rsn_node_tcp_channels(handle: &NodeHandle) -> *mut TcpChannelsHandle {
-    Box::into_raw(Box::new(TcpChannelsHandle(Arc::clone(&handle.0.channels))))
+    Box::into_raw(Box::new(TcpChannelsHandle(Arc::clone(&handle.0.network))))
 }
 
 #[no_mangle]
@@ -195,14 +195,14 @@ pub extern "C" fn rsn_node_tcp_message_manager(
     handle: &NodeHandle,
 ) -> *mut TcpMessageManagerHandle {
     Box::into_raw(Box::new(TcpMessageManagerHandle(Arc::clone(
-        &handle.0.channels.tcp_message_manager,
+        &handle.0.network.tcp_message_manager,
     ))))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_node_network_filter(handle: &NodeHandle) -> *mut NetworkFilterHandle {
     Box::into_raw(Box::new(NetworkFilterHandle(Arc::clone(
-        &handle.0.channels.publish_filter,
+        &handle.0.network.publish_filter,
     ))))
 }
 
@@ -418,7 +418,7 @@ pub extern "C" fn rsn_node_ledger_pruning(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_connect(handle: &NodeHandle, endpoint: &EndpointDto) {
-    handle.0.channels.merge_peer(endpoint.into());
+    handle.0.network.merge_peer(endpoint.into());
 }
 
 #[no_mangle]

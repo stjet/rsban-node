@@ -8,8 +8,8 @@ use crate::{
     config::{NetworkConstants, NodeFlags},
     stats::Stats,
     transport::{
-        BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl, SynCookies,
-        TcpServer,
+        BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl,
+        ResponseServer, SynCookies,
     },
     utils::{AsyncRuntime, ThreadPool},
 };
@@ -56,14 +56,17 @@ impl BootstrapMessageVisitorFactory {
         }
     }
 
-    pub fn realtime_visitor(&self, server: Arc<TcpServer>) -> Box<dyn RealtimeMessageVisitor> {
+    pub fn realtime_visitor(&self, server: Arc<ResponseServer>) -> Box<dyn RealtimeMessageVisitor> {
         Box::new(RealtimeMessageVisitorImpl::new(
             server,
             Arc::clone(&self.stats),
         ))
     }
 
-    pub fn bootstrap_visitor(&self, server: Arc<TcpServer>) -> Box<dyn BootstrapMessageVisitor> {
+    pub fn bootstrap_visitor(
+        &self,
+        server: Arc<ResponseServer>,
+    ) -> Box<dyn BootstrapMessageVisitor> {
         Box::new(BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),

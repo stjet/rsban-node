@@ -1,10 +1,10 @@
-use super::{ChannelEnum, MessageDeserializer, NetworkFilter, TcpChannels};
+use super::{ChannelEnum, MessageDeserializer, Network, NetworkFilter};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        Socket, SocketExtensions, SocketType, SynCookies, TcpChannelsExtension, TcpMessageManager,
+        NetworkExt, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageManager,
         TrafficType,
     },
     utils::AsyncRuntime,
@@ -56,7 +56,7 @@ impl Default for TcpConfig {
     }
 }
 
-pub trait TcpServerObserver: Send + Sync {
+pub trait ResponseServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, connection_id: usize);
     fn boostrap_server_exited(
         &self,
@@ -72,7 +72,7 @@ pub trait TcpServerObserver: Send + Sync {
 }
 
 pub struct NullTcpServerObserver {}
-impl TcpServerObserver for NullTcpServerObserver {
+impl ResponseServerObserver for NullTcpServerObserver {
     fn bootstrap_server_timeout(&self, _inner_ptr: usize) {}
 
     fn boostrap_server_exited(
@@ -93,20 +93,20 @@ impl TcpServerObserver for NullTcpServerObserver {
     fn dec_bootstrap_count(&self) {}
 }
 
-pub struct TcpServer {
+pub struct ResponseServer {
     async_rt: Weak<AsyncRuntime>,
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     stopped: AtomicBool,
-    observer: Weak<dyn TcpServerObserver>,
+    observer: Weak<dyn ResponseServerObserver>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
     // Remote enpoint used to remove response channel even after socket closing
     remote_endpoint: Mutex<SocketAddrV6>,
 
-    network: Arc<NetworkParams>,
+    network_params: Arc<NetworkParams>,
     last_telemetry_req: Mutex<Option<Instant>>,
     unique_id: usize,
     stats: Arc<Stats>,
@@ -122,20 +122,20 @@ pub struct TcpServer {
     syn_cookies: Arc<SynCookies>,
     node_id: KeyPair,
     protocol_info: ProtocolInfo,
-    channels: Weak<TcpChannels>,
+    network: Weak<Network>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
-impl TcpServer {
+impl ResponseServer {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
-        channels: &Arc<TcpChannels>,
+        network: &Arc<Network>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
-        observer: Weak<dyn TcpServerObserver>,
+        observer: Weak<dyn ResponseServerObserver>,
         publish_filter: Arc<NetworkFilter>,
-        network: Arc<NetworkParams>,
+        network_params: Arc<NetworkParams>,
         stats: Arc<Stats>,
         tcp_message_manager: Arc<TcpMessageManager>,
         message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
@@ -143,7 +143,7 @@ impl TcpServer {
         syn_cookies: Arc<SynCookies>,
         node_id: KeyPair,
     ) -> Self {
-        let network_constants = network.network.clone();
+        let network_constants = network_params.network.clone();
         let socket_clone = Arc::clone(&socket);
         debug!(
             socket_id = socket.socket_id,
@@ -151,7 +151,7 @@ impl TcpServer {
         );
         Self {
             async_rt: Arc::downgrade(&async_rt),
-            channels: Arc::downgrade(channels),
+            network: Arc::downgrade(network),
             socket,
             channel: Mutex::new(None),
             config,
@@ -161,7 +161,7 @@ impl TcpServer {
             connections_max: 64,
             remote_endpoint: Mutex::new(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
             last_telemetry_req: Mutex::new(None),
-            network,
+            network_params,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
             stats,
             disable_bootstrap_bulk_pull_server: false,
@@ -213,7 +213,7 @@ impl TcpServer {
             Some(last_req) => {
                 last_req.elapsed()
                     >= Duration::from_millis(
-                        self.network.network.telemetry_request_cooldown_ms as u64,
+                        self.network_params.network.telemetry_request_cooldown_ms as u64,
                     )
             }
             None => true,
@@ -303,7 +303,7 @@ impl TcpServer {
 
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
-            if v2.genesis != self.network.ledger.genesis.hash() {
+            if v2.genesis != self.network_params.ledger.genesis.hash() {
                 self.stats.inc_dir(
                     StatType::Handshake,
                     DetailType::InvalidGenesis,
@@ -342,7 +342,7 @@ impl TcpServer {
         v2: bool,
     ) -> NodeIdHandshakeResponse {
         if v2 {
-            let genesis = self.network.ledger.genesis.hash();
+            let genesis = self.network_params.ledger.genesis.hash();
             NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
         } else {
             NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
@@ -359,7 +359,7 @@ impl TcpServer {
     }
 }
 
-impl Drop for TcpServer {
+impl Drop for ResponseServer {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         if let Some(observer) = self.observer.upgrade() {
@@ -392,12 +392,6 @@ pub trait TcpServerExt {
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool);
 }
 
-pub enum ProcessResult {
-    Abort,
-    Progress,
-    Pause,
-}
-
 pub enum HandshakeStatus {
     Abort,
     Handshake,
@@ -405,7 +399,13 @@ pub enum HandshakeStatus {
     Bootstrap,
 }
 
-impl TcpServerExt for Arc<TcpServer> {
+pub enum ProcessResult {
+    Abort,
+    Progress,
+    Pause,
+}
+
+impl TcpServerExt for Arc<ResponseServer> {
     fn start(&self) {
         // Set remote_endpoint
         let mut guard = self.remote_endpoint.lock().unwrap();
@@ -433,7 +433,7 @@ impl TcpServerExt for Arc<TcpServer> {
             return false;
         }
 
-        let Some(channels) = self.channels.upgrade() else {
+        let Some(channels) = self.network.upgrade() else {
             return false;
         };
 
@@ -469,7 +469,7 @@ impl TcpServerExt for Arc<TcpServer> {
 
         debug!("Initiating handshake query ({})", endpoint);
 
-        let mut serializer = MessageSerializer::new(self.network.network.protocol_info());
+        let mut serializer = MessageSerializer::new(self.network_params.network.protocol_info());
         let buffer = Arc::new(serializer.serialize(&message).to_vec());
         let self_w = Arc::downgrade(self);
 
@@ -814,13 +814,13 @@ impl TcpServerExt for Arc<TcpServer> {
     }
 }
 
-pub struct HandshakeMessageVisitor {
+struct HandshakeMessageVisitor {
     pub result: HandshakeStatus,
-    server: Arc<TcpServer>,
+    server: Arc<ResponseServer>,
 }
 
 impl HandshakeMessageVisitor {
-    pub fn new(server: Arc<TcpServer>) -> Self {
+    fn new(server: Arc<ResponseServer>) -> Self {
         Self {
             server,
             result: HandshakeStatus::Abort,
@@ -842,13 +842,13 @@ impl MessageVisitor for HandshakeMessageVisitor {
 }
 
 pub struct RealtimeMessageVisitorImpl {
-    server: Arc<TcpServer>,
+    server: Arc<ResponseServer>,
     stats: Arc<Stats>,
     process: bool,
 }
 
 impl RealtimeMessageVisitorImpl {
-    pub fn new(server: Arc<TcpServer>, stats: Arc<Stats>) -> Self {
+    pub fn new(server: Arc<ResponseServer>, stats: Arc<Stats>) -> Self {
         Self {
             server,
             stats,

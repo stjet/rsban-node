@@ -13,7 +13,7 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{OutboundBandwidthLimiter, SocketObserver, TcpChannels, TcpChannelsExtension},
+    transport::{Network, NetworkExt, OutboundBandwidthLimiter, SocketObserver},
     utils::{AsyncRuntime, ThreadPool},
     websocket::WebsocketListener,
     NetworkParams,
@@ -44,7 +44,7 @@ pub struct BootstrapInitiator {
     ledger: Arc<Ledger>,
     network_params: NetworkParams,
     flags: NodeFlags,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     workers: Arc<dyn ThreadPool>,
 }
 
@@ -52,7 +52,7 @@ impl BootstrapInitiator {
     pub fn new(
         config: NodeConfig,
         flags: NodeFlags,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
@@ -81,13 +81,13 @@ impl BootstrapInitiator {
             ledger,
             network_params: network_params.clone(),
             flags: flags.clone(),
-            channels: Arc::clone(&channels),
+            network: Arc::clone(&network),
             workers: Arc::clone(&workers),
             connections: Arc::new(BootstrapConnections::new(
                 attempts,
                 config,
                 flags,
-                channels,
+                network,
                 async_rt,
                 workers,
                 network_params,
@@ -307,7 +307,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
     fn bootstrap2(&self, endpoint_a: SocketAddrV6, add_to_peers: bool, id_a: String) {
         if add_to_peers {
             if !self.flags.disable_tcp_realtime {
-                self.channels.merge_peer(endpoint_a);
+                self.network.merge_peer(endpoint_a);
             }
         }
         if !self.stopped.load(Ordering::SeqCst) {
@@ -340,7 +340,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .attempts_list
                 .insert(incremental_id, Arc::clone(&attempt));
             self.attempts.lock().unwrap().add(attempt);
-            if !self.channels.is_excluded(&endpoint_a) {
+            if !self.network.is_excluded(&endpoint_a) {
                 self.connections.add_connection(endpoint_a);
             }
         }

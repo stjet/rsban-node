@@ -4,7 +4,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::{RequestAggregator, VoteProcessorQueue},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, TcpChannelsExtension, TrafficType},
+    transport::{BufferDropPolicy, NetworkExt, TrafficType},
     wallets::Wallets,
     Telemetry,
 };
@@ -12,11 +12,11 @@ use rsnano_messages::{Message, TelemetryAck};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::trace;
 
-use super::{ChannelEnum, TcpChannels};
+use super::{ChannelEnum, Network};
 
 pub struct LiveMessageProcessor {
     stats: Arc<Stats>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     block_processor: Arc<BlockProcessor>,
     config: NodeConfig,
     flags: NodeFlags,
@@ -31,7 +31,7 @@ pub struct LiveMessageProcessor {
 impl LiveMessageProcessor {
     pub fn new(
         stats: Arc<Stats>,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         block_processor: Arc<BlockProcessor>,
         config: NodeConfig,
         flags: NodeFlags,
@@ -44,7 +44,7 @@ impl LiveMessageProcessor {
     ) -> Self {
         Self {
             stats,
-            channels,
+            network,
             block_processor,
             config,
             flags,
@@ -73,7 +73,7 @@ impl LiveMessageProcessor {
                     // TODO: Remove this as we do not need to establish a second connection to the same peer
                     let new_endpoint =
                         SocketAddrV6::new(*channel.remote_endpoint().ip(), peer0.port(), 0, 0);
-                    self.channels.merge_peer(new_endpoint);
+                    self.network.merge_peer(new_endpoint);
 
                     // Remember this for future forwarding to other peers
                     channel.set_peering_endpoint(new_endpoint);
@@ -86,7 +86,7 @@ impl LiveMessageProcessor {
                     Some(Arc::clone(channel)),
                 );
                 if !added {
-                    self.channels.publish_filter.clear(publish.digest);
+                    self.network.publish_filter.clear(publish.digest);
                     self.stats
                         .inc_dir(StatType::Drop, DetailType::Publish, Direction::In);
                 }

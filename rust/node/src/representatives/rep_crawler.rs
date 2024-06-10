@@ -3,10 +3,7 @@ use crate::{
     config::NodeConfig,
     consensus::ActiveTransactions,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        BufferDropPolicy, ChannelEnum, TcpChannels, TcpChannelsExtension, TrafficType,
-        TransportType,
-    },
+    transport::{BufferDropPolicy, ChannelEnum, Network, NetworkExt, TrafficType, TransportType},
     utils::{into_ipv6_socket_address, AsyncRuntime},
     NetworkParams, OnlineReps,
 };
@@ -36,7 +33,7 @@ pub struct RepCrawler {
     stats: Arc<Stats>,
     config: NodeConfig,
     network_params: NetworkParams,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     async_rt: Arc<AsyncRuntime>,
     condition: Condvar,
     ledger: Arc<Ledger>,
@@ -54,7 +51,7 @@ impl RepCrawler {
         online_reps: Arc<Mutex<OnlineReps>>,
         config: NodeConfig,
         network_params: NetworkParams,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         ledger: Arc<Ledger>,
         active: Arc<ActiveTransactions>,
@@ -66,7 +63,7 @@ impl RepCrawler {
             stats: Arc::clone(&stats),
             config,
             network_params,
-            channels: Arc::clone(&channels),
+            network: Arc::clone(&network),
             async_rt,
             condition: Condvar::new(),
             ledger,
@@ -81,7 +78,7 @@ impl RepCrawler {
                 stopped: false,
                 last_query: None,
                 responses: BoundedVecDeque::new(Self::MAX_RESPONSES),
-                channels,
+                network,
             }),
         }
     }
@@ -369,7 +366,7 @@ impl RepCrawler {
     }
 
     pub fn keepalive_or_connect(&self, address: String, port: u16) {
-        let channels = Arc::clone(&self.channels);
+        let channels = Arc::clone(&self.network);
         self.async_rt.tokio.spawn(async move {
             match tokio::net::lookup_host((address.as_str(), port)).await {
                 Ok(addresses) => {
@@ -443,7 +440,7 @@ struct RepCrawlerImpl {
     queries: OrderedQueries,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
     stats: Arc<Stats>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     query_timeout: Duration,
     stopped: bool,
     last_query: Option<Instant>,
@@ -489,7 +486,7 @@ impl RepCrawlerImpl {
         };
 
         /* include channels with ephemeral remote ports */
-        let mut random_peers = self.channels.random_channels(required_peer_count, 0);
+        let mut random_peers = self.network.random_channels(required_peer_count, 0);
 
         random_peers.retain(|channel| {
             match self

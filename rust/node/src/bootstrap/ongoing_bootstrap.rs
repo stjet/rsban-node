@@ -2,7 +2,7 @@ use super::{BootstrapInitiator, BootstrapInitiatorExt};
 use crate::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::TcpChannels,
+    transport::Network,
     utils::ThreadPool,
     NetworkParams,
 };
@@ -20,7 +20,7 @@ pub struct OngoingBootstrap {
     network_params: NetworkParams,
     warmed_up: AtomicU32,
     bootstrap_initiator: Arc<BootstrapInitiator>,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     flags: NodeFlags,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
@@ -31,7 +31,7 @@ impl OngoingBootstrap {
     pub fn new(
         network_params: NetworkParams,
         bootstrap_initiator: Arc<BootstrapInitiator>,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         flags: NodeFlags,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
@@ -41,7 +41,7 @@ impl OngoingBootstrap {
             network_params,
             warmed_up: AtomicU32::new(0),
             bootstrap_initiator,
-            channels,
+            network,
             flags,
             ledger,
             stats,
@@ -61,7 +61,7 @@ impl OngoingBootstrapExt for Arc<OngoingBootstrap> {
         if self.warmed_up.load(Ordering::SeqCst) < 3 {
             // Re-attempt bootstrapping more aggressively on startup
             next_wakeup = Duration::from_secs(5);
-            if !self.bootstrap_initiator.in_progress() && !self.channels.len() == 0 {
+            if !self.bootstrap_initiator.in_progress() && !self.network.len() == 0 {
                 self.warmed_up.fetch_add(1, Ordering::SeqCst);
             }
         }

@@ -23,7 +23,7 @@ use crate::{
     config::NetworkConstants,
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelEnum, InboundCallback, TcpChannels},
+    transport::{ChannelEnum, InboundCallback, Network},
     utils::{AsyncRuntime, ProcessingQueue},
     wallets::Wallets,
 };
@@ -49,7 +49,7 @@ impl VoteGenerator {
         is_final: bool,
         stats: Arc<Stats>,
         representative_register: Arc<Mutex<RepresentativeRegister>>,
-        tcp_channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         vote_processor_queue: Arc<VoteProcessorQueue>,
         network_constants: NetworkConstants,
         async_rt: Arc<AsyncRuntime>,
@@ -62,7 +62,7 @@ impl VoteGenerator {
     ) -> Self {
         let vote_broadcaster = VoteBroadcaster {
             representative_register,
-            tcp_channels,
+            network,
             vote_processor_queue,
             network_constants,
             stats: Arc::clone(&stats),

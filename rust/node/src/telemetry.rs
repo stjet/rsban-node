@@ -18,7 +18,7 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
+    transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
     NetworkParams,
 };
 
@@ -41,7 +41,7 @@ pub struct Telemetry {
     condition: Condvar,
     mutex: Mutex<TelemetryImpl>,
     network_params: NetworkParams,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     node_id: KeyPair,
     startup_time: Instant,
     notify: Mutex<Vec<Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>>>,
@@ -57,7 +57,7 @@ impl Telemetry {
         ledger: Arc<Ledger>,
         unchecked: Arc<UncheckedMap>,
         network_params: NetworkParams,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         node_id: KeyPair,
     ) -> Self {
         Self {
@@ -67,7 +67,7 @@ impl Telemetry {
             ledger,
             unchecked,
             network_params,
-            channels,
+            network,
             thread: Mutex::new(None),
             condition: Condvar::new(),
             mutex: Mutex::new(TelemetryImpl {
@@ -117,7 +117,7 @@ impl Telemetry {
         }
 
         if data.genesis_block != self.network_params.ledger.genesis.hash() {
-            self.channels.peer_misbehaved(channel);
+            self.network.peer_misbehaved(channel);
 
             self.stats
                 .inc(StatType::Telemetry, DetailType::GenesisMismatch);
@@ -244,7 +244,7 @@ impl Telemetry {
     }
 
     fn run_requests(&self) {
-        let peers = self.channels.random_list(usize::MAX, 0);
+        let peers = self.network.random_list(usize::MAX, 0);
         for channel in peers {
             self.request(&channel);
         }
@@ -252,7 +252,7 @@ impl Telemetry {
 
     fn run_broadcasts(&self) {
         let telemetry = self.local_telemetry();
-        let peers = self.channels.random_list(usize::MAX, 0);
+        let peers = self.network.random_list(usize::MAX, 0);
         let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
         for channel in peers {
             self.broadcast(&channel, &message);
@@ -342,7 +342,7 @@ impl Telemetry {
             uptime: self.startup_time.elapsed().as_secs(),
             unchecked_count: self.unchecked.len() as u64,
             genesis_block: self.network_params.ledger.genesis.hash(),
-            peer_count: self.channels.len() as u32,
+            peer_count: self.network.len() as u32,
             account_count: self.ledger.account_count(),
             major_version: MAJOR_VERSION,
             minor_version: MINOR_VERSION,

@@ -1,7 +1,7 @@
 use super::{
-    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress,
-    ResponseServerFactory, Socket, SocketBuilder, SocketExtensions, SocketObserver, TcpChannels,
-    TcpConfig, TcpServer, TcpServerExt, TcpServerObserver, TokioSocketFacade,
+    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Network,
+    ResponseServer, ResponseServerFactory, ResponseServerObserver, Socket, SocketBuilder,
+    SocketExtensions, SocketObserver, TcpConfig, TcpServerExt,
 };
 use crate::{
     config::NodeConfig,
@@ -27,7 +27,7 @@ use tracing::{debug, error, info, warn};
 pub struct AcceptReturn {
     result: AcceptResult,
     socket: Option<Arc<Socket>>,
-    server: Option<Arc<TcpServer>>,
+    server: Option<Arc<ResponseServer>>,
 }
 
 impl AcceptReturn {
@@ -47,7 +47,7 @@ impl AcceptReturn {
 struct Connection {
     endpoint: SocketAddrV6,
     socket: Weak<Socket>,
-    server: Weak<TcpServer>,
+    server: Weak<ResponseServer>,
 }
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
@@ -55,7 +55,7 @@ pub struct TcpListener {
     port: AtomicU16,
     config: TcpConfig,
     node_config: NodeConfig,
-    tcp_channels: Weak<TcpChannels>,
+    network: Weak<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
     socket_observer: Arc<dyn SocketObserver>,
@@ -103,7 +103,7 @@ impl TcpListener {
         port: u16,
         config: TcpConfig,
         node_config: NodeConfig,
-        tcp_channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         network_params: NetworkParams,
         runtime: Arc<AsyncRuntime>,
         socket_observer: Arc<dyn SocketObserver>,
@@ -115,7 +115,7 @@ impl TcpListener {
             port: AtomicU16::new(port),
             config,
             node_config,
-            tcp_channels: Arc::downgrade(&tcp_channels),
+            network: Arc::downgrade(&network),
             data: Mutex::new(TcpListenerData {
                 connections: Vec::new(),
                 stopped: false,
@@ -228,7 +228,7 @@ pub trait TcpListenerExt {
     async fn run(&self, listener: tokio::net::TcpListener);
     fn connect_ip(&self, remote: Ipv6Addr) -> bool;
     fn connect(&self, remote: SocketAddrV6) -> bool;
-    fn as_observer(self) -> Arc<dyn TcpServerObserver>;
+    fn as_observer(self) -> Arc<dyn ResponseServerObserver>;
 
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()>;
 
@@ -258,7 +258,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false;
         }
 
-        let Some(channels) = self.tcp_channels.upgrade() else {
+        let Some(channels) = self.network.upgrade() else {
             return false;
         };
 
@@ -298,7 +298,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 }
             }
 
-            if let Some(channels) = self_l.tcp_channels.upgrade() {
+            if let Some(channels) = self_l.network.upgrade() {
                 channels.remove_attempt(&remote);
             }
         });
@@ -325,7 +325,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
             info!("Listening for incoming connections on: {}", addr);
 
-            if let Some(channels) = self_l.tcp_channels.upgrade() {
+            if let Some(channels) = self_l.network.upgrade() {
                 channels.set_port(addr.port());
             }
             self_l.data.lock().unwrap().local_addr = addr;
@@ -401,7 +401,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         }
     }
 
-    fn as_observer(self) -> Arc<dyn TcpServerObserver> {
+    fn as_observer(self) -> Arc<dyn ResponseServerObserver> {
         self
     }
 
@@ -441,7 +441,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
         let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
 
-        let Some(tcp_channels) = self.tcp_channels.upgrade() else {
+        let Some(tcp_channels) = self.network.upgrade() else {
             return AcceptReturn::error();
         };
 
@@ -533,7 +533,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 }
 
-impl TcpServerObserver for TcpListener {
+impl ResponseServerObserver for TcpListener {
     fn bootstrap_server_timeout(&self, _connection_id: usize) {
         debug!("Closing TCP server due to timeout");
     }

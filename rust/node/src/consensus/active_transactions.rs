@@ -9,7 +9,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     representatives::RepresentativeRegister,
     stats::{DetailType, Sample, StatType, Stats},
-    transport::{BufferDropPolicy, TcpChannels},
+    transport::{BufferDropPolicy, Network},
     utils::{HardenedConstants, ThreadPool},
     wallets::Wallets,
     NetworkParams, OnlineReps,
@@ -48,7 +48,7 @@ pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Syn
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
     pub condition: Condvar,
-    network: NetworkParams,
+    network_params: NetworkParams,
     pub online_reps: Arc<Mutex<OnlineReps>>,
     wallets: Arc<Wallets>,
     pub election_winner_details: Mutex<HashMap<BlockHash, Arc<Election>>>,
@@ -63,7 +63,7 @@ pub struct ActiveTransactions {
     block_processor: Arc<BlockProcessor>,
     generator: Arc<VoteGenerator>,
     final_generator: Arc<VoteGenerator>,
-    tcp_channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
@@ -80,7 +80,7 @@ pub struct ActiveTransactions {
 
 impl ActiveTransactions {
     pub fn new(
-        network: NetworkParams,
+        network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
         wallets: Arc<Wallets>,
         config: NodeConfig,
@@ -91,7 +91,7 @@ impl ActiveTransactions {
         block_processor: Arc<BlockProcessor>,
         generator: Arc<VoteGenerator>,
         final_generator: Arc<VoteGenerator>,
-        tcp_channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
         election_end: ElectionEndCallback,
@@ -109,7 +109,7 @@ impl ActiveTransactions {
                 blocks: HashMap::new(),
             }),
             condition: Condvar::new(),
-            network,
+            network_params,
             online_reps,
             wallets,
             election_winner_details: Mutex::new(HashMap::new()),
@@ -125,7 +125,7 @@ impl ActiveTransactions {
             block_processor,
             generator,
             final_generator,
-            tcp_channels,
+            network,
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
@@ -301,7 +301,7 @@ impl ActiveTransactions {
     ) -> MutexGuard<'a, ActiveTransactionsData> {
         if !guard.stopped {
             let loop_interval =
-                Duration::from_millis(self.network.network.aec_loop_interval_ms as u64);
+                Duration::from_millis(self.network_params.network.aec_loop_interval_ms as u64);
             let min_sleep = loop_interval / 2;
 
             let wait_duration = max(
@@ -383,7 +383,7 @@ impl ActiveTransactions {
     fn clear_publish_filter(&self, block: &BlockEnum) {
         let mut buf = MemoryStream::new();
         block.serialize_without_block_type(&mut buf);
-        self.tcp_channels.publish_filter.clear_bytes(buf.as_bytes());
+        self.network.publish_filter.clear_bytes(buf.as_bytes());
     }
 
     pub fn remove_votes(
@@ -559,11 +559,8 @@ impl ActiveTransactions {
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
                     election_guard.status.winner = Some(Arc::clone(block));
                     let message = Message::Publish(Publish::new(block.as_ref().clone()));
-                    self.tcp_channels.flood_message2(
-                        &message,
-                        BufferDropPolicy::NoLimiterDrop,
-                        1.0,
-                    );
+                    self.network
+                        .flood_message2(&message, BufferDropPolicy::NoLimiterDrop, 1.0);
                 }
             } else {
                 election_guard
@@ -587,7 +584,8 @@ impl ActiveTransactions {
         election: &Election,
         election_guard: &mut MutexGuard<ElectionData>,
     ) {
-        if election_guard.last_vote_elapsed() >= self.network.network.vote_broadcast_interval {
+        if election_guard.last_vote_elapsed() >= self.network_params.network.vote_broadcast_interval
+        {
             self.broadcast_vote_locked(election_guard, election);
             election_guard.set_last_vote();
         }
@@ -625,7 +623,7 @@ impl ActiveTransactions {
         election: &Election,
     ) {
         let last_vote_elapsed = election_guard.last_vote_elapsed();
-        if last_vote_elapsed < self.network.network.vote_broadcast_interval {
+        if last_vote_elapsed < self.network_params.network.vote_broadcast_interval {
             return;
         }
         election_guard.set_last_vote();
@@ -761,7 +759,7 @@ impl ActiveTransactions {
 
     /// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
     fn base_latency(&self) -> Duration {
-        if self.network.network.is_dev_network() {
+        if self.network_params.network.is_dev_network() {
             Duration::from_millis(25)
         } else {
             Duration::from_millis(1000)
@@ -782,7 +780,7 @@ impl ActiveTransactions {
         election_guard: &MutexGuard<ElectionData>,
     ) -> bool {
         // Broadcast the block if enough time has passed since the last broadcast (or it's the first broadcast)
-        if election.last_block_elapsed() < self.network.network.block_broadcast_interval {
+        if election.last_block_elapsed() < self.network_params.network.block_broadcast_interval {
             true
         }
         // Or the current election winner has changed
@@ -846,7 +844,7 @@ impl ActiveTransactions {
         let elections = Self::list_active_impl(this_loop_target, &guard);
         drop(guard);
 
-        let mut solicitor = ConfirmationSolicitor::new(&self.network, &self.tcp_channels);
+        let mut solicitor = ConfirmationSolicitor::new(&self.network_params, &self.network);
         solicitor.prepare(
             &self
                 .representative_register
@@ -1229,7 +1227,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
     }
 
     fn force_confirm(&self, election: &Arc<Election>) {
-        assert!(self.network.network.is_dev_network());
+        assert!(self.network_params.network.is_dev_network());
         let guard = election.mutex.lock().unwrap();
         self.confirm_once(guard, election);
     }
@@ -1307,7 +1305,8 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
     fn process_confirmed(&self, status: ElectionStatus, mut iteration: u64) {
         let hash = status.winner.as_ref().unwrap().hash();
         let num_iters = (self.config.block_processor_batch_max_time_ms
-            / self.network.node.process_confirmed_interval_ms) as u64
+            / self.network_params.node.process_confirmed_interval_ms)
+            as u64
             * 4;
         let block = {
             let tx = self.ledger.read_txn();
@@ -1320,7 +1319,9 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
             iteration += 1;
             let self_w = Arc::downgrade(self);
             self.workers.add_delayed_task(
-                Duration::from_millis(self.network.node.process_confirmed_interval_ms as u64),
+                Duration::from_millis(
+                    self.network_params.node.process_confirmed_interval_ms as u64,
+                ),
                 Box::new(move || {
                     if let Some(self_l) = self_w.upgrade() {
                         self_l.process_confirmed(status, iteration);
@@ -1400,7 +1401,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
         vote_source: VoteSource,
     ) -> VoteCode {
         let weight = self.ledger.weight(rep);
-        if !self.network.network.is_dev_network()
+        if !self.network_params.network.is_dev_network()
             && weight <= self.online_reps.lock().unwrap().minimum_principal_weight()
         {
             return VoteCode::Indeterminate;

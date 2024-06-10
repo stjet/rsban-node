@@ -23,9 +23,9 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
-        PeerCacheUpdater, ResponseServerFactory, SocketObserver, SynCookies, TcpChannels,
-        TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
+        Network, NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
+        PeerCacheConnector, PeerCacheUpdater, ResponseServerFactory, SocketObserver, SynCookies,
+        TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -83,7 +83,7 @@ pub struct Node {
     pub ledger: Arc<Ledger>,
     pub outbound_limiter: Arc<OutboundBandwidthLimiter>,
     pub syn_cookies: Arc<SynCookies>,
-    pub channels: Arc<TcpChannels>,
+    pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
     pub online_reps: Arc<Mutex<OnlineReps>>,
@@ -171,7 +171,7 @@ impl Node {
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-        let channels = Arc::new(TcpChannels::new(TcpChannelsOptions {
+        let network = Arc::new(Network::new(NetworkOptions {
             node_config: config.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             async_rt: Arc::clone(&async_rt),
@@ -207,7 +207,7 @@ impl Node {
             Arc::clone(&ledger),
             Arc::clone(&unchecked),
             network_params.clone(),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             node_id.clone(),
         ));
 
@@ -302,7 +302,7 @@ impl Node {
                 Arc::clone(&workers),
                 Arc::clone(&block_processor),
                 Arc::clone(&online_reps),
-                Arc::clone(&channels),
+                Arc::clone(&network),
                 Arc::clone(&confirming_set),
             )
             .expect("Could not create wallet"),
@@ -328,12 +328,12 @@ impl Node {
             false, //none-final
             Arc::clone(&stats),
             Arc::clone(&representative_register),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&vote_processor_queue),
             network_params.network.clone(),
             Arc::clone(&async_rt),
             node_id.public_key(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, channels.port(), 0, 0),
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0),
             Arc::clone(&inbound),
             Duration::from_secs(network_params.voting.delay_s as u64),
             Duration::from_millis(config.vote_generator_delay_ms as u64),
@@ -347,12 +347,12 @@ impl Node {
             true, //final
             Arc::clone(&stats),
             Arc::clone(&representative_register),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&vote_processor_queue),
             network_params.network.clone(),
             Arc::clone(&async_rt),
             node_id.public_key(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, channels.port(), 0, 0),
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0),
             Arc::clone(&inbound),
             Duration::from_secs(network_params.voting.delay_s as u64),
             Duration::from_millis(config.vote_generator_delay_ms as u64),
@@ -371,7 +371,7 @@ impl Node {
             Arc::clone(&block_processor),
             Arc::clone(&vote_generator),
             Arc::clone(&final_generator),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&vote_cache),
             Arc::clone(&stats),
             election_end,
@@ -401,7 +401,7 @@ impl Node {
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(
             config.clone(),
             flags.clone(),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&async_rt),
             Arc::clone(&workers),
             network_params.clone(),
@@ -422,7 +422,7 @@ impl Node {
             Arc::clone(&online_reps),
             config.clone(),
             network_params.clone(),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&async_rt),
             Arc::clone(&ledger),
             Arc::clone(&active),
@@ -437,7 +437,7 @@ impl Node {
             workers: workers.clone(),
             block_processor: block_processor.clone(),
             bootstrap_initiator: bootstrap_initiator.clone(),
-            tcp_channels: channels.clone(),
+            network: network.clone(),
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             node_config: config.clone(),
@@ -451,10 +451,10 @@ impl Node {
         //         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
         //
         let tcp_listener = Arc::new(TcpListener::new(
-            channels.port(),
+            network.port(),
             config.tcp.clone(),
             config.clone(),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             network_params.clone(),
             Arc::clone(&async_rt),
             socket_observer,
@@ -463,7 +463,7 @@ impl Node {
             response_server_factory,
         ));
 
-        channels.set_listener(Arc::downgrade(&tcp_listener));
+        network.set_listener(Arc::downgrade(&tcp_listener));
 
         let hinted_scheduler = Arc::new(HintedScheduler::new(
             config.hinted_scheduler.clone(),
@@ -529,7 +529,7 @@ impl Node {
             Arc::clone(&block_processor),
             Arc::clone(&ledger),
             Arc::clone(&stats),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             config.clone(),
             network_params.network.clone(),
         ));
@@ -537,7 +537,7 @@ impl Node {
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(
             Arc::clone(&block_processor),
             Arc::clone(&stats),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&representative_register),
             Arc::clone(&ledger),
             Arc::clone(&confirming_set),
@@ -553,7 +553,7 @@ impl Node {
 
         let live_message_processor = Arc::new(LiveMessageProcessor::new(
             Arc::clone(&stats),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&block_processor),
             config.clone(),
             flags.clone(),
@@ -574,11 +574,11 @@ impl Node {
             });
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
-            channels: Arc::clone(&channels),
+            network: Arc::clone(&network),
             config: config.clone(),
         });
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
-            Arc::clone(&channels),
+            Arc::clone(&network),
             config.clone(),
             flags.clone(),
             network_params.clone(),
@@ -588,7 +588,7 @@ impl Node {
         )));
 
         let processor = Arc::downgrade(&live_message_processor);
-        channels.set_sink(Box::new(move |msg, channel| {
+        network.set_sink(Box::new(move |msg, channel| {
             if let Some(processor) = processor.upgrade() {
                 processor.process(msg.message, &channel);
             }
@@ -597,7 +597,7 @@ impl Node {
         let ongoing_bootstrap = Arc::new(OngoingBootstrap::new(
             network_params.clone(),
             Arc::clone(&bootstrap_initiator),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             flags.clone(),
             Arc::clone(&ledger),
             Arc::clone(&stats),
@@ -615,7 +615,7 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         if !flags.disable_rep_crawler {
-            channels.on_new_channel(Arc::new(move |channel| {
+            network.on_new_channel(Arc::new(move |channel| {
                 if let Some(crawler) = rep_crawler_w.upgrade() {
                     crawler.query_channel(channel);
                 }
@@ -683,7 +683,7 @@ impl Node {
         let ledger_w = Arc::downgrade(&ledger);
         let vote_cache_w = Arc::downgrade(&vote_cache);
         let wallets_w = Arc::downgrade(&wallets);
-        let channels_w = Arc::downgrade(&channels);
+        let channels_w = Arc::downgrade(&network);
         active.add_vote_processed_observer(Box::new(move |vote, source, results| {
             let Some(ledger) = ledger_w.upgrade() else {
                 return;
@@ -734,7 +734,7 @@ impl Node {
         });
 
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
-        channels.on_new_channel(Arc::new(move |channel| {
+        network.on_new_channel(Arc::new(move |channel| {
             let Some(factory) = keepalive_factory_w.upgrade() else {
                 return;
             };
@@ -1004,7 +1004,7 @@ impl Node {
         let time_factory = SystemTimeFactory::default();
 
         let peer_cache_updater = PeerCacheUpdater::new(
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&ledger),
             time_factory,
             Arc::clone(&stats),
@@ -1017,7 +1017,7 @@ impl Node {
 
         let peer_cache_connector = PeerCacheConnector::new(
             Arc::clone(&ledger),
-            Arc::clone(&channels),
+            Arc::clone(&network),
             Arc::clone(&stats),
             network_params.network.merge_period,
         );
@@ -1053,7 +1053,7 @@ impl Node {
             telemetry,
             outbound_limiter,
             syn_cookies,
-            channels,
+            network,
             ledger,
             store,
             stats,
@@ -1111,7 +1111,7 @@ impl Node {
                 ContainerInfoComponent::Composite(
                     "network".to_string(),
                     vec![
-                        self.channels.collect_container_info("tcp_channels"),
+                        self.network.collect_container_info("tcp_channels"),
                         self.syn_cookies.collect_container_info("syn_cookies"),
                     ],
                 ),

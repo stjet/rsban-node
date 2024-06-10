@@ -1,7 +1,7 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::Representative,
-    transport::{BufferDropPolicy, ChannelEnum, TcpChannels, TrafficType},
+    transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
@@ -15,7 +15,7 @@ use std::{
 
 /// This struct accepts elections that need further votes before they can be confirmed and bundles them in to single confirm_req packets
 pub struct ConfirmationSolicitor<'a> {
-    tcp_channels: &'a TcpChannels,
+    network: &'a Network,
     /// Global maximum amount of block broadcasts
     max_block_broadcasts: usize,
     /// Maximum amount of requests to be sent per election, bypassed if an existing vote is for a different hash
@@ -31,16 +31,16 @@ pub struct ConfirmationSolicitor<'a> {
 }
 
 impl<'a> ConfirmationSolicitor<'a> {
-    pub fn new(network_params: &NetworkParams, tcp_channels: &'a TcpChannels) -> Self {
+    pub fn new(network_params: &NetworkParams, network: &'a Network) -> Self {
         Self {
-            tcp_channels,
+            network,
             max_block_broadcasts: if network_params.network.is_dev_network() {
                 4
             } else {
                 30
             },
             max_election_requests: 50,
-            max_election_broadcasts: max(tcp_channels.fanout(1.0) / 2, 1),
+            max_election_broadcasts: max(network.fanout(1.0) / 2, 1),
             prepared: false,
             representative_requests: Vec::new(),
             representative_broadcasts: Vec::new(),
@@ -93,7 +93,7 @@ impl<'a> ConfirmationSolicitor<'a> {
             }
         }
         // Random flood for block propagation
-        self.tcp_channels
+        self.network
             .flood_message2(&winner, BufferDropPolicy::Limiter, 0.5);
         Ok(())
     }

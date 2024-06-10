@@ -1,6 +1,6 @@
 use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, ConnectionDirection,
-    OutboundBandwidthLimiter, Socket, SocketExtensions, TcpChannels, TrafficType,
+    write_queue::WriteCallback, BufferDropPolicy, Channel, ConnectionDirection, Network,
+    OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
@@ -37,7 +37,7 @@ pub struct ChannelTcp {
     pub async_rt: Weak<AsyncRuntime>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
     stats: Arc<Stats>,
-    tcp_channels: Weak<TcpChannels>,
+    network: Weak<Network>,
 }
 
 impl ChannelTcp {
@@ -45,7 +45,7 @@ impl ChannelTcp {
         socket: Arc<Socket>,
         now: SystemTime,
         stats: Arc<Stats>,
-        tcp_channels: &Arc<TcpChannels>,
+        network: &Arc<Network>,
         limiter: Arc<OutboundBandwidthLimiter>,
         async_rt: &Arc<AsyncRuntime>,
         channel_id: usize,
@@ -67,7 +67,7 @@ impl ChannelTcp {
             async_rt: Arc::downgrade(async_rt),
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
             stats,
-            tcp_channels: Arc::downgrade(tcp_channels),
+            network: Arc::downgrade(network),
         }
     }
 
@@ -142,7 +142,7 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
             if !socket_l.max(traffic_type)
                 || (policy == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
             {
-                let channels_w = Weak::clone(&self.tcp_channels);
+                let channels_w = Weak::clone(&self.network);
                 let stats = Arc::clone(&self.stats);
                 let this_w = Arc::downgrade(self);
                 socket_l.async_write(

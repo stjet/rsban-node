@@ -7,8 +7,8 @@ use crate::{
     representatives::RepresentativeRegister,
     stats::Stats,
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelInProc, InboundCallback, OutboundBandwidthLimiter,
-        TcpChannels, TrafficType,
+        BufferDropPolicy, ChannelEnum, ChannelInProc, InboundCallback, Network,
+        OutboundBandwidthLimiter, TrafficType,
     },
     utils::AsyncRuntime,
 };
@@ -21,7 +21,7 @@ use std::{
 
 pub struct VoteBroadcaster {
     pub representative_register: Arc<Mutex<RepresentativeRegister>>,
-    pub tcp_channels: Arc<TcpChannels>,
+    pub network: Arc<Network>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
     pub network_constants: NetworkConstants,
     pub stats: Arc<Stats>,
@@ -36,13 +36,13 @@ impl VoteBroadcaster {
         self.flood_vote_pr(vote.deref().clone());
 
         let ack = Message::ConfirmAck(ConfirmAck::new(vote.deref().clone()));
-        self.tcp_channels.flood_message(&ack, 2.0);
+        self.network.flood_message(&ack, 2.0);
 
         let loopback_channel = ChannelInProc::new(
-            self.tcp_channels.get_next_channel_id(),
+            self.network.get_next_channel_id(),
             SystemTime::now(),
             self.network_constants.clone(),
-            Arc::clone(&self.tcp_channels.publish_filter),
+            Arc::clone(&self.network.publish_filter),
             Arc::clone(&self.stats),
             Arc::new(OutboundBandwidthLimiter::default()),
             Arc::clone(&self.inbound),

@@ -14,21 +14,21 @@ use rsnano_core::KeyPair;
 use rsnano_messages::{DeserializedMessage, Message, ProtocolInfo};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{TcpServer, TcpServerExt},
+    transport::{ResponseServer, TcpServerExt},
     NetworkParams,
 };
 use std::{ops::Deref, sync::Arc};
 
-pub struct TcpServerHandle(pub Arc<TcpServer>);
+pub struct TcpServerHandle(pub Arc<ResponseServer>);
 
 impl TcpServerHandle {
-    pub fn new(server: Arc<TcpServer>) -> *mut TcpServerHandle {
+    pub fn new(server: Arc<ResponseServer>) -> *mut TcpServerHandle {
         Box::into_raw(Box::new(TcpServerHandle(server)))
     }
 }
 
 impl Deref for TcpServerHandle {
-    type Target = Arc<TcpServer>;
+    type Target = Arc<ResponseServer>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let channels = Arc::clone(&(*params.tcp_channels));
-    let mut server = TcpServer::new(
+    let mut server = ResponseServer::new(
         async_rt,
         &channels,
         socket,

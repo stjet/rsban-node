@@ -1,9 +1,9 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter, NullSocketObserver,
-    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions, SocketObserver, SynCookies,
-    TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer, TrafficType,
-    TransportType,
+    OutboundBandwidthLimiter, PeerExclusion, ResponseServer, Socket, SocketExtensions,
+    SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
+    TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
@@ -31,7 +31,7 @@ use std::{
 };
 use tracing::{debug, warn};
 
-pub struct TcpChannelsOptions {
+pub struct NetworkOptions {
     pub node_config: NodeConfig,
     pub publish_filter: Arc<NetworkFilter>,
     pub async_rt: Arc<AsyncRuntime>,
@@ -47,9 +47,9 @@ pub struct TcpChannelsOptions {
     pub observer: Arc<dyn SocketObserver>,
 }
 
-impl TcpChannelsOptions {
+impl NetworkOptions {
     pub fn new_test_instance() -> Self {
-        TcpChannelsOptions {
+        NetworkOptions {
             node_config: NodeConfig::new_null(),
             publish_filter: Arc::new(NetworkFilter::default()),
             async_rt: Arc::new(AsyncRuntime::default()),
@@ -67,8 +67,9 @@ impl TcpChannelsOptions {
     }
 }
 
-pub struct TcpChannels {
-    tcp_channels: Mutex<TcpChannelsImpl>,
+pub struct Network {
+    state: Mutex<State>,
+    // TODO remove this back reference:
     tcp_listener: RwLock<Option<Weak<TcpListener>>>,
     port: AtomicU16,
     stopped: AtomicBool,
@@ -81,7 +82,7 @@ pub struct TcpChannels {
     network: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     async_rt: Arc<AsyncRuntime>,
-    node_config: Arc<NodeConfig>,
+    node_config: NodeConfig,
     node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
     workers: Arc<dyn ThreadPool>,
@@ -90,15 +91,15 @@ pub struct TcpChannels {
     merge_peer_listener: OutputListenerMt<SocketAddrV6>,
 }
 
-impl Drop for TcpChannels {
+impl Drop for Network {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
-impl TcpChannels {
-    pub fn new(options: TcpChannelsOptions) -> Self {
-        let node_config = Arc::new(options.node_config);
+impl Network {
+    pub fn new(options: NetworkOptions) -> Self {
+        let node_config = options.node_config;
         let network = Arc::new(options.network);
 
         Self {
@@ -107,7 +108,7 @@ impl TcpChannels {
             stopped: AtomicBool::new(false),
             allow_local_peers: node_config.allow_local_peers,
             tcp_message_manager: options.tcp_message_manager.clone(),
-            tcp_channels: Mutex::new(TcpChannelsImpl {
+            state: Mutex::new(State {
                 attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
@@ -143,7 +144,7 @@ impl TcpChannels {
     }
 
     pub fn new_null() -> Self {
-        Self::new(TcpChannelsOptions::new_test_instance())
+        Self::new(NetworkOptions::new_test_instance())
     }
 
     pub fn stop(&self) {
@@ -154,7 +155,7 @@ impl TcpChannels {
     }
 
     fn close(&self) {
-        self.tcp_channels.lock().unwrap().close_channels();
+        self.state.lock().unwrap().close_channels();
     }
 
     pub fn get_next_channel_id(&self) -> usize {
@@ -169,7 +170,7 @@ impl TcpChannels {
     }
 
     pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>) {
-        self.tcp_channels
+        self.state
             .lock()
             .unwrap()
             .new_channel_observers
@@ -187,15 +188,12 @@ impl TcpChannels {
             self.network.network.protocol_info(),
         )));
         fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
-        let mut channels = self.tcp_channels.lock().unwrap();
+        let mut channels = self.state.lock().unwrap();
         channels.channels.insert(fake, None);
     }
 
     pub(crate) fn add_inbound_attempt(&self, remote: SocketAddrV6) -> bool {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .add_inbound_attempt(remote)
+        self.state.lock().unwrap().add_inbound_attempt(remote)
     }
 
     pub(crate) fn check_limits(
@@ -203,22 +201,14 @@ impl TcpChannels {
         ip: &Ipv6Addr,
         direction: ConnectionDirection,
     ) -> AcceptResult {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .check_limits(ip, direction)
+        self.state.lock().unwrap().check_limits(ip, direction)
     }
 
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
-        self.tcp_channels.lock().unwrap().attempts.remove(&remote);
+        self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    fn check(
-        &self,
-        endpoint: &SocketAddrV6,
-        node_id: &Account,
-        channels: &TcpChannelsImpl,
-    ) -> bool {
+    fn check(&self, endpoint: &SocketAddrV6, node_id: &Account, channels: &State) -> bool {
         if self.stopped.load(Ordering::SeqCst) {
             return false; // Reject
         }
@@ -258,45 +248,42 @@ impl TcpChannels {
     }
 
     pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().find_channel(endpoint)
+        self.state.lock().unwrap().find_channel(endpoint)
     }
 
     pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels
+        self.state
             .lock()
             .unwrap()
             .random_channels(count, min_version)
     }
 
     pub fn get_peers(&self) -> Vec<SocketAddrV6> {
-        self.tcp_channels.lock().unwrap().get_peers()
+        self.state.lock().unwrap().get_peers()
     }
 
     pub fn get_first_channel(&self) -> Option<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().get_first_channel()
+        self.state.lock().unwrap().get_first_channel()
     }
 
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().find_node_id(node_id)
+        self.state.lock().unwrap().find_node_id(node_id)
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .collect_container_info(name)
+        self.state.lock().unwrap().collect_container_info(name)
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
-        self.tcp_channels.lock().unwrap().random_fill(endpoints);
+        self.state.lock().unwrap().random_fill(endpoints);
     }
 
     pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels.lock().unwrap().random_fanout(scale)
+        self.state.lock().unwrap().random_fanout(scale)
     }
 
     pub fn random_list(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
-        self.tcp_channels
+        self.state
             .lock()
             .unwrap()
             .random_channels(count, min_version)
@@ -331,7 +318,7 @@ impl TcpChannels {
         }
         let mut result;
         let address = ipv4_address_or_ipv6_subnet(endpoint.ip());
-        let lock = self.tcp_channels.lock().unwrap();
+        let lock = self.state.lock().unwrap();
         result = lock.channels.count_by_ip(&address) >= lock.network_constants.max_peers_per_ip;
         if !result {
             result =
@@ -422,7 +409,7 @@ impl TcpChannels {
         }
 
         let subnet = map_address_to_subnetwork(endoint.ip());
-        let guard = self.tcp_channels.lock().unwrap();
+        let guard = self.state.lock().unwrap();
 
         let is_max = guard.channels.count_by_subnet(&subnet)
             >= self.network.network.max_peers_per_subnetwork
@@ -451,7 +438,7 @@ impl TcpChannels {
         if self.max_ip_or_subnetwork_connections(endpoint) {
             return false;
         }
-        let mut guard = self.tcp_channels.lock().unwrap();
+        let mut guard = self.state.lock().unwrap();
         if guard.excluded_peers.is_excluded(endpoint) {
             return false;
         }
@@ -469,21 +456,21 @@ impl TcpChannels {
     }
 
     pub fn len_sqrt(&self) -> f32 {
-        self.tcp_channels.lock().unwrap().len_sqrt()
+        self.state.lock().unwrap().len_sqrt()
     }
     /// Desired fanout for a given scale
     /// Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
     pub fn fanout(&self, scale: f32) -> usize {
-        self.tcp_channels.lock().unwrap().fanout(scale)
+        self.state.lock().unwrap().fanout(scale)
     }
 
     pub fn purge(&self, cutoff: SystemTime) {
-        let mut guard = self.tcp_channels.lock().unwrap();
+        let mut guard = self.state.lock().unwrap();
         guard.purge(cutoff);
     }
 
     pub fn erase_channel_by_endpoint(&self, endpoint: &SocketAddrV6) {
-        self.tcp_channels
+        self.state
             .lock()
             .unwrap()
             .channels
@@ -491,15 +478,15 @@ impl TcpChannels {
     }
 
     pub fn len(&self) -> usize {
-        self.tcp_channels.lock().unwrap().channels.len()
+        self.state.lock().unwrap().channels.len()
     }
 
     pub fn bootstrap_peer(&self) -> SocketAddrV6 {
-        self.tcp_channels.lock().unwrap().bootstrap_peer()
+        self.state.lock().unwrap().bootstrap_peer()
     }
 
     pub fn list_channels(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
-        let mut result = self.tcp_channels.lock().unwrap().list(min_version);
+        let mut result = self.state.lock().unwrap().list(min_version);
         result.sort_by_key(|i| i.remote_endpoint());
         result
     }
@@ -519,7 +506,7 @@ impl TcpChannels {
     }
 
     pub fn sample_keepalive(&self) -> Option<Keepalive> {
-        let channels = self.tcp_channels.lock().unwrap();
+        let channels = self.state.lock().unwrap();
         let mut rng = thread_rng();
         for _ in 0..channels.channels.len() {
             let index = rng.gen_range(0..channels.channels.len());
@@ -536,16 +523,16 @@ impl TcpChannels {
     }
 
     pub fn is_excluded(&self, addr: &SocketAddrV6) -> bool {
-        self.tcp_channels.lock().unwrap().is_excluded(addr)
+        self.state.lock().unwrap().is_excluded(addr)
     }
 
     pub fn is_excluded_ip(&self, ip: &Ipv6Addr) -> bool {
-        self.tcp_channels.lock().unwrap().is_excluded_ip(ip)
+        self.state.lock().unwrap().is_excluded_ip(ip)
     }
 
     pub fn peer_misbehaved(&self, channel: &Arc<ChannelEnum>) {
         // Add to peer exclusion list
-        self.tcp_channels
+        self.state
             .lock()
             .unwrap()
             .peer_misbehaved(&channel.remote_endpoint());
@@ -567,11 +554,11 @@ impl TcpChannels {
     }
 }
 
-pub trait TcpChannelsExtension {
+pub trait NetworkExt {
     fn create(
         &self,
         socket: Arc<Socket>,
-        server: Arc<TcpServer>,
+        server: Arc<ResponseServer>,
         node_id: Account,
     ) -> Option<Arc<ChannelEnum>>;
 
@@ -581,17 +568,17 @@ pub trait TcpChannelsExtension {
     fn connect(&self, endpoint: SocketAddrV6);
 }
 
-impl TcpChannelsExtension for Arc<TcpChannels> {
+impl NetworkExt for Arc<Network> {
     // This should be the only place in node where channels are created
     fn create(
         &self,
         socket: Arc<Socket>,
-        server: Arc<TcpServer>,
+        server: Arc<ResponseServer>,
         node_id: Account,
     ) -> Option<Arc<ChannelEnum>> {
         let endpoint = socket.get_remote().unwrap();
 
-        let mut lock = self.tcp_channels.lock().unwrap();
+        let mut lock = self.state.lock().unwrap();
 
         if self.stopped.load(Ordering::SeqCst) {
             return None;
@@ -668,7 +655,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
         // Wake up channels
         let to_wake_up = {
-            let guard = self.tcp_channels.lock().unwrap();
+            let guard = self.state.lock().unwrap();
             guard.keepalive_list()
         };
 
@@ -705,9 +692,9 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
     }
 }
 
-pub struct TcpChannelsImpl {
-    pub attempts: AttemptContainer,
-    pub channels: ChannelContainer,
+struct State {
+    attempts: AttemptContainer,
+    channels: ChannelContainer,
     network_constants: NetworkConstants,
     new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
     excluded_peers: PeerExclusion,
@@ -716,7 +703,7 @@ pub struct TcpChannelsImpl {
     config: TcpConfig,
 }
 
-impl TcpChannelsImpl {
+impl State {
     pub fn bootstrap_peer(&mut self) -> SocketAddrV6 {
         let mut channel_endpoint = None;
         let mut peering_endpoint = None;
@@ -1039,10 +1026,10 @@ mod tests {
 
     #[test]
     fn track_merge_peer() {
-        let channels = Arc::new(TcpChannels::new_null());
-        let merge_tracker = channels.track_merge_peer();
+        let network = Arc::new(Network::new_null());
+        let merge_tracker = network.track_merge_peer();
 
-        channels.merge_peer(TEST_ENDPOINT_1);
+        network.merge_peer(TEST_ENDPOINT_1);
 
         assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
     }

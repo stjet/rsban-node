@@ -7,8 +7,8 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelEnum, ChannelTcp, ConnectionDirection, OutboundBandwidthLimiter, SocketBuilder,
-        SocketExtensions, SocketObserver, TcpChannels,
+        ChannelEnum, ChannelTcp, ConnectionDirection, Network, OutboundBandwidthLimiter,
+        SocketBuilder, SocketExtensions, SocketObserver,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool},
     NetworkParams,
@@ -39,7 +39,7 @@ pub struct BootstrapConnections {
     pub connections_count: AtomicU32,
     new_connections_empty: AtomicBool,
     stopped: AtomicBool,
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     flags: NodeFlags,
     workers: Arc<dyn ThreadPool>,
     async_rt: Arc<AsyncRuntime>,
@@ -57,7 +57,7 @@ impl BootstrapConnections {
         attempts: Arc<Mutex<BootstrapAttempts>>,
         config: NodeConfig,
         flags: NodeFlags,
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
@@ -80,7 +80,7 @@ impl BootstrapConnections {
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
-            channels,
+            network,
             flags,
             workers,
             async_rt,
@@ -217,7 +217,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         let mut guard = self.mutex.lock().unwrap();
         if !self.stopped.load(Ordering::SeqCst)
             && !client_a.pending_stop()
-            && !self.channels.is_excluded(&client_a.tcp_endpoint())
+            && !self.network.is_excluded(&client_a.tcp_endpoint())
         {
             client_a.set_timeout(Duration::from_secs(
                 self.network_params.network.idle_timeout_s as u64,
@@ -479,11 +479,11 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             // TODO - tune this better
             // Not many peers respond, need to try to make more connections than we need.
             for _ in 0..delta {
-                let endpoint = self.channels.bootstrap_peer(); // Legacy bootstrap is compatible with older version of protocol
+                let endpoint = self.network.bootstrap_peer(); // Legacy bootstrap is compatible with older version of protocol
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
                     && (self.flags.allow_bootstrap_peers_duplicates
                         || !endpoints.contains(&endpoint))
-                    && !self.channels.is_excluded(&endpoint)
+                    && !self.network.is_excluded(&endpoint)
                 {
                     self.connect_client(endpoint, false);
                     endpoints.insert(endpoint);
@@ -542,14 +542,14 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 if ec.is_ok() {
                     debug!("Connection established to: {}", endpoint);
 
-                    let channel_id = self_l.channels.get_next_channel_id();
+                    let channel_id = self_l.network.get_next_channel_id();
 
                     let protocol = self_l.network_params.network.protocol_info();
                     let tcp_channel = Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
                         Arc::clone(&socket_l),
                         SystemTime::now(),
                         Arc::clone(&self_l.stats),
-                        &self_l.channels,
+                        &self_l.network,
                         Arc::clone(&self_l.outbound_limiter),
                         &self_l.async_rt,
                         channel_id,

@@ -1,4 +1,4 @@
-use super::{ChannelEnum, TcpChannels};
+use super::{ChannelEnum, Network};
 use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
@@ -12,7 +12,7 @@ use tracing::debug;
 /// Writes a snapshot of the current peers to the database,
 /// so that we can reconnect to them when the node is restarted
 pub struct PeerCacheUpdater {
-    channels: Arc<TcpChannels>,
+    network: Arc<Network>,
     ledger: Arc<Ledger>,
     time_factory: SystemTimeFactory,
     stats: Arc<Stats>,
@@ -21,14 +21,14 @@ pub struct PeerCacheUpdater {
 
 impl PeerCacheUpdater {
     pub fn new(
-        channels: Arc<TcpChannels>,
+        network: Arc<Network>,
         ledger: Arc<Ledger>,
         time_factory: SystemTimeFactory,
         stats: Arc<Stats>,
         erase_cutoff: Duration,
     ) -> Self {
         Self {
-            channels,
+            network,
             ledger,
             time_factory,
             stats,
@@ -37,7 +37,7 @@ impl PeerCacheUpdater {
     }
 
     fn save_peers(&self, tx: &mut LmdbWriteTransaction) {
-        let live_peers = self.channels.list_channels(0);
+        let live_peers = self.network.list_channels(0);
         for peer in live_peers {
             self.save_peer(tx, &peer);
         }
@@ -267,9 +267,9 @@ mod tests {
         Vec<SocketAddrV6>,
         Arc<Stats>,
     ) {
-        let channels = Arc::new(TcpChannels::new_null());
+        let network = Arc::new(Network::new_null());
         for endpoint in open_channels {
-            channels.insert_fake(endpoint);
+            network.insert_fake(endpoint);
         }
         let ledger = Arc::new(Ledger::new_null_builder().peers(already_stored).finish());
         let time_factory = SystemTimeFactory::new_null_with(now);
@@ -278,7 +278,7 @@ mod tests {
         let delete_tracker = ledger.store.peer.track_deletions();
         let erase_cutoff = Duration::from_secs(60 * 60);
         let mut peer_history = PeerCacheUpdater::new(
-            channels,
+            network,
             ledger,
             time_factory,
             Arc::clone(&stats),

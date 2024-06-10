@@ -1,6 +1,6 @@
 use super::{
-    peer_exclusion::PeerExclusionHandle, ChannelHandle, EndpointDto, NetworkFilterHandle,
-    OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
+    ChannelHandle, EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle,
+    SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
 };
 use crate::{
     messages::MessageHandle,
@@ -175,13 +175,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_reachout(
     endpoint: &EndpointDto,
 ) -> bool {
     handle.track_reachout(&endpoint.into())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_excluded_peers(
-    handle: &TcpChannelsHandle,
-) -> *mut PeerExclusionHandle {
-    Box::into_raw(Box::new(PeerExclusionHandle(handle.excluded_peers.clone())))
 }
 
 #[no_mangle]

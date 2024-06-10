@@ -117,7 +117,7 @@ impl Telemetry {
         }
 
         if data.genesis_block != self.network_params.ledger.genesis.hash() {
-            self.channels.exclude(channel);
+            self.channels.peer_misbehaved(channel);
 
             self.stats
                 .inc(StatType::Telemetry, DetailType::GenesisMismatch);

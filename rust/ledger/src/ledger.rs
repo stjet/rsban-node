@@ -2,8 +2,8 @@ use super::DependentBlocksFinder;
 use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     ledger_set_confirmed::LedgerSetConfirmed,
-    AnyReceivableIterator, BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags,
-    LedgerCache, LedgerConstants, LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
+    BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
+    LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{

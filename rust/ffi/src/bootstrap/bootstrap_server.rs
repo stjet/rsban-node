@@ -3,8 +3,7 @@ use rsnano_node::bootstrap::{BootstrapServer, BootstrapServerConfig};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 use crate::{
-    ledger::datastore::LedgerHandle, messages::MessageHandle, transport::ChannelHandle,
-    utils::ContextWrapper, StatHandle, VoidPointerCallback,
+    messages::MessageHandle, transport::ChannelHandle, utils::ContextWrapper, VoidPointerCallback,
 };
 
 pub struct BootstrapServerHandle(pub Arc<BootstrapServer>);

@@ -3,7 +3,6 @@
 #include "nano/lib/rsnano.hpp"
 
 #include <nano/node/common.hpp>
-#include <nano/node/peer_exclusion.hpp>
 #include <nano/node/transport/tcp.hpp>
 #include <nano/secure/network_filter.hpp>
 

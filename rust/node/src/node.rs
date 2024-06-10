@@ -5,7 +5,7 @@ use crate::{
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
-        BootstrapMessageVisitorFactory, BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
+        BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
     },
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
@@ -1103,11 +1103,6 @@ impl Node {
                     vec![
                         self.channels.collect_container_info("tcp_channels"),
                         self.syn_cookies.collect_container_info("syn_cookies"),
-                        self.channels
-                            .excluded_peers
-                            .lock()
-                            .unwrap()
-                            .collect_container_info("excluded_peers"),
                     ],
                 ),
                 self.telemetry.collect_container_info("telemetry"),

@@ -217,12 +217,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         let mut guard = self.mutex.lock().unwrap();
         if !self.stopped.load(Ordering::SeqCst)
             && !client_a.pending_stop()
-            && !self
-                .channels
-                .excluded_peers
-                .lock()
-                .unwrap()
-                .is_excluded(&client_a.tcp_endpoint())
+            && !self.channels.is_excluded(&client_a.tcp_endpoint())
         {
             client_a.set_timeout(Duration::from_secs(
                 self.network_params.network.idle_timeout_s as u64,
@@ -488,12 +483,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
                     && (self.flags.allow_bootstrap_peers_duplicates
                         || !endpoints.contains(&endpoint))
-                    && !self
-                        .channels
-                        .excluded_peers
-                        .lock()
-                        .unwrap()
-                        .contains(&endpoint)
+                    && !self.channels.is_excluded(&endpoint)
                 {
                     self.connect_client(endpoint, false);
                     endpoints.insert(endpoint);

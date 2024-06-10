@@ -2,7 +2,6 @@
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/node/nodeconfig.hpp"
-#include "nano/node/peer_exclusion.hpp"
 #include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/socket.hpp"
 #include "nano/node/transport/tcp_listener.hpp"
@@ -299,11 +298,6 @@ uint16_t nano::transport::tcp_channels::port () const
 std::size_t nano::transport::tcp_channels::get_next_channel_id ()
 {
 	return rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-}
-
-nano::peer_exclusion nano::transport::tcp_channels::excluded_peers ()
-{
-	return nano::peer_exclusion{ rsnano::rsn_tcp_channels_excluded_peers (handle) };
 }
 
 std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_node_id (nano::account const & node_id_a)

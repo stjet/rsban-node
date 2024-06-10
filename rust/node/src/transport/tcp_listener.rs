@@ -1,7 +1,7 @@
 use super::{
-    CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Socket, SocketBuilder,
-    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpChannelsImpl, TcpConfig,
-    TcpServer, TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
+    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpConfig, TcpServer,
+    TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
     TokioSocketFacadeFactory,
 };
 use crate::{
@@ -10,10 +10,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::AttemptEntry,
-    utils::{
-        into_ipv6_socket_address, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        AsyncRuntime, ErrorCode, ThreadPool,
-    },
+    utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
 use async_trait::async_trait;
@@ -35,14 +32,6 @@ use std::{
 use tokio::io::AsyncWriteExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
-
-#[derive(PartialEq, Eq)]
-pub enum AcceptResult {
-    Invalid,
-    Accepted,
-    Rejected,
-    Error,
-}
 
 pub struct AcceptReturn {
     result: AcceptResult,
@@ -268,111 +257,6 @@ impl TcpListener {
         )
     }
 
-    fn check_limits(
-        &self,
-        ip: &Ipv6Addr,
-        direction: ConnectionDirection,
-        data: &mut TcpListenerData,
-        channels: &TcpChannels,
-        channels_data: &TcpChannelsImpl,
-    ) -> AcceptResult {
-        if data.stopped {
-            return AcceptResult::Rejected;
-        }
-
-        if channels.excluded_peers.lock().unwrap().is_excluded_ip(ip) {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::Excluded,
-                direction.into(),
-            );
-
-            debug!("Rejected connection from excluded peer: {}", ip);
-            return AcceptResult::Rejected;
-        }
-
-        if !self.node_flags.disable_max_peers_per_ip {
-            let count = channels_data.channels.count_by_ip(ip);
-            if count >= self.network_params.network.max_peers_per_ip {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxPerIp,
-                    direction.into(),
-                );
-                debug!(
-                    "Max connections per IP reached ({}), unable to open new connection",
-                    ip
-                );
-                return AcceptResult::Rejected;
-            }
-        }
-
-        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
-        if !self.node_flags.disable_max_peers_per_subnetwork
-            && !is_ipv4_or_v4_mapped_address(&(*ip).into())
-        {
-            let subnet = map_address_to_subnetwork(ip);
-            let count = channels_data.channels.count_by_subnet(&subnet);
-            if count >= self.network_params.network.max_peers_per_subnetwork {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxPerSubnetwork,
-                    direction.into(),
-                );
-                debug!(
-                    "Max connections per subnetwork reached ({}), unable to open new connection",
-                    ip
-                );
-                return AcceptResult::Rejected;
-            }
-        }
-
-        match direction {
-            ConnectionDirection::Inbound => {
-                // Should be checked earlier (wait_available_slots)
-                debug_assert!(
-                    data.alive_connections_count() <= self.config.max_inbound_connections
-                );
-                let count = channels_data
-                    .channels
-                    .count_by_direction(ConnectionDirection::Inbound);
-
-                if count >= self.config.max_inbound_connections {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttempts,
-                        direction.into(),
-                    );
-                    debug!(
-                        "Max inbound connections reached ({}), unable to accept new connection: {}",
-                        count, ip
-                    );
-                    return AcceptResult::Rejected;
-                }
-            }
-            ConnectionDirection::Outbound => {
-                let count = channels_data
-                    .channels
-                    .count_by_direction(ConnectionDirection::Outbound);
-
-                if count >= self.config.max_outbound_connections {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttempts,
-                        direction.into(),
-                    );
-                    debug!(
-                        "Max outbound connections reached ({}), unable to initiate new connection: {}",
-                        count, ip
-                    );
-                    return AcceptResult::Rejected;
-                }
-            }
-        }
-
-        AcceptResult::Accepted
-    }
-
     fn is_stopped(&self) -> bool {
         self.data.lock().unwrap().stopped
     }
@@ -414,8 +298,14 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false;
         };
         {
+            {
+                let guard = self.data.lock().unwrap();
+                if guard.stopped {
+                    return false;
+                }
+            }
+
             let mut channels_guard = channels.tcp_channels.lock().unwrap();
-            let mut guard = self.data.lock().unwrap();
 
             let count = channels_guard
                 .attempts
@@ -448,13 +338,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                 return false; // Rejected
             }
 
-            if self.check_limits(
-                remote.ip(),
-                ConnectionDirection::Outbound,
-                &mut guard,
-                &channels,
-                &*channels_guard,
-            ) != AcceptResult::Accepted
+            if channels_guard.check_limits(remote.ip(), ConnectionDirection::Outbound)
+                != AcceptResult::Accepted
             {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -663,15 +548,8 @@ impl TcpListenerExt for Arc<TcpListener> {
         };
 
         let result = {
-            let channels_guard = tcp_channels.tcp_channels.lock().unwrap();
-            let mut guard = self.data.lock().unwrap();
-            self.check_limits(
-                remote_endpoint.ip(),
-                direction,
-                &mut guard,
-                &tcp_channels,
-                &*channels_guard,
-            )
+            let mut channels_guard = tcp_channels.tcp_channels.lock().unwrap();
+            channels_guard.check_limits(remote_endpoint.ip(), direction)
         };
 
         if result != AcceptResult::Accepted {

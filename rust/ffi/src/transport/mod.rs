@@ -4,7 +4,6 @@ mod channel_tcp;
 mod live_message_processor;
 mod network_filter;
 mod network_threads;
-mod peer_exclusion;
 mod socket;
 mod syn_cookies;
 mod tcp_channels;

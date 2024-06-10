@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use rsnano_core::{utils::BufferReader, work::WorkThresholds};
 use rsnano_messages::*;
 use std::sync::{Arc, Mutex};
-use tracing::{info, trace};
 
 #[async_trait]
 pub trait AsyncBufferReader {

@@ -87,8 +87,6 @@ add_library(
   online_reps.cpp
   openclconfig.hpp
   openclconfig.cpp
-  peer_exclusion.hpp
-  peer_exclusion.cpp
   repcrawler.hpp
   repcrawler.cpp
   rep_tiers.hpp

@@ -340,13 +340,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .attempts_list
                 .insert(incremental_id, Arc::clone(&attempt));
             self.attempts.lock().unwrap().add(attempt);
-            if !self
-                .channels
-                .excluded_peers
-                .lock()
-                .unwrap()
-                .is_excluded(&endpoint_a)
-            {
+            if !self.channels.is_excluded(&endpoint_a) {
                 self.connections.add_connection(endpoint_a);
             }
         }

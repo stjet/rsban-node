@@ -1,7 +1,7 @@
 use std::{
     net::SocketAddrV6,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},

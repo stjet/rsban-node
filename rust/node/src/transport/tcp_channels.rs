@@ -1,8 +1,8 @@
 use super::{
     BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter,
     NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions,
-    SocketObserver, SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer,
-    TrafficType, TransportType,
+    SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
+    TcpServer, TrafficType, TransportType,
 };
 use crate::{
     bootstrap::ChannelEntry,
@@ -10,8 +10,8 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::Channel,
     utils::{
-        ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address, AsyncRuntime,
-        ThreadPool, ThreadPoolImpl,
+        ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
+        reserved_address, AsyncRuntime, ThreadPool, ThreadPoolImpl,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
@@ -82,7 +82,6 @@ pub struct TcpChannels {
     sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
     next_channel_id: AtomicUsize,
     network: Arc<NetworkParams>,
-    pub excluded_peers: Arc<Mutex<PeerExclusion>>,
     limiter: Arc<OutboundBandwidthLimiter>,
     async_rt: Arc<AsyncRuntime>,
     node_config: Arc<NodeConfig>,
@@ -110,20 +109,23 @@ impl TcpChannels {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: node_config.allow_local_peers,
-            node_config,
             tcp_message_manager: options.tcp_message_manager.clone(),
-            flags: options.flags,
-            stats: options.stats,
             tcp_channels: Mutex::new(TcpChannelsImpl {
                 attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
                 new_channel_observers: Vec::new(),
+                excluded_peers: PeerExclusion::new(),
+                stats: options.stats.clone(),
+                node_flags: options.flags.clone(),
+                config: node_config.tcp.clone(),
             }),
+            node_config,
+            flags: options.flags,
+            stats: options.stats,
             sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
             network,
-            excluded_peers: Arc::new(Mutex::new(PeerExclusion::new())),
             limiter: options.limiter,
             node_id: options.node_id,
             syn_cookies: options.syn_cookies,
@@ -291,7 +293,7 @@ impl TcpChannels {
         self.tcp_channels
             .lock()
             .unwrap()
-            .collect_container_info(name.into())
+            .collect_container_info(name)
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
@@ -458,18 +460,18 @@ impl TcpChannels {
         if self.max_ip_or_subnetwork_connections(endpoint) {
             return false;
         }
-        if self.excluded_peers.lock().unwrap().is_excluded(endpoint) {
+        let mut guard = self.tcp_channels.lock().unwrap();
+        if guard.excluded_peers.is_excluded(endpoint) {
             return false;
         }
         if self.flags.disable_tcp_realtime {
             return false;
         }
         // Don't connect to nodes that already sent us something
-        if self.find_channel(endpoint).is_some() {
+        if guard.find_channel(endpoint).is_some() {
             return false;
         }
 
-        let mut guard = self.tcp_channels.lock().unwrap();
         let attempt = AttemptEntry::new(*endpoint, ConnectionDirection::Outbound);
         let inserted = guard.attempts.insert(attempt);
         inserted
@@ -542,9 +544,17 @@ impl TcpChannels {
         None
     }
 
-    pub fn exclude(&self, channel: &Arc<ChannelEnum>) {
+    pub fn is_excluded(&self, addr: &SocketAddrV6) -> bool {
+        self.tcp_channels.lock().unwrap().is_excluded(addr)
+    }
+
+    pub fn is_excluded_ip(&self, ip: &Ipv6Addr) -> bool {
+        self.tcp_channels.lock().unwrap().is_excluded_ip(ip)
+    }
+
+    pub fn peer_misbehaved(&self, channel: &Arc<ChannelEnum>) {
         // Add to peer exclusion list
-        self.excluded_peers
+        self.tcp_channels
             .lock()
             .unwrap()
             .peer_misbehaved(&channel.remote_endpoint());
@@ -712,6 +722,10 @@ pub struct TcpChannelsImpl {
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
     new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
+    excluded_peers: PeerExclusion,
+    stats: Arc<Stats>,
+    node_flags: NodeFlags,
+    config: TcpConfig,
 }
 
 impl TcpChannelsImpl {
@@ -842,9 +856,111 @@ impl TcpChannelsImpl {
         (self.len_sqrt() * scale).ceil() as usize
     }
 
-    pub fn collect_container_info(&self, name: String) -> ContainerInfoComponent {
+    pub fn is_excluded(&mut self, endpoint: &SocketAddrV6) -> bool {
+        self.excluded_peers.is_excluded(endpoint)
+    }
+
+    pub fn is_excluded_ip(&mut self, ip: &Ipv6Addr) -> bool {
+        self.excluded_peers.is_excluded_ip(ip)
+    }
+
+    pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6) {
+        self.excluded_peers.peer_misbehaved(addr);
+    }
+
+    pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ConnectionDirection) -> AcceptResult {
+        if self.is_excluded_ip(ip) {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::Excluded,
+                direction.into(),
+            );
+
+            debug!("Rejected connection from excluded peer: {}", ip);
+            return AcceptResult::Rejected;
+        }
+
+        if !self.node_flags.disable_max_peers_per_ip {
+            let count = self.channels.count_by_ip(ip);
+            if count >= self.network_constants.max_peers_per_ip {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerIp,
+                    direction.into(),
+                );
+                debug!(
+                    "Max connections per IP reached ({}), unable to open new connection",
+                    ip
+                );
+                return AcceptResult::Rejected;
+            }
+        }
+
+        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
+        if !self.node_flags.disable_max_peers_per_subnetwork
+            && !is_ipv4_or_v4_mapped_address(&(*ip).into())
+        {
+            let subnet = map_address_to_subnetwork(ip);
+            let count = self.channels.count_by_subnet(&subnet);
+            if count >= self.network_constants.max_peers_per_subnetwork {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerSubnetwork,
+                    direction.into(),
+                );
+                debug!(
+                    "Max connections per subnetwork reached ({}), unable to open new connection",
+                    ip
+                );
+                return AcceptResult::Rejected;
+            }
+        }
+
+        match direction {
+            ConnectionDirection::Inbound => {
+                let count = self
+                    .channels
+                    .count_by_direction(ConnectionDirection::Inbound);
+
+                if count >= self.config.max_inbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        direction.into(),
+                    );
+                    debug!(
+                        "Max inbound connections reached ({}), unable to accept new connection: {}",
+                        count, ip
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+            ConnectionDirection::Outbound => {
+                let count = self
+                    .channels
+                    .count_by_direction(ConnectionDirection::Outbound);
+
+                if count >= self.config.max_outbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        direction.into(),
+                    );
+                    debug!(
+                        "Max outbound connections reached ({}), unable to initiate new connection: {}",
+                        count, ip
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+        }
+
+        AcceptResult::Accepted
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
-            name,
+            name.into(),
             vec![
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "channels".to_string(),
@@ -855,6 +971,11 @@ impl TcpChannelsImpl {
                     name: "attempts".to_string(),
                     count: self.attempts.len(),
                     sizeof_element: size_of::<AttemptEntry>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "peers".to_string(),
+                    count: self.excluded_peers.size(),
+                    sizeof_element: PeerExclusion::element_size(),
                 }),
             ],
         )
@@ -1198,6 +1319,14 @@ impl TcpEndpointAttemptContainer {
             .min_by_key(|i| i.start)
             .map(|i| (i.start, i.endpoint))
     }
+}
+
+#[derive(PartialEq, Eq)]
+pub enum AcceptResult {
+    Invalid,
+    Accepted,
+    Rejected,
+    Error,
 }
 
 #[cfg(test)]

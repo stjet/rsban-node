@@ -5,7 +5,6 @@
 #include "nano/node/nodeconfig.hpp"
 
 #include <nano/node/common.hpp>
-#include <nano/node/peer_exclusion.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
@@ -121,7 +120,6 @@ namespace transport
 		std::size_t get_next_channel_id ();
 
 		nano::tcp_message_manager tcp_message_manager;
-		nano::peer_exclusion excluded_peers ();
 		std::shared_ptr<nano::network_filter> publish_filter;
 
 	public:

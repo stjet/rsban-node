@@ -48,9 +48,7 @@ pub use peer_exclusion::PeerExclusion;
 use rsnano_core::Account;
 pub use socket::*;
 pub use syn_cookies::SynCookies;
-pub use tcp_channels::{
-    AttemptEntry, TcpChannels, TcpChannelsExtension, TcpChannelsImpl, TcpChannelsOptions,
-};
+pub use tcp_channels::*;
 pub use tcp_listener::{TcpListener, TcpListenerExt};
 pub use tcp_message_manager::TcpMessageManager;
 pub use tcp_server::*;

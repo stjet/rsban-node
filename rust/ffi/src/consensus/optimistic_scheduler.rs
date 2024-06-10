@@ -1,8 +1,7 @@
 use crate::{
-    cementation::ConfirmingSetHandle, core::AccountInfoHandle, ledger::datastore::LedgerHandle,
-    ConfirmationHeightInfoDto, NetworkConstantsDto, OptimisticSchedulerConfigDto, StatHandle,
+    cementation::ConfirmingSetHandle, ledger::datastore::LedgerHandle, NetworkConstantsDto,
+    OptimisticSchedulerConfigDto, StatHandle,
 };
-use rsnano_core::Account;
 use rsnano_node::consensus::{OptimisticScheduler, OptimisticSchedulerExt};
 use std::sync::Arc;
 

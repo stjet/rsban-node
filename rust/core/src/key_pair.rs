@@ -10,6 +10,7 @@ pub struct KeyPairFactory {
 }
 
 impl KeyPairFactory {
+    #[allow(dead_code)]
     fn new(rng: NullableRng) -> Self {
         Self { rng }
     }

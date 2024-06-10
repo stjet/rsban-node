@@ -689,40 +689,7 @@ TEST (network, duplicate_revert_publish)
 
 TEST (network, tcp_no_accept_excluded_peers)
 {
-	nano::test::system system (1);
-	auto node0 (system.nodes[0]);
-	ASSERT_EQ (0, node0->network->size ());
-	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	node1->start ();
-	system.nodes.push_back (node1);
-	auto endpoint1_tcp (nano::transport::map_endpoint_to_tcp (node1->network->endpoint ()));
-	while (!node0->network->tcp_channels->excluded_peers ().check (endpoint1_tcp))
-	{
-		node0->network->tcp_channels->excluded_peers ().add (endpoint1_tcp);
-	}
-	ASSERT_EQ (0, node0->stats->count (nano::stat::type::tcp_listener_rejected, nano::stat::detail::excluded));
-	node1->network->merge_peer (node0->network->endpoint ());
-	ASSERT_TIMELY (5s, node0->stats->count (nano::stat::type::tcp_listener_rejected, nano::stat::detail::excluded) >= 1);
-	ASSERT_EQ (nullptr, node0->network->find_node_id (node1->get_node_id ()));
-
-	// Should not actively reachout to excluded peers
-	ASSERT_FALSE (node0->network->track_reachout (node1->network->endpoint ()));
-
-	// Erasing from excluded peers should allow a connection
-	node0->network->tcp_channels->excluded_peers ().remove (endpoint1_tcp);
-	ASSERT_FALSE (node0->network->tcp_channels->excluded_peers ().check (endpoint1_tcp));
-
-	// Wait until there is a syn_cookie
-	ASSERT_TIMELY (5s, node1->network->syn_cookies->cookies_size () != 0);
-
-	// Manually cleanup previous attempt
-	node1->network->cleanup (std::chrono::system_clock::now ());
-	node1->network->syn_cookies->purge (std::chrono::seconds{ 0 });
-
-	// Ensure a successful connection
-	ASSERT_EQ (0, node0->network->size ());
-	node1->network->merge_peer (node0->network->endpoint ());
-	ASSERT_TIMELY_EQ (5s, node0->network->size (), 1);
+	// TODO reimplement in Rust
 }
 
 TEST (network, cleanup_purge)

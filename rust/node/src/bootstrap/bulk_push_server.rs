@@ -7,7 +7,7 @@ use super::BootstrapInitiator;
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ResponseServer, ResponseServerExt, SocketExtensions},
+    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use num_traits::FromPrimitive;
@@ -27,7 +27,7 @@ pub struct BulkPushServer {
 impl BulkPushServer {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
-        connection: Arc<ResponseServer>,
+        connection: Arc<ResponseServerImpl>,
         ledger: Arc<Ledger>,
         thread_pool: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
@@ -64,7 +64,7 @@ impl BulkPushServer {
 struct BulkPushServerImpl {
     async_rt: Arc<AsyncRuntime>,
     ledger: Arc<Ledger>,
-    connection: Arc<ResponseServer>,
+    connection: Arc<ResponseServerImpl>,
     thread_pool: Weak<dyn ThreadPool>,
     block_processor: Weak<BlockProcessor>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,

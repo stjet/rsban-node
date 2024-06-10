@@ -1,6 +1,6 @@
 use super::{
     AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Network,
-    ResponseServer, ResponseServerFactory, ResponseServerObserver, Socket, SocketBuilder,
+    ResponseServerFactory, ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder,
     SocketExtensions, SocketObserver, TcpConfig,
 };
 use crate::{
@@ -27,7 +27,7 @@ use tracing::{debug, error, info, warn};
 pub struct AcceptReturn {
     result: AcceptResult,
     socket: Option<Arc<Socket>>,
-    server: Option<Arc<ResponseServer>>,
+    server: Option<Arc<ResponseServerImpl>>,
 }
 
 impl AcceptReturn {
@@ -47,7 +47,7 @@ impl AcceptReturn {
 struct Connection {
     endpoint: SocketAddrV6,
     socket: Weak<Socket>,
-    server: Weak<ResponseServer>,
+    server: Weak<ResponseServerImpl>,
 }
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
@@ -235,7 +235,7 @@ pub trait TcpListenerExt {
     async fn accept_one(
         &self,
         socket: Arc<Socket>,
-        response_server: Arc<ResponseServer>,
+        response_server: Arc<ResponseServerImpl>,
         direction: ConnectionDirection,
     ) -> anyhow::Result<()>;
 
@@ -477,7 +477,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn accept_one(
         &self,
         socket: Arc<Socket>,
-        response_server: Arc<ResponseServer>,
+        response_server: Arc<ResponseServerImpl>,
         direction: ConnectionDirection,
     ) -> anyhow::Result<()> {
         let remote_endpoint = socket.get_remote().unwrap();

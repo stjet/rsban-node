@@ -9,7 +9,7 @@ use crate::{
     stats::Stats,
     transport::{
         BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl,
-        ResponseServer, SynCookies,
+        ResponseServerImpl, SynCookies,
     },
     utils::{AsyncRuntime, ThreadPool},
 };
@@ -56,7 +56,10 @@ impl BootstrapMessageVisitorFactory {
         }
     }
 
-    pub fn realtime_visitor(&self, server: Arc<ResponseServer>) -> Box<dyn RealtimeMessageVisitor> {
+    pub fn realtime_visitor(
+        &self,
+        server: Arc<ResponseServerImpl>,
+    ) -> Box<dyn RealtimeMessageVisitor> {
         Box::new(RealtimeMessageVisitorImpl::new(
             server,
             Arc::clone(&self.stats),
@@ -65,7 +68,7 @@ impl BootstrapMessageVisitorFactory {
 
     pub fn bootstrap_visitor(
         &self,
-        server: Arc<ResponseServer>,
+        server: Arc<ResponseServerImpl>,
     ) -> Box<dyn BootstrapMessageVisitor> {
         Box::new(BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),

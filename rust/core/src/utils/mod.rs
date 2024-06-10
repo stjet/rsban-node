@@ -189,6 +189,8 @@ pub fn parse_endpoint(s: &str) -> SocketAddrV6 {
     s.parse().unwrap()
 }
 
+pub const NULL_ENDPOINT: SocketAddrV6 = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
+
 pub const TEST_ENDPOINT_1: SocketAddrV6 =
     SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0xffff, 0x10, 0, 0, 1), 1111, 0, 0);
 

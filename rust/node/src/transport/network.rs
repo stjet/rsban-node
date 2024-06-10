@@ -1,7 +1,7 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter, NullSocketObserver,
-    OutboundBandwidthLimiter, PeerExclusion, ResponseServer, Socket, SocketExtensions,
+    OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket, SocketExtensions,
     SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
     TrafficType, TransportType,
 };
@@ -138,7 +138,7 @@ impl Network {
     pub async fn accept_one(
         &self,
         socket: &Arc<Socket>,
-        response_server: &Arc<ResponseServer>,
+        response_server: &Arc<ResponseServerImpl>,
         direction: ConnectionDirection,
     ) -> anyhow::Result<()> {
         let Some(remote_endpoint) = socket.get_remote() else {
@@ -642,7 +642,7 @@ pub trait NetworkExt {
     fn create(
         &self,
         socket: Arc<Socket>,
-        server: Arc<ResponseServer>,
+        server: Arc<ResponseServerImpl>,
         node_id: Account,
     ) -> Option<Arc<ChannelEnum>>;
 
@@ -657,7 +657,7 @@ impl NetworkExt for Arc<Network> {
     fn create(
         &self,
         socket: Arc<Socket>,
-        server: Arc<ResponseServer>,
+        server: Arc<ResponseServerImpl>,
         node_id: Account,
     ) -> Option<Arc<ChannelEnum>> {
         let endpoint = socket.get_remote().unwrap();

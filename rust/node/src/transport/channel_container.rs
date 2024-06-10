@@ -1,4 +1,4 @@
-use super::{ChannelEnum, ChannelTcp, ConnectionDirection, ResponseServer, SocketExtensions};
+use super::{ChannelEnum, ChannelTcp, ConnectionDirection, ResponseServerImpl, SocketExtensions};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use rsnano_core::{Account, PublicKey};
 use std::{
@@ -28,7 +28,7 @@ impl ChannelContainer {
     pub fn insert(
         &mut self,
         channel: Arc<ChannelEnum>,
-        response_server: Option<Arc<ResponseServer>>,
+        response_server: Option<Arc<ResponseServerImpl>>,
     ) -> bool {
         let entry = Arc::new(ChannelEntry::new(channel, response_server));
         let endpoint = entry.endpoint();
@@ -227,11 +227,14 @@ impl ChannelContainer {
 
 pub struct ChannelEntry {
     pub channel: Arc<ChannelEnum>,
-    pub response_server: Option<Arc<ResponseServer>>,
+    pub response_server: Option<Arc<ResponseServerImpl>>,
 }
 
 impl ChannelEntry {
-    pub fn new(channel: Arc<ChannelEnum>, response_server: Option<Arc<ResponseServer>>) -> Self {
+    pub fn new(
+        channel: Arc<ChannelEnum>,
+        response_server: Option<Arc<ResponseServerImpl>>,
+    ) -> Self {
         Self {
             channel,
             response_server,

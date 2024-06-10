@@ -1,4 +1,4 @@
-use super::{ChannelEnum, MessageDeserializer, Network, NetworkFilter};
+use super::{ChannelEnum, HandshakeProcess, MessageDeserializer, Network, NetworkFilter};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
@@ -10,10 +10,10 @@ use crate::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_core::{Account, KeyPair};
+use rsnano_core::{utils::NULL_ENDPOINT, Account, KeyPair};
 use rsnano_messages::*;
 use std::{
-    net::{Ipv6Addr, SocketAddrV6},
+    net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -93,7 +93,9 @@ impl ResponseServerObserver for NullTcpServerObserver {
     fn dec_bootstrap_count(&self) {}
 }
 
-pub struct ResponseServer {
+pub trait ResponseServer {}
+
+pub struct ResponseServerImpl {
     async_rt: Weak<AsyncRuntime>,
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
@@ -112,7 +114,6 @@ pub struct ResponseServer {
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
-    handshake_received: AtomicBool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
@@ -123,11 +124,12 @@ pub struct ResponseServer {
     node_id: KeyPair,
     protocol_info: ProtocolInfo,
     network: Weak<Network>,
+    handshake_process: HandshakeProcess,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
-impl ResponseServer {
+impl ResponseServerImpl {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
         network: &Arc<Network>,
@@ -149,6 +151,7 @@ impl ResponseServer {
             socket_id = socket.socket_id,
             "Cloning socket in TcpServer constructor"
         );
+        let remote_endpoint = socket.get_remote().unwrap_or(NULL_ENDPOINT);
         Self {
             async_rt: Arc::downgrade(&async_rt),
             network: Arc::downgrade(network),
@@ -159,14 +162,20 @@ impl ResponseServer {
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
-            remote_endpoint: Mutex::new(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
+            remote_endpoint: Mutex::new(remote_endpoint),
             last_telemetry_req: Mutex::new(None),
+            handshake_process: HandshakeProcess::new(
+                network_params.ledger.genesis.hash(),
+                node_id.clone(),
+                syn_cookies.clone(),
+                stats.clone(),
+                remote_endpoint,
+            ),
             network_params,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
             stats,
             disable_bootstrap_bulk_pull_server: false,
             disable_tcp_realtime: false,
-            handshake_received: AtomicBool::new(false),
             message_visitor_factory,
             protocol_info: network_constants.protocol_info(),
             message_deserializer: Arc::new(MessageDeserializer::new(
@@ -195,19 +204,11 @@ impl ResponseServer {
         }
     }
 
-    pub fn was_handshake_received(&self) -> bool {
-        self.handshake_received.load(Ordering::SeqCst)
-    }
-
-    pub fn handshake_query_received(&self) {
-        self.handshake_received.store(true, Ordering::SeqCst);
-    }
-
     pub fn remote_endpoint(&self) -> SocketAddrV6 {
         *self.remote_endpoint.lock().unwrap()
     }
 
-    pub fn is_outside_cooldown_period(&self) -> bool {
+    fn is_outside_cooldown_period(&self) -> bool {
         let lock = self.last_telemetry_req.lock().unwrap();
         match *lock {
             Some(last_req) => {
@@ -220,7 +221,7 @@ impl ResponseServer {
         }
     }
 
-    pub fn to_bootstrap_connection(&self) -> bool {
+    fn to_bootstrap_connection(&self) -> bool {
         if !self.allow_bootstrap {
             return false;
         }
@@ -247,7 +248,7 @@ impl ResponseServer {
         true
     }
 
-    pub fn set_last_telemetry_req(&self) {
+    fn set_last_telemetry_req(&self) {
         let mut lk = self.last_telemetry_req.lock().unwrap();
         *lk = Some(Instant::now());
     }
@@ -256,25 +257,25 @@ impl ResponseServer {
         self.unique_id
     }
 
-    pub fn is_undefined_connection(&self) -> bool {
+    fn is_undefined_connection(&self) -> bool {
         self.socket.socket_type() == SocketType::Undefined
     }
 
-    pub fn is_bootstrap_connection(&self) -> bool {
+    fn is_bootstrap_connection(&self) -> bool {
         self.socket.is_bootstrap_connection()
     }
 
-    pub fn is_realtime_connection(&self) -> bool {
+    fn is_realtime_connection(&self) -> bool {
         self.socket.is_realtime_connection()
     }
 
-    pub fn queue_realtime(&self, message: DeserializedMessage) {
+    fn queue_realtime(&self, message: DeserializedMessage) {
         let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
         channel.set_last_packet_received(SystemTime::now());
         self.tcp_message_manager.put(message, channel);
     }
 
-    pub fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {
+    fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {
         *self.last_keepalive.lock().unwrap() = keepalive;
     }
 
@@ -285,81 +286,9 @@ impl ResponseServer {
     pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
         self.last_keepalive.lock().unwrap().take()
     }
-
-    fn verify_handshake_response(
-        &self,
-        response: &NodeIdHandshakeResponse,
-        remote_endpoint: &SocketAddrV6,
-    ) -> bool {
-        // Prevent connection with ourselves
-        if response.node_id == self.node_id.public_key() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidNodeId,
-                Direction::In,
-            );
-            return false; // Fail
-        }
-
-        // Prevent mismatched genesis
-        if let Some(v2) = &response.v2 {
-            if v2.genesis != self.network_params.ledger.genesis.hash() {
-                self.stats.inc_dir(
-                    StatType::Handshake,
-                    DetailType::InvalidGenesis,
-                    Direction::In,
-                );
-                return false; // Fail
-            }
-        }
-
-        let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::MissingCookie,
-                Direction::In,
-            );
-            return false; // Fail
-        };
-
-        if response.validate(&cookie).is_err() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidSignature,
-                Direction::In,
-            );
-            return false; // Fail
-        }
-
-        self.stats
-            .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
-        true // OK
-    }
-
-    fn prepare_handshake_response(
-        &self,
-        query: &NodeIdHandshakeQuery,
-        v2: bool,
-    ) -> NodeIdHandshakeResponse {
-        if v2 {
-            let genesis = self.network_params.ledger.genesis.hash();
-            NodeIdHandshakeResponse::new_v2(&query.cookie, &self.node_id, genesis)
-        } else {
-            NodeIdHandshakeResponse::new_v1(&query.cookie, &self.node_id)
-        }
-    }
-
-    fn prepare_handshake_query(
-        &self,
-        remote_endpoint: &SocketAddrV6,
-    ) -> Option<NodeIdHandshakeQuery> {
-        self.syn_cookies
-            .assign(remote_endpoint)
-            .map(|cookie| NodeIdHandshakeQuery { cookie })
-    }
 }
 
-impl Drop for ResponseServer {
+impl Drop for ResponseServerImpl {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         if let Some(observer) = self.observer.upgrade() {
@@ -405,7 +334,7 @@ pub enum ProcessResult {
     Pause,
 }
 
-impl ResponseServerExt for Arc<ResponseServer> {
+impl ResponseServerExt for Arc<ResponseServerImpl> {
     fn start(&self) {
         // Set remote_endpoint
         let mut guard = self.remote_endpoint.lock().unwrap();
@@ -460,7 +389,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
 
     fn initiate_handshake(&self) {
         let endpoint = self.remote_endpoint();
-        let query = self.prepare_handshake_query(&endpoint);
+        let query = self.handshake_process.prepare_query(&endpoint);
         let message = Message::NodeIdHandshake(NodeIdHandshake {
             query,
             response: None,
@@ -690,7 +619,12 @@ impl ResponseServerExt for Arc<ResponseServer> {
             );
             return HandshakeStatus::Abort;
         }
-        if message.query.is_some() && self.was_handshake_received() {
+        if message.query.is_some()
+            && self
+                .handshake_process
+                .handshake_received
+                .load(Ordering::SeqCst)
+        {
             // Second handshake message should be a response only
             self.stats.inc_dir(
                 StatType::TcpServer,
@@ -704,7 +638,9 @@ impl ResponseServerExt for Arc<ResponseServer> {
             return HandshakeStatus::Abort;
         }
 
-        self.handshake_received.store(true, Ordering::SeqCst);
+        self.handshake_process
+            .handshake_received
+            .store(true, Ordering::SeqCst);
 
         self.stats.inc_dir(
             StatType::TcpServer,
@@ -730,7 +666,10 @@ impl ResponseServerExt for Arc<ResponseServer> {
             // Fall through and continue handshake
         }
         if let Some(response) = &message.response {
-            if self.verify_handshake_response(response, &self.remote_endpoint()) {
+            if self
+                .handshake_process
+                .verify_response(response, &self.remote_endpoint())
+            {
                 let success = self.to_realtime_connection(&response.node_id);
                 if success {
                     return HandshakeStatus::Realtime; // Switch to realtime
@@ -763,8 +702,10 @@ impl ResponseServerExt for Arc<ResponseServer> {
     }
 
     fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
-        let response = self.prepare_handshake_response(query, v2);
-        let own_query = self.prepare_handshake_query(&self.remote_endpoint());
+        let response = self.handshake_process.prepare_response(query, v2);
+        let own_query = self
+            .handshake_process
+            .prepare_query(&self.remote_endpoint());
         let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
             is_v2: own_query.is_some() || response.v2.is_some(),
             query: own_query,
@@ -816,11 +757,11 @@ impl ResponseServerExt for Arc<ResponseServer> {
 
 struct HandshakeMessageVisitor {
     pub result: HandshakeStatus,
-    server: Arc<ResponseServer>,
+    server: Arc<ResponseServerImpl>,
 }
 
 impl HandshakeMessageVisitor {
-    fn new(server: Arc<ResponseServer>) -> Self {
+    fn new(server: Arc<ResponseServerImpl>) -> Self {
         Self {
             server,
             result: HandshakeStatus::Abort,
@@ -842,13 +783,13 @@ impl MessageVisitor for HandshakeMessageVisitor {
 }
 
 pub struct RealtimeMessageVisitorImpl {
-    server: Arc<ResponseServer>,
+    server: Arc<ResponseServerImpl>,
     stats: Arc<Stats>,
     process: bool,
 }
 
 impl RealtimeMessageVisitorImpl {
-    pub fn new(server: Arc<ResponseServer>, stats: Arc<Stats>) -> Self {
+    pub fn new(server: Arc<ResponseServerImpl>, stats: Arc<Stats>) -> Self {
         Self {
             server,
             stats,

@@ -1,5 +1,7 @@
+mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
+mod channel_container;
 mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;

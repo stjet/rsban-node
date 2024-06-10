@@ -1,11 +1,11 @@
 use super::{
-    BufferDropPolicy, ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter,
-    NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions,
-    SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
-    TcpServer, TrafficType, TransportType,
+    attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
+    ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter, NullSocketObserver,
+    OutboundBandwidthLimiter, PeerExclusion, Socket, SocketExtensions, SocketObserver, SynCookies,
+    TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager, TcpServer, TrafficType,
+    TransportType,
 };
 use crate::{
-    bootstrap::ChannelEntry,
     config::{NetworkConstants, NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::Channel,
@@ -22,9 +22,6 @@ use rsnano_core::{
 };
 use rsnano_messages::*;
 use std::{
-    collections::{BTreeMap, HashMap},
-    hash::Hash,
-    mem::size_of,
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
@@ -172,24 +169,6 @@ impl TcpChannels {
             .count_by_direction(direction)
     }
 
-    pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
-        self.tcp_channels.lock().unwrap().channels.count_by_ip(ip)
-    }
-
-    pub fn count_by_subnetwork(&self, ip: &Ipv6Addr) -> usize {
-        let subnet = map_address_to_subnetwork(ip);
-
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .channels
-            .iter()
-            .filter(|entry| {
-                map_address_to_subnetwork(entry.channel.remote_endpoint().ip()) == subnet
-            })
-            .count()
-    }
-
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
         endpoint.ip().is_unspecified()
             || reserved_address(endpoint, allow_local_peers)
@@ -217,9 +196,7 @@ impl TcpChannels {
         )));
         fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
         let mut channels = self.tcp_channels.lock().unwrap();
-        channels
-            .channels
-            .insert(Arc::new(ChannelEntry::new(fake, None)));
+        channels.channels.insert(fake, None);
     }
 
     fn check(
@@ -472,9 +449,9 @@ impl TcpChannels {
             return false;
         }
 
-        let attempt = AttemptEntry::new(*endpoint, ConnectionDirection::Outbound);
-        let inserted = guard.attempts.insert(attempt);
-        inserted
+        guard
+            .attempts
+            .insert(*endpoint, ConnectionDirection::Outbound)
     }
 
     pub fn len_sqrt(&self) -> f32 {
@@ -643,10 +620,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 
         lock.attempts.remove(&endpoint);
 
-        let inserted = lock.channels.insert(Arc::new(ChannelEntry::new(
-            Arc::clone(&channel),
-            Some(server),
-        )));
+        let inserted = lock.channels.insert(Arc::clone(&channel), Some(server));
         debug_assert!(inserted);
 
         let observers = lock.new_channel_observers.clone();
@@ -718,7 +692,7 @@ impl TcpChannelsExtension for Arc<TcpChannels> {
 }
 
 pub struct TcpChannelsImpl {
-    pub attempts: TcpEndpointAttemptContainer,
+    pub attempts: AttemptContainer,
     pub channels: ChannelContainer,
     network_constants: NetworkConstants,
     new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelEnum>) + Send + Sync>>,
@@ -868,6 +842,60 @@ impl TcpChannelsImpl {
         self.excluded_peers.peer_misbehaved(addr);
     }
 
+    pub fn add_inbound_attempt(&mut self, remote: SocketAddrV6) -> bool {
+        let count = self
+            .attempts
+            .count_by_direction(ConnectionDirection::Inbound);
+        if count > self.config.max_attempts {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttempts,
+                Direction::Out,
+            );
+            debug!(
+                "Max connection attempts reached ({}), unable to initiate new connection: {}",
+                count,
+                remote.ip()
+            );
+            return false; // Rejected
+        }
+
+        let count = self.attempts.count_by_address(remote.ip());
+        if count >= self.config.max_attempts_per_ip {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttemptsPerIp,
+                Direction::Out,
+            );
+            debug!(
+                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
+                        count, remote.ip()
+                    );
+            return false; // Rejected
+        }
+
+        if self.check_limits(remote.ip(), ConnectionDirection::Outbound) != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectRejected,
+                Direction::Out,
+            );
+            // Refusal reason should be logged earlier
+
+            return false; // Rejected
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::ConnectInitiate,
+            Direction::Out,
+        );
+        debug!("Initiate outgoing connection to: {}", remote);
+
+        self.attempts.insert(remote, ConnectionDirection::Inbound);
+        true
+    }
+
     pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ConnectionDirection) -> AcceptResult {
         if self.is_excluded_ip(ip) {
             self.stats.inc_dir(
@@ -965,12 +993,12 @@ impl TcpChannelsImpl {
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "channels".to_string(),
                     count: self.channels.len(),
-                    sizeof_element: size_of::<ChannelEntry>(),
+                    sizeof_element: ChannelContainer::ELEMENT_SIZE,
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "attempts".to_string(),
                     count: self.attempts.len(),
-                    sizeof_element: size_of::<AttemptEntry>(),
+                    sizeof_element: AttemptContainer::ELEMENT_SIZE,
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "peers".to_string(),
@@ -979,345 +1007,6 @@ impl TcpChannelsImpl {
                 }),
             ],
         )
-    }
-}
-
-#[derive(Default)]
-pub struct ChannelContainer {
-    by_endpoint: HashMap<SocketAddrV6, Arc<ChannelEntry>>,
-    by_random_access: Vec<SocketAddrV6>,
-    by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
-    by_node_id: HashMap<PublicKey, Vec<SocketAddrV6>>,
-    by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
-    by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-    by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-}
-
-impl ChannelContainer {
-    pub fn insert(&mut self, entry: Arc<ChannelEntry>) -> bool {
-        let endpoint = entry.endpoint();
-        if self.by_endpoint.contains_key(&endpoint) {
-            return false;
-        }
-
-        self.by_random_access.push(endpoint);
-        self.by_bootstrap_attempt
-            .entry(entry.last_bootstrap_attempt())
-            .or_default()
-            .push(endpoint);
-        self.by_node_id
-            .entry(entry.node_id().unwrap_or_default())
-            .or_default()
-            .push(endpoint);
-        self.by_network_version
-            .entry(entry.network_version())
-            .or_default()
-            .push(endpoint);
-        self.by_ip_address
-            .entry(entry.ip_address())
-            .or_default()
-            .push(endpoint);
-        self.by_subnet
-            .entry(entry.subnetwork())
-            .or_default()
-            .push(endpoint);
-        self.by_endpoint.insert(entry.endpoint(), entry);
-        true
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
-        self.by_endpoint.values()
-    }
-
-    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
-        self.by_bootstrap_attempt
-            .iter()
-            .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
-    }
-
-    pub fn exists(&self, endpoint: &SocketAddrV6) -> bool {
-        self.by_endpoint.contains_key(endpoint)
-    }
-
-    pub fn remove_by_node_id(&mut self, node_id: &PublicKey) {
-        if let Some(endpoints) = self.by_node_id.get(node_id).cloned() {
-            for ep in endpoints {
-                self.remove_by_endpoint(&ep);
-            }
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        self.by_endpoint.len()
-    }
-
-    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        if let Some(entry) = self.by_endpoint.remove(endpoint) {
-            self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
-
-            remove_endpoint_btree(
-                &mut self.by_bootstrap_attempt,
-                &entry.last_bootstrap_attempt(),
-                endpoint,
-            );
-            remove_endpoint_map(
-                &mut self.by_node_id,
-                &entry.node_id().unwrap_or_default(),
-                endpoint,
-            );
-            remove_endpoint_btree(
-                &mut self.by_network_version,
-                &entry.network_version(),
-                endpoint,
-            );
-            remove_endpoint_map(&mut self.by_ip_address, &entry.ip_address(), endpoint);
-            remove_endpoint_map(&mut self.by_subnet, &entry.subnetwork(), endpoint);
-            Some(entry.channel.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
-        self.by_endpoint.get(endpoint)
-    }
-
-    pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelEntry>> {
-        self.by_random_access
-            .get(index)
-            .map(|ep| self.by_endpoint.get(ep))
-            .flatten()
-    }
-
-    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelEntry>> {
-        self.by_node_id
-            .get(node_id)
-            .map(|endpoints| self.by_endpoint.get(&endpoints[0]))
-            .flatten()
-    }
-
-    pub fn set_last_bootstrap_attempt(
-        &mut self,
-        endpoint: &SocketAddrV6,
-        attempt_time: SystemTime,
-    ) {
-        if let Some(channel) = self.by_endpoint.get(endpoint) {
-            let old_time = channel.last_bootstrap_attempt();
-            channel.channel.set_last_bootstrap_attempt(attempt_time);
-            remove_endpoint_btree(
-                &mut self.by_bootstrap_attempt,
-                &old_time,
-                &channel.endpoint(),
-            );
-            self.by_bootstrap_attempt
-                .entry(attempt_time)
-                .or_default()
-                .push(*endpoint);
-        }
-    }
-
-    pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
-        self.by_ip_address
-            .get(ip)
-            .map(|endpoints| endpoints.len())
-            .unwrap_or_default()
-    }
-
-    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
-        self.by_endpoint
-            .values()
-            .filter(|entry| entry.channel.direction() == direction)
-            .count()
-    }
-
-    pub fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
-        self.by_subnet
-            .get(subnet)
-            .map(|endpoints| endpoints.len())
-            .unwrap_or_default()
-    }
-
-    pub fn clear(&mut self) {
-        self.by_endpoint.clear();
-        self.by_random_access.clear();
-        self.by_bootstrap_attempt.clear();
-        self.by_node_id.clear();
-        self.by_network_version.clear();
-        self.by_ip_address.clear();
-        self.by_subnet.clear();
-    }
-
-    pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
-        for entry in self.iter() {
-            if entry.channel.get_last_packet_sent() < cutoff {
-                debug!("Closing idle channel: {}", entry.channel.remote_endpoint());
-                entry.channel.close();
-            }
-        }
-    }
-
-    pub fn remove_dead(&mut self) {
-        let dead_channels: Vec<_> = self
-            .by_endpoint
-            .values()
-            .filter(|c| !c.channel.is_alive())
-            .cloned()
-            .collect();
-
-        for channel in dead_channels {
-            debug!("Removing dead channel: {}", channel.endpoint());
-            self.remove_by_endpoint(&channel.endpoint());
-        }
-    }
-
-    pub fn close_old_protocol_versions(&mut self, min_version: u8) {
-        while let Some((version, endpoints)) = self.by_network_version.first_key_value() {
-            if *version < min_version {
-                for ep in endpoints {
-                    debug!(
-                        "Closing channel with old protocol version: {} (channels version: {}, min version: {})",
-                        ep, version, min_version
-                    );
-                    if let Some(entry) = self.by_endpoint.get(ep) {
-                        entry.channel.close();
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-    }
-}
-
-fn remove_endpoint_btree<K: Ord>(
-    tree: &mut BTreeMap<K, Vec<SocketAddrV6>>,
-    key: &K,
-    endpoint: &SocketAddrV6,
-) {
-    let endpoints = tree.get_mut(key).unwrap();
-    if endpoints.len() > 1 {
-        endpoints.retain(|x| x != endpoint);
-    } else {
-        tree.remove(key);
-    }
-}
-
-fn remove_endpoint_map<K: Eq + PartialEq + Hash>(
-    map: &mut HashMap<K, Vec<SocketAddrV6>>,
-    key: &K,
-    endpoint: &SocketAddrV6,
-) {
-    let endpoints = map.get_mut(key).unwrap();
-    if endpoints.len() > 1 {
-        endpoints.retain(|x| x != endpoint);
-    } else {
-        map.remove(key);
-    }
-}
-
-pub struct AttemptEntry {
-    pub endpoint: SocketAddrV6,
-    pub address: Ipv6Addr,
-    pub subnetwork: Ipv6Addr,
-    pub start: SystemTime,
-    pub direction: ConnectionDirection,
-}
-
-impl AttemptEntry {
-    pub fn new(endpoint: SocketAddrV6, direction: ConnectionDirection) -> Self {
-        Self {
-            endpoint,
-            address: ipv4_address_or_ipv6_subnet(endpoint.ip()),
-            subnetwork: map_address_to_subnetwork(endpoint.ip()),
-            start: SystemTime::now(),
-            direction,
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct TcpEndpointAttemptContainer {
-    by_endpoint: HashMap<SocketAddrV6, AttemptEntry>,
-    by_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-    by_subnetwork: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-}
-
-impl TcpEndpointAttemptContainer {
-    pub fn insert(&mut self, attempt: AttemptEntry) -> bool {
-        if self.by_endpoint.contains_key(&attempt.endpoint) {
-            return false;
-        }
-        self.by_address
-            .entry(attempt.address)
-            .or_default()
-            .push(attempt.endpoint);
-        self.by_subnetwork
-            .entry(attempt.subnetwork)
-            .or_default()
-            .push(attempt.endpoint);
-        self.by_endpoint.insert(attempt.endpoint, attempt);
-        true
-    }
-
-    pub fn remove(&mut self, endpoint: &SocketAddrV6) {
-        if let Some(attempt) = self.by_endpoint.remove(endpoint) {
-            let by_address = self.by_address.get_mut(&attempt.address).unwrap();
-            if by_address.len() > 1 {
-                by_address.retain(|x| x != endpoint);
-            } else {
-                self.by_address.remove(&attempt.address);
-            }
-
-            let by_subnet = self.by_subnetwork.get_mut(&attempt.subnetwork).unwrap();
-            if by_subnet.len() > 1 {
-                by_subnet.retain(|x| x != endpoint);
-            } else {
-                self.by_subnetwork.remove(&attempt.subnetwork);
-            }
-        }
-    }
-
-    pub fn count_by_subnetwork(&self, subnet: &Ipv6Addr) -> usize {
-        match self.by_subnetwork.get(subnet) {
-            Some(entries) => entries.len(),
-            None => 0,
-        }
-    }
-
-    pub fn count_by_address(&self, address: &Ipv6Addr) -> usize {
-        match self.by_address.get(address) {
-            Some(entries) => entries.len(),
-            None => 0,
-        }
-    }
-
-    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
-        self.by_endpoint
-            .values()
-            .filter(|i| i.direction == direction)
-            .count()
-    }
-
-    pub fn len(&self) -> usize {
-        self.by_endpoint.len()
-    }
-
-    pub fn purge(&mut self, cutoff: SystemTime) {
-        while let Some((time, endpoint)) = self.get_oldest() {
-            if time >= cutoff {
-                return;
-            }
-
-            self.remove(&endpoint);
-        }
-    }
-
-    fn get_oldest(&self) -> Option<(SystemTime, SocketAddrV6)> {
-        self.by_endpoint
-            .values()
-            .filter(|i| i.direction == ConnectionDirection::Outbound)
-            .min_by_key(|i| i.start)
-            .map(|i| (i.start, i.endpoint))
     }
 }
 

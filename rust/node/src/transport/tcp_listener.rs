@@ -9,7 +9,6 @@ use crate::{
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    transport::AttemptEntry,
     utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
@@ -91,7 +90,6 @@ impl Drop for TcpListener {
         debug_assert!(self.cleanup_thread.lock().unwrap().is_none());
         debug_assert!(self.data.lock().unwrap().stopped);
         debug_assert_eq!(self.connection_count(), 0);
-        debug_assert_eq!(self.attempt_count(), 0);
     }
 }
 
@@ -201,15 +199,6 @@ impl TcpListener {
         data.alive_connections_count()
     }
 
-    pub fn attempt_count(&self) -> usize {
-        let Some(channels) = self.tcp_channels.upgrade() else {
-            return 0;
-        };
-        let data = channels.tcp_channels.lock().unwrap();
-        data.attempts
-            .count_by_direction(ConnectionDirection::Inbound)
-    }
-
     pub fn local_address(&self) -> SocketAddr {
         let guard = self.data.lock().unwrap();
         if !guard.stopped {
@@ -298,69 +287,17 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false;
         };
         {
-            {
-                let guard = self.data.lock().unwrap();
-                if guard.stopped {
-                    return false;
-                }
+            let guard = self.data.lock().unwrap();
+            if guard.stopped {
+                return false;
             }
+        }
 
+        {
             let mut channels_guard = channels.tcp_channels.lock().unwrap();
-
-            let count = channels_guard
-                .attempts
-                .count_by_direction(ConnectionDirection::Inbound);
-            if count > self.config.max_attempts {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxAttempts,
-                    Direction::Out,
-                );
-                debug!(
-                    "Max connection attempts reached ({}), unable to initiate new connection: {}",
-                    count,
-                    remote.ip()
-                );
-                return false; // Rejected
+            if !channels_guard.add_inbound_attempt(remote) {
+                return false;
             }
-
-            let count = channels_guard.attempts.count_by_address(remote.ip());
-            if count >= self.config.max_attempts_per_ip {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxAttemptsPerIp,
-                    Direction::Out,
-                );
-                debug!(
-                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
-                        count, remote.ip()
-                    );
-                return false; // Rejected
-            }
-
-            if channels_guard.check_limits(remote.ip(), ConnectionDirection::Outbound)
-                != AcceptResult::Accepted
-            {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::ConnectRejected,
-                    Direction::Out,
-                );
-                // Refusal reason should be logged earlier
-
-                return false; // Rejected
-            }
-
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectInitiate,
-                Direction::Out,
-            );
-            debug!("Initiate outgoing connection to: {}", remote);
-
-            channels_guard
-                .attempts
-                .insert(AttemptEntry::new(remote, ConnectionDirection::Inbound));
         }
 
         let self_l = Arc::clone(self);

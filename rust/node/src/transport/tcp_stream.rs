@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use tokio::io::ErrorKind;
+use tokio::io::{AsyncWriteExt, ErrorKind};
 
 #[async_trait]
 trait InternalTcpStream: Send + Sync {
@@ -15,6 +15,7 @@ trait InternalTcpStream: Send + Sync {
     fn peer_addr(&self) -> std::io::Result<SocketAddr>;
     async fn writable(&self) -> tokio::io::Result<()>;
     fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize>;
+    async fn shutdown(&mut self) -> tokio::io::Result<()>;
 }
 
 struct TokioTcpStreamWrapper(tokio::net::TcpStream);
@@ -43,6 +44,10 @@ impl InternalTcpStream for TokioTcpStreamWrapper {
 
     fn try_write(&self, buf: &[u8]) -> tokio::io::Result<usize> {
         self.0.try_write(buf)
+    }
+
+    async fn shutdown(&mut self) -> tokio::io::Result<()> {
+        self.0.shutdown().await
     }
 }
 
@@ -106,6 +111,10 @@ impl InternalTcpStream for TcpStreamStub {
     fn try_write(&self, _buf: &[u8]) -> tokio::io::Result<usize> {
         todo!()
     }
+
+    async fn shutdown(&mut self) -> tokio::io::Result<()> {
+        Ok(())
+    }
 }
 
 pub struct TcpStream {
@@ -129,6 +138,10 @@ impl TcpStream {
         Self {
             stream: Box::new(TcpStreamStub::new(incoming)),
         }
+    }
+
+    pub async fn shutdown(&mut self) -> tokio::io::Result<()> {
+        self.stream.shutdown().await
     }
 
     pub async fn readable(&self) -> tokio::io::Result<()> {

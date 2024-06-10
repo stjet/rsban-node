@@ -1,7 +1,7 @@
 use super::{
     AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Network,
-    ResponseServer, ResponseServerFactory, ResponseServerObserver, Socket, SocketBuilder,
-    SocketExtensions, SocketObserver, TcpConfig, TcpServerExt,
+    ResponseServer, ResponseServerExt, ResponseServerFactory, ResponseServerObserver, Socket,
+    SocketBuilder, SocketExtensions, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -298,8 +298,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                 }
             }
 
-            if let Some(channels) = self_l.network.upgrade() {
-                channels.remove_attempt(&remote);
+            if let Some(network) = self_l.network.upgrade() {
+                network.remove_attempt(&remote);
             }
         });
 
@@ -506,14 +506,14 @@ impl TcpListenerExt for Arc<TcpListener> {
         .use_existing_socket(raw_stream, remote_endpoint)
         .finish();
 
-        let server = self
+        let response_server = self
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
         self.data.lock().unwrap().connections.push(Connection {
             endpoint: remote_endpoint,
             socket: Arc::downgrade(&socket),
-            server: Arc::downgrade(&server),
+            server: Arc::downgrade(&response_server),
         });
 
         socket.set_timeout(Duration::from_secs(
@@ -521,14 +521,14 @@ impl TcpListenerExt for Arc<TcpListener> {
         ));
 
         socket.start();
-        server.start();
+        response_server.start();
 
         self.socket_observer.socket_connected(Arc::clone(&socket));
 
         AcceptReturn {
             result: AcceptResult::Accepted,
             socket: Some(socket),
-            server: Some(server),
+            server: Some(response_server),
         }
     }
 }

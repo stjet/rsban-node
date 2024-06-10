@@ -14,7 +14,7 @@ use rsnano_core::KeyPair;
 use rsnano_messages::{DeserializedMessage, Message, ProtocolInfo};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ResponseServer, TcpServerExt},
+    transport::{ResponseServer, ResponseServerExt},
     NetworkParams,
 };
 use std::{ops::Deref, sync::Arc};

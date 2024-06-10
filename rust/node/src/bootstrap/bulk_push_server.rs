@@ -7,7 +7,7 @@ use super::BootstrapInitiator;
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ResponseServer, SocketExtensions, TcpServerExt},
+    transport::{ResponseServer, ResponseServerExt, SocketExtensions},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use num_traits::FromPrimitive;

@@ -379,7 +379,7 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
-pub trait TcpServerExt {
+pub trait ResponseServerExt {
     fn start(&self);
     fn timeout(&self);
 
@@ -405,7 +405,7 @@ pub enum ProcessResult {
     Pause,
 }
 
-impl TcpServerExt for Arc<ResponseServer> {
+impl ResponseServerExt for Arc<ResponseServer> {
     fn start(&self) {
         // Set remote_endpoint
         let mut guard = self.remote_endpoint.lock().unwrap();
@@ -433,11 +433,11 @@ impl TcpServerExt for Arc<ResponseServer> {
             return false;
         }
 
-        let Some(channels) = self.network.upgrade() else {
+        let Some(network) = self.network.upgrade() else {
             return false;
         };
 
-        let Some(channel) = channels.create(Arc::clone(&self.socket), Arc::clone(self), *node_id)
+        let Some(channel) = network.create(Arc::clone(&self.socket), Arc::clone(self), *node_id)
         else {
             return false;
         };

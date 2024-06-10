@@ -216,6 +216,15 @@ impl Socket {
         self.closed.load(Ordering::SeqCst)
     }
 
+    pub async fn shutdown(&self) -> tokio::io::Result<()> {
+        let stream = self.stream.lock().unwrap().take();
+        if let Some(stream) = stream {
+            stream.shutdown().await
+        } else {
+            Ok(())
+        }
+    }
+
     fn set_last_completion(&self) {
         self.last_completion_time_or_init
             .store(seconds_since_epoch(), std::sync::atomic::Ordering::SeqCst);

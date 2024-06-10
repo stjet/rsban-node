@@ -1,5 +1,5 @@
 use crate::{
-    transport::{ResponseServer, SocketExtensions, TcpServerExt, TrafficType},
+    transport::{ResponseServer, ResponseServerExt, SocketExtensions, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
 use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey};

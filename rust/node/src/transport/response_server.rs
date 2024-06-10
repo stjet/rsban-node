@@ -10,6 +10,7 @@ use crate::{
     utils::AsyncRuntime,
     NetworkParams,
 };
+use async_trait::async_trait;
 use rsnano_core::{utils::NULL_ENDPOINT, Account, KeyPair};
 use rsnano_messages::*;
 use std::{
@@ -308,6 +309,7 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor;
 }
 
+#[async_trait]
 pub trait ResponseServerExt {
     fn start(&self);
     fn timeout(&self);
@@ -318,7 +320,7 @@ pub trait ResponseServerExt {
     fn received_message(&self, message: DeserializedMessage);
     fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
     fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus;
-    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool);
+    async fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool);
 }
 
 pub enum HandshakeStatus {
@@ -334,6 +336,7 @@ pub enum ProcessResult {
     Pause,
 }
 
+#[async_trait]
 impl ResponseServerExt for Arc<ResponseServerImpl> {
     fn start(&self) {
         // Set remote_endpoint
@@ -660,9 +663,15 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             self.remote_endpoint()
         );
 
-        if let Some(query) = &message.query {
+        if let Some(query) = message.query.clone() {
             // Send response + our own query
-            self.send_handshake_response(query, message.is_v2);
+            if let Some(rt) = self.async_rt.upgrade() {
+                let self_l = Arc::clone(self);
+                let is_v2 = message.is_v2;
+                rt.tokio.block_on(async move {
+                    self_l.send_handshake_response(&query, is_v2).await;
+                });
+            }
             // Fall through and continue handshake
         }
         if let Some(response) = &message.response {
@@ -701,11 +710,12 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         HandshakeStatus::Handshake // Handshake is in progress
     }
 
-    fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
+    async fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
         let response = self.handshake_process.prepare_response(query, v2);
         let own_query = self
             .handshake_process
             .prepare_query(&self.remote_endpoint());
+
         let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
             is_v2: own_query.is_some() || response.v2.is_some(),
             query: own_query,
@@ -716,42 +726,31 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
 
         let mut serializer = MessageSerializer::new(self.protocol_info);
         let buffer = serializer.serialize(&handshake_response);
-        let shared_const_buffer = Arc::new(Vec::from(buffer)); // TODO don't copy buffer
-        let server_weak = Arc::downgrade(&self);
-        let stats = Arc::clone(&self.stats);
-        self.socket.async_write(
-            &shared_const_buffer,
-            Some(Box::new(move |ec, _size| {
-                if let Some(server_l) = server_weak.upgrade() {
-                    if ec.is_err() {
-                        server_l.stats.inc_dir(
-                            StatType::TcpServer,
-                            DetailType::HandshakeNetworkError,
-                            Direction::In,
-                        );
-                        debug!(
-                            "Error sending handshake response: {} ({:?})",
-                            server_l.remote_endpoint(),
-                            ec
-                        );
-                        // Stop invalid handshake
-                        server_l.stop();
-                    } else {
-                        let _ = stats.inc_dir(
-                            StatType::TcpServer,
-                            DetailType::Handshake,
-                            Direction::Out,
-                        );
-                        stats.inc_dir(
-                            StatType::TcpServer,
-                            DetailType::HandshakeResponse,
-                            Direction::Out,
-                        );
-                    }
-                }
-            })),
-            super::TrafficType::Generic,
-        );
+        match self.socket.write_raw(buffer).await {
+            Ok(_) => {
+                self.stats
+                    .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
+                self.stats.inc_dir(
+                    StatType::TcpServer,
+                    DetailType::HandshakeResponse,
+                    Direction::Out,
+                );
+            }
+            Err(e) => {
+                self.stats.inc_dir(
+                    StatType::TcpServer,
+                    DetailType::HandshakeNetworkError,
+                    Direction::In,
+                );
+                debug!(
+                    "Error sending handshake response: {} ({:?})",
+                    self.remote_endpoint(),
+                    e
+                );
+                // Stop invalid handshake
+                self.stop();
+            }
+        }
     }
 }
 

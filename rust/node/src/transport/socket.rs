@@ -336,6 +336,7 @@ pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
+    async fn write_raw(&self, data: &[u8]) -> anyhow::Result<()>;
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -428,6 +429,35 @@ impl SocketExtensions for Arc<Socket> {
                 }
             });
         });
+    }
+
+    async fn write_raw(&self, data: &[u8]) -> anyhow::Result<()> {
+        let stream = {
+            let guard = self.stream.lock().unwrap();
+            let Some(stream) = guard.deref() else {
+                return Err(anyhow!("no tcp stream open"));
+            };
+            Arc::clone(stream)
+        };
+        let mut written = 0;
+        loop {
+            stream.writable().await?;
+            match stream.try_write(&data[written..]) {
+                Ok(n) => {
+                    written += n;
+                    if written >= data.len() {
+                        break;
+                    }
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    continue;
+                }
+                Err(e) => {
+                    bail!(e)
+                }
+            }
+        }
+        Ok(())
     }
 
     async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {

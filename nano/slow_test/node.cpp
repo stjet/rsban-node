@@ -374,23 +374,6 @@ TEST (broadcast, sqrt_broadcast_simulate)
 	(void)count;
 }
 
-TEST (peer_container, random_set)
-{
-	nano::test::system system (1);
-	auto old (std::chrono::steady_clock::now ());
-	auto current (std::chrono::steady_clock::now ());
-	for (auto i (0); i < 10000; ++i)
-	{
-		auto list (system.nodes[0]->network->random_channels (15));
-	}
-	auto end (std::chrono::steady_clock::now ());
-	(void)end;
-	auto old_ms (std::chrono::duration_cast<std::chrono::milliseconds> (current - old));
-	(void)old_ms;
-	auto new_ms (std::chrono::duration_cast<std::chrono::milliseconds> (end - current));
-	(void)new_ms;
-}
-
 // Can take up to 2 hours
 TEST (store, unchecked_load)
 {

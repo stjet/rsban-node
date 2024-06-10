@@ -24,8 +24,8 @@ use crate::{
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
         NetworkFilter, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
-        PeerCacheUpdater, SocketObserver, SynCookies, TcpChannels, TcpChannelsOptions, TcpListener,
-        TcpListenerExt, TcpMessageManager, TrafficType,
+        PeerCacheUpdater, ResponseServerFactory, SocketObserver, SynCookies, TcpChannels,
+        TcpChannelsOptions, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -428,6 +428,21 @@ impl Node {
             Arc::clone(&active),
         ));
 
+        let response_server_factory = ResponseServerFactory {
+            runtime: async_rt.clone(),
+            syn_cookies: syn_cookies.clone(),
+            stats: stats.clone(),
+            node_id: node_id.clone(),
+            ledger: ledger.clone(),
+            workers: workers.clone(),
+            block_processor: block_processor.clone(),
+            bootstrap_initiator: bootstrap_initiator.clone(),
+            tcp_channels: channels.clone(),
+            node_flags: flags.clone(),
+            network_params: network_params.clone(),
+            node_config: config.clone(),
+        };
+
         // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
         //         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
         //         (if UDP is active, otherwise it happens when `bootstrap` gets initialized), so then for TCP traffic
@@ -440,17 +455,12 @@ impl Node {
             config.tcp.clone(),
             config.clone(),
             Arc::clone(&channels),
-            Arc::clone(&syn_cookies),
             network_params.clone(),
-            flags.clone(),
             Arc::clone(&async_rt),
             socket_observer,
             Arc::clone(&stats),
             Arc::clone(&workers),
-            Arc::clone(&block_processor),
-            Arc::clone(&bootstrap_initiator),
-            Arc::clone(&ledger),
-            Arc::new(node_id.clone()),
+            response_server_factory,
         ));
 
         channels.set_listener(Arc::downgrade(&tcp_listener));

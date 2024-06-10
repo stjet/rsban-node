@@ -68,7 +68,7 @@ impl TcpChannelsOptions {
 }
 
 pub struct TcpChannels {
-    pub tcp_channels: Mutex<TcpChannelsImpl>,
+    tcp_channels: Mutex<TcpChannelsImpl>,
     tcp_listener: RwLock<Option<Weak<TcpListener>>>,
     port: AtomicU16,
     stopped: AtomicBool,
@@ -146,10 +146,6 @@ impl TcpChannels {
         Self::new(TcpChannelsOptions::new_test_instance())
     }
 
-    pub fn get_next_channel_id(&self) -> usize {
-        self.next_channel_id.fetch_add(1, Ordering::SeqCst)
-    }
-
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.tcp_message_manager.stop();
@@ -161,12 +157,8 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().close_channels();
     }
 
-    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .channels
-            .count_by_direction(direction)
+    pub fn get_next_channel_id(&self) -> usize {
+        self.next_channel_id.fetch_add(1, Ordering::SeqCst)
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -197,6 +189,28 @@ impl TcpChannels {
         fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
         let mut channels = self.tcp_channels.lock().unwrap();
         channels.channels.insert(fake, None);
+    }
+
+    pub(crate) fn add_inbound_attempt(&self, remote: SocketAddrV6) -> bool {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .add_inbound_attempt(remote)
+    }
+
+    pub(crate) fn check_limits(
+        &self,
+        ip: &Ipv6Addr,
+        direction: ConnectionDirection,
+    ) -> AcceptResult {
+        self.tcp_channels
+            .lock()
+            .unwrap()
+            .check_limits(ip, direction)
+    }
+
+    pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
+        self.tcp_channels.lock().unwrap().attempts.remove(&remote);
     }
 
     fn check(

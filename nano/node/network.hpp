@@ -51,8 +51,7 @@ public:
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	// Should we reach out to this endpoint with a keepalive message? If yes, register a new reachout attempt
 	bool track_reachout (nano::endpoint const &);
-	// Note: The minimum protocol version is used after the random selection, so number of peers can be less than expected.
-	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count, uint8_t min_version = 0) const;
+	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count_a, uint8_t min_version_a = 0) const;
 	nano::endpoint endpoint () const;
 	void cleanup (std::chrono::system_clock::time_point const & cutoff);
 	std::size_t size () const;

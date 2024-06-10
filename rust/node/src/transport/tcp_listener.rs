@@ -1,26 +1,18 @@
 use super::{
-    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpConfig, TcpServer,
-    TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
-    TokioSocketFacadeFactory,
+    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress,
+    ResponseServerFactory, Socket, SocketBuilder, SocketExtensions, SocketObserver, TcpChannels,
+    TcpConfig, TcpServer, TcpServerExt, TcpServerObserver, TokioSocketFacade,
 };
 use crate::{
-    block_processing::BlockProcessor,
-    bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
-    config::{NodeConfig, NodeFlags},
+    config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool},
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    KeyPair,
-};
-use rsnano_ledger::Ledger;
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
-    ops::Deref,
     sync::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Condvar, Mutex, Weak,
@@ -64,25 +56,18 @@ pub struct TcpListener {
     config: TcpConfig,
     node_config: NodeConfig,
     tcp_channels: Weak<TcpChannels>,
-    syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
     socket_observer: Arc<dyn SocketObserver>,
     workers: Arc<dyn ThreadPool>,
-    tcp_socket_facade_factory: Arc<dyn TcpSocketFacadeFactory>,
     network_params: NetworkParams,
-    node_flags: NodeFlags,
-    socket_facade: Arc<TokioSocketFacade>,
     data: Mutex<TcpListenerData>,
-    ledger: Arc<Ledger>,
-    block_processor: Arc<BlockProcessor>,
-    bootstrap_initiator: Arc<BootstrapInitiator>,
-    node_id: Arc<KeyPair>,
     bootstrap_count: AtomicUsize,
     realtime_count: AtomicUsize,
     cleanup_thread: Mutex<Option<JoinHandle<()>>>,
     condition: Condvar,
     cancel_token: CancellationToken,
+    response_server_factory: ResponseServerFactory,
 }
 
 impl Drop for TcpListener {
@@ -114,53 +99,39 @@ impl TcpListenerData {
 }
 
 impl TcpListener {
-    pub fn new(
+    pub(crate) fn new(
         port: u16,
         config: TcpConfig,
         node_config: NodeConfig,
         tcp_channels: Arc<TcpChannels>,
-        syn_cookies: Arc<SynCookies>,
         network_params: NetworkParams,
-        node_flags: NodeFlags,
         runtime: Arc<AsyncRuntime>,
         socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         workers: Arc<dyn ThreadPool>,
-        block_processor: Arc<BlockProcessor>,
-        bootstrap_initiator: Arc<BootstrapInitiator>,
-        ledger: Arc<Ledger>,
-        node_id: Arc<KeyPair>,
+        response_server_factory: ResponseServerFactory,
     ) -> Self {
-        let tcp_socket_facade_factory =
-            Arc::new(TokioSocketFacadeFactory::new(Arc::clone(&runtime)));
         Self {
             port: AtomicU16::new(port),
             config,
             node_config,
             tcp_channels: Arc::downgrade(&tcp_channels),
-            syn_cookies,
             data: Mutex::new(TcpListenerData {
                 connections: Vec::new(),
                 stopped: false,
                 local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
             }),
             network_params,
-            node_flags,
             runtime: Arc::clone(&runtime),
-            socket_facade: Arc::new(TokioSocketFacade::create(runtime)),
             socket_observer,
-            tcp_socket_facade_factory,
             stats,
             workers,
-            block_processor,
-            bootstrap_initiator,
             bootstrap_count: AtomicUsize::new(0),
             realtime_count: AtomicUsize::new(0),
-            ledger,
-            node_id,
             cleanup_thread: Mutex::new(None),
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
+            response_server_factory,
         }
     }
 
@@ -283,21 +254,16 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 
     fn connect(&self, remote: SocketAddrV6) -> bool {
+        if self.is_stopped() {
+            return false;
+        }
+
         let Some(channels) = self.tcp_channels.upgrade() else {
             return false;
         };
-        {
-            let guard = self.data.lock().unwrap();
-            if guard.stopped {
-                return false;
-            }
-        }
 
-        {
-            let mut channels_guard = channels.tcp_channels.lock().unwrap();
-            if !channels_guard.add_inbound_attempt(remote) {
-                return false;
-            }
+        if !channels.add_inbound_attempt(remote) {
+            return false;
         }
 
         let self_l = Arc::clone(self);
@@ -333,12 +299,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             }
 
             if let Some(channels) = self_l.tcp_channels.upgrade() {
-                channels
-                    .tcp_channels
-                    .lock()
-                    .unwrap()
-                    .attempts
-                    .remove(&remote);
+                channels.remove_attempt(&remote);
             }
         });
 
@@ -484,10 +445,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return AcceptReturn::error();
         };
 
-        let result = {
-            let mut channels_guard = tcp_channels.tcp_channels.lock().unwrap();
-            channels_guard.check_limits(remote_endpoint.ip(), direction)
-        };
+        let result = tcp_channels.check_limits(remote_endpoint.ip(), direction);
 
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
@@ -548,34 +506,9 @@ impl TcpListenerExt for Arc<TcpListener> {
         .use_existing_socket(raw_stream, remote_endpoint)
         .finish();
 
-        let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
-            Arc::clone(&self.runtime),
-            Arc::clone(&self.syn_cookies),
-            Arc::clone(&self.stats),
-            self.network_params.network.clone(),
-            Arc::clone(&self.node_id),
-            Arc::clone(&self.ledger),
-            Arc::clone(&self.workers),
-            Arc::clone(&self.block_processor),
-            Arc::clone(&self.bootstrap_initiator),
-            self.node_flags.clone(),
-        ));
-        let observer = Arc::downgrade(&self);
-        let server = Arc::new(TcpServer::new(
-            Arc::clone(&self.runtime),
-            &tcp_channels,
-            Arc::clone(&socket),
-            Arc::new(self.node_config.clone()),
-            observer,
-            Arc::clone(&tcp_channels.publish_filter),
-            Arc::new(self.network_params.clone()),
-            Arc::clone(&self.stats),
-            Arc::clone(&tcp_channels.tcp_message_manager),
-            message_visitor_factory,
-            true,
-            Arc::clone(&self.syn_cookies),
-            self.node_id.deref().clone(),
-        ));
+        let server = self
+            .response_server_factory
+            .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
         self.data.lock().unwrap().connections.push(Connection {
             endpoint: remote_endpoint,

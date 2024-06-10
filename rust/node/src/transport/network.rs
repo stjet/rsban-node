@@ -153,6 +153,13 @@ impl Network {
                 DetailType::AcceptRejected,
                 direction.into(),
             );
+            if direction == ConnectionDirection::Outbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::ConnectFailure,
+                    Direction::Out,
+                );
+            }
             debug!(
                 "Rejected connection from: {} ({:?})",
                 remote_endpoint, direction
@@ -166,11 +173,19 @@ impl Network {
                     direction.into(),
                 );
                 debug!(
-                    "Error while clsoing socket after refusing connection: {:?} ({:?})",
+                    "Error while closing socket after refusing connection: {:?} ({:?})",
                     e, direction
                 )
             }
             drop(socket);
+            if direction == ConnectionDirection::Inbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::AcceptFailure,
+                    Direction::In,
+                );
+                // Refusal reason should be logged earlier
+            }
             return Err(anyhow!("check_limits failed"));
         }
 
@@ -190,6 +205,16 @@ impl Network {
         response_server.start();
 
         self.observer.socket_connected(Arc::clone(&socket));
+
+        if direction == ConnectionDirection::Outbound {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectSuccess,
+                Direction::Out,
+            );
+            debug!("Successfully connected to: {}", remote_endpoint);
+            response_server.initiate_handshake();
+        }
 
         Ok(())
     }

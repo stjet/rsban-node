@@ -1,7 +1,7 @@
 use super::{
     AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Network,
-    ResponseServer, ResponseServerExt, ResponseServerFactory, ResponseServerObserver, Socket,
-    SocketBuilder, SocketExtensions, SocketObserver, TcpConfig,
+    ResponseServer, ResponseServerFactory, ResponseServerObserver, Socket, SocketBuilder,
+    SocketExtensions, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -236,7 +236,7 @@ pub trait TcpListenerExt {
         &self,
         raw_stream: tokio::net::TcpStream,
         direction: ConnectionDirection,
-    ) -> AcceptReturn;
+    ) -> anyhow::Result<()>;
 
     async fn wait_available_slots(&self);
 }
@@ -360,15 +360,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     continue;
                 };
 
-                let result = self.accept_one(stream, ConnectionDirection::Inbound).await;
-                if result.result != AcceptResult::Accepted {
-                    self.stats.inc_dir(
-                        StatType::TcpListener,
-                        DetailType::AcceptFailure,
-                        Direction::In,
-                    );
-                    // Refusal reason should be logged earlier
-                }
+                let _ = self.accept_one(stream, ConnectionDirection::Inbound).await;
 
                 // Sleep for a while to prevent busy loop
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -408,41 +400,23 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
         let raw_listener = tokio::net::TcpSocket::new_v6()?;
         let raw_stream = raw_listener.connect(endpoint.into()).await?;
-        let result = self
-            .accept_one(raw_stream, ConnectionDirection::Outbound)
-            .await;
-        if result.result == AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectSuccess,
-                Direction::Out,
-            );
-            debug!("Successfully connected to: {}", endpoint);
-            result.server.unwrap().initiate_handshake();
-        } else {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectFailure,
-                Direction::Out,
-            );
-            // Refusal reason should be logged earlier
-        }
-        Ok(())
+        self.accept_one(raw_stream, ConnectionDirection::Outbound)
+            .await
     }
 
     async fn accept_one(
         &self,
         raw_stream: tokio::net::TcpStream,
         direction: ConnectionDirection,
-    ) -> AcceptReturn {
+    ) -> anyhow::Result<()> {
         let Ok(remote_endpoint) = raw_stream.peer_addr() else {
-            return AcceptReturn::error();
+            return Err(anyhow!("No peer address"));
         };
 
         let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
 
         let Some(tcp_channels) = self.network.upgrade() else {
-            return AcceptReturn::error();
+            return Err(anyhow!("No network"));
         };
 
         let raw_stream = TcpStream::new(raw_stream);
@@ -475,12 +449,9 @@ impl TcpListenerExt for Arc<TcpListener> {
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
-        if let Err(_) = tcp_channels
+        tcp_channels
             .accept_one(&socket, &response_server, direction)
-            .await
-        {
-            return AcceptReturn::error();
-        }
+            .await?;
 
         self.data.lock().unwrap().connections.push(Connection {
             endpoint: remote_endpoint,
@@ -488,11 +459,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             server: Arc::downgrade(&response_server),
         });
 
-        AcceptReturn {
-            result: AcceptResult::Accepted,
-            socket: Some(socket),
-            server: Some(response_server),
-        }
+        Ok(())
     }
 }
 

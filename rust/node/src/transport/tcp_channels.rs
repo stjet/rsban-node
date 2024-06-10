@@ -71,7 +71,7 @@ impl TcpChannelsOptions {
 }
 
 pub struct TcpChannels {
-    tcp_channels: Mutex<TcpChannelsImpl>,
+    pub tcp_channels: Mutex<TcpChannelsImpl>,
     tcp_listener: RwLock<Option<Weak<TcpListener>>>,
     port: AtomicU16,
     stopped: AtomicBool,
@@ -162,27 +162,19 @@ impl TcpChannels {
         self.tcp_channels.lock().unwrap().close_channels();
     }
 
-    pub fn count_per_direction(&self, direction: ConnectionDirection) -> usize {
+    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
         self.tcp_channels
             .lock()
             .unwrap()
             .channels
-            .iter()
-            .filter(|entry| entry.channel.direction() == direction)
-            .count()
+            .count_by_direction(direction)
     }
 
-    pub fn count_per_ip(&self, ip: &Ipv6Addr) -> usize {
-        self.tcp_channels
-            .lock()
-            .unwrap()
-            .channels
-            .iter()
-            .filter(|entry| entry.channel.remote_endpoint().ip() == ip)
-            .count()
+    pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
+        self.tcp_channels.lock().unwrap().channels.count_by_ip(ip)
     }
 
-    pub fn count_per_subnetwork(&self, ip: &Ipv6Addr) -> usize {
+    pub fn count_by_subnetwork(&self, ip: &Ipv6Addr) -> usize {
         let subnet = map_address_to_subnetwork(ip);
 
         self.tcp_channels
@@ -478,7 +470,7 @@ impl TcpChannels {
         }
 
         let mut guard = self.tcp_channels.lock().unwrap();
-        let attempt = AttemptEntry::new(*endpoint);
+        let attempt = AttemptEntry::new(*endpoint, ConnectionDirection::Outbound);
         let inserted = guard.attempts.insert(attempt);
         inserted
     }
@@ -881,34 +873,34 @@ pub struct ChannelContainer {
 }
 
 impl ChannelContainer {
-    pub fn insert(&mut self, wrapper: Arc<ChannelEntry>) -> bool {
-        let endpoint = wrapper.endpoint();
+    pub fn insert(&mut self, entry: Arc<ChannelEntry>) -> bool {
+        let endpoint = entry.endpoint();
         if self.by_endpoint.contains_key(&endpoint) {
             return false;
         }
 
         self.by_random_access.push(endpoint);
         self.by_bootstrap_attempt
-            .entry(wrapper.last_bootstrap_attempt())
+            .entry(entry.last_bootstrap_attempt())
             .or_default()
             .push(endpoint);
         self.by_node_id
-            .entry(wrapper.node_id().unwrap_or_default())
+            .entry(entry.node_id().unwrap_or_default())
             .or_default()
             .push(endpoint);
         self.by_network_version
-            .entry(wrapper.network_version())
+            .entry(entry.network_version())
             .or_default()
             .push(endpoint);
         self.by_ip_address
-            .entry(wrapper.ip_address())
+            .entry(entry.ip_address())
             .or_default()
             .push(endpoint);
         self.by_subnet
-            .entry(wrapper.subnetwork())
+            .entry(entry.subnetwork())
             .or_default()
             .push(endpoint);
-        self.by_endpoint.insert(wrapper.endpoint(), wrapper);
+        self.by_endpoint.insert(entry.endpoint(), entry);
         true
     }
 
@@ -1010,6 +1002,13 @@ impl ChannelContainer {
             .unwrap_or_default()
     }
 
+    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
+        self.by_endpoint
+            .values()
+            .filter(|entry| entry.channel.direction() == direction)
+            .count()
+    }
+
     pub fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
         self.by_subnet
             .get(subnet)
@@ -1100,15 +1099,17 @@ pub struct AttemptEntry {
     pub address: Ipv6Addr,
     pub subnetwork: Ipv6Addr,
     pub start: SystemTime,
+    pub direction: ConnectionDirection,
 }
 
 impl AttemptEntry {
-    pub fn new(endpoint: SocketAddrV6) -> Self {
+    pub fn new(endpoint: SocketAddrV6, direction: ConnectionDirection) -> Self {
         Self {
             endpoint,
             address: ipv4_address_or_ipv6_subnet(endpoint.ip()),
             subnetwork: map_address_to_subnetwork(endpoint.ip()),
             start: SystemTime::now(),
+            direction,
         }
     }
 }
@@ -1118,7 +1119,6 @@ pub struct TcpEndpointAttemptContainer {
     by_endpoint: HashMap<SocketAddrV6, AttemptEntry>,
     by_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_subnetwork: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-    by_time: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
 }
 
 impl TcpEndpointAttemptContainer {
@@ -1132,10 +1132,6 @@ impl TcpEndpointAttemptContainer {
             .push(attempt.endpoint);
         self.by_subnetwork
             .entry(attempt.subnetwork)
-            .or_default()
-            .push(attempt.endpoint);
-        self.by_time
-            .entry(attempt.start)
             .or_default()
             .push(attempt.endpoint);
         self.by_endpoint.insert(attempt.endpoint, attempt);
@@ -1157,13 +1153,6 @@ impl TcpEndpointAttemptContainer {
             } else {
                 self.by_subnetwork.remove(&attempt.subnetwork);
             }
-
-            let by_time = self.by_time.get_mut(&attempt.start).unwrap();
-            if by_time.len() > 1 {
-                by_time.retain(|x| x != endpoint);
-            } else {
-                self.by_time.remove(&attempt.start);
-            }
         }
     }
 
@@ -1181,6 +1170,13 @@ impl TcpEndpointAttemptContainer {
         }
     }
 
+    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
+        self.by_endpoint
+            .values()
+            .filter(|i| i.direction == direction)
+            .count()
+    }
+
     pub fn len(&self) -> usize {
         self.by_endpoint.len()
     }
@@ -1196,8 +1192,11 @@ impl TcpEndpointAttemptContainer {
     }
 
     fn get_oldest(&self) -> Option<(SystemTime, SocketAddrV6)> {
-        let (time, endpoints) = self.by_time.first_key_value()?;
-        Some((*time, endpoints[0]))
+        self.by_endpoint
+            .values()
+            .filter(|i| i.direction == ConnectionDirection::Outbound)
+            .min_by_key(|i| i.start)
+            .map(|i| (i.start, i.endpoint))
     }
 }
 

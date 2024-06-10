@@ -1,16 +1,18 @@
 use super::{
     CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Socket, SocketBuilder,
-    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpConfig, TcpServer, TcpServerExt,
-    TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade, TokioSocketFacadeFactory,
+    SocketExtensions, SocketObserver, SynCookies, TcpChannels, TcpChannelsImpl, TcpConfig,
+    TcpServer, TcpServerExt, TcpServerObserver, TcpSocketFacadeFactory, TokioSocketFacade,
+    TokioSocketFacadeFactory,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    transport::AttemptEntry,
     utils::{
-        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
-        map_address_to_subnetwork, AsyncRuntime, ErrorCode, ThreadPool,
+        into_ipv6_socket_address, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
+        AsyncRuntime, ErrorCode, ThreadPool,
     },
     NetworkParams,
 };
@@ -28,7 +30,7 @@ use std::{
         Arc, Condvar, Mutex, Weak,
     },
     thread::JoinHandle,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use tokio::io::AsyncWriteExt;
 use tokio_util::sync::CancellationToken;
@@ -106,7 +108,6 @@ impl Drop for TcpListener {
 
 struct TcpListenerData {
     connections: Vec<Connection>,
-    attempts: Vec<Attempt>,
     stopped: bool,
     local_addr: SocketAddr,
 }
@@ -117,13 +118,6 @@ struct ServerSocket {
 }
 
 impl TcpListenerData {
-    fn count_attempts(&self, ip: &Ipv6Addr) -> usize {
-        self.attempts
-            .iter()
-            .filter(|a| a.endpoint.ip() == ip)
-            .count()
-    }
-
     fn alive_connections_count(&self) -> usize {
         self.connections
             .iter()
@@ -160,7 +154,6 @@ impl TcpListener {
             syn_cookies,
             data: Mutex::new(TcpListenerData {
                 connections: Vec::new(),
-                attempts: Vec::new(),
                 stopped: false,
                 local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
             }),
@@ -220,7 +213,12 @@ impl TcpListener {
     }
 
     pub fn attempt_count(&self) -> usize {
-        self.data.lock().unwrap().attempts.len()
+        let Some(channels) = self.tcp_channels.upgrade() else {
+            return 0;
+        };
+        let data = channels.tcp_channels.lock().unwrap();
+        data.attempts
+            .count_by_direction(ConnectionDirection::Inbound)
     }
 
     pub fn local_address(&self) -> SocketAddr {
@@ -275,30 +273,26 @@ impl TcpListener {
         ip: &Ipv6Addr,
         direction: ConnectionDirection,
         data: &mut TcpListenerData,
+        channels: &TcpChannels,
+        channels_data: &TcpChannelsImpl,
     ) -> AcceptResult {
         if data.stopped {
             return AcceptResult::Rejected;
         }
 
-        let Some(channels) = self.tcp_channels.upgrade() else {
+        if channels.excluded_peers.lock().unwrap().is_excluded_ip(ip) {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::Excluded,
+                direction.into(),
+            );
+
+            debug!("Rejected connection from excluded peer: {}", ip);
             return AcceptResult::Rejected;
-        };
-
-        if let Some(channels) = self.tcp_channels.upgrade() {
-            if channels.excluded_peers.lock().unwrap().is_excluded_ip(ip) {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::Excluded,
-                    direction.into(),
-                );
-
-                debug!("Rejected connection from excluded peer: {}", ip);
-                return AcceptResult::Rejected;
-            }
         }
 
         if !self.node_flags.disable_max_peers_per_ip {
-            let count = channels.count_per_ip(ip);
+            let count = channels_data.channels.count_by_ip(ip);
             if count >= self.network_params.network.max_peers_per_ip {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -317,7 +311,8 @@ impl TcpListener {
         if !self.node_flags.disable_max_peers_per_subnetwork
             && !is_ipv4_or_v4_mapped_address(&(*ip).into())
         {
-            let count = channels.count_per_subnetwork(ip);
+            let subnet = map_address_to_subnetwork(ip);
+            let count = channels_data.channels.count_by_subnet(&subnet);
             if count >= self.network_params.network.max_peers_per_subnetwork {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -338,7 +333,10 @@ impl TcpListener {
                 debug_assert!(
                     data.alive_connections_count() <= self.config.max_inbound_connections
                 );
-                let count = channels.count_per_direction(ConnectionDirection::Inbound);
+                let count = channels_data
+                    .channels
+                    .count_by_direction(ConnectionDirection::Inbound);
+
                 if count >= self.config.max_inbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,
@@ -353,7 +351,10 @@ impl TcpListener {
                 }
             }
             ConnectionDirection::Outbound => {
-                let count = channels.count_per_direction(ConnectionDirection::Outbound);
+                let count = channels_data
+                    .channels
+                    .count_by_direction(ConnectionDirection::Outbound);
+
                 if count >= self.config.max_outbound_connections {
                     self.stats.inc_dir(
                         StatType::TcpListenerRejected,
@@ -409,10 +410,16 @@ impl TcpListenerExt for Arc<TcpListener> {
     }
 
     fn connect(&self, remote: SocketAddrV6) -> bool {
+        let Some(channels) = self.tcp_channels.upgrade() else {
+            return false;
+        };
         {
+            let mut channels_guard = channels.tcp_channels.lock().unwrap();
             let mut guard = self.data.lock().unwrap();
 
-            let count = guard.attempts.len();
+            let count = channels_guard
+                .attempts
+                .count_by_direction(ConnectionDirection::Inbound);
             if count > self.config.max_attempts {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -427,7 +434,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 return false; // Rejected
             }
 
-            let count = guard.count_attempts(remote.ip());
+            let count = channels_guard.attempts.count_by_address(remote.ip());
             if count >= self.config.max_attempts_per_ip {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -441,8 +448,13 @@ impl TcpListenerExt for Arc<TcpListener> {
                 return false; // Rejected
             }
 
-            if self.check_limits(remote.ip(), ConnectionDirection::Outbound, &mut guard)
-                != AcceptResult::Accepted
+            if self.check_limits(
+                remote.ip(),
+                ConnectionDirection::Outbound,
+                &mut guard,
+                &channels,
+                &*channels_guard,
+            ) != AcceptResult::Accepted
             {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -461,12 +473,9 @@ impl TcpListenerExt for Arc<TcpListener> {
             );
             debug!("Initiate outgoing connection to: {}", remote);
 
-            guard.attempts.push(Attempt {
-                endpoint: remote,
-                address: ipv4_address_or_ipv6_subnet(remote.ip()),
-                subnetwork: map_address_to_subnetwork(remote.ip()),
-                start: SystemTime::now(),
-            });
+            channels_guard
+                .attempts
+                .insert(AttemptEntry::new(remote, ConnectionDirection::Inbound));
         }
 
         let self_l = Arc::clone(self);
@@ -501,12 +510,14 @@ impl TcpListenerExt for Arc<TcpListener> {
                 }
             }
 
-            self_l
-                .data
-                .lock()
-                .unwrap()
-                .attempts
-                .retain(|a| a.endpoint != remote);
+            if let Some(channels) = self_l.tcp_channels.upgrade() {
+                channels
+                    .tcp_channels
+                    .lock()
+                    .unwrap()
+                    .attempts
+                    .remove(&remote);
+            }
         });
 
         true // Attempt started
@@ -652,8 +663,15 @@ impl TcpListenerExt for Arc<TcpListener> {
         };
 
         let result = {
+            let channels_guard = tcp_channels.tcp_channels.lock().unwrap();
             let mut guard = self.data.lock().unwrap();
-            self.check_limits(remote_endpoint.ip(), direction, &mut guard)
+            self.check_limits(
+                remote_endpoint.ip(),
+                direction,
+                &mut guard,
+                &tcp_channels,
+                &*channels_guard,
+            )
         };
 
         if result != AcceptResult::Accepted {
@@ -810,11 +828,4 @@ impl TcpServerObserver for TcpListener {
 fn is_temporary_error(ec: ErrorCode) -> bool {
     return ec.val == 11 // would block
                         || ec.val ==  4; // interrupted system call
-}
-
-struct Attempt {
-    pub endpoint: SocketAddrV6,
-    pub address: Ipv6Addr,
-    pub subnetwork: Ipv6Addr,
-    pub start: SystemTime,
 }

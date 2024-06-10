@@ -1,4 +1,6 @@
-use super::{ChannelEnum, HandshakeProcess, MessageDeserializer, Network, NetworkFilter};
+use super::{
+    ChannelEnum, HandshakeProcess, HandshakeStatus, MessageDeserializer, Network, NetworkFilter,
+};
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
@@ -114,7 +116,6 @@ pub struct ResponseServerImpl {
     unique_id: usize,
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
-    pub disable_tcp_realtime: bool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
     tcp_message_manager: Arc<TcpMessageManager>,
@@ -171,12 +172,12 @@ impl ResponseServerImpl {
                 syn_cookies.clone(),
                 stats.clone(),
                 remote_endpoint,
+                network_constants.protocol_info(),
             ),
             network_params,
             unique_id: NEXT_UNIQUE_ID.fetch_add(1, Ordering::Relaxed),
             stats,
             disable_bootstrap_bulk_pull_server: false,
-            disable_tcp_realtime: false,
             message_visitor_factory,
             protocol_info: network_constants.protocol_info(),
             message_deserializer: Arc::new(MessageDeserializer::new(
@@ -319,15 +320,6 @@ pub trait ResponseServerExt {
     fn receive_message(&self);
     fn received_message(&self, message: DeserializedMessage);
     fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
-    fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus;
-    async fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool);
-}
-
-pub enum HandshakeStatus {
-    Abort,
-    Handshake,
-    Realtime,
-    Bootstrap,
 }
 
 pub enum ProcessResult {
@@ -356,10 +348,6 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         let Some(observer) = self.observer.upgrade() else {
             return false;
         };
-
-        if self.disable_tcp_realtime {
-            return false;
-        }
 
         if self.socket.socket_type() != SocketType::Undefined {
             return false;
@@ -503,6 +491,10 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
     }
 
     fn process_message(&self, message: DeserializedMessage) -> ProcessResult {
+        let Some(rt) = self.async_rt.upgrade() else {
+            return ProcessResult::Abort;
+        };
+
         self.stats.inc_dir(
             StatType::TcpServer,
             DetailType::from(message.message.message_type()),
@@ -527,10 +519,19 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
          * In bootstrap mode any realtime messages are ignored
          */
         if self.is_undefined_connection() {
-            let mut handshake_visitor = HandshakeMessageVisitor::new(Arc::clone(&self));
-            handshake_visitor.received(&message.message);
+            let result = match &message.message {
+                Message::BulkPull(_)
+                | Message::BulkPullAccount(_)
+                | Message::BulkPush
+                | Message::FrontierReq(_) => HandshakeStatus::Bootstrap,
+                Message::NodeIdHandshake(payload) => rt.tokio.block_on(
+                    self.handshake_process
+                        .process_handshake(payload, &self.socket),
+                ),
+                _ => HandshakeStatus::Abort,
+            };
 
-            match handshake_visitor.result {
+            match result {
                 HandshakeStatus::Abort => {
                     self.stats.inc_dir(
                         StatType::TcpServer,
@@ -547,7 +548,19 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
                 HandshakeStatus::Handshake => {
                     return ProcessResult::Progress; // Continue handshake
                 }
-                HandshakeStatus::Realtime => {
+                HandshakeStatus::Realtime(node_id) => {
+                    if !self.to_realtime_connection(&node_id) {
+                        self.stats.inc_dir(
+                            StatType::TcpServer,
+                            DetailType::HandshakeError,
+                            Direction::In,
+                        );
+                        debug!(
+                            "Error switching to realtime mode ({})",
+                            self.remote_endpoint()
+                        );
+                        return ProcessResult::Abort;
+                    }
                     self.queue_realtime(message);
                     return ProcessResult::Progress; // Continue receiving new messages
                 }
@@ -595,189 +608,6 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         }
         debug_assert!(false);
         ProcessResult::Abort
-    }
-
-    fn process_handshake(&self, message: &NodeIdHandshake) -> HandshakeStatus {
-        if self.disable_tcp_realtime {
-            self.stats.inc_dir(
-                StatType::TcpServer,
-                DetailType::HandshakeError,
-                Direction::In,
-            );
-            debug!(
-                "Handshake attempted with disabled realtime mode ({})",
-                self.remote_endpoint()
-            );
-            return HandshakeStatus::Abort;
-        }
-        if message.query.is_none() && message.response.is_none() {
-            self.stats.inc_dir(
-                StatType::TcpServer,
-                DetailType::HandshakeError,
-                Direction::In,
-            );
-            debug!(
-                "Invalid handshake message received ({})",
-                self.remote_endpoint()
-            );
-            return HandshakeStatus::Abort;
-        }
-        if message.query.is_some()
-            && self
-                .handshake_process
-                .handshake_received
-                .load(Ordering::SeqCst)
-        {
-            // Second handshake message should be a response only
-            self.stats.inc_dir(
-                StatType::TcpServer,
-                DetailType::HandshakeError,
-                Direction::In,
-            );
-            debug!(
-                "Detected multiple handshake queries ({})",
-                self.remote_endpoint()
-            );
-            return HandshakeStatus::Abort;
-        }
-
-        self.handshake_process
-            .handshake_received
-            .store(true, Ordering::SeqCst);
-
-        self.stats.inc_dir(
-            StatType::TcpServer,
-            DetailType::NodeIdHandshake,
-            Direction::In,
-        );
-
-        let log_type = match (message.query.is_some(), message.response.is_some()) {
-            (true, true) => "query + response",
-            (true, false) => "query",
-            (false, true) => "response",
-            (false, false) => "none",
-        };
-        debug!(
-            "Handshake message received: {} ({})",
-            log_type,
-            self.remote_endpoint()
-        );
-
-        if let Some(query) = message.query.clone() {
-            // Send response + our own query
-            if let Some(rt) = self.async_rt.upgrade() {
-                let self_l = Arc::clone(self);
-                let is_v2 = message.is_v2;
-                rt.tokio.block_on(async move {
-                    self_l.send_handshake_response(&query, is_v2).await;
-                });
-            }
-            // Fall through and continue handshake
-        }
-        if let Some(response) = &message.response {
-            if self
-                .handshake_process
-                .verify_response(response, &self.remote_endpoint())
-            {
-                let success = self.to_realtime_connection(&response.node_id);
-                if success {
-                    return HandshakeStatus::Realtime; // Switch to realtime
-                } else {
-                    self.stats.inc_dir(
-                        StatType::TcpServer,
-                        DetailType::HandshakeError,
-                        Direction::In,
-                    );
-                    debug!(
-                        "Error switching to realtime mode ({})",
-                        self.remote_endpoint()
-                    );
-                    return HandshakeStatus::Abort;
-                }
-            } else {
-                self.stats.inc_dir(
-                    StatType::TcpServer,
-                    DetailType::HandshakeResponseInvalid,
-                    Direction::In,
-                );
-                debug!(
-                    "Invalid handshake response received ({})",
-                    self.remote_endpoint()
-                );
-                return HandshakeStatus::Abort;
-            }
-        }
-        HandshakeStatus::Handshake // Handshake is in progress
-    }
-
-    async fn send_handshake_response(&self, query: &NodeIdHandshakeQuery, v2: bool) {
-        let response = self.handshake_process.prepare_response(query, v2);
-        let own_query = self
-            .handshake_process
-            .prepare_query(&self.remote_endpoint());
-
-        let handshake_response = Message::NodeIdHandshake(NodeIdHandshake {
-            is_v2: own_query.is_some() || response.v2.is_some(),
-            query: own_query,
-            response: Some(response),
-        });
-
-        debug!("Responding to handshake ({})", self.remote_endpoint());
-
-        let mut serializer = MessageSerializer::new(self.protocol_info);
-        let buffer = serializer.serialize(&handshake_response);
-        match self.socket.write_raw(buffer).await {
-            Ok(_) => {
-                self.stats
-                    .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
-                self.stats.inc_dir(
-                    StatType::TcpServer,
-                    DetailType::HandshakeResponse,
-                    Direction::Out,
-                );
-            }
-            Err(e) => {
-                self.stats.inc_dir(
-                    StatType::TcpServer,
-                    DetailType::HandshakeNetworkError,
-                    Direction::In,
-                );
-                debug!(
-                    "Error sending handshake response: {} ({:?})",
-                    self.remote_endpoint(),
-                    e
-                );
-                // Stop invalid handshake
-                self.stop();
-            }
-        }
-    }
-}
-
-struct HandshakeMessageVisitor {
-    pub result: HandshakeStatus,
-    server: Arc<ResponseServerImpl>,
-}
-
-impl HandshakeMessageVisitor {
-    fn new(server: Arc<ResponseServerImpl>) -> Self {
-        Self {
-            server,
-            result: HandshakeStatus::Abort,
-        }
-    }
-}
-
-impl MessageVisitor for HandshakeMessageVisitor {
-    fn received(&mut self, message: &Message) {
-        self.result = match message {
-            Message::BulkPull(_)
-            | Message::BulkPullAccount(_)
-            | Message::BulkPush
-            | Message::FrontierReq(_) => HandshakeStatus::Bootstrap,
-            Message::NodeIdHandshake(payload) => self.server.process_handshake(payload),
-            _ => HandshakeStatus::Abort,
-        }
     }
 }
 

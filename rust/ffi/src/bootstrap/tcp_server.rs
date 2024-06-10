@@ -88,7 +88,6 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     server.disable_bootstrap_listener = params.disable_bootstrap_listener;
     server.connections_max = params.connections_max;
     server.disable_bootstrap_bulk_pull_server = params.disable_bootstrap_bulk_pull_server;
-    server.disable_tcp_realtime = params.disable_tcp_realtime;
     TcpServerHandle::new(Arc::new(server))
 }
 

@@ -27,7 +27,7 @@ use std::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
         Arc, Mutex, RwLock, Weak,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use tracing::{debug, warn};
 
@@ -149,6 +149,29 @@ impl Network {
                 i.channel.direction(),
                 i.channel.mode()
             )
+        }
+    }
+
+    pub async fn wait_for_available_inbound_slot(&self) {
+        let last_log = Instant::now();
+        let log_interval = if self.network_params.network.is_dev_network() {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(15)
+        };
+        while self.count_by_direction(ChannelDirection::Inbound)
+            >= self.node_config.tcp.max_inbound_connections
+            && !self.stopped.load(Ordering::SeqCst)
+        {
+            if last_log.elapsed() >= log_interval {
+                warn!(
+                    "Waiting for available slots to accept new connections (current: {} / max: {})",
+                    self.count_by_direction(ChannelDirection::Inbound),
+                    self.node_config.tcp.max_inbound_connections
+                );
+            }
+
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 

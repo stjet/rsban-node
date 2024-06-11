@@ -1,7 +1,6 @@
 use super::{
-    AcceptResult, ChannelDirection, CompositeSocketObserver, ConnectionsPerAddress, Network,
-    ResponseServerFactory, ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder,
-    SocketObserver, TcpConfig,
+    AcceptResult, ChannelDirection, CompositeSocketObserver, Network, ResponseServerFactory,
+    ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -16,12 +15,12 @@ use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
-        Arc, Condvar, Mutex, Weak,
+        Arc, Condvar, Mutex,
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 pub struct AcceptReturn {
     result: AcceptResult,
@@ -48,7 +47,7 @@ pub struct TcpListener {
     port: AtomicU16,
     config: TcpConfig,
     node_config: NodeConfig,
-    network: Weak<Network>,
+    network: Arc<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
     socket_observer: Arc<dyn SocketObserver>,
@@ -74,11 +73,6 @@ struct TcpListenerData {
     local_addr: SocketAddr,
 }
 
-struct ServerSocket {
-    socket: Arc<Socket>,
-    connections_per_address: Mutex<ConnectionsPerAddress>,
-}
-
 impl TcpListener {
     pub(crate) fn new(
         port: u16,
@@ -96,7 +90,7 @@ impl TcpListener {
             port: AtomicU16::new(port),
             config,
             node_config,
-            network: Arc::downgrade(&network),
+            network,
             data: Mutex::new(TcpListenerData {
                 stopped: false,
                 local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
@@ -125,11 +119,7 @@ impl TcpListener {
     }
 
     pub fn connection_count(&self) -> usize {
-        let Some(network) = self.network.upgrade() else {
-            return 0;
-        };
-
-        network.count_by_direction(ChannelDirection::Inbound)
+        self.network.count_by_direction(ChannelDirection::Inbound)
     }
 
     pub fn local_address(&self) -> SocketAddr {
@@ -166,15 +156,6 @@ pub trait TcpListenerExt {
     fn as_observer(self) -> Arc<dyn ResponseServerObserver>;
 
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()>;
-
-    async fn accept_one(
-        &self,
-        socket: Arc<Socket>,
-        response_server: Arc<ResponseServerImpl>,
-        direction: ChannelDirection,
-    ) -> anyhow::Result<()>;
-
-    async fn wait_available_slots(&self);
 }
 
 #[async_trait]
@@ -194,11 +175,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             return false;
         }
 
-        let Some(channels) = self.network.upgrade() else {
-            return false;
-        };
-
-        if !channels.add_outbound_attempt(remote) {
+        if !self.network.add_outbound_attempt(remote) {
             return false;
         }
 
@@ -234,9 +211,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 }
             }
 
-            if let Some(network) = self_l.network.upgrade() {
-                network.remove_attempt(&remote);
-            }
+            self_l.network.remove_attempt(&remote);
         });
 
         true // Attempt started
@@ -261,9 +236,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
             info!("Listening for incoming connections on: {}", addr);
 
-            if let Some(channels) = self_l.network.upgrade() {
-                channels.set_port(addr.port());
-            }
+            self_l.network.set_port(addr.port());
             self_l.data.lock().unwrap().local_addr = addr;
 
             self_l.run(listener).await
@@ -273,7 +246,7 @@ impl TcpListenerExt for Arc<TcpListener> {
     async fn run(&self, listener: tokio::net::TcpListener) {
         let run_loop = async {
             loop {
-                self.wait_available_slots().await;
+                self.network.wait_for_available_inbound_slot().await;
 
                 let Ok((stream, _)) = listener.accept().await else {
                     self.stats.inc_dir(
@@ -320,7 +293,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                     .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
                 let _ = self
-                    .accept_one(socket, response_server, ChannelDirection::Inbound)
+                    .network
+                    .accept_one(&socket, &response_server, ChannelDirection::Inbound)
                     .await;
 
                 // Sleep for a while to prevent busy loop
@@ -331,26 +305,6 @@ impl TcpListenerExt for Arc<TcpListener> {
         tokio::select! {
             _ = self.cancel_token.cancelled() => { },
             _ = run_loop => {}
-        }
-    }
-
-    async fn wait_available_slots(&self) {
-        let last_log = Instant::now();
-        let log_interval = if self.network_params.network.is_dev_network() {
-            Duration::from_secs(1)
-        } else {
-            Duration::from_secs(15)
-        };
-        while self.connection_count() >= self.config.max_inbound_connections && !self.is_stopped() {
-            if last_log.elapsed() >= log_interval {
-                warn!(
-                    "Waiting for available slots to accept new connections (current: {} / max: {})",
-                    self.connection_count(),
-                    self.config.max_inbound_connections
-                );
-            }
-
-            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 
@@ -393,25 +347,9 @@ impl TcpListenerExt for Arc<TcpListener> {
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
-        self.accept_one(socket, response_server, ChannelDirection::Outbound)
+        self.network
+            .accept_one(&socket, &response_server, ChannelDirection::Outbound)
             .await
-    }
-
-    async fn accept_one(
-        &self,
-        socket: Arc<Socket>,
-        response_server: Arc<ResponseServerImpl>,
-        direction: ChannelDirection,
-    ) -> anyhow::Result<()> {
-        let Some(network) = self.network.upgrade() else {
-            return Err(anyhow!("No network"));
-        };
-
-        network
-            .accept_one(&socket, &response_server, direction)
-            .await?;
-
-        Ok(())
     }
 }
 

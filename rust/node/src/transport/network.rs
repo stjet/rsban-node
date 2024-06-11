@@ -2,8 +2,8 @@ use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, NetworkFilter,
     NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket,
-    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpListener, TcpMessageManager,
-    TrafficType, TransportType,
+    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpMessageManager, TrafficType,
+    TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
@@ -25,7 +25,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock, Weak,
+        Arc, Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -70,7 +70,6 @@ impl NetworkOptions {
 pub struct Network {
     state: Mutex<State>,
     // TODO remove this back reference:
-    tcp_listener: RwLock<Option<Weak<TcpListener>>>,
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
@@ -102,7 +101,6 @@ impl Network {
         let network = Arc::new(options.network_params);
 
         Self {
-            tcp_listener: RwLock::new(None),
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: node_config.allow_local_peers,
@@ -273,10 +271,6 @@ impl Network {
         }
 
         Ok(())
-    }
-
-    pub fn set_listener(&self, listener: Weak<TcpListener>) {
-        *self.tcp_listener.write().unwrap() = Some(listener);
     }
 
     pub fn set_sink(&self, sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>) {

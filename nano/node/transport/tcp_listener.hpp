@@ -53,7 +53,6 @@ public:
 
 	std::size_t get_realtime_count ();
 	nano::tcp_endpoint endpoint ();
-	std::size_t connections_count ();
 
 	rsnano::TcpListenerHandle * handle;
 };

@@ -818,7 +818,7 @@ TEST (node, DISABLED_fork_bootstrap_flip)
 		auto tx{ node2.store.tx_begin_read () };
 		ASSERT_TRUE (node2.ledger.any ().block_exists (*tx, send2->hash ()));
 	}
-	node2.connect (node1.network->endpoint ()); 
+	node2.connect (node1.network->endpoint ());
 	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
 	auto again (true);
 	system0.deadline_set (50s);

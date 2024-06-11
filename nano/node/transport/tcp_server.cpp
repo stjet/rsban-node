@@ -103,4 +103,3 @@ nano::transport::request_response_visitor_factory::~request_response_visitor_fac
 {
 	rsnano::rsn_request_response_visitor_factory_destroy (handle);
 }
-

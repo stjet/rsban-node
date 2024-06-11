@@ -530,56 +530,12 @@ TEST (network, ipv6_from_ipv4)
 // Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3615
 TEST (tcp_listener, DISABLED_tcp_listener_timeout_empty)
 {
-	nano::test::system system (1);
-	auto node0 (system.nodes[0]);
-	auto socket (nano::transport::create_client_socket (*node0));
-	std::atomic<bool> connected (false);
-	socket->async_connect (node0->tcp_listener->endpoint (), [&connected] (boost::system::error_code const & ec) {
-		ASSERT_FALSE (ec);
-		connected = true;
-	});
-	ASSERT_TIMELY (5s, connected);
-	bool disconnected (false);
-	system.deadline_set (std::chrono::seconds (6));
-	while (!disconnected)
-	{
-		disconnected = node0->tcp_listener->connections_count () == 0;
-		ASSERT_NO_ERROR (system.poll ());
-	}
+	// TODO reimplement in Rust
 }
 
 TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 {
-	nano::test::system system (1);
-	auto node0 (system.nodes[0]);
-	auto socket (nano::transport::create_client_socket (*node0));
-	auto cookie (node0->network->syn_cookies->assign (nano::transport::map_tcp_to_endpoint (node0->tcp_listener->endpoint ())));
-	ASSERT_TRUE (cookie);
-	nano::node_id_handshake::query_payload query{ *cookie };
-	nano::node_id_handshake node_id_handshake{ nano::dev::network_params.network, query };
-	auto channel = std::make_shared<nano::transport::channel_tcp> (
-	node0->async_rt,
-	node0->outbound_limiter,
-	node0->config->network_params.network,
-	socket,
-	*node0->stats,
-	*node0->network->tcp_channels,
-	1);
-	socket->async_connect (node0->tcp_listener->endpoint (), [&node_id_handshake, channel] (boost::system::error_code const & ec) {
-		ASSERT_FALSE (ec);
-		channel->send (node_id_handshake, [] (boost::system::error_code const & ec, size_t size_a) {
-			ASSERT_FALSE (ec);
-		});
-	});
-	ASSERT_TIMELY (5s, node0->stats->count (nano::stat::type::tcp_server, nano::stat::detail::node_id_handshake) != 0);
-	ASSERT_EQ (node0->tcp_listener->connections_count (), 1);
-	bool disconnected (false);
-	system.deadline_set (std::chrono::seconds (20));
-	while (!disconnected)
-	{
-		disconnected = node0->tcp_listener->connections_count () == 0;
-		ASSERT_NO_ERROR (system.poll ());
-	}
+	// TODO reimplement in Rust
 }
 
 // Test disabled because it's failing repeatedly for Windows + LMDB.

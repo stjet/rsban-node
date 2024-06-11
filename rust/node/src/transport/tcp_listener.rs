@@ -1,7 +1,6 @@
 use super::{
-    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network, PeerConnector,
-    PeerConnectorExt, ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder,
-    SocketObserver, TcpConfig,
+    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network,
+    ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -11,9 +10,8 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicU16, Ordering},
         Arc, Condvar, Mutex,
@@ -57,14 +55,12 @@ pub struct TcpListener {
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
-    peer_connector: Arc<PeerConnector>,
     response_server_factory: Arc<ResponseServerFactory>,
 }
 
 impl Drop for TcpListener {
     fn drop(&mut self) {
         debug_assert!(self.data.lock().unwrap().stopped);
-        debug_assert_eq!(self.connection_count(), 0);
     }
 }
 
@@ -85,7 +81,6 @@ impl TcpListener {
         stats: Arc<Stats>,
         workers: Arc<dyn ThreadPool>,
         response_server_factory: Arc<ResponseServerFactory>,
-        peer_connector: Arc<PeerConnector>,
     ) -> Self {
         Self {
             port: AtomicU16::new(port),
@@ -104,7 +99,6 @@ impl TcpListener {
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_factory,
-            peer_connector,
         }
     }
 
@@ -118,10 +112,6 @@ impl TcpListener {
         self.network.count_by_mode(ChannelMode::Realtime)
     }
 
-    pub fn connection_count(&self) -> usize {
-        self.network.count_by_direction(ChannelDirection::Inbound)
-    }
-
     pub fn local_address(&self) -> SocketAddr {
         let guard = self.data.lock().unwrap();
         if !guard.stopped {
@@ -129,17 +119,6 @@ impl TcpListener {
         } else {
             SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)
         }
-    }
-
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "connections".to_string(),
-                count: self.connection_count(),
-                sizeof_element: 1,
-            })],
-        )
     }
 
     fn is_stopped(&self) -> bool {
@@ -151,15 +130,10 @@ impl TcpListener {
 pub trait TcpListenerExt {
     fn start(&self);
     async fn run(&self, listener: tokio::net::TcpListener);
-    fn connect(&self, remote: SocketAddrV6);
 }
 
 #[async_trait]
 impl TcpListenerExt for Arc<TcpListener> {
-    fn connect(&self, remote: SocketAddrV6) {
-        self.peer_connector.merge_peer(remote)
-    }
-
     fn start(&self) {
         let self_l = Arc::clone(self);
         self.runtime.tokio.spawn(async move {

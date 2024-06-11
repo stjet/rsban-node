@@ -307,7 +307,7 @@ impl ReachoutLoop {
             if let Some(keepalive) = self.network.sample_keepalive() {
                 for peer in keepalive.peers {
                     self.stats.inc(StatType::Network, DetailType::ReachoutLive);
-                    self.peer_connector.merge_peer(peer);
+                    self.peer_connector.connect_to(peer);
 
                     // Throttle reachout attempts
                     std::thread::sleep(self.network_params.network.merge_period);

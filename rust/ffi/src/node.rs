@@ -418,7 +418,7 @@ pub extern "C" fn rsn_node_ledger_pruning(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_connect(handle: &NodeHandle, endpoint: &EndpointDto) {
-    handle.0.peer_connector.merge_peer(endpoint.into());
+    handle.0.peer_connector.connect_to(endpoint.into());
 }
 
 #[no_mangle]

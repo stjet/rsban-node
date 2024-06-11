@@ -390,7 +390,7 @@ impl RepCrawler {
                                 )
                             }
                             None => {
-                                peer_connector.merge_peer(endpoint);
+                                peer_connector.connect_to(endpoint);
                             }
                         }
                     }

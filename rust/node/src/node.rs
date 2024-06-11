@@ -475,10 +475,7 @@ impl Node {
             Arc::clone(&stats),
             Arc::clone(&workers),
             response_server_factory.clone(),
-            peer_connector.clone(),
         ));
-
-        network.set_listener(Arc::downgrade(&tcp_listener));
 
         let hinted_scheduler = Arc::new(HintedScheduler::new(
             config.hinted_scheduler.clone(),
@@ -1125,7 +1122,6 @@ impl Node {
                 self.active.collect_container_info("active"),
                 self.bootstrap_initiator
                     .collect_container_info("bootstrap_initiator"),
-                self.tcp_listener.collect_container_info("tcp_listener"),
                 ContainerInfoComponent::Composite(
                     "network".to_string(),
                     vec![

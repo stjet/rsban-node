@@ -333,7 +333,7 @@ TEST (bootstrap_processor, process_none)
 		done = true;
 	});
 
-	node1->connect(system.nodes[0]->network->endpoint ());
+	node1->connect (system.nodes[0]->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (system.nodes[0]->network->endpoint ());
 	ASSERT_TIMELY (5s, done);
 }
@@ -358,7 +358,7 @@ TEST (bootstrap_processor, process_one)
 	node_config.peering_port = system.get_available_port ();
 	auto node1 = system.make_disconnected_node (node_config, node_flags);
 	ASSERT_NE (node0->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
-	node1->connect(node0->network->endpoint ());
+	node1->connect (node0->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (10s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub));
 }
@@ -380,7 +380,7 @@ TEST (bootstrap_processor, process_two)
 	// create a node manually to avoid making automatic network connections
 	auto node1 = system.make_disconnected_node ();
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should be out of sync here
-	node1->connect(node0->network->endpoint ());
+	node1->connect (node0->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ()); // bootstrap triggered
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should sync up
 }
@@ -427,7 +427,7 @@ TEST (bootstrap_processor, process_state)
 	auto node1 = system.make_disconnected_node (std::nullopt, node_flags);
 	ASSERT_EQ (node0->latest (nano::dev::genesis_key.pub), block2->hash ());
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), block2->hash ());
-	node1->connect(node0->network->endpoint ());
+	node1->connect (node0->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), block2->hash ());
 }
@@ -551,7 +551,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build ();
 
-	node1->connect(node2->network->endpoint());
+	node1->connect (node2->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (node2->network->endpoint ());
 	auto attempt (node1->bootstrap_initiator.current_attempt ());
 	ASSERT_NE (nullptr, attempt);
@@ -2098,7 +2098,7 @@ TEST (bulk, offline_send)
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - amount, node1->balance (nano::dev::genesis_key.pub));
 
 	// Initiate bootstrap
-	node2->connect(node1->network->endpoint ());
+	node2->connect (node1->network->endpoint ());
 	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 
 	// Nodes should find each other after bootstrap initiation

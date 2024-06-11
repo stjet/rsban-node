@@ -97,7 +97,7 @@ void nano::network::merge_peers (std::array<nano::endpoint, 8> const & peers_a)
 void nano::network::merge_peer (nano::endpoint const & peer_a)
 {
 	auto peer_dto{ rsnano::udp_endpoint_to_dto (peer_a) };
-	rsnano::rsn_node_connect(node.handle, &peer_dto);
+	rsnano::rsn_node_connect (node.handle, &peer_dto);
 }
 
 bool nano::network::track_reachout (nano::endpoint const & endpoint_a)

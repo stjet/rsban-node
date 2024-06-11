@@ -122,11 +122,12 @@ impl PeerConnector {
 }
 
 pub trait PeerConnectorExt {
-    fn merge_peer(&self, peer: SocketAddrV6);
+    /// Establish a network connection to the given peer
+    fn connect_to(&self, peer: SocketAddrV6);
 }
 
 impl PeerConnectorExt for Arc<PeerConnector> {
-    fn merge_peer(&self, peer: SocketAddrV6) {
+    fn connect_to(&self, peer: SocketAddrV6) {
         self.merge_peer_listener.emit(peer);
 
         if self
@@ -189,7 +190,7 @@ mod tests {
         let peer_connector = Arc::new(PeerConnector::new_null());
         let merge_tracker = peer_connector.track_merge_peer();
 
-        peer_connector.merge_peer(TEST_ENDPOINT_1);
+        peer_connector.connect_to(TEST_ENDPOINT_1);
 
         assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
     }

@@ -51,8 +51,3 @@ boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 	rsnano::rsn_tcp_listener_endpoint (handle, &endpoint_dto);
 	return rsnano::dto_to_endpoint (endpoint_dto);
 }
-
-std::size_t nano::transport::tcp_listener::connections_count ()
-{
-	return rsnano::rsn_tcp_listener_connection_count (handle);
-}

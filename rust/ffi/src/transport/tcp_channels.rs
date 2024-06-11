@@ -7,10 +7,10 @@ use crate::{
     utils::{AsyncRuntimeHandle, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
-use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
+use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, ChannelMode, Network, NetworkExt, NetworkOptions},
+    transport::{ChannelEnum, ChannelMode, Network, NetworkOptions},
     NetworkParams,
 };
 use std::{
@@ -53,9 +53,10 @@ impl TryFrom<&TcpChannelsOptionsDto> for NetworkOptions {
     fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
         unsafe {
             let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-
+            let node_config = NodeConfig::try_from(&*value.node_config)?;
             Ok(Self {
-                node_config: NodeConfig::try_from(&*value.node_config)?,
+                allow_local_peers: node_config.allow_local_peers,
+                tcp_config: node_config.tcp,
                 publish_filter: (*value.publish_filter).0.clone(),
                 network_params: NetworkParams::try_from(&*value.network)?,
                 async_rt: Arc::clone(&(*value.async_rt).0),
@@ -64,25 +65,10 @@ impl TryFrom<&TcpChannelsOptionsDto> for NetworkOptions {
                 port: value.port,
                 flags: (*value.flags).0.lock().unwrap().clone(),
                 limiter: (*value.limiter).0.clone(),
-                node_id: KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(
-                    value.node_id_prv,
-                    32,
-                ))
-                .unwrap(),
-                syn_cookies: (*value.syn_cookies).0.clone(),
-                workers: (*value.workers).0.clone(),
                 observer,
             })
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_create(
-    options: &TcpChannelsOptionsDto,
-) -> *mut TcpChannelsHandle {
-    let channels = Arc::new(Network::new(NetworkOptions::try_from(options).unwrap()));
-    Box::into_raw(Box::new(TcpChannelsHandle(channels)))
 }
 
 #[no_mangle]

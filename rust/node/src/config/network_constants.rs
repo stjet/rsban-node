@@ -29,7 +29,7 @@ pub struct NetworkConstants {
     pub merge_period: Duration,
     /** Default maximum idle time for a socket before it's automatically closed */
     pub idle_timeout_s: i64,
-    pub sync_cookie_cutoff_s: i64,
+    pub sync_cookie_cutoff: Duration,
     pub bootstrap_interval_s: i64,
     /** Maximum number of peers per IP. It is also the max number of connections per IP*/
     pub max_peers_per_ip: usize,
@@ -106,7 +106,7 @@ impl NetworkConstants {
             keepalive_period: Duration::from_secs(15),
             merge_period: Duration::from_millis(250),
             idle_timeout_s: cleanup_period_s * 2,
-            sync_cookie_cutoff_s: 5,
+            sync_cookie_cutoff: Duration::from_secs(5),
             bootstrap_interval_s: 15 * 60,
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,

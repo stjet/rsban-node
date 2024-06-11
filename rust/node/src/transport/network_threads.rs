@@ -180,9 +180,8 @@ impl CleanupLoop {
                 );
             }
 
-            self.syn_cookies.purge(Duration::from_secs(
-                self.network_params.network.sync_cookie_cutoff_s as u64,
-            ));
+            self.syn_cookies
+                .purge(self.network_params.network.sync_cookie_cutoff);
 
             stopped = self.stopped.1.lock().unwrap();
         }

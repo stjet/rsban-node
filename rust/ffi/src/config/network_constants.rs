@@ -69,7 +69,7 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.keepalive_period_s = constants.keepalive_period.as_secs() as i64;
     dto.merge_period_ms = constants.merge_period.as_millis() as i64;
     dto.idle_timeout_s = constants.idle_timeout_s;
-    dto.sync_cookie_cutoff_s = constants.sync_cookie_cutoff_s;
+    dto.sync_cookie_cutoff_s = constants.sync_cookie_cutoff.as_secs() as i64;
     dto.bootstrap_interval_s = constants.bootstrap_interval_s;
     dto.max_peers_per_ip = constants.max_peers_per_ip;
     dto.max_peers_per_subnetwork = constants.max_peers_per_subnetwork;
@@ -175,7 +175,7 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             keepalive_period: Duration::from_secs(value.keepalive_period_s as u64),
             merge_period: Duration::from_millis(value.merge_period_ms as u64),
             idle_timeout_s: value.idle_timeout_s,
-            sync_cookie_cutoff_s: value.sync_cookie_cutoff_s,
+            sync_cookie_cutoff: Duration::from_secs(value.sync_cookie_cutoff_s as u64),
             bootstrap_interval_s: value.bootstrap_interval_s,
             max_peers_per_ip: value.max_peers_per_ip,
             max_peers_per_subnetwork: value.max_peers_per_subnetwork,

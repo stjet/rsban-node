@@ -173,7 +173,8 @@ impl Node {
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
-            node_config: config.clone(),
+            allow_local_peers: config.allow_local_peers,
+            tcp_config: config.tcp.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             async_rt: Arc::clone(&async_rt),
             network_params: network_params.clone(),
@@ -184,9 +185,6 @@ impl Node {
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: Arc::clone(&outbound_limiter),
-            node_id: node_id.clone(),
-            syn_cookies: Arc::clone(&syn_cookies),
-            workers: Arc::clone(&workers),
             observer: Arc::clone(&socket_observer),
         }));
 
@@ -418,7 +416,6 @@ impl Node {
 
         let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
-            syn_cookies: syn_cookies.clone(),
             stats: stats.clone(),
             node_id: node_id.clone(),
             ledger: ledger.clone(),
@@ -429,6 +426,7 @@ impl Node {
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             node_config: config.clone(),
+            syn_cookies: syn_cookies.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(

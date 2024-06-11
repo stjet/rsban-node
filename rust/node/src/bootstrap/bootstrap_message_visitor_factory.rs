@@ -9,7 +9,7 @@ use crate::{
     stats::Stats,
     transport::{
         BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl,
-        ResponseServerImpl, SynCookies,
+        ResponseServerImpl,
     },
     utils::{AsyncRuntime, ThreadPool},
 };
@@ -18,7 +18,6 @@ use super::{BootstrapInitiator, BootstrapMessageVisitorImpl};
 
 pub struct BootstrapMessageVisitorFactory {
     async_rt: Arc<AsyncRuntime>,
-    syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
     node_id: KeyPair,
     network_constants: NetworkConstants,
@@ -32,7 +31,6 @@ pub struct BootstrapMessageVisitorFactory {
 impl BootstrapMessageVisitorFactory {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
-        syn_cookies: Arc<SynCookies>,
         stats: Arc<Stats>,
         network_constants: NetworkConstants,
         node_id: KeyPair,
@@ -44,7 +42,6 @@ impl BootstrapMessageVisitorFactory {
     ) -> Self {
         Self {
             async_rt,
-            syn_cookies,
             stats,
             node_id,
             network_constants,

@@ -2,23 +2,22 @@ use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, NetworkFilter,
     NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket,
-    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpMessageManager, TrafficType,
-    TransportType,
+    SocketExtensions, SocketObserver, TcpConfig, TcpMessageManager, TrafficType, TransportType,
 };
 use crate::{
-    config::{NetworkConstants, NodeConfig, NodeFlags},
+    config::{NetworkConstants, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{Channel, ResponseServerExt},
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        reserved_address, AsyncRuntime, ThreadPool, ThreadPoolImpl,
+        reserved_address, AsyncRuntime,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, KeyPair, PublicKey,
+    Account, PublicKey,
 };
 use rsnano_messages::*;
 use std::{
@@ -32,7 +31,8 @@ use std::{
 use tracing::{debug, warn};
 
 pub struct NetworkOptions {
-    pub node_config: NodeConfig,
+    pub allow_local_peers: bool,
+    pub tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
     pub async_rt: Arc<AsyncRuntime>,
     pub network_params: NetworkParams,
@@ -41,16 +41,14 @@ pub struct NetworkOptions {
     pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
-    pub node_id: KeyPair,
-    pub syn_cookies: Arc<SynCookies>,
-    pub workers: Arc<dyn ThreadPool>,
     pub observer: Arc<dyn SocketObserver>,
 }
 
 impl NetworkOptions {
     pub fn new_test_instance() -> Self {
         NetworkOptions {
-            node_config: NodeConfig::new_null(),
+            allow_local_peers: true,
+            tcp_config: TcpConfig::for_dev_network(),
             publish_filter: Arc::new(NetworkFilter::default()),
             async_rt: Arc::new(AsyncRuntime::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
@@ -59,9 +57,6 @@ impl NetworkOptions {
             port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
-            node_id: KeyPair::new(),
-            syn_cookies: Arc::new(SynCookies::default()),
-            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
             observer: Arc::new(NullSocketObserver::new()),
         }
     }
@@ -69,7 +64,6 @@ impl NetworkOptions {
 
 pub struct Network {
     state: Mutex<State>,
-    // TODO remove this back reference:
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
@@ -81,10 +75,7 @@ pub struct Network {
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     async_rt: Arc<AsyncRuntime>,
-    node_config: NodeConfig,
-    node_id: KeyPair,
-    syn_cookies: Arc<SynCookies>,
-    workers: Arc<dyn ThreadPool>,
+    tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
     observer: Arc<dyn SocketObserver>,
 }
@@ -97,13 +88,12 @@ impl Drop for Network {
 
 impl Network {
     pub fn new(options: NetworkOptions) -> Self {
-        let node_config = options.node_config;
         let network = Arc::new(options.network_params);
 
         Self {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
-            allow_local_peers: node_config.allow_local_peers,
+            allow_local_peers: options.allow_local_peers,
             tcp_message_manager: options.tcp_message_manager.clone(),
             state: Mutex::new(State {
                 attempts: Default::default(),
@@ -113,18 +103,15 @@ impl Network {
                 excluded_peers: PeerExclusion::new(),
                 stats: options.stats.clone(),
                 node_flags: options.flags.clone(),
-                config: node_config.tcp.clone(),
+                config: options.tcp_config.clone(),
             }),
-            node_config,
+            tcp_config: options.tcp_config,
             flags: options.flags,
             stats: options.stats,
             sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
             network_params: network,
             limiter: options.limiter,
-            node_id: options.node_id,
-            syn_cookies: options.syn_cookies,
-            workers: options.workers,
             publish_filter: options.publish_filter,
             observer: options.observer,
             async_rt: options.async_rt,
@@ -156,14 +143,14 @@ impl Network {
             Duration::from_secs(15)
         };
         while self.count_by_direction(ChannelDirection::Inbound)
-            >= self.node_config.tcp.max_inbound_connections
+            >= self.tcp_config.max_inbound_connections
             && !self.stopped.load(Ordering::SeqCst)
         {
             if last_log.elapsed() >= log_interval {
                 warn!(
                     "Waiting for available slots to accept new connections (current: {} / max: {})",
                     self.count_by_direction(ChannelDirection::Inbound),
-                    self.node_config.tcp.max_inbound_connections
+                    self.tcp_config.max_inbound_connections
                 );
             }
 
@@ -339,7 +326,7 @@ impl Network {
             return false; // Reject
         }
 
-        if self.not_a_peer(endpoint, self.node_config.allow_local_peers) {
+        if self.not_a_peer(endpoint, self.allow_local_peers) {
             self.stats
                 .inc(StatType::TcpChannelsRejected, DetailType::NotAPeer);
             debug!("Rejected invalid endpoint channel from: {}", endpoint);
@@ -481,7 +468,7 @@ impl Network {
         }
 
         // Don't contact invalid IPs
-        if self.not_a_peer(endpoint, self.node_config.allow_local_peers) {
+        if self.not_a_peer(endpoint, self.allow_local_peers) {
             return false;
         }
 
@@ -505,7 +492,7 @@ impl Network {
         }
 
         let count = state.attempts.count_by_address(endpoint.ip());
-        if count >= self.node_config.tcp.max_attempts_per_ip {
+        if count >= self.tcp_config.max_attempts_per_ip {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
                 DetailType::MaxAttemptsPerIp,

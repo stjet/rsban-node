@@ -1,11 +1,12 @@
 use super::{
     ChannelEnum, HandshakeProcess, HandshakeStatus, MessageDeserializer, Network, NetworkFilter,
+    SynCookies,
 };
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelMode, NetworkExt, Socket, SocketExtensions, SynCookies, TcpMessageManager},
+    transport::{ChannelMode, NetworkExt, Socket, SocketExtensions, TcpMessageManager},
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -81,7 +82,6 @@ pub struct ResponseServerImpl {
     allow_bootstrap: bool,
     notify_stop: Notify,
     last_keepalive: Mutex<Option<Keepalive>>,
-    syn_cookies: Arc<SynCookies>,
     node_id: KeyPair,
     protocol_info: ProtocolInfo,
     network: Weak<Network>,
@@ -126,7 +126,7 @@ impl ResponseServerImpl {
             handshake_process: HandshakeProcess::new(
                 network_params.ledger.genesis.hash(),
                 node_id.clone(),
-                syn_cookies.clone(),
+                syn_cookies,
                 stats.clone(),
                 remote_endpoint,
                 network_constants.protocol_info(),
@@ -147,7 +147,6 @@ impl ResponseServerImpl {
             allow_bootstrap,
             notify_stop: Notify::new(),
             last_keepalive: Mutex::new(None),
-            syn_cookies,
             node_id,
         }
     }

@@ -94,7 +94,6 @@ namespace transport
 		friend class nano::transport::channel_tcp;
 
 	public:
-		explicit tcp_channels (nano::node &, uint16_t port);
 		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();

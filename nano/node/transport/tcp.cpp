@@ -1,13 +1,11 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
-#include "nano/node/nodeconfig.hpp"
 #include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/socket.hpp"
 #include "nano/node/transport/tcp_listener.hpp"
 #include "nano/node/transport/tcp_server.hpp"
 #include "nano/node/transport/traffic_type.hpp"
-#include "nano/secure/common.hpp"
 #include "nano/secure/network_filter.hpp"
 
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
@@ -168,53 +166,11 @@ bool nano::transport::channel_tcp::alive () const
  * tcp_channels
  */
 
-namespace
-{
-void sink_callback (void * callback_handle, rsnano::MessageHandle * msg_handle, rsnano::ChannelHandle * channel_handle)
-{
-	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (callback_handle);
-	auto channel = std::make_shared<nano::transport::channel_tcp> (channel_handle);
-	auto message = rsnano::message_handle_to_message (msg_handle);
-	(*callback) (*message, channel);
-}
-
-void delete_sink (void * callback_handle)
-{
-	auto callback = static_cast<std::function<void (nano::message const &, std::shared_ptr<nano::transport::channel> const &)> *> (callback_handle);
-	delete callback;
-}
-}
-
 nano::transport::tcp_channels::tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
 	handle{ handle },
 	tcp_message_manager{ mgr_handle },
 	publish_filter{ std::make_shared<nano::network_filter> (filter_handle) }
 {
-}
-
-nano::transport::tcp_channels::tcp_channels (nano::node & node, uint16_t port) :
-	tcp_message_manager{ node.config->tcp_incoming_connections_max },
-	publish_filter{ std::make_shared<nano::network_filter> (256 * 1024) }
-{
-	auto node_config_dto{ node.config->to_dto () };
-	auto network_dto{ node.config->network_params.to_dto () };
-
-	rsnano::TcpChannelsOptionsDto options;
-	options.node_config = &node_config_dto;
-	options.publish_filter = publish_filter->handle;
-	options.async_rt = node.async_rt.handle;
-	options.network = &network_dto;
-	options.stats = node.stats->handle;
-	options.tcp_message_manager = tcp_message_manager.handle;
-	options.port = port;
-	options.flags = node.flags.handle;
-	options.limiter = node.outbound_limiter.handle;
-	options.node_id_prv = node.node_id.prv.bytes.data ();
-	options.syn_cookies = node.network->syn_cookies->handle;
-	options.workers = node.workers->handle;
-	options.socket_observer = new std::weak_ptr<nano::node_observers> (node.observers);
-
-	handle = rsnano::rsn_tcp_channels_create (&options);
 }
 
 nano::transport::tcp_channels::~tcp_channels ()

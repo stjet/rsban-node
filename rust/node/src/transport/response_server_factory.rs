@@ -16,7 +16,6 @@ use std::sync::Arc;
 
 pub(crate) struct ResponseServerFactory {
     pub(crate) runtime: Arc<AsyncRuntime>,
-    pub(crate) syn_cookies: Arc<SynCookies>,
     pub(crate) stats: Arc<Stats>,
     pub(crate) node_id: KeyPair,
     pub(crate) ledger: Arc<Ledger>,
@@ -27,6 +26,7 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) node_flags: NodeFlags,
     pub(crate) network_params: NetworkParams,
     pub(crate) node_config: NodeConfig,
+    pub(crate) syn_cookies: Arc<SynCookies>,
 }
 
 impl ResponseServerFactory {
@@ -42,7 +42,6 @@ impl ResponseServerFactory {
         let block_processor = Arc::new(BlockProcessor::new_test_instance(ledger.clone()));
         Self {
             runtime: runtime.clone(),
-            syn_cookies: Arc::new(SynCookies::new(1)),
             stats: stats.clone(),
             node_id: KeyPair::from(42),
             ledger: ledger.clone(),
@@ -66,13 +65,13 @@ impl ResponseServerFactory {
             node_flags: flags,
             network_params,
             node_config: config,
+            syn_cookies: Arc::new(SynCookies::new(1)),
         }
     }
 
     pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServerImpl> {
         let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
             Arc::clone(&self.runtime),
-            Arc::clone(&self.syn_cookies),
             Arc::clone(&self.stats),
             self.network_params.network.clone(),
             self.node_id.clone(),
@@ -94,7 +93,7 @@ impl ResponseServerFactory {
             Arc::clone(&self.network.tcp_message_manager),
             message_visitor_factory,
             true,
-            Arc::clone(&self.syn_cookies),
+            self.syn_cookies.clone(),
             self.node_id.clone(),
         ))
     }

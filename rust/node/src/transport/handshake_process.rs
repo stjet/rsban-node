@@ -27,7 +27,7 @@ pub(crate) struct HandshakeProcess {
     node_id: KeyPair,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
-    pub handshake_received: AtomicBool,
+    handshake_received: AtomicBool,
     remote_endpoint: SocketAddrV6,
     protocol: ProtocolInfo,
 }

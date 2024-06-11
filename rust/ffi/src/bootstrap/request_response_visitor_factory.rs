@@ -44,7 +44,6 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
 
     let visitor_factory = BootstrapMessageVisitorFactory::new(
         async_rt,
-        Arc::clone(&*params.syn_cookies),
         Arc::clone(&stats),
         network.network.clone(),
         node_id,

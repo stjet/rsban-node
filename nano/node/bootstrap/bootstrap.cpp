@@ -37,31 +37,6 @@ std::shared_ptr<nano::bootstrap_attempt> attempt_from_handle (rsnano::BootstrapA
 	}
 	return result;
 }
-
-rsnano::BootstrapInitiatorHandle * create_bootstrap_initiator (nano::node & node_a)
-{
-	auto config_dto{ node_a.config->to_dto () };
-	auto params_dto{ node_a.network_params.to_dto () };
-
-	return rsnano::rsn_bootstrap_initiator_create (&config_dto,
-	node_a.flags.handle, node_a.network->tcp_channels->handle,
-	node_a.async_rt.handle, node_a.workers->handle,
-	&params_dto,
-	new std::weak_ptr<nano::node_observers> (node_a.observers),
-	node_a.stats->handle, node_a.outbound_limiter.handle,
-	node_a.block_processor.handle, node_a.websocket.get_handle (),
-	node_a.ledger.handle);
-}
-}
-
-nano::bootstrap_initiator::bootstrap_initiator (nano::node & node_a) :
-	handle{ create_bootstrap_initiator (node_a) },
-	attempts{ rsnano::rsn_bootstrap_initiator_attempts (handle) },
-	connections{ std::make_shared<nano::bootstrap_connections> (rsnano::rsn_bootstrap_initiator_connections (handle)) },
-	cache{ rsnano::rsn_bootstrap_initiator_cache (handle) }
-{
-	rsnano::rsn_bootstrap_initiator_initialize (handle);
-	rsnano::rsn_bootstrap_initiator_start (handle);
 }
 
 nano::bootstrap_initiator::bootstrap_initiator (rsnano::BootstrapInitiatorHandle * handle) :
@@ -83,10 +58,10 @@ void nano::bootstrap_initiator::bootstrap (bool force, std::string id_a, uint32_
 	rsnano::rsn_bootstrap_initiator_bootstrap (handle, force, id_a.c_str (), frontiers_age_a, start_account_a.bytes.data ());
 }
 
-void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bool add_to_peers, std::string id_a)
+void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, std::string id_a)
 {
 	auto dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	rsnano::rsn_bootstrap_initiator_bootstrap2 (handle, &dto, add_to_peers, id_a.c_str ());
+	rsnano::rsn_bootstrap_initiator_bootstrap2 (handle, &dto, id_a.c_str ());
 }
 
 bool nano::bootstrap_initiator::bootstrap_lazy (nano::hash_or_account const & hash_or_account_a, bool force, std::string id_a)

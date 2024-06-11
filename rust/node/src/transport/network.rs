@@ -2,8 +2,8 @@ use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, NetworkFilter,
     NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket,
-    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt,
-    TcpMessageManager, TrafficType, TransportType,
+    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpListener, TcpMessageManager,
+    TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
@@ -17,7 +17,7 @@ use crate::{
 };
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, OutputListenerMt, OutputTrackerMt},
+    utils::{ContainerInfo, ContainerInfoComponent},
     Account, KeyPair, PublicKey,
 };
 use rsnano_messages::*;
@@ -88,7 +88,6 @@ pub struct Network {
     workers: Arc<dyn ThreadPool>,
     pub publish_filter: Arc<NetworkFilter>,
     observer: Arc<dyn SocketObserver>,
-    merge_peer_listener: OutputListenerMt<SocketAddrV6>,
 }
 
 impl Drop for Network {
@@ -131,7 +130,6 @@ impl Network {
             publish_filter: options.publish_filter,
             observer: options.observer,
             async_rt: options.async_rt,
-            merge_peer_listener: OutputListenerMt::new(),
         }
     }
 
@@ -487,7 +485,11 @@ impl Network {
         is_max
     }
 
-    fn reachout_checked(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
+    pub(crate) fn reachout_checked(
+        &self,
+        endpoint: &SocketAddrV6,
+        allow_local_peers: bool,
+    ) -> bool {
         // Don't contact invalid IPs
         let mut error = self.not_a_peer(endpoint, allow_local_peers);
         if !error {
@@ -497,15 +499,15 @@ impl Network {
     }
 
     pub fn track_reachout(&self, endpoint: &SocketAddrV6) -> bool {
+        if self.flags.disable_tcp_realtime {
+            return false;
+        }
         // Don't overload single IP
         if self.max_ip_or_subnetwork_connections(endpoint) {
             return false;
         }
         let mut guard = self.state.lock().unwrap();
         if guard.excluded_peers.is_excluded(endpoint) {
-            return false;
-        }
-        if self.flags.disable_tcp_realtime {
             return false;
         }
         // Don't connect to nodes that already sent us something
@@ -612,10 +614,6 @@ impl Network {
         }
     }
 
-    pub fn track_merge_peer(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
-        self.merge_peer_listener.track()
-    }
-
     pub fn queue_message(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
         if !self.stopped.load(Ordering::SeqCst) {
             self.tcp_message_manager.put(message, channel);
@@ -626,9 +624,7 @@ impl Network {
 pub trait NetworkExt {
     fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account);
     fn process_messages(&self);
-    fn merge_peer(&self, peer: SocketAddrV6);
     fn keepalive(&self);
-    fn connect(&self, endpoint: SocketAddrV6);
 }
 
 impl NetworkExt for Arc<Network> {
@@ -689,14 +685,6 @@ impl NetworkExt for Arc<Network> {
         }
     }
 
-    fn merge_peer(&self, peer: SocketAddrV6) {
-        self.merge_peer_listener.emit(peer);
-        if !self.reachout_checked(&peer, self.node_config.allow_local_peers) {
-            self.stats.inc(StatType::Network, DetailType::MergePeer);
-            self.connect(peer);
-        }
-    }
-
     fn keepalive(&self) {
         let message = self.create_keepalive_message();
 
@@ -717,25 +705,6 @@ impl NetworkExt for Arc<Network> {
                 TrafficType::Generic,
             );
         }
-    }
-
-    fn connect(&self, endpoint: SocketAddrV6) {
-        let listener = {
-            let guard = self.tcp_listener.read().unwrap();
-
-            let Some(listener) = guard.as_ref() else {
-                warn!("Tcp listener not set!");
-                return;
-            };
-
-            let Some(listener) = listener.upgrade() else {
-                warn!("Tcp listener already dropped!");
-                return;
-            };
-            listener
-        };
-
-        self.async_rt.tokio.block_on(listener.connect(endpoint));
     }
 }
 
@@ -1066,20 +1035,4 @@ pub enum AcceptResult {
     Accepted,
     Rejected,
     Error,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rsnano_core::utils::TEST_ENDPOINT_1;
-
-    #[test]
-    fn track_merge_peer() {
-        let network = Arc::new(Network::new_null());
-        let merge_tracker = network.track_merge_peer();
-
-        network.merge_peer(TEST_ENDPOINT_1);
-
-        assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
-    }
 }

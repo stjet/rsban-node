@@ -333,7 +333,8 @@ TEST (bootstrap_processor, process_none)
 		done = true;
 	});
 
-	node1->bootstrap_initiator.bootstrap (system.nodes[0]->network->endpoint (), false);
+	node1->connect(system.nodes[0]->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (system.nodes[0]->network->endpoint ());
 	ASSERT_TIMELY (5s, done);
 }
 
@@ -357,7 +358,8 @@ TEST (bootstrap_processor, process_one)
 	node_config.peering_port = system.get_available_port ();
 	auto node1 = system.make_disconnected_node (node_config, node_flags);
 	ASSERT_NE (node0->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect(node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (10s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub));
 }
 
@@ -378,7 +380,8 @@ TEST (bootstrap_processor, process_two)
 	// create a node manually to avoid making automatic network connections
 	auto node1 = system.make_disconnected_node ();
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should be out of sync here
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false); // bootstrap triggered
+	node1->connect(node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ()); // bootstrap triggered
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should sync up
 }
 
@@ -424,7 +427,8 @@ TEST (bootstrap_processor, process_state)
 	auto node1 = system.make_disconnected_node (std::nullopt, node_flags);
 	ASSERT_EQ (node0->latest (nano::dev::genesis_key.pub), block2->hash ());
 	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), block2->hash ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect(node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), block2->hash ());
 }
 
@@ -464,7 +468,8 @@ TEST (bootstrap_processor, process_new)
 
 	// create a node manually to avoid making automatic network connections
 	auto node3 = system.make_disconnected_node ();
-	node3->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
+	node3->connect (node1->network->endpoint ());
+	node3->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node3->balance (key2.pub), amount);
 	node3->stop ();
 }
@@ -516,7 +521,8 @@ TEST (bootstrap_processor, pull_diamond)
 	ASSERT_EQ (nano::block_status::progress, node0->process (receive));
 
 	auto node1 = system.make_disconnected_node ();
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect (node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
 }
 
@@ -545,6 +551,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build ();
 
+	node1->connect(node2->network->endpoint());
 	node1->bootstrap_initiator.bootstrap (node2->network->endpoint ());
 	auto attempt (node1->bootstrap_initiator.current_attempt ());
 	ASSERT_NE (nullptr, attempt);
@@ -626,7 +633,8 @@ TEST (bootstrap_processor, push_diamond)
 	flags.set_disable_ongoing_bootstrap (true);
 	flags.set_disable_ascending_bootstrap (true);
 	auto node2 = system.add_node (config, flags);
-	node1->bootstrap_initiator.bootstrap (node2->network->endpoint (), false);
+	node1->connect (node2->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node2->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node2->balance (nano::dev::genesis_key.pub), 100);
 }
 
@@ -672,7 +680,8 @@ TEST (bootstrap_processor, push_diamond_pruning)
 	ASSERT_EQ (nano::block_status::progress, node1->process (open));
 
 	// 1st bootstrap
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect (node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node0->balance (key.pub), nano::dev::constants.genesis_amount);
 	ASSERT_TIMELY_EQ (5s, node1->balance (key.pub), nano::dev::constants.genesis_amount);
 
@@ -716,7 +725,8 @@ TEST (bootstrap_processor, push_diamond_pruning)
 	}
 
 	// 2nd bootstrap
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect (node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node0->balance (nano::dev::genesis_key.pub), 100);
 	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
 }
@@ -740,7 +750,8 @@ TEST (bootstrap_processor, push_one)
 	ASSERT_NE (nullptr, send);
 	ASSERT_TIMELY_EQ (5s, genesis_balance - 100, node1->balance (nano::dev::genesis_key.pub));
 
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->connect (node0->network->endpoint ());
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node0->balance (nano::dev::genesis_key.pub), genesis_balance - 100);
 }
 
@@ -2049,7 +2060,8 @@ TEST (bulk, genesis)
 	nano::block_hash latest3 (node1->latest (nano::dev::genesis_key.pub));
 	ASSERT_NE (latest1, latest3);
 
-	node2->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
+	node2->connect (node1->network->endpoint ());
+	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	ASSERT_TIMELY_EQ (10s, node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	ASSERT_EQ (node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	node2->stop ();
@@ -2086,6 +2098,7 @@ TEST (bulk, offline_send)
 	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - amount, node1->balance (nano::dev::genesis_key.pub));
 
 	// Initiate bootstrap
+	node2->connect(node1->network->endpoint ());
 	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 
 	// Nodes should find each other after bootstrap initiation
@@ -2152,7 +2165,8 @@ TEST (bulk, genesis_pruning)
 	// Bootstrap with missing blocks for node2
 	node_flags.set_enable_pruning (false);
 	auto node2 = system.make_disconnected_node (std::nullopt, node_flags);
-	node2->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
+	node2->connect (node1->network->endpoint ());
+	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	node2->network->merge_peer (node1->network->endpoint ());
 	ASSERT_TIMELY (5s, node2->stats->count (nano::stat::type::bootstrap, nano::stat::detail::initiate, nano::stat::dir::out) >= 1);
 	ASSERT_TIMELY (5s, !node2->bootstrap_initiator.in_progress ());
@@ -2171,7 +2185,8 @@ TEST (bulk, genesis_pruning)
 
 	// New bootstrap to sync up everything
 	ASSERT_TIMELY_EQ (5s, node2->bootstrap_initiator.connections->get_connections_count (), 0);
-	node2->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
+	node2->connect (node1->network->endpoint ());
+	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	node2->stop ();
 }

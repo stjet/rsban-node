@@ -1,8 +1,7 @@
-use super::Network;
+use super::{Network, PeerConnector, PeerConnectorExt};
 use crate::stats::{DetailType, StatType};
 use crate::{
     stats::Stats,
-    transport::NetworkExt,
     utils::{CancellationToken, Runnable},
 };
 use rsnano_ledger::Ledger;
@@ -12,7 +11,7 @@ use tracing::info;
 // Tries to connect to peers that are stored in the peer cache
 pub struct PeerCacheConnector {
     ledger: Arc<Ledger>,
-    network: Arc<Network>,
+    peer_connector: Arc<PeerConnector>,
     stats: Arc<Stats>,
     first_run: bool,
     ///Delay between each connection attempt. This throttles new connections.
@@ -22,13 +21,13 @@ pub struct PeerCacheConnector {
 impl PeerCacheConnector {
     pub fn new(
         ledger: Arc<Ledger>,
-        network: Arc<Network>,
+        peer_connector: Arc<PeerConnector>,
         stats: Arc<Stats>,
         reach_out_delay: Duration,
     ) -> Self {
         Self {
             ledger,
-            network,
+            peer_connector,
             stats,
             first_run: true,
             reach_out_delay,
@@ -60,7 +59,7 @@ impl Runnable for PeerCacheConnector {
         for peer in cached_peers {
             self.stats
                 .inc(StatType::Network, DetailType::ReachoutCached);
-            self.network.merge_peer(peer);
+            self.peer_connector.merge_peer(peer);
             // Throttle reachout attempts
             if cancel_token.wait_for_cancellation(self.reach_out_delay) {
                 break;
@@ -192,10 +191,11 @@ mod tests {
         Arc<Stats>,
     ) {
         let ledger = ledger_with_peers(cached_peers);
-        let network = Arc::new(Network::new_null());
-        let merge_tracker = network.track_merge_peer();
+        let peer_connector = Arc::new(PeerConnector::new_null());
+        let merge_tracker = peer_connector.track_merge_peer();
         let stats = Arc::new(Stats::default());
-        let connector = PeerCacheConnector::new(ledger, network, stats.clone(), REACHOUT_DELAY);
+        let connector =
+            PeerCacheConnector::new(ledger, peer_connector, stats.clone(), REACHOUT_DELAY);
         (connector, merge_tracker, stats)
     }
 

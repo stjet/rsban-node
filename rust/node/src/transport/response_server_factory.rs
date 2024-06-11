@@ -1,13 +1,15 @@
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
-use super::{Network, ResponseServerImpl, Socket, SynCookies};
+use super::{
+    Network, NullSocketObserver, OutboundBandwidthLimiter, ResponseServerImpl, Socket, SynCookies,
+};
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::Stats,
-    utils::{AsyncRuntime, ThreadPool},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
 use std::sync::Arc;
@@ -28,6 +30,45 @@ pub(crate) struct ResponseServerFactory {
 }
 
 impl ResponseServerFactory {
+    pub(crate) fn new_null() -> Self {
+        let ledger = Arc::new(Ledger::new_null());
+        let config = NodeConfig::new_null();
+        let flags = NodeFlags::default();
+        let network = Arc::new(Network::new_null());
+        let runtime = Arc::new(AsyncRuntime::default());
+        let workers = Arc::new(ThreadPoolImpl::new_test_instance());
+        let network_params = NetworkParams::new(rsnano_core::Networks::NanoDevNetwork);
+        let stats = Arc::new(Stats::default());
+        let block_processor = Arc::new(BlockProcessor::new_test_instance(ledger.clone()));
+        Self {
+            runtime: runtime.clone(),
+            syn_cookies: Arc::new(SynCookies::new(1)),
+            stats: stats.clone(),
+            node_id: KeyPair::from(42),
+            ledger: ledger.clone(),
+            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
+            block_processor: block_processor.clone(),
+            bootstrap_initiator: Arc::new(BootstrapInitiator::new(
+                config.clone(),
+                flags.clone(),
+                network.clone(),
+                runtime,
+                workers,
+                network_params.clone(),
+                Arc::new(NullSocketObserver::new()),
+                stats,
+                Arc::new(OutboundBandwidthLimiter::default()),
+                block_processor,
+                None,
+                ledger,
+            )),
+            network,
+            node_flags: flags,
+            network_params,
+            node_config: config,
+        }
+    }
+
     pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServerImpl> {
         let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
             Arc::clone(&self.runtime),

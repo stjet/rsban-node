@@ -3,7 +3,10 @@ use crate::{
     config::NodeConfig,
     consensus::ActiveTransactions,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, Network, NetworkExt, TrafficType, TransportType},
+    transport::{
+        BufferDropPolicy, ChannelEnum, Network, PeerConnector, PeerConnectorExt, TrafficType,
+        TransportType,
+    },
     utils::{into_ipv6_socket_address, AsyncRuntime},
     NetworkParams, OnlineReps,
 };
@@ -34,6 +37,7 @@ pub struct RepCrawler {
     config: NodeConfig,
     network_params: NetworkParams,
     network: Arc<Network>,
+    peer_connector: Arc<PeerConnector>,
     async_rt: Arc<AsyncRuntime>,
     condition: Condvar,
     ledger: Arc<Ledger>,
@@ -55,6 +59,7 @@ impl RepCrawler {
         async_rt: Arc<AsyncRuntime>,
         ledger: Arc<Ledger>,
         active: Arc<ActiveTransactions>,
+        peer_connector: Arc<PeerConnector>,
     ) -> Self {
         let is_dev_network = network_params.network.is_dev_network();
         Self {
@@ -69,6 +74,7 @@ impl RepCrawler {
             ledger,
             active,
             thread: Mutex::new(None),
+            peer_connector,
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
@@ -366,15 +372,16 @@ impl RepCrawler {
     }
 
     pub fn keepalive_or_connect(&self, address: String, port: u16) {
-        let channels = Arc::clone(&self.network);
+        let peer_connector = self.peer_connector.clone();
+        let network = self.network.clone();
         self.async_rt.tokio.spawn(async move {
             match tokio::net::lookup_host((address.as_str(), port)).await {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match channels.find_channel(&endpoint) {
+                        match network.find_channel(&endpoint) {
                             Some(channel) => {
-                                let keepalive = channels.create_keepalive_message();
+                                let keepalive = network.create_keepalive_message();
                                 channel.send(
                                     &keepalive,
                                     None,
@@ -383,7 +390,7 @@ impl RepCrawler {
                                 )
                             }
                             None => {
-                                channels.merge_peer(endpoint);
+                                peer_connector.merge_peer(endpoint);
                             }
                         }
                     }

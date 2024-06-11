@@ -1,6 +1,7 @@
 use super::{
-    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network,
-    ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder, SocketObserver, TcpConfig,
+    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network, PeerConnector,
+    PeerConnectorExt, ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder,
+    SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -20,7 +21,7 @@ use std::{
     time::Duration,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 pub struct AcceptReturn {
     result: AcceptResult,
@@ -42,8 +43,6 @@ impl AcceptReturn {
     }
 }
 
-pub struct PeerConnector {}
-
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
@@ -58,8 +57,8 @@ pub struct TcpListener {
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
-    response_server_factory: ResponseServerFactory,
-    peer_connector: PeerConnector,
+    peer_connector: Arc<PeerConnector>,
+    response_server_factory: Arc<ResponseServerFactory>,
 }
 
 impl Drop for TcpListener {
@@ -85,10 +84,10 @@ impl TcpListener {
         socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         workers: Arc<dyn ThreadPool>,
-        response_server_factory: ResponseServerFactory,
+        response_server_factory: Arc<ResponseServerFactory>,
+        peer_connector: Arc<PeerConnector>,
     ) -> Self {
         Self {
-            peer_connector: PeerConnector {},
             port: AtomicU16::new(port),
             config,
             node_config,
@@ -105,6 +104,7 @@ impl TcpListener {
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_factory,
+            peer_connector,
         }
     }
 
@@ -151,58 +151,13 @@ impl TcpListener {
 pub trait TcpListenerExt {
     fn start(&self);
     async fn run(&self, listener: tokio::net::TcpListener);
-    async fn connect(&self, remote: SocketAddrV6) -> bool;
-
-    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()>;
+    fn connect(&self, remote: SocketAddrV6);
 }
 
 #[async_trait]
 impl TcpListenerExt for Arc<TcpListener> {
-    async fn connect(&self, remote: SocketAddrV6) -> bool {
-        if self.is_stopped() {
-            return false;
-        }
-
-        if !self.network.add_outbound_attempt(remote) {
-            return false;
-        }
-
-        let self_l = Arc::clone(self);
-        tokio::spawn(async move {
-            tokio::select! {
-                result =  self_l.connect_impl(remote) =>{
-                    if let Err(e) = result {
-                        self_l.stats.inc_dir(
-                            StatType::TcpListener,
-                            DetailType::ConnectError,
-                            Direction::Out,
-                        );
-                        debug!("Error connecting to: {} ({:?})", remote, e);
-                    }
-
-                },
-                _ = tokio::time::sleep(self_l.config.connect_timeout) =>{
-                    self_l.stats
-                        .inc(StatType::TcpListener, DetailType::AttemptTimeout);
-                    debug!(
-                        "Connection attempt timed out: {}",
-                        remote,
-                    );
-
-                }
-                _ = self_l.cancel_token.cancelled() =>{
-                    debug!(
-                        "Connection attempt cancelled: {}",
-                        remote,
-                    );
-
-                }
-            }
-
-            self_l.network.remove_attempt(&remote);
-        });
-
-        true // Attempt started
+    fn connect(&self, remote: SocketAddrV6) {
+        self.peer_connector.merge_peer(remote)
     }
 
     fn start(&self) {
@@ -294,46 +249,6 @@ impl TcpListenerExt for Arc<TcpListener> {
             _ = self.cancel_token.cancelled() => { },
             _ = run_loop => {}
         }
-    }
-
-    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
-        let raw_listener = tokio::net::TcpSocket::new_v6()?;
-        let raw_stream = raw_listener.connect(endpoint.into()).await?;
-        let raw_stream = TcpStream::new(raw_stream);
-        let remote_endpoint = raw_stream.peer_addr()?;
-
-        let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
-        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-        let socket = SocketBuilder::new(
-            ChannelDirection::Outbound,
-            Arc::clone(&self.workers),
-            Arc::downgrade(&self.runtime),
-        )
-        .default_timeout(Duration::from_secs(
-            self.node_config.tcp_io_timeout_s as u64,
-        ))
-        .silent_connection_tolerance_time(Duration::from_secs(
-            self.network_params
-                .network
-                .silent_connection_tolerance_time_s as u64,
-        ))
-        .idle_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ))
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            Arc::clone(&self.socket_observer),
-        ])))
-        .use_existing_socket(raw_stream, remote_endpoint)
-        .finish();
-
-        let response_server = self
-            .response_server_factory
-            .create_response_server(socket.clone());
-
-        self.network
-            .accept_one(&socket, &response_server, ChannelDirection::Outbound)
-            .await
     }
 }
 

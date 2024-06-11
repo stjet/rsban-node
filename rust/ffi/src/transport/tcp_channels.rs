@@ -200,11 +200,6 @@ pub extern "C" fn rsn_tcp_channels_random_fanout(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_tcp_channels_merge_peer(handle: &TcpChannelsHandle, peer: &EndpointDto) {
-    handle.merge_peer(peer.into());
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_tcp_channels_flood_message(
     handle: &TcpChannelsHandle,
     msg: &MessageHandle,

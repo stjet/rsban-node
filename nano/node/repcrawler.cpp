@@ -168,24 +168,6 @@ void nano::representative_register::on_rep_request (std::shared_ptr<nano::transp
 // rep_crawler
 //------------------------------------------------------------------------------
 
-nano::rep_crawler::rep_crawler (nano::rep_crawler_config const & config_a, nano::node & node_a) :
-	node (node_a)
-{
-	auto config_dto{ node_a.config->to_dto () };
-	auto network_dto{ node_a.network_params.to_dto () };
-	handle = rsnano::rsn_rep_crawler_create (
-	node_a.representative_register.handle,
-	node_a.stats->handle,
-	config_a.query_timeout.count (),
-	node_a.online_reps.get_handle (),
-	&config_dto,
-	&network_dto,
-	node_a.network->tcp_channels->handle,
-	node_a.async_rt.handle,
-	node_a.ledger.handle,
-	node_a.active.handle);
-}
-
 nano::rep_crawler::rep_crawler (rsnano::RepCrawlerHandle * handle, nano::node & node_a) :
 	handle{ handle },
 	node{ node_a }

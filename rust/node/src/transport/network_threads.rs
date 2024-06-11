@@ -1,6 +1,6 @@
 use rsnano_messages::{Keepalive, Message};
 
-use super::{Network, NetworkExt, SynCookies};
+use super::{Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
@@ -20,6 +20,7 @@ pub struct NetworkThreads {
     processing_threads: Vec<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
+    peer_connector: Arc<PeerConnector>,
     config: NodeConfig,
     flags: NodeFlags,
     network_params: NetworkParams,
@@ -31,6 +32,7 @@ pub struct NetworkThreads {
 impl NetworkThreads {
     pub fn new(
         network: Arc<Network>,
+        peer_connector: Arc<PeerConnector>,
         config: NodeConfig,
         flags: NodeFlags,
         network_params: NetworkParams,
@@ -45,6 +47,7 @@ impl NetworkThreads {
             processing_threads: Vec::new(),
             stopped: Arc::new((Condvar::new(), Mutex::new(false))),
             network,
+            peer_connector,
             config,
             flags,
             network_params,
@@ -89,8 +92,9 @@ impl NetworkThreads {
         let reachout = ReachoutLoop {
             stopped: self.stopped.clone(),
             network_params: self.network_params.clone(),
-            stats: Arc::clone(&self.stats),
-            network: Arc::clone(&self.network),
+            stats: self.stats.clone(),
+            network: self.network.clone(),
+            peer_connector: self.peer_connector.clone(),
         };
 
         self.reachout_thread = Some(
@@ -279,6 +283,7 @@ struct ReachoutLoop {
     network_params: NetworkParams,
     stats: Arc<Stats>,
     network: Arc<Network>,
+    peer_connector: Arc<PeerConnector>,
 }
 
 impl ReachoutLoop {
@@ -302,7 +307,7 @@ impl ReachoutLoop {
             if let Some(keepalive) = self.network.sample_keepalive() {
                 for peer in keepalive.peers {
                     self.stats.inc(StatType::Network, DetailType::ReachoutLive);
-                    self.network.merge_peer(peer);
+                    self.peer_connector.merge_peer(peer);
 
                     // Throttle reachout attempts
                     std::thread::sleep(self.network_params.network.merge_period);

@@ -2,25 +2,10 @@ use super::{
     bootstrap_attempt::BootstrapAttemptHandle, bootstrap_attempts::BootstrapAttemptsHandle,
     bootstrap_connections::BootstrapConnectionsHandle, pulls_cache::PullsCacheHandle,
 };
-use crate::{
-    block_processing::BlockProcessorHandle,
-    ledger::datastore::LedgerHandle,
-    to_rust_string,
-    transport::{
-        EndpointDto, OutboundBandwidthLimiterHandle, SocketFfiObserver, TcpChannelsHandle,
-    },
-    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
-    wallets::AccountVecHandle,
-    websocket::WebsocketListenerHandle,
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
-};
+use crate::{to_rust_string, transport::EndpointDto, wallets::AccountVecHandle};
 use rsnano_core::{Account, HashOrAccount};
 use rsnano_node::bootstrap::{BootstrapInitiator, BootstrapInitiatorExt};
-use std::{
-    ffi::{c_char, c_void},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ffi::c_char, ops::Deref, sync::Arc};
 
 pub struct BootstrapInitiatorHandle(pub Arc<BootstrapInitiator>);
 
@@ -30,44 +15,6 @@ impl Deref for BootstrapInitiatorHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_initiator_create(
-    config: &NodeConfigDto,
-    flags: &NodeFlagsHandle,
-    channels: &TcpChannelsHandle,
-    async_rt: &AsyncRuntimeHandle,
-    workers: &ThreadPoolHandle,
-    network_params: &NetworkParamsDto,
-    socket_observer: *mut c_void,
-    stats: &StatHandle,
-    outbound_limiter: &OutboundBandwidthLimiterHandle,
-    block_processor: &BlockProcessorHandle,
-    websocket: *mut WebsocketListenerHandle,
-    ledger: &LedgerHandle,
-) -> *mut BootstrapInitiatorHandle {
-    let websocket = if websocket.is_null() {
-        None
-    } else {
-        Some(Arc::clone(&*websocket))
-    };
-    Box::into_raw(Box::new(BootstrapInitiatorHandle(Arc::new(
-        BootstrapInitiator::new(
-            config.try_into().unwrap(),
-            flags.lock().unwrap().clone(),
-            Arc::clone(channels),
-            Arc::clone(async_rt),
-            Arc::clone(workers),
-            network_params.try_into().unwrap(),
-            Arc::new(SocketFfiObserver::new(socket_observer)),
-            Arc::clone(stats),
-            Arc::clone(outbound_limiter),
-            Arc::clone(block_processor),
-            websocket,
-            Arc::clone(&ledger),
-        ),
-    ))))
 }
 
 #[no_mangle]
@@ -100,10 +47,9 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_bootstrap(
 pub unsafe extern "C" fn rsn_bootstrap_initiator_bootstrap2(
     handle: &BootstrapInitiatorHandle,
     endpoint: &EndpointDto,
-    add_to_peers: bool,
     id: *const c_char,
 ) {
-    handle.bootstrap2(endpoint.into(), add_to_peers, to_rust_string(id));
+    handle.bootstrap2(endpoint.into(), to_rust_string(id));
 }
 
 #[no_mangle]

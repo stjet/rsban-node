@@ -13,7 +13,10 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Network, NetworkExt, OutboundBandwidthLimiter, SocketObserver},
+    transport::{
+        Network, NetworkExt, OutboundBandwidthLimiter, PeerConnector, PeerConnectorExt,
+        SocketObserver,
+    },
     utils::{AsyncRuntime, ThreadPool},
     websocket::WebsocketListener,
     NetworkParams,
@@ -208,7 +211,7 @@ pub trait BootstrapInitiatorExt {
     fn start(&self);
     fn stop(&self);
     fn bootstrap(&self, force: bool, id_a: String, frontiers_age_a: u32, start_account_a: Account);
-    fn bootstrap2(&self, endpoint_a: SocketAddrV6, add_to_peers: bool, id_a: String);
+    fn bootstrap2(&self, endpoint_a: SocketAddrV6, id_a: String);
     fn bootstrap_lazy(&self, hash_or_account_a: HashOrAccount, force: bool, id_a: String) -> bool;
     fn bootstrap_wallet(&self, accounts_a: VecDeque<Account>);
 }
@@ -304,12 +307,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
         }
     }
 
-    fn bootstrap2(&self, endpoint_a: SocketAddrV6, add_to_peers: bool, id_a: String) {
-        if add_to_peers {
-            if !self.flags.disable_tcp_realtime {
-                self.network.merge_peer(endpoint_a);
-            }
-        }
+    fn bootstrap2(&self, endpoint_a: SocketAddrV6, id_a: String) {
         if !self.stopped.load(Ordering::SeqCst) {
             self.stop_attempts();
             self.stats

@@ -24,8 +24,8 @@ use crate::{
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
         Network, NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
-        PeerCacheConnector, PeerCacheUpdater, ResponseServerFactory, SocketObserver, SynCookies,
-        TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
+        PeerCacheConnector, PeerCacheUpdater, PeerConnector, ResponseServerFactory, SocketObserver,
+        SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -116,6 +116,7 @@ pub struct Node {
     pub live_message_processor: Arc<LiveMessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
+    pub peer_connector: Arc<PeerConnector>,
     ongoing_bootstrap: Arc<OngoingBootstrap>,
     peer_cache_updater: TimerThread<PeerCacheUpdater>,
     peer_cache_connector: TimerThread<PeerCacheConnector>,
@@ -415,20 +416,7 @@ impl Node {
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
 
-        let rep_crawler = Arc::new(RepCrawler::new(
-            Arc::clone(&representative_register),
-            Arc::clone(&stats),
-            config.rep_crawler_query_timeout,
-            Arc::clone(&online_reps),
-            config.clone(),
-            network_params.clone(),
-            Arc::clone(&network),
-            Arc::clone(&async_rt),
-            Arc::clone(&ledger),
-            Arc::clone(&active),
-        ));
-
-        let response_server_factory = ResponseServerFactory {
+        let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
             syn_cookies: syn_cookies.clone(),
             stats: stats.clone(),
@@ -441,7 +429,33 @@ impl Node {
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             node_config: config.clone(),
-        };
+        });
+
+        let peer_connector = Arc::new(PeerConnector::new(
+            config.tcp.clone(),
+            config.clone(),
+            network.clone(),
+            stats.clone(),
+            async_rt.clone(),
+            socket_observer.clone(),
+            workers.clone(),
+            network_params.clone(),
+            response_server_factory.clone(),
+        ));
+
+        let rep_crawler = Arc::new(RepCrawler::new(
+            Arc::clone(&representative_register),
+            Arc::clone(&stats),
+            config.rep_crawler_query_timeout,
+            Arc::clone(&online_reps),
+            config.clone(),
+            network_params.clone(),
+            Arc::clone(&network),
+            Arc::clone(&async_rt),
+            Arc::clone(&ledger),
+            Arc::clone(&active),
+            peer_connector.clone(),
+        ));
 
         // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
         //         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
@@ -460,7 +474,8 @@ impl Node {
             socket_observer,
             Arc::clone(&stats),
             Arc::clone(&workers),
-            response_server_factory,
+            response_server_factory.clone(),
+            peer_connector.clone(),
         ));
 
         network.set_listener(Arc::downgrade(&tcp_listener));
@@ -552,17 +567,18 @@ impl Node {
         ));
 
         let live_message_processor = Arc::new(LiveMessageProcessor::new(
-            Arc::clone(&stats),
-            Arc::clone(&network),
+            stats.clone(),
+            network.clone(),
+            peer_connector.clone(),
             Arc::clone(&block_processor),
             config.clone(),
             flags.clone(),
-            Arc::clone(&wallets),
-            Arc::clone(&request_aggregator),
-            Arc::clone(&vote_processor_queue),
-            Arc::clone(&telemetry),
-            Arc::clone(&bootstrap_server),
-            Arc::clone(&ascendboot),
+            wallets.clone(),
+            request_aggregator.clone(),
+            vote_processor_queue.clone(),
+            telemetry.clone(),
+            bootstrap_server.clone(),
+            ascendboot.clone(),
         ));
 
         let live_message_processor_weak = Arc::downgrade(&live_message_processor);
@@ -578,13 +594,14 @@ impl Node {
             config: config.clone(),
         });
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
-            Arc::clone(&network),
+            network.clone(),
+            peer_connector.clone(),
             config.clone(),
             flags.clone(),
             network_params.clone(),
-            Arc::clone(&stats),
-            Arc::clone(&syn_cookies),
-            Arc::clone(&keepalive_factory),
+            stats.clone(),
+            syn_cookies.clone(),
+            keepalive_factory.clone(),
         )));
 
         let processor = Arc::downgrade(&live_message_processor);
@@ -1016,9 +1033,9 @@ impl Node {
         );
 
         let peer_cache_connector = PeerCacheConnector::new(
-            Arc::clone(&ledger),
-            Arc::clone(&network),
-            Arc::clone(&stats),
+            ledger.clone(),
+            peer_connector.clone(),
+            stats.clone(),
             network_params.network.merge_period,
         );
 
@@ -1045,6 +1062,7 @@ impl Node {
                 network_params.network.merge_period,
             ),
             ongoing_bootstrap,
+            peer_connector,
             node_id,
             workers,
             bootstrap_workers,
@@ -1279,6 +1297,7 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.peer_connector.stop();
         self.ledger_pruning.stop();
         self.peer_cache_connector.stop();
         self.peer_cache_updater.stop();

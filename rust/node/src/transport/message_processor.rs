@@ -4,19 +4,21 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::{RequestAggregator, VoteProcessorQueue},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, NetworkExt, TrafficType},
+    transport::{BufferDropPolicy, TrafficType},
     wallets::Wallets,
     Telemetry,
 };
+use peer_connector::PeerConnectorExt;
 use rsnano_messages::{Message, TelemetryAck};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::trace;
 
-use super::{ChannelEnum, Network};
+use super::{peer_connector, ChannelEnum, Network, PeerConnector};
 
 pub struct LiveMessageProcessor {
     stats: Arc<Stats>,
     network: Arc<Network>,
+    peer_connector: Arc<PeerConnector>,
     block_processor: Arc<BlockProcessor>,
     config: NodeConfig,
     flags: NodeFlags,
@@ -32,6 +34,7 @@ impl LiveMessageProcessor {
     pub fn new(
         stats: Arc<Stats>,
         network: Arc<Network>,
+        peer_connector: Arc<PeerConnector>,
         block_processor: Arc<BlockProcessor>,
         config: NodeConfig,
         flags: NodeFlags,
@@ -45,6 +48,7 @@ impl LiveMessageProcessor {
         Self {
             stats,
             network,
+            peer_connector,
             block_processor,
             config,
             flags,
@@ -73,7 +77,7 @@ impl LiveMessageProcessor {
                     // TODO: Remove this as we do not need to establish a second connection to the same peer
                     let new_endpoint =
                         SocketAddrV6::new(*channel.remote_endpoint().ip(), peer0.port(), 0, 0);
-                    self.network.merge_peer(new_endpoint);
+                    self.peer_connector.merge_peer(new_endpoint);
 
                     // Remember this for future forwarding to other peers
                     channel.set_peering_endpoint(new_endpoint);

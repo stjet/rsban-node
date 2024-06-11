@@ -317,12 +317,6 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
 }
 
-void nano::transport::tcp_channels::merge_peer (nano::endpoint const & peer_a)
-{
-	auto peer_dto{ rsnano::udp_endpoint_to_dto (peer_a) };
-	rsnano::rsn_tcp_channels_merge_peer (handle, &peer_dto);
-}
-
 bool nano::transport::tcp_channels::track_reachout (nano::endpoint const & endpoint_a)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };

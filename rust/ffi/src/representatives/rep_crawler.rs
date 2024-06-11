@@ -1,18 +1,10 @@
-use super::{OnlineRepsHandle, RepresentativeRegisterHandle};
-use crate::{
-    consensus::{ActiveTransactionsHandle, VoteHandle},
-    ledger::datastore::LedgerHandle,
-    transport::{ChannelHandle, TcpChannelsHandle},
-    utils::AsyncRuntimeHandle,
-    NetworkParamsDto, NodeConfigDto, StatHandle,
-};
+use crate::{consensus::VoteHandle, transport::ChannelHandle};
 use rsnano_core::BlockHash;
 use rsnano_node::representatives::{RepCrawler, RepCrawlerExt};
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,
     sync::Arc,
-    time::Duration,
 };
 
 pub struct RepCrawlerHandle(pub Arc<RepCrawler>);
@@ -23,33 +15,6 @@ impl Deref for RepCrawlerHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_rep_crawler_create(
-    representative_register: &RepresentativeRegisterHandle,
-    stats: &StatHandle,
-    query_timeout_ms: u64,
-    online_reps: &OnlineRepsHandle,
-    config: &NodeConfigDto,
-    network_params: &NetworkParamsDto,
-    tcp_channels: &TcpChannelsHandle,
-    async_rt: &AsyncRuntimeHandle,
-    ledger: &LedgerHandle,
-    active: &ActiveTransactionsHandle,
-) -> *mut RepCrawlerHandle {
-    Box::into_raw(Box::new(RepCrawlerHandle(Arc::new(RepCrawler::new(
-        Arc::clone(representative_register),
-        Arc::clone(stats),
-        Duration::from_millis(query_timeout_ms),
-        Arc::clone(online_reps),
-        config.try_into().unwrap(),
-        network_params.try_into().unwrap(),
-        Arc::clone(tcp_channels),
-        Arc::clone(async_rt),
-        Arc::clone(ledger),
-        Arc::clone(active),
-    )))))
 }
 
 #[no_mangle]

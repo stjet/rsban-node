@@ -818,6 +818,7 @@ TEST (node, DISABLED_fork_bootstrap_flip)
 		auto tx{ node2.store.tx_begin_read () };
 		ASSERT_TRUE (node2.ledger.any ().block_exists (*tx, send2->hash ()));
 	}
+	node2.connect (node1.network->endpoint ()); 
 	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ()); // Additionally add new peer to confirm & replace bootstrap block
 	auto again (true);
 	system0.deadline_set (50s);
@@ -1125,7 +1126,7 @@ TEST (node, DISABLED_fork_stale)
 	nano::test::system system2 (1);
 	auto & node1 (*system1.nodes[0]);
 	auto & node2 (*system2.nodes[0]);
-	node2.bootstrap_initiator.bootstrap (node1.network->endpoint (), false);
+	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ());
 
 	auto channel = nano::test::establish_tcp (system1, node2, node1.network->endpoint ());
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> ());
@@ -1180,7 +1181,7 @@ TEST (node, DISABLED_fork_stale)
 	node1.process_active (send2);
 	node2.process_active (send1);
 	node2.process_active (send2);
-	node2.bootstrap_initiator.bootstrap (node1.network->endpoint (), false);
+	node2.bootstrap_initiator.bootstrap (node1.network->endpoint ());
 	while (node2.block (send1->hash ()) == nullptr)
 	{
 		system1.poll ();
@@ -1401,7 +1402,7 @@ TEST (node, DISABLED_bootstrap_no_publish)
 		ASSERT_EQ (nano::block_status::progress, node0->ledger.process (*transaction, send0));
 	}
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TRUE (node1->active.empty ());
 	system1.deadline_set (10s);
 	while (node1->block (send0->hash ()) == nullptr)
@@ -1444,7 +1445,7 @@ TEST (node, DISABLED_bootstrap_bulk_push)
 	ASSERT_FALSE (node0->bootstrap_initiator.in_progress ());
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
 	ASSERT_TRUE (node1->active.empty ());
-	node0->bootstrap_initiator.bootstrap (node1->network->endpoint (), false);
+	node0->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	system1.deadline_set (10s);
 	while (node1->block (send0->hash ()) == nullptr)
 	{
@@ -1512,7 +1513,7 @@ TEST (node, bootstrap_fork_open)
 	(void)node0->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
 	ASSERT_FALSE (node1->block_or_pruned_exists (open0->hash ()));
 	ASSERT_FALSE (node1->bootstrap_initiator.in_progress ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint (), false);
+	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 	ASSERT_TIMELY (1s, node1->active.empty ());
 	ASSERT_TIMELY (10s, !node1->block_or_pruned_exists (open1->hash ()) && node1->block_or_pruned_exists (open0->hash ()));
 }
@@ -1547,6 +1548,7 @@ TEST (node, bootstrap_confirm_frontiers)
 
 	// create a bootstrap connection from node1 to node0
 	// this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
+	node1->connect (node0->network->endpoint ());
 	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
 
 	// Wait until the block is confirmed on node1. Poll more than usual because we are polling

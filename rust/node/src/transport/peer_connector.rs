@@ -1,0 +1,196 @@
+use super::{
+    ChannelDirection, CompositeSocketObserver, Network, NullSocketObserver, ResponseServerFactory,
+    SocketBuilder, SocketObserver, TcpConfig,
+};
+use crate::{
+    config::NodeConfig,
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    transport::TcpStream,
+    utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
+    NetworkParams,
+};
+use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
+use std::{net::SocketAddrV6, sync::Arc, time::Duration};
+use tokio_util::sync::CancellationToken;
+use tracing::debug;
+
+/// Establishes a network connection to a given peer
+pub struct PeerConnector {
+    config: TcpConfig,
+    node_config: NodeConfig,
+    network: Arc<Network>,
+    stats: Arc<Stats>,
+    runtime: Arc<AsyncRuntime>,
+    socket_observer: Arc<dyn SocketObserver>,
+    workers: Arc<dyn ThreadPool>,
+    network_params: NetworkParams,
+    cancel_token: CancellationToken,
+    response_server_factory: Arc<ResponseServerFactory>,
+    merge_peer_listener: OutputListenerMt<SocketAddrV6>,
+}
+
+impl PeerConnector {
+    pub(crate) fn new(
+        config: TcpConfig,
+        node_config: NodeConfig,
+        network: Arc<Network>,
+        stats: Arc<Stats>,
+        runtime: Arc<AsyncRuntime>,
+        socket_observer: Arc<dyn SocketObserver>,
+        workers: Arc<dyn ThreadPool>,
+        network_params: NetworkParams,
+        response_server_factory: Arc<ResponseServerFactory>,
+    ) -> Self {
+        Self {
+            config,
+            node_config,
+            network,
+            stats,
+            runtime,
+            socket_observer,
+            workers,
+            network_params,
+            cancel_token: CancellationToken::new(),
+            response_server_factory,
+            merge_peer_listener: OutputListenerMt::new(),
+        }
+    }
+
+    pub(crate) fn new_null() -> Self {
+        Self {
+            config: Default::default(),
+            node_config: NodeConfig::new_null(),
+            network: Arc::new(Network::new_null()),
+            stats: Arc::new(Default::default()),
+            runtime: Arc::new(Default::default()),
+            socket_observer: Arc::new(NullSocketObserver::new()),
+            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
+            network_params: NetworkParams::new(rsnano_core::Networks::NanoDevNetwork),
+            cancel_token: CancellationToken::new(),
+            response_server_factory: Arc::new(ResponseServerFactory::new_null()),
+            merge_peer_listener: OutputListenerMt::new(),
+        }
+    }
+
+    pub fn track_merge_peer(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
+        self.merge_peer_listener.track()
+    }
+
+    pub fn stop(&self) {
+        self.cancel_token.cancel();
+    }
+
+    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
+        let raw_listener = tokio::net::TcpSocket::new_v6()?;
+        let raw_stream = raw_listener.connect(endpoint.into()).await?;
+        let raw_stream = TcpStream::new(raw_stream);
+        let remote_endpoint = raw_stream.peer_addr()?;
+
+        let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
+        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+        let socket = SocketBuilder::new(
+            ChannelDirection::Outbound,
+            Arc::clone(&self.workers),
+            Arc::downgrade(&self.runtime),
+        )
+        .default_timeout(Duration::from_secs(
+            self.node_config.tcp_io_timeout_s as u64,
+        ))
+        .silent_connection_tolerance_time(Duration::from_secs(
+            self.network_params
+                .network
+                .silent_connection_tolerance_time_s as u64,
+        ))
+        .idle_timeout(Duration::from_secs(
+            self.network_params.network.idle_timeout_s as u64,
+        ))
+        .observer(Arc::new(CompositeSocketObserver::new(vec![
+            socket_stats,
+            Arc::clone(&self.socket_observer),
+        ])))
+        .use_existing_socket(raw_stream, remote_endpoint)
+        .finish();
+
+        let response_server = self
+            .response_server_factory
+            .create_response_server(socket.clone());
+
+        self.network
+            .accept_one(&socket, &response_server, ChannelDirection::Outbound)
+            .await
+    }
+}
+
+pub trait PeerConnectorExt {
+    fn merge_peer(&self, peer: SocketAddrV6);
+}
+
+impl PeerConnectorExt for Arc<PeerConnector> {
+    fn merge_peer(&self, peer: SocketAddrV6) {
+        self.merge_peer_listener.emit(peer);
+
+        if self
+            .network
+            .reachout_checked(&peer, self.node_config.allow_local_peers)
+        {
+            return;
+        }
+
+        self.stats.inc(StatType::Network, DetailType::MergePeer);
+
+        if !self.network.add_outbound_attempt(peer) {
+            return;
+        }
+
+        let self_l = Arc::clone(self);
+        self.runtime.tokio.spawn(async move {
+            tokio::select! {
+                result =  self_l.connect_impl(peer) =>{
+                    if let Err(e) = result {
+                        self_l.stats.inc_dir(
+                            StatType::TcpListener,
+                            DetailType::ConnectError,
+                            Direction::Out,
+                        );
+                        debug!("Error connecting to: {} ({:?})", peer, e);
+                    }
+
+                },
+                _ = tokio::time::sleep(self_l.config.connect_timeout) =>{
+                    self_l.stats
+                        .inc(StatType::TcpListener, DetailType::AttemptTimeout);
+                    debug!(
+                        "Connection attempt timed out: {}",
+                        peer,
+                    );
+
+                }
+                _ = self_l.cancel_token.cancelled() =>{
+                    debug!(
+                        "Connection attempt cancelled: {}",
+                        peer,
+                    );
+
+                }
+            }
+
+            self_l.network.remove_attempt(&peer);
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_core::utils::TEST_ENDPOINT_1;
+
+    #[test]
+    fn track_merge_peer() {
+        let peer_connector = Arc::new(PeerConnector::new_null());
+        let merge_tracker = peer_connector.track_merge_peer();
+
+        peer_connector.merge_peer(TEST_ENDPOINT_1);
+
+        assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
+    }
+}

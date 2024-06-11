@@ -1801,7 +1801,8 @@ void nano::json_handler::bootstrap ()
 			if (!node.flags.disable_legacy_bootstrap ())
 			{
 				std::string bootstrap_id (request.get<std::string> ("id", ""));
-				node.bootstrap_initiator.bootstrap (nano::endpoint (address, port), true, bootstrap_id);
+				node.connect(nano::endpoint (address, port));
+				node.bootstrap_initiator.bootstrap (nano::endpoint (address, port), bootstrap_id);
 				response_l.put ("success", "");
 			}
 			else

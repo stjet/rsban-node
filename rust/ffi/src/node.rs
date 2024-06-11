@@ -30,7 +30,7 @@ use rsnano_core::{Vote, VoteCode};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelEnum, NetworkExt},
+    transport::{ChannelEnum, NetworkExt, PeerConnectorExt},
 };
 use std::{
     ffi::{c_char, c_void},
@@ -418,7 +418,7 @@ pub extern "C" fn rsn_node_ledger_pruning(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_connect(handle: &NodeHandle, endpoint: &EndpointDto) {
-    handle.0.network.merge_peer(endpoint.into());
+    handle.0.peer_connector.merge_peer(endpoint.into());
 }
 
 #[no_mangle]

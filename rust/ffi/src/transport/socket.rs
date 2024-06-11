@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::SocketStats,
     transport::{
         alive_sockets, CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions,
-        SocketObserver, SocketType, WriteCallback,
+        SocketObserver, WriteCallback,
     },
     utils::ErrorCode,
 };
@@ -81,11 +81,6 @@ pub unsafe extern "C" fn rsn_socket_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_start(handle: *mut SocketHandle) {
-    (*handle).start();
 }
 
 type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
@@ -205,58 +200,6 @@ pub unsafe extern "C" fn rsn_socket_async_write(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_local_endpoint(
-    handle: *mut SocketHandle,
-    endpoint: *mut EndpointDto,
-) {
-    let ep = (*handle).local_endpoint_v6();
-    set_endpoint_v6_dto(&ep, &mut (*endpoint))
-}
-
-fn set_endpoint_v6_dto(endpoint: &SocketAddrV6, result: &mut EndpointDto) {
-    result.port = endpoint.port();
-    result.v6 = true;
-    result.bytes.copy_from_slice(&endpoint.ip().octets());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_get_remote(
-    handle: *mut SocketHandle,
-    result: *mut EndpointDto,
-) {
-    match (*handle).get_remote() {
-        Some(ep) => {
-            set_endpoint_v6_dto(&ep, &mut *result);
-        }
-        None => {
-            (*result).port = 0;
-            (*result).v6 = false;
-            (*result).bytes = [0; 16];
-        }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_endpoint_type(handle: *mut SocketHandle) -> u8 {
-    (*handle).direction() as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_max(handle: *mut SocketHandle, traffic_type: u8) -> bool {
-    (*handle).max(FromPrimitive::from_u8(traffic_type).unwrap())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_full(handle: *mut SocketHandle, traffic_type: u8) -> bool {
-    (*handle).full(FromPrimitive::from_u8(traffic_type).unwrap())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_timeout(handle: *mut SocketHandle, timeout_s: u64) {
-    (*handle).set_timeout(Duration::from_secs(timeout_s));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_close(handle: *mut SocketHandle) {
     (*handle).close()
 }
@@ -264,16 +207,6 @@ pub unsafe extern "C" fn rsn_socket_close(handle: *mut SocketHandle) {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_close_internal(handle: *mut SocketHandle) {
     (*handle).close_internal();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_is_closed(handle: *mut SocketHandle) -> bool {
-    (*handle).is_closed()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_has_timed_out(handle: *mut SocketHandle) -> bool {
-    (*handle).has_timed_out()
 }
 
 #[no_mangle]
@@ -298,36 +231,8 @@ pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerC
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_default_timeout_value(
-    handle: *mut SocketHandle,
-    timeout_s: u64,
-) {
-    (*handle).set_default_timeout_value(timeout_s)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_type(handle: *mut SocketHandle) -> u8 {
-    (*handle).socket_type() as u8
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_set_type(handle: *mut SocketHandle, socket_type: u8) {
-    (*handle).set_socket_type(SocketType::from_u8(socket_type).unwrap());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_is_bootstrap_connection(handle: *mut SocketHandle) -> bool {
-    (*handle).is_bootstrap_connection()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_socket_default_timeout_value(handle: *mut SocketHandle) -> u64 {
     (*handle).default_timeout_value()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_is_alive(handle: *mut SocketHandle) -> bool {
-    (*handle).is_alive()
 }
 
 #[no_mangle]

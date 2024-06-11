@@ -5,7 +5,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{NetworkExt, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageManager},
+    transport::{ChannelMode, NetworkExt, Socket, SocketExtensions, SynCookies, TcpMessageManager},
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -60,7 +60,7 @@ pub trait ResponseServerObserver: Send + Sync {
     fn bootstrap_server_timeout(&self, connection_id: usize);
     fn boostrap_server_exited(
         &self,
-        socket_type: SocketType,
+        socket_type: ChannelMode,
         connection_id: usize,
         endpoint: SocketAddrV6,
     );
@@ -77,7 +77,7 @@ impl ResponseServerObserver for NullTcpServerObserver {
 
     fn boostrap_server_exited(
         &self,
-        _socket_type: SocketType,
+        _socket_type: ChannelMode,
         _unique_id: usize,
         _endpoint: SocketAddrV6,
     ) {
@@ -237,12 +237,12 @@ impl ResponseServerImpl {
             return false;
         }
 
-        if self.socket.socket_type() != SocketType::Undefined {
+        if self.socket.mode() != ChannelMode::Undefined {
             return false;
         }
 
         observer.inc_bootstrap_count();
-        self.socket.set_socket_type(SocketType::Bootstrap);
+        self.socket.set_mode(ChannelMode::Bootstrap);
         debug!("Switched to bootstrap mode ({})", self.remote_endpoint());
         true
     }
@@ -257,7 +257,7 @@ impl ResponseServerImpl {
     }
 
     fn is_undefined_connection(&self) -> bool {
-        self.socket.socket_type() == SocketType::Undefined
+        self.socket.mode() == ChannelMode::Undefined
     }
 
     fn is_bootstrap_connection(&self) -> bool {
@@ -326,7 +326,7 @@ impl Drop for ResponseServerImpl {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         if let Some(observer) = self.observer.upgrade() {
-            observer.boostrap_server_exited(self.socket.socket_type(), self.unique_id(), remote_ep);
+            observer.boostrap_server_exited(self.socket.mode(), self.unique_id(), remote_ep);
         }
         self.stop();
     }
@@ -384,7 +384,7 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             return false;
         };
 
-        if self.socket.socket_type() != SocketType::Undefined {
+        if self.socket.mode() != ChannelMode::Undefined {
             return false;
         }
 
@@ -399,7 +399,7 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
 
         *self.channel.lock().unwrap() = Some(channel);
         observer.inc_realtime_count();
-        self.socket.set_socket_type(SocketType::Realtime);
+        self.socket.set_mode(ChannelMode::Realtime);
         debug!("Switched to realtime mode ({})", self.remote_endpoint());
         return true;
     }

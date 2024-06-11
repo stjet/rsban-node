@@ -1,5 +1,5 @@
 use super::{DetailType, Direction, StatType, Stats};
-use crate::transport::{ConnectionDirection, SocketObserver};
+use crate::transport::{ChannelDirection, SocketObserver};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::debug;
 
@@ -59,11 +59,11 @@ impl SocketObserver for SocketStats {
         );
     }
 
-    fn inactive_connection_dropped(&self, direction: ConnectionDirection) {
+    fn inactive_connection_dropped(&self, direction: ChannelDirection) {
         self.stats.inc_dir(
             StatType::Tcp,
             DetailType::TcpIoTimeoutDrop,
-            if direction == ConnectionDirection::Inbound {
+            if direction == ChannelDirection::Inbound {
                 Direction::In
             } else {
                 Direction::Out

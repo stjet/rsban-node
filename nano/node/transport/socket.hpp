@@ -91,8 +91,6 @@ public:
 	socket (nano::transport::socket &&) = delete;
 	virtual ~socket ();
 
-	void start ();
-
 	void async_connect (
 	boost::asio::ip::tcp::endpoint const &,
 	std::function<void (boost::system::error_code const &)>);
@@ -101,28 +99,6 @@ public:
 	nano::shared_const_buffer const &,
 	std::function<void (boost::system::error_code const &, std::size_t)> = {},
 	nano::transport::traffic_type = nano::transport::traffic_type::generic);
-
-	virtual void close ();
-	boost::asio::ip::tcp::endpoint remote_endpoint () const;
-	boost::asio::ip::tcp::endpoint local_endpoint () const;
-	/** Returns true if the socket has timed out */
-	bool has_timed_out () const;
-	/** This can be called to change the maximum idle time, e.g. based on the type of traffic detected. */
-	void set_default_timeout_value (std::chrono::seconds);
-	std::chrono::seconds get_default_timeout_value () const;
-	void set_timeout (std::chrono::seconds);
-	bool max (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
-	bool full (nano::transport::traffic_type = nano::transport::traffic_type::generic) const;
-	nano::transport::socket_type type () const;
-	void type_set (nano::transport::socket_type type_a);
-	nano::transport::socket_endpoint endpoint_type () const;
-	bool is_realtime_connection ()
-	{
-		return type () == nano::transport::socket_type::realtime || type () == nano::transport::socket_type::realtime_response_server;
-	}
-	bool is_bootstrap_connection ();
-	bool is_closed ();
-	bool alive () const;
 
 private:
 	/** The other end of the connection */

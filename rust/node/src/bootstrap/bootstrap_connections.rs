@@ -7,7 +7,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelEnum, ChannelTcp, ConnectionDirection, Network, OutboundBandwidthLimiter,
+        ChannelDirection, ChannelEnum, ChannelTcp, Network, OutboundBandwidthLimiter,
         SocketBuilder, SocketExtensions, SocketObserver,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool},
@@ -518,7 +518,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     fn connect_client(&self, endpoint: SocketAddrV6, push_front: bool) {
         self.connections_count.fetch_add(1, Ordering::SeqCst);
         let socket = SocketBuilder::new(
-            ConnectionDirection::Outbound,
+            ChannelDirection::Outbound,
             Arc::clone(&self.workers),
             Arc::downgrade(&self.async_rt),
         )

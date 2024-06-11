@@ -20,7 +20,7 @@ use crate::{
 
 use super::{
     message_deserializer::{AsyncBufferReader, MessageDeserializer},
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelEnum, ConnectionDirection, NetworkFilter,
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, NetworkFilter,
     OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
@@ -276,8 +276,8 @@ impl Channel for ChannelInProc {
         self.network_constants.protocol_version
     }
 
-    fn direction(&self) -> ConnectionDirection {
-        ConnectionDirection::Inbound
+    fn direction(&self) -> ChannelDirection {
+        ChannelDirection::Inbound
     }
 
     fn send(

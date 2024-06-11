@@ -14,7 +14,7 @@ use std::{
 };
 
 use super::{
-    BandwidthLimitType, BufferDropPolicy, Channel, ConnectionDirection, OutboundBandwidthLimiter,
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, OutboundBandwidthLimiter,
     TrafficType, WriteCallback,
 };
 
@@ -140,8 +140,8 @@ impl Channel for ChannelFake {
         self.protocol.version_using
     }
 
-    fn direction(&self) -> ConnectionDirection {
-        ConnectionDirection::Inbound
+    fn direction(&self) -> ChannelDirection {
+        ChannelDirection::Inbound
     }
 
     fn send(

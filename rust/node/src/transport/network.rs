@@ -1,6 +1,6 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelEnum, ChannelFake, ChannelTcp, ConnectionDirection, NetworkFilter, NullSocketObserver,
+    ChannelDirection, ChannelEnum, ChannelFake, ChannelTcp, NetworkFilter, NullSocketObserver,
     OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket, SocketExtensions,
     SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
     TrafficType, TransportType,
@@ -139,7 +139,7 @@ impl Network {
         &self,
         socket: &Arc<Socket>,
         response_server: &Arc<ResponseServerImpl>,
-        direction: ConnectionDirection,
+        direction: ChannelDirection,
     ) -> anyhow::Result<()> {
         let Some(remote_endpoint) = socket.get_remote() else {
             return Err(anyhow!("no remote endpoint"));
@@ -153,7 +153,7 @@ impl Network {
                 DetailType::AcceptRejected,
                 direction.into(),
             );
-            if direction == ConnectionDirection::Outbound {
+            if direction == ChannelDirection::Outbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
                     DetailType::ConnectFailure,
@@ -177,8 +177,7 @@ impl Network {
                     e, direction
                 )
             }
-            drop(socket);
-            if direction == ConnectionDirection::Inbound {
+            if direction == ChannelDirection::Inbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
                     DetailType::AcceptFailure,
@@ -206,7 +205,7 @@ impl Network {
 
         self.observer.socket_connected(Arc::clone(&socket));
 
-        if direction == ConnectionDirection::Outbound {
+        if direction == ChannelDirection::Outbound {
             self.stats.inc_dir(
                 StatType::TcpListener,
                 DetailType::ConnectSuccess,
@@ -280,11 +279,7 @@ impl Network {
         self.state.lock().unwrap().add_outbound_attempt(remote)
     }
 
-    pub(crate) fn check_limits(
-        &self,
-        ip: &Ipv6Addr,
-        direction: ConnectionDirection,
-    ) -> AcceptResult {
+    pub(crate) fn check_limits(&self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
         self.state.lock().unwrap().check_limits(ip, direction)
     }
 
@@ -534,9 +529,7 @@ impl Network {
             return false;
         }
 
-        guard
-            .attempts
-            .insert(*endpoint, ConnectionDirection::Outbound)
+        guard.attempts.insert(*endpoint, ChannelDirection::Outbound)
     }
 
     pub fn len_sqrt(&self) -> f32 {
@@ -928,9 +921,7 @@ impl State {
     }
 
     pub fn add_outbound_attempt(&mut self, remote: SocketAddrV6) -> bool {
-        let count = self
-            .attempts
-            .count_by_direction(ConnectionDirection::Outbound);
+        let count = self.attempts.count_by_direction(ChannelDirection::Outbound);
         if count > self.config.max_attempts {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
@@ -959,7 +950,7 @@ impl State {
             return false; // Rejected
         }
 
-        if self.check_limits(remote.ip(), ConnectionDirection::Outbound) != AcceptResult::Accepted {
+        if self.check_limits(remote.ip(), ChannelDirection::Outbound) != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
                 DetailType::ConnectRejected,
@@ -977,11 +968,11 @@ impl State {
         );
         debug!("Initiate outgoing connection to: {}", remote);
 
-        self.attempts.insert(remote, ConnectionDirection::Inbound);
+        self.attempts.insert(remote, ChannelDirection::Inbound);
         true
     }
 
-    pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ConnectionDirection) -> AcceptResult {
+    pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
         if self.is_excluded_ip(ip) {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
@@ -1030,10 +1021,8 @@ impl State {
         }
 
         match direction {
-            ConnectionDirection::Inbound => {
-                let count = self
-                    .channels
-                    .count_by_direction(ConnectionDirection::Inbound);
+            ChannelDirection::Inbound => {
+                let count = self.channels.count_by_direction(ChannelDirection::Inbound);
 
                 if count >= self.config.max_inbound_connections {
                     self.stats.inc_dir(
@@ -1048,10 +1037,8 @@ impl State {
                     return AcceptResult::Rejected;
                 }
             }
-            ConnectionDirection::Outbound => {
-                let count = self
-                    .channels
-                    .count_by_direction(ConnectionDirection::Outbound);
+            ChannelDirection::Outbound => {
+                let count = self.channels.count_by_direction(ChannelDirection::Outbound);
 
                 if count >= self.config.max_outbound_connections {
                     self.stats.inc_dir(

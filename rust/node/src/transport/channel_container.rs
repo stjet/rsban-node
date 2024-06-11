@@ -1,4 +1,4 @@
-use super::{ChannelEnum, ChannelTcp, ConnectionDirection, ResponseServerImpl, SocketExtensions};
+use super::{ChannelDirection, ChannelEnum, ChannelTcp, ResponseServerImpl, SocketExtensions};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use rsnano_core::{Account, PublicKey};
 use std::{
@@ -159,7 +159,7 @@ impl ChannelContainer {
             .unwrap_or_default()
     }
 
-    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
+    pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.by_endpoint
             .values()
             .filter(|entry| entry.channel.direction() == direction)

@@ -1,5 +1,5 @@
 use super::{
-    AcceptResult, CompositeSocketObserver, ConnectionDirection, ConnectionsPerAddress, Network,
+    AcceptResult, ChannelDirection, CompositeSocketObserver, ConnectionsPerAddress, Network,
     ResponseServerFactory, ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder,
     SocketExtensions, SocketObserver, TcpConfig,
 };
@@ -236,7 +236,7 @@ pub trait TcpListenerExt {
         &self,
         socket: Arc<Socket>,
         response_server: Arc<ResponseServerImpl>,
-        direction: ConnectionDirection,
+        direction: ChannelDirection,
     ) -> anyhow::Result<()>;
 
     async fn wait_available_slots(&self);
@@ -370,7 +370,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
                 let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
                 let socket = SocketBuilder::new(
-                    ConnectionDirection::Inbound,
+                    ChannelDirection::Inbound,
                     Arc::clone(&self.workers),
                     Arc::downgrade(&self.runtime),
                 )
@@ -397,7 +397,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
                 let _ = self
-                    .accept_one(socket, response_server, ConnectionDirection::Inbound)
+                    .accept_one(socket, response_server, ChannelDirection::Inbound)
                     .await;
 
                 // Sleep for a while to prevent busy loop
@@ -444,7 +444,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(
-            ConnectionDirection::Inbound,
+            ChannelDirection::Inbound,
             Arc::clone(&self.workers),
             Arc::downgrade(&self.runtime),
         )
@@ -470,7 +470,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             .response_server_factory
             .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
 
-        self.accept_one(socket, response_server, ConnectionDirection::Outbound)
+        self.accept_one(socket, response_server, ChannelDirection::Outbound)
             .await
     }
 
@@ -478,7 +478,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         &self,
         socket: Arc<Socket>,
         response_server: Arc<ResponseServerImpl>,
-        direction: ConnectionDirection,
+        direction: ChannelDirection,
     ) -> anyhow::Result<()> {
         let remote_endpoint = socket.get_remote().unwrap();
 
@@ -507,14 +507,14 @@ impl ResponseServerObserver for TcpListener {
 
     fn boostrap_server_exited(
         &self,
-        socket_type: super::SocketType,
+        socket_type: super::ChannelMode,
         _connection_id: usize,
         endpoint: SocketAddrV6,
     ) {
         debug!("Exiting server: {}", endpoint);
-        if socket_type == super::SocketType::Bootstrap {
+        if socket_type == super::ChannelMode::Bootstrap {
             self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
-        } else if socket_type == super::SocketType::Realtime {
+        } else if socket_type == super::ChannelMode::Realtime {
             self.realtime_count.fetch_sub(1, Ordering::SeqCst);
         }
     }

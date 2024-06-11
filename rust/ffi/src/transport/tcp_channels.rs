@@ -208,27 +208,6 @@ pub extern "C" fn rsn_tcp_channels_flood_message(
     handle.flood_message(&msg.message, scale)
 }
 
-pub struct EndpointListHandle(Vec<SocketAddrV6>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_endpoint_list_len(handle: &EndpointListHandle) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_endpoint_list_get(
-    handle: &EndpointListHandle,
-    index: usize,
-    result: &mut EndpointDto,
-) {
-    *result = handle.0.get(index).unwrap().into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_endpoint_list_destroy(handle: *mut EndpointListHandle) {
-    drop(Box::from_raw(handle))
-}
-
 pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);
 
 #[no_mangle]

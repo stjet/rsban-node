@@ -33,37 +33,40 @@ pub enum BufferDropPolicy {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
-pub enum ConnectionDirection {
+pub enum ChannelDirection {
     /// Socket was created by accepting an incoming connection
     Inbound,
     /// Socket was created by initiating an outgoing connection
     Outbound,
 }
 
-impl From<ConnectionDirection> for stats::Direction {
-    fn from(value: ConnectionDirection) -> Self {
+impl From<ChannelDirection> for stats::Direction {
+    fn from(value: ChannelDirection) -> Self {
         match value {
-            ConnectionDirection::Inbound => stats::Direction::In,
-            ConnectionDirection::Outbound => stats::Direction::Out,
+            ChannelDirection::Inbound => stats::Direction::In,
+            ChannelDirection::Outbound => stats::Direction::Out,
         }
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
-pub enum SocketType {
+pub enum ChannelMode {
+    /// No messages have been exchanged yet, so the mode is undefined
     Undefined,
+    /// Only serve bootstrap requests
     Bootstrap,
+    /// serve realtime traffic (votes, new blocks,...)
     Realtime,
     RealtimeResponseServer, // special type for tcp channel response server
 }
 
-impl SocketType {
+impl ChannelMode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            SocketType::Undefined => "undefined",
-            SocketType::Bootstrap => "bootstrap",
-            SocketType::Realtime => "realtime",
-            SocketType::RealtimeResponseServer => "realtime_response_server",
+            ChannelMode::Undefined => "undefined",
+            ChannelMode::Bootstrap => "bootstrap",
+            ChannelMode::Realtime => "realtime",
+            ChannelMode::RealtimeResponseServer => "realtime_response_server",
         }
     }
 }
@@ -77,7 +80,7 @@ pub trait SocketObserver: Send + Sync {
     fn write_error(&self) {}
     fn write_successful(&self, _len: usize) {}
     fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _direction: ConnectionDirection) {}
+    fn inactive_connection_dropped(&self, _direction: ChannelDirection) {}
 }
 
 #[derive(Default)]
@@ -150,7 +153,7 @@ impl SocketObserver for CompositeSocketObserver {
         }
     }
 
-    fn inactive_connection_dropped(&self, direction: ConnectionDirection) {
+    fn inactive_connection_dropped(&self, direction: ChannelDirection) {
         for child in &self.children {
             child.inactive_connection_dropped(direction);
         }
@@ -179,7 +182,7 @@ pub struct Socket {
     idle_timeout: Duration,
 
     thread_pool: Arc<dyn ThreadPool>,
-    direction: ConnectionDirection,
+    direction: ChannelDirection,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
 
@@ -209,7 +212,7 @@ pub struct Socket {
 impl Socket {
     pub fn create_null() -> Arc<Socket> {
         let thread_pool = Arc::new(ThreadPoolImpl::create_null());
-        SocketBuilder::new(ConnectionDirection::Outbound, thread_pool, Weak::new()).finish()
+        SocketBuilder::new(ChannelDirection::Outbound, thread_pool, Weak::new()).finish()
     }
 
     pub fn is_closed(&self) -> bool {
@@ -266,15 +269,15 @@ impl Socket {
         }
     }
 
-    pub fn socket_type(&self) -> SocketType {
-        SocketType::from_u8(self.socket_type.load(Ordering::SeqCst)).unwrap()
+    pub fn mode(&self) -> ChannelMode {
+        ChannelMode::from_u8(self.socket_type.load(Ordering::SeqCst)).unwrap()
     }
 
-    pub fn set_socket_type(&self, socket_type: SocketType) {
+    pub fn set_mode(&self, socket_type: ChannelMode) {
         self.socket_type.store(socket_type as u8, Ordering::SeqCst);
     }
 
-    pub fn direction(&self) -> ConnectionDirection {
+    pub fn direction(&self) -> ChannelDirection {
         self.direction
     }
 
@@ -290,8 +293,7 @@ impl Socket {
     }
 
     pub fn is_realtime_connection(&self) -> bool {
-        self.socket_type() == SocketType::Realtime
-            || self.socket_type() == SocketType::RealtimeResponseServer
+        self.mode() == ChannelMode::Realtime || self.mode() == ChannelMode::RealtimeResponseServer
     }
 
     const MAX_QUEUE_SIZE: usize = 128;
@@ -305,7 +307,7 @@ impl Socket {
     }
 
     pub fn is_bootstrap_connection(&self) -> bool {
-        self.socket_type() == SocketType::Bootstrap
+        self.mode() == ChannelMode::Bootstrap
     }
 
     pub fn default_timeout_value(&self) -> u64 {
@@ -389,7 +391,7 @@ impl SocketExtensions for Arc<Socket> {
 
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
         let self_clone = self.clone();
-        debug_assert!(self.direction == ConnectionDirection::Outbound);
+        debug_assert!(self.direction == ChannelDirection::Outbound);
 
         self.start();
         self.set_default_timeout();
@@ -679,7 +681,7 @@ impl SocketExtensions for Arc<Socket> {
                     let mut condition_to_disconnect = false;
 
                     // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-                    if socket.direction == ConnectionDirection::Inbound
+                    if socket.direction == ChannelDirection::Inbound
                         && (now - socket.last_receive_time_or_init.load(Ordering::SeqCst))
                             > socket
                                 .silent_connection_tolerance_time
@@ -740,7 +742,7 @@ impl AsyncBufferReader for Arc<Socket> {
 }
 
 pub struct SocketBuilder {
-    direction: ConnectionDirection,
+    direction: ChannelDirection,
     thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
@@ -762,7 +764,7 @@ pub fn alive_sockets() -> usize {
 
 impl SocketBuilder {
     pub fn new(
-        endpoint_type: ConnectionDirection,
+        endpoint_type: ChannelDirection,
         thread_pool: Arc<dyn ThreadPool>,
         async_runtime: Weak<AsyncRuntime>,
     ) -> Self {
@@ -836,7 +838,7 @@ impl SocketBuilder {
                 ),
                 timed_out: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
-                socket_type: AtomicU8::new(SocketType::Undefined as u8),
+                socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
                 observer,
                 write_in_progress: AtomicBool::new(false),
                 send_queue: WriteQueue::new(self.max_write_queue_len),

@@ -88,23 +88,8 @@ pub unsafe extern "C" fn rsn_channel_is_alive(handle: *mut ChannelHandle) -> boo
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_get_last_bootstrap_attempt(handle: *mut ChannelHandle) -> u64 {
-    system_time_as_nanoseconds(as_channel(handle).get_last_bootstrap_attempt())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_set_last_bootstrap_attempt(handle: *mut ChannelHandle) {
-    as_channel(handle).set_last_bootstrap_attempt(SystemTime::now());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_get_last_packet_received(handle: *mut ChannelHandle) -> u64 {
     system_time_as_nanoseconds(as_channel(handle).get_last_packet_received())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_set_last_packet_received(handle: *mut ChannelHandle) {
-    as_channel(handle).set_last_packet_received(SystemTime::now());
 }
 
 #[no_mangle]

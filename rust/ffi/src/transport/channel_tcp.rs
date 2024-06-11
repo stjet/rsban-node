@@ -65,23 +65,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_socket_id(handle: *mut ChannelHandle) -
     as_tcp_channel(handle).socket_id()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_peering_endpoint(
-    handle: *mut ChannelHandle,
-    endpoint: *mut EndpointDto,
-) {
-    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).peering_endpoint())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_set_peering_endpoint(
-    handle: *mut ChannelHandle,
-    endpoint: *const EndpointDto,
-) {
-    let address = SocketAddrV6::from(&*endpoint);
-    as_tcp_channel(handle).set_peering_endpoint(address);
-}
-
 pub type ChannelTcpSendBufferCallback =
     unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
@@ -128,20 +111,6 @@ unsafe impl Sync for SendBufferCallbackWrapper {}
 pub unsafe extern "C" fn rsn_channel_tcp_network_version(handle: *mut ChannelHandle) -> u8 {
     let tcp = as_tcp_channel(handle);
     tcp.network_version()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_network_set_version(
-    handle: *mut ChannelHandle,
-    version: u8,
-) {
-    let tcp = as_tcp_channel(handle);
-    tcp.set_network_version(version)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_max(handle: *mut ChannelHandle, traffic_type: u8) -> bool {
-    as_tcp_channel(handle).max(FromPrimitive::from_u8(traffic_type).unwrap())
 }
 
 #[no_mangle]

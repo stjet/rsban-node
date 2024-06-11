@@ -1,4 +1,4 @@
-use super::ConnectionDirection;
+use super::ChannelDirection;
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use std::{
     collections::HashMap,
@@ -11,11 +11,11 @@ struct Entry {
     address: Ipv6Addr,
     subnetwork: Ipv6Addr,
     start: SystemTime,
-    direction: ConnectionDirection,
+    direction: ChannelDirection,
 }
 
 impl Entry {
-    fn new(endpoint: SocketAddrV6, direction: ConnectionDirection) -> Self {
+    fn new(endpoint: SocketAddrV6, direction: ChannelDirection) -> Self {
         Self {
             endpoint,
             address: ipv4_address_or_ipv6_subnet(endpoint.ip()),
@@ -35,7 +35,7 @@ pub struct AttemptContainer {
 }
 
 impl AttemptContainer {
-    pub fn insert(&mut self, endpoint: SocketAddrV6, direction: ConnectionDirection) -> bool {
+    pub fn insert(&mut self, endpoint: SocketAddrV6, direction: ChannelDirection) -> bool {
         if self.by_endpoint.contains_key(&endpoint) {
             return false;
         }
@@ -85,7 +85,7 @@ impl AttemptContainer {
         }
     }
 
-    pub fn count_by_direction(&self, direction: ConnectionDirection) -> usize {
+    pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.by_endpoint
             .values()
             .filter(|i| i.direction == direction)
@@ -109,7 +109,7 @@ impl AttemptContainer {
     fn get_oldest(&self) -> Option<(SystemTime, SocketAddrV6)> {
         self.by_endpoint
             .values()
-            .filter(|i| i.direction == ConnectionDirection::Outbound)
+            .filter(|i| i.direction == ChannelDirection::Outbound)
             .min_by_key(|i| i.start)
             .map(|i| (i.start, i.endpoint))
     }

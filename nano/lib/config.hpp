@@ -193,8 +193,6 @@ public:
 	unsigned aec_loop_interval_ms;
 
 	std::chrono::seconds cleanup_period;
-	std::chrono::milliseconds cleanup_period_half () const;
-	std::chrono::seconds cleanup_cutoff () const;
 	/** How often to connect to other peers */
 	std::chrono::milliseconds merge_period;
 	/** How often to send keepalive messages */

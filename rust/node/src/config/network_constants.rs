@@ -21,21 +21,21 @@ pub struct NetworkConstants {
     pub default_rpc_port: u16,
     pub default_ipc_port: u16,
     pub default_websocket_port: u16,
-    pub aec_loop_interval_ms: u32,
-    pub cleanup_period_s: i64,
+    pub aec_loop_interval: Duration,
+    pub cleanup_period: Duration,
     /** How often to send keepalive messages */
     pub keepalive_period: Duration,
     /// How often to connect to other peers
     pub merge_period: Duration,
     /** Default maximum idle time for a socket before it's automatically closed */
-    pub idle_timeout_s: i64,
+    pub idle_timeout: Duration,
     pub sync_cookie_cutoff: Duration,
     pub bootstrap_interval_s: i64,
     /** Maximum number of peers per IP. It is also the max number of connections per IP*/
     pub max_peers_per_ip: usize,
     /** Maximum number of peers per subnetwork */
     pub max_peers_per_subnetwork: usize,
-    pub peer_dump_interval_s: i64,
+    pub peer_dump_interval: Duration,
 
     pub current_network: Networks,
     /** Current protocol version */
@@ -51,7 +51,7 @@ pub struct NetworkConstants {
     pub block_broadcast_interval: Duration,
 
     /** We do not reply to telemetry requests made within cooldown period */
-    pub telemetry_request_cooldown_ms: i64,
+    pub telemetry_request_cooldown: Duration,
     /** How often to request telemetry from peers */
     pub telemetry_request_interval_ms: i64,
     /** How often to broadcast telemetry to peers */
@@ -88,7 +88,7 @@ impl NetworkConstants {
     }
 
     fn live(work: WorkThresholds) -> Self {
-        let cleanup_period_s = 60;
+        let cleanup_period = Duration::from_secs(60);
         let max_peers_per_ip = 10;
         let protocol_info = ProtocolInfo::default();
         Self {
@@ -101,21 +101,21 @@ impl NetworkConstants {
             default_rpc_port: 7076,
             default_ipc_port: 7077,
             default_websocket_port: 7078,
-            aec_loop_interval_ms: 300,
-            cleanup_period_s,
+            aec_loop_interval: Duration::from_millis(300),
+            cleanup_period,
             keepalive_period: Duration::from_secs(15),
             merge_period: Duration::from_millis(250),
-            idle_timeout_s: cleanup_period_s * 2,
+            idle_timeout: cleanup_period * 2,
             sync_cookie_cutoff: Duration::from_secs(5),
             bootstrap_interval_s: 15 * 60,
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,
-            peer_dump_interval_s: 5 * 60,
+            peer_dump_interval: Duration::from_secs(5 * 60),
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
             vote_broadcast_interval: Duration::from_secs(15),
             block_broadcast_interval: Duration::from_secs(150),
-            telemetry_request_cooldown_ms: 1000 * 15,
+            telemetry_request_cooldown: Duration::from_secs(15),
             telemetry_request_interval_ms: 1000 * 60,
             telemetry_broadcast_interval_ms: 1000 * 60,
             telemetry_cache_cutoff_ms: 1000 * 130, //  2 * `telemetry_broadcast_interval` + some margin
@@ -148,7 +148,7 @@ impl NetworkConstants {
     }
 
     fn dev(work: WorkThresholds) -> Self {
-        let cleanup_period_s = 1;
+        let cleanup_period = Duration::from_secs(1);
         let max_peers_per_ip = 20;
         Self {
             current_network: Networks::NanoDevNetwork,
@@ -156,17 +156,17 @@ impl NetworkConstants {
             default_rpc_port: 45000,
             default_ipc_port: 46000,
             default_websocket_port: 47000,
-            aec_loop_interval_ms: 20,
-            cleanup_period_s,
+            aec_loop_interval: Duration::from_millis(20),
+            cleanup_period,
             keepalive_period: Duration::from_secs(1),
             merge_period: Duration::from_millis(10),
-            idle_timeout_s: cleanup_period_s * 15,
+            idle_timeout: cleanup_period * 15,
             max_peers_per_ip,
             max_peers_per_subnetwork: max_peers_per_ip * 4,
-            peer_dump_interval_s: 1,
+            peer_dump_interval: Duration::from_secs(1),
             vote_broadcast_interval: Duration::from_millis(500),
             block_broadcast_interval: Duration::from_millis(500),
-            telemetry_request_cooldown_ms: 500,
+            telemetry_request_cooldown: Duration::from_millis(500),
             telemetry_cache_cutoff_ms: 2000,
             telemetry_request_interval_ms: 500,
             telemetry_broadcast_interval_ms: 500,
@@ -222,12 +222,8 @@ impl NetworkConstants {
         Ok(())
     }
 
-    pub fn cleanup_period_half_ms(&self) -> i64 {
-        (self.cleanup_period_s * 1000) / 2
-    }
-
-    pub fn cleanup_cutoff_s(&self) -> i64 {
-        self.cleanup_period_s * 5
+    pub fn cleanup_cutoff(&self) -> Duration {
+        self.cleanup_period * 5
     }
 
     pub fn get_current_network_as_string(&self) -> &str {

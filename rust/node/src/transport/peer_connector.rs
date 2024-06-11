@@ -101,9 +101,7 @@ impl PeerConnector {
                 .network
                 .silent_connection_tolerance_time_s as u64,
         ))
-        .idle_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ))
+        .idle_timeout(self.network_params.network.idle_timeout)
         .observer(Arc::new(CompositeSocketObserver::new(vec![
             socket_stats,
             Arc::clone(&self.socket_observer),

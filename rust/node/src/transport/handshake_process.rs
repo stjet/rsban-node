@@ -52,8 +52,41 @@ impl HandshakeProcess {
         }
     }
 
-    pub(crate) fn was_handshake_received(&self) -> bool {
-        self.handshake_received.load(Ordering::SeqCst)
+    pub(crate) async fn initiate_handshake(&self, socket: &Socket) -> Result<(), ()> {
+        let endpoint = self.remote_endpoint;
+        let query = self.prepare_query(&endpoint);
+        let message = Message::NodeIdHandshake(NodeIdHandshake {
+            query,
+            response: None,
+            is_v2: true,
+        });
+
+        debug!("Initiating handshake query ({})", endpoint);
+
+        let mut serializer = MessageSerializer::new(self.protocol);
+        let data = serializer.serialize(&message);
+
+        match socket.write_raw(data).await {
+            Ok(()) => {
+                self.stats
+                    .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
+                self.stats.inc_dir(
+                    StatType::TcpServer,
+                    DetailType::HandshakeInitiate,
+                    Direction::Out,
+                );
+
+                Ok(())
+            }
+            Err(e) => {
+                self.stats
+                    .inc(StatType::TcpServer, DetailType::HandshakeNetworkError);
+                debug!("Error sending handshake query: {:?} ({})", e, endpoint);
+
+                // Stop invalid handshake
+                Err(())
+            }
+        }
     }
 
     pub(crate) async fn process_handshake(

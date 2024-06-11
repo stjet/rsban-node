@@ -174,10 +174,8 @@ impl CleanupLoop {
             self.stats.inc(StatType::Network, DetailType::LoopCleanup);
 
             if !self.flags.disable_connection_cleanup {
-                self.network.purge(
-                    SystemTime::now()
-                        - Duration::from_secs(self.network_params.network.cleanup_cutoff_s() as u64),
-                );
+                self.network
+                    .purge(SystemTime::now() - self.network_params.network.cleanup_cutoff());
             }
 
             self.syn_cookies

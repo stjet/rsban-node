@@ -170,10 +170,7 @@ impl ResponseServerImpl {
         let lock = self.last_telemetry_req.lock().unwrap();
         match *lock {
             Some(last_req) => {
-                last_req.elapsed()
-                    >= Duration::from_millis(
-                        self.network_params.network.telemetry_request_cooldown_ms as u64,
-                    )
+                last_req.elapsed() >= self.network_params.network.telemetry_request_cooldown
             }
             None => true,
         }
@@ -249,37 +246,13 @@ impl ResponseServerImpl {
     }
 
     pub async fn initiate_handshake(&self) {
-        let endpoint = self.remote_endpoint();
-        let query = self.handshake_process.prepare_query(&endpoint);
-        let message = Message::NodeIdHandshake(NodeIdHandshake {
-            query,
-            response: None,
-            is_v2: true,
-        });
-
-        debug!("Initiating handshake query ({})", endpoint);
-
-        let mut serializer = MessageSerializer::new(self.network_params.network.protocol_info());
-        let data = serializer.serialize(&message);
-
-        match self.socket.write_raw(data).await {
-            Ok(()) => {
-                self.stats
-                    .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
-                self.stats.inc_dir(
-                    StatType::TcpServer,
-                    DetailType::HandshakeInitiate,
-                    Direction::Out,
-                );
-            }
-            Err(e) => {
-                self.stats
-                    .inc(StatType::TcpServer, DetailType::HandshakeNetworkError);
-                debug!("Error sending handshake query: {:?} ({})", e, endpoint);
-
-                // Stop invalid handshake
-                self.stop();
-            }
+        if self
+            .handshake_process
+            .initiate_handshake(&self.socket)
+            .await
+            .is_err()
+        {
+            self.stop();
         }
     }
 }
@@ -521,6 +494,7 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             }
             return ProcessResult::Progress;
         }
+
         // The server will switch to bootstrap mode immediately after processing the first bootstrap message, thus no `else if`
         if self.is_bootstrap_connection() {
             let mut bootstrap_visitor = self

@@ -219,9 +219,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             && !client_a.pending_stop()
             && !self.network.is_excluded(&client_a.tcp_endpoint())
         {
-            client_a.set_timeout(Duration::from_secs(
-                self.network_params.network.idle_timeout_s as u64,
-            ));
+            client_a.set_timeout(self.network_params.network.idle_timeout);
             // Push into idle deque
             if !push_front {
                 guard.idle.push_back(Arc::clone(&client_a));
@@ -528,9 +526,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 .network
                 .silent_connection_tolerance_time_s as u64,
         ))
-        .idle_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ))
+        .idle_timeout(self.network_params.network.idle_timeout)
         .observer(Arc::clone(&self.socket_observer))
         .finish();
 

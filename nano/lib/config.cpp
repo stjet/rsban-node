@@ -235,18 +235,6 @@ bool nano::network_constants::set_active_network (std::string network_a)
 	return rsnano::rsn_network_constants_active_network_set_str (network_a.c_str ()) < 0;
 }
 
-std::chrono::milliseconds nano::network_constants::cleanup_period_half () const
-{
-	auto dto{ to_dto () };
-	return std::chrono::milliseconds (rsnano::rsn_network_constants_cleanup_period_half_ms (&dto));
-}
-
-std::chrono::seconds nano::network_constants::cleanup_cutoff () const
-{
-	auto dto{ to_dto () };
-	return std::chrono::seconds (rsnano::rsn_network_constants_cleanup_cutoff_s (&dto));
-}
-
 nano::networks nano::network_constants::network () const
 {
 	return current_network;

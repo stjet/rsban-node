@@ -300,8 +300,7 @@ impl ActiveTransactions {
         guard: MutexGuard<'a, ActiveTransactionsData>,
     ) -> MutexGuard<'a, ActiveTransactionsData> {
         if !guard.stopped {
-            let loop_interval =
-                Duration::from_millis(self.network_params.network.aec_loop_interval_ms as u64);
+            let loop_interval = self.network_params.network.aec_loop_interval;
             let min_sleep = loop_interval / 2;
 
             let wait_duration = max(

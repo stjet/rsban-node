@@ -64,39 +64,27 @@ pub fn fill_network_constants_dto(dto: &mut NetworkConstantsDto, constants: &Net
     dto.default_rpc_port = constants.default_rpc_port;
     dto.default_ipc_port = constants.default_ipc_port;
     dto.default_websocket_port = constants.default_websocket_port;
-    dto.aec_loop_interval_ms = constants.aec_loop_interval_ms;
-    dto.cleanup_period_s = constants.cleanup_period_s;
+    dto.aec_loop_interval_ms = constants.aec_loop_interval.as_millis() as u32;
+    dto.cleanup_period_s = constants.cleanup_period.as_secs() as i64;
     dto.keepalive_period_s = constants.keepalive_period.as_secs() as i64;
     dto.merge_period_ms = constants.merge_period.as_millis() as i64;
-    dto.idle_timeout_s = constants.idle_timeout_s;
+    dto.idle_timeout_s = constants.idle_timeout.as_secs() as i64;
     dto.sync_cookie_cutoff_s = constants.sync_cookie_cutoff.as_secs() as i64;
     dto.bootstrap_interval_s = constants.bootstrap_interval_s;
     dto.max_peers_per_ip = constants.max_peers_per_ip;
     dto.max_peers_per_subnetwork = constants.max_peers_per_subnetwork;
-    dto.peer_dump_interval_s = constants.peer_dump_interval_s;
+    dto.peer_dump_interval_s = constants.peer_dump_interval.as_secs() as i64;
     dto.ipv6_subnetwork_prefix_for_limiting = constants.ipv6_subnetwork_prefix_for_limiting;
     dto.silent_connection_tolerance_time_s = constants.silent_connection_tolerance_time_s;
     dto.vote_broadcast_interval_ms = constants.vote_broadcast_interval.as_millis() as i64;
     dto.block_broadcast_interval_ms = constants.block_broadcast_interval.as_millis() as i64;
-    dto.telemetry_request_cooldown_ms = constants.telemetry_request_cooldown_ms;
+    dto.telemetry_request_cooldown_ms = constants.telemetry_request_cooldown.as_millis() as i64;
     dto.telemetry_request_interval_ms = constants.telemetry_request_interval_ms;
     dto.telemetry_broadcast_interval_ms = constants.telemetry_broadcast_interval_ms;
     dto.telemetry_cache_cutoff_ms = constants.telemetry_cache_cutoff_ms;
     dto.optimistic_activation_delay_s = constants.optimistic_activation_delay.as_secs() as i64;
     dto.rep_crawler_normal_interval_ms = constants.rep_crawler_normal_interval.as_millis() as i64;
     dto.rep_crawler_warmup_interval_ms = constants.rep_crawler_warmup_interval.as_millis() as i64;
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_network_constants_cleanup_period_half_ms(dto: &NetworkConstantsDto) -> i64 {
-    NetworkConstants::try_from(dto)
-        .unwrap()
-        .cleanup_period_half_ms()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_network_constants_cleanup_cutoff_s(dto: &NetworkConstantsDto) -> i64 {
-    NetworkConstants::try_from(dto).unwrap().cleanup_cutoff_s()
 }
 
 #[no_mangle]
@@ -170,23 +158,25 @@ impl TryFrom<&NetworkConstantsDto> for NetworkConstants {
             default_rpc_port: value.default_rpc_port,
             default_ipc_port: value.default_ipc_port,
             default_websocket_port: value.default_websocket_port,
-            aec_loop_interval_ms: value.aec_loop_interval_ms,
-            cleanup_period_s: value.cleanup_period_s,
+            aec_loop_interval: Duration::from_millis(value.aec_loop_interval_ms as u64),
+            cleanup_period: Duration::from_secs(value.cleanup_period_s as u64),
             keepalive_period: Duration::from_secs(value.keepalive_period_s as u64),
             merge_period: Duration::from_millis(value.merge_period_ms as u64),
-            idle_timeout_s: value.idle_timeout_s,
+            idle_timeout: Duration::from_secs(value.idle_timeout_s as u64),
             sync_cookie_cutoff: Duration::from_secs(value.sync_cookie_cutoff_s as u64),
             bootstrap_interval_s: value.bootstrap_interval_s,
             max_peers_per_ip: value.max_peers_per_ip,
             max_peers_per_subnetwork: value.max_peers_per_subnetwork,
-            peer_dump_interval_s: value.peer_dump_interval_s,
+            peer_dump_interval: Duration::from_secs(value.peer_dump_interval_s as u64),
             ipv6_subnetwork_prefix_for_limiting: value.ipv6_subnetwork_prefix_for_limiting,
             silent_connection_tolerance_time_s: value.silent_connection_tolerance_time_s,
             vote_broadcast_interval: Duration::from_millis(value.vote_broadcast_interval_ms as u64),
             block_broadcast_interval: Duration::from_millis(
                 value.block_broadcast_interval_ms as u64,
             ),
-            telemetry_request_cooldown_ms: value.telemetry_request_cooldown_ms,
+            telemetry_request_cooldown: Duration::from_millis(
+                value.telemetry_request_cooldown_ms as u64,
+            ),
             telemetry_request_interval_ms: value.telemetry_request_interval_ms,
             telemetry_broadcast_interval_ms: value.telemetry_broadcast_interval_ms,
             telemetry_cache_cutoff_ms: value.telemetry_cache_cutoff_ms,

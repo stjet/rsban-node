@@ -219,9 +219,7 @@ impl Network {
 
         debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
 
-        socket.set_timeout(Duration::from_secs(
-            self.network_params.network.idle_timeout_s as u64,
-        ));
+        socket.set_timeout(self.network_params.network.idle_timeout);
 
         let tcp_channel = ChannelTcp::new(
             socket.clone(),

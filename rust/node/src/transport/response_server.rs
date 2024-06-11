@@ -5,10 +5,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        NetworkExt, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageManager,
-        TrafficType,
-    },
+    transport::{NetworkExt, Socket, SocketExtensions, SocketType, SynCookies, TcpMessageManager},
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -288,6 +285,41 @@ impl ResponseServerImpl {
     pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
         self.last_keepalive.lock().unwrap().take()
     }
+
+    pub async fn initiate_handshake(&self) {
+        let endpoint = self.remote_endpoint();
+        let query = self.handshake_process.prepare_query(&endpoint);
+        let message = Message::NodeIdHandshake(NodeIdHandshake {
+            query,
+            response: None,
+            is_v2: true,
+        });
+
+        debug!("Initiating handshake query ({})", endpoint);
+
+        let mut serializer = MessageSerializer::new(self.network_params.network.protocol_info());
+        let data = serializer.serialize(&message);
+
+        match self.socket.write_raw(data).await {
+            Ok(()) => {
+                self.stats
+                    .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
+                self.stats.inc_dir(
+                    StatType::TcpServer,
+                    DetailType::HandshakeInitiate,
+                    Direction::Out,
+                );
+            }
+            Err(e) => {
+                self.stats
+                    .inc(StatType::TcpServer, DetailType::HandshakeNetworkError);
+                debug!("Error sending handshake query: {:?} ({})", e, endpoint);
+
+                // Stop invalid handshake
+                self.stop();
+            }
+        }
+    }
 }
 
 impl Drop for ResponseServerImpl {
@@ -316,7 +348,6 @@ pub trait ResponseServerExt {
     fn timeout(&self);
 
     fn to_realtime_connection(&self, node_id: &Account) -> bool;
-    fn initiate_handshake(&self);
     async fn receive_messages(&self);
     async fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
 }
@@ -380,51 +411,6 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             }
             self.socket.close();
         }
-    }
-
-    fn initiate_handshake(&self) {
-        let endpoint = self.remote_endpoint();
-        let query = self.handshake_process.prepare_query(&endpoint);
-        let message = Message::NodeIdHandshake(NodeIdHandshake {
-            query,
-            response: None,
-            is_v2: true,
-        });
-
-        debug!("Initiating handshake query ({})", endpoint);
-
-        let mut serializer = MessageSerializer::new(self.network_params.network.protocol_info());
-        let buffer = Arc::new(serializer.serialize(&message).to_vec());
-        let self_w = Arc::downgrade(self);
-
-        self.socket.async_write(
-            &buffer,
-            Some(Box::new(move |ec, _len| {
-                if let Some(self_l) = self_w.upgrade() {
-                    if ec.is_ok() {
-                        self_l.stats.inc_dir(
-                            StatType::TcpServer,
-                            DetailType::Handshake,
-                            Direction::Out,
-                        );
-                        self_l.stats.inc_dir(
-                            StatType::TcpServer,
-                            DetailType::HandshakeInitiate,
-                            Direction::Out,
-                        );
-                    } else {
-                        self_l
-                            .stats
-                            .inc(StatType::TcpServer, DetailType::HandshakeNetworkError);
-                        debug!("Error sending handshake query: {:?} ({})", ec, endpoint);
-
-                        // Stop invalid handshake
-                        self_l.stop();
-                    }
-                }
-            })),
-            TrafficType::Generic,
-        );
     }
 
     async fn receive_messages(&self) {

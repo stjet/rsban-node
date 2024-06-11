@@ -213,7 +213,7 @@ impl Network {
                 Direction::Out,
             );
             debug!("Successfully connected to: {}", remote_endpoint);
-            response_server.initiate_handshake();
+            response_server.initiate_handshake().await;
         }
 
         Ok(())

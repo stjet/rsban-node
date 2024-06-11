@@ -23,7 +23,7 @@ use std::{
     },
     time::{Duration, Instant, SystemTime},
 };
-use tokio::{sync::Notify, task::spawn_blocking};
+use tokio::sync::Notify;
 use tracing::debug;
 
 #[derive(Clone, Debug)]
@@ -317,8 +317,7 @@ pub trait ResponseServerExt {
 
     fn to_realtime_connection(&self, node_id: &Account) -> bool;
     fn initiate_handshake(&self);
-    fn receive_message(&self);
-    fn received_message(&self, message: DeserializedMessage) -> ProcessResult;
+    async fn receive_messages(&self);
     async fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
 }
 
@@ -331,6 +330,9 @@ pub enum ProcessResult {
 #[async_trait]
 impl ResponseServerExt for Arc<ResponseServerImpl> {
     fn start(&self) {
+        let Some(rt) = self.async_rt.upgrade() else {
+            return;
+        };
         // Set remote_endpoint
         let mut guard = self.remote_endpoint.lock().unwrap();
         if guard.port() == 0 {
@@ -341,7 +343,9 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         }
 
         debug!("Starting server: {}", guard.port());
-        self.receive_message();
+        let self_l = Arc::clone(self);
+        rt.tokio
+            .spawn(async move { self_l.receive_messages().await });
     }
 
     fn to_realtime_connection(&self, node_id: &Account) -> bool {
@@ -423,83 +427,61 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         );
     }
 
-    fn receive_message(&self) {
-        let Some(async_rt) = self.async_rt.upgrade() else {
-            return;
-        };
+    async fn receive_messages(&self) {
+        loop {
+            if self.is_stopped() {
+                break;
+            }
 
-        let self_clone = Arc::clone(self);
-        async_rt.tokio.spawn(async move {
-            loop {
-                if self_clone.is_stopped() {
+            let result = tokio::select! {
+                i = self.message_deserializer.read() => i,
+                _ = self.notify_stop.notified() => Err(ParseMessageError::Other)
+            };
+
+            let result = match result {
+                Ok(msg) => self.process_message(msg).await,
+                Err(ParseMessageError::DuplicatePublishMessage) => {
+                    // Avoid too much noise about `duplicate_publish_message` errors
+                    self.stats.inc_dir(
+                        StatType::Filter,
+                        DetailType::DuplicatePublishMessage,
+                        Direction::In,
+                    );
+                    ProcessResult::Progress
+                }
+                Err(ParseMessageError::InsufficientWork) => {
+                    // IO error or critical error when deserializing message
+                    self.stats.inc_dir(
+                        StatType::Error,
+                        DetailType::InsufficientWork,
+                        Direction::In,
+                    );
+                    ProcessResult::Progress
+                }
+                Err(e) => {
+                    // IO error or critical error when deserializing message
+                    self.stats
+                        .inc_dir(StatType::Error, DetailType::from(e), Direction::In);
+                    debug!(
+                        "Error reading message: {:?} ({})",
+                        e,
+                        self.remote_endpoint()
+                    );
+                    ProcessResult::Abort
+                }
+            };
+
+            match result {
+                ProcessResult::Abort => {
+                    self.stop();
                     break;
                 }
-
-                let result = tokio::select! {
-                    i = self_clone.message_deserializer.read() => i,
-                    _ = self_clone.notify_stop.notified() => Err(ParseMessageError::Other)
-                };
-
-                let self_clone2 = self_clone.clone();
-                let result = spawn_blocking(Box::new(move || {
-                    match result {
-                        Ok(msg) => self_clone2.received_message(msg),
-                        Err(ParseMessageError::DuplicatePublishMessage) => {
-                            // Avoid too much noise about `duplicate_publish_message` errors
-                            self_clone2.stats.inc_dir(
-                                StatType::Filter,
-                                DetailType::DuplicatePublishMessage,
-                                Direction::In,
-                            );
-                            ProcessResult::Progress
-                        }
-                        Err(ParseMessageError::InsufficientWork) => {
-                            // IO error or critical error when deserializing message
-                            self_clone2.stats.inc_dir(
-                                StatType::Error,
-                                DetailType::InsufficientWork,
-                                Direction::In,
-                            );
-                            ProcessResult::Progress
-                        }
-                        Err(e) => {
-                            // IO error or critical error when deserializing message
-                            self_clone2.stats.inc_dir(
-                                StatType::Error,
-                                DetailType::from(e),
-                                Direction::In,
-                            );
-                            debug!(
-                                "Error reading message: {:?} ({})",
-                                e,
-                                self_clone2.remote_endpoint()
-                            );
-                            ProcessResult::Abort
-                        }
-                    }
-                }))
-                .await
-                .unwrap();
-
-                match result {
-                    ProcessResult::Abort => {
-                        self_clone.stop();
-                        break;
-                    }
-                    ProcessResult::Progress => {}
-                    ProcessResult::Pause => {
-                        break;
-                    }
+                ProcessResult::Progress => {}
+                ProcessResult::Pause => {
+                    break;
                 }
             }
-        });
-    }
-
-    fn received_message(&self, message: DeserializedMessage) -> ProcessResult {
-        let Some(rt) = self.async_rt.upgrade() else {
-            return ProcessResult::Abort;
-        };
-        rt.tokio.block_on(self.process_message(message))
+        }
     }
 
     async fn process_message(&self, message: DeserializedMessage) -> ProcessResult {

@@ -1,8 +1,3 @@
-use std::sync::{Arc, Weak};
-
-use rsnano_core::KeyPair;
-use rsnano_ledger::Ledger;
-
 use crate::{
     block_processing::BlockProcessor,
     config::{NetworkConstants, NodeFlags},
@@ -11,8 +6,11 @@ use crate::{
         BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl,
         ResponseServerImpl,
     },
-    utils::{AsyncRuntime, ThreadPool},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
+use rsnano_core::KeyPair;
+use rsnano_ledger::Ledger;
+use std::sync::{Arc, Weak};
 
 use super::{BootstrapInitiator, BootstrapMessageVisitorImpl};
 
@@ -50,6 +48,22 @@ impl BootstrapMessageVisitorFactory {
             block_processor: Arc::downgrade(&block_processor),
             bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
             flags,
+        }
+    }
+
+    pub fn new_null() -> Self {
+        let thread_pool: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::new_test_instance());
+        let ledger = Arc::new(Ledger::new_null());
+        Self {
+            async_rt: Arc::new(AsyncRuntime::default()),
+            stats: Arc::new(Stats::default()),
+            node_id: KeyPair::from(1),
+            network_constants: NetworkConstants::empty(),
+            ledger: ledger.clone(),
+            thread_pool: Arc::downgrade(&thread_pool),
+            block_processor: Arc::downgrade(&Arc::new(BlockProcessor::new_test_instance(ledger))),
+            bootstrap_initiator: Arc::downgrade(&Arc::new(BootstrapInitiator::new_null())),
+            flags: NodeFlags::default(),
         }
     }
 

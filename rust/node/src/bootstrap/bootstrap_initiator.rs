@@ -13,11 +13,8 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        Network, NetworkExt, OutboundBandwidthLimiter, PeerConnector, PeerConnectorExt,
-        SocketObserver,
-    },
-    utils::{AsyncRuntime, ThreadPool},
+    transport::{Network, OutboundBandwidthLimiter, SocketObserver},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
 };
@@ -28,7 +25,7 @@ use super::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockHash, HashOrAccount,
+    Account, BlockHash, HashOrAccount, Networks,
 };
 use rsnano_ledger::Ledger;
 
@@ -100,6 +97,29 @@ impl BootstrapInitiator {
                 block_processor,
                 cache,
             )),
+        }
+    }
+
+    pub fn new_null() -> Self {
+        Self {
+            mutex: Mutex::new(Data {
+                attempts_list: HashMap::new(),
+            }),
+            condition: Condvar::new(),
+            threads: Mutex::new(Vec::new()),
+            connections: Arc::new(BootstrapConnections::new_null()),
+            config: NodeConfig::new_null(),
+            stopped: AtomicBool::new(false),
+            cache: Arc::new(Mutex::new(PullsCache::new())),
+            stats: Arc::new(Stats::default()),
+            attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
+            websocket: None,
+            block_processor: Arc::new(BlockProcessor::new_null()),
+            ledger: Arc::new(Ledger::new_null()),
+            network_params: NetworkParams::new(Networks::NanoDevNetwork),
+            flags: NodeFlags::default(),
+            network: Arc::new(Network::new_null()),
+            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
         }
     }
 

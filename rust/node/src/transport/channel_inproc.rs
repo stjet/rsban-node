@@ -191,13 +191,13 @@ impl ChannelInProc {
     }
 }
 
-struct VecBufferReader {
+pub struct VecBufferReader {
     buffer: Vec<u8>,
     position: AtomicUsize,
 }
 
 impl VecBufferReader {
-    fn new(buffer: Vec<u8>) -> Self {
+    pub fn new(buffer: Vec<u8>) -> Self {
         Self {
             buffer,
             position: AtomicUsize::new(0),

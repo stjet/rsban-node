@@ -991,3 +991,19 @@ pub enum AcceptResult {
     Rejected,
     Error,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initiate_handshake_when_outbound_connection_added() {
+        let network = Network::new_null();
+        let socket = Arc::new(Socket::new_null());
+        let response_server = Arc::new(ResponseServerImpl::new_null());
+
+        network.add(&socket, &response_server, ChannelDirection::Outbound);
+
+        // TODO assert that initiate handshake was called
+    }
+}

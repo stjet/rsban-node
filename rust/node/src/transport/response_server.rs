@@ -11,7 +11,10 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{utils::NULL_ENDPOINT, Account, KeyPair};
+use rsnano_core::{
+    utils::{OutputListenerMt, OutputTrackerMt, NULL_ENDPOINT, TEST_ENDPOINT_1},
+    Account, KeyPair, Networks,
+};
 use rsnano_messages::*;
 use std::{
     net::SocketAddrV6,
@@ -86,6 +89,7 @@ pub struct ResponseServerImpl {
     protocol_info: ProtocolInfo,
     network: Weak<Network>,
     handshake_process: HandshakeProcess,
+    initiate_handshake_listener: OutputListenerMt<()>,
 }
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -148,7 +152,41 @@ impl ResponseServerImpl {
             notify_stop: Notify::new(),
             last_keepalive: Mutex::new(None),
             node_id,
+            initiate_handshake_listener: OutputListenerMt::new(),
         }
+    }
+
+    pub fn new_null() -> Self {
+        Self {
+            async_rt: Arc::downgrade(&Arc::new(AsyncRuntime::default())),
+            channel: Mutex::new(None),
+            socket: Socket::new_null(),
+            config: Arc::new(NodeConfig::new_null()),
+            stopped: AtomicBool::new(false),
+            disable_bootstrap_listener: true,
+            connections_max: 1,
+            remote_endpoint: Mutex::new(TEST_ENDPOINT_1),
+            network_params: Arc::new(NetworkParams::new(Networks::NanoDevNetwork)),
+            last_telemetry_req: Mutex::new(None),
+            unique_id: 42,
+            stats: Arc::new(Stats::default()),
+            disable_bootstrap_bulk_pull_server: true,
+            message_visitor_factory: Arc::new(BootstrapMessageVisitorFactory::new_null()),
+            message_deserializer: Arc::new(MessageDeserializer::new_null()),
+            tcp_message_manager: Arc::new(TcpMessageManager::new(1)),
+            allow_bootstrap: false,
+            notify_stop: Notify::new(),
+            last_keepalive: Mutex::new(None),
+            node_id: KeyPair::from(1),
+            protocol_info: ProtocolInfo::default(),
+            network: Arc::downgrade(&Arc::new(Network::new_null())),
+            handshake_process: HandshakeProcess::new_null(),
+            initiate_handshake_listener: OutputListenerMt::new(),
+        }
+    }
+
+    pub fn track_handshake_initiation(&self) -> Arc<OutputTrackerMt<()>> {
+        self.initiate_handshake_listener.track()
     }
 
     pub fn is_stopped(&self) -> bool {
@@ -246,6 +284,7 @@ impl ResponseServerImpl {
     }
 
     pub async fn initiate_handshake(&self) {
+        self.initiate_handshake_listener.emit(());
         if self
             .handshake_process
             .initiate_handshake(&self.socket)

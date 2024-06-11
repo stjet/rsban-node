@@ -174,6 +174,10 @@ impl BlockProcessor {
         )
     }
 
+    pub fn new_null() -> Self {
+        Self::new_test_instance(Arc::new(Ledger::new_null()))
+    }
+
     pub fn start(&self) {
         debug_assert!(self.thread.lock().unwrap().is_none());
         let processor_loop = Arc::clone(&self.processor_loop);

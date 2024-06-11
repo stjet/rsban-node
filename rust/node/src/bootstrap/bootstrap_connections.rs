@@ -7,14 +7,14 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelDirection, ChannelEnum, ChannelTcp, Network, OutboundBandwidthLimiter,
-        SocketBuilder, SocketExtensions, SocketObserver,
+        ChannelDirection, ChannelEnum, ChannelTcp, Network, NullSocketObserver,
+        OutboundBandwidthLimiter, SocketBuilder, SocketExtensions, SocketObserver,
     },
-    utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool},
+    utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
 use ordered_float::OrderedFloat;
-use rsnano_core::{utils::PropertyTree, Account, BlockHash};
+use rsnano_core::{utils::PropertyTree, Account, BlockHash, Networks};
 use std::{
     cmp::{max, min},
     collections::{BinaryHeap, HashSet, VecDeque},
@@ -91,6 +91,30 @@ impl BootstrapConnections {
             block_processor,
             pulls_cache,
             bootstrap_initiator: Mutex::new(None),
+        }
+    }
+
+    pub fn new_null() -> Self {
+        Self {
+            condition: Condvar::new(),
+            populate_connections_started: AtomicBool::new(false),
+            attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
+            mutex: Mutex::new(BootstrapConnectionsData::default()),
+            config: NodeConfig::new_null(),
+            connections_count: AtomicU32::new(0),
+            new_connections_empty: AtomicBool::new(false),
+            stopped: AtomicBool::new(false),
+            network: Arc::new(Network::new_null()),
+            flags: NodeFlags::default(),
+            workers: Arc::new(ThreadPoolImpl::create_null()),
+            async_rt: Arc::new(AsyncRuntime::default()),
+            network_params: NetworkParams::new(Networks::NanoDevNetwork),
+            socket_observer: Arc::new(NullSocketObserver::new()),
+            stats: Arc::new(Stats::default()),
+            block_processor: Arc::new(BlockProcessor::new_null()),
+            outbound_limiter: Arc::new(OutboundBandwidthLimiter::default()),
+            bootstrap_initiator: Mutex::new(None),
+            pulls_cache: Arc::new(Mutex::new(PullsCache::new())),
         }
     }
 
@@ -645,6 +669,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     }
 }
 
+#[derive(Default)]
 pub struct BootstrapConnectionsData {
     pulls: VecDeque<PullInfo>,
     clients: VecDeque<Weak<BootstrapClient>>,

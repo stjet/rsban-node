@@ -1,4 +1,4 @@
-use super::NetworkFilter;
+use super::{NetworkFilter, Socket};
 use async_trait::async_trait;
 use rsnano_core::{utils::BufferReader, work::WorkThresholds};
 use rsnano_messages::*;
@@ -15,6 +15,18 @@ pub struct MessageDeserializer<T: AsyncBufferReader + Send> {
     protocol_info: ProtocolInfo,
     read_buffer: Arc<Mutex<Vec<u8>>>,
     buffer_reader: T,
+}
+
+impl MessageDeserializer<Arc<Socket>> {
+    pub fn new_null() -> Self {
+        Self {
+            network_filter: Arc::new(NetworkFilter::default()),
+            work_thresholds: WorkThresholds::new(0, 0, 0),
+            protocol_info: ProtocolInfo::default(),
+            read_buffer: Arc::new(Mutex::new(Vec::new())),
+            buffer_reader: Socket::new_null(),
+        }
+    }
 }
 
 impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {

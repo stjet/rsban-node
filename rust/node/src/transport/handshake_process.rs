@@ -1,6 +1,6 @@
 use super::{Socket, SynCookies};
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_core::{BlockHash, KeyPair, PublicKey};
+use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, PublicKey};
 use rsnano_messages::{
     Message, MessageSerializer, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
     ProtocolInfo,
@@ -49,6 +49,18 @@ impl HandshakeProcess {
             handshake_received: AtomicBool::new(false),
             remote_endpoint,
             protocol,
+        }
+    }
+
+    pub fn new_null() -> Self {
+        Self {
+            genesis_hash: BlockHash::from(1),
+            node_id: KeyPair::from(2),
+            syn_cookies: Arc::new(SynCookies::new(1)),
+            stats: Arc::new(Stats::default()),
+            handshake_received: AtomicBool::new(false),
+            remote_endpoint: TEST_ENDPOINT_1,
+            protocol: ProtocolInfo::default(),
         }
     }
 

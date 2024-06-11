@@ -86,6 +86,7 @@ pub trait Channel {
     fn peering_endpoint(&self) -> SocketAddrV6;
     fn network_version(&self) -> u8;
     fn direction(&self) -> ChannelDirection;
+    fn mode(&self) -> ChannelMode;
 
     fn send(
         &self,

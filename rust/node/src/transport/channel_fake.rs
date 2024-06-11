@@ -14,8 +14,8 @@ use std::{
 };
 
 use super::{
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, OutboundBandwidthLimiter,
-    TrafficType, WriteCallback,
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, ChannelMode,
+    OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
 pub struct FakeChannelData {
@@ -142,6 +142,10 @@ impl Channel for ChannelFake {
 
     fn direction(&self) -> ChannelDirection {
         ChannelDirection::Inbound
+    }
+
+    fn mode(&self) -> ChannelMode {
+        ChannelMode::Realtime
     }
 
     fn send(

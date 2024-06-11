@@ -14,7 +14,7 @@ use rsnano_node::{
     transport::{BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, TrafficType},
     utils::ErrorCode,
 };
-use std::{ffi::c_void, net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
+use std::{ffi::c_void, ops::Deref, sync::Arc, time::SystemTime};
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_create(

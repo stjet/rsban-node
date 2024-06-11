@@ -1,4 +1,6 @@
-use super::{ChannelDirection, ChannelEnum, ChannelTcp, ResponseServerImpl, SocketExtensions};
+use super::{
+    ChannelDirection, ChannelEnum, ChannelMode, ChannelTcp, ResponseServerImpl, SocketExtensions,
+};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use rsnano_core::{Account, PublicKey};
 use std::{
@@ -71,20 +73,15 @@ impl ChannelContainer {
             .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
     }
 
-    pub fn exists(&self, endpoint: &SocketAddrV6) -> bool {
-        self.by_endpoint.contains_key(endpoint)
-    }
-
-    pub fn remove_by_node_id(&mut self, node_id: &PublicKey) {
-        if let Some(endpoints) = self.by_node_id.get(node_id).cloned() {
-            for ep in endpoints {
-                self.remove_by_endpoint(&ep);
-            }
-        }
-    }
-
     pub fn len(&self) -> usize {
         self.by_endpoint.len()
+    }
+
+    pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
+        self.by_endpoint
+            .values()
+            .filter(|i| i.channel.mode() == mode)
+            .count()
     }
 
     pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {

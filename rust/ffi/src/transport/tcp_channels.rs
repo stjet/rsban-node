@@ -10,7 +10,7 @@ use crate::{
 use rsnano_core::{utils::system_time_from_nanoseconds, KeyPair, PublicKey};
 use rsnano_node::{
     config::NodeConfig,
-    transport::{ChannelEnum, Network, NetworkExt, NetworkOptions},
+    transport::{ChannelEnum, ChannelMode, Network, NetworkExt, NetworkOptions},
     NetworkParams,
 };
 use std::{
@@ -103,7 +103,7 @@ pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: 
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
-    handle.len()
+    handle.count_by_mode(ChannelMode::Realtime)
 }
 
 #[no_mangle]

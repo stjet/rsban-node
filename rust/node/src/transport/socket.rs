@@ -49,7 +49,7 @@ impl From<ChannelDirection> for stats::Direction {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, FromPrimitive)]
 pub enum ChannelMode {
     /// No messages have been exchanged yet, so the mode is undefined
     Undefined,
@@ -57,7 +57,6 @@ pub enum ChannelMode {
     Bootstrap,
     /// serve realtime traffic (votes, new blocks,...)
     Realtime,
-    RealtimeResponseServer, // special type for tcp channel response server
 }
 
 impl ChannelMode {
@@ -66,7 +65,6 @@ impl ChannelMode {
             ChannelMode::Undefined => "undefined",
             ChannelMode::Bootstrap => "bootstrap",
             ChannelMode::Realtime => "realtime",
-            ChannelMode::RealtimeResponseServer => "realtime_response_server",
         }
     }
 }
@@ -293,7 +291,7 @@ impl Socket {
     }
 
     pub fn is_realtime_connection(&self) -> bool {
-        self.mode() == ChannelMode::Realtime || self.mode() == ChannelMode::RealtimeResponseServer
+        self.mode() == ChannelMode::Realtime
     }
 
     const MAX_QUEUE_SIZE: usize = 128;

@@ -18,7 +18,7 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
+    transport::{BufferDropPolicy, ChannelEnum, ChannelMode, Network, TrafficType},
     NetworkParams,
 };
 
@@ -342,7 +342,7 @@ impl Telemetry {
             uptime: self.startup_time.elapsed().as_secs(),
             unchecked_count: self.unchecked.len() as u64,
             genesis_block: self.network_params.ledger.genesis.hash(),
-            peer_count: self.network.len() as u32,
+            peer_count: self.network.count_by_mode(ChannelMode::Realtime) as u32,
             account_count: self.ledger.account_count(),
             major_version: MAJOR_VERSION,
             minor_version: MINOR_VERSION,

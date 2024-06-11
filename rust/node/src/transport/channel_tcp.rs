@@ -1,5 +1,5 @@
 use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, ChannelDirection, Network,
+    write_queue::WriteCallback, BufferDropPolicy, Channel, ChannelDirection, ChannelMode, Network,
     OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
 };
 use crate::{
@@ -256,6 +256,10 @@ impl Channel for Arc<ChannelTcp> {
 
     fn direction(&self) -> ChannelDirection {
         self.socket.direction()
+    }
+
+    fn mode(&self) -> ChannelMode {
+        self.socket.mode()
     }
 
     fn send(

@@ -1,9 +1,9 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelDirection, ChannelEnum, ChannelFake, ChannelTcp, NetworkFilter, NullSocketObserver,
-    OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket, SocketExtensions,
-    SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt, TcpMessageManager,
-    TrafficType, TransportType,
+    ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, NetworkFilter,
+    NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket,
+    SocketExtensions, SocketObserver, SynCookies, TcpConfig, TcpListener, TcpListenerExt,
+    TcpMessageManager, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
@@ -334,15 +334,11 @@ impl Network {
         self.state
             .lock()
             .unwrap()
-            .random_channels(count, min_version)
+            .random_realtime_channels(count, min_version)
     }
 
     pub fn get_peers(&self) -> Vec<SocketAddrV6> {
-        self.state.lock().unwrap().get_peers()
-    }
-
-    pub fn get_first_channel(&self) -> Option<Arc<ChannelEnum>> {
-        self.state.lock().unwrap().get_first_channel()
+        self.state.lock().unwrap().get_realtime_peers()
     }
 
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
@@ -365,7 +361,7 @@ impl Network {
         self.state
             .lock()
             .unwrap()
-            .random_channels(count, min_version)
+            .random_realtime_channels(count, min_version)
     }
 
     pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {
@@ -554,8 +550,8 @@ impl Network {
             .remove_by_endpoint(endpoint);
     }
 
-    pub fn len(&self) -> usize {
-        self.state.lock().unwrap().channels.len()
+    pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
+        self.state.lock().unwrap().channels.count_by_mode(mode)
     }
 
     pub fn bootstrap_peer(&self) -> SocketAddrV6 {
@@ -563,7 +559,7 @@ impl Network {
     }
 
     pub fn list_channels(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
-        let mut result = self.state.lock().unwrap().list(min_version);
+        let mut result = self.state.lock().unwrap().list_realtime(min_version);
         result.sort_by_key(|i| i.remote_endpoint());
         result
     }
@@ -785,7 +781,9 @@ impl State {
         let mut channel_endpoint = None;
         let mut peering_endpoint = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
-            if channel.network_version() >= self.network_constants.protocol_version_min {
+            if channel.channel.mode() == ChannelMode::Realtime
+                && channel.network_version() >= self.network_constants.protocol_version_min
+            {
                 if let ChannelEnum::Tcp(tcp) = channel.channel.as_ref() {
                     channel_endpoint = Some(channel.endpoint());
                     peering_endpoint = Some(tcp.peering_endpoint());
@@ -829,8 +827,8 @@ impl State {
         self.attempts.purge(cutoff);
     }
 
-    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
-        let mut channels = self.list(min_version);
+    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+        let mut channels = self.list_realtime(min_version);
         let mut rng = thread_rng();
         channels.shuffle(&mut rng);
         if count > 0 {
@@ -839,10 +837,14 @@ impl State {
         channels
     }
 
-    pub fn list(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
+    pub fn list_realtime(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
         self.channels
             .iter()
-            .filter(|c| c.network_version() >= min_version && c.channel.is_alive())
+            .filter(|c| {
+                c.network_version() >= min_version
+                    && c.channel.is_alive()
+                    && c.channel.mode() == ChannelMode::Realtime
+            })
             .map(|c| c.channel.clone())
             .collect()
     }
@@ -851,7 +853,9 @@ impl State {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
         for channel in self.channels.iter() {
-            if channel.last_packet_sent() < cutoff {
+            if channel.channel.mode() == ChannelMode::Realtime
+                && channel.last_packet_sent() < cutoff
+            {
                 result.push(channel.channel.clone());
             }
         }
@@ -863,14 +867,14 @@ impl State {
         self.channels.get(endpoint).map(|c| c.channel.clone())
     }
 
-    pub fn get_peers(&self) -> Vec<SocketAddrV6> {
+    pub fn get_realtime_peers(&self) -> Vec<SocketAddrV6> {
         // We can't hold the mutex while starting a write transaction, so
         // we collect endpoints to be saved and then release the lock.
-        self.channels.iter().map(|c| c.endpoint()).collect()
-    }
-
-    pub fn get_first_channel(&self) -> Option<Arc<ChannelEnum>> {
-        self.channels.get_by_index(0).map(|c| c.channel.clone())
+        self.channels
+            .iter()
+            .filter(|c| c.channel.mode() == ChannelMode::Realtime)
+            .map(|c| c.endpoint())
+            .collect()
     }
 
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
@@ -880,12 +884,12 @@ impl State {
     }
 
     pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
-        self.random_channels(self.fanout(scale), 0)
+        self.random_realtime_channels(self.fanout(scale), 0)
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
         // Don't include channels with ephemeral remote ports
-        let peers = self.random_channels(endpoints.len(), 0);
+        let peers = self.random_realtime_channels(endpoints.len(), 0);
         let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
@@ -901,7 +905,7 @@ impl State {
     }
 
     pub fn len_sqrt(&self) -> f32 {
-        f32::sqrt(self.channels.len() as f32)
+        f32::sqrt(self.channels.count_by_mode(ChannelMode::Realtime) as f32)
     }
 
     pub fn fanout(&self, scale: f32) -> usize {

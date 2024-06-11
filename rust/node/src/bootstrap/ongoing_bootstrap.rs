@@ -2,7 +2,7 @@ use super::{BootstrapInitiator, BootstrapInitiatorExt};
 use crate::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::Network,
+    transport::{ChannelMode, Network},
     utils::ThreadPool,
     NetworkParams,
 };
@@ -61,7 +61,9 @@ impl OngoingBootstrapExt for Arc<OngoingBootstrap> {
         if self.warmed_up.load(Ordering::SeqCst) < 3 {
             // Re-attempt bootstrapping more aggressively on startup
             next_wakeup = Duration::from_secs(5);
-            if !self.bootstrap_initiator.in_progress() && !self.network.len() == 0 {
+            if !self.bootstrap_initiator.in_progress()
+                && !self.network.count_by_mode(ChannelMode::Realtime) == 0
+            {
                 self.warmed_up.fetch_add(1, Ordering::SeqCst);
             }
         }

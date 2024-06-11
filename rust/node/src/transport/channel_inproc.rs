@@ -20,8 +20,8 @@ use crate::{
 
 use super::{
     message_deserializer::{AsyncBufferReader, MessageDeserializer},
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, NetworkFilter,
-    OutboundBandwidthLimiter, TrafficType, WriteCallback,
+    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, ChannelMode,
+    NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
 pub struct InProcChannelData {
@@ -278,6 +278,10 @@ impl Channel for ChannelInProc {
 
     fn direction(&self) -> ChannelDirection {
         ChannelDirection::Inbound
+    }
+
+    fn mode(&self) -> ChannelMode {
+        ChannelMode::Realtime
     }
 
     fn send(

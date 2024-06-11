@@ -200,6 +200,8 @@ impl Network {
             self.network_params.network.idle_timeout_s as u64,
         ));
 
+        //self.state.lock().unwrap().channels.in
+
         socket.start();
         response_server.start();
 
@@ -804,7 +806,7 @@ impl State {
 
     pub fn close_channels(&mut self) {
         for channel in self.channels.iter() {
-            channel.close_socket();
+            channel.close();
             // Remove response server
             if let Some(server) = &channel.response_server {
                 server.stop();

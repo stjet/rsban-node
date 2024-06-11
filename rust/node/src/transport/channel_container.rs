@@ -184,7 +184,7 @@ impl ChannelContainer {
         for entry in self.iter() {
             if entry.channel.get_last_packet_sent() < cutoff {
                 debug!("Closing idle channel: {}", entry.channel.remote_endpoint());
-                entry.channel.close();
+                entry.close();
             }
         }
     }
@@ -212,7 +212,7 @@ impl ChannelContainer {
                         ep, version, min_version
                     );
                     if let Some(entry) = self.by_endpoint.get(ep) {
-                        entry.channel.close();
+                        entry.close();
                     }
                 }
             } else {
@@ -257,9 +257,10 @@ impl ChannelEntry {
         self.channel.get_last_bootstrap_attempt()
     }
 
-    pub fn close_socket(&self) {
-        if let ChannelEnum::Tcp(tcp) = self.channel.as_ref() {
-            tcp.socket.close();
+    pub fn close(&self) {
+        self.channel.close();
+        if let Some(server) = &self.response_server {
+            server.stop();
         }
     }
 

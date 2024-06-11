@@ -319,7 +319,7 @@ pub trait ResponseServerExt {
     fn initiate_handshake(&self);
     fn receive_message(&self);
     fn received_message(&self, message: DeserializedMessage);
-    fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
+    async fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
 }
 
 pub enum ProcessResult {
@@ -481,7 +481,11 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
     }
 
     fn received_message(&self, message: DeserializedMessage) {
-        match self.process_message(message) {
+        let Some(rt) = self.async_rt.upgrade() else {
+            return;
+        };
+
+        match rt.tokio.block_on(self.process_message(message)) {
             ProcessResult::Progress => self.receive_message(),
             ProcessResult::Abort => self.stop(),
             ProcessResult::Pause => {
@@ -490,11 +494,7 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         }
     }
 
-    fn process_message(&self, message: DeserializedMessage) -> ProcessResult {
-        let Some(rt) = self.async_rt.upgrade() else {
-            return ProcessResult::Abort;
-        };
-
+    async fn process_message(&self, message: DeserializedMessage) -> ProcessResult {
         self.stats.inc_dir(
             StatType::TcpServer,
             DetailType::from(message.message.message_type()),
@@ -524,10 +524,12 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
                 | Message::BulkPullAccount(_)
                 | Message::BulkPush
                 | Message::FrontierReq(_) => HandshakeStatus::Bootstrap,
-                Message::NodeIdHandshake(payload) => rt.tokio.block_on(
+                Message::NodeIdHandshake(payload) => {
                     self.handshake_process
-                        .process_handshake(payload, &self.socket),
-                ),
+                        .process_handshake(payload, &self.socket)
+                        .await
+                }
+
                 _ => HandshakeStatus::Abort,
             };
 

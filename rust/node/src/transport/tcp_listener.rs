@@ -211,7 +211,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
                 let _ = self
                     .network
-                    .accept_one(&socket, &response_server, ChannelDirection::Inbound)
+                    .add(&socket, &response_server, ChannelDirection::Inbound)
                     .await;
 
                 // Sleep for a while to prevent busy loop

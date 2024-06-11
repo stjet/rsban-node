@@ -171,7 +171,7 @@ impl Network {
         }
     }
 
-    pub async fn accept_one(
+    pub async fn add(
         &self,
         socket: &Arc<Socket>,
         response_server: &Arc<ResponseServerImpl>,
@@ -326,10 +326,6 @@ impl Network {
         channels.channels.insert(fake, None);
     }
 
-    pub(crate) fn add_outbound_attempt(&self, remote: SocketAddrV6) -> bool {
-        self.state.lock().unwrap().add_outbound_attempt(remote)
-    }
-
     pub(crate) fn check_limits(&self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
         self.state.lock().unwrap().check_limits(ip, direction)
     }
@@ -438,7 +434,7 @@ impl Network {
         self.max_ip_connections(endpoint) || self.max_subnetwork_connections(endpoint)
     }
 
-    pub fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
+    fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
         if self.flags.disable_max_peers_per_ip {
             return false;
         }
@@ -457,7 +453,7 @@ impl Network {
         result
     }
 
-    pub fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
+    fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
         if self.flags.disable_max_peers_per_subnetwork {
             return false;
         }
@@ -479,37 +475,69 @@ impl Network {
         is_max
     }
 
-    pub(crate) fn reachout_checked(
-        &self,
-        endpoint: &SocketAddrV6,
-        allow_local_peers: bool,
-    ) -> bool {
-        // Don't contact invalid IPs
-        let mut error = self.not_a_peer(endpoint, allow_local_peers);
-        if !error {
-            error = !self.track_reachout(endpoint);
-        }
-        error
-    }
-
-    pub fn track_reachout(&self, endpoint: &SocketAddrV6) -> bool {
+    pub fn track_connection_attempt(&self, endpoint: &SocketAddrV6) -> bool {
         if self.flags.disable_tcp_realtime {
             return false;
         }
+
+        // Don't contact invalid IPs
+        if self.not_a_peer(endpoint, self.node_config.allow_local_peers) {
+            return false;
+        }
+
         // Don't overload single IP
         if self.max_ip_or_subnetwork_connections(endpoint) {
             return false;
         }
-        let mut guard = self.state.lock().unwrap();
-        if guard.excluded_peers.is_excluded(endpoint) {
-            return false;
-        }
-        // Don't connect to nodes that already sent us something
-        if guard.find_channel(endpoint).is_some() {
+
+        let mut state = self.state.lock().unwrap();
+        if state.excluded_peers.is_excluded(endpoint) {
             return false;
         }
 
-        guard.attempts.insert(*endpoint, ChannelDirection::Outbound)
+        // Don't connect to nodes that already sent us something
+        if state.find_channel(endpoint).is_some() {
+            return false;
+        }
+
+        if state.attempts.contains(endpoint) {
+            return false;
+        }
+
+        let count = state.attempts.count_by_address(endpoint.ip());
+        if count >= self.node_config.tcp.max_attempts_per_ip {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttemptsPerIp,
+                Direction::Out,
+            );
+            debug!(
+                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
+                        count, endpoint.ip()
+                    );
+            return false; // Rejected
+        }
+
+        if state.check_limits(endpoint.ip(), ChannelDirection::Outbound) != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectRejected,
+                Direction::Out,
+            );
+            // Refusal reason should be logged earlier
+
+            return false; // Rejected
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::ConnectInitiate,
+            Direction::Out,
+        );
+        debug!("Initiate outgoing connection to: {}", endpoint);
+
+        state.attempts.insert(*endpoint, ChannelDirection::Outbound);
+        true
     }
 
     pub fn len_sqrt(&self) -> f32 {
@@ -859,58 +887,6 @@ impl State {
 
     pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6) {
         self.excluded_peers.peer_misbehaved(addr);
-    }
-
-    pub fn add_outbound_attempt(&mut self, remote: SocketAddrV6) -> bool {
-        let count = self.attempts.count_by_direction(ChannelDirection::Outbound);
-        if count > self.config.max_attempts {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttempts,
-                Direction::Out,
-            );
-            debug!(
-                "Max connection attempts reached ({}), unable to initiate new connection: {}",
-                count,
-                remote.ip()
-            );
-            return false; // Rejected
-        }
-
-        let count = self.attempts.count_by_address(remote.ip());
-        if count >= self.config.max_attempts_per_ip {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttemptsPerIp,
-                Direction::Out,
-            );
-            debug!(
-                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
-                        count, remote.ip()
-                    );
-            return false; // Rejected
-        }
-
-        if self.check_limits(remote.ip(), ChannelDirection::Outbound) != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectRejected,
-                Direction::Out,
-            );
-            // Refusal reason should be logged earlier
-
-            return false; // Rejected
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::ConnectInitiate,
-            Direction::Out,
-        );
-        debug!("Initiate outgoing connection to: {}", remote);
-
-        self.attempts.insert(remote, ChannelDirection::Inbound);
-        true
     }
 
     pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {

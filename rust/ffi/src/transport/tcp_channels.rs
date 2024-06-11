@@ -177,7 +177,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_reachout(
     handle: &TcpChannelsHandle,
     endpoint: &EndpointDto,
 ) -> bool {
-    handle.track_reachout(&endpoint.into())
+    handle.track_connection_attempt(&endpoint.into())
 }
 
 #[no_mangle]

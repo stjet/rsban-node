@@ -26,7 +26,7 @@ pub struct PeerConnector {
     network_params: NetworkParams,
     cancel_token: CancellationToken,
     response_server_factory: Arc<ResponseServerFactory>,
-    merge_peer_listener: OutputListenerMt<SocketAddrV6>,
+    connect_listener: OutputListenerMt<SocketAddrV6>,
 }
 
 impl PeerConnector {
@@ -52,7 +52,7 @@ impl PeerConnector {
             network_params,
             cancel_token: CancellationToken::new(),
             response_server_factory,
-            merge_peer_listener: OutputListenerMt::new(),
+            connect_listener: OutputListenerMt::new(),
         }
     }
 
@@ -68,12 +68,12 @@ impl PeerConnector {
             network_params: NetworkParams::new(rsnano_core::Networks::NanoDevNetwork),
             cancel_token: CancellationToken::new(),
             response_server_factory: Arc::new(ResponseServerFactory::new_null()),
-            merge_peer_listener: OutputListenerMt::new(),
+            connect_listener: OutputListenerMt::new(),
         }
     }
 
-    pub fn track_merge_peer(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
-        self.merge_peer_listener.track()
+    pub fn track_connections(&self) -> Arc<OutputTrackerMt<SocketAddrV6>> {
+        self.connect_listener.track()
     }
 
     pub fn stop(&self) {
@@ -116,7 +116,7 @@ impl PeerConnector {
             .create_response_server(socket.clone());
 
         self.network
-            .accept_one(&socket, &response_server, ChannelDirection::Outbound)
+            .add(&socket, &response_server, ChannelDirection::Outbound)
             .await
     }
 }
@@ -128,20 +128,13 @@ pub trait PeerConnectorExt {
 
 impl PeerConnectorExt for Arc<PeerConnector> {
     fn connect_to(&self, peer: SocketAddrV6) {
-        self.merge_peer_listener.emit(peer);
+        self.connect_listener.emit(peer);
 
-        if self
-            .network
-            .reachout_checked(&peer, self.node_config.allow_local_peers)
-        {
+        if !self.network.track_connection_attempt(&peer) {
             return;
         }
 
         self.stats.inc(StatType::Network, DetailType::MergePeer);
-
-        if !self.network.add_outbound_attempt(peer) {
-            return;
-        }
 
         let self_l = Arc::clone(self);
         self.runtime.tokio.spawn(async move {
@@ -186,12 +179,12 @@ mod tests {
     use rsnano_core::utils::TEST_ENDPOINT_1;
 
     #[test]
-    fn track_merge_peer() {
+    fn track_connections() {
         let peer_connector = Arc::new(PeerConnector::new_null());
-        let merge_tracker = peer_connector.track_merge_peer();
+        let connect_tracker = peer_connector.track_connections();
 
         peer_connector.connect_to(TEST_ENDPOINT_1);
 
-        assert_eq!(merge_tracker.output(), vec![TEST_ENDPOINT_1]);
+        assert_eq!(connect_tracker.output(), vec![TEST_ENDPOINT_1]);
     }
 }

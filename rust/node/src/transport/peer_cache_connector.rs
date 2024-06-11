@@ -192,7 +192,7 @@ mod tests {
     ) {
         let ledger = ledger_with_peers(cached_peers);
         let peer_connector = Arc::new(PeerConnector::new_null());
-        let merge_tracker = peer_connector.track_merge_peer();
+        let merge_tracker = peer_connector.track_connections();
         let stats = Arc::new(Stats::default());
         let connector =
             PeerCacheConnector::new(ledger, peer_connector, stats.clone(), REACHOUT_DELAY);

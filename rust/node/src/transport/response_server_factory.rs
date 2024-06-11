@@ -1,7 +1,7 @@
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
-use super::{Network, ResponseServerImpl, ResponseServerObserver, Socket, SynCookies};
+use super::{Network, ResponseServerImpl, Socket, SynCookies};
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
@@ -28,11 +28,7 @@ pub(crate) struct ResponseServerFactory {
 }
 
 impl ResponseServerFactory {
-    pub(crate) fn create_response_server(
-        &self,
-        socket: Arc<Socket>,
-        observer: &Arc<dyn ResponseServerObserver>,
-    ) -> Arc<ResponseServerImpl> {
+    pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServerImpl> {
         let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
             Arc::clone(&self.runtime),
             Arc::clone(&self.syn_cookies),
@@ -46,14 +42,11 @@ impl ResponseServerFactory {
             self.node_flags.clone(),
         ));
 
-        let observer = Arc::downgrade(observer);
-
         Arc::new(ResponseServerImpl::new(
             Arc::clone(&self.runtime),
             &self.network.clone(),
             socket,
             Arc::new(self.node_config.clone()),
-            observer,
             Arc::clone(&self.network.publish_filter),
             Arc::new(self.network_params.clone()),
             Arc::clone(&self.stats),

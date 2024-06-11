@@ -51,16 +51,6 @@ public:
 	tcp_server (nano::transport::tcp_server &&) = delete;
 	~tcp_server ();
 
-	void start ();
-	void stop ();
-
-	void timeout ();
-	std::optional<nano::keepalive> get_last_keepalive () const;
-	bool is_stopped () const;
-	std::size_t unique_id () const;
-	nano::tcp_endpoint get_remote_endpoint () const;
-	std::shared_ptr<nano::transport::socket> const get_socket () const;
-
 	rsnano::TcpServerHandle * handle;
 };
 }

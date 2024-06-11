@@ -56,43 +56,6 @@ impl Default for TcpConfig {
     }
 }
 
-pub trait ResponseServerObserver: Send + Sync {
-    fn bootstrap_server_timeout(&self, connection_id: usize);
-    fn boostrap_server_exited(
-        &self,
-        socket_type: ChannelMode,
-        connection_id: usize,
-        endpoint: SocketAddrV6,
-    );
-    fn bootstrap_count(&self) -> usize;
-    fn inc_bootstrap_count(&self);
-    fn inc_realtime_count(&self);
-    fn dec_bootstrap_count(&self);
-    fn dec_realtime_count(&self);
-}
-
-pub struct NullTcpServerObserver {}
-impl ResponseServerObserver for NullTcpServerObserver {
-    fn bootstrap_server_timeout(&self, _inner_ptr: usize) {}
-
-    fn boostrap_server_exited(
-        &self,
-        _socket_type: ChannelMode,
-        _unique_id: usize,
-        _endpoint: SocketAddrV6,
-    ) {
-    }
-
-    fn bootstrap_count(&self) -> usize {
-        0
-    }
-
-    fn inc_bootstrap_count(&self) {}
-    fn inc_realtime_count(&self) {}
-    fn dec_realtime_count(&self) {}
-    fn dec_bootstrap_count(&self) {}
-}
-
 pub trait ResponseServer {}
 
 pub struct ResponseServerImpl {
@@ -101,7 +64,6 @@ pub struct ResponseServerImpl {
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
     stopped: AtomicBool,
-    observer: Weak<dyn ResponseServerObserver>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
@@ -134,7 +96,6 @@ impl ResponseServerImpl {
         network: &Arc<Network>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
-        observer: Weak<dyn ResponseServerObserver>,
         publish_filter: Arc<NetworkFilter>,
         network_params: Arc<NetworkParams>,
         stats: Arc<Stats>,
@@ -157,7 +118,6 @@ impl ResponseServerImpl {
             socket,
             channel: Mutex::new(None),
             config,
-            observer,
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
@@ -225,23 +185,22 @@ impl ResponseServerImpl {
             return false;
         }
 
-        if self.disable_bootstrap_listener {
-            return false;
-        }
-
-        let Some(observer) = self.observer.upgrade() else {
-            return false;
-        };
-
-        if observer.bootstrap_count() >= self.connections_max {
-            return false;
-        }
-
         if self.socket.mode() != ChannelMode::Undefined {
             return false;
         }
 
-        observer.inc_bootstrap_count();
+        if self.disable_bootstrap_listener {
+            return false;
+        }
+
+        let Some(network) = self.network.upgrade() else {
+            return false;
+        };
+
+        if network.count_by_mode(ChannelMode::Bootstrap) >= self.connections_max {
+            return false;
+        }
+
         self.socket.set_mode(ChannelMode::Bootstrap);
         debug!("Switched to bootstrap mode ({})", self.remote_endpoint());
         true
@@ -329,9 +288,7 @@ impl ResponseServerImpl {
 impl Drop for ResponseServerImpl {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
-        if let Some(observer) = self.observer.upgrade() {
-            observer.boostrap_server_exited(self.socket.mode(), self.unique_id(), remote_ep);
-        }
+        debug!("Exiting server: {}", remote_ep);
         self.stop();
     }
 }
@@ -384,10 +341,6 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
     }
 
     fn to_realtime_connection(&self, node_id: &Account) -> bool {
-        let Some(observer) = self.observer.upgrade() else {
-            return false;
-        };
-
         if self.socket.mode() != ChannelMode::Undefined {
             return false;
         }
@@ -401,16 +354,13 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         };
 
         network.upgrade_to_realtime_connection(&remote, *node_id);
-        observer.inc_realtime_count();
         debug!("Switched to realtime mode ({})", self.remote_endpoint());
         return true;
     }
 
     fn timeout(&self) {
         if self.socket.has_timed_out() {
-            if let Some(observer) = self.observer.upgrade() {
-                observer.bootstrap_server_timeout(self.unique_id());
-            }
+            debug!("Closing TCP server due to timeout");
             self.socket.close();
         }
     }

@@ -13,8 +13,6 @@
 
 #include <boost/format.hpp>
 
-#include <optional>
-
 nano::transport::tcp_server::tcp_server (
 rsnano::async_runtime & async_rt,
 nano::transport::tcp_channels & channels,
@@ -68,38 +66,6 @@ nano::transport::tcp_server::~tcp_server ()
 	rsnano::rsn_tcp_server_destroy (handle);
 }
 
-void nano::transport::tcp_server::start ()
-{
-	rsnano::rsn_tcp_server_start (handle);
-}
-
-void nano::transport::tcp_server::stop ()
-{
-	rsnano::rsn_tcp_server_stop (handle);
-}
-
-// TODO: We could periodically call this (from a dedicated timeout thread for eg.) but socket already handles timeouts,
-//  and since we only ever store tcp_server as weak_ptr, socket timeout will automatically trigger tcp_server cleanup
-void nano::transport::tcp_server::timeout ()
-{
-	rsnano::rsn_tcp_server_timeout (handle);
-}
-
-std::optional<nano::keepalive> nano::transport::tcp_server::get_last_keepalive () const
-{
-	auto message = rsnano::rsn_tcp_server_get_last_keepalive (handle);
-	auto result = nano::message_handle_to_message (message);
-	if (result == nullptr)
-	{
-		return {};
-	}
-	else
-	{
-		nano::keepalive keepalive{ *static_cast<nano::keepalive *> (result.get ()) };
-		return { keepalive };
-	}
-}
-
 /*
  * Bootstrap
  */
@@ -138,25 +104,3 @@ nano::transport::request_response_visitor_factory::~request_response_visitor_fac
 	rsnano::rsn_request_response_visitor_factory_destroy (handle);
 }
 
-bool nano::transport::tcp_server::is_stopped () const
-{
-	return rsnano::rsn_tcp_server_is_stopped (handle);
-}
-
-std::uintptr_t nano::transport::tcp_server::unique_id () const
-{
-	return rsnano::rsn_tcp_server_unique_id (handle);
-}
-
-nano::tcp_endpoint nano::transport::tcp_server::get_remote_endpoint () const
-{
-	rsnano::EndpointDto dto;
-	rsnano::rsn_tcp_server_remote_endpoint (handle, &dto);
-	return rsnano::dto_to_endpoint (dto);
-}
-
-std::shared_ptr<nano::transport::socket> const nano::transport::tcp_server::get_socket () const
-{
-	auto socket_handle = rsnano::rsn_tcp_server_socket (handle);
-	return std::make_shared<nano::transport::socket> (socket_handle);
-}

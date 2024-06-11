@@ -465,78 +465,6 @@ impl Network {
         result
     }
 
-    pub fn verify_handshake_response(
-        &self,
-        response: &NodeIdHandshakeResponse,
-        remote_endpoint: SocketAddrV6,
-    ) -> bool {
-        // Prevent connection with ourselves
-        if response.node_id == self.node_id.public_key() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidNodeId,
-                Direction::In,
-            );
-            return false; // Fail
-        }
-
-        // Prevent mismatched genesis
-        if let Some(v2) = &response.v2 {
-            if v2.genesis != self.network_params.ledger.genesis.hash() {
-                self.stats.inc_dir(
-                    StatType::Handshake,
-                    DetailType::InvalidGenesis,
-                    Direction::In,
-                );
-                return false; // Fail
-            }
-        }
-
-        let Some(cookie) = self.syn_cookies.cookie(&remote_endpoint) else {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::MissingCookie,
-                Direction::In,
-            );
-            return false; // Fail
-        };
-
-        if response.validate(&cookie).is_err() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidSignature,
-                Direction::In,
-            );
-            return false; // Fail
-        }
-
-        self.stats
-            .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
-        true
-    }
-
-    pub fn prepare_handshake_response(
-        &self,
-        query_payload: &NodeIdHandshakeQuery,
-        v2: bool,
-    ) -> NodeIdHandshakeResponse {
-        if v2 {
-            let genesis = self.network_params.ledger.genesis.hash();
-            NodeIdHandshakeResponse::new_v2(&query_payload.cookie, &self.node_id, genesis)
-        } else {
-            NodeIdHandshakeResponse::new_v1(&query_payload.cookie, &self.node_id)
-        }
-    }
-
-    pub fn prepare_handshake_query(
-        &self,
-        remote_endpoint: SocketAddrV6,
-    ) -> Option<NodeIdHandshakeQuery> {
-        self.syn_cookies
-            .assign(&remote_endpoint)
-            .map(|cookie| NodeIdHandshakeQuery { cookie })
-    }
-
     pub fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
         if self.flags.disable_max_peers_per_subnetwork {
             return false;
@@ -559,7 +487,7 @@ impl Network {
         is_max
     }
 
-    pub fn reachout_checked(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
+    fn reachout_checked(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
         // Don't contact invalid IPs
         let mut error = self.not_a_peer(endpoint, allow_local_peers);
         if !error {
@@ -807,7 +735,7 @@ impl NetworkExt for Arc<Network> {
             listener
         };
 
-        listener.connect(endpoint);
+        self.async_rt.tokio.block_on(listener.connect(endpoint));
     }
 }
 

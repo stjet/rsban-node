@@ -1,6 +1,6 @@
 use super::{
-    AcceptResult, ChannelDirection, CompositeSocketObserver, Network, ResponseServerFactory,
-    ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder, SocketObserver, TcpConfig,
+    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network,
+    ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -14,7 +14,7 @@ use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
-        atomic::{AtomicU16, AtomicUsize, Ordering},
+        atomic::{AtomicU16, Ordering},
         Arc, Condvar, Mutex,
     },
     time::Duration,
@@ -42,6 +42,8 @@ impl AcceptReturn {
     }
 }
 
+pub struct PeerConnector {}
+
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
@@ -54,11 +56,10 @@ pub struct TcpListener {
     workers: Arc<dyn ThreadPool>,
     network_params: NetworkParams,
     data: Mutex<TcpListenerData>,
-    bootstrap_count: AtomicUsize,
-    realtime_count: AtomicUsize,
     condition: Condvar,
     cancel_token: CancellationToken,
     response_server_factory: ResponseServerFactory,
+    peer_connector: PeerConnector,
 }
 
 impl Drop for TcpListener {
@@ -87,6 +88,7 @@ impl TcpListener {
         response_server_factory: ResponseServerFactory,
     ) -> Self {
         Self {
+            peer_connector: PeerConnector {},
             port: AtomicU16::new(port),
             config,
             node_config,
@@ -100,8 +102,6 @@ impl TcpListener {
             socket_observer,
             stats,
             workers,
-            bootstrap_count: AtomicUsize::new(0),
-            realtime_count: AtomicUsize::new(0),
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_factory,
@@ -115,7 +115,7 @@ impl TcpListener {
     }
 
     pub fn realtime_count(&self) -> usize {
-        self.realtime_count.load(Ordering::SeqCst)
+        self.network.count_by_mode(ChannelMode::Realtime)
     }
 
     pub fn connection_count(&self) -> usize {
@@ -151,26 +151,14 @@ impl TcpListener {
 pub trait TcpListenerExt {
     fn start(&self);
     async fn run(&self, listener: tokio::net::TcpListener);
-    fn connect_ip(&self, remote: Ipv6Addr) -> bool;
-    fn connect(&self, remote: SocketAddrV6) -> bool;
-    fn as_observer(self) -> Arc<dyn ResponseServerObserver>;
+    async fn connect(&self, remote: SocketAddrV6) -> bool;
 
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()>;
 }
 
 #[async_trait]
 impl TcpListenerExt for Arc<TcpListener> {
-    /// Connects to the default peering port
-    fn connect_ip(&self, remote: Ipv6Addr) -> bool {
-        self.connect(SocketAddrV6::new(
-            remote,
-            self.network_params.network.default_node_port,
-            0,
-            0,
-        ))
-    }
-
-    fn connect(&self, remote: SocketAddrV6) -> bool {
+    async fn connect(&self, remote: SocketAddrV6) -> bool {
         if self.is_stopped() {
             return false;
         }
@@ -180,7 +168,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         }
 
         let self_l = Arc::clone(self);
-        self.runtime.tokio.spawn(async move {
+        tokio::spawn(async move {
             tokio::select! {
                 result =  self_l.connect_impl(remote) =>{
                     if let Err(e) = result {
@@ -290,7 +278,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
                 let response_server = self
                     .response_server_factory
-                    .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
+                    .create_response_server(socket.clone());
 
                 let _ = self
                     .network
@@ -306,10 +294,6 @@ impl TcpListenerExt for Arc<TcpListener> {
             _ = self.cancel_token.cancelled() => { },
             _ = run_loop => {}
         }
-    }
-
-    fn as_observer(self) -> Arc<dyn ResponseServerObserver> {
-        self
     }
 
     async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
@@ -345,51 +329,11 @@ impl TcpListenerExt for Arc<TcpListener> {
 
         let response_server = self
             .response_server_factory
-            .create_response_server(socket.clone(), &Arc::clone(self).as_observer());
+            .create_response_server(socket.clone());
 
         self.network
             .accept_one(&socket, &response_server, ChannelDirection::Outbound)
             .await
-    }
-}
-
-impl ResponseServerObserver for TcpListener {
-    fn bootstrap_server_timeout(&self, _connection_id: usize) {
-        debug!("Closing TCP server due to timeout");
-    }
-
-    fn boostrap_server_exited(
-        &self,
-        socket_type: super::ChannelMode,
-        _connection_id: usize,
-        endpoint: SocketAddrV6,
-    ) {
-        debug!("Exiting server: {}", endpoint);
-        if socket_type == super::ChannelMode::Bootstrap {
-            self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
-        } else if socket_type == super::ChannelMode::Realtime {
-            self.realtime_count.fetch_sub(1, Ordering::SeqCst);
-        }
-    }
-
-    fn bootstrap_count(&self) -> usize {
-        self.bootstrap_count.load(Ordering::SeqCst)
-    }
-
-    fn inc_bootstrap_count(&self) {
-        self.bootstrap_count.fetch_add(1, Ordering::SeqCst);
-    }
-
-    fn dec_bootstrap_count(&self) {
-        self.bootstrap_count.fetch_sub(1, Ordering::SeqCst);
-    }
-
-    fn inc_realtime_count(&self) {
-        self.realtime_count.fetch_add(1, Ordering::SeqCst);
-    }
-
-    fn dec_realtime_count(&self) {
-        self.realtime_count.fetch_sub(1, Ordering::SeqCst);
     }
 }
 

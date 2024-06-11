@@ -1,6 +1,4 @@
-use super::{
-    ChannelDirection, ChannelEnum, ChannelMode, ChannelTcp, ResponseServerImpl, SocketExtensions,
-};
+use super::{ChannelDirection, ChannelEnum, ChannelMode, ChannelTcp, ResponseServerImpl};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use rsnano_core::{Account, PublicKey};
 use std::{
@@ -18,7 +16,6 @@ pub struct ChannelContainer {
     by_endpoint: HashMap<SocketAddrV6, Arc<ChannelEntry>>,
     by_random_access: Vec<SocketAddrV6>,
     by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
-    by_node_id: HashMap<PublicKey, Vec<SocketAddrV6>>,
     by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
     by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
@@ -41,10 +38,6 @@ impl ChannelContainer {
         self.by_random_access.push(endpoint);
         self.by_bootstrap_attempt
             .entry(entry.last_bootstrap_attempt())
-            .or_default()
-            .push(endpoint);
-        self.by_node_id
-            .entry(entry.node_id().unwrap_or_default())
             .or_default()
             .push(endpoint);
         self.by_network_version
@@ -93,11 +86,6 @@ impl ChannelContainer {
                 &entry.last_bootstrap_attempt(),
                 endpoint,
             );
-            remove_endpoint_map(
-                &mut self.by_node_id,
-                &entry.node_id().unwrap_or_default(),
-                endpoint,
-            );
             remove_endpoint_btree(
                 &mut self.by_network_version,
                 &entry.network_version(),
@@ -123,10 +111,10 @@ impl ChannelContainer {
     }
 
     pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelEntry>> {
-        self.by_node_id
-            .get(node_id)
-            .map(|endpoints| self.by_endpoint.get(&endpoints[0]))
-            .flatten()
+        self.by_endpoint
+            .values()
+            .filter(|i| i.channel.get_node_id() == Some(*node_id))
+            .next()
     }
 
     pub fn set_last_bootstrap_attempt(
@@ -174,7 +162,6 @@ impl ChannelContainer {
         self.by_endpoint.clear();
         self.by_random_access.clear();
         self.by_bootstrap_attempt.clear();
-        self.by_node_id.clear();
         self.by_network_version.clear();
         self.by_ip_address.clear();
         self.by_subnet.clear();

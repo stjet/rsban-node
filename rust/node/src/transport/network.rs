@@ -135,6 +135,23 @@ impl Network {
         }
     }
 
+    pub fn dump_channels(&self) {
+        let state = self.state.lock().unwrap();
+        println!(
+            "Dumping {} channels. Local port is {}",
+            state.channels.len(),
+            self.port()
+        );
+        for i in state.channels.iter() {
+            println!(
+                "    remote: {}, direction: {:?}, mode: {:?}",
+                i.channel.remote_endpoint(),
+                i.channel.direction(),
+                i.channel.mode()
+            )
+        }
+    }
+
     pub async fn accept_one(
         &self,
         socket: &Arc<Socket>,
@@ -200,7 +217,24 @@ impl Network {
             self.network_params.network.idle_timeout_s as u64,
         ));
 
-        //self.state.lock().unwrap().channels.in
+        let tcp_channel = ChannelTcp::new(
+            socket.clone(),
+            SystemTime::now(),
+            Arc::clone(&self.stats),
+            Arc::clone(&self.limiter),
+            &self.async_rt,
+            self.get_next_channel_id(),
+            self.network_params.network.protocol_info(),
+        );
+        tcp_channel.update_remote_endpoint();
+        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));
+        response_server.set_channel(channel.clone());
+
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .insert(channel, Some(response_server.clone()));
 
         socket.start();
         response_server.start();
@@ -486,12 +520,13 @@ impl Network {
         }
 
         let subnet = map_address_to_subnetwork(endoint.ip());
-        let guard = self.state.lock().unwrap();
-
-        let is_max = guard.channels.count_by_subnet(&subnet)
-            >= self.network_params.network.max_peers_per_subnetwork
-            || guard.attempts.count_by_subnetwork(&subnet)
-                >= self.network_params.network.max_peers_per_subnetwork;
+        let is_max = {
+            let guard = self.state.lock().unwrap();
+            guard.channels.count_by_subnet(&subnet)
+                >= self.network_params.network.max_peers_per_subnetwork
+                || guard.attempts.count_by_subnetwork(&subnet)
+                    >= self.network_params.network.max_peers_per_subnetwork
+        };
 
         if is_max {
             self.stats
@@ -554,6 +589,14 @@ impl Network {
 
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.state.lock().unwrap().channels.count_by_mode(mode)
+    }
+
+    pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .count_by_direction(direction)
     }
 
     pub fn bootstrap_peer(&self) -> SocketAddrV6 {
@@ -630,13 +673,7 @@ impl Network {
 }
 
 pub trait NetworkExt {
-    fn create(
-        &self,
-        socket: Arc<Socket>,
-        server: Arc<ResponseServerImpl>,
-        node_id: Account,
-    ) -> Option<Arc<ChannelEnum>>;
-
+    fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account);
     fn process_messages(&self);
     fn merge_peer(&self, peer: SocketAddrV6);
     fn keepalive(&self);
@@ -644,69 +681,53 @@ pub trait NetworkExt {
 }
 
 impl NetworkExt for Arc<Network> {
-    // This should be the only place in node where channels are created
-    fn create(
-        &self,
-        socket: Arc<Socket>,
-        server: Arc<ResponseServerImpl>,
-        node_id: Account,
-    ) -> Option<Arc<ChannelEnum>> {
-        let endpoint = socket.get_remote().unwrap();
+    fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account) {
+        let (observers, channel) = {
+            let mut state = self.state.lock().unwrap();
 
-        let mut lock = self.state.lock().unwrap();
+            if self.stopped.load(Ordering::SeqCst) {
+                return;
+            }
 
-        if self.stopped.load(Ordering::SeqCst) {
-            return None;
-        }
+            let Some(entry) = state.channels.get(remote_endpoint) else {
+                return;
+            };
 
-        if !self.check(&endpoint, &node_id, &lock) {
-            self.stats
-                .inc(StatType::TcpChannels, DetailType::ChannelRejected);
-            debug!(
-                "Rejected new channel from: {} ({})",
-                endpoint,
-                node_id.to_node_id()
-            );
-            // Rejection reason should be logged earlier
+            if let Some(other) = state.channels.get_by_node_id(&node_id) {
+                if other.ip_address() == entry.ip_address() {
+                    // We already have a connection to that node. We allow duplicate node ids, but
+                    // only if they come from different IP addresses
+                    let endpoint = entry.endpoint();
+                    state.channels.remove_by_endpoint(&endpoint);
+                    drop(state);
+                    debug!(
+                        ?node_id,
+                        remote = %endpoint,
+                        "Dropping channel, because another channel for the same node ID was found"
+                    );
+                    return;
+                }
+            }
 
-            return None;
-        }
+            entry.channel.set_node_id(node_id);
+            entry.channel.set_mode(ChannelMode::Realtime);
+
+            let observers = state.new_channel_observers.clone();
+            let channel = entry.channel.clone();
+            (observers, channel)
+        };
 
         self.stats
             .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
         debug!(
             "Accepted new channel from: {} ({})",
-            endpoint,
+            remote_endpoint,
             node_id.to_node_id()
         );
-
-        let tcp_channel = ChannelTcp::new(
-            socket,
-            SystemTime::now(),
-            Arc::clone(&self.stats),
-            self,
-            Arc::clone(&self.limiter),
-            &self.async_rt,
-            self.get_next_channel_id(),
-            self.network_params.network.protocol_info(),
-        );
-        tcp_channel.update_remote_endpoint();
-        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));
-        channel.set_node_id(node_id);
-
-        lock.attempts.remove(&endpoint);
-
-        let inserted = lock.channels.insert(Arc::clone(&channel), Some(server));
-        debug_assert!(inserted);
-
-        let observers = lock.new_channel_observers.clone();
-        drop(lock);
 
         for observer in observers {
             observer(channel.clone());
         }
-
-        Some(channel)
     }
 
     fn process_messages(&self) {

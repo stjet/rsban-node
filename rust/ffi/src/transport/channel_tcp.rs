@@ -36,7 +36,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_create(
         Arc::clone((*socket).deref()),
         SystemTime::now(),
         Arc::clone(stats),
-        tcp_channels,
         limiter,
         &async_rt,
         channel_id,

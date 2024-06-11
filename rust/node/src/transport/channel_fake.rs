@@ -148,6 +148,8 @@ impl Channel for ChannelFake {
         ChannelMode::Realtime
     }
 
+    fn set_mode(&self, _mode: ChannelMode) {}
+
     fn send(
         &self,
         message: &Message,

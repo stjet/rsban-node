@@ -37,7 +37,6 @@ pub struct ChannelTcp {
     pub async_rt: Weak<AsyncRuntime>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
     stats: Arc<Stats>,
-    network: Weak<Network>,
 }
 
 impl ChannelTcp {
@@ -45,7 +44,6 @@ impl ChannelTcp {
         socket: Arc<Socket>,
         now: SystemTime,
         stats: Arc<Stats>,
-        network: &Arc<Network>,
         limiter: Arc<OutboundBandwidthLimiter>,
         async_rt: &Arc<AsyncRuntime>,
         channel_id: usize,
@@ -67,7 +65,6 @@ impl ChannelTcp {
             async_rt: Arc::downgrade(async_rt),
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
             stats,
-            network: Arc::downgrade(network),
         }
     }
 
@@ -142,25 +139,22 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
             if !socket_l.max(traffic_type)
                 || (policy == BufferDropPolicy::NoSocketDrop && !socket_l.full(traffic_type))
             {
-                let channels_w = Weak::clone(&self.network);
                 let stats = Arc::clone(&self.stats);
                 let this_w = Arc::downgrade(self);
                 socket_l.async_write(
                     buffer,
                     Some(Box::new(move |ec, size| {
-                        if let Some(_) = channels_w.upgrade() {
-                            if ec.is_ok() {
-                                if let Some(channel) = this_w.upgrade() {
-                                    channel.set_last_packet_sent(SystemTime::now());
-                                }
+                        if ec.is_ok() {
+                            if let Some(channel) = this_w.upgrade() {
+                                channel.set_last_packet_sent(SystemTime::now());
                             }
-                            if ec == ErrorCode::host_unreachable() {
-                                stats.inc_dir(
-                                    StatType::Error,
-                                    DetailType::UnreachableHost,
-                                    Direction::Out,
-                                );
-                            }
+                        }
+                        if ec == ErrorCode::host_unreachable() {
+                            stats.inc_dir(
+                                StatType::Error,
+                                DetailType::UnreachableHost,
+                                Direction::Out,
+                            );
                         }
                         if let Some(callback) = callback {
                             callback(ec, size);
@@ -260,6 +254,10 @@ impl Channel for Arc<ChannelTcp> {
 
     fn mode(&self) -> ChannelMode {
         self.socket.mode()
+    }
+
+    fn set_mode(&self, mode: ChannelMode) {
+        self.socket.set_mode(mode)
     }
 
     fn send(

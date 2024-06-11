@@ -87,6 +87,7 @@ pub trait Channel {
     fn network_version(&self) -> u8;
     fn direction(&self) -> ChannelDirection;
     fn mode(&self) -> ChannelMode;
+    fn set_mode(&self, mode: ChannelMode);
 
     fn send(
         &self,

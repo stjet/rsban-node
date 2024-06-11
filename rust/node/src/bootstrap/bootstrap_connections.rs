@@ -549,7 +549,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         Arc::clone(&socket_l),
                         SystemTime::now(),
                         Arc::clone(&self_l.stats),
-                        &self_l.network,
                         Arc::clone(&self_l.outbound_limiter),
                         &self_l.async_rt,
                         channel_id,

@@ -762,12 +762,12 @@ pub fn alive_sockets() -> usize {
 
 impl SocketBuilder {
     pub fn new(
-        endpoint_type: ChannelDirection,
+        direction: ChannelDirection,
         thread_pool: Arc<dyn ThreadPool>,
         async_runtime: Weak<AsyncRuntime>,
     ) -> Self {
         Self {
-            direction: endpoint_type,
+            direction,
             thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),

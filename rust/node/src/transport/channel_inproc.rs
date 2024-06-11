@@ -284,6 +284,8 @@ impl Channel for ChannelInProc {
         ChannelMode::Realtime
     }
 
+    fn set_mode(&self, _mode: ChannelMode) {}
+
     fn send(
         &self,
         message: &Message,

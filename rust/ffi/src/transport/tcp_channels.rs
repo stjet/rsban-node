@@ -136,6 +136,11 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rsn_tcp_channels_dump(handle: &TcpChannelsHandle) {
+    handle.dump_channels()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
     handle: &mut TcpChannelsHandle,
     node_id: *const u8,

@@ -1,7 +1,7 @@
 use super::{
     AcceptResult, ChannelDirection, CompositeSocketObserver, ConnectionsPerAddress, Network,
     ResponseServerFactory, ResponseServerImpl, ResponseServerObserver, Socket, SocketBuilder,
-    SocketExtensions, SocketObserver, TcpConfig,
+    SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -18,7 +18,6 @@ use std::{
         atomic::{AtomicU16, AtomicUsize, Ordering},
         Arc, Condvar, Mutex, Weak,
     },
-    thread::JoinHandle,
     time::{Duration, Instant},
 };
 use tokio_util::sync::CancellationToken;
@@ -44,12 +43,6 @@ impl AcceptReturn {
     }
 }
 
-struct Connection {
-    endpoint: SocketAddrV6,
-    socket: Weak<Socket>,
-    server: Weak<ResponseServerImpl>,
-}
-
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
@@ -64,7 +57,6 @@ pub struct TcpListener {
     data: Mutex<TcpListenerData>,
     bootstrap_count: AtomicUsize,
     realtime_count: AtomicUsize,
-    cleanup_thread: Mutex<Option<JoinHandle<()>>>,
     condition: Condvar,
     cancel_token: CancellationToken,
     response_server_factory: ResponseServerFactory,
@@ -72,14 +64,12 @@ pub struct TcpListener {
 
 impl Drop for TcpListener {
     fn drop(&mut self) {
-        debug_assert!(self.cleanup_thread.lock().unwrap().is_none());
         debug_assert!(self.data.lock().unwrap().stopped);
         debug_assert_eq!(self.connection_count(), 0);
     }
 }
 
 struct TcpListenerData {
-    connections: Vec<Connection>,
     stopped: bool,
     local_addr: SocketAddr,
 }
@@ -87,15 +77,6 @@ struct TcpListenerData {
 struct ServerSocket {
     socket: Arc<Socket>,
     connections_per_address: Mutex<ConnectionsPerAddress>,
-}
-
-impl TcpListenerData {
-    fn alive_connections_count(&self) -> usize {
-        self.connections
-            .iter()
-            .filter(|c| c.socket.strong_count() > 0)
-            .count()
-    }
 }
 
 impl TcpListener {
@@ -117,7 +98,6 @@ impl TcpListener {
             node_config,
             network: Arc::downgrade(&network),
             data: Mutex::new(TcpListenerData {
-                connections: Vec::new(),
                 stopped: false,
                 local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
             }),
@@ -128,7 +108,6 @@ impl TcpListener {
             workers,
             bootstrap_count: AtomicUsize::new(0),
             realtime_count: AtomicUsize::new(0),
-            cleanup_thread: Mutex::new(None),
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_factory,
@@ -136,29 +115,9 @@ impl TcpListener {
     }
 
     pub fn stop(&self) {
-        // Close sockets
-        let mut conns = Vec::new();
-        {
-            let mut guard = self.data.lock().unwrap();
-            guard.stopped = true;
-            std::mem::swap(&mut conns, &mut guard.connections);
-        }
-
+        self.data.lock().unwrap().stopped = true;
         self.cancel_token.cancel();
         self.condition.notify_all();
-
-        if let Some(handle) = self.cleanup_thread.lock().unwrap().take() {
-            handle.join().unwrap();
-        }
-
-        for conn in conns {
-            if let Some(socket) = conn.socket.upgrade() {
-                socket.close();
-            }
-            if let Some(server) = conn.server.upgrade() {
-                server.stop();
-            }
-        }
     }
 
     pub fn realtime_count(&self) -> usize {
@@ -166,8 +125,11 @@ impl TcpListener {
     }
 
     pub fn connection_count(&self) -> usize {
-        let data = self.data.lock().unwrap();
-        data.alive_connections_count()
+        let Some(network) = self.network.upgrade() else {
+            return 0;
+        };
+
+        network.count_by_direction(ChannelDirection::Inbound)
     }
 
     pub fn local_address(&self) -> SocketAddr {
@@ -177,33 +139,6 @@ impl TcpListener {
         } else {
             SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)
         }
-    }
-
-    fn run_cleanup(&self) {
-        let mut guard = self.data.lock().unwrap();
-        while !guard.stopped {
-            self.stats.inc(StatType::TcpListener, DetailType::Cleanup);
-
-            self.cleanup(&mut guard);
-
-            guard = self
-                .condition
-                .wait_timeout_while(guard, Duration::from_secs(1), |g| !g.stopped)
-                .unwrap()
-                .0;
-        }
-    }
-
-    fn cleanup(&self, data: &mut TcpListenerData) {
-        // Erase dead connections
-        data.connections.retain(|conn| {
-            let retain = conn.server.strong_count() > 0;
-            if !retain {
-                self.stats.inc(StatType::TcpListener, DetailType::EraseDead);
-                debug!("Evicting dead connection");
-            }
-            retain
-        });
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -333,18 +268,6 @@ impl TcpListenerExt for Arc<TcpListener> {
 
             self_l.run(listener).await
         });
-
-        let self_w = Arc::downgrade(self);
-        *self.cleanup_thread.lock().unwrap() = Some(
-            std::thread::Builder::new()
-                .name("TCP listener".to_owned())
-                .spawn(move || {
-                    if let Some(self_l) = self_w.upgrade() {
-                        self_l.run_cleanup();
-                    }
-                })
-                .unwrap(),
-        );
     }
 
     async fn run(&self, listener: tokio::net::TcpListener) {
@@ -444,7 +367,7 @@ impl TcpListenerExt for Arc<TcpListener> {
         let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(
-            ChannelDirection::Inbound,
+            ChannelDirection::Outbound,
             Arc::clone(&self.workers),
             Arc::downgrade(&self.runtime),
         )
@@ -480,8 +403,6 @@ impl TcpListenerExt for Arc<TcpListener> {
         response_server: Arc<ResponseServerImpl>,
         direction: ChannelDirection,
     ) -> anyhow::Result<()> {
-        let remote_endpoint = socket.get_remote().unwrap();
-
         let Some(network) = self.network.upgrade() else {
             return Err(anyhow!("No network"));
         };
@@ -489,12 +410,6 @@ impl TcpListenerExt for Arc<TcpListener> {
         network
             .accept_one(&socket, &response_server, direction)
             .await?;
-
-        self.data.lock().unwrap().connections.push(Connection {
-            endpoint: remote_endpoint,
-            socket: Arc::downgrade(&socket),
-            server: Arc::downgrade(&response_server),
-        });
 
         Ok(())
     }

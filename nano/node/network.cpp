@@ -80,6 +80,11 @@ void nano::network::inbound (const nano::message & message, const std::shared_pt
 	node.live_message_processor.process (message, channel);
 }
 
+void nano::network::dump_channels () const
+{
+	rsnano::rsn_tcp_channels_dump (tcp_channels->handle);
+}
+
 // Send keepalives to all the peers we've been notified of
 void nano::network::merge_peers (std::array<nano::endpoint, 8> const & peers_a)
 {
@@ -106,7 +111,7 @@ bool nano::network::track_reachout (nano::endpoint const & endpoint_a)
 
 std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a) const
 {
-       return tcp_channels->random_channels (count_a, min_version_a);
+	return tcp_channels->random_channels (count_a, min_version_a);
 }
 
 std::shared_ptr<nano::transport::channel> nano::network::find_node_id (nano::account const & node_id_a)

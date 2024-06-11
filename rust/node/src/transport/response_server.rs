@@ -286,6 +286,10 @@ impl ResponseServerImpl {
         self.last_keepalive.lock().unwrap().take()
     }
 
+    pub fn set_channel(&self, channel: Arc<ChannelEnum>) {
+        *self.channel.lock().unwrap() = Some(channel);
+    }
+
     pub async fn initiate_handshake(&self) {
         let endpoint = self.remote_endpoint();
         let query = self.handshake_process.prepare_query(&endpoint);
@@ -392,14 +396,12 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             return false;
         };
 
-        let Some(channel) = network.create(Arc::clone(&self.socket), Arc::clone(self), *node_id)
-        else {
+        let Some(remote) = self.socket.get_remote() else {
             return false;
         };
 
-        *self.channel.lock().unwrap() = Some(channel);
+        network.upgrade_to_realtime_connection(&remote, *node_id);
         observer.inc_realtime_count();
-        self.socket.set_mode(ChannelMode::Realtime);
         debug!("Switched to realtime mode ({})", self.remote_endpoint());
         return true;
     }

@@ -58,6 +58,7 @@ public:
 	bool empty () const;
 	/** Disconnects and adds peer to exclusion list */
 	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
+	void dump_channels() const;
 
 	static std::string to_string (nano::networks);
 

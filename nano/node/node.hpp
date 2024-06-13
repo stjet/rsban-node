@@ -97,8 +97,11 @@ public:
 	void work_generate (nano::work_version const, nano::root const &, uint64_t, std::function<void (std::optional<uint64_t>)>, std::optional<nano::account> const & = std::nullopt, bool const = false);
 	void start_election (std::shared_ptr<nano::block> const & block);
 	bool block_confirmed (nano::block_hash const &);
+
+	// This function may spuriously return false after returning true until the database transaction is refreshed
 	bool block_confirmed_or_being_confirmed (nano::store::transaction const &, nano::block_hash const &);
 	bool block_confirmed_or_being_confirmed (nano::block_hash const &);
+
 	bool online () const;
 	bool init_error () const;
 	uint64_t get_confirmation_height (store::transaction const &, nano::account &);

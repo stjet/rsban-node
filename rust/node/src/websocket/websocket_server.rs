@@ -1,7 +1,7 @@
 use super::{OutgoingMessageEnvelope, WebsocketListener};
 use crate::{
     config::WebsocketConfig,
-    consensus::{ActiveTransactions, ElectionStatus, ElectionStatusType, VoteProcessor},
+    consensus::{ActiveElections, ElectionStatus, ElectionStatusType, VoteProcessor},
     utils::AsyncRuntime,
     wallets::Wallets,
     websocket::Topic,
@@ -21,7 +21,7 @@ pub fn create_websocket_server(
     config: WebsocketConfig,
     wallets: Arc<Wallets>,
     async_rt: Arc<AsyncRuntime>,
-    active_transactions: &ActiveTransactions,
+    active_elections: &ActiveElections,
     telemetry: &Telemetry,
     vote_processor: &VoteProcessor,
 ) -> Option<Arc<WebsocketListener>> {
@@ -38,7 +38,7 @@ pub fn create_websocket_server(
     let server = Arc::new(WebsocketListener::new(endpoint, wallets, async_rt));
 
     let server_w = Arc::downgrade(&server);
-    active_transactions.add_election_end_callback(Box::new(
+    active_elections.add_election_end_callback(Box::new(
         move |status: &ElectionStatus,
               votes: &Vec<VoteWithWeightInfo>,
               account: Account,
@@ -71,7 +71,7 @@ pub fn create_websocket_server(
     ));
 
     let server_w = Arc::downgrade(&server);
-    active_transactions.add_active_started_callback(Box::new(move |hash| {
+    active_elections.add_active_started_callback(Box::new(move |hash| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::StartedElection) {
                 server.broadcast(&started_election(&hash));
@@ -80,7 +80,7 @@ pub fn create_websocket_server(
     }));
 
     let server_w = Arc::downgrade(&server);
-    active_transactions.add_active_stopped_callback(Box::new(move |hash| {
+    active_elections.add_active_stopped_callback(Box::new(move |hash| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::StoppedElection) {
                 server.broadcast(&stopped_election(&hash));

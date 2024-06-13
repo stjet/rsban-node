@@ -10,14 +10,14 @@ use crate::{core::BlockHandle, utils::ContextWrapper, VoidPointerCallback};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, VoteSource};
 use rsnano_node::consensus::{
-    ActiveTransactions, ActiveTransactionsConfig, ActiveTransactionsExt, Election,
+    ActiveElections, ActiveElectionsConfig, ActiveElectionsExt, Election,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);
+pub struct ActiveTransactionsHandle(pub Arc<ActiveElections>);
 
 impl Deref for ActiveTransactionsHandle {
-    type Target = Arc<ActiveTransactions>;
+    type Target = Arc<ActiveElections>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -357,7 +357,7 @@ pub type ElectionEndedCallback = unsafe extern "C" fn(
 pub type FfiAccountBalanceCallback = unsafe extern "C" fn(*mut c_void, *const u8, bool);
 
 #[repr(C)]
-pub struct ActiveTransactionsConfigDto {
+pub struct ActiveElectionsConfigDto {
     // Maximum number of simultaneous active elections (AEC size)
     pub size: usize,
     // Limit of hinted elections as percentage of `active_elections_size`
@@ -370,8 +370,8 @@ pub struct ActiveTransactionsConfigDto {
     pub confirmation_cache: usize,
 }
 
-impl From<&ActiveTransactionsConfigDto> for ActiveTransactionsConfig {
-    fn from(value: &ActiveTransactionsConfigDto) -> Self {
+impl From<&ActiveElectionsConfigDto> for ActiveElectionsConfig {
+    fn from(value: &ActiveElectionsConfigDto) -> Self {
         Self {
             size: value.size,
             hinted_limit_percentage: value.hinted_limit_percentage,
@@ -382,8 +382,8 @@ impl From<&ActiveTransactionsConfigDto> for ActiveTransactionsConfig {
     }
 }
 
-impl From<&ActiveTransactionsConfig> for ActiveTransactionsConfigDto {
-    fn from(value: &ActiveTransactionsConfig) -> Self {
+impl From<&ActiveElectionsConfig> for ActiveElectionsConfigDto {
+    fn from(value: &ActiveElectionsConfig) -> Self {
         Self {
             size: value.size,
             hinted_limit_percentage: value.hinted_limit_percentage,

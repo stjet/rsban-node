@@ -1,4 +1,4 @@
-#include "nano/node/active_transactions.hpp"
+#include "nano/node/active_elections.hpp"
 
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/blocks.hpp>
@@ -112,7 +112,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_cache = config.vote_cache.to_dto ();
 	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count ();
 	dto.block_processor = config.block_processor.to_dto ();
-	dto.active_transactions = config.active_transactions.into_dto ();
+	dto.active_elections = config.active_elections.into_dto ();
 	dto.vote_processor = config.vote_processor.to_dto ();
 	dto.tcp = config.tcp.to_dto ();
 	return dto;
@@ -234,7 +234,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_cache = nano::vote_cache_config{ dto.vote_cache };
 	rep_crawler.query_timeout = std::chrono::milliseconds (dto.rep_crawler_query_timeout_ms);
 	block_processor = nano::block_processor_config{ dto.block_processor };
-	active_transactions = nano::active_transactions_config{ dto.active_transactions };
+	active_elections = nano::active_elections_config{ dto.active_elections };
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 	tcp = nano::transport::tcp_config{ dto.tcp };
 }
@@ -320,10 +320,10 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 			rep_crawler.deserialize (config_l);
 		}
 
-		if (toml.has_key ("active_transactions"))
+		if (toml.has_key ("active_elections"))
 		{
-			auto config_l = toml.get_required_child ("active_transactions");
-			active_transactions.deserialize (config_l);
+			auto config_l = toml.get_required_child ("active_elections");
+			active_elections.deserialize (config_l);
 		}
 
 		if (toml.has_key ("block_processor"))
@@ -531,9 +531,9 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			toml.get_error ().set ("io_threads must be non-zero");
 		}
-		if (active_transactions.size <= 250 && !network_params.network.is_dev_network ())
+		if (active_elections.size <= 250 && !network_params.network.is_dev_network ())
 		{
-			toml.get_error ().set ("active_transactions.size must be greater than 250");
+			toml.get_error ().set ("active_elections.size must be greater than 250");
 		}
 		if (bandwidth_limit > std::numeric_limits<std::size_t>::max ())
 		{

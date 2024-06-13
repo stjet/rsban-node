@@ -46,7 +46,7 @@ pub type ElectionEndCallback = Box<
 pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Sync>;
 
 #[derive(Clone, Debug)]
-pub struct ActiveTransactionsConfig {
+pub struct ActiveElectionsConfig {
     // Maximum number of simultaneous active elections (AEC size)
     pub size: usize,
     // Limit of hinted elections as percentage of `active_elections_size`
@@ -59,7 +59,7 @@ pub struct ActiveTransactionsConfig {
     pub confirmation_cache: usize,
 }
 
-impl ActiveTransactionsConfig {
+impl ActiveElectionsConfig {
     pub(crate) fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize ("size", self.size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate. \ntype:uint64,[250..]")?;
 
@@ -81,7 +81,7 @@ impl ActiveTransactionsConfig {
     }
 }
 
-impl Default for ActiveTransactionsConfig {
+impl Default for ActiveElectionsConfig {
     fn default() -> Self {
         Self {
             size: 5000,
@@ -93,7 +93,7 @@ impl Default for ActiveTransactionsConfig {
     }
 }
 
-pub struct ActiveTransactions {
+pub struct ActiveElections {
     pub mutex: Mutex<ActiveTransactionsData>,
     pub condition: Condvar,
     network_params: NetworkParams,
@@ -101,7 +101,7 @@ pub struct ActiveTransactions {
     wallets: Arc<Wallets>,
     pub election_winner_details: Mutex<HashMap<BlockHash, Arc<Election>>>,
     node_config: NodeConfig,
-    config: ActiveTransactionsConfig,
+    config: ActiveElectionsConfig,
     ledger: Arc<Ledger>,
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
@@ -127,7 +127,7 @@ pub struct ActiveTransactions {
     flags: NodeFlags,
 }
 
-impl ActiveTransactions {
+impl ActiveElections {
     pub fn new(
         network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
@@ -166,12 +166,12 @@ impl ActiveTransactions {
             confirming_set,
             workers,
             recently_confirmed: Arc::new(RecentlyConfirmedCache::new(
-                node_config.active_transactions.confirmation_cache,
+                node_config.active_elections.confirmation_cache,
             )),
             recently_cemented: Arc::new(Mutex::new(BoundedVecDeque::new(
-                node_config.active_transactions.confirmation_history_size,
+                node_config.active_elections.confirmation_history_size,
             ))),
-            config: node_config.active_transactions.clone(),
+            config: node_config.active_elections.clone(),
             node_config,
             history,
             block_processor,
@@ -1073,7 +1073,7 @@ impl ActiveTransactions {
     }
 }
 
-impl Drop for ActiveTransactions {
+impl Drop for ActiveElections {
     fn drop(&mut self) {
         // Thread must be stopped before destruction
         debug_assert!(self.thread.lock().unwrap().is_none());
@@ -1180,7 +1180,7 @@ impl OrderedRoots {
     }
 }
 
-pub trait ActiveTransactionsExt {
+pub trait ActiveElectionsExt {
     fn initialize(&self);
     fn start(&self);
     fn stop(&self);
@@ -1210,7 +1210,7 @@ pub trait ActiveTransactionsExt {
     ) -> (bool, Option<Arc<Election>>);
 }
 
-impl ActiveTransactionsExt for Arc<ActiveTransactions> {
+impl ActiveElectionsExt for Arc<ActiveElections> {
     fn initialize(&self) {
         let self_w = Arc::downgrade(self);
         // Register a callback which will get called after a block is cemented

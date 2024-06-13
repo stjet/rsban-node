@@ -1,4 +1,4 @@
-mod active_transactions;
+mod active_elections;
 mod confirmation_solicitor;
 mod election;
 mod election_status;
@@ -18,8 +18,8 @@ mod vote_processor_queue;
 mod vote_spacing;
 mod vote_with_weight_info;
 
-pub use active_transactions::{
-    ActiveTransactionsConfigDto, ActiveTransactionsHandle, ElectionEndedCallback,
+pub use active_elections::{
+    ActiveElectionsConfigDto, ActiveTransactionsHandle, ElectionEndedCallback,
     FfiAccountBalanceCallback,
 };
 pub use election_status::ElectionStatusHandle;

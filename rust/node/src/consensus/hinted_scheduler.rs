@@ -1,7 +1,7 @@
 use crate::{
     cementation::ConfirmingSet,
     config::HintedSchedulerConfig,
-    consensus::ActiveTransactionsExt,
+    consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
     OnlineReps,
 };
@@ -22,13 +22,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{ActiveTransactions, ElectionBehavior, VoteCache};
+use super::{ActiveElections, ElectionBehavior, VoteCache};
 
 /// Monitors inactive vote cache and schedules elections with the highest observed vote tally.
 pub struct HintedScheduler {
     thread: Mutex<Option<JoinHandle<()>>>,
     config: HintedSchedulerConfig,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
     condition: Condvar,
     ledger: Arc<Ledger>,
     confirming_set: Arc<ConfirmingSet>,
@@ -43,7 +43,7 @@ pub struct HintedScheduler {
 impl HintedScheduler {
     pub fn new(
         config: HintedSchedulerConfig,
-        active: Arc<ActiveTransactions>,
+        active: Arc<ActiveElections>,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
         vote_cache: Arc<Mutex<VoteCache>>,

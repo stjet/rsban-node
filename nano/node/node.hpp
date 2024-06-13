@@ -5,7 +5,7 @@
 #include <nano/lib/stats.hpp>
 #include <nano/lib/thread_pool.hpp>
 #include <nano/lib/work.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/active_elections.hpp>
 #include <nano/node/backlog_population.hpp>
 #include <nano/node/bandwidth_limiter.hpp>
 #include <nano/node/blockprocessor.hpp>
@@ -140,7 +140,7 @@ public:
 	nano::block_processor block_processor;
 	nano::wallets wallets;
 	nano::vote_generator generator;
-	nano::active_transactions active;
+	nano::active_elections active;
 	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;
 	nano::bootstrap_initiator bootstrap_initiator;

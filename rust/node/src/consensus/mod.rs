@@ -1,4 +1,4 @@
-mod active_transactions;
+mod active_elections;
 mod buckets;
 mod confirmation_solicitor;
 mod election;
@@ -19,7 +19,7 @@ mod vote_processor;
 mod vote_processor_queue;
 mod vote_spacing;
 
-pub use active_transactions::*;
+pub use active_elections::*;
 pub use buckets::{Buckets, ValueType};
 pub use confirmation_solicitor::ConfirmationSolicitor;
 pub use election::*;

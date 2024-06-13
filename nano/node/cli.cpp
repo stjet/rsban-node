@@ -88,7 +88,7 @@ void nano::add_node_flag_options (boost::program_options::options_description & 
 {
 	// clang-format off
 	description_a.add_options()
-		("disable_activate_successors", "Disables activate_successors in active_transactions")
+		("disable_activate_successors", "Disables activate_successors in active_elections")
 		("disable_backup", "Disable wallet automatic backups")
 		("disable_lazy_bootstrap", "Disables lazy bootstrap")
 		("disable_legacy_bootstrap", "Disables legacy bootstrap")

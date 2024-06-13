@@ -7,7 +7,7 @@
 #include <nano/lib/logging.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/work.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/active_elections.hpp>
 #include <nano/node/election_status.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/telemetry.hpp>
@@ -103,11 +103,11 @@ nano::websocket::message nano::websocket::message_builder::work_failed (nano::wo
  * websocket_server
  */
 
-nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a, nano::wallets & wallets_a, nano::active_transactions & active_transactions_a, nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a)
+nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a, nano::wallets & wallets_a, nano::active_elections & active_elections_a, nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto listener_handle = rsnano::rsn_websocket_server_create (&config_dto, wallets_a.rust_handle, async_rt.handle,
-	active_transactions_a.handle, telemetry_a.handle, vote_processor_a.handle);
+	active_elections_a.handle, telemetry_a.handle, vote_processor_a.handle);
 
 	if (listener_handle != nullptr)
 	{

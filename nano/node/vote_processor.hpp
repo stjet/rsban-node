@@ -11,7 +11,6 @@
 namespace nano
 {
 class signature_checker;
-class active_transactions;
 namespace store
 {
 	class component;

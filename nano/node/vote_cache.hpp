@@ -15,7 +15,6 @@ class VoteCacheEntryHandle;
 namespace nano
 {
 class node;
-class active_transactions;
 class vote;
 }
 

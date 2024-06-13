@@ -7,7 +7,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfigDto,
     bootstrap::BootstrapServerConfigDto,
-    consensus::{ActiveTransactionsConfigDto, VoteCacheConfigDto, VoteProcessorConfigDto},
+    consensus::{ActiveElectionsConfigDto, VoteCacheConfigDto, VoteProcessorConfigDto},
     fill_ipc_config_dto, fill_stat_config_dto,
     utils::FfiToml,
     HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
@@ -100,7 +100,7 @@ pub struct NodeConfigDto {
     pub vote_cache: VoteCacheConfigDto,
     pub rep_crawler_query_timeout_ms: i64,
     pub block_processor: BlockProcessorConfigDto,
-    pub active_transactions: ActiveTransactionsConfigDto,
+    pub active_elections: ActiveElectionsConfigDto,
     pub vote_processor: VoteProcessorConfigDto,
     pub tcp: TcpConfigDto,
 }
@@ -288,7 +288,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.vote_cache = (&cfg.vote_cache).into();
     dto.rep_crawler_query_timeout_ms = cfg.rep_crawler_query_timeout.as_millis() as i64;
     dto.block_processor = (&cfg.block_processor).into();
-    dto.active_transactions = (&cfg.active_transactions).into();
+    dto.active_elections = (&cfg.active_elections).into();
     dto.vote_processor = (&cfg.vote_processor).into();
     dto.tcp = (&cfg.tcp).into();
 }
@@ -423,7 +423,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
                 value.rep_crawler_query_timeout_ms as u64,
             ),
             block_processor: (&value.block_processor).into(),
-            active_transactions: (&value.active_transactions).into(),
+            active_elections: (&value.active_elections).into(),
             vote_processor: (&value.vote_processor).into(),
             tcp: (&value.tcp).into(),
         };

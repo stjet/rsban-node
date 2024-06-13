@@ -1,4 +1,4 @@
-use super::{ActiveTransactions, ActiveTransactionsExt, ElectionBehavior};
+use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -16,11 +16,11 @@ pub struct ManualScheduler {
     condition: Condvar,
     mutex: Mutex<ManualSchedulerImpl>,
     stats: Arc<Stats>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
 }
 
 impl ManualScheduler {
-    pub fn new(stats: Arc<Stats>, active: Arc<ActiveTransactions>) -> Self {
+    pub fn new(stats: Arc<Stats>, active: Arc<ActiveElections>) -> Self {
         Self {
             thread: Mutex::new(None),
             condition: Condvar::new(),

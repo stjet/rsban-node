@@ -164,7 +164,6 @@ public: // Information
 	nano::election_behavior behavior () const;
 
 private: // Constants
-	friend class active_transactions;
 	friend class confirmation_solicitor;
 	friend class election_helper;
 

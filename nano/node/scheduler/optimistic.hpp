@@ -8,12 +8,10 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <memory>
-
 namespace nano
 {
 class account_info;
-class active_transactions;
+class active_elections;
 class ledger;
 class node;
 }
@@ -43,7 +41,7 @@ class optimistic final
 	struct entry;
 
 public:
-	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_transactions &, nano::network_constants const & network_constants, nano::stats &);
+	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_elections &, nano::network_constants const & network_constants, nano::stats &);
 	optimistic (rsnano::OptimisticSchedulerHandle * handle);
 	optimistic (optimistic const &) = delete;
 	~optimistic ();

@@ -1,4 +1,4 @@
-use super::{ActiveTransactions, ActiveTransactionsExt, VoteProcessorQueue};
+use super::{ActiveElections, ActiveElectionsExt, VoteProcessorQueue};
 use crate::{
     stats::{DetailType, StatType, Stats},
     transport::ChannelEnum,
@@ -72,7 +72,7 @@ impl VoteProcessorConfig {
 pub struct VoteProcessor {
     threads: Mutex<Vec<JoinHandle<()>>>,
     queue: Arc<VoteProcessorQueue>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
     stats: Arc<Stats>,
     vote_processed:
         Mutex<Vec<Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>>>,
@@ -82,7 +82,7 @@ pub struct VoteProcessor {
 impl VoteProcessor {
     pub fn new(
         queue: Arc<VoteProcessorQueue>,
-        active: Arc<ActiveTransactions>,
+        active: Arc<ActiveElections>,
         stats: Arc<Stats>,
         on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) -> Self {

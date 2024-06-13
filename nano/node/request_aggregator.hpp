@@ -11,7 +11,7 @@
 
 namespace nano
 {
-class active_transactions;
+class active_elections;
 class ledger;
 class local_vote_history;
 class node_config;
@@ -30,7 +30,7 @@ class wallets;
 class request_aggregator final
 {
 public:
-	request_aggregator (nano::node_config const & config, nano::stats & stats_a, nano::vote_generator &, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_transactions &);
+	request_aggregator (nano::node_config const & config, nano::stats & stats_a, nano::vote_generator &, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_elections &);
 	request_aggregator (rsnano::RequestAggregatorHandle * handle);
 	request_aggregator (request_aggregator const &) = delete;
 	~request_aggregator ();

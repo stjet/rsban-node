@@ -29,7 +29,6 @@ class node_flags;
 class network;
 class stats;
 class local_vote_history;
-class active_transactions;
 class election_scheduler;
 class unchecked_map;
 class gap_cache;

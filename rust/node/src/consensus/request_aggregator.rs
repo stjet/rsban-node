@@ -1,4 +1,4 @@
-use super::{ActiveTransactions, LocalVoteHistory, VoteGenerator};
+use super::{ActiveElections, LocalVoteHistory, VoteGenerator};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
@@ -37,7 +37,7 @@ pub struct RequestAggregator {
     local_votes: Arc<LocalVoteHistory>,
     ledger: Arc<Ledger>,
     wallets: Arc<Wallets>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
     pub max_delay: Duration,
     small_delay: Duration,
     max_channel_requests: usize,
@@ -56,7 +56,7 @@ impl RequestAggregator {
         local_votes: Arc<LocalVoteHistory>,
         ledger: Arc<Ledger>,
         wallets: Arc<Wallets>,
-        active: Arc<ActiveTransactions>,
+        active: Arc<ActiveElections>,
         is_dev_network: bool,
     ) -> Self {
         Self {

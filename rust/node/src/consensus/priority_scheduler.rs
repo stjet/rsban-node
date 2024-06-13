@@ -1,6 +1,6 @@
-use super::{ActiveTransactions, Buckets, ElectionBehavior};
+use super::{ActiveElections, Buckets, ElectionBehavior};
 use crate::{
-    consensus::ActiveTransactionsExt,
+    consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
@@ -22,11 +22,11 @@ pub struct PriorityScheduler {
     condition: Condvar,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
 }
 
 impl PriorityScheduler {
-    pub fn new(ledger: Arc<Ledger>, stats: Arc<Stats>, active: Arc<ActiveTransactions>) -> Self {
+    pub fn new(ledger: Arc<Ledger>, stats: Arc<Stats>, active: Arc<ActiveElections>) -> Self {
         Self {
             thread: Mutex::new(None),
             mutex: Mutex::new(PrioritySchedulerImpl {

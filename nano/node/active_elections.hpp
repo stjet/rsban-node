@@ -24,7 +24,6 @@
 namespace nano
 {
 class node;
-class active_transactions;
 class block;
 class block_sideband;
 class block_processor;
@@ -42,13 +41,13 @@ class read_transaction;
 
 namespace nano
 {
-class active_transactions_config final
+class active_elections_config final
 {
 public:
-	active_transactions_config () = default;
-	active_transactions_config (rsnano::ActiveTransactionsConfigDto const & dto);
+	active_elections_config () = default;
+	active_elections_config (rsnano::ActiveElectionsConfigDto const & dto);
 	nano::error deserialize (nano::tomlconfig & toml);
-	rsnano::ActiveTransactionsConfigDto into_dto () const;
+	rsnano::ActiveElectionsConfigDto into_dto () const;
 
 public:
 	// Maximum number of simultaneous active elections (AEC size)
@@ -67,12 +66,12 @@ public:
  * Core class for determining consensus
  * Holds all active blocks i.e. recently added blocks that need confirmation
  */
-class active_transactions final
+class active_elections final
 {
 public:
-	active_transactions (nano::node &, rsnano::ActiveTransactionsHandle * handle);
-	active_transactions (active_transactions const &) = delete;
-	~active_transactions ();
+	active_elections (nano::node &, rsnano::ActiveTransactionsHandle * handle);
+	active_elections (active_elections const &) = delete;
+	~active_elections ();
 
 	void stop ();
 
@@ -149,13 +148,13 @@ public: // Tests
 	friend class node_fork_storm_Test;
 	friend class system_block_sequence_Test;
 	friend class node_mass_block_new_Test;
-	friend class active_transactions_vote_replays_Test;
+	friend class active_elections_vote_replays_Test;
 	friend class frontiers_confirmation_prioritize_frontiers_Test;
 	friend class frontiers_confirmation_prioritize_frontiers_max_optimistic_elections_Test;
 	friend class confirmation_height_prioritize_frontiers_overwrite_Test;
-	friend class active_transactions_confirmation_consistency_Test;
+	friend class active_elections_confirmation_consistency_Test;
 	friend class node_deferred_dependent_elections_Test;
-	friend class active_transactions_pessimistic_elections_Test;
+	friend class active_elections_pessimistic_elections_Test;
 	friend class frontiers_confirmation_expired_optimistic_elections_removal_Test;
 };
 

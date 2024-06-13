@@ -3,7 +3,7 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/threading.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/active_elections.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/local_vote_history.hpp>
 #include <nano/node/network.hpp>
@@ -17,7 +17,7 @@
 nano::request_aggregator::request_aggregator (nano::node_config const & config_a, nano::stats & stats_a,
 nano::vote_generator & generator_a, nano::vote_generator & final_generator_a,
 nano::local_vote_history & history_a, nano::ledger & ledger_a, nano::wallets & wallets_a,
-nano::active_transactions & active_a)
+nano::active_elections & active_a)
 {
 	auto config_dto{ config_a.to_dto () };
 	handle = rsnano::rsn_request_aggregator_create (&config_dto, stats_a.handle, generator_a.handle,

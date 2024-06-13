@@ -1,7 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include "nano/node/active_transactions.hpp"
+#include "nano/node/active_elections.hpp"
 
 #include <nano/boost/asio/strand.hpp>
 #include <nano/boost/beast/core.hpp>
@@ -31,7 +31,7 @@ class node_observers;
 class telemetry_data;
 class vote;
 class wallets;
-class active_transactions;
+class active_elections;
 class telemetry;
 class vote_processor;
 }
@@ -153,7 +153,7 @@ class websocket_server
 {
 public:
 	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a,
-	nano::wallets & wallets_a, nano::active_transactions & active_transactions_a,
+	nano::wallets & wallets_a, nano::active_elections & active_elections_a,
 	nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a);
 
 	websocket_server (rsnano::WebsocketListenerHandle * handle);

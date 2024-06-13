@@ -1,4 +1,4 @@
-use super::{ActiveTransactions, ActiveTransactionsExt, ElectionBehavior};
+use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::{
     cementation::ConfirmingSet,
     config::{NetworkConstants, OptimisticSchedulerConfig},
@@ -28,7 +28,7 @@ pub struct OptimisticScheduler {
     condition: Condvar,
     candidates: Mutex<OrderedCandidates>,
     stats: Arc<Stats>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
     network_constants: NetworkConstants,
     ledger: Arc<Ledger>,
     confirming_set: Arc<ConfirmingSet>,
@@ -38,7 +38,7 @@ impl OptimisticScheduler {
     pub fn new(
         config: OptimisticSchedulerConfig,
         stats: Arc<Stats>,
-        active: Arc<ActiveTransactions>,
+        active: Arc<ActiveElections>,
         network_constants: NetworkConstants,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,

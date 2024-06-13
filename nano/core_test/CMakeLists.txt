@@ -2,7 +2,7 @@ add_executable(
   core_test
   entry.cpp
   fakes/websocket_client.hpp
-  active_transactions.cpp
+  active_elections.cpp
   backlog.cpp
   block.cpp
   block_store.cpp

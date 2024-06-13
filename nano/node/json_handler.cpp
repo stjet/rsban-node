@@ -2,7 +2,7 @@
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/active_elections.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
 #include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/common.hpp>
@@ -1987,7 +1987,7 @@ void nano::json_handler::election_statistics ()
 	}
 	auto average_election_age = std::chrono::milliseconds{ total_count ? total_age.count () / total_count : 0 };
 
-	auto utilization_percentage = (static_cast<double> (total_count * 100) / node.config->active_transactions.size);
+	auto utilization_percentage = (static_cast<double> (total_count * 100) / node.config->active_elections.size);
 	std::stringstream stream_utilization, stream_average_age;
 	stream_utilization << std::fixed << std::setprecision (2) << utilization_percentage;
 

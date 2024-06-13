@@ -4,7 +4,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfig,
     bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
-    consensus::{ActiveTransactionsConfig, VoteCacheConfig, VoteProcessorConfig},
+    consensus::{ActiveElectionsConfig, VoteCacheConfig, VoteProcessorConfig},
     stats::StatsConfig,
     transport::TcpConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
@@ -98,7 +98,7 @@ pub struct NodeConfig {
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
     pub block_processor: BlockProcessorConfig,
-    pub active_transactions: ActiveTransactionsConfig,
+    pub active_elections: ActiveElectionsConfig,
     pub vote_processor: VoteProcessorConfig,
     pub tcp: TcpConfig,
 }
@@ -299,7 +299,7 @@ impl NodeConfig {
                 HintedSchedulerConfig::default()
             },
             vote_cache: Default::default(),
-            active_transactions: Default::default(),
+            active_elections: Default::default(),
             rep_crawler_query_timeout: if network_params.network.is_dev_network() {
                 Duration::from_secs(1)
             } else {
@@ -498,8 +498,8 @@ impl NodeConfig {
             )
         })?;
 
-        toml.put_child("active_transactions", &mut |writer| {
-            self.active_transactions.serialize_toml(writer)
+        toml.put_child("active_elections", &mut |writer| {
+            self.active_elections.serialize_toml(writer)
         })?;
 
         toml.put_child("block_processor", &mut |writer| {

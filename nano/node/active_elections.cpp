@@ -4,7 +4,7 @@
 
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/threading.hpp>
-#include <nano/node/active_transactions.hpp>
+#include <nano/node/active_elections.hpp>
 #include <nano/node/confirmation_solicitor.hpp>
 #include <nano/node/confirming_set.hpp>
 #include <nano/node/election.hpp>
@@ -60,28 +60,28 @@ void delete_vote_processed_context (void * context)
 
 }
 
-nano::active_transactions::active_transactions (nano::node & node_a, rsnano::ActiveTransactionsHandle * handle) :
+nano::active_elections::active_elections (nano::node & node_a, rsnano::ActiveTransactionsHandle * handle) :
 	handle{ handle },
 	node{ node_a }
 {
 }
 
-nano::active_transactions::~active_transactions ()
+nano::active_elections::~active_elections ()
 {
 	rsnano::rsn_active_transactions_destroy (handle);
 }
 
-void nano::active_transactions::stop ()
+void nano::active_elections::stop ()
 {
 	rsnano::rsn_active_transactions_stop (handle);
 }
 
-bool nano::active_transactions::confirmed (nano::election const & election) const
+bool nano::active_elections::confirmed (nano::election const & election) const
 {
 	return rsnano::rsn_active_transactions_confirmed (handle, election.handle);
 }
 
-std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_weight (nano::election & election) const
+std::vector<nano::vote_with_weight_info> nano::active_elections::votes_with_weight (nano::election & election) const
 {
 	std::multimap<nano::uint128_t, nano::vote_with_weight_info, std::greater<nano::uint128_t>> sorted_votes;
 	std::vector<nano::vote_with_weight_info> result;
@@ -103,17 +103,17 @@ std::vector<nano::vote_with_weight_info> nano::active_transactions::votes_with_w
 	return result;
 }
 
-void nano::active_transactions::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
+void nano::active_elections::add_election_winner_details (nano::block_hash const & hash_a, std::shared_ptr<nano::election> const & election_a)
 {
 	rsnano::rsn_active_transactions_add_election_winner_details (handle, hash_a.bytes.data (), election_a->handle);
 }
 
-void nano::active_transactions::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
+void nano::active_elections::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	rsnano::rsn_active_transactions_process_confirmed (handle, status_a.handle, iteration_a);
 }
 
-nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock) const
+nano::tally_t nano::active_elections::tally_impl (nano::election_lock & lock) const
 {
 	nano::tally_t result;
 	auto tally_handle = rsnano::rsn_active_transactions_tally_impl (handle, lock.handle);
@@ -127,33 +127,33 @@ nano::tally_t nano::active_transactions::tally_impl (nano::election_lock & lock)
 	return result;
 }
 
-void nano::active_transactions::force_confirm (nano::election & election)
+void nano::active_elections::force_confirm (nano::election & election)
 {
 	rsnano::rsn_active_transactions_force_confirm (handle, election.handle);
 }
 
-int64_t nano::active_transactions::limit (nano::election_behavior behavior) const
+int64_t nano::active_elections::limit (nano::election_behavior behavior) const
 {
 	return rsnano::rsn_active_transactions_limit (handle, static_cast<uint8_t> (behavior));
 }
 
-int64_t nano::active_transactions::vacancy (nano::election_behavior behavior) const
+int64_t nano::active_elections::vacancy (nano::election_behavior behavior) const
 {
 	return rsnano::rsn_active_transactions_vacancy (handle, static_cast<uint8_t> (behavior));
 }
 
-void nano::active_transactions::set_vacancy_update (std::function<void ()> callback)
+void nano::active_elections::set_vacancy_update (std::function<void ()> callback)
 {
 	auto context = new std::function<void ()> (callback);
 	rsnano::rsn_active_transactions_set_vacancy_update (handle, context, call_vacancy_update, delete_vacancy_update);
 }
 
-void nano::active_transactions::vacancy_update ()
+void nano::active_elections::vacancy_update ()
 {
 	rsnano::rsn_active_transactions_vacancy_update (handle);
 }
 
-std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_active (std::size_t max_a)
+std::vector<std::shared_ptr<nano::election>> nano::active_elections::list_active (std::size_t max_a)
 {
 	std::vector<std::shared_ptr<nano::election>> result_l;
 	auto elections_handle = rsnano::rsn_active_transactions_list_active (handle, max_a);
@@ -169,7 +169,7 @@ std::vector<std::shared_ptr<nano::election>> nano::active_transactions::list_act
 	return result_l;
 }
 
-nano::election_extended_status nano::active_transactions::current_status (nano::election & election) const
+nano::election_extended_status nano::active_elections::current_status (nano::election & election) const
 {
 	nano::election_lock guard{ election };
 	nano::election_status status_l = guard.status ();
@@ -179,45 +179,45 @@ nano::election_extended_status nano::active_transactions::current_status (nano::
 	return nano::election_extended_status{ status_l, guard.last_votes (), tally_impl (guard) };
 }
 
-nano::tally_t nano::active_transactions::tally (nano::election & election) const
+nano::tally_t nano::active_elections::tally (nano::election & election) const
 {
 	auto guard{ election.lock () };
 	return tally_impl (guard);
 }
 
-void nano::active_transactions::clear_recently_confirmed ()
+void nano::active_elections::clear_recently_confirmed ()
 {
 	rsnano::rsn_active_transactions_clear_recently_confirmed (handle);
 }
 
-std::size_t nano::active_transactions::recently_confirmed_size ()
+std::size_t nano::active_elections::recently_confirmed_size ()
 {
 	return rsnano::rsn_active_transactions_recently_confirmed_count (handle);
 }
 
-std::size_t nano::active_transactions::recently_cemented_size ()
+std::size_t nano::active_elections::recently_cemented_size ()
 {
 	return rsnano::rsn_active_transactions_recently_cemented_count (handle);
 }
 
-nano::qualified_root nano::active_transactions::lastest_recently_confirmed_root ()
+nano::qualified_root nano::active_elections::lastest_recently_confirmed_root ()
 {
 	nano::qualified_root result;
 	rsnano::rsn_active_transactions_latest_recently_confirmed_root (handle, result.bytes.data ());
 	return result;
 }
 
-void nano::active_transactions::insert_recently_confirmed (std::shared_ptr<nano::block> const & block)
+void nano::active_elections::insert_recently_confirmed (std::shared_ptr<nano::block> const & block)
 {
 	rsnano::rsn_active_transactions_recently_confirmed_insert (handle, block->get_handle ());
 }
 
-void nano::active_transactions::insert_recently_cemented (nano::election_status const & status)
+void nano::active_elections::insert_recently_cemented (nano::election_status const & status)
 {
 	rsnano::rsn_active_transactions_recently_cemented_insert (handle, status.handle);
 }
 
-std::deque<nano::election_status> nano::active_transactions::recently_cemented_list ()
+std::deque<nano::election_status> nano::active_elections::recently_cemented_list ()
 {
 	rsnano::RecentlyCementedCachedDto recently_cemented_cache_dto;
 	rsnano::rsn_active_transactions_recently_cemented_list (handle, &recently_cemented_cache_dto);
@@ -237,7 +237,7 @@ std::deque<nano::election_status> nano::active_transactions::recently_cemented_l
 }
 
 // Validate a vote and apply it to the current election if one exists
-std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions::vote (std::shared_ptr<nano::vote> const & vote, nano::vote_source source)
+std::unordered_map<nano::block_hash, nano::vote_code> nano::active_elections::vote (std::shared_ptr<nano::vote> const & vote, nano::vote_source source)
 {
 	auto result_handle = rsnano::rsn_active_transactions_vote (handle, vote->get_handle (), static_cast<uint8_t> (source));
 	std::unordered_map<nano::block_hash, nano::vote_code> result;
@@ -252,22 +252,22 @@ std::unordered_map<nano::block_hash, nano::vote_code> nano::active_transactions:
 	return result;
 }
 
-bool nano::active_transactions::active (nano::qualified_root const & root_a) const
+bool nano::active_elections::active (nano::qualified_root const & root_a) const
 {
 	return rsnano::rsn_active_transactions_active_root (handle, root_a.bytes.data ());
 }
 
-bool nano::active_transactions::active (nano::block const & block_a) const
+bool nano::active_elections::active (nano::block const & block_a) const
 {
 	return rsnano::rsn_active_transactions_active (handle, block_a.get_handle ());
 }
 
-bool nano::active_transactions::active (const nano::block_hash & hash) const
+bool nano::active_elections::active (const nano::block_hash & hash) const
 {
 	return rsnano::rsn_active_transactions_active_block (handle, hash.bytes.data ());
 }
 
-std::shared_ptr<nano::election> nano::active_transactions::election (nano::qualified_root const & root_a) const
+std::shared_ptr<nano::election> nano::active_elections::election (nano::qualified_root const & root_a) const
 {
 	std::shared_ptr<nano::election> result;
 	auto election_handle = rsnano::rsn_active_transactions_election (handle, root_a.bytes.data ());
@@ -278,43 +278,43 @@ std::shared_ptr<nano::election> nano::active_transactions::election (nano::quali
 	return result;
 }
 
-bool nano::active_transactions::erase (nano::block const & block_a)
+bool nano::active_elections::erase (nano::block const & block_a)
 {
 	return erase (block_a.qualified_root ());
 }
 
-bool nano::active_transactions::erase (nano::qualified_root const & root_a)
+bool nano::active_elections::erase (nano::qualified_root const & root_a)
 {
 	return rsnano::rsn_active_transactions_erase (handle, root_a.bytes.data ());
 }
 
-bool nano::active_transactions::empty () const
+bool nano::active_elections::empty () const
 {
 	return size () == 0;
 }
 
-std::size_t nano::active_transactions::size () const
+std::size_t nano::active_elections::size () const
 {
 	return rsnano::rsn_active_transactions_len (handle);
 }
 
-bool nano::active_transactions::publish (std::shared_ptr<nano::block> const & block_a)
+bool nano::active_elections::publish (std::shared_ptr<nano::block> const & block_a)
 {
 	return rsnano::rsn_active_transactions_publish_block (handle, block_a->get_handle ());
 }
 
-nano::vote_code nano::active_transactions::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
+nano::vote_code nano::active_elections::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
 {
 	auto result = rsnano::rsn_active_transactions_vote2 (handle, election.handle, rep.bytes.data (), timestamp_a, block_hash_a.bytes.data (), static_cast<uint8_t> (vote_source_a));
 	return static_cast<nano::vote_code> (result);
 }
 
-std::size_t nano::active_transactions::election_winner_details_size ()
+std::size_t nano::active_elections::election_winner_details_size ()
 {
 	return rsnano::rsn_active_transactions_election_winner_details_len (handle);
 }
 
-void nano::active_transactions::clear ()
+void nano::active_elections::clear ()
 {
 	rsnano::rsn_active_transactions_clear (handle);
 }
@@ -323,7 +323,7 @@ void nano::active_transactions::clear ()
  * active_transactions_config
  */
 
-nano::active_transactions_config::active_transactions_config (rsnano::ActiveTransactionsConfigDto const & dto) :
+nano::active_elections_config::active_elections_config (rsnano::ActiveElectionsConfigDto const & dto) :
 	size{ dto.size },
 	hinted_limit_percentage{ dto.hinted_limit_percentage },
 	optimistic_limit_percentage{ dto.optimistic_limit_percentage },
@@ -332,12 +332,12 @@ nano::active_transactions_config::active_transactions_config (rsnano::ActiveTran
 {
 }
 
-rsnano::ActiveTransactionsConfigDto nano::active_transactions_config::into_dto () const
+rsnano::ActiveElectionsConfigDto nano::active_elections_config::into_dto () const
 {
 	return { size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache };
 }
 
-nano::error nano::active_transactions_config::deserialize (nano::tomlconfig & toml)
+nano::error nano::active_elections_config::deserialize (nano::tomlconfig & toml)
 {
 	toml.get ("size", size);
 	toml.get ("hinted_limit_percentage", hinted_limit_percentage);

@@ -10,7 +10,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{
-        AccountBalanceChangedCallback, ActiveTransactions, ActiveTransactionsExt, ElectionBehavior,
+        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionBehavior,
         ElectionEndCallback, ElectionStatusType, HintedScheduler, HintedSchedulerExt,
         LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
         OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
@@ -98,7 +98,7 @@ pub struct Node {
     pub wallets: Arc<Wallets>,
     pub vote_generator: Arc<VoteGenerator>,
     pub final_generator: Arc<VoteGenerator>,
-    pub active: Arc<ActiveTransactions>,
+    pub active: Arc<ActiveElections>,
     pub vote_processor: Arc<VoteProcessor>,
     pub websocket: Option<Arc<crate::websocket::WebsocketListener>>,
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
@@ -358,7 +358,7 @@ impl Node {
             config.vote_generator_threshold as usize,
         ));
 
-        let active = Arc::new(ActiveTransactions::new(
+        let active = Arc::new(ActiveElections::new(
             network_params.clone(),
             Arc::clone(&online_reps),
             Arc::clone(&wallets),

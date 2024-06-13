@@ -1,7 +1,7 @@
 use super::{RegisterRepresentativeResult, RepresentativeRegister};
 use crate::{
     config::NodeConfig,
-    consensus::ActiveTransactions,
+    consensus::ActiveElections,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, Network, PeerConnector, PeerConnectorExt, TrafficType,
@@ -41,7 +41,7 @@ pub struct RepCrawler {
     async_rt: Arc<AsyncRuntime>,
     condition: Condvar,
     ledger: Arc<Ledger>,
-    active: Arc<ActiveTransactions>,
+    active: Arc<ActiveElections>,
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -58,7 +58,7 @@ impl RepCrawler {
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         ledger: Arc<Ledger>,
-        active: Arc<ActiveTransactions>,
+        active: Arc<ActiveElections>,
         peer_connector: Arc<PeerConnector>,
     ) -> Self {
         let is_dev_network = network_params.network.is_dev_network();

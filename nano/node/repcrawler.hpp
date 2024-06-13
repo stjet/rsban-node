@@ -13,7 +13,6 @@
 namespace nano
 {
 class node;
-class active_transactions;
 
 /**
  * A representative picked up during repcrawl.

@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
     ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteCache, VoteGenerator, VoteInfo, VoteProcessedCallback, NEXT_ELECTION_ID,
+    VoteApplier, VoteCache, VoteGenerator, VoteInfo, VoteProcessedCallback, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -122,6 +122,7 @@ pub struct ActiveElections {
     representative_register: Arc<Mutex<RepresentativeRegister>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     flags: NodeFlags,
+    vote_applier: Arc<VoteApplier>,
 }
 
 impl ActiveElections {
@@ -145,6 +146,7 @@ impl ActiveElections {
         representative_register: Arc<Mutex<RepresentativeRegister>>,
         flags: NodeFlags,
         recently_confirmed: Arc<RecentlyConfirmedCache>,
+        vote_applier: Arc<VoteApplier>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -186,6 +188,7 @@ impl ActiveElections {
             representative_register,
             thread: Mutex::new(None),
             flags,
+            vote_applier,
         }
     }
 

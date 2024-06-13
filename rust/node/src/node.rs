@@ -15,8 +15,8 @@ use crate::{
         LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
         OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
         ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers, RequestAggregator,
-        RequestAggregatorExt, VoteCache, VoteGenerator, VoteProcessor, VoteProcessorExt,
-        VoteProcessorQueue, VoteRouter,
+        RequestAggregatorExt, VoteApplier, VoteCache, VoteGenerator, VoteProcessor,
+        VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -267,11 +267,6 @@ impl Node {
             config.active_elections.confirmation_cache,
         ));
 
-        let vote_router = Arc::new(VoteRouter::new(
-            vote_cache.clone(),
-            recently_confirmed.clone(),
-        ));
-
         let block_processor = Arc::new(BlockProcessor::new(
             Arc::new(config.clone()),
             Arc::new(flags.clone()),
@@ -369,6 +364,31 @@ impl Node {
             config.vote_generator_threshold as usize,
         ));
 
+        let vote_applier = Arc::new(VoteApplier::new(
+            ledger.clone(),
+            network_params.clone(),
+            online_reps.clone(),
+            stats.clone(),
+            final_generator.clone(),
+            block_processor.clone(),
+            config.clone(),
+            history.clone(),
+            wallets.clone(),
+            recently_confirmed.clone(),
+            confirming_set.clone(),
+            workers.clone(),
+        ));
+
+        let vote_router = Arc::new(VoteRouter::new(
+            vote_cache.clone(),
+            recently_confirmed.clone(),
+            ledger.clone(),
+            network_params.clone(),
+            online_reps.clone(),
+            stats.clone(),
+            vote_applier.clone(),
+        ));
+
         let active = Arc::new(ActiveElections::new(
             network_params.clone(),
             Arc::clone(&online_reps),
@@ -389,6 +409,7 @@ impl Node {
             Arc::clone(&representative_register),
             flags.clone(),
             recently_confirmed,
+            vote_applier,
         ));
 
         active.initialize();

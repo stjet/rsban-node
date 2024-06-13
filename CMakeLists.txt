@@ -483,9 +483,6 @@ target_link_libraries(boost_property_tree INTERFACE Boost::multi_index)
 # cpptoml
 include_directories(submodules/cpptoml/include)
 
-# magic_enum
-include_directories(submodules/magic_enum/include/magic_enum)
-
 add_subdirectory(nano/ipc_flatbuffers_lib)
 add_subdirectory(nano/ipc_flatbuffers_test)
 

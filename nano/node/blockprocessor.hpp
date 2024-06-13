@@ -79,7 +79,6 @@ public:
 class block_processor final
 {
 public:
-	block_processor (nano::node &);
 	block_processor (rsnano::BlockProcessorHandle * handle);
 	block_processor (nano::block_processor const &) = delete;
 	block_processor (nano::block_processor &&) = delete;

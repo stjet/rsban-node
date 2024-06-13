@@ -62,7 +62,6 @@ add_library(
   object_stream.cpp
   object_stream_adapters.hpp
   observer_set.hpp
-  optional_ptr.hpp
   relaxed_atomic.hpp
   rpc_handler_interface.hpp
   rpcconfig.hpp

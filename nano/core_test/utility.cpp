@@ -1,4 +1,3 @@
-#include <nano/lib/optional_ptr.hpp>
 #include <nano/lib/thread_pool.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/timer.hpp>
@@ -6,91 +5,10 @@
 #include <nano/secure/utility.hpp>
 
 #include <gtest/gtest.h>
-
 #include <boost/filesystem.hpp>
-
-#include <fstream>
-#include <future>
 #include <thread>
 
 using namespace std::chrono_literals;
-
-TEST (optional_ptr, basic)
-{
-	struct valtype
-	{
-		int64_t x{ 1 };
-		int64_t y{ 2 };
-		int64_t z{ 3 };
-	};
-
-	nano::optional_ptr<valtype> opt;
-	ASSERT_FALSE (opt);
-	ASSERT_FALSE (opt.is_initialized ());
-
-	{
-		auto val = valtype{};
-		opt = val;
-		ASSERT_LT (sizeof (opt), sizeof (val));
-		std::unique_ptr<valtype> uptr;
-		ASSERT_EQ (sizeof (opt), sizeof (uptr));
-	}
-	ASSERT_TRUE (opt);
-	ASSERT_TRUE (opt.is_initialized ());
-	ASSERT_EQ (opt->x, 1);
-	ASSERT_EQ (opt->y, 2);
-	ASSERT_EQ (opt->z, 3);
-}
-
-TEST (filesystem, remove_all_files)
-{
-	auto path = nano::unique_path ();
-	auto dummy_directory = path / "tmp";
-	std::filesystem::create_directories (dummy_directory);
-
-	auto dummy_file1 = path / "my_file1.txt";
-	auto dummy_file2 = path / "my_file2.txt";
-	std::ofstream (dummy_file1.string ());
-	std::ofstream (dummy_file2.string ());
-
-	// Check all exist
-	ASSERT_TRUE (std::filesystem::exists (dummy_directory));
-	ASSERT_TRUE (std::filesystem::exists (dummy_file1));
-	ASSERT_TRUE (std::filesystem::exists (dummy_file2));
-
-	// Should remove only the files
-	nano::remove_all_files_in_dir (path);
-
-	ASSERT_TRUE (std::filesystem::exists (dummy_directory));
-	ASSERT_FALSE (std::filesystem::exists (dummy_file1));
-	ASSERT_FALSE (std::filesystem::exists (dummy_file2));
-}
-
-TEST (filesystem, move_all_files)
-{
-	auto path = nano::unique_path ();
-	auto dummy_directory = path / "tmp";
-	std::filesystem::create_directories (dummy_directory);
-
-	auto dummy_file1 = dummy_directory / "my_file1.txt";
-	auto dummy_file2 = dummy_directory / "my_file2.txt";
-	std::ofstream (dummy_file1.string ());
-	std::ofstream (dummy_file2.string ());
-
-	// Check all exist
-	ASSERT_TRUE (std::filesystem::exists (dummy_directory));
-	ASSERT_TRUE (std::filesystem::exists (dummy_file1));
-	ASSERT_TRUE (std::filesystem::exists (dummy_file2));
-
-	// Should move only the files
-	nano::move_all_files_to_dir (dummy_directory, path);
-
-	ASSERT_TRUE (std::filesystem::exists (dummy_directory));
-	ASSERT_TRUE (std::filesystem::exists (path / "my_file1.txt"));
-	ASSERT_TRUE (std::filesystem::exists (path / "my_file2.txt"));
-	ASSERT_FALSE (std::filesystem::exists (dummy_file1));
-	ASSERT_FALSE (std::filesystem::exists (dummy_file2));
-}
 
 TEST (relaxed_atomic_integral, basic)
 {

@@ -36,32 +36,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempts_destroy(handle: *mut BootstrapAt
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_bootstrap_attempts_incremental_id(handle: &BootstrapAttemptsHandle) -> usize {
-    handle.lock().unwrap().get_incremental_id()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_attempts_add(
-    handle: &BootstrapAttemptsHandle,
-    attempt: &BootstrapAttemptHandle,
-) {
-    handle.lock().unwrap().add(Arc::clone(attempt))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_attempts_remove(
-    handle: &BootstrapAttemptsHandle,
-    incremental_id: usize,
-) {
-    handle.lock().unwrap().remove(incremental_id);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_attempts_clear(handle: &BootstrapAttemptsHandle) {
-    handle.lock().unwrap().clear();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_bootstrap_attempts_size(handle: &BootstrapAttemptsHandle) -> usize {
     handle.lock().unwrap().size()
 }
@@ -69,18 +43,6 @@ pub extern "C" fn rsn_bootstrap_attempts_size(handle: &BootstrapAttemptsHandle) 
 #[no_mangle]
 pub extern "C" fn rsn_bootstrap_attempts_total_attempts(handle: &BootstrapAttemptsHandle) -> usize {
     handle.lock().unwrap().total_attempts()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempts_find(
-    handle: &BootstrapAttemptsHandle,
-    incremental_id: usize,
-) -> *mut BootstrapAttemptHandle {
-    let guard = handle.lock().unwrap();
-    match guard.find(incremental_id) {
-        Some(attempt) => BootstrapAttemptHandle::new(Arc::clone(attempt)),
-        None => std::ptr::null_mut(),
-    }
 }
 
 #[no_mangle]

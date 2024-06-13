@@ -21,28 +21,6 @@ pub unsafe extern "C" fn rsn_bootstrap_server_destroy(handle: *mut BootstrapServ
     drop(Box::from_raw(handle))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_start(handle: &BootstrapServerHandle) {
-    handle.0.start();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_stop(handle: &BootstrapServerHandle) {
-    handle.0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_server_request(
-    handle: &BootstrapServerHandle,
-    message: &MessageHandle,
-    channel: &ChannelHandle,
-) -> bool {
-    let Message::AscPullReq(req) = &message.message else {
-        panic!("wrong message type")
-    };
-    handle.0.request(req.clone(), Arc::clone(channel))
-}
-
 pub type BootstrapServerResponseCallback =
     unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
 

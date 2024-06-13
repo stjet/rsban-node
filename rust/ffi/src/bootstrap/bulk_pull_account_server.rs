@@ -42,13 +42,6 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_destroy(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_account_server_send_frontier(
-    handle: *mut BulkPullAccountServerHandle,
-) {
-    (*handle).0.send_frontier();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_account_server_get_next(
     handle: *mut BulkPullAccountServerHandle,
     key: *mut PendingKeyDto,

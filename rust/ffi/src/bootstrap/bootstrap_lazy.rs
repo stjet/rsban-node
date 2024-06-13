@@ -1,12 +1,11 @@
 use super::{
     bootstrap_attempt::BootstrapAttemptHandle, bootstrap_connections::BootstrapConnectionsHandle,
-    bootstrap_initiator::BootstrapInitiatorHandle, pulls_cache::PullInfoDto,
+    bootstrap_initiator::BootstrapInitiatorHandle,
 };
 use crate::{
     block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
     websocket::WebsocketListenerHandle, FfiPropertyTree, NetworkParamsDto, NodeFlagsHandle,
 };
-use rsnano_core::{BlockHash, HashOrAccount};
 use rsnano_node::{
     bootstrap::{BootstrapAttemptLazy, BootstrapStrategy},
     NetworkParams,
@@ -53,52 +52,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_create(
         )
         .unwrap(),
     )))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_lazy_start(
-    handle: &BootstrapAttemptHandle,
-    hash_or_account: *const u8,
-) -> bool {
-    handle
-        .as_lazy()
-        .lazy_start(&HashOrAccount::from_ptr(hash_or_account))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_lazy_add(
-    handle: &BootstrapAttemptHandle,
-    pull: &PullInfoDto,
-) {
-    handle.as_lazy().lazy_add(&pull.into())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_lazy_requeue(
-    handle: &BootstrapAttemptHandle,
-    hash: *const u8,
-    previous: *const u8,
-) {
-    handle
-        .as_lazy()
-        .lazy_requeue(&BlockHash::from_ptr(hash), &BlockHash::from_ptr(previous));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_lazy_batch_size(
-    handle: &BootstrapAttemptHandle,
-) -> u32 {
-    handle.as_lazy().lazy_batch_size()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_lazy_lazy_processed_or_exists(
-    handle: &BootstrapAttemptHandle,
-    hash: *const u8,
-) -> bool {
-    handle
-        .as_lazy()
-        .lazy_processed_or_exists(&BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]

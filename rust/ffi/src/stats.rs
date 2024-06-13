@@ -201,8 +201,3 @@ pub extern "C" fn rsn_process_result_into_detail(process_result: u8) -> u8 {
     let result: DetailType = pr.into();
     result as u8
 }
-
-#[no_mangle]
-pub extern "C" fn rsn_message_type_to_stat_detail(message_type: u8) -> u8 {
-    DetailType::from(MessageType::from_u8(message_type).unwrap()) as u8
-}

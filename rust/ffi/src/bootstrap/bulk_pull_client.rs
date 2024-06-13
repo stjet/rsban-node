@@ -53,8 +53,3 @@ pub extern "C" fn rsn_bulk_pull_client_create(
 pub unsafe extern "C" fn rsn_bulk_pull_client_destroy(handle: *mut BulkPullClientHandle) {
     drop(Box::from_raw(handle));
 }
-
-#[no_mangle]
-pub extern "C" fn rsn_bulk_pull_client_request(handle: &BulkPullClientHandle) {
-    handle.0.request();
-}

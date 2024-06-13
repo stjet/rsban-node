@@ -58,29 +58,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wallet_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_wallet_requeue_pending(
-    handle: &BootstrapAttemptHandle,
-    account: *const u8,
-) {
-    let BootstrapStrategy::Wallet(wallet) = &***handle else {
-        panic!("not wallet")
-    };
-    wallet.requeue_pending(Account::from_ptr(account));
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_attempt_wallet_wallet_start(
-    handle: &BootstrapAttemptHandle,
-    accounts: &AccountVecHandle,
-) {
-    let BootstrapStrategy::Wallet(wallet) = &***handle else {
-        panic!("not wallet")
-    };
-    let mut accounts = accounts.iter().cloned().collect();
-    wallet.wallet_start(&mut accounts);
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_bootstrap_attempt_wallet_run(handle: &BootstrapAttemptHandle) {
     let BootstrapStrategy::Wallet(wallet) = &***handle else {
         panic!("not wallet")

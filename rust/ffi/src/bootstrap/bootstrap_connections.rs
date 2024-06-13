@@ -66,38 +66,12 @@ pub unsafe extern "C" fn rsn_bootstrap_connections_drop(handle: *mut BootstrapCo
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_bootstrap_connections_add_connection(
-    handle: &BootstrapConnectionsHandle,
-    endpoint: &EndpointDto,
-) {
-    handle.add_connection(endpoint.into());
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_bootstrap_connections_target_connections(
     handle: &BootstrapConnectionsHandle,
     pulls_remaining: usize,
     attempts_count: usize,
 ) -> u32 {
     handle.target_connections(pulls_remaining, attempts_count)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_connections_clear_pulls(
-    handle: &BootstrapConnectionsHandle,
-    bootstrap_id: u64,
-) {
-    handle.clear_pulls(bootstrap_id)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_connections_run(handle: &BootstrapConnectionsHandle) {
-    handle.run();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_bootstrap_connections_stop(handle: &BootstrapConnectionsHandle) {
-    handle.stop();
 }
 
 #[no_mangle]

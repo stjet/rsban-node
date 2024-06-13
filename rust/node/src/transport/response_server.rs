@@ -603,7 +603,6 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "todo"]
     async fn can_track_handshake_initiation() {
         let response_server = ResponseServerImpl::new_null();
         let handshake_tracker = response_server.track_handshake_initiation();

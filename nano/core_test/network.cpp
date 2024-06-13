@@ -546,22 +546,7 @@ TEST (tcp_listener, tcp_listener_timeout_node_id_handshake)
 // and this test assumes that the async runtime doesn't poll. Test must be rewritten!
 TEST (DISABLED_network, peer_max_tcp_attempts)
 {
-	// Add nodes that can accept TCP connection, but not node ID handshake
-	nano::node_flags node_flags;
-	node_flags.set_disable_connection_cleanup (true);
-	nano::test::system system;
-	auto node = system.add_node (node_flags);
-	for (auto i (0); i < node->network_params.network.max_peers_per_ip; ++i)
-	{
-		auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work, node_flags));
-		node2->start ();
-		system.nodes.push_back (node2);
-		// Start TCP attempt
-		node->network->merge_peer (node2->network->endpoint ());
-	}
-	ASSERT_EQ (0, node->network->size ());
-	ASSERT_FALSE (node->network->tcp_channels->track_reachout (nano::endpoint (node->network->endpoint ().address (), system.get_available_port ())));
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp_listener, nano::stat::detail::max_per_ip, nano::stat::dir::out));
+	// TODO reimplement in Rust
 }
 #endif
 
@@ -571,21 +556,7 @@ namespace transport
 {
 	TEST (network, peer_max_tcp_attempts_subnetwork)
 	{
-		nano::node_flags node_flags;
-		node_flags.set_disable_max_peers_per_ip (true);
-		nano::test::system system;
-		system.add_node (node_flags);
-		auto node (system.nodes[0]);
-		for (auto i (0); i < node->network_params.network.max_peers_per_subnetwork; ++i)
-		{
-			auto address (boost::asio::ip::address_v6::v4_mapped (boost::asio::ip::address_v4 (0x7f000001 + i))); // 127.0.0.1 hex
-			nano::endpoint endpoint (address, system.get_available_port ());
-			ASSERT_TRUE (node->network->tcp_channels->track_reachout (endpoint));
-		}
-		ASSERT_EQ (0, node->network->size ());
-		ASSERT_EQ (0, node->stats->count (nano::stat::type::tcp, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
-		ASSERT_FALSE (node->network->tcp_channels->track_reachout (nano::endpoint (boost::asio::ip::make_address_v6 ("::ffff:127.0.0.1"), system.get_available_port ())));
-		ASSERT_EQ (1, node->stats->count (nano::stat::type::tcp, nano::stat::detail::max_per_subnetwork, nano::stat::dir::out));
+		// TODO reimplement in Rust
 	}
 }
 }

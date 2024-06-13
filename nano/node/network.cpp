@@ -100,16 +100,6 @@ void nano::network::merge_peer (nano::endpoint const & peer_a)
 	rsnano::rsn_node_connect (node.handle, &peer_dto);
 }
 
-bool nano::network::track_reachout (nano::endpoint const & endpoint_a)
-{
-	// Don't contact invalid IPs
-	if (tcp_channels->not_a_peer (endpoint_a, node.config->allow_local_peers))
-	{
-		return false;
-	}
-	return tcp_channels->track_reachout (endpoint_a);
-}
-
 std::vector<std::shared_ptr<nano::transport::channel>> nano::network::random_channels (std::size_t count_a, uint8_t min_version_a) const
 {
 	return tcp_channels->random_channels (count_a, min_version_a);

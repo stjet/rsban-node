@@ -207,30 +207,6 @@ TEST (peer_container, list_fanout)
 	ASSERT_EQ (4, node->network->tcp_channels->random_fanout ().size ());
 }
 
-// Test to make sure we don't repeatedly send keepalive messages to nodes that aren't responding
-TEST (peer_container, reachout)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto & node1 = *system.add_node (node_flags);
-	auto outer_node1 = nano::test::add_outer_node (system);
-	ASSERT_NE (nullptr, nano::test::establish_tcp (system, node1, outer_node1->network->endpoint ()));
-	// Make sure having been contacted by them already indicates we shouldn't reach out
-	ASSERT_FALSE (node1.network->track_reachout (outer_node1->network->endpoint ()));
-	auto outer_node2 = nano::test::add_outer_node (system);
-	ASSERT_TRUE (node1.network->track_reachout (outer_node2->network->endpoint ()));
-	ASSERT_NE (nullptr, nano::test::establish_tcp (system, node1, outer_node2->network->endpoint ()));
-	// Reaching out to them once should signal we shouldn't reach out again.
-	ASSERT_FALSE (node1.network->track_reachout (outer_node2->network->endpoint ()));
-	// Make sure we don't purge new items
-	node1.network->cleanup (std::chrono::system_clock::now () - std::chrono::seconds (10));
-	ASSERT_FALSE (node1.network->track_reachout (outer_node2->network->endpoint ()));
-	// Make sure we purge old items
-	node1.network->cleanup (std::chrono::system_clock::now () + std::chrono::seconds (10));
-	ASSERT_TIMELY (5s, node1.network->empty ());
-	ASSERT_TRUE (node1.network->track_reachout (outer_node2->network->endpoint ()));
-}
-
 // This test is similar to network.filter_invalid_version_using with the difference that
 // this one checks for the channel's connection to get stopped when an incoming message
 // is from an outdated node version.

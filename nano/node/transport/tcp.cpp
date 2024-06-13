@@ -273,12 +273,6 @@ bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_
 	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
 }
 
-bool nano::transport::tcp_channels::track_reachout (nano::endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	return rsnano::rsn_tcp_channels_reachout (handle, &endpoint_dto);
-}
-
 void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();

@@ -1,5 +1,5 @@
 use crate::{
-    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions},
+    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType};
@@ -276,7 +276,7 @@ impl BulkPullServerImpl {
                     debug!("Unable to send not-a-block");
                 }
             })),
-            crate::transport::TrafficType::Generic,
+            TrafficType::Generic,
         )
     }
 
@@ -296,7 +296,7 @@ impl BulkPullServerImpl {
                         .unwrap()
                         .sent_action(ec, size, server_impl_clone);
                 })),
-                crate::transport::TrafficType::Generic,
+                TrafficType::Generic,
             );
         } else {
             self.send_finished(server_impl);

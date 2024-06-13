@@ -19,17 +19,3 @@ nano::bulk_push_client::~bulk_push_client ()
 	rsnano::rsn_bulk_push_client_destroy (handle);
 }
 
-void nano::bulk_push_client::start ()
-{
-	return rsnano::rsn_bulk_push_client_start (handle);
-}
-
-bool nano::bulk_push_client::get_result ()
-{
-	return rsnano::rsn_bulk_push_client_get_result (handle);
-}
-
-void nano::bulk_push_client::set_result (bool value)
-{
-	rsnano::rsn_bulk_push_client_set_result (handle, value);
-}

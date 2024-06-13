@@ -23,21 +23,6 @@ nano::bootstrap_server::~bootstrap_server ()
 	rsnano::rsn_bootstrap_server_destroy (handle);
 }
 
-void nano::bootstrap_server::start ()
-{
-	rsnano::rsn_bootstrap_server_start (handle);
-}
-
-void nano::bootstrap_server::stop ()
-{
-	rsnano::rsn_bootstrap_server_stop (handle);
-}
-
-bool nano::bootstrap_server::request (nano::asc_pull_req const & message, std::shared_ptr<nano::transport::channel> channel)
-{
-	return rsnano::rsn_bootstrap_server_request (handle, message.handle, channel->handle);
-}
-
 namespace
 {
 void response_callback_wrapper (void * context, rsnano::MessageHandle * msg_handle, rsnano::ChannelHandle * channel_handle)

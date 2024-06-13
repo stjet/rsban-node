@@ -1,9 +1,7 @@
 #include "nano/lib/blocks.hpp"
 #include "nano/lib/epoch.hpp"
-#include "nano/lib/logging.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
-#include "nano/lib/threading.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/secure/common.hpp"
 
@@ -82,16 +80,6 @@ nano::bulk_pull_client::~bulk_pull_client ()
 	rsnano::rsn_bulk_pull_client_destroy (handle);
 }
 
-void nano::bulk_pull_client::request ()
-{
-	rsnano::rsn_bulk_pull_client_request (handle);
-}
-
-void nano::bulk_pull_server::send_next ()
-{
-	rsnano::rsn_bulk_pull_server_send_next (handle);
-}
-
 nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count () const
 {
 	return rsnano::rsn_bulk_pull_server_sent_count (handle);
@@ -148,11 +136,6 @@ nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::
 nano::bulk_pull_account_server::~bulk_pull_account_server ()
 {
 	rsnano::rsn_bulk_pull_account_server_destroy (handle);
-}
-
-void nano::bulk_pull_account_server::send_frontier ()
-{
-	rsnano::rsn_bulk_pull_account_server_send_frontier (handle);
 }
 
 std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> nano::bulk_pull_account_server::get_next ()

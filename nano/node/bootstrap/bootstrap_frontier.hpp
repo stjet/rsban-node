@@ -32,7 +32,6 @@ public:
 	frontier_req_server (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::transport::tcp_server> const &, std::unique_ptr<nano::frontier_req>);
 	frontier_req_server (frontier_req_server const &) = delete;
 	~frontier_req_server ();
-	void send_next ();
 	nano::public_key current () const;
 	nano::block_hash frontier () const;
 	rsnano::FrontierReqServerHandle * handle;

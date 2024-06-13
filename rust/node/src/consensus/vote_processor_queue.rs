@@ -18,7 +18,7 @@ use std::{
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,
     condition: Condvar,
-    config: VoteProcessorConfig,
+    pub config: VoteProcessorConfig,
     stats: Arc<Stats>,
     online_reps: Arc<Mutex<OnlineReps>>,
     ledger: Arc<Ledger>,
@@ -80,7 +80,7 @@ impl VoteProcessorQueue {
         if added {
             self.stats.inc(StatType::VoteProcessor, DetailType::Process);
             self.stats.inc(StatType::VoteProcessorTier, tier.into());
-            self.condition.notify_all();
+            self.condition.notify_one();
         } else {
             self.stats
                 .inc(StatType::VoteProcessor, DetailType::Overfill);
@@ -125,11 +125,14 @@ impl VoteProcessorQueue {
         let guard = self.data.lock().unwrap();
         ContainerInfoComponent::Composite(
             name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "votes".to_string(),
-                count: guard.queue.len(),
-                sizeof_element: size_of::<(Arc<Vote>, Arc<ChannelEnum>)>(),
-            })],
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "votes".to_string(),
+                    count: guard.queue.len(),
+                    sizeof_element: size_of::<(Arc<Vote>, Arc<ChannelEnum>)>(),
+                }),
+                guard.queue.collect_container_info("queue"),
+            ],
         )
     }
 }

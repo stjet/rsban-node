@@ -35,6 +35,8 @@ pub struct VoteProcessorConfigDto {
     pub max_pr_queue: usize,
     pub max_non_pr_queue: usize,
     pub pr_priority: usize,
+    pub threads: usize,
+    pub batch_size: usize,
 }
 
 impl From<&VoteProcessorConfigDto> for VoteProcessorConfig {
@@ -43,6 +45,8 @@ impl From<&VoteProcessorConfigDto> for VoteProcessorConfig {
             max_pr_queue: value.max_pr_queue,
             max_non_pr_queue: value.max_non_pr_queue,
             pr_priority: value.pr_priority,
+            threads: value.threads,
+            batch_size: value.batch_size,
         }
     }
 }
@@ -53,6 +57,8 @@ impl From<&VoteProcessorConfig> for VoteProcessorConfigDto {
             max_pr_queue: value.max_pr_queue,
             max_non_pr_queue: value.max_non_pr_queue,
             pr_priority: value.pr_priority,
+            threads: value.threads,
+            batch_size: value.batch_size,
         }
     }
 }

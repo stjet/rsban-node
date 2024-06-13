@@ -60,7 +60,9 @@ nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote>
 nano::vote_processor_config::vote_processor_config (rsnano::VoteProcessorConfigDto const & dto) :
 	max_pr_queue{ dto.max_pr_queue },
 	max_non_pr_queue{ dto.max_non_pr_queue },
-	pr_priority{ dto.pr_priority }
+	pr_priority{ dto.pr_priority },
+	threads{ dto.threads },
+	batch_size{ dto.batch_size }
 {
 }
 
@@ -69,11 +71,13 @@ nano::error nano::vote_processor_config::deserialize (nano::tomlconfig & toml)
 	toml.get ("max_pr_queue", max_pr_queue);
 	toml.get ("max_non_pr_queue", max_non_pr_queue);
 	toml.get ("pr_priority", pr_priority);
+	toml.get ("threads", threads);
+	toml.get ("batch_size", batch_size);
 
 	return toml.get_error ();
 }
 
 rsnano::VoteProcessorConfigDto nano::vote_processor_config::to_dto () const
 {
-	return { max_pr_queue, max_non_pr_queue, pr_priority };
+	return { max_pr_queue, max_non_pr_queue, pr_priority, threads, batch_size };
 }

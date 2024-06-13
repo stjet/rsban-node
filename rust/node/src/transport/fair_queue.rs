@@ -2,7 +2,7 @@ use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 
 use super::ChannelEnum;
 use std::{
-    cmp::Ordering,
+    cmp::{min, Ordering},
     collections::{BTreeMap, VecDeque},
     sync::{Arc, Weak},
     time::{Duration, Instant},
@@ -189,6 +189,7 @@ where
     max_size_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     priority_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     counter: usize,
+    total_len: usize,
 }
 
 impl<R, S> FairQueue<R, S>
@@ -204,6 +205,7 @@ where
             last_update: Instant::now(),
             current_queue_key: None,
             counter: 0,
+            total_len: 0,
             max_size_query,
             priority_query,
         }
@@ -231,11 +233,11 @@ where
     }
 
     pub fn len(&self) -> usize {
-        self.queues.values().map(|q| q.len()).sum()
+        self.total_len
     }
 
     pub fn is_empty(&self) -> bool {
-        self.queues.values().all(|q| q.is_empty())
+        self.len() == 0
     }
 
     pub fn queues_len(&self) -> usize {
@@ -267,11 +269,27 @@ where
             let priority = (self.priority_query)(&source);
             Entry::new(max_size, priority)
         });
-        entry.push(request)
+        let added = entry.push(request);
+        if added {
+            self.total_len += 1;
+        }
+        added
     }
 
     pub fn next(&mut self) -> Option<(R, Origin<S>)> {
-        let should_seek = match &self.current_queue_key {
+        if self.should_seek() {
+            self.seek_next();
+        }
+
+        let it = self.current_queue_key.as_ref()?;
+        let queue = self.queues.get_mut(it).unwrap();
+        self.counter += 1;
+        self.total_len -= 1;
+        Some((queue.pop().unwrap(), it.into()))
+    }
+
+    fn should_seek(&self) -> bool {
+        match &self.current_queue_key {
             Some(key) => match self.queues.get(key) {
                 Some(queue) => {
                     if queue.is_empty() {
@@ -284,25 +302,14 @@ where
                 None => true,
             },
             None => true,
-        };
-
-        if should_seek {
-            self.seek_next();
         }
-
-        let it = self.current_queue_key.as_ref()?;
-        let queue = self.queues.get_mut(it).unwrap();
-        self.counter += 1;
-        Some((queue.pop().unwrap(), it.into()))
     }
 
     pub fn next_batch(&mut self, max_count: usize) -> VecDeque<(R, Origin<S>)> {
-        // TODO: Naive implementation, could be optimized
+        let count = min(self.len(), max_count);
+
         let mut result = VecDeque::new();
-        loop {
-            if self.is_empty() || result.len() >= max_count {
-                break;
-            }
+        while result.len() < count {
             result.push_back(self.next().unwrap());
         }
         result
@@ -356,6 +363,7 @@ where
 
     fn cleanup(&mut self) {
         self.current_queue_key = None;
+        // Only removing empty queues, no need to update the `total size` counter
         self.queues.retain(|k, v| k.is_alive() || !v.is_empty());
     }
 

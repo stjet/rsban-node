@@ -5,11 +5,12 @@ use crate::{
 };
 use rsnano_core::{utils::TomlWriter, Vote, VoteCode, VoteSource};
 use std::{
+    cmp::min,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
     },
-    thread::JoinHandle,
+    thread::{available_parallelism, JoinHandle},
     time::Instant,
 };
 use tracing::{debug, trace};
@@ -19,6 +20,8 @@ pub struct VoteProcessorConfig {
     pub max_pr_queue: usize,
     pub max_non_pr_queue: usize,
     pub pr_priority: usize,
+    pub threads: usize,
+    pub batch_size: usize,
 }
 
 impl Default for VoteProcessorConfig {
@@ -27,6 +30,8 @@ impl Default for VoteProcessorConfig {
             max_pr_queue: 256,
             max_non_pr_queue: 32,
             pr_priority: 3,
+            threads: min(4, available_parallelism().unwrap().get()),
+            batch_size: 1024,
         }
     }
 }
@@ -49,12 +54,23 @@ impl VoteProcessorConfig {
             "pr_priority",
             self.pr_priority,
             "Priority for votes from principal representatives. Higher priority gets processed more frequently. Non-principal representatives have a baseline priority of 1. \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "threads",
+            self.threads,
+            "Number of threads to use for processing votes. \ntype:uint64",
+        )?;
+        toml.put_usize(
+            "batch_size",
+            self.batch_size,
+            "Maximum number of votes to process in a single batch. \ntype:uint64",
         )
     }
 }
 
 pub struct VoteProcessor {
-    thread: Mutex<Option<JoinHandle<()>>>,
+    threads: Mutex<Vec<JoinHandle<()>>>,
     queue: Arc<VoteProcessorQueue>,
     active: Arc<ActiveTransactions>,
     stats: Arc<Stats>,
@@ -64,8 +80,6 @@ pub struct VoteProcessor {
 }
 
 impl VoteProcessor {
-    const MAX_BATCH_SIZE: usize = 1024 * 4;
-
     pub fn new(
         queue: Arc<VoteProcessorQueue>,
         active: Arc<ActiveTransactions>,
@@ -77,14 +91,20 @@ impl VoteProcessor {
             active,
             stats,
             vote_processed: Mutex::new(vec![on_vote]),
-            thread: Mutex::new(None),
+            threads: Mutex::new(Vec::new()),
             total_processed: AtomicU64::new(0),
         }
     }
 
     pub fn stop(&self) {
         self.queue.stop();
-        if let Some(handle) = self.thread.lock().unwrap().take() {
+
+        let mut handles = Vec::new();
+        {
+            let mut guard = self.threads.lock().unwrap();
+            std::mem::swap(&mut handles, &mut guard);
+        }
+        for handle in handles {
             handle.join().unwrap()
         }
     }
@@ -93,7 +113,7 @@ impl VoteProcessor {
         loop {
             self.stats.inc(StatType::VoteProcessor, DetailType::Loop);
 
-            let batch = self.queue.wait_for_votes(Self::MAX_BATCH_SIZE);
+            let batch = self.queue.wait_for_votes(self.queue.config.batch_size);
             if batch.is_empty() {
                 break; //stopped
             }
@@ -108,7 +128,7 @@ impl VoteProcessor {
                 .fetch_add(batch.len() as u64, Ordering::SeqCst);
 
             let elapsed_millis = start.elapsed().as_millis();
-            if batch.len() == Self::MAX_BATCH_SIZE && elapsed_millis > 100 {
+            if batch.len() == self.queue.config.batch_size && elapsed_millis > 100 {
                 debug!(
                     "Processed {} votes in {} milliseconds (rate of {} votes per second)",
                     batch.len(),
@@ -162,7 +182,7 @@ impl VoteProcessor {
 impl Drop for VoteProcessor {
     fn drop(&mut self) {
         // Thread must be stopped before destruction
-        debug_assert!(self.thread.lock().unwrap().is_none());
+        debug_assert!(self.threads.lock().unwrap().is_empty());
     }
 }
 
@@ -172,15 +192,18 @@ pub trait VoteProcessorExt {
 
 impl VoteProcessorExt for Arc<VoteProcessor> {
     fn start(&self) {
-        debug_assert!(self.thread.lock().unwrap().is_none());
-        let self_l = Arc::clone(self);
-        *self.thread.lock().unwrap() = Some(
-            std::thread::Builder::new()
-                .name("Vote processing".to_string())
-                .spawn(Box::new(move || {
-                    self_l.run();
-                }))
-                .unwrap(),
-        )
+        let mut threads = self.threads.lock().unwrap();
+        debug_assert!(threads.is_empty());
+        for _ in 0..self.queue.config.threads {
+            let self_l = Arc::clone(self);
+            threads.push(
+                std::thread::Builder::new()
+                    .name("Vote processing".to_string())
+                    .spawn(Box::new(move || {
+                        self_l.run();
+                    }))
+                    .unwrap(),
+            )
+        }
     }
 }

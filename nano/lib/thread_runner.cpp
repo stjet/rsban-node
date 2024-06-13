@@ -21,9 +21,9 @@ nano::thread_runner::thread_runner (boost::asio::io_context & io_ctx_a, unsigned
 			nano::thread_role::set (role);
 			try
 			{
-				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) started", i, to_string (role));
+				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) started", i, get_string (role));
 				run ();
-				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) stopped", i, to_string (role));
+				logger.debug (nano::log::type::thread_runner, "Thread #{} ({}) stopped", i, get_string (role));
 			}
 			catch (std::exception const & ex)
 			{

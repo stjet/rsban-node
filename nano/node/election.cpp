@@ -260,12 +260,3 @@ nano::election_behavior nano::election::behavior () const
 	return static_cast<nano::election_behavior> (rsnano::rsn_election_behavior (handle));
 }
 
-// TODO: Remove the need for .to_string () calls
-void nano::election::operator() (nano::object_stream & obs) const
-{
-	obs.write ("id", "TODO");
-	obs.write ("qualified_root", qualified_root ().to_string ());
-	obs.write ("behaviour", behavior ());
-	obs.write ("height", "TODO");
-	obs.write ("status", "TODO");
-}

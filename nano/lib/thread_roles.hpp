@@ -51,8 +51,6 @@ enum class name
 	signal_manager,
 };
 
-std::string_view to_string (name);
-
 /*
  * Get/Set the identifier for the current thread
  */

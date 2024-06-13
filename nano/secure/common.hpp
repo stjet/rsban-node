@@ -4,7 +4,6 @@
 #include <nano/lib/config.hpp>
 #include <nano/lib/epoch.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/object_stream.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/stream.hpp>
@@ -247,7 +246,6 @@ private:
 
 public:
 	static std::string const hash_prefix;
-	void operator() (nano::object_stream &) const;
 };
 
 std::vector<std::shared_ptr<nano::vote>> into_vote_vec (rsnano::VoteVecHandle * handle);
@@ -261,15 +259,11 @@ enum class vote_code
 	ignored, // Vote is valid, but got ingored (e.g. due to cooldown)
 };
 
-nano::stat::detail to_stat_detail (vote_code);
-
 enum class vote_source
 {
 	live,
 	cache,
 };
-
-nano::stat::detail to_stat_detail (vote_source);
 
 enum class block_status
 {
@@ -289,7 +283,6 @@ enum class block_status
 	insufficient_work // Insufficient work for this block, even though it passed the minimal validation
 };
 
-std::string_view to_string (block_status);
 nano::stat::detail to_stat_detail (block_status);
 
 enum class tally_result

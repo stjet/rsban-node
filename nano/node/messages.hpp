@@ -9,13 +9,11 @@
 #include <nano/lib/logging.hpp>
 #include <nano/lib/memory.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/object_stream.hpp>
 #include <nano/lib/stats_enums.hpp>
 #include <nano/lib/stream.hpp>
 #include <nano/node/common.hpp>
 #include <nano/secure/common.hpp>
 
-#include <bitset>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -48,9 +46,6 @@ enum class message_type : uint8_t
 	asc_pull_ack = 0x0f,
 };
 
-stat::detail to_stat_detail (message_type);
-log::detail to_log_detail (nano::message_type);
-
 enum class bulk_pull_account_flags : uint8_t
 {
 	pending_hash_and_amount = 0x0,
@@ -71,7 +66,6 @@ public:
 
 	virtual void visit (nano::message_visitor &) const = 0;
 	nano::message_type type () const;
-	void operator() (nano::object_stream &) const;
 	rsnano::MessageHandle * handle;
 };
 

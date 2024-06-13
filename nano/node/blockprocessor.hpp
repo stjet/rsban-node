@@ -52,8 +52,6 @@ enum class block_source
 	forced,
 };
 
-std::string_view to_string (block_source);
-
 class block_processor_config final
 {
 public:

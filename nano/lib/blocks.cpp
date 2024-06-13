@@ -2,7 +2,6 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/memory.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/object_stream.hpp>
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/threading.hpp>
 
@@ -375,11 +374,6 @@ nano::block_hash nano::block::generate_hash () const
 	nano::block_hash result;
 	std::copy (std::begin (bytes), std::end (bytes), std::begin (result.bytes));
 	return result;
-}
-
-void nano::block::operator() (nano::object_stream & obs) const
-{
-	obs.write ("hash", hash ());
 }
 
 void nano::send_block::visit (nano::block_visitor & visitor_a) const

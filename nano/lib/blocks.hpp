@@ -20,7 +20,6 @@ namespace nano
 {
 class block_visitor;
 class mutable_block_visitor;
-class object_stream;
 
 class block
 {
@@ -97,9 +96,6 @@ protected:
 	virtual nano::block_hash generate_hash () const;
 	mutable nano::block_hash cached_hash{ 0 };
 	rsnano::BlockHandle * handle;
-
-public: // Logging
-	void operator() (nano::object_stream &) const;
 };
 
 class send_block final : public nano::block

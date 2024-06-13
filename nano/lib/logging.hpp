@@ -1,19 +1,10 @@
 #pragma once
 
 #include "fmt/core.h"
-#include "nano/lib/utility.hpp"
 
 #include <nano/lib/logging_enums.hpp>
-#include <nano/lib/object_stream.hpp>
-#include <nano/lib/object_stream_adapters.hpp>
-
-#include <initializer_list>
-#include <memory>
-#include <shared_mutex>
-#include <sstream>
 
 #include <fmt/ostream.h>
-#include <math.h>
 #include <spdlog/spdlog.h>
 
 namespace nano::log
@@ -118,7 +109,6 @@ public:
 private:
 	static bool global_initialized;
 	static nano::log::level min_level;
-	static nano::object_stream_config global_tracing_config;
 
 public:
 	void log (nano::log::level level, nano::log::type type, std::string const & message)

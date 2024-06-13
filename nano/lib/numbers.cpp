@@ -1,7 +1,6 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/crypto_lib/secure_memory.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/lib/object_stream.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 

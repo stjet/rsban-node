@@ -15,8 +15,6 @@
 #include <cstdint>
 #include <memory>
 
-#include <magic_enum.hpp>
-
 /*
  * block_processor
  */
@@ -90,11 +88,6 @@ std::optional<nano::block_status> nano::block_processor::add_blocking (std::shar
 void nano::block_processor::force (std::shared_ptr<nano::block> const & block_a)
 {
 	rsnano::rsn_block_processor_force (handle, block_a->get_handle ());
-}
-
-std::string_view nano::to_string (nano::block_source source)
-{
-	return magic_enum::enum_name (source);
 }
 
 /*

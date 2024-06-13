@@ -8,12 +8,6 @@
 #include <nano/lib/timer.hpp>
 
 #include <cstdint>
-#include <memory>
-
-namespace nano
-{
-class object_stream;
-}
 
 namespace nano
 {

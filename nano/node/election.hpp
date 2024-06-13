@@ -163,9 +163,6 @@ public: // Information
 	nano::qualified_root qualified_root () const;
 	nano::election_behavior behavior () const;
 
-public: // Logging
-	void operator() (nano::object_stream &) const;
-
 private: // Constants
 	friend class active_transactions;
 	friend class confirmation_solicitor;

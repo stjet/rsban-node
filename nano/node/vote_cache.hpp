@@ -59,7 +59,6 @@ public:
 	void clear ();
 
 	std::size_t size () const;
-	bool empty () const;
 
 public: // Container info
 	rsnano::VoteCacheHandle * handle;

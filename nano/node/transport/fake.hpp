@@ -48,8 +48,6 @@ namespace transport
 			{
 				return nano::transport::transport_type::fake;
 			}
-
-			bool alive () const override;
 		};
 	} // namespace fake
 } // namespace transport

@@ -41,11 +41,6 @@ std::function<bool (nano::block_hash const &)> const & filter)
 	rsnano::rsn_vote_cache_vote (handle, vote->get_handle (), weight_amount.bytes.data ());
 }
 
-bool nano::vote_cache::empty () const
-{
-	return rsnano::rsn_vote_cache_cache_empty (handle);
-}
-
 std::size_t nano::vote_cache::size () const
 {
 	return rsnano::rsn_vote_cache_cache_size (handle);

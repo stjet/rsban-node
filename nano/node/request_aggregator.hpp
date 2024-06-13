@@ -30,14 +30,12 @@ class wallets;
 class request_aggregator final
 {
 public:
-	request_aggregator (nano::node_config const & config, nano::stats & stats_a, nano::vote_generator &, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_elections &);
 	request_aggregator (rsnano::RequestAggregatorHandle * handle);
 	request_aggregator (request_aggregator const &) = delete;
 	~request_aggregator ();
 
 	/** Add a new request by \p channel_a for hashes \p hashes_roots_a */
 	void add (std::shared_ptr<nano::transport::channel> const & channel_a, std::vector<std::pair<nano::block_hash, nano::root>> const & hashes_roots_a);
-	void stop ();
 	/** Returns the number of currently queued request pools */
 	std::size_t size ();
 	bool empty ();

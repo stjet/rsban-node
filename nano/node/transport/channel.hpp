@@ -16,61 +16,10 @@ namespace rsnano
 {
 class BandwidthLimiterHandle;
 class ChannelHandle;
-class ChannelWeakHandle;
 }
 
 namespace nano::transport
 {
-class callback_visitor : public nano::message_visitor
-{
-public:
-	void keepalive (nano::keepalive const & message_a) override
-	{
-		result = nano::stat::detail::keepalive;
-	}
-	void publish (nano::publish const & message_a) override
-	{
-		result = nano::stat::detail::publish;
-	}
-	void confirm_req (nano::confirm_req const & message_a) override
-	{
-		result = nano::stat::detail::confirm_req;
-	}
-	void confirm_ack (nano::confirm_ack const & message_a) override
-	{
-		result = nano::stat::detail::confirm_ack;
-	}
-	void bulk_pull (nano::bulk_pull const & message_a) override
-	{
-		result = nano::stat::detail::bulk_pull;
-	}
-	void bulk_pull_account (nano::bulk_pull_account const & message_a) override
-	{
-		result = nano::stat::detail::bulk_pull_account;
-	}
-	void bulk_push (nano::bulk_push const & message_a) override
-	{
-		result = nano::stat::detail::bulk_push;
-	}
-	void frontier_req (nano::frontier_req const & message_a) override
-	{
-		result = nano::stat::detail::frontier_req;
-	}
-	void node_id_handshake (nano::node_id_handshake const & message_a) override
-	{
-		result = nano::stat::detail::node_id_handshake;
-	}
-	void telemetry_req (nano::telemetry_req const & message_a) override
-	{
-		result = nano::stat::detail::telemetry_req;
-	}
-	void telemetry_ack (nano::telemetry_ack const & message_a) override
-	{
-		result = nano::stat::detail::telemetry_ack;
-	}
-	nano::stat::detail result;
-};
-
 enum class transport_type : uint8_t
 {
 	undefined = 0,
@@ -101,11 +50,6 @@ public:
 	virtual nano::tcp_endpoint get_peering_endpoint () const;
 	virtual nano::transport::transport_type get_type () const = 0;
 
-	virtual bool alive () const
-	{
-		return true;
-	}
-
 	std::chrono::system_clock::time_point get_last_packet_received () const;
 
 	std::chrono::system_clock::time_point get_last_packet_sent () const;
@@ -119,18 +63,5 @@ public:
 
 	virtual uint8_t get_network_version () const = 0;
 	rsnano::ChannelHandle * handle;
-};
-
-class channel_weak_ptr
-{
-public:
-	channel_weak_ptr (const std::shared_ptr<nano::transport::channel> & channel_a);
-	channel_weak_ptr (const channel_weak_ptr &) = delete;
-	channel_weak_ptr (channel_weak_ptr &&);
-	~channel_weak_ptr ();
-	std::shared_ptr<nano::transport::channel> upgrade () const;
-
-private:
-	rsnano::ChannelWeakHandle * handle;
 };
 }

@@ -52,9 +52,6 @@ public:
 	telemetry (telemetry const &) = delete;
 	~telemetry ();
 
-	void start ();
-	void stop ();
-
 	/**
 	 * Trigger manual telemetry request to all peers
 	 */

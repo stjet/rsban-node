@@ -55,7 +55,6 @@ public:
 	vote_processor_queue (vote_processor_queue const &) = delete;
 	~vote_processor_queue ();
 
-	bool empty () const;
 	/** Returns true if the vote was queued for processing */
 	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 

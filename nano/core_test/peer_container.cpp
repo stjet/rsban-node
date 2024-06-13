@@ -214,20 +214,5 @@ TEST (peer_container, list_fanout)
 // Disabled because there is currently no way to use different network version
 TEST (DISABLED_peer_container, depeer_on_outdated_version)
 {
-	nano::test::system system{ 2 };
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-
-	// find the comms channel that goes from node2 to node1
-	auto channel = node2.network->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// send a keepalive, from node2 to node1, with the wrong version_using
-	auto network{ nano::dev::network_params.network };
-	network.protocol_version = network.protocol_version_min - 1;
-	nano::keepalive keepalive{ network };
-	ASSERT_TIMELY (5s, channel->alive ());
-	channel->send (keepalive);
-
-	ASSERT_TIMELY (5s, !channel->alive ());
+	// TODO reimplement in Rust
 }

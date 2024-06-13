@@ -25,11 +25,6 @@ public:
 	explicit syn_cookies (rsnano::SynCookiesHandle * handle);
 	syn_cookies (nano::syn_cookies const &) = delete;
 	~syn_cookies ();
-	void purge (std::chrono::seconds const &);
-
-	// Returns boost::none if the IP is rate capped on syn cookie requests,
-	// or if the endpoint already has a syn cookie query
-	std::optional<nano::uint256_union> assign (nano::endpoint const &);
 
 	std::size_t cookies_size ();
 	rsnano::SynCookiesHandle * handle;
@@ -49,8 +44,6 @@ public:
 	void merge_peer (nano::endpoint const &);
 	void send_keepalive (std::shared_ptr<nano::transport::channel> const &);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
-	// Should we reach out to this endpoint with a keepalive message? If yes, register a new reachout attempt
-	bool track_reachout (nano::endpoint const &);
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count_a, uint8_t min_version_a = 0) const;
 	nano::endpoint endpoint () const;
 	void cleanup (std::chrono::system_clock::time_point const & cutoff);
@@ -58,7 +51,6 @@ public:
 	bool empty () const;
 	/** Disconnects and adds peer to exclusion list */
 	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
-	void dump_channels () const;
 
 	static std::string to_string (nano::networks);
 

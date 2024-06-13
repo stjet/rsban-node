@@ -322,6 +322,23 @@ pub unsafe extern "C" fn rsn_active_transactions_vote(
     VoteResultMapHandle::new(&result)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rsn_active_transactions_vote2(
+    handle: &ActiveTransactionsHandle,
+    election: &ElectionHandle,
+    rep: *const u8,
+    timestamp: u64,
+    block_hash: *const u8,
+    vote_source: u8,
+) -> u8 {
+    handle.vote2(
+        election,
+        &Account::from_ptr(rep),
+        timestamp,
+        &BlockHash::from_ptr(block_hash),
+        VoteSource::from_u8(vote_source).unwrap(),
+    ) as u8
+}
 /*
  * Callbacks
  */

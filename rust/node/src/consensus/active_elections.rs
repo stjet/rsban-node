@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
     ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteCache, VoteGenerator, VoteInfo, NEXT_ELECTION_ID,
+    VoteCache, VoteGenerator, VoteInfo, VoteProcessedCallback, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -35,9 +35,6 @@ use std::{
 use tracing::{debug, trace};
 
 const ELECTION_MAX_BLOCKS: usize = 10;
-
-pub type VoteProcessedCallback =
-    Box<dyn Fn(&Arc<Vote>, VoteSource, &HashMap<BlockHash, VoteCode>) + Send + Sync>;
 
 pub type ElectionEndCallback = Box<
     dyn Fn(&ElectionStatus, &Vec<VoteWithWeightInfo>, Account, Amount, bool, bool) + Send + Sync,
@@ -147,6 +144,7 @@ impl ActiveElections {
         account_balance_changed: AccountBalanceChangedCallback,
         representative_register: Arc<Mutex<RepresentativeRegister>>,
         flags: NodeFlags,
+        recently_confirmed: Arc<RecentlyConfirmedCache>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveTransactionsData {
@@ -165,9 +163,7 @@ impl ActiveElections {
             ledger,
             confirming_set,
             workers,
-            recently_confirmed: Arc::new(RecentlyConfirmedCache::new(
-                node_config.active_elections.confirmation_cache,
-            )),
+            recently_confirmed,
             recently_cemented: Arc::new(Mutex::new(BoundedVecDeque::new(
                 node_config.active_elections.confirmation_history_size,
             ))),

@@ -303,12 +303,6 @@ bool nano::active_elections::publish (std::shared_ptr<nano::block> const & block
 	return rsnano::rsn_active_transactions_publish_block (handle, block_a->get_handle ());
 }
 
-nano::vote_code nano::active_elections::vote (nano::election & election, nano::account const & rep, uint64_t timestamp_a, nano::block_hash const & block_hash_a, nano::vote_source vote_source_a)
-{
-	auto result = rsnano::rsn_active_transactions_vote2 (handle, election.handle, rep.bytes.data (), timestamp_a, block_hash_a.bytes.data (), static_cast<uint8_t> (vote_source_a));
-	return static_cast<nano::vote_code> (result);
-}
-
 std::size_t nano::active_elections::election_winner_details_size ()
 {
 	return rsnano::rsn_active_transactions_election_winner_details_len (handle);

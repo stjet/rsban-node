@@ -14,8 +14,9 @@ use crate::{
         ElectionEndCallback, ElectionStatusType, HintedScheduler, HintedSchedulerExt,
         LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
         OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
-        ProcessLiveDispatcherExt, RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache,
-        VoteGenerator, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
+        ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers, RequestAggregator,
+        RequestAggregatorExt, VoteCache, VoteGenerator, VoteProcessor, VoteProcessorExt,
+        VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -242,8 +243,6 @@ impl Node {
             Arc::clone(&stats),
         ));
 
-        let vote_router = Arc::new(VoteRouter::new());
-
         let vote_processor_queue = Arc::new(VoteProcessorQueue::new(
             config.vote_processor.clone(),
             Arc::clone(&stats),
@@ -263,6 +262,15 @@ impl Node {
             config.vote_cache.clone(),
             Arc::clone(&stats),
         )));
+
+        let recently_confirmed = Arc::new(RecentlyConfirmedCache::new(
+            config.active_elections.confirmation_cache,
+        ));
+
+        let vote_router = Arc::new(VoteRouter::new(
+            vote_cache.clone(),
+            recently_confirmed.clone(),
+        ));
 
         let block_processor = Arc::new(BlockProcessor::new(
             Arc::new(config.clone()),
@@ -380,6 +388,7 @@ impl Node {
             account_balance_changed,
             Arc::clone(&representative_register),
             flags.clone(),
+            recently_confirmed,
         ));
 
         active.initialize();

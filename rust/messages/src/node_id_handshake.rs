@@ -218,7 +218,7 @@ impl NodeIdHandshake {
         })
     }
 
-    pub fn create_test_query() -> Self {
+    pub fn new_test_query() -> Self {
         let query = NodeIdHandshakeQuery { cookie: [42; 32] };
         Self {
             query: Some(query),
@@ -227,7 +227,7 @@ impl NodeIdHandshake {
         }
     }
 
-    pub fn create_test_response_v1() -> Self {
+    pub fn new_test_response_v1() -> Self {
         let response = NodeIdHandshakeResponse {
             node_id: PublicKey::from(1),
             signature: Signature::from_bytes([42; 64]),
@@ -240,7 +240,7 @@ impl NodeIdHandshake {
         }
     }
 
-    pub fn create_test_response_v2() -> Self {
+    pub fn new_test_response_v2() -> Self {
         let response = NodeIdHandshakeResponse {
             node_id: PublicKey::from(1),
             signature: Signature::from_bytes([42; 64]),
@@ -305,19 +305,19 @@ mod tests {
 
     #[test]
     fn serialize_query() {
-        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_query());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::new_test_query());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v1() {
-        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_response_v1());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::new_test_response_v1());
         assert_deserializable(&message);
     }
 
     #[test]
     fn serialize_response_v2() {
-        let message = Message::NodeIdHandshake(NodeIdHandshake::create_test_response_v2());
+        let message = Message::NodeIdHandshake(NodeIdHandshake::new_test_response_v2());
         assert_deserializable(&message);
     }
 

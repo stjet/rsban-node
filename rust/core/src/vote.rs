@@ -91,7 +91,7 @@ impl Vote {
         result
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
 
         Self::new(

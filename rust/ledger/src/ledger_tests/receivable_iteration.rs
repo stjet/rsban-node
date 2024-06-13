@@ -31,7 +31,7 @@ fn reveivable_upper_bound_for_given_account() {
     let key_1 = PendingKey::new(account, hash);
     let key_2 = PendingKey::new(account, 300.into());
     let key_3 = PendingKey::new(200.into(), 1.into());
-    let pending = PendingInfo::create_test_instance();
+    let pending = PendingInfo::new_test_instance();
     ctx.ledger.store.pending.put(&mut txn, &key_0, &pending);
     ctx.ledger.store.pending.put(&mut txn, &key_1, &pending);
     ctx.ledger.store.pending.put(&mut txn, &key_2, &pending);
@@ -70,7 +70,7 @@ fn reveivable_upper_bound() {
     let key_1 = PendingKey::new(100.into(), 200.into());
     let key_2 = PendingKey::new(100.into(), 300.into());
     let key_3 = PendingKey::new(200.into(), 1.into());
-    let pending = PendingInfo::create_test_instance();
+    let pending = PendingInfo::new_test_instance();
     ctx.ledger.store.pending.put(&mut txn, &key_1, &pending);
     ctx.ledger.store.pending.put(&mut txn, &key_2, &pending);
     ctx.ledger.store.pending.put(&mut txn, &key_3, &pending);
@@ -97,7 +97,7 @@ fn reveivable_any() {
     let mut txn = ctx.ledger.rw_txn();
 
     let key = PendingKey::new(100.into(), 200.into());
-    let pending = PendingInfo::create_test_instance();
+    let pending = PendingInfo::new_test_instance();
     ctx.ledger.store.pending.put(&mut txn, &key, &pending);
 
     let any = ctx.ledger.any();

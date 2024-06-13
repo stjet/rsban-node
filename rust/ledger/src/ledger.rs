@@ -180,7 +180,7 @@ impl NullLedgerBuilder {
 impl Ledger {
     pub fn new_null() -> Self {
         Self::new(
-            Arc::new(LmdbStore::create_null()),
+            Arc::new(LmdbStore::new_null()),
             LedgerConstants::unit_test(),
             Amount::zero(),
         )

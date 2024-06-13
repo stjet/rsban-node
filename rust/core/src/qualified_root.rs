@@ -37,7 +37,7 @@ impl QualifiedRoot {
         target_slice[32..].copy_from_slice(self.previous.as_bytes());
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self::new(Root::from(111), BlockHash::from(222))
     }
 }

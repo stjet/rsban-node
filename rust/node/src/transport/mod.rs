@@ -114,12 +114,12 @@ pub enum ChannelEnum {
 
 impl ChannelEnum {
     #[cfg(test)]
-    pub(crate) fn create_test_instance() -> Self {
-        Self::create_test_instance_with_channel_id(42)
+    pub(crate) fn new_null() -> Self {
+        Self::new_null_with_channel_id(42)
     }
 
     #[cfg(test)]
-    pub(crate) fn create_test_instance_with_channel_id(channel_id: usize) -> Self {
+    pub(crate) fn new_null_with_channel_id(channel_id: usize) -> Self {
         use crate::{stats::Stats, utils::AsyncRuntime};
         use rsnano_messages::ProtocolInfo;
         use std::net::Ipv6Addr;

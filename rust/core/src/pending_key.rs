@@ -38,7 +38,7 @@ impl PendingKey {
         )
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self::new(Account::from(1), BlockHash::from(2))
     }
 }

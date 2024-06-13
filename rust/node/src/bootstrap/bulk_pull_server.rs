@@ -1,6 +1,6 @@
 use crate::{
     transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions},
-    utils::{ErrorCode, ThreadPool},
+    utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
@@ -33,6 +33,7 @@ impl BulkPullServer {
         connection: Arc<ResponseServerImpl>,
         ledger: Arc<Ledger>,
         thread_pool: Arc<dyn ThreadPool>,
+        runtime: Arc<AsyncRuntime>,
     ) -> Self {
         let mut server_impl = BulkPullServerImpl {
             include_start: false,
@@ -43,6 +44,7 @@ impl BulkPullServer {
             connection,
             ledger,
             thread_pool: Arc::downgrade(&thread_pool),
+            runtime,
         };
 
         server_impl.set_current_end();
@@ -100,6 +102,7 @@ impl BulkPullServer {
 struct BulkPullServerImpl {
     ledger: Arc<Ledger>,
     connection: Arc<ResponseServerImpl>,
+    runtime: Arc<AsyncRuntime>,
     thread_pool: Weak<dyn ThreadPool>,
     include_start: bool,
     sent_count: u32,
@@ -264,7 +267,11 @@ impl BulkPullServerImpl {
             Some(Box::new(move |ec, _| {
                 let guard = server_impl.lock().unwrap();
                 if ec.is_ok() {
-                    guard.connection.start();
+                    let connection = guard.connection.clone();
+                    guard
+                        .runtime
+                        .tokio
+                        .spawn(async move { connection.run().await });
                 } else {
                     debug!("Unable to send not-a-block");
                 }

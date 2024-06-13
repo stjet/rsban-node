@@ -61,7 +61,7 @@ pub struct BlocksReqPayload {
 }
 
 impl BlocksReqPayload {
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             start: HashOrAccount::from(123),
             count: 100,
@@ -99,7 +99,7 @@ impl AccountInfoReqPayload {
         Ok(())
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             target: HashOrAccount::from(42),
             target_type: HashType::Account,
@@ -174,17 +174,17 @@ impl Display for AscPullReq {
 }
 
 impl AscPullReq {
-    pub fn create_test_instance_blocks() -> Self {
+    pub fn new_test_instance_blocks() -> Self {
         Self {
             id: 12345,
-            req_type: AscPullReqType::Blocks(BlocksReqPayload::create_test_instance()),
+            req_type: AscPullReqType::Blocks(BlocksReqPayload::new_test_instance()),
         }
     }
 
-    pub fn create_test_instance_account() -> Self {
+    pub fn new_test_instance_account() -> Self {
         Self {
             id: 12345,
-            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::new_test_instance()),
         }
     }
 

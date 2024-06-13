@@ -60,7 +60,7 @@ impl ReceiveBlock {
         }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
         ReceiveBlock::new(
             BlockHash::from(123),
@@ -288,7 +288,7 @@ mod tests {
     // original test: block.receive_serialize_json
     #[test]
     fn serialize_json() {
-        let block1 = ReceiveBlock::create_test_instance();
+        let block1 = ReceiveBlock::new_test_instance();
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree).unwrap();
 
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = ReceiveBlock::create_test_instance();
+        let block = ReceiveBlock::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

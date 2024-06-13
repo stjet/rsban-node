@@ -209,7 +209,7 @@ pub struct Socket {
 
 impl Socket {
     pub fn new_null() -> Arc<Socket> {
-        let thread_pool = Arc::new(ThreadPoolImpl::create_null());
+        let thread_pool = Arc::new(ThreadPoolImpl::new_null());
         SocketBuilder::new(ChannelDirection::Outbound, thread_pool, Weak::new()).finish()
     }
 

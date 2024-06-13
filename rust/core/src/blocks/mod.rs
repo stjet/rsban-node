@@ -187,12 +187,12 @@ pub enum BlockEnum {
 }
 
 impl BlockEnum {
-    pub fn create_test_instance() -> Self {
-        Self::State(StateBlock::create_test_instance())
+    pub fn new_test_instance() -> Self {
+        Self::State(StateBlock::new_test_instance())
     }
 
-    pub fn create_test_instance_with_key(key: impl Into<KeyPair>) -> Self {
-        Self::State(StateBlock::create_test_instance_with_key(key.into()))
+    pub fn new_test_instance_with_key(key: impl Into<KeyPair>) -> Self {
+        Self::State(StateBlock::new_test_instance_with_key(key.into()))
     }
 
     pub fn block_type(&self) -> BlockType {

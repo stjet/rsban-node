@@ -10,7 +10,7 @@ use tracing::{debug, trace};
 
 use crate::{
     transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
-    utils::{ErrorCode, ThreadPool},
+    utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 
 /// Server side of a frontier request. Created when a tcp_server receives a frontier_req message and exited when end-of-list is reached.
@@ -24,6 +24,7 @@ impl FrontierReqServer {
         request: FrontierReq,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
+        runtime: Arc<AsyncRuntime>,
     ) -> Self {
         let result = Self {
             server_impl: Arc::new(Mutex::new(FrontierReqServerImpl {
@@ -35,6 +36,7 @@ impl FrontierReqServer {
                 accounts: VecDeque::new(),
                 thread_pool: Arc::downgrade(&thread_pool),
                 ledger,
+                runtime,
             })),
         };
         result.server_impl.lock().unwrap().next();
@@ -64,12 +66,16 @@ struct FrontierReqServerImpl {
     accounts: VecDeque<(Account, BlockHash)>,
     thread_pool: Weak<dyn ThreadPool>,
     ledger: Arc<Ledger>,
+    runtime: Arc<AsyncRuntime>,
 }
 
 impl FrontierReqServerImpl {
     pub fn no_block_sent(&self, ec: ErrorCode, _size: usize) {
         if ec.is_ok() {
-            self.connection.start();
+            let connection = self.connection.clone();
+            self.runtime
+                .tokio
+                .spawn(async move { connection.run().await });
         } else {
             debug!("Error sending frontier finish: {:?}", ec);
         }

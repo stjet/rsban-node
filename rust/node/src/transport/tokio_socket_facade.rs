@@ -1,15 +1,12 @@
+use super::{Socket, TcpStream, TcpStreamFactory};
+use crate::utils::{AsyncRuntime, ErrorCode};
 use std::{
     any::Any,
     net::{IpAddr, Ipv6Addr, SocketAddr},
     ops::Deref,
     sync::{Arc, Mutex, Weak},
 };
-
 use tokio::{net::TcpListener, sync::Notify};
-
-use crate::utils::{AsyncRuntime, ErrorCode};
-
-use super::{Socket, TcpStream, TcpStreamFactory};
 
 pub trait TcpSocketFacadeFactory: Send + Sync {
     fn create_tcp_socket(&self) -> Arc<TokioSocketFacade>;
@@ -32,7 +29,7 @@ pub enum TokioSocketState {
 }
 
 impl TokioSocketFacade {
-    pub fn new(runtime: Arc<AsyncRuntime>, tcp_stream_factory: Arc<TcpStreamFactory>) -> Self {
+    fn create(runtime: Arc<AsyncRuntime>, tcp_stream_factory: Arc<TcpStreamFactory>) -> Self {
         Self {
             runtime: Arc::downgrade(&runtime),
             state: Arc::new(Mutex::new(TokioSocketState::Closed)),
@@ -42,17 +39,17 @@ impl TokioSocketFacade {
         }
     }
 
-    pub fn create(runtime: Arc<AsyncRuntime>) -> Self {
-        Self::new(runtime, Arc::new(TcpStreamFactory::new()))
+    pub fn new(runtime: Arc<AsyncRuntime>) -> Self {
+        Self::create(runtime, Arc::new(TcpStreamFactory::new()))
     }
 
-    pub fn create_null() -> Self {
+    pub fn new_null() -> Self {
         let runtime = Arc::new(AsyncRuntime::new(
             tokio::runtime::Builder::new_current_thread()
                 .build()
                 .unwrap(),
         ));
-        Self::new(runtime, Arc::new(TcpStreamFactory::create_null()))
+        Self::create(runtime, Arc::new(TcpStreamFactory::new_null()))
     }
 
     pub fn local_endpoint(&self) -> SocketAddr {
@@ -229,6 +226,6 @@ impl TokioSocketFacadeFactory {
 
 impl TcpSocketFacadeFactory for TokioSocketFacadeFactory {
     fn create_tcp_socket(&self) -> Arc<TokioSocketFacade> {
-        Arc::new(TokioSocketFacade::create(Arc::clone(&self.runtime)))
+        Arc::new(TokioSocketFacade::new(Arc::clone(&self.runtime)))
     }
 }

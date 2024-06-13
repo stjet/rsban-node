@@ -32,7 +32,7 @@ pub(crate) struct ResponseServerFactory {
 impl ResponseServerFactory {
     pub(crate) fn new_null() -> Self {
         let ledger = Arc::new(Ledger::new_null());
-        let config = NodeConfig::new_null();
+        let config = NodeConfig::new_test_instance();
         let flags = NodeFlags::default();
         let network = Arc::new(Network::new_null());
         let runtime = Arc::new(AsyncRuntime::default());
@@ -83,7 +83,6 @@ impl ResponseServerFactory {
         ));
 
         Arc::new(ResponseServerImpl::new(
-            Arc::clone(&self.runtime),
             &self.network.clone(),
             socket,
             Arc::new(self.node_config.clone()),

@@ -1,7 +1,9 @@
 use super::tcp_server::TcpServerHandle;
 use crate::{
-    core::BlockHandle, ledger::datastore::LedgerHandle, messages::MessageHandle,
-    utils::ThreadPoolHandle,
+    core::BlockHandle,
+    ledger::datastore::LedgerHandle,
+    messages::MessageHandle,
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
 };
 use rsnano_messages::{DeserializedMessage, Message};
 use rsnano_node::bootstrap::BulkPullServer;
@@ -15,6 +17,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     thread_pool: *mut ThreadPoolHandle,
+    runtime: &AsyncRuntimeHandle,
 ) -> *mut BulkPullServerHandle {
     let Message::BulkPull(payload) = &request.message else {
         panic!("not a bulk_pull message")
@@ -24,6 +27,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_create(
         (*server).0.clone(),
         (*ledger).0.clone(),
         (*thread_pool).0.clone(),
+        (*runtime).clone(),
     ))))
 }
 

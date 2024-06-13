@@ -64,7 +64,7 @@ impl ChangeBlock {
         }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
         Self::new(
             BlockHash::from(123),
@@ -302,7 +302,7 @@ mod tests {
     // original test: block.change_serialize_json
     #[test]
     fn serialize_json() {
-        let block1 = ChangeBlock::create_test_instance();
+        let block1 = ChangeBlock::new_test_instance();
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree).unwrap();
 
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = ChangeBlock::create_test_instance();
+        let block = ChangeBlock::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

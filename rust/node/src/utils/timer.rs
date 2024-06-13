@@ -51,19 +51,19 @@ impl TimerEvent {
 }
 
 impl Timer<NullTimer> {
-    pub fn create_null() -> Self {
-        Self::new(NullTimer {})
+    pub fn new_null() -> Self {
+        Self::new_with(NullTimer {})
     }
 }
 
 impl Timer<TimerWrapper> {
-    pub fn create() -> Self {
-        Self::new(TimerWrapper(timer::Timer::new()))
+    pub fn new() -> Self {
+        Self::new_with(TimerWrapper(timer::Timer::new()))
     }
 }
 
 impl<T: TimerStrategy> Timer<T> {
-    pub fn new(t: T) -> Self {
+    fn new_with(t: T) -> Self {
         Self {
             timer: t,
             #[cfg(feature = "output_tracking")]
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn schedule_with_delay() {
-        let t = Timer::create();
+        let t = Timer::new();
         let (tx, rx) = channel();
         t.schedule_with_delay(chrono::Duration::microseconds(1), move || {
             tx.send("done").unwrap();
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn can_be_tracked() {
-        let t = Timer::create_null();
+        let t = Timer::new_null();
         let tracker = t.track();
         let (tx, rx) = channel();
         t.schedule_with_delay(chrono::Duration::seconds(10), move || {

@@ -36,7 +36,7 @@ impl ConfirmReq {
         Self { roots_hashes }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self::new(vec![(BlockHash::from(123), Root::from(456))])
     }
 
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let confirm_req = Message::ConfirmReq(ConfirmReq::create_test_instance());
+        let confirm_req = Message::ConfirmReq(ConfirmReq::new_test_instance());
         assert_deserializable(&confirm_req);
     }
 
@@ -246,7 +246,7 @@ mod tests {
         let extensions = Default::default();
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::Invalid);
 
-        let confirm_req = ConfirmReq::create_test_instance();
+        let confirm_req = ConfirmReq::new_test_instance();
         let extensions = confirm_req.header_extensions(0);
         assert_eq!(ConfirmReq::block_type(extensions), BlockType::NotABlock);
     }

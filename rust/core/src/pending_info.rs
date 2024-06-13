@@ -44,7 +44,7 @@ impl PendingInfo {
         bytes
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self::new(Account::from(3), Amount::raw(4), Epoch::Epoch2)
     }
 }

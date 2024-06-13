@@ -325,7 +325,7 @@ impl NodeConfig {
         }
     }
 
-    pub fn new_null() -> Self {
+    pub fn new_test_instance() -> Self {
         Self::new(None, &DEV_NETWORK_PARAMS)
     }
 

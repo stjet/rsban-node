@@ -29,7 +29,8 @@ rsnano::MessageHandle * request_a)
 	return rsnano::rsn_frontier_req_server_create (connection_a->handle,
 	request_a,
 	node_a->bootstrap_workers->handle,
-	node_a->ledger.get_handle ());
+	node_a->ledger.get_handle (),
+	node_a->async_rt.handle);
 }
 }
 

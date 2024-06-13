@@ -108,7 +108,7 @@ impl BootstrapInitiator {
             condition: Condvar::new(),
             threads: Mutex::new(Vec::new()),
             connections: Arc::new(BootstrapConnections::new_null()),
-            config: NodeConfig::new_null(),
+            config: NodeConfig::new_test_instance(),
             stopped: AtomicBool::new(false),
             cache: Arc::new(Mutex::new(PullsCache::new())),
             stats: Arc::new(Stats::default()),

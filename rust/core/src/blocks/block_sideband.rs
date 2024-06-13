@@ -144,7 +144,7 @@ impl BlockSideband {
         Ok(())
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             height: 42,
             timestamp: 1000,

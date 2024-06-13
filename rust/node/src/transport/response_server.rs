@@ -7,7 +7,6 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelMode, NetworkExt, Socket, SocketExtensions, TcpMessageManager},
-    utils::AsyncRuntime,
     NetworkParams,
 };
 use async_trait::async_trait;
@@ -63,7 +62,6 @@ impl Default for TcpConfig {
 pub trait ResponseServer {}
 
 pub struct ResponseServerImpl {
-    async_rt: Weak<AsyncRuntime>,
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
     config: Arc<NodeConfig>,
@@ -96,7 +94,6 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl ResponseServerImpl {
     pub fn new(
-        async_rt: Arc<AsyncRuntime>,
         network: &Arc<Network>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
@@ -117,7 +114,6 @@ impl ResponseServerImpl {
         );
         let remote_endpoint = socket.get_remote().unwrap_or(NULL_ENDPOINT);
         Self {
-            async_rt: Arc::downgrade(&async_rt),
             network: Arc::downgrade(network),
             socket,
             channel: Mutex::new(None),
@@ -158,10 +154,9 @@ impl ResponseServerImpl {
 
     pub fn new_null() -> Self {
         Self {
-            async_rt: Arc::downgrade(&Arc::new(AsyncRuntime::default())),
             channel: Mutex::new(None),
             socket: Socket::new_null(),
-            config: Arc::new(NodeConfig::new_null()),
+            config: Arc::new(NodeConfig::new_test_instance()),
             stopped: AtomicBool::new(false),
             disable_bootstrap_listener: true,
             connections_max: 1,
@@ -316,11 +311,10 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
 
 #[async_trait]
 pub trait ResponseServerExt {
-    fn start(&self);
     fn timeout(&self);
 
     fn to_realtime_connection(&self, node_id: &Account) -> bool;
-    async fn receive_messages(&self);
+    async fn run(&self);
     async fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
 }
 
@@ -332,25 +326,6 @@ pub enum ProcessResult {
 
 #[async_trait]
 impl ResponseServerExt for Arc<ResponseServerImpl> {
-    fn start(&self) {
-        let Some(rt) = self.async_rt.upgrade() else {
-            return;
-        };
-        // Set remote_endpoint
-        let mut guard = self.remote_endpoint.lock().unwrap();
-        if guard.port() == 0 {
-            if let Some(ep) = self.socket.get_remote() {
-                *guard = ep;
-            }
-            //debug_assert!(guard.port() != 0);
-        }
-
-        debug!("Starting server: {}", guard.port());
-        let self_l = Arc::clone(self);
-        rt.tokio
-            .spawn(async move { self_l.receive_messages().await });
-    }
-
     fn to_realtime_connection(&self, node_id: &Account) -> bool {
         if self.socket.mode() != ChannelMode::Undefined {
             return false;
@@ -376,7 +351,19 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
         }
     }
 
-    async fn receive_messages(&self) {
+    async fn run(&self) {
+        // Set remote_endpoint
+        {
+            let mut guard = self.remote_endpoint.lock().unwrap();
+            if guard.port() == 0 {
+                if let Some(ep) = self.socket.get_remote() {
+                    *guard = ep;
+                }
+                //debug_assert!(guard.port() != 0);
+            }
+            debug!("Starting server: {}", guard.port());
+        }
+
         loop {
             if self.is_stopped() {
                 break;
@@ -539,10 +526,10 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
             let mut bootstrap_visitor = self
                 .message_visitor_factory
                 .bootstrap_visitor(Arc::clone(self));
-            bootstrap_visitor.received(&message.message);
+            let processed = bootstrap_visitor.received(&message.message);
 
             // Pause receiving new messages if bootstrap serving started
-            return if bootstrap_visitor.processed() {
+            return if processed {
                 ProcessResult::Pause
             } else {
                 ProcessResult::Progress
@@ -608,5 +595,21 @@ impl RealtimeMessageVisitor for RealtimeMessageVisitorImpl {
 
     fn as_message_visitor(&mut self) -> &mut dyn MessageVisitor {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "todo"]
+    async fn can_track_handshake_initiation() {
+        let response_server = ResponseServerImpl::new_null();
+        let handshake_tracker = response_server.track_handshake_initiation();
+
+        response_server.initiate_handshake().await;
+
+        assert_eq!(handshake_tracker.output().len(), 1);
     }
 }

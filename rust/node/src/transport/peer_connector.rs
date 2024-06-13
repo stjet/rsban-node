@@ -59,7 +59,7 @@ impl PeerConnector {
     pub(crate) fn new_null() -> Self {
         Self {
             config: Default::default(),
-            node_config: NodeConfig::new_null(),
+            node_config: NodeConfig::new_test_instance(),
             network: Arc::new(Network::new_null()),
             stats: Arc::new(Default::default()),
             runtime: Arc::new(Default::default()),

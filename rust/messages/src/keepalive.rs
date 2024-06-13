@@ -14,7 +14,7 @@ pub struct Keepalive {
 }
 
 impl Keepalive {
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             peers: [
                 "[::ffff:1.2.3.4]:1111".parse().unwrap(),

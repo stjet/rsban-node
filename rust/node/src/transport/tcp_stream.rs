@@ -18,13 +18,13 @@ impl TcpStream {
         }
     }
 
-    pub fn create_null() -> Self {
+    pub fn new_null() -> Self {
         Self {
             stream: Box::new(TcpStreamStub::new(Vec::new())),
         }
     }
 
-    pub fn create_null_with(incoming: Vec<u8>) -> Self {
+    pub fn new_null_with(incoming: Vec<u8>) -> Self {
         Self {
             stream: Box::new(TcpStreamStub::new(incoming)),
         }
@@ -209,7 +209,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_returns_error_when_calling_readable() {
-        let stream = TcpStream::create_null();
+        let stream = TcpStream::new_null();
         let error = stream.readable().await.expect_err("readable should fail");
         assert_eq!(error.kind(), ErrorKind::Other);
         assert_eq!(error.to_string(), "nulled tcp stream has no data");
@@ -217,7 +217,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_returns_error_when_calling_try_read() {
-        let stream = TcpStream::create_null();
+        let stream = TcpStream::new_null();
         let error = stream.try_read(&mut [0]).expect_err("try_read should fail");
         assert_eq!(error.kind(), ErrorKind::Other);
         assert_eq!(error.to_string(), "nulled tcp stream has no data");
@@ -225,7 +225,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_should_read_configured_data() {
-        let stream = TcpStream::create_null_with(vec![1, 2, 3]);
+        let stream = TcpStream::new_null_with(vec![1, 2, 3]);
         stream.readable().await.expect("readable should not fail");
         let mut buf = [0; 3];
         let read_count = stream.try_read(&mut buf).expect("try_read should not fail");
@@ -235,7 +235,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_should_read_configured_data_into_bigger_buffer() {
-        let stream = TcpStream::create_null_with(vec![1, 2, 3]);
+        let stream = TcpStream::new_null_with(vec![1, 2, 3]);
         stream.readable().await.expect("readable should not fail");
         let mut buf = [0; 5];
         let read_count = stream.try_read(&mut buf).expect("try_read should not fail");
@@ -245,7 +245,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_can_read_configured_data_with_multiple_reads() {
-        let stream = TcpStream::create_null_with(vec![1, 2, 3]);
+        let stream = TcpStream::new_null_with(vec![1, 2, 3]);
 
         //read first chunk
         stream.readable().await.expect("readable should not fail");
@@ -264,7 +264,7 @@ mod tests {
 
     #[tokio::test]
     async fn nulled_stream_should_fail_after_all_incoming_data_was_read() {
-        let stream = TcpStream::create_null_with(vec![1, 2, 3]);
+        let stream = TcpStream::new_null_with(vec![1, 2, 3]);
         stream.readable().await.expect("readable should not fail");
         let mut buf = [0; 5];
         let read_count = stream.try_read(&mut buf).expect("try_read should not fail");

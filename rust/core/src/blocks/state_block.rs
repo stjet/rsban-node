@@ -87,7 +87,7 @@ impl StateBlock {
         }
     }
 
-    pub fn create_test_instance_with_key(key: KeyPair) -> Self {
+    pub fn new_test_instance_with_key(key: KeyPair) -> Self {
         Self::new(
             key.public_key(),
             BlockHash::from(456),
@@ -100,9 +100,9 @@ impl StateBlock {
         )
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
-        Self::create_test_instance_with_key(key)
+        Self::new_test_instance_with_key(key)
     }
 
     pub fn with_signature(
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = StateBlock::create_test_instance();
+        let block = StateBlock::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

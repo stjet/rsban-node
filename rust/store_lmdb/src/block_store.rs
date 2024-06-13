@@ -339,7 +339,7 @@ mod tests {
         let mut block = BlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::from(123),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         };
         block.set_sideband(sideband.clone());
 
@@ -397,7 +397,7 @@ mod tests {
         block.set_sideband(BlockSideband {
             height: 1,
             successor: BlockHash::zero(),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         });
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = fixture.store.track_puts();

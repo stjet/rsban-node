@@ -34,8 +34,8 @@ impl ConfirmAck {
         Some(ConfirmAck::new(vote))
     }
 
-    pub fn create_test_instance() -> Self {
-        Self::new(Vote::create_test_instance())
+    pub fn new_test_instance() -> Self {
+        Self::new(Vote::new_test_instance())
     }
 }
 

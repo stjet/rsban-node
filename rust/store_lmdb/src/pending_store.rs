@@ -200,20 +200,18 @@ mod tests {
     fn not_found() {
         let fixture = Fixture::new();
         let txn = fixture.env.tx_begin_read();
-        let result = fixture.store.get(&txn, &PendingKey::create_test_instance());
+        let result = fixture.store.get(&txn, &PendingKey::new_test_instance());
         assert!(result.is_none());
         assert_eq!(
-            fixture
-                .store
-                .exists(&txn, &PendingKey::create_test_instance()),
+            fixture.store.exists(&txn, &PendingKey::new_test_instance()),
             false
         );
     }
 
     #[test]
     fn load_pending_info() {
-        let key = PendingKey::create_test_instance();
-        let info = PendingInfo::create_test_instance();
+        let key = PendingKey::new_test_instance();
+        let info = PendingInfo::new_test_instance();
         let fixture = Fixture::with_stored_data(vec![(key.clone(), info.clone())]);
         let txn = fixture.env.tx_begin_read();
 
@@ -228,8 +226,8 @@ mod tests {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = txn.track_puts();
-        let pending_key = PendingKey::create_test_instance();
-        let pending = PendingInfo::create_test_instance();
+        let pending_key = PendingKey::new_test_instance();
+        let pending = PendingInfo::new_test_instance();
 
         fixture.store.put(&mut txn, &pending_key, &pending);
 
@@ -249,7 +247,7 @@ mod tests {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
         let delete_tracker = txn.track_deletions();
-        let pending_key = PendingKey::create_test_instance();
+        let pending_key = PendingKey::new_test_instance();
 
         fixture.store.del(&mut txn, &pending_key);
 
@@ -271,8 +269,8 @@ mod tests {
 
     #[test]
     fn iter() {
-        let key = PendingKey::create_test_instance();
-        let info = PendingInfo::create_test_instance();
+        let key = PendingKey::new_test_instance();
+        let info = PendingInfo::new_test_instance();
         let fixture = Fixture::with_stored_data(vec![(key.clone(), info.clone())]);
         let txn = fixture.env.tx_begin_read();
 
@@ -290,8 +288,8 @@ mod tests {
     fn tracks_puts() {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
-        let key = PendingKey::create_test_instance();
-        let info = PendingInfo::create_test_instance();
+        let key = PendingKey::new_test_instance();
+        let info = PendingInfo::new_test_instance();
         let put_tracker = fixture.store.track_puts();
 
         fixture.store.put(&mut txn, &key, &info);
@@ -303,7 +301,7 @@ mod tests {
     fn tracks_deletions() {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
-        let key = PendingKey::create_test_instance();
+        let key = PendingKey::new_test_instance();
         let delete_tracker = fixture.store.track_deletions();
 
         fixture.store.del(&mut txn, &key);

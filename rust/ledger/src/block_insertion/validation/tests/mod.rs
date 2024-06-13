@@ -114,7 +114,7 @@ impl BlockValidationTest {
 
     fn validate(&self) -> Result<BlockInsertInstructions, BlockStatus> {
         let block = self.block.as_ref().unwrap();
-        let mut validator = create_test_validator(block, self.chain.account());
+        let mut validator = new_test_validator(block, self.chain.account());
         if self.chain.height() > 0 {
             validator.old_account_info = Some(self.chain.account_info());
             if !self.previous_block_missing {
@@ -133,7 +133,7 @@ impl BlockValidationTest {
     }
 }
 
-fn create_test_validator<'a>(block: &'a BlockEnum, account: Account) -> BlockValidator {
+fn new_test_validator<'a>(block: &'a BlockEnum, account: Account) -> BlockValidator {
     BlockValidator {
         block: block,
         epochs: &LEDGER_CONSTANTS_STUB.epochs,

@@ -26,19 +26,19 @@ pub struct AscPullAck {
 impl AscPullAck {
     pub const MAX_FRONTIERS: usize = 1000;
 
-    pub fn create_test_instance_blocks() -> Self {
+    pub fn new_test_instance_blocks() -> Self {
         Self {
             id: 12345,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload(vec![
-                BlockEnum::create_test_instance(),
+                BlockEnum::new_test_instance(),
             ])),
         }
     }
 
-    pub fn create_test_instance_account() -> Self {
+    pub fn new_test_instance_account() -> Self {
         Self {
             id: 12345,
-            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::new_test_instance()),
         }
     }
 
@@ -220,7 +220,7 @@ impl AccountInfoAckPayload {
         Ok(())
     }
 
-    pub(crate) fn create_test_instance() -> AccountInfoAckPayload {
+    pub(crate) fn new_test_instance() -> AccountInfoAckPayload {
         Self {
             account: Account::from(1),
             account_open: BlockHash::from(2),

@@ -14,7 +14,7 @@ impl TcpStreamFactory {
         }
     }
 
-    pub fn create_null() -> Self {
+    pub fn new_null() -> Self {
         Self {
             inner: Box::new(NullTcpStreamFactory {}),
         }
@@ -61,7 +61,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_be_nulled() {
-        let factory = TcpStreamFactory::create_null();
+        let factory = TcpStreamFactory::new_null();
         match factory.connect("127.0.0.1:42").await {
             Ok(_) => panic!("connect should fail"),
             Err(e) => {

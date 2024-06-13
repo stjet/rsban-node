@@ -165,7 +165,7 @@ impl BlockProcessor {
 
     pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
         BlockProcessor::new(
-            Arc::new(NodeConfig::new_null()),
+            Arc::new(NodeConfig::new_test_instance()),
             Arc::new(NodeFlags::default()),
             ledger,
             Arc::new(UncheckedMap::default()),

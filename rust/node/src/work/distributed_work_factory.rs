@@ -43,7 +43,7 @@ pub struct WorkRequest {
 }
 
 impl WorkRequest {
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             root: Root::from(100),
             difficulty: 42,
@@ -158,7 +158,7 @@ mod tests {
 
             let request = WorkRequest {
                 peers: vec![],
-                ..WorkRequest::create_test_instance()
+                ..WorkRequest::new_test_instance()
             };
 
             let work = async_rt

@@ -145,12 +145,12 @@ mod tests {
     fn iter_receivables() {
         let account = Account::from(1);
 
-        let mut block1 = BlockEnum::create_test_instance_with_key(42);
-        block1.set_sideband(BlockSideband::create_test_instance());
-        let mut block2 = BlockEnum::create_test_instance_with_key(43);
-        block2.set_sideband(BlockSideband::create_test_instance());
-        let mut block3 = BlockEnum::create_test_instance_with_key(44);
-        block3.set_sideband(BlockSideband::create_test_instance());
+        let mut block1 = BlockEnum::new_test_instance_with_key(42);
+        block1.set_sideband(BlockSideband::new_test_instance());
+        let mut block2 = BlockEnum::new_test_instance_with_key(43);
+        block2.set_sideband(BlockSideband::new_test_instance());
+        let mut block3 = BlockEnum::new_test_instance_with_key(44);
+        block3.set_sideband(BlockSideband::new_test_instance());
 
         let ledger = Ledger::new_null_builder()
             .blocks([&block1, &block2, &block3])
@@ -168,15 +168,15 @@ mod tests {
             )
             .pending(
                 &PendingKey::new(account, block1.hash()),
-                &PendingInfo::create_test_instance(),
+                &PendingInfo::new_test_instance(),
             )
             .pending(
                 &PendingKey::new(account, block2.hash()),
-                &PendingInfo::create_test_instance(),
+                &PendingInfo::new_test_instance(),
             )
             .pending(
                 &PendingKey::new(account, block3.hash()),
-                &PendingInfo::create_test_instance(),
+                &PendingInfo::new_test_instance(),
             )
             .finish();
 

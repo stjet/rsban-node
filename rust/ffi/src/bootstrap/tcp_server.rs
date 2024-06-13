@@ -54,7 +54,6 @@ pub struct CreateTcpServerParams {
 pub unsafe extern "C" fn rsn_tcp_server_create(
     params: &CreateTcpServerParams,
 ) -> *mut TcpServerHandle {
-    let async_rt = Arc::clone(&(*params.async_rt).0);
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let publish_filter = Arc::clone(&*params.publish_filter);
@@ -64,7 +63,6 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let channels = Arc::clone(&(*params.tcp_channels));
     let mut server = ResponseServerImpl::new(
-        async_rt,
         &channels,
         socket,
         config,

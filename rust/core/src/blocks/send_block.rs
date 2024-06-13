@@ -102,7 +102,7 @@ impl SendBlock {
         }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
         SendBlock::new(
             &BlockHash::from(1),
@@ -366,7 +366,7 @@ mod tests {
     // originial test: block.send_serialize_json
     #[test]
     fn serialize_json() {
-        let block1 = SendBlock::create_test_instance();
+        let block1 = SendBlock::new_test_instance();
 
         let mut ptree = TestPropertyTree::new();
         block1.serialize_json(&mut ptree).unwrap();
@@ -377,7 +377,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = SendBlock::create_test_instance();
+        let block = SendBlock::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

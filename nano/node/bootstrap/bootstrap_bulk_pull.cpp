@@ -126,7 +126,9 @@ nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & no
 	request_a->handle,
 	connection_a->handle,
 	node_a->ledger.handle,
-	node_a->bootstrap_workers->handle);
+	node_a->bootstrap_workers->handle,
+	node_a->async_rt.handle
+	);
 }
 
 nano::bulk_pull_server::~bulk_pull_server ()
@@ -140,7 +142,8 @@ nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::
 	request_a->handle,
 	connection_a->handle,
 	node_a->ledger.handle,
-	node_a->bootstrap_workers->handle);
+	node_a->bootstrap_workers->handle,
+	node_a->async_rt.handle);
 }
 
 nano::bulk_pull_account_server::~bulk_pull_account_server ()

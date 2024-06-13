@@ -21,7 +21,7 @@ impl BulkPull {
     pub const ASCENDING_FLAG: usize = 1;
     pub const EXTENDED_PARAMETERS_SIZE: usize = 8;
 
-    pub fn create_test_instance() -> BulkPull {
+    pub fn new_test_instance() -> BulkPull {
         Self {
             start: 1.into(),
             end: 2.into(),
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn bulk_pull_serialization() {
-        let message = Message::BulkPull(BulkPull::create_test_instance());
+        let message = Message::BulkPull(BulkPull::new_test_instance());
         assert_deserializable(&message);
     }
 }

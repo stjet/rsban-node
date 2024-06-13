@@ -5,7 +5,7 @@ use crate::{
         LedgerHandle,
     },
     messages::MessageHandle,
-    utils::ThreadPoolHandle,
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
 };
 use rsnano_messages::Message;
 use rsnano_node::bootstrap::BulkPullAccountServer;
@@ -18,6 +18,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_create(
     server: *mut TcpServerHandle,
     ledger: *mut LedgerHandle,
     thread_pool: *mut ThreadPoolHandle,
+    runtime: &AsyncRuntimeHandle,
 ) -> *mut BulkPullAccountServerHandle {
     let Message::BulkPullAccount(payload) = &request.message else {
         panic!("not a bulk_pull_account message")
@@ -28,6 +29,7 @@ pub unsafe extern "C" fn rsn_bulk_pull_account_server_create(
             payload.clone(),
             (*thread_pool).0.clone(),
             (*ledger).0.clone(),
+            (*runtime).clone(),
         ),
     )))
 }

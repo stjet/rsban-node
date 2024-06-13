@@ -16,7 +16,7 @@ pub struct FrontierReq {
 }
 
 impl FrontierReq {
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
             start: 1.into(),
             age: 2,
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let request = Message::FrontierReq(FrontierReq::create_test_instance());
+        let request = Message::FrontierReq(FrontierReq::new_test_instance());
         assert_deserializable(&request);
     }
 }

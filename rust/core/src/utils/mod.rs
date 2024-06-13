@@ -200,6 +200,6 @@ pub const TEST_ENDPOINT_2: SocketAddrV6 =
 pub const TEST_ENDPOINT_3: SocketAddrV6 =
     SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0xffff, 0x10, 0, 0, 3), 3333, 0, 0);
 
-pub fn create_test_time() -> SystemTime {
+pub fn new_test_timestamp() -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(1_000_000)
 }

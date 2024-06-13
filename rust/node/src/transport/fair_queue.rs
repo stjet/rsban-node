@@ -528,9 +528,9 @@ mod tests {
         let mut queue: FairQueue<i32, TestSource> =
             FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
 
-        let channel1 = Arc::new(ChannelEnum::create_test_instance());
-        let channel2 = Arc::new(ChannelEnum::create_test_instance());
-        let channel3 = Arc::new(ChannelEnum::create_test_instance());
+        let channel1 = Arc::new(ChannelEnum::new_null());
+        let channel2 = Arc::new(ChannelEnum::new_null());
+        let channel3 = Arc::new(ChannelEnum::new_null());
 
         queue.push(6, Origin::new(TestSource::Live, Arc::clone(&channel1)));
         queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel2)));
@@ -559,9 +559,9 @@ mod tests {
         let mut queue: FairQueue<i32, TestSource> =
             FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
 
-        let channel1 = Arc::new(ChannelEnum::create_test_instance());
-        let channel2 = Arc::new(ChannelEnum::create_test_instance());
-        let channel3 = Arc::new(ChannelEnum::create_test_instance());
+        let channel1 = Arc::new(ChannelEnum::new_null());
+        let channel2 = Arc::new(ChannelEnum::new_null());
+        let channel3 = Arc::new(ChannelEnum::new_null());
 
         queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel1)));
         queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel2)));

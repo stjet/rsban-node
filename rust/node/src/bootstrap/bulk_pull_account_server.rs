@@ -1,6 +1,6 @@
 use crate::{
     transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
-    utils::{ErrorCode, ThreadPool},
+    utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey};
 use rsnano_ledger::Ledger;
@@ -21,6 +21,7 @@ struct BulkPullAccountServerImpl {
     pending_address_only: bool,
     pending_include_address: bool,
     invalid_request: bool,
+    runtime: Arc<AsyncRuntime>,
 }
 
 impl BulkPullAccountServerImpl {
@@ -260,7 +261,10 @@ impl BulkPullAccountServerImpl {
                 }
             }
 
-            self.connection.start();
+            let connection = self.connection.clone();
+            self.runtime
+                .tokio
+                .spawn(async move { connection.run().await });
         } else {
             debug!("Unable to pending-as-zero");
         }
@@ -277,6 +281,7 @@ impl BulkPullAccountServer {
         request: BulkPullAccount,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
+        runtime: Arc<AsyncRuntime>,
     ) -> Self {
         let mut server = BulkPullAccountServerImpl {
             connection,
@@ -288,6 +293,7 @@ impl BulkPullAccountServer {
             pending_address_only: false,
             pending_include_address: false,
             invalid_request: false,
+            runtime,
         };
         /*
          * Setup the streaming response for the first call to "send_frontier" and  "send_next_block"

@@ -39,7 +39,7 @@ impl BulkPullAccount {
         Account::serialized_size() + Amount::serialized_size() + size_of::<BulkPullAccountFlags>()
     }
 
-    pub fn create_test_instance() -> BulkPullAccount {
+    pub fn new_test_instance() -> BulkPullAccount {
         Self {
             account: 1.into(),
             minimum_amount: 42.into(),

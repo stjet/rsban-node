@@ -24,9 +24,9 @@ impl Publish {
         Self { block, digest: 0 }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         Self {
-            block: BlockEnum::create_test_instance(),
+            block: BlockEnum::new_test_instance(),
             digest: 0,
         }
     }

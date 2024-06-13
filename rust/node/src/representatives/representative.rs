@@ -21,10 +21,7 @@ impl Representative {
     }
 
     #[cfg(test)]
-    pub(crate) fn create_test_instance() -> Self {
-        Self::new(
-            Account::from(42),
-            Arc::new(ChannelEnum::create_test_instance()),
-        )
+    pub(crate) fn new_test_instance() -> Self {
+        Self::new(Account::from(42), Arc::new(ChannelEnum::new_null()))
     }
 }

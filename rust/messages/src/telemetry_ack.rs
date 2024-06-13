@@ -74,7 +74,7 @@ impl TelemetryData {
         }
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let mut data = TelemetryData::new();
         data.node_id = PublicKey::from(42);
         data.major_version = 20;
@@ -208,8 +208,8 @@ impl serde::Serialize for TelemetryAck {
 }
 
 impl TelemetryAck {
-    pub fn create_test_instance() -> Self {
-        Self(Some(TelemetryData::create_test_instance()))
+    pub fn new_test_instance() -> Self {
+        Self(Some(TelemetryData::new_test_instance()))
     }
 
     pub fn serialized_size(extensions: BitArray<u16>) -> usize {

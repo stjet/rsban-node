@@ -2,10 +2,7 @@ use crate::{
     block_processing::BlockProcessor,
     config::{NetworkConstants, NodeFlags},
     stats::Stats,
-    transport::{
-        BootstrapMessageVisitor, RealtimeMessageVisitor, RealtimeMessageVisitorImpl,
-        ResponseServerImpl,
-    },
+    transport::{RealtimeMessageVisitor, RealtimeMessageVisitorImpl, ResponseServerImpl},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use rsnano_core::KeyPair;
@@ -80,8 +77,8 @@ impl BootstrapMessageVisitorFactory {
     pub fn bootstrap_visitor(
         &self,
         server: Arc<ResponseServerImpl>,
-    ) -> Box<dyn BootstrapMessageVisitor> {
-        Box::new(BootstrapMessageVisitorImpl {
+    ) -> BootstrapMessageVisitorImpl {
+        BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),
             connection: server,
@@ -91,7 +88,6 @@ impl BootstrapMessageVisitorFactory {
             stats: Arc::clone(&self.stats),
             work_thresholds: self.network_constants.work.clone(),
             flags: self.flags.clone(),
-            processed: false,
-        })
+        }
     }
 }

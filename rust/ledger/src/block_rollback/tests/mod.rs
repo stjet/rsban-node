@@ -14,7 +14,7 @@ impl<'a> RollbackTest<'a> {
     pub const SECONDS_SINCE_EPOCH: u64 = 1234;
     pub fn for_chain(chain: &'a TestAccountChain) -> Self {
         Self {
-            planner: create_test_rollback_planner(chain),
+            planner: new_test_rollback_planner(chain),
         }
     }
 
@@ -35,7 +35,7 @@ impl<'a> RollbackTest<'a> {
     }
 }
 
-fn create_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {
+fn new_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {
     RollbackPlanner {
         epochs: &LEDGER_CONSTANTS_STUB.epochs,
         head_block: chain.latest_block(),

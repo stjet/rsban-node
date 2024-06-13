@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn account_info() {
         let block = BlockBuilder::state().build();
-        let account_info = AccountInfo::create_test_instance();
+        let account_info = AccountInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .account_info(&block.account_field().unwrap(), &account_info)
             .finish();
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn pending_receive_info_for_state_block() {
         let block = BlockBuilder::state().link(Link::from(42)).build();
-        let pending_info = PendingInfo::create_test_instance();
+        let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .pending(
                 &PendingKey::new(block.account_field().unwrap(), BlockHash::from(42)),
@@ -167,7 +167,7 @@ mod tests {
             .previous(previous.hash())
             .source(BlockHash::from(42))
             .build();
-        let pending_info = PendingInfo::create_test_instance();
+        let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .block(&previous)
             .pending(
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn any_pending_exists() {
         let block = BlockBuilder::state().build();
-        let pending_info = PendingInfo::create_test_instance();
+        let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .pending(
                 &PendingKey::new(block.account_field().unwrap(), BlockHash::from(42)),

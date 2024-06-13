@@ -73,7 +73,7 @@ impl OpenBlock {
         self.hashables.account
     }
 
-    pub fn create_test_instance() -> Self {
+    pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
         Self::new(
             BlockHash::from(123),
@@ -314,7 +314,7 @@ mod tests {
     // original test: open_block.deserialize
     #[test]
     fn serialize() {
-        let block1 = OpenBlock::create_test_instance();
+        let block1 = OpenBlock::new_test_instance();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(OpenBlock::serialized_size(), stream.bytes_written());
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = OpenBlock::create_test_instance();
+        let block = OpenBlock::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

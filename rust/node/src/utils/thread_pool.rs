@@ -34,7 +34,7 @@ impl<T: TimerStrategy> ThreadPoolData<T> {
 
 impl ThreadPoolImpl<TimerWrapper> {
     pub fn create(num_threads: usize, thread_name: String) -> Self {
-        Self::new(num_threads, thread_name, Timer::create())
+        Self::new(num_threads, thread_name, Timer::new())
     }
 
     pub fn new_test_instance() -> Self {
@@ -43,8 +43,8 @@ impl ThreadPoolImpl<TimerWrapper> {
 }
 
 impl ThreadPoolImpl<NullTimer> {
-    pub fn create_null() -> Self {
-        Self::new(1, "nulled thread pool".to_string(), Timer::create_null())
+    pub fn new_null() -> Self {
+        Self::new(1, "nulled thread pool".to_string(), Timer::new_null())
     }
 }
 
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn add_delayed_task() {
-        let timer = Timer::create_null();
+        let timer = Timer::new_null();
         let timer_tracker = timer.track();
         let pool = ThreadPoolImpl::new(1, "test pool".to_string(), timer);
         let (tx, rx) = std::sync::mpsc::channel();
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn add_multiple_delayed_tasks() {
-        let timer = Timer::create_null();
+        let timer = Timer::new_null();
         let timer_tracker = timer.track();
         let pool = ThreadPoolImpl::new(1, "test pool".to_string(), timer);
         let (tx, rx) = std::sync::mpsc::channel();
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn can_be_nulled() {
-        let pool = ThreadPoolImpl::create_null();
+        let pool = ThreadPoolImpl::new_null();
         let (tx, rx) = std::sync::mpsc::channel();
 
         let tracker = pool.track();

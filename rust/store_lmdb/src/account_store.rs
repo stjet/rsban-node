@@ -223,7 +223,7 @@ mod tests {
         let put_tracker = txn.track_puts();
 
         let account = Account::from(1);
-        let info = AccountInfo::create_test_instance();
+        let info = AccountInfo::new_test_instance();
         fixture.store.put(&mut txn, &account, &info);
 
         assert_eq!(
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn load_account() {
         let account = Account::from(1);
-        let info = AccountInfo::create_test_instance();
+        let info = AccountInfo::new_test_instance();
         let fixture = Fixture::with_stored_accounts(vec![(account.clone(), info.clone())]);
         let txn = fixture.env.tx_begin_read();
 
@@ -252,8 +252,8 @@ mod tests {
     #[test]
     fn count() {
         let fixture = Fixture::with_stored_accounts(vec![
-            (Account::from(1), AccountInfo::create_test_instance()),
-            (Account::from(2), AccountInfo::create_test_instance()),
+            (Account::from(1), AccountInfo::new_test_instance()),
+            (Account::from(2), AccountInfo::new_test_instance()),
         ]);
         let txn = fixture.env.tx_begin_read();
 
@@ -377,7 +377,7 @@ mod tests {
         let put_tracker = fixture.store.track_puts();
         let mut txn = fixture.env.tx_begin_write();
         let account = Account::from(1);
-        let info = AccountInfo::create_test_instance();
+        let info = AccountInfo::new_test_instance();
 
         fixture.store.put(&mut txn, &account, &info);
 

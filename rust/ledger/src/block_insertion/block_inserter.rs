@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn delete_old_pending() {
         let (mut block, mut instructions) = legacy_open_block_instructions();
-        let pending_key = PendingKey::create_test_instance();
+        let pending_key = PendingKey::new_test_instance();
         instructions.delete_pending = Some(pending_key.clone());
         let ledger = Ledger::new_null();
 
@@ -143,8 +143,8 @@ mod tests {
     #[test]
     fn insert_pending() {
         let (mut block, mut instructions) = legacy_open_block_instructions();
-        let pending_key = PendingKey::create_test_instance();
-        let pending_info = PendingInfo::create_test_instance();
+        let pending_key = PendingKey::new_test_instance();
+        let pending_info = PendingInfo::new_test_instance();
         instructions.insert_pending = Some((pending_key.clone(), pending_info.clone()));
         let ledger = Ledger::new_null();
 
@@ -162,7 +162,7 @@ mod tests {
             .build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         };
         open.set_sideband(sideband.clone());
 
@@ -217,12 +217,12 @@ mod tests {
         let block = BlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         };
         let account_info = AccountInfo {
             head: block.hash(),
             open_block: block.hash(),
-            ..AccountInfo::create_test_instance()
+            ..AccountInfo::new_test_instance()
         };
         let instructions = BlockInsertInstructions {
             account: block.account_field().unwrap(),
@@ -241,12 +241,12 @@ mod tests {
         let block = BlockBuilder::state().previous(BlockHash::zero()).build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         };
         let account_info = AccountInfo {
             head: block.hash(),
             open_block: block.hash(),
-            ..AccountInfo::create_test_instance()
+            ..AccountInfo::new_test_instance()
         };
         let instructions = BlockInsertInstructions {
             account: Account::from(1),
@@ -269,19 +269,19 @@ mod tests {
             successor: BlockHash::zero(),
             balance: block.balance(),
             account: block.account_field().unwrap(),
-            ..BlockSideband::create_test_instance()
+            ..BlockSideband::new_test_instance()
         };
         let old_account_info = AccountInfo {
             head: previous.hash(),
             balance: previous.balance(),
-            ..AccountInfo::create_test_instance()
+            ..AccountInfo::new_test_instance()
         };
         let new_account_info = AccountInfo {
             head: block.hash(),
             open_block: block.hash(),
             balance: block.balance_field().unwrap(),
             representative: block.representative_field().unwrap(),
-            ..AccountInfo::create_test_instance()
+            ..AccountInfo::new_test_instance()
         };
         let instructions = BlockInsertInstructions {
             account: Account::from(1),

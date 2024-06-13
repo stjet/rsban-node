@@ -81,7 +81,7 @@ impl<'a> LmdbStoreBuilder<'a> {
 }
 
 impl LmdbStore {
-    pub fn create_null() -> Self {
+    pub fn new_null() -> Self {
         Self::new_with_env(LmdbEnv::new_null()).unwrap()
     }
 

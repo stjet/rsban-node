@@ -97,7 +97,7 @@ mod tests {
         assert_eq!(manager.size(), 0);
         manager.put(
             DeserializedMessage::new(Message::BulkPush, Default::default()),
-            Arc::new(ChannelEnum::create_test_instance()),
+            Arc::new(ChannelEnum::new_null()),
         );
         assert_eq!(manager.size(), 1);
         assert!(manager.next().is_some());
@@ -118,7 +118,7 @@ mod tests {
         let manager = Arc::new(manager);
 
         let message = DeserializedMessage::new(Message::BulkPush, Default::default());
-        let channel = Arc::new(ChannelEnum::create_test_instance());
+        let channel = Arc::new(ChannelEnum::new_null());
 
         // Fill the queue
         for _ in 0..manager.max_entries {

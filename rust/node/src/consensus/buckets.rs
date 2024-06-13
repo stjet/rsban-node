@@ -439,7 +439,7 @@ mod tests {
     }
 
     fn test_block(private_key: u64) -> Arc<BlockEnum> {
-        Arc::new(BlockEnum::create_test_instance_with_key(KeyPair::from(
+        Arc::new(BlockEnum::new_test_instance_with_key(KeyPair::from(
             private_key,
         )))
     }

@@ -175,13 +175,13 @@ mod tests {
 
     #[test]
     fn exact_confirm_ack() {
-        let message = Message::ConfirmAck(ConfirmAck::new(Vote::create_test_instance()));
+        let message = Message::ConfirmAck(ConfirmAck::new(Vote::new_test_instance()));
         assert_deserializable(&message);
     }
 
     #[test]
     fn exact_confirm_req() {
-        let message = Message::ConfirmReq(ConfirmReq::create_test_instance());
+        let message = Message::ConfirmReq(ConfirmReq::new_test_instance());
         assert_deserializable(&message);
     }
 
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn exact_frontier_req() {
-        let message = Message::FrontierReq(FrontierReq::create_test_instance());
+        let message = Message::FrontierReq(FrontierReq::new_test_instance());
         assert_deserializable(&message);
     }
 
@@ -217,13 +217,13 @@ mod tests {
 
     #[test]
     fn exact_bulk_pull() {
-        let message = Message::BulkPull(BulkPull::create_test_instance());
+        let message = Message::BulkPull(BulkPull::new_test_instance());
         assert_deserializable(&message);
     }
 
     #[test]
     fn exact_bulk_pull_account() {
-        let message = Message::BulkPullAccount(BulkPullAccount::create_test_instance());
+        let message = Message::BulkPullAccount(BulkPullAccount::new_test_instance());
         assert_deserializable(&message);
     }
 
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn exact_asc_pull_req() {
         let message = Message::AscPullReq(AscPullReq {
-            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::create_test_instance()),
+            req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload::new_test_instance()),
             id: 7,
         });
         assert_deserializable(&message);
@@ -255,7 +255,7 @@ mod tests {
     fn exact_asc_pull_ack() {
         let message = Message::AscPullAck(AscPullAck {
             id: 7,
-            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::create_test_instance()),
+            pull_type: AscPullAckType::AccountInfo(AccountInfoAckPayload::new_test_instance()),
         });
         assert_deserializable(&message);
     }

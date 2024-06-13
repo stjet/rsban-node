@@ -133,7 +133,10 @@ impl BulkPushServerImpl {
 
         match block_type {
             Some(BlockType::NotABlock) => {
-                self.connection.start();
+                let connection = self.connection.clone();
+                self.async_rt
+                    .tokio
+                    .spawn(async move { connection.run().await });
                 return;
             }
             Some(BlockType::Invalid) | None => {

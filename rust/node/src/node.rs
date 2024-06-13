@@ -1564,7 +1564,7 @@ mod tests {
             let async_rt = Arc::new(AsyncRuntime::default());
             let mut app_path = std::env::temp_dir();
             app_path.push(format!("rsnano-test-{}", Uuid::new_v4().simple()));
-            let config = NodeConfig::new_null();
+            let config = NodeConfig::new_test_instance();
             let network_params = NetworkParams::new(Networks::NanoDevNetwork);
             let flags = NodeFlags::default();
             let work = Arc::new(WorkPoolImpl::new(

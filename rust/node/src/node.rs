@@ -15,7 +15,7 @@ use crate::{
         LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
         OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
         ProcessLiveDispatcherExt, RepTiers, RequestAggregator, RequestAggregatorExt, VoteCache,
-        VoteGenerator, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
+        VoteGenerator, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -99,6 +99,7 @@ pub struct Node {
     pub vote_generator: Arc<VoteGenerator>,
     pub final_generator: Arc<VoteGenerator>,
     pub active: Arc<ActiveElections>,
+    pub vote_router: Arc<VoteRouter>,
     pub vote_processor: Arc<VoteProcessor>,
     pub websocket: Option<Arc<crate::websocket::WebsocketListener>>,
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
@@ -240,6 +241,8 @@ impl Node {
             Arc::clone(&online_reps),
             Arc::clone(&stats),
         ));
+
+        let vote_router = Arc::new(VoteRouter::new());
 
         let vote_processor_queue = Arc::new(VoteProcessorQueue::new(
             config.vote_processor.clone(),
@@ -1081,6 +1084,7 @@ impl Node {
             online_reps_sampler,
             representative_register,
             rep_tiers,
+            vote_router,
             vote_processor_queue,
             history,
             confirming_set,
@@ -1156,6 +1160,7 @@ impl Node {
                     .lock()
                     .unwrap()
                     .collect_container_info("vote_cache"),
+                self.vote_router.collect_container_info("vote_router"),
                 self.vote_generator.collect_container_info("vote_generator"),
                 self.final_generator
                     .collect_container_info("vote_generator_final"),
@@ -1282,6 +1287,7 @@ impl NodeExt for Arc<Node> {
         self.local_block_broadcaster.start();
         self.peer_cache_updater.start();
         self.peer_cache_connector.start();
+        self.vote_router.start();
     }
 
     fn stop(&self) {
@@ -1291,6 +1297,7 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.vote_router.stop();
         self.peer_connector.stop();
         self.ledger_pruning.stop();
         self.peer_cache_connector.stop();

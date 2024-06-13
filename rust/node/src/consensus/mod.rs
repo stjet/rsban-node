@@ -17,6 +17,7 @@ mod vote_cache;
 mod vote_generator;
 mod vote_processor;
 mod vote_processor_queue;
+mod vote_router;
 mod vote_spacing;
 
 pub use active_elections::*;
@@ -38,4 +39,5 @@ pub use vote_cache::{CacheEntry, TopEntry, VoteCache, VoteCacheConfig, VoterEntr
 pub use vote_generator::*;
 pub use vote_processor::*;
 pub use vote_processor_queue::VoteProcessorQueue;
+pub use vote_router::*;
 pub use vote_spacing::VoteSpacing;

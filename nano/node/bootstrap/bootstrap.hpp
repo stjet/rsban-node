@@ -77,12 +77,7 @@ public:
 	bootstrap_attempts (bootstrap_attempts const &) = delete;
 	bootstrap_attempts (bootstrap_attempts &&) = delete;
 	~bootstrap_attempts () noexcept;
-	void add (std::shared_ptr<nano::bootstrap_attempt>);
-	void remove (uint64_t);
-	void clear ();
-	std::shared_ptr<nano::bootstrap_attempt> find (uint64_t);
 	std::size_t size ();
-	uint64_t create_incremental_id ();
 	uint64_t total_attempts () const;
 	boost::property_tree::ptree attempts_information ();
 	rsnano::BootstrapAttemptsHandle * handle;
@@ -105,7 +100,6 @@ public:
 	void bootstrap (nano::endpoint const &, std::string id_a = "");
 	void bootstrap (bool force = false, std::string id_a = "", uint32_t const frontiers_age_a = std::numeric_limits<uint32_t>::max (), nano::account const & start_account_a = nano::account{});
 	bool bootstrap_lazy (nano::hash_or_account const &, bool force = false, std::string id_a = "");
-	void bootstrap_wallet (std::deque<nano::account> &);
 	bool in_progress ();
 	nano::bootstrap_attempts attempts;
 	std::shared_ptr<nano::bootstrap_connections> connections;

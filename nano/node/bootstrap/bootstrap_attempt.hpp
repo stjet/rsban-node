@@ -32,19 +32,11 @@ public:
 	unsigned get_pulling () const;
 	void inc_pulling ();
 	bool get_stopped () const;
-	void set_stopped ();
 	bool get_started () const;
-	bool set_started ();
-	nano::bootstrap_mode get_mode () const;
 	unsigned get_requeued_pulls () const;
-	void inc_requeued_pulls ();
 	bool get_frontiers_received () const;
-	void set_frontiers_received (bool);
-	std::chrono::seconds duration () const;
 
 	std::string id () const;
-	uint64_t get_incremental_id () const;
-	void notify_all ();
 	rsnano::BootstrapAttemptHandle * handle;
 };
 }

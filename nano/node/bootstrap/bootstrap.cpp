@@ -69,12 +69,6 @@ bool nano::bootstrap_initiator::bootstrap_lazy (nano::hash_or_account const & ha
 	return rsnano::rsn_bootstrap_initiator_bootstrap_lazy (handle, hash_or_account_a.bytes.data (), force, id_a.c_str ());
 }
 
-void nano::bootstrap_initiator::bootstrap_wallet (std::deque<nano::account> & accounts_a)
-{
-	rsnano::account_vec acc_vec{ accounts_a };
-	rsnano::rsn_bootstrap_initiator_bootstrap_wallet (handle, acc_vec.handle);
-}
-
 bool nano::bootstrap_initiator::in_progress ()
 {
 	return rsnano::rsn_bootstrap_initiator_in_progress (handle);
@@ -166,33 +160,9 @@ nano::bootstrap_attempts::~bootstrap_attempts () noexcept
 	rsnano::rsn_bootstrap_attempts_destroy (handle);
 }
 
-void nano::bootstrap_attempts::add (std::shared_ptr<nano::bootstrap_attempt> attempt_a)
-{
-	rsnano::rsn_bootstrap_attempts_add (handle, attempt_a->handle);
-}
-
-void nano::bootstrap_attempts::remove (uint64_t incremental_id_a)
-{
-	rsnano::rsn_bootstrap_attempts_remove (handle, incremental_id_a);
-}
-
-void nano::bootstrap_attempts::clear ()
-{
-	rsnano::rsn_bootstrap_attempts_clear (handle);
-}
-
-std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_attempts::find (uint64_t incremental_id_a)
-{
-	auto attempt_handle = rsnano::rsn_bootstrap_attempts_find (handle, incremental_id_a);
-	return attempt_from_handle (attempt_handle);
-}
 std::size_t nano::bootstrap_attempts::size ()
 {
 	return rsnano::rsn_bootstrap_attempts_size (handle);
-}
-uint64_t nano::bootstrap_attempts::create_incremental_id ()
-{
-	return rsnano::rsn_bootstrap_attempts_incremental_id (handle);
 }
 uint64_t nano::bootstrap_attempts::total_attempts () const
 {

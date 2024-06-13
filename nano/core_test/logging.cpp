@@ -42,4 +42,3 @@ struct non_moveable
 	}
 };
 }
-

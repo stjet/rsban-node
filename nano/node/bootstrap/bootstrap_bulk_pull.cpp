@@ -127,8 +127,7 @@ nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::node> const & no
 	connection_a->handle,
 	node_a->ledger.handle,
 	node_a->bootstrap_workers->handle,
-	node_a->async_rt.handle
-	);
+	node_a->async_rt.handle);
 }
 
 nano::bulk_pull_server::~bulk_pull_server ()

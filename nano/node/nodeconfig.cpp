@@ -1,4 +1,5 @@
 #include "nano/node/active_transactions.hpp"
+
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
@@ -111,7 +112,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_cache = config.vote_cache.to_dto ();
 	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count ();
 	dto.block_processor = config.block_processor.to_dto ();
-	dto.active_transactions = config.active_transactions.into_dto();
+	dto.active_transactions = config.active_transactions.into_dto ();
 	dto.vote_processor = config.vote_processor.to_dto ();
 	dto.tcp = config.tcp.to_dto ();
 	return dto;
@@ -233,7 +234,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_cache = nano::vote_cache_config{ dto.vote_cache };
 	rep_crawler.query_timeout = std::chrono::milliseconds (dto.rep_crawler_query_timeout_ms);
 	block_processor = nano::block_processor_config{ dto.block_processor };
-	active_transactions = nano::active_transactions_config{dto.active_transactions};
+	active_transactions = nano::active_transactions_config{ dto.active_transactions };
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 	tcp = nano::transport::tcp_config{ dto.tcp };
 }

@@ -163,4 +163,3 @@ enum class tracing_format
 	json,
 };
 }
-

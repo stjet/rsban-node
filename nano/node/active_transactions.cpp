@@ -323,7 +323,7 @@ void nano::active_transactions::clear ()
  * active_transactions_config
  */
 
-nano::active_transactions_config::active_transactions_config(rsnano::ActiveTransactionsConfigDto const & dto) :
+nano::active_transactions_config::active_transactions_config (rsnano::ActiveTransactionsConfigDto const & dto) :
 	size{ dto.size },
 	hinted_limit_percentage{ dto.hinted_limit_percentage },
 	optimistic_limit_percentage{ dto.optimistic_limit_percentage },
@@ -334,7 +334,7 @@ nano::active_transactions_config::active_transactions_config(rsnano::ActiveTrans
 
 rsnano::ActiveTransactionsConfigDto nano::active_transactions_config::into_dto () const
 {
-	return{size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache};
+	return { size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache };
 }
 
 nano::error nano::active_transactions_config::deserialize (nano::tomlconfig & toml)

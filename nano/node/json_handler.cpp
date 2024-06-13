@@ -1987,7 +1987,7 @@ void nano::json_handler::election_statistics ()
 	}
 	auto average_election_age = std::chrono::milliseconds{ total_count ? total_age.count () / total_count : 0 };
 
-	auto utilization_percentage = (static_cast<double> (total_count * 100) / node.config->active_elections_size);
+	auto utilization_percentage = (static_cast<double> (total_count * 100) / node.config->active_transactions.size);
 	std::stringstream stream_utilization, stream_average_age;
 	stream_utilization << std::fixed << std::setprecision (2) << utilization_percentage;
 

@@ -16,7 +16,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, MemoryStream},
+    utils::{ContainerInfo, ContainerInfoComponent, MemoryStream, TomlWriter},
     Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote, VoteCode, VoteSource,
     VoteWithWeightInfo,
 };
@@ -45,6 +45,54 @@ pub type ElectionEndCallback = Box<
 
 pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Sync>;
 
+#[derive(Clone, Debug)]
+pub struct ActiveTransactionsConfig {
+    // Maximum number of simultaneous active elections (AEC size)
+    pub size: usize,
+    // Limit of hinted elections as percentage of `active_elections_size`
+    pub hinted_limit_percentage: usize,
+    // Limit of optimistic elections as percentage of `active_elections_size`
+    pub optimistic_limit_percentage: usize,
+    // Maximum confirmation history size
+    pub confirmation_history_size: usize,
+    // Maximum cache size for recently_confirmed
+    pub confirmation_cache: usize,
+}
+
+impl ActiveTransactionsConfig {
+    pub(crate) fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize ("size", self.size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate. \ntype:uint64,[250..]")?;
+
+        toml.put_usize(
+            "hinted_limit_percentage",
+            self.hinted_limit_percentage,
+            "Limit of hinted elections as percentage of `active_elections_size` \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "optimistic_limit_percentage",
+            self.optimistic_limit_percentage,
+            "Limit of optimistic elections as percentage of `active_elections_size`. \ntype:uint64",
+        )?;
+
+        toml.put_usize ("confirmation_history_size", self.confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead. \ntype:uint64")?;
+
+        toml.put_usize ("confirmation_cache", self.confirmation_cache, "Maximum number of confirmed elections kept in cache to prevent restarting an election. \ntype:uint64")
+    }
+}
+
+impl Default for ActiveTransactionsConfig {
+    fn default() -> Self {
+        Self {
+            size: 5000,
+            hinted_limit_percentage: 20,
+            optimistic_limit_percentage: 10,
+            confirmation_history_size: 2048,
+            confirmation_cache: 65536,
+        }
+    }
+}
+
 pub struct ActiveTransactions {
     pub mutex: Mutex<ActiveTransactionsData>,
     pub condition: Condvar,
@@ -52,7 +100,8 @@ pub struct ActiveTransactions {
     pub online_reps: Arc<Mutex<OnlineReps>>,
     wallets: Arc<Wallets>,
     pub election_winner_details: Mutex<HashMap<BlockHash, Arc<Election>>>,
-    config: NodeConfig,
+    node_config: NodeConfig,
+    config: ActiveTransactionsConfig,
     ledger: Arc<Ledger>,
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
@@ -83,7 +132,7 @@ impl ActiveTransactions {
         network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
         wallets: Arc<Wallets>,
-        config: NodeConfig,
+        node_config: NodeConfig,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
         workers: Arc<dyn ThreadPool>,
@@ -116,11 +165,14 @@ impl ActiveTransactions {
             ledger,
             confirming_set,
             workers,
-            recently_confirmed: Arc::new(RecentlyConfirmedCache::new(65536)),
+            recently_confirmed: Arc::new(RecentlyConfirmedCache::new(
+                node_config.active_transactions.confirmation_cache,
+            )),
             recently_cemented: Arc::new(Mutex::new(BoundedVecDeque::new(
-                config.confirmation_history_size,
+                node_config.active_transactions.confirmation_history_size,
             ))),
-            config,
+            config: node_config.active_transactions.clone(),
+            node_config,
             history,
             block_processor,
             generator,
@@ -391,7 +443,7 @@ impl ActiveTransactions {
         guard: &mut MutexGuard<ElectionData>,
         hash: &BlockHash,
     ) {
-        if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
+        if self.node_config.enable_voting && self.wallets.voting_reps_count() > 0 {
             // Remove votes from election
             let list_generated_votes = self.history.votes(&election.root, hash, false);
             for vote in list_generated_votes {
@@ -414,16 +466,12 @@ impl ActiveTransactions {
     /// NOTE: This is only a soft limit, it is possible for this container to exceed this count
     pub fn limit(&self, behavior: ElectionBehavior) -> usize {
         match behavior {
-            ElectionBehavior::Normal => self.config.active_elections_size,
+            ElectionBehavior::Normal => self.config.size,
             ElectionBehavior::Hinted => {
-                self.config.active_elections_hinted_limit_percentage
-                    * self.config.active_elections_size
-                    / 100
+                self.config.hinted_limit_percentage * self.config.size / 100
             }
             ElectionBehavior::Optimistic => {
-                self.config.active_elections_optimistic_limit_percentage
-                    * self.config.active_elections_size
-                    / 100
+                self.config.optimistic_limit_percentage * self.config.size / 100
             }
         }
     }
@@ -626,7 +674,7 @@ impl ActiveTransactions {
             return;
         }
         election_guard.set_last_vote();
-        if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
+        if self.node_config.enable_voting && self.wallets.voting_reps_count() > 0 {
             self.stats
                 .inc(StatType::Election, DetailType::BroadcastVote);
 
@@ -856,7 +904,7 @@ impl ActiveTransactions {
          * Loop through active elections in descending order of proof-of-work difficulty, requesting confirmation
          *
          * Only up to a certain amount of elections are queued for confirmation request and block rebroadcasting. The remaining elections can still be confirmed if votes arrive
-         * Elections extending the soft config.active_elections_size limit are flushed after a certain time-to-live cutoff
+         * Elections extending the soft config.size limit are flushed after a certain time-to-live cutoff
          * Flushed elections are later re-activated via frontier confirmation
          */
         for election in elections {
@@ -1254,7 +1302,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
 
         if self.have_quorum(&tally) {
             if !election.is_quorum.swap(true, Ordering::SeqCst)
-                && self.config.enable_voting
+                && self.node_config.enable_voting
                 && self.wallets.voting_reps_count() > 0
             {
                 self.final_generator
@@ -1303,7 +1351,7 @@ impl ActiveTransactionsExt for Arc<ActiveTransactions> {
 
     fn process_confirmed(&self, status: ElectionStatus, mut iteration: u64) {
         let hash = status.winner.as_ref().unwrap().hash();
-        let num_iters = (self.config.block_processor_batch_max_time_ms
+        let num_iters = (self.node_config.block_processor_batch_max_time_ms
             / self.network_params.node.process_confirmed_interval_ms)
             as u64
             * 4;

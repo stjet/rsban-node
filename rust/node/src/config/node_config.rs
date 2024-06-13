@@ -4,7 +4,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfig,
     bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
-    consensus::{VoteCacheConfig, VoteProcessorConfig},
+    consensus::{ActiveTransactionsConfig, VoteCacheConfig, VoteProcessorConfig},
     stats::StatsConfig,
     transport::TcpConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
@@ -63,14 +63,6 @@ pub struct NodeConfig {
     pub external_port: u16,
     pub tcp_incoming_connections_max: u32,
     pub use_memory_pools: bool,
-    pub confirmation_history_size: usize,
-    pub active_elections_size: usize,
-
-    /// Limit of hinted elections as percentage of active_elections_size
-    pub active_elections_hinted_limit_percentage: usize,
-
-    /// Limit of optimistic elections as percentage of `active_elections_size`
-    pub active_elections_optimistic_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_ascending: BootstrapAscendingConfig,
@@ -106,6 +98,7 @@ pub struct NodeConfig {
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
     pub block_processor: BlockProcessorConfig,
+    pub active_transactions: ActiveTransactionsConfig,
     pub vote_processor: VoteProcessorConfig,
     pub tcp: TcpConfig,
 }
@@ -260,10 +253,6 @@ impl NodeConfig {
             // Default maximum incoming TCP connections, including realtime network & bootstrap
             tcp_incoming_connections_max: 2048,
             use_memory_pools: true,
-            confirmation_history_size: 2048,
-            active_elections_size: 5000,
-            active_elections_hinted_limit_percentage: 20,
-            active_elections_optimistic_limit_percentage: 10,
             // Default outbound traffic shaping is 10MB/s
             bandwidth_limit: 10 * 1024 * 1024,
             // By default, allow bursts of 15MB/s (not sustainable)
@@ -310,6 +299,7 @@ impl NodeConfig {
                 HintedSchedulerConfig::default()
             },
             vote_cache: Default::default(),
+            active_transactions: Default::default(),
             rep_crawler_query_timeout: if network_params.network.is_dev_network() {
                 Duration::from_secs(1)
             } else {
@@ -374,8 +364,6 @@ impl NodeConfig {
             "Maximum number of incoming TCP connections.\ntype:uint64",
         )?;
         toml.put_bool("use_memory_pools", self.use_memory_pools, "If true, allocate memory from memory pools. Enabling this may improve performance. Memory is never released to the OS.\ntype:bool")?;
-        toml.put_usize("confirmation_history_size", self.confirmation_history_size, "Maximum confirmation history size. If tracking the rate of block confirmations, the websocket feature is recommended instead.\ntype:uint64")?;
-        toml.put_usize("active_elections_size", self.active_elections_size, "Number of active elections. Elections beyond this limit have limited survival time.\nWarning: modifying this value may result in a lower confirmation rate.\ntype:uint64,[250..]")?;
 
         toml.put_usize("bandwidth_limit", self.bandwidth_limit, "Outbound traffic limit in bytes/sec after which messages will be dropped.\nNote: changing to unlimited bandwidth (0) is not recommended for limited connections.\ntype:uint64")?;
         toml.put_f64(
@@ -508,6 +496,10 @@ impl NodeConfig {
                 self.rep_crawler_query_timeout.as_millis() as u64,
                 "",
             )
+        })?;
+
+        toml.put_child("active_transactions", &mut |writer| {
+            self.active_transactions.serialize_toml(writer)
         })?;
 
         toml.put_child("block_processor", &mut |writer| {

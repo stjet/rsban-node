@@ -1,3 +1,4 @@
+#include "nano/node/active_transactions.hpp"
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
@@ -55,10 +56,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.external_port = config.external_port;
 	dto.tcp_incoming_connections_max = config.tcp_incoming_connections_max;
 	dto.use_memory_pools = config.use_memory_pools;
-	dto.confirmation_history_size = config.confirmation_history_size;
-	dto.active_elections_size = config.active_elections_size;
-	dto.active_elections_hinted_limit_percentage = config.active_elections_hinted_limit_percentage;
-	dto.active_elections_optimistic_limit_percentage = config.active_elections_optimistic_limit_percentage;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
 	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
@@ -114,6 +111,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_cache = config.vote_cache.to_dto ();
 	dto.rep_crawler_query_timeout_ms = config.rep_crawler.query_timeout.count ();
 	dto.block_processor = config.block_processor.to_dto ();
+	dto.active_transactions = config.active_transactions.into_dto();
 	dto.vote_processor = config.vote_processor.to_dto ();
 	dto.tcp = config.tcp.to_dto ();
 	return dto;
@@ -183,10 +181,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	external_port = dto.external_port;
 	tcp_incoming_connections_max = dto.tcp_incoming_connections_max;
 	use_memory_pools = dto.use_memory_pools;
-	confirmation_history_size = dto.confirmation_history_size;
-	active_elections_size = dto.active_elections_size;
-	active_elections_hinted_limit_percentage = dto.active_elections_hinted_limit_percentage;
-	active_elections_optimistic_limit_percentage = dto.active_elections_optimistic_limit_percentage;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
 	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
@@ -239,6 +233,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_cache = nano::vote_cache_config{ dto.vote_cache };
 	rep_crawler.query_timeout = std::chrono::milliseconds (dto.rep_crawler_query_timeout_ms);
 	block_processor = nano::block_processor_config{ dto.block_processor };
+	active_transactions = nano::active_transactions_config{dto.active_transactions};
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 	tcp = nano::transport::tcp_config{ dto.tcp };
 }
@@ -322,6 +317,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("rep_crawler");
 			rep_crawler.deserialize (config_l);
+		}
+
+		if (toml.has_key ("active_transactions"))
+		{
+			auto config_l = toml.get_required_child ("active_transactions");
+			active_transactions.deserialize (config_l);
 		}
 
 		if (toml.has_key ("block_processor"))
@@ -466,8 +467,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		toml.get (pow_sleep_interval_key, pow_sleep_interval_l);
 		pow_sleep_interval = std::chrono::nanoseconds (pow_sleep_interval_l);
 		toml.get<bool> ("use_memory_pools", use_memory_pools);
-		toml.get<std::size_t> ("confirmation_history_size", confirmation_history_size);
-		toml.get<std::size_t> ("active_elections_size", active_elections_size);
 
 		toml.get<std::size_t> ("bandwidth_limit", bandwidth_limit);
 		toml.get<double> ("bandwidth_limit_burst_ratio", bandwidth_limit_burst_ratio);
@@ -531,9 +530,9 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			toml.get_error ().set ("io_threads must be non-zero");
 		}
-		if (active_elections_size <= 250 && !network_params.network.is_dev_network ())
+		if (active_transactions.size <= 250 && !network_params.network.is_dev_network ())
 		{
-			toml.get_error ().set ("active_elections_size must be greater than 250");
+			toml.get_error ().set ("active_transactions.size must be greater than 250");
 		}
 		if (bandwidth_limit > std::numeric_limits<std::size_t>::max ())
 		{

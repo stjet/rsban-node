@@ -19,7 +19,8 @@ mod vote_spacing;
 mod vote_with_weight_info;
 
 pub use active_transactions::{
-    ActiveTransactionsHandle, ElectionEndedCallback, FfiAccountBalanceCallback,
+    ActiveTransactionsConfigDto, ActiveTransactionsHandle, ElectionEndedCallback,
+    FfiAccountBalanceCallback,
 };
 pub use election_status::ElectionStatusHandle;
 pub use hinted_scheduler::HintedSchedulerHandle;

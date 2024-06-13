@@ -318,3 +318,32 @@ void nano::active_transactions::clear ()
 {
 	rsnano::rsn_active_transactions_clear (handle);
 }
+
+/*
+ * active_transactions_config
+ */
+
+nano::active_transactions_config::active_transactions_config(rsnano::ActiveTransactionsConfigDto const & dto) :
+	size{ dto.size },
+	hinted_limit_percentage{ dto.hinted_limit_percentage },
+	optimistic_limit_percentage{ dto.optimistic_limit_percentage },
+	confirmation_history_size{ dto.confirmation_history_size },
+	confirmation_cache{ dto.confirmation_cache }
+{
+}
+
+rsnano::ActiveTransactionsConfigDto nano::active_transactions_config::into_dto () const
+{
+	return{size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache};
+}
+
+nano::error nano::active_transactions_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("size", size);
+	toml.get ("hinted_limit_percentage", hinted_limit_percentage);
+	toml.get ("optimistic_limit_percentage", optimistic_limit_percentage);
+	toml.get ("confirmation_history_size", confirmation_history_size);
+	toml.get ("confirmation_cache", confirmation_cache);
+
+	return toml.get_error ();
+}

@@ -19,7 +19,6 @@
 
 #include <deque>
 #include <memory>
-#include <thread>
 #include <unordered_map>
 
 namespace nano
@@ -43,6 +42,27 @@ class read_transaction;
 
 namespace nano
 {
+class active_transactions_config final
+{
+public:
+	active_transactions_config() = default;
+	active_transactions_config(rsnano::ActiveTransactionsConfigDto const & dto);
+    nano::error deserialize (nano::tomlconfig & toml);
+	rsnano::ActiveTransactionsConfigDto into_dto () const;
+
+public:
+    // Maximum number of simultaneous active elections (AEC size)
+    std::size_t size{ 5000 };
+    // Limit of hinted elections as percentage of `active_elections_size` 
+    std::size_t hinted_limit_percentage{ 20 };
+    // Limit of optimistic elections as percentage of `active_elections_size`
+    std::size_t optimistic_limit_percentage{ 10 };
+	// Maximum confirmation history size
+	std::size_t confirmation_history_size{ 2048 };
+	// Maximum cache size for recently_confirmed
+	std::size_t confirmation_cache{ 65536 };
+};	
+
 /**
  * Core class for determining consensus
  * Holds all active blocks i.e. recently added blocks that need confirmation

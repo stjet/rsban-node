@@ -7,7 +7,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfigDto,
     bootstrap::BootstrapServerConfigDto,
-    consensus::{VoteCacheConfigDto, VoteProcessorConfigDto},
+    consensus::{ActiveTransactionsConfigDto, VoteCacheConfigDto, VoteProcessorConfigDto},
     fill_ipc_config_dto, fill_stat_config_dto,
     utils::FfiToml,
     HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
@@ -61,10 +61,6 @@ pub struct NodeConfigDto {
     pub external_port: u16,
     pub tcp_incoming_connections_max: u32,
     pub use_memory_pools: bool,
-    pub confirmation_history_size: usize,
-    pub active_elections_size: usize,
-    pub active_elections_hinted_limit_percentage: usize,
-    pub active_elections_optimistic_limit_percentage: usize,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
     pub bootstrap_ascending: BootstrapAscendingConfigDto,
@@ -104,6 +100,7 @@ pub struct NodeConfigDto {
     pub vote_cache: VoteCacheConfigDto,
     pub rep_crawler_query_timeout_ms: i64,
     pub block_processor: BlockProcessorConfigDto,
+    pub active_transactions: ActiveTransactionsConfigDto,
     pub vote_processor: VoteProcessorConfigDto,
     pub tcp: TcpConfigDto,
 }
@@ -205,11 +202,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.external_port = cfg.external_port;
     dto.tcp_incoming_connections_max = cfg.tcp_incoming_connections_max;
     dto.use_memory_pools = cfg.use_memory_pools;
-    dto.confirmation_history_size = cfg.confirmation_history_size;
-    dto.active_elections_size = cfg.active_elections_size;
-    dto.active_elections_hinted_limit_percentage = cfg.active_elections_hinted_limit_percentage;
-    dto.active_elections_optimistic_limit_percentage =
-        cfg.active_elections_optimistic_limit_percentage;
+
     dto.bandwidth_limit = cfg.bandwidth_limit;
     dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
@@ -295,6 +288,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.vote_cache = (&cfg.vote_cache).into();
     dto.rep_crawler_query_timeout_ms = cfg.rep_crawler_query_timeout.as_millis() as i64;
     dto.block_processor = (&cfg.block_processor).into();
+    dto.active_transactions = (&cfg.active_transactions).into();
     dto.vote_processor = (&cfg.vote_processor).into();
     dto.tcp = (&cfg.tcp).into();
 }
@@ -385,12 +379,6 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             external_port: value.external_port,
             tcp_incoming_connections_max: value.tcp_incoming_connections_max,
             use_memory_pools: value.use_memory_pools,
-            confirmation_history_size: value.confirmation_history_size,
-            active_elections_size: value.active_elections_size,
-            active_elections_hinted_limit_percentage: value
-                .active_elections_hinted_limit_percentage,
-            active_elections_optimistic_limit_percentage: value
-                .active_elections_optimistic_limit_percentage,
             bandwidth_limit: value.bandwidth_limit,
             bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,
@@ -435,6 +423,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
                 value.rep_crawler_query_timeout_ms as u64,
             ),
             block_processor: (&value.block_processor).into(),
+            active_transactions: (&value.active_transactions).into(),
             vote_processor: (&value.vote_processor).into(),
             tcp: (&value.tcp).into(),
         };

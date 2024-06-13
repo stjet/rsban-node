@@ -74,7 +74,7 @@ TEST (election_scheduler, no_vacancy)
 	nano::test::system system{};
 
 	nano::node_config config = system.default_config ();
-	config.active_elections_size = 1;
+	config.active_transactions.size = 1;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 
 	auto & node = *system.add_node (config);

@@ -9,7 +9,9 @@ use super::{
 use crate::{core::BlockHandle, utils::ContextWrapper, VoidPointerCallback};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, VoteSource};
-use rsnano_node::consensus::{ActiveTransactions, ActiveTransactionsExt, Election};
+use rsnano_node::consensus::{
+    ActiveTransactions, ActiveTransactionsConfig, ActiveTransactionsExt, Election,
+};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
 pub struct ActiveTransactionsHandle(pub Arc<ActiveTransactions>);
@@ -353,3 +355,41 @@ pub type ElectionEndedCallback = unsafe extern "C" fn(
 );
 
 pub type FfiAccountBalanceCallback = unsafe extern "C" fn(*mut c_void, *const u8, bool);
+
+#[repr(C)]
+pub struct ActiveTransactionsConfigDto {
+    // Maximum number of simultaneous active elections (AEC size)
+    pub size: usize,
+    // Limit of hinted elections as percentage of `active_elections_size`
+    pub hinted_limit_percentage: usize,
+    // Limit of optimistic elections as percentage of `active_elections_size`
+    pub optimistic_limit_percentage: usize,
+    // Maximum confirmation history size
+    pub confirmation_history_size: usize,
+    // Maximum cache size for recently_confirmed
+    pub confirmation_cache: usize,
+}
+
+impl From<&ActiveTransactionsConfigDto> for ActiveTransactionsConfig {
+    fn from(value: &ActiveTransactionsConfigDto) -> Self {
+        Self {
+            size: value.size,
+            hinted_limit_percentage: value.hinted_limit_percentage,
+            optimistic_limit_percentage: value.optimistic_limit_percentage,
+            confirmation_history_size: value.confirmation_history_size,
+            confirmation_cache: value.confirmation_cache,
+        }
+    }
+}
+
+impl From<&ActiveTransactionsConfig> for ActiveTransactionsConfigDto {
+    fn from(value: &ActiveTransactionsConfig) -> Self {
+        Self {
+            size: value.size,
+            hinted_limit_percentage: value.hinted_limit_percentage,
+            optimistic_limit_percentage: value.optimistic_limit_percentage,
+            confirmation_history_size: value.confirmation_history_size,
+            confirmation_cache: value.confirmation_cache,
+        }
+    }
+}

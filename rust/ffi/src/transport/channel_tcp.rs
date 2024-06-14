@@ -112,11 +112,6 @@ pub unsafe extern "C" fn rsn_channel_tcp_network_version(handle: *mut ChannelHan
     tcp.network_version()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_is_alive(handle: *mut ChannelHandle) -> bool {
-    as_tcp_channel(handle).is_alive()
-}
-
 pub type ChannelTcpSendCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
 
 pub struct ChannelTcpSendCallbackWrapper {

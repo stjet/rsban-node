@@ -65,23 +65,8 @@ pub unsafe extern "C" fn rsn_unchecked_map_exists(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_start(handle: *mut UncheckedMapHandle) {
-    (*handle).0.start();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_stop(handle: *mut UncheckedMapHandle) {
-    (*handle).0.stop();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_unchecked_map_entries_count(handle: *mut UncheckedMapHandle) -> usize {
     (*handle).0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_unchecked_map_buffer_count(handle: *mut UncheckedMapHandle) -> usize {
-    (*handle).0.buffer_count()
 }
 
 #[no_mangle]

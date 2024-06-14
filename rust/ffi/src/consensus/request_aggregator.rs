@@ -1,12 +1,6 @@
-use super::{
-    vote_generator::VoteGeneratorHandle, ActiveTransactionsHandle, LocalVoteHistoryHandle,
-};
-use crate::{
-    ledger::datastore::LedgerHandle, transport::ChannelHandle, wallets::LmdbWalletsHandle,
-    NodeConfigDto, StatHandle,
-};
+use crate::transport::ChannelHandle;
 use rsnano_core::{BlockHash, Root};
-use rsnano_node::consensus::{RequestAggregator, RequestAggregatorExt};
+use rsnano_node::consensus::RequestAggregator;
 use std::{ops::Deref, sync::Arc};
 
 pub struct RequestAggregatorHandle(pub Arc<RequestAggregator>);
@@ -20,40 +14,8 @@ impl Deref for RequestAggregatorHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_request_aggregator_create(
-    config: &NodeConfigDto,
-    stats: &StatHandle,
-    generator: &VoteGeneratorHandle,
-    final_generator: &VoteGeneratorHandle,
-    local_votes: &LocalVoteHistoryHandle,
-    ledger: &LedgerHandle,
-    wallets: &LmdbWalletsHandle,
-    active: &ActiveTransactionsHandle,
-    is_dev_network: bool,
-) -> *mut RequestAggregatorHandle {
-    Box::into_raw(Box::new(RequestAggregatorHandle(Arc::new(
-        RequestAggregator::new(
-            config.try_into().unwrap(),
-            Arc::clone(&stats),
-            Arc::clone(&generator),
-            Arc::clone(&final_generator),
-            Arc::clone(&local_votes),
-            Arc::clone(&ledger),
-            Arc::clone(&wallets),
-            active.vote_router.clone(),
-            is_dev_network,
-        ),
-    ))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_request_aggregator_destroy(handle: *mut RequestAggregatorHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_request_aggregator_start(handle: &RequestAggregatorHandle) {
-    handle.0.start();
 }
 
 #[no_mangle]
@@ -63,11 +25,6 @@ pub extern "C" fn rsn_request_aggregator_add(
     hashes_roots: &HashesRootsVecHandle,
 ) {
     handle.0.add(Arc::clone(channel), &hashes_roots.0);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_request_aggregator_stop(handle: &RequestAggregatorHandle) {
-    handle.0.stop();
 }
 
 #[no_mangle]

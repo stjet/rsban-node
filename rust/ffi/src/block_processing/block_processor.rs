@@ -22,32 +22,6 @@ impl Deref for BlockProcessorHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_block_processor_create(
-    config: &NodeConfigDto,
-    flags: &NodeFlagsHandle,
-    ledger: &LedgerHandle,
-    unchecked_map: &UncheckedMapHandle,
-    stats: &StatHandle,
-    work: &WorkThresholdsDto,
-) -> *mut BlockProcessorHandle {
-    let config = Arc::new(NodeConfig::try_from(config).unwrap());
-    let flags = Arc::new(flags.lock().unwrap().clone());
-    let ledger = Arc::clone(&ledger);
-    let unchecked_map = Arc::clone(&unchecked_map);
-    let stats = Arc::clone(&stats);
-    let work = Arc::new(WorkThresholds::from(work));
-    let processor = Arc::new(BlockProcessor::new(
-        config,
-        flags,
-        ledger,
-        unchecked_map,
-        stats,
-        work,
-    ));
-    Box::into_raw(Box::new(BlockProcessorHandle(processor)))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }

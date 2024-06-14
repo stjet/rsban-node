@@ -1,9 +1,4 @@
-use super::work_pool::WorkPoolHandle;
-use crate::{
-    core::BlockHandle,
-    utils::{AsyncRuntimeHandle, ContextWrapper},
-    VoidPointerCallback,
-};
+use crate::{core::BlockHandle, utils::ContextWrapper, VoidPointerCallback};
 use rsnano_core::{Account, Root, WorkVersion};
 use rsnano_node::work::DistributedWorkFactory;
 use std::{ffi::c_void, ops::Deref, sync::Arc};
@@ -17,16 +12,6 @@ impl Deref for DistributedWorkFactoryHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_distributed_work_factory_create(
-    work_pool: &WorkPoolHandle,
-    async_rt: &AsyncRuntimeHandle,
-) -> *mut DistributedWorkFactoryHandle {
-    Box::into_raw(Box::new(DistributedWorkFactoryHandle(Arc::new(
-        DistributedWorkFactory::new(Arc::clone(work_pool), Arc::clone(async_rt)),
-    ))))
 }
 
 #[no_mangle]

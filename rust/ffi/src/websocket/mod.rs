@@ -1,11 +1,6 @@
-mod websocket_server;
-use crate::{
-    consensus::{ElectionStatusHandle, VoteHandle, VoteWithWeightInfoVecHandle},
-    core::BlockHandle,
-    to_rust_string, StringVecHandle,
-};
+use crate::{consensus::VoteHandle, to_rust_string, StringVecHandle};
 use num::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockHash, WorkVersion};
+use rsnano_core::{BlockHash, WorkVersion};
 use rsnano_node::websocket::{
     vote_received, work_generation_message, OutgoingMessageEnvelope, Topic, WebsocketListener,
     WebsocketListenerExt,
@@ -117,26 +112,6 @@ pub extern "C" fn rsn_websocket_listener_run(handle: &WebsocketListenerHandle) {
 #[no_mangle]
 pub extern "C" fn rsn_websocket_listener_stop(handle: &WebsocketListenerHandle) {
     handle.0.stop();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_websocket_listener_broadcast_confirmation(
-    handle: &WebsocketListenerHandle,
-    block: &BlockHandle,
-    account: *const u8,
-    amount: *const u8,
-    subtype: *const c_char,
-    election_status: &ElectionStatusHandle,
-    election_votes: &VoteWithWeightInfoVecHandle,
-) {
-    handle.0.broadcast_confirmation(
-        block,
-        &Account::from_ptr(account),
-        &Amount::from_ptr(amount),
-        &to_rust_string(subtype),
-        election_status,
-        election_votes,
-    );
 }
 
 #[no_mangle]

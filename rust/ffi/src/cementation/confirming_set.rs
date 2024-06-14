@@ -1,7 +1,6 @@
-use crate::ledger::datastore::LedgerHandle;
 use rsnano_core::BlockHash;
 use rsnano_node::cementation::ConfirmingSet;
-use std::{ops::Deref, sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc};
 
 pub struct ConfirmingSetHandle(pub Arc<ConfirmingSet>);
 
@@ -11,17 +10,6 @@ impl Deref for ConfirmingSetHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_confirming_set_create(
-    ledger: &LedgerHandle,
-    batch_time_ms: u64,
-) -> *mut ConfirmingSetHandle {
-    Box::into_raw(Box::new(ConfirmingSetHandle(Arc::new(ConfirmingSet::new(
-        Arc::clone(ledger),
-        Duration::from_millis(batch_time_ms),
-    )))))
 }
 
 #[no_mangle]

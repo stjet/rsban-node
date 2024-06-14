@@ -19,11 +19,6 @@ pub unsafe extern "C" fn rsn_vote_processor_queue_destroy(handle: *mut VoteProce
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_processor_queue_is_empty(handle: &VoteProcessorQueueHandle) -> bool {
-    handle.0.is_empty()
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_vote_processor_queue_vote(
     handle: &VoteProcessorQueueHandle,
     vote: &VoteHandle,

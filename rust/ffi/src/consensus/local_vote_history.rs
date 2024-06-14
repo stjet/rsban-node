@@ -14,13 +14,6 @@ impl Deref for LocalVoteHistoryHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_local_vote_history_create(max_cache: usize) -> *mut LocalVoteHistoryHandle {
-    Box::into_raw(Box::new(LocalVoteHistoryHandle(Arc::new(
-        LocalVoteHistory::new(max_cache),
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_local_vote_history_destroy(handle: *mut LocalVoteHistoryHandle) {
     let uniquer = unsafe { Box::from_raw(handle) };
     drop(uniquer);

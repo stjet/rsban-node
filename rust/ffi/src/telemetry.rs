@@ -1,6 +1,6 @@
 use crate::{messages::TelemetryDataHandle, transport::EndpointDto};
 use rsnano_messages::TelemetryData;
-use rsnano_node::{consolidate_telemetry_data, TelementryExt, Telemetry};
+use rsnano_node::{consolidate_telemetry_data, Telemetry};
 use std::{net::SocketAddrV6, ops::Deref, sync::Arc};
 
 pub struct TelemetryHandle(pub Arc<Telemetry>);
@@ -23,16 +23,6 @@ pub unsafe extern "C" fn rsn_telemetry_local_telemetry(
     handle: &TelemetryHandle,
 ) -> *mut TelemetryDataHandle {
     TelemetryDataHandle::new(handle.0.local_telemetry())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_start(handle: &TelemetryHandle) {
-    handle.0.start();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_stop(handle: &TelemetryHandle) {
-    handle.0.stop();
 }
 
 #[no_mangle]

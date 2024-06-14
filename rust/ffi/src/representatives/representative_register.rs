@@ -88,34 +88,6 @@ pub unsafe extern "C" fn rsn_representative_register_total_weight(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_representative_register_on_rep_request(
-    handle: &mut RepresentativeRegisterHandle,
-    channel: &ChannelHandle,
-) {
-    handle.lock().unwrap().on_rep_request(channel)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_representative_register_cleanup_reps(
-    handle: &mut RepresentativeRegisterHandle,
-) {
-    handle.lock().unwrap().cleanup_reps()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_representative_register_last_request_elapsed_ms(
-    handle: &RepresentativeRegisterHandle,
-    channel: &ChannelHandle,
-) -> i64 {
-    handle
-        .lock()
-        .unwrap()
-        .last_request_elapsed(channel)
-        .map(|i| i.as_millis() as i64)
-        .unwrap_or(-1)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_representative_register_representatives(
     handle: &RepresentativeRegisterHandle,
     max_results: usize,

@@ -1,24 +1,20 @@
 use super::{
     wallet::{AccountVecHandle, WalletHandle},
-    wallet_action_thread::{WalletActionCallback, WalletActionObserverCallback},
     wallet_representatives::WalletRepresentativesLock,
 };
 use crate::{
     block_processing::BlockProcessorHandle,
     cementation::ConfirmingSetHandle,
-    core::{BlockDetailsDto, BlockHandle},
+    core::BlockHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle},
     representatives::OnlineRepsHandle,
     to_rust_string,
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
-    NetworkParamsDto, NodeConfigDto, StringDto, U256ArrayDto, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, StringDto, VoidPointerCallback,
 };
-use rsnano_core::{
-    work::WorkThresholds, Account, Amount, BlockDetails, BlockEnum, BlockHash, RawKey, Root,
-    WalletId,
-};
+use rsnano_core::{work::WorkThresholds, Account, Amount, BlockEnum, BlockHash, RawKey, WalletId};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
@@ -32,7 +28,6 @@ use std::{
     path::PathBuf,
     sync::{Arc, MutexGuard},
 };
-use tracing::warn;
 
 pub struct LmdbWalletsHandle(pub Arc<Wallets>);
 
@@ -102,52 +97,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallets_destroy(handle: *mut LmdbWalletsHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_get_wallet_ids(
-    handle: *mut LmdbWalletsHandle,
-    txn: *mut TransactionHandle,
-    result: *mut U256ArrayDto,
-) {
-    let wallet_ids = (*handle).0.get_wallet_ids((*txn).as_txn());
-    let data = wallet_ids.iter().map(|i| *i.as_bytes()).collect();
-    (*result).initialize(data)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_get_block_hash(
-    handle: *mut LmdbWalletsHandle,
-    txn: *mut TransactionHandle,
-    id: *const c_char,
-    hash: *mut u8,
-) -> bool {
-    let id = CStr::from_ptr(id).to_str().unwrap();
-    match (*handle).0.get_block_hash((*txn).as_txn(), id) {
-        Ok(Some(h)) => {
-            h.copy_bytes(hash);
-            true
-        }
-        Ok(None) => {
-            BlockHash::zero().copy_bytes(hash);
-            true
-        }
-        Err(_) => false,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_set_block_hash(
-    handle: *mut LmdbWalletsHandle,
-    txn: *mut TransactionHandle,
-    id: *const c_char,
-    hash: *const u8,
-) -> bool {
-    let id = CStr::from_ptr(id).to_str().unwrap();
-    (*handle)
-        .0
-        .set_block_hash((*txn).as_write_txn(), id, &BlockHash::from_ptr(hash))
-        .is_ok()
 }
 
 #[no_mangle]
@@ -229,25 +178,6 @@ pub extern "C" fn rsn_lmdb_wallets_mutex_lock_get_all(
     Box::into_raw(Box::new(WalletVecHandle(wallets)))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_insert(
-    handle: &mut WalletsMutexLockHandle,
-    wallet_id: *const u8,
-    wallet: &WalletHandle,
-) {
-    handle
-        .0
-        .insert(WalletId::from_ptr(wallet_id), Arc::clone(&wallet.0));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallets_mutex_lock_erase(
-    handle: &mut WalletsMutexLockHandle,
-    wallet_id: *const u8,
-) {
-    handle.0.remove(&WalletId::from_ptr(wallet_id));
-}
-
 pub struct WalletVecHandle(Vec<(WalletId, Arc<Wallet>)>);
 
 #[no_mangle]
@@ -289,15 +219,6 @@ pub extern "C" fn rsn_wallets_foreach_representative(
             prv_key.as_bytes().as_ptr(),
         );
     });
-}
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_work_cache_blocking(
-    handle: &mut LmdbWalletsHandle,
-    wallet: &mut WalletHandle,
-    account: *const u8,
-    root: *const u8,
-) {
-    handle.work_cache_blocking(wallet, &Account::from_ptr(account), &Root::from_ptr(root));
 }
 
 #[no_mangle]
@@ -367,11 +288,6 @@ pub unsafe extern "C" fn rsn_wallets_rekey(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_wallets_start(handle: &LmdbWalletsHandle) {
-    handle.start();
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_wallets_stop(handle: &LmdbWalletsHandle) {
     handle.stop();
 }
@@ -390,98 +306,6 @@ pub unsafe extern "C" fn rsn_wallets_get_delayed_work(
         .cloned()
         .unwrap_or_default()
         .copy_bytes(root);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_erase_delayed_work(
-    handle: &LmdbWalletsHandle,
-    account: *const u8,
-) {
-    handle
-        .delayed_work
-        .lock()
-        .unwrap()
-        .remove(&Account::from_ptr(account));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_work_ensure(
-    handle: &LmdbWalletsHandle,
-    wallet: &WalletHandle,
-    account: *const u8,
-    root: *const u8,
-) {
-    handle.work_ensure(wallet, Account::from_ptr(account), Root::from_ptr(root));
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_wallets_set_observer(
-    handle: &mut LmdbWalletsHandle,
-    observer: WalletActionObserverCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    let wrapped_observer = Box::new(move |active| {
-        let ctx = context_wrapper.get_context();
-        observer(ctx, active);
-    });
-    handle.set_observer(wrapped_observer);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_queue_wallet_action(
-    handle: &LmdbWalletsHandle,
-    amount: *const u8,
-    wallet: &WalletHandle,
-    action: WalletActionCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let amount = Amount::from_ptr(amount);
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    let wrapped_action = Box::new(move |wallet| {
-        let ctx = context_wrapper.get_context();
-        action(ctx, Box::into_raw(Box::new(WalletHandle(wallet))))
-    });
-
-    handle
-        .wallet_actions
-        .queue_wallet_action(amount, Arc::clone(&wallet.0), wrapped_action)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_wallets_actions_size(handle: &LmdbWalletsHandle) -> usize {
-    handle.wallet_actions.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_action_complete(
-    handle: &LmdbWalletsHandle,
-    wallet: &WalletHandle,
-    block: *mut BlockHandle,
-    account: *const u8,
-    generate_work: bool,
-    details: &BlockDetailsDto,
-) -> i32 {
-    let block = if block.is_null() {
-        None
-    } else {
-        Some(Arc::clone((*block).deref()))
-    };
-    match handle.action_complete(
-        Arc::clone(wallet),
-        block,
-        Account::from_ptr(account),
-        generate_work,
-        &BlockDetails::try_from(details).unwrap(),
-    ) {
-        Ok(_) => 0,
-        Err(e) => {
-            warn!("action complete failed: {:?}", e);
-            -1
-        }
-    }
 }
 
 #[no_mangle]
@@ -589,17 +413,6 @@ pub unsafe extern "C" fn rsn_wallets_move_accounts(
         &WalletId::from_ptr(target_id),
         accounts,
     ) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_backup(
-    handle: &LmdbWalletsHandle,
-    path: *const c_char,
-) -> i32 {
-    match handle.backup(&PathBuf::from(CStr::from_ptr(path).to_str().unwrap())) {
         Ok(_) => 0,
         Err(_) => -1,
     }
@@ -850,20 +663,6 @@ pub unsafe extern "C" fn rsn_wallets_receive_sync(
 pub type WalletsStartElectionCallback = unsafe extern "C" fn(*mut c_void, *mut BlockHandle);
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_set_start_election_callback(
-    handle: &LmdbWalletsHandle,
-    callback: WalletsStartElectionCallback,
-    context: *mut c_void,
-    delete_context: VoidPointerCallback,
-) {
-    let context_wrapper = ContextWrapper::new(context, delete_context);
-    handle.set_start_election_callback(Box::new(move |block| {
-        let block_handle = BlockHandle::new(block);
-        callback(context_wrapper.get_context(), block_handle);
-    }));
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_wallets_search_receivable(
     handle: &LmdbWalletsHandle,
     wallet: &WalletHandle,
@@ -872,15 +671,6 @@ pub extern "C" fn rsn_wallets_search_receivable(
     handle
         .search_receivable(wallet, wallet_tx.as_txn())
         .is_err()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_wallets_receive_confirmed(
-    handle: &LmdbWalletsHandle,
-    hash: *const u8,
-    destination: *const u8,
-) {
-    handle.receive_confirmed(BlockHash::from_ptr(hash), Account::from_ptr(destination))
 }
 
 #[no_mangle]

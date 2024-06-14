@@ -35,11 +35,6 @@ pub unsafe extern "C" fn rsn_vote_cache_destroy(handle: *mut VoteCacheHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_vote_cache_cache_empty(handle: *const VoteCacheHandle) -> bool {
-    (*handle).0.lock().unwrap().empty()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_cache_size(handle: *const VoteCacheHandle) -> usize {
     (*handle).0.lock().unwrap().size()
 }

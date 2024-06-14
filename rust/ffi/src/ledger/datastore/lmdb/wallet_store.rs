@@ -205,18 +205,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_begin_at_account(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    account: *const u8,
-) -> *mut LmdbIteratorHandle {
-    let iterator = (*handle)
-        .0
-        .begin_at_account((*txn).as_txn(), &Account::from_ptr(account));
-    LmdbIteratorHandle::new2(iterator)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_erase(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
@@ -225,15 +213,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_erase(
     (*handle)
         .0
         .erase((*txn).as_write_txn(), &Account::from_ptr(account));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_key_type(
-    handle: &mut LmdbWalletStoreHandle,
-    txn: &mut TransactionHandle,
-    account: *const u8,
-) -> u8 {
-    handle.get_key_type(txn.as_txn(), &Account::from_ptr(account)) as u8
 }
 
 #[no_mangle]
@@ -289,27 +268,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_deterministic_insert_at(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    index: u32,
-    key: *mut u8,
-) {
-    let result = (*handle)
-        .0
-        .deterministic_insert_at((*txn).as_write_txn(), index);
-    result.copy_bytes(key);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_version(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-) -> u32 {
-    (*handle).0.version((*txn).as_txn())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_attempt_password(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
@@ -317,22 +275,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_attempt_password(
 ) -> bool {
     let password = CStr::from_ptr(password).to_str().unwrap();
     (*handle).0.attempt_password((*txn).as_txn(), password)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_lock(handle: *mut LmdbWalletStoreHandle) {
-    (*handle).0.lock();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_accounts(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    result: *mut U256ArrayDto,
-) {
-    let accounts = (*handle).0.accounts((*txn).as_txn());
-    let data = accounts.iter().map(|a| *a.as_bytes()).collect();
-    (*result).initialize(data);
 }
 
 #[no_mangle]
@@ -411,17 +353,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_serialize_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_write_backup(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    path: *const c_char,
-) {
-    let path = CStr::from_ptr(path).to_str().unwrap();
-    let path = PathBuf::from(path);
-    let _ = (*handle).0.write_backup((*txn).as_txn(), &path);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
     handle: *mut LmdbWalletStoreHandle,
     txn: *mut TransactionHandle,
@@ -443,46 +374,6 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_move(
         .0
         .move_keys((*txn).as_write_txn(), &(*other).0, &keys)
         .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_import(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    other: *mut LmdbWalletStoreHandle,
-) -> bool {
-    (*handle)
-        .0
-        .import((*txn).as_write_txn(), &(*other).0)
-        .is_ok()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_get(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    pub_key: *const u8,
-    work: *mut u64,
-) -> bool {
-    let pub_key = PublicKey::from_ptr(pub_key);
-    match (*handle).0.work_get((*txn).as_txn(), &pub_key) {
-        Ok(w) => {
-            *work = w;
-            true
-        }
-        Err(_) => false,
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_work_put(
-    handle: *mut LmdbWalletStoreHandle,
-    txn: *mut TransactionHandle,
-    pub_key: *const u8,
-    work: u64,
-) {
-    let pub_key = PublicKey::from_ptr(pub_key);
-    (*handle).0.work_put((*txn).as_write_txn(), &pub_key, work);
 }
 
 #[no_mangle]
@@ -514,9 +405,4 @@ pub unsafe extern "C" fn rsn_lmdb_wallet_store_set_password(
         .unwrap()
         .password
         .value_set(RawKey::from_ptr(password));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_wallet_store_is_open(handle: *mut LmdbWalletStoreHandle) -> bool {
-    (*handle).0.is_open()
 }

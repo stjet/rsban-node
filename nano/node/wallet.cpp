@@ -205,16 +205,6 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 	rsnano::rsn_kdf_phs (handle, result_a.bytes.data (), password_a.c_str (), salt_a.bytes.data ());
 }
 
-nano::wallet_action_thread::wallet_action_thread () :
-	handle{ rsnano::rsn_wallet_action_thread_create () }
-{
-}
-
-nano::wallet_action_thread::~wallet_action_thread ()
-{
-	rsnano::rsn_wallet_action_thread_destroy (handle);
-}
-
 namespace
 {
 void wrapped_wallet_action_callback (void * context, rsnano::WalletHandle * wallet_handle)

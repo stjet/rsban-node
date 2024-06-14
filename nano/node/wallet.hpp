@@ -20,7 +20,6 @@ namespace nano
 class node;
 class node_config;
 class wallets;
-class wallet_action_thread;
 class kdf final
 {
 public:
@@ -114,17 +113,6 @@ public:
 	rsnano::WalletHandle * handle;
 	nano::wallet_store store;
 	mutable representatives_mutex representatives_mutex;
-};
-
-class wallet_action_thread
-{
-public:
-	wallet_action_thread ();
-	wallet_action_thread (const wallet_action_thread &) = delete;
-	~wallet_action_thread ();
-
-public:
-	rsnano::WalletActionThreadHandle * handle;
 };
 
 class wallet_representatives_lock

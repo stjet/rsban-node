@@ -1,5 +1,6 @@
 use super::NetworkConstantsDto;
 use crate::utils::FfiToml;
+use rsnano_core::utils::get_cpu_count;
 use rsnano_node::config::{NetworkConstants, RpcConfig, RpcLoggingConfig, RpcProcessConfig};
 use std::{convert::TryFrom, ffi::c_void};
 
@@ -33,7 +34,7 @@ pub unsafe extern "C" fn rsn_rpc_config_create(
         Ok(nc) => nc,
         Err(_) => return -1,
     };
-    let cfg = RpcConfig::new(&network_constants);
+    let cfg = RpcConfig::new(&network_constants, get_cpu_count());
     let dto = &mut (*dto);
     fill_rpc_config_dto(dto, &cfg);
     0
@@ -50,7 +51,7 @@ pub unsafe extern "C" fn rsn_rpc_config_create2(
         Ok(nc) => nc,
         Err(_) => return -1,
     };
-    let cfg = RpcConfig::new2(&network_constants, port, enable_control);
+    let cfg = RpcConfig::new2(&network_constants, get_cpu_count(), port, enable_control);
     let dto = &mut (*dto);
     fill_rpc_config_dto(dto, &cfg);
     0

@@ -1,6 +1,6 @@
 use crate::{
-    nullable_lmdb::ConfiguredDatabase, parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv,
-    LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction, BLOCK_TEST_DATABASE,
+    nullable_lmdb::ConfiguredDatabase, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbWriteTransaction, Transaction, BLOCK_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
@@ -16,7 +16,7 @@ use std::sync::Arc;
 pub type BlockIterator<'txn> = BinaryDbIterator<'txn, BlockHash, BlockWithSideband>;
 
 pub struct LmdbBlockStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<BlockEnum>,
@@ -56,7 +56,7 @@ impl LmdbBlockStore {
             .environment
             .create_db(Some("blocks"), DatabaseFlags::empty())?;
         Ok(Self {
-            env,
+            _env: env,
             database,
             #[cfg(feature = "output_tracking")]
             put_listener: OutputListenerMt::new(),
@@ -166,22 +166,6 @@ impl LmdbBlockStore {
         }
 
         existing.current().map(|(_, v)| v.block.clone())
-    }
-
-    pub fn for_each_par(
-        &self,
-        action: &(dyn Fn(&LmdbReadTransaction, BlockIterator, BlockIterator) + Send + Sync),
-    ) {
-        parallel_traversal(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
-            let begin_it = self.begin_at_hash(&transaction, &start.into());
-            let end_it = if !is_last {
-                self.begin_at_hash(&transaction, &end.into())
-            } else {
-                self.end()
-            };
-            action(&transaction, begin_it, end_it);
-        });
     }
 
     pub fn raw_put(&self, txn: &mut LmdbWriteTransaction, data: &[u8], hash: &BlockHash) {

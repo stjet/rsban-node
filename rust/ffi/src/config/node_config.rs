@@ -23,7 +23,6 @@ use rsnano_node::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::c_void,
-    thread::available_parallelism,
     time::Duration,
 };
 

@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    nullable_lmdb::ConfiguredDatabase, parallel_traversal_u512, BinaryDbIterator, LmdbDatabase,
-    LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction, LmdbWriteTransaction, Transaction,
-    PENDING_TEST_DATABASE,
+    nullable_lmdb::ConfiguredDatabase, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbWriteTransaction, Transaction, PENDING_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 #[cfg(feature = "output_tracking")]
@@ -16,7 +15,7 @@ use rsnano_core::{
 pub type PendingIterator<'txn> = BinaryDbIterator<'txn, PendingKey, PendingInfo>;
 
 pub struct LmdbPendingStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
     put_listener: OutputListenerMt<(PendingKey, PendingInfo)>,
@@ -31,7 +30,7 @@ impl LmdbPendingStore {
             .create_db(Some("pending"), DatabaseFlags::empty())?;
 
         Ok(Self {
-            env,
+            _env: env,
             database,
             #[cfg(feature = "output_tracking")]
             put_listener: OutputListenerMt::new(),
@@ -114,22 +113,6 @@ impl LmdbPendingStore {
             .current()
             .map(|(k, _)| k.receiving_account == *account)
             .unwrap_or(false)
-    }
-
-    pub fn for_each_par(
-        &self,
-        action: &(dyn Fn(&LmdbReadTransaction, PendingIterator, PendingIterator) + Send + Sync),
-    ) {
-        parallel_traversal_u512(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
-            let begin_it = self.begin_at_key(&transaction, &start.into());
-            let end_it = if !is_last {
-                self.begin_at_key(&transaction, &end.into())
-            } else {
-                self.end()
-            };
-            action(&transaction, begin_it, end_it);
-        });
     }
 
     pub fn end(&self) -> PendingIterator {

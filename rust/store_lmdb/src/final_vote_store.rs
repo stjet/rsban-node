@@ -1,6 +1,5 @@
 use crate::{
-    parallel_traversal_u512, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
-    LmdbReadTransaction, LmdbWriteTransaction, Transaction,
+    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rsnano_core::{BlockHash, QualifiedRoot, Root};
@@ -11,7 +10,7 @@ pub type FinalVoteIterator<'txn> = BinaryDbIterator<'txn, QualifiedRoot, BlockHa
 /// Maps root to block hash for generated final votes.
 /// nano::qualified_root -> nano::block_hash
 pub struct LmdbFinalVoteStore {
-    env: Arc<LmdbEnv>,
+    _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
 }
 
@@ -20,7 +19,10 @@ impl LmdbFinalVoteStore {
         let database = env
             .environment
             .create_db(Some("final_votes"), DatabaseFlags::empty())?;
-        Ok(Self { env, database })
+        Ok(Self {
+            _env: env,
+            database,
+        })
     }
 
     pub fn database(&self) -> LmdbDatabase {
@@ -117,22 +119,6 @@ impl LmdbFinalVoteStore {
 
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
         txn.clear_db(self.database).unwrap();
-    }
-
-    pub fn for_each_par(
-        &self,
-        action: &(dyn Fn(&LmdbReadTransaction, FinalVoteIterator, FinalVoteIterator) + Send + Sync),
-    ) {
-        parallel_traversal_u512(&|start, end, is_last| {
-            let transaction = self.env.tx_begin_read();
-            let begin_it = self.begin_at_root(&transaction, &start.into());
-            let end_it = if !is_last {
-                self.begin_at_root(&transaction, &end.into())
-            } else {
-                self.end()
-            };
-            action(&transaction, begin_it, end_it);
-        });
     }
 
     pub fn end(&self) -> FinalVoteIterator {

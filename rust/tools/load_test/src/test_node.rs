@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use reqwest::Url;
-use rsnano_core::DEV_GENESIS_KEY;
+use rsnano_core::{utils::get_cpu_count, DEV_GENESIS_KEY};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -194,7 +194,7 @@ fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkPar
 }
 
 fn write_rpc_config(index: usize, data_path: &Path, network_params: &NetworkParams) -> Result<()> {
-    let mut rpc_config = RpcConfig::new(&network_params.network);
+    let mut rpc_config = RpcConfig::new(&network_params.network, get_cpu_count());
     rpc_config.port = RPC_PORT_START + index as u16;
     rpc_config.enable_control = true;
     rpc_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;

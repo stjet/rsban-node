@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rsnano_core::utils::{get_cpu_count, TomlWriter};
+use rsnano_core::utils::TomlWriter;
 use std::{
     net::Ipv6Addr,
     path::{Path, PathBuf},
@@ -34,11 +34,21 @@ pub struct RpcConfig {
 }
 
 impl RpcConfig {
-    pub fn new(network_constants: &NetworkConstants) -> Self {
-        Self::new2(network_constants, network_constants.default_rpc_port, false)
+    pub fn new(network_constants: &NetworkConstants, parallelism: usize) -> Self {
+        Self::new2(
+            network_constants,
+            parallelism,
+            network_constants.default_rpc_port,
+            false,
+        )
     }
 
-    pub fn new2(network_constants: &NetworkConstants, port: u16, enable_control: bool) -> Self {
+    pub fn new2(
+        network_constants: &NetworkConstants,
+        parallelism: usize,
+        port: u16,
+        enable_control: bool,
+    ) -> Self {
         Self {
             address: Ipv6Addr::LOCALHOST.to_string(),
             port,
@@ -46,7 +56,7 @@ impl RpcConfig {
             max_json_depth: 20,
             max_request_size: 32 * 1024 * 1024,
             rpc_logging: RpcLoggingConfig::new(),
-            rpc_process: RpcProcessConfig::new(network_constants),
+            rpc_process: RpcProcessConfig::new(network_constants, parallelism),
         }
     }
 
@@ -133,10 +143,13 @@ pub struct RpcProcessConfig {
 }
 
 impl RpcProcessConfig {
-    pub fn new(network_constants: &NetworkConstants) -> Self {
-        let cpus = get_cpu_count();
+    pub fn new(network_constants: &NetworkConstants, parallelism: usize) -> Self {
         Self {
-            io_threads: if cpus > 4 { cpus as u32 } else { 4 },
+            io_threads: if parallelism > 4 {
+                parallelism as u32
+            } else {
+                4
+            },
             ipc_address: Ipv6Addr::LOCALHOST.to_string(),
             ipc_port: network_constants.default_ipc_port,
             num_ipc_connections: if network_constants.is_live_network()

@@ -21,6 +21,22 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub struct RequestAggregatorConfig {
+    threads: usize,
+    max_queue: usize,
+    batch_size: usize,
+}
+
+impl RequestAggregatorConfig {
+    pub fn new(parallelism: usize) -> Self {
+        Self {
+            threads: min(parallelism, 4),
+            max_queue: 128,
+            batch_size: 16,
+        }
+    }
+}
+
 /**
  * Pools together confirmation requests, separately for each endpoint.
  * Requests are added from network messages, and aggregated to minimize bandwidth and vote generation. Example:

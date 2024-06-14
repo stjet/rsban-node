@@ -14,7 +14,7 @@ use crate::{
     StatConfigDto, WebsocketConfigDto,
 };
 use num::FromPrimitive;
-use rsnano_core::{Account, Amount};
+use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
     config::{NodeConfig, Peer},
     transport::TcpConfig,
@@ -23,6 +23,7 @@ use rsnano_node::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::c_void,
+    thread::available_parallelism,
     time::Duration,
 };
 
@@ -161,7 +162,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
     } else {
         None
     };
-    let cfg = NodeConfig::new(peering_port, &network_params);
+    let cfg = NodeConfig::new(peering_port, &network_params, get_cpu_count());
     let dto = &mut (*dto);
     fill_node_config_dto(dto, &cfg);
     0

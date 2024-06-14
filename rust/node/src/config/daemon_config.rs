@@ -13,10 +13,10 @@ pub struct DaemonConfig {
 }
 
 impl DaemonConfig {
-    pub fn new(network_params: &NetworkParams) -> Result<Self> {
+    pub fn new(network_params: &NetworkParams, parallelism: usize) -> Result<Self> {
         Ok(Self {
             rpc_enable: false,
-            node: NodeConfig::new(None, network_params),
+            node: NodeConfig::new(None, network_params, parallelism),
             opencl: OpenclConfig::new(),
             opencl_enable: false,
             rpc: NodeRpcConfig::new()?,

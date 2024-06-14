@@ -3,6 +3,7 @@ use super::{
     NodeRpcConfigDto, OpenclConfigDto,
 };
 use crate::{secure::NetworkParamsDto, utils::FfiToml};
+use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{config::DaemonConfig, NetworkParams};
 use std::{
     convert::{TryFrom, TryInto},
@@ -27,7 +28,7 @@ pub unsafe extern "C" fn rsn_daemon_config_create(
         Ok(n) => n,
         Err(_) => return -1,
     };
-    let cfg = match DaemonConfig::new(&network_params) {
+    let cfg = match DaemonConfig::new(&network_params, get_cpu_count()) {
         Ok(d) => d,
         Err(_) => return -1,
     };

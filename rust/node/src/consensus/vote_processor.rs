@@ -10,7 +10,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
     },
-    thread::{available_parallelism, JoinHandle},
+    thread::JoinHandle,
     time::Instant,
 };
 use tracing::{debug, trace};
@@ -24,13 +24,13 @@ pub struct VoteProcessorConfig {
     pub batch_size: usize,
 }
 
-impl Default for VoteProcessorConfig {
-    fn default() -> Self {
+impl VoteProcessorConfig {
+    pub fn new(parallelism: usize) -> Self {
         Self {
             max_pr_queue: 256,
             max_non_pr_queue: 32,
             pr_priority: 3,
-            threads: min(4, available_parallelism().unwrap().get()),
+            threads: min(4, parallelism),
             batch_size: 1024,
         }
     }

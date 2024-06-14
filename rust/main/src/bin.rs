@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{work::WorkPoolImpl, Networks};
+use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
@@ -27,6 +27,7 @@ fn main() {
     let config = NodeConfig::new(
         Some(network_params.network.default_node_port),
         &network_params,
+        get_cpu_count(),
     );
     let flags = NodeFlags::default();
     let async_rt = Arc::new(AsyncRuntime::default());

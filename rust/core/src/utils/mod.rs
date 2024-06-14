@@ -14,6 +14,7 @@ pub use output_tracker_mt::{OutputListenerMt, OutputTrackerMt};
 pub use rng::NullableRng;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
+    thread::available_parallelism,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 pub use stream::*;
@@ -85,12 +86,7 @@ pub fn get_cpu_count() -> usize {
         return value;
     }
 
-    //todo: use std::thread::available_concurrency once it's in stable
-    if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-        cpuinfo.match_indices("processor").count()
-    } else {
-        1
-    }
+    available_parallelism().unwrap().get()
 }
 
 pub type MemoryIntensiveInstrumentationCallback = extern "C" fn() -> bool;

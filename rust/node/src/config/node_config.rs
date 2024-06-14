@@ -13,7 +13,7 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build, TomlWriter},
+    utils::{get_env_or_default_string, is_sanitizer_build, TomlWriter},
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
@@ -128,7 +128,11 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
-    pub fn new(peering_port: Option<u16>, network_params: &NetworkParams) -> Self {
+    pub fn new(
+        peering_port: Option<u16>,
+        network_params: &NetworkParams,
+        parallelism: usize,
+    ) -> Self {
         if peering_port == Some(0) {
             // comment for posterity:
             // - we used to consider ports being 0 a sentinel that meant to use a default port for that specific purpose
@@ -214,8 +218,6 @@ impl NodeConfig {
             Networks::Invalid => panic!("invalid network"),
         }
 
-        let cpus = get_cpu_count() as u32;
-
         Self {
             peering_port,
             bootstrap_fraction_numerator: 1,
@@ -223,17 +225,17 @@ impl NodeConfig {
             online_weight_minimum: Amount::nano(60_000_000),
             representative_vote_weight_minimum: Amount::nano(10),
             password_fanout: 1024,
-            io_threads: max(cpus, 4),
-            network_threads: max(cpus, 4),
-            work_threads: max(cpus, 4),
-            background_threads: max(cpus, 4),
+            io_threads: max(parallelism, 4) as u32,
+            network_threads: max(parallelism, 4) as u32,
+            work_threads: max(parallelism, 4) as u32,
+            background_threads: max(parallelism, 4) as u32,
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
-            signature_checker_threads: cpus / 2,
+            signature_checker_threads: (parallelism / 2) as u32,
             enable_voting,
             bootstrap_connections: 4,
             bootstrap_connections_max: 64,
             bootstrap_initiator_threads: 1,
-            bootstrap_serving_threads: max(cpus / 2, 2),
+            bootstrap_serving_threads: max(parallelism / 2, 2) as u32,
             bootstrap_frontier_request_count: 1024 * 1024,
             block_processor_batch_max_time_ms: 500,
             allow_local_peers: !(network_params.network.is_live_network()
@@ -268,7 +270,7 @@ impl NodeConfig {
             max_work_generate_multiplier: 64_f64,
             frontiers_confirmation: FrontiersConfirmationMode::Automatic,
             max_queued_requests: 512,
-            request_aggregator_threads: max(cpus, 4),
+            request_aggregator_threads: max(parallelism, 4) as u32,
             max_unchecked_blocks: 65536,
             rep_crawler_weight_minimum: Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap(),
@@ -306,7 +308,7 @@ impl NodeConfig {
                 Duration::from_secs(60)
             },
             block_processor: BlockProcessorConfig::new(),
-            vote_processor: VoteProcessorConfig::default(),
+            vote_processor: VoteProcessorConfig::new(parallelism),
             tcp: if network_params.network.is_dev_network() {
                 TcpConfig::for_dev_network()
             } else {
@@ -316,7 +318,7 @@ impl NodeConfig {
     }
 
     pub fn new_test_instance() -> Self {
-        Self::new(None, &DEV_NETWORK_PARAMS)
+        Self::new(None, &DEV_NETWORK_PARAMS, 1)
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

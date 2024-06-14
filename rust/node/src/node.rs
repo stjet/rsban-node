@@ -547,7 +547,7 @@ impl Node {
         }));
 
         let request_aggregator = Arc::new(RequestAggregator::new(
-            config.clone(),
+            config.request_aggregator.clone(),
             stats.clone(),
             vote_generator.clone(),
             final_generator.clone(),
@@ -555,7 +555,6 @@ impl Node {
             ledger.clone(),
             wallets.clone(),
             vote_router.clone(),
-            network_params.network.is_dev_network(),
         ));
 
         let backlog_population = Arc::new(BacklogPopulation::new(

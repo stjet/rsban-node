@@ -133,12 +133,12 @@ pub unsafe extern "C" fn rsn_stat_stop(handle: *mut StatHandle) {
 pub unsafe extern "C" fn rsn_stat_add(
     handle: *mut StatHandle,
     stat_type: u8,
-    detail: u8,
+    detail: u16,
     dir: u8,
     value: u64,
 ) {
     let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let detail = FromPrimitive::from_u16(detail).unwrap();
     let dir = FromPrimitive::from_u8(dir).unwrap();
     (*handle).0.add_dir(stat_type, detail, dir, value);
 }
@@ -186,18 +186,18 @@ pub unsafe extern "C" fn rsn_stat_count_all(
 pub unsafe extern "C" fn rsn_stat_count(
     handle: *mut StatHandle,
     stat_type: u8,
-    detail: u8,
+    detail: u16,
     dir: u8,
 ) -> u64 {
     let stat_type = FromPrimitive::from_u8(stat_type).unwrap();
-    let detail = FromPrimitive::from_u8(detail).unwrap();
+    let detail = FromPrimitive::from_u16(detail).unwrap();
     let dir = FromPrimitive::from_u8(dir).unwrap();
     (*handle).0.count(stat_type, detail, dir)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_process_result_into_detail(process_result: u8) -> u8 {
+pub extern "C" fn rsn_process_result_into_detail(process_result: u8) -> u16 {
     let pr: BlockStatus = FromPrimitive::from_u8(process_result).unwrap();
     let result: DetailType = pr.into();
-    result as u8
+    result as u16
 }

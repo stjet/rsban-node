@@ -2,9 +2,6 @@
 
 #include <nano/store/tables.hpp>
 
-#include <chrono>
-#include <memory>
-
 namespace rsnano
 {
 class TransactionHandle;
@@ -45,7 +42,6 @@ public:
 	virtual void reset () = 0;
 	virtual void renew () = 0;
 	virtual void refresh () = 0;
-	virtual void refresh_if_needed (std::chrono::milliseconds max_age = std::chrono::milliseconds{ 500 }) const = 0;
 };
 
 /**
@@ -59,6 +55,5 @@ public:
 	virtual void renew () = 0;
 	virtual void refresh () = 0;
 	virtual bool contains (nano::tables table_a) const = 0;
-	virtual void refresh_if_needed (std::chrono::milliseconds max_age = std::chrono::milliseconds{ 500 }) = 0;
 };
 } // namespace nano::store

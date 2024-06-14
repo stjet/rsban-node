@@ -34,6 +34,7 @@ pub enum StatType {
     Drop,
     Aggregator,
     Requests,
+    RequestAggregator,
     Filter,
     Telemetry,
     VoteGenerator,
@@ -74,7 +75,7 @@ impl StatType {
 }
 
 // Optional detail type
-#[repr(u8)]
+#[repr(u16)]
 #[derive(FromPrimitive, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum DetailType {
@@ -292,7 +293,7 @@ pub enum DetailType {
     // confirmation height
     BlocksConfirmed,
 
-    // [request] aggregator
+    // request aggregator
     AggregatorAccepted,
     AggregatorDropped,
 
@@ -303,6 +304,10 @@ pub enum DetailType {
     RequestsGeneratedVotes,
     RequestsCannotVote,
     RequestsUnknown,
+
+    // request_aggregator
+    RequestHashes,
+    OverfillHashes,
 
     // duplicate
     DuplicatePublishMessage,

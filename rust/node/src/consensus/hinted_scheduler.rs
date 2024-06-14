@@ -113,7 +113,7 @@ impl HintedScheduler {
                 break;
             }
             iterations += 1;
-            tx.refresh_if_needed(Duration::from_millis(500));
+            tx.refresh_if_needed();
 
             // Check if block exists
             if let Some(block) = self.ledger.any().get_block(tx, &current_hash) {

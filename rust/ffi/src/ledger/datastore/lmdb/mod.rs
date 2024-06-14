@@ -93,16 +93,6 @@ pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh(handle: *mut TransactionHandl
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_read_txn_refresh_if_needed(
-    handle: *mut TransactionHandle,
-    max_age_ms: u64,
-) {
-    (*handle)
-        .as_read_txn_mut()
-        .refresh_if_needed(Duration::from_millis(max_age_ms));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_write_txn_destroy(handle: *mut TransactionHandle) {
     drop(Box::from_raw(handle))
 }
@@ -120,16 +110,6 @@ pub unsafe extern "C" fn rsn_lmdb_write_txn_renew(handle: *mut TransactionHandle
 #[no_mangle]
 pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh(handle: *mut TransactionHandle) {
     (*handle).as_write_txn().refresh();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_lmdb_write_txn_refresh_if_needed(
-    handle: *mut TransactionHandle,
-    max_age_ms: u64,
-) {
-    (*handle)
-        .as_write_txn()
-        .refresh_if_needed(Duration::from_millis(max_age_ms));
 }
 
 pub(crate) unsafe fn into_read_txn_handle(txn: &dyn Transaction) -> *mut TransactionHandle {

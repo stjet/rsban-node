@@ -24,32 +24,27 @@ nano::request_aggregator::~request_aggregator ()
 	rsnano::rsn_request_aggregator_destroy (handle);
 }
 
-void nano::request_aggregator::add (std::shared_ptr<nano::transport::channel> const & channel_a, std::vector<std::pair<nano::block_hash, nano::root>> const & hashes_roots_a)
+bool nano::request_aggregator::request (request_type const & request, std::shared_ptr<nano::transport::channel> const & channel)
 {
 	auto vec_handle = rsnano::rsn_hashes_roots_vec_create ();
-	for (auto const & [hash, root] : hashes_roots_a)
+	for (auto const & [hash, root] : request)
 	{
 		rsnano::rsn_hashes_roots_vec_push (vec_handle, hash.bytes.data (), root.bytes.data ());
 	}
-	rsnano::rsn_request_aggregator_add (handle, channel_a->handle, vec_handle);
+	bool added = rsnano::rsn_request_aggregator_add (handle, channel->handle, vec_handle);
 	rsnano::rsn_hashes_roots_vec_destroy (vec_handle);
+	return added;
 }
 
-std::size_t nano::request_aggregator::size ()
+std::size_t nano::request_aggregator::size () const
 {
-	return rsnano::rsn_request_aggregator_len (handle);
+	return rsnano::rsn_request_aggregator_len(handle);
 }
 
-bool nano::request_aggregator::empty ()
+bool nano::request_aggregator::empty () const
 {
-	return size () == 0;
+	return rsnano::rsn_request_aggregator_len(handle) == 0;
 }
-
-std::chrono::milliseconds nano::request_aggregator::get_max_delay () const
-{
-	return std::chrono::milliseconds{ rsnano::rsn_request_aggregator_max_delay_ms (handle) };
-}
-
 
 /*
  * request_aggregator_config

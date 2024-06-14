@@ -9,10 +9,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include <chrono>
-#include <initializer_list>
-#include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 
 namespace nano

@@ -1,25 +1,23 @@
 use super::{LocalVoteHistory, VoteGenerator, VoteRouter};
 use crate::{
-    config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, TrafficType},
+    transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
     wallets::Wallets,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
-    BlockEnum, BlockHash, Root, Vote,
+    utils::{ContainerInfoComponent, TomlWriter},
+    BlockEnum, BlockHash, NoValue, Root, Vote,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, Message, Publish};
+use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::min,
-    collections::{BTreeMap, HashMap, HashSet},
-    mem::size_of,
-    net::SocketAddrV6,
-    sync::{Arc, Condvar, Mutex},
+    collections::HashSet,
+    sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
-    time::{Duration, Instant},
 };
+use tracing::trace;
 
 #[derive(Debug, Clone)]
 pub struct RequestAggregatorConfig {
@@ -65,7 +63,7 @@ impl RequestAggregatorConfig {
  * Votes are generated for uncached hashes.
  */
 pub struct RequestAggregator {
-    config: NodeConfig,
+    config: RequestAggregatorConfig,
     stats: Arc<Stats>,
     generator: Arc<VoteGenerator>,
     final_generator: Arc<VoteGenerator>,
@@ -73,10 +71,6 @@ pub struct RequestAggregator {
     ledger: Arc<Ledger>,
     wallets: Arc<Wallets>,
     vote_router: Arc<VoteRouter>,
-    pub max_delay: Duration,
-    small_delay: Duration,
-    max_channel_requests: usize,
-    request_aggregator_threads: usize,
     mutex: Mutex<RequestAggregatorData>,
     condition: Condvar,
     threads: Mutex<Vec<JoinHandle<()>>>,
@@ -84,7 +78,7 @@ pub struct RequestAggregator {
 
 impl RequestAggregator {
     pub fn new(
-        config: NodeConfig,
+        config: RequestAggregatorConfig,
         stats: Arc<Stats>,
         generator: Arc<VoteGenerator>,
         final_generator: Arc<VoteGenerator>,
@@ -92,8 +86,8 @@ impl RequestAggregator {
         ledger: Arc<Ledger>,
         wallets: Arc<Wallets>,
         vote_router: Arc<VoteRouter>,
-        is_dev_network: bool,
     ) -> Self {
+        let max_queue = config.max_queue;
         Self {
             stats,
             generator,
@@ -102,118 +96,74 @@ impl RequestAggregator {
             ledger,
             wallets,
             vote_router,
-            max_delay: if is_dev_network {
-                Duration::from_millis(50)
-            } else {
-                Duration::from_millis(300)
-            },
-            small_delay: if is_dev_network {
-                Duration::from_millis(10)
-            } else {
-                Duration::from_millis(50)
-            },
-            max_channel_requests: config.max_queued_requests as usize,
-            request_aggregator_threads: config.request_aggregator_threads as usize,
             config,
             condition: Condvar::new(),
             mutex: Mutex::new(RequestAggregatorData {
-                requests: ChannelPoolContainer::default(),
+                queue: FairQueue::new(Box::new(move |_| max_queue), Box::new(|_| 1)),
                 stopped: false,
             }),
             threads: Mutex::new(Vec::new()),
         }
     }
 
-    /// Add a new request by channel for hashes hashes_roots
-    /// TODO: This is badly implemented, will prematurely drop large vote requests
-    pub fn add(&self, channel: Arc<ChannelEnum>, hashes_roots: &Vec<(BlockHash, Root)>) {
+    pub fn request(&self, request: RequestType, channel: Arc<ChannelEnum>) -> bool {
+        // This should be checked before calling request
         debug_assert!(self.wallets.voting_reps_count() > 0);
-        let mut error = true;
-        let endpoint = channel.remote_endpoint();
-        let mut guard = self.mutex.lock().unwrap();
-        // Protecting from ever-increasing memory usage when request are consumed slower than generated
-        // Reject request if the oldest request has not yet been processed after its deadline + a modest margin
-        if guard.requests.is_empty()
-            || (guard.requests.iter_by_deadline().next().unwrap().deadline + 2 * self.max_delay
-                > Instant::now())
-        {
-            if !guard.requests.modify(&endpoint, |i| {
-                // This extends the lifetime of the channel, which is acceptable up to max_delay
-                i.channel = Arc::clone(&channel);
-                error = !self.try_insert_hashes_roots(i, hashes_roots);
-            }) {
-                let mut pool = ChannelPool::new(channel);
-                error = !self.try_insert_hashes_roots(&mut pool, hashes_roots);
-                guard.requests.insert(pool);
-            }
+        debug_assert!(!request.is_empty());
+        let request_len = request.len();
+
+        let added = {
+            self.mutex
+                .lock()
+                .unwrap()
+                .queue
+                .push((request, channel.clone()), Origin::new(NoValue {}, channel))
+        };
+
+        if added {
+            self.stats
+                .inc(StatType::RequestAggregator, DetailType::Request);
+            self.stats.add(
+                StatType::RequestAggregator,
+                DetailType::RequestHashes,
+                request_len as u64,
+            );
+            self.condition.notify_one();
+        } else {
+            self.stats
+                .inc(StatType::RequestAggregator, DetailType::Overfill);
+            self.stats.add(
+                StatType::RequestAggregator,
+                DetailType::OverfillHashes,
+                request_len as u64,
+            );
         }
+
+        // TODO: This stat is for compatibility with existing tests and is in principle unnecessary
         self.stats.inc(
             StatType::Aggregator,
-            if !error {
+            if added {
                 DetailType::AggregatorAccepted
             } else {
                 DetailType::AggregatorDropped
             },
         );
+
+        added
     }
 
     pub fn run(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
-            if !guard.requests.is_empty() {
-                let front = guard.requests.iter_by_deadline().next().unwrap();
-                if front.deadline < Instant::now() {
-                    // Store the channel and requests for processing after erasing this pool
+            trace!("loop");
 
-                    let endpoint = front.endpoint.clone();
-                    let mut front = guard.requests.remove(&endpoint).unwrap();
-                    drop(guard);
-                    self.erase_duplicates(&mut front.hashes_roots);
-                    let remaining = self.aggregate(&front.hashes_roots, &front.channel);
-                    if !remaining.0.is_empty() {
-                        // Generate votes for the remaining hashes
-                        let generated = self
-                            .generator
-                            .generate(&remaining.0, Arc::clone(&front.channel));
-                        self.stats.add_dir(
-                            StatType::Requests,
-                            DetailType::RequestsCannotVote,
-                            Direction::In,
-                            (remaining.0.len() - generated) as u64,
-                        );
-                    }
-                    if !remaining.1.is_empty() {
-                        // Generate final votes for the remaining hashes
-                        let generated = self
-                            .final_generator
-                            .generate(&remaining.1, Arc::clone(&front.channel));
-                        self.stats.add_dir(
-                            StatType::Requests,
-                            DetailType::RequestsCannotVote,
-                            Direction::In,
-                            (remaining.1.len() - generated) as u64,
-                        );
-                    }
-                    guard = self.mutex.lock().unwrap();
-                } else {
-                    let deadline = front.deadline;
-                    let duration = deadline.duration_since(Instant::now());
-                    guard = self
-                        .condition
-                        .wait_timeout_while(guard, duration, |g| {
-                            !g.stopped && deadline >= Instant::now()
-                        })
-                        .unwrap()
-                        .0;
-                }
+            if !guard.queue.is_empty() {
+                guard = self.run_batch(guard);
             } else {
                 guard = self
                     .condition
-                    .wait_timeout_while(guard, self.small_delay, |g| {
-                        !g.stopped && g.requests.is_empty()
-                    })
-                    .unwrap()
-                    .0;
+                    .wait_while(guard, |g| !g.stopped && g.queue.is_empty())
+                    .unwrap();
             }
         }
     }
@@ -231,9 +181,65 @@ impl RequestAggregator {
         }
     }
 
+    fn run_batch<'a>(
+        &'a self,
+        mut state: MutexGuard<'a, RequestAggregatorData>,
+    ) -> MutexGuard<'a, RequestAggregatorData> {
+        let batch = state.queue.next_batch(self.config.batch_size);
+        drop(state);
+
+        let mut tx = self.ledger.read_txn();
+
+        for ((request, channel), _) in &batch {
+            tx.refresh_if_needed();
+
+            if !channel.max(TrafficType::Generic) {
+                self.process(&tx, request, channel);
+            } else {
+                self.stats.inc_dir(
+                    StatType::RequestAggregator,
+                    DetailType::ChannelFull,
+                    Direction::Out,
+                );
+            }
+        }
+
+        self.mutex.lock().unwrap()
+    }
+
+    fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<ChannelEnum>) {
+        let remaining = self.aggregate(tx, request, channel);
+
+        if !remaining.remaining_normal.is_empty() {
+            // Generate votes for the remaining hashes
+            let generated = self
+                .generator
+                .generate(&remaining.remaining_normal, channel.clone());
+            self.stats.add_dir(
+                StatType::Requests,
+                DetailType::RequestsCannotVote,
+                Direction::In,
+                (remaining.remaining_normal.len() - generated) as u64,
+            );
+        }
+
+        if !remaining.remaining_final.is_empty() {
+            // Generate final votes for the remaining hashes
+            let generated = self
+                .final_generator
+                .generate(&remaining.remaining_final, channel.clone());
+            self.stats.add_dir(
+                StatType::Requests,
+                DetailType::RequestsCannotVote,
+                Direction::In,
+                (remaining.remaining_final.len() - generated) as u64,
+            );
+        }
+    }
+
     /// Returns the number of currently queued request pools
     pub fn len(&self) -> usize {
-        self.mutex.lock().unwrap().requests.len()
+        self.mutex.lock().unwrap().queue.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -255,33 +261,14 @@ impl RequestAggregator {
         requests.dedup_by_key(|i| i.0);
     }
 
-    fn try_insert_hashes_roots(
-        &self,
-        pool: &mut ChannelPool,
-        hashes_roots: &Vec<(BlockHash, Root)>,
-    ) -> bool {
-        if pool.hashes_roots.len() + hashes_roots.len() <= self.max_channel_requests {
-            let new_deadline = self.get_new_deadline(pool.start);
-            pool.deadline = new_deadline;
-            pool.insert_hashes_roots(hashes_roots);
-            true
-        } else {
-            false
-        }
-    }
-
-    fn get_new_deadline(&self, start: Instant) -> Instant {
-        min(start + self.max_delay, Instant::now() + self.small_delay)
-    }
-
     /// Aggregate requests and send cached votes to channel.
     /// Return the remaining hashes that need vote generation for each block for regular & final vote generators
     fn aggregate(
         &self,
-        requests: &Vec<(BlockHash, Root)>,
+        tx: &LmdbReadTransaction,
+        requests: &RequestType,
         channel: &Arc<ChannelEnum>,
-    ) -> (Vec<Arc<BlockEnum>>, Vec<Arc<BlockEnum>>) {
-        let tx = self.ledger.read_txn();
+    ) -> AggregateResult {
         let mut to_generate: Vec<Arc<BlockEnum>> = Vec::new();
         let mut to_generate_final: Vec<Arc<BlockEnum>> = Vec::new();
         let mut cached_votes: Vec<Arc<Vote>> = Vec::new();
@@ -307,15 +294,15 @@ impl RequestAggregator {
                 let mut block = None;
 
                 // 2. Final votes
-                let final_vote_hashes = self.ledger.store.final_vote.get(&tx, *root);
+                let final_vote_hashes = self.ledger.store.final_vote.get(tx, *root);
                 if !final_vote_hashes.is_empty() {
                     generate_final_vote = true;
-                    block = self.ledger.any().get_block(&tx, &final_vote_hashes[0]);
+                    block = self.ledger.any().get_block(tx, &final_vote_hashes[0]);
                     // Allow same root vote
                     if let Some(b) = &block {
                         if final_vote_hashes.len() > 1 {
                             to_generate_final.push(Arc::new(b.clone()));
-                            block = self.ledger.any().get_block(&tx, &final_vote_hashes[1]);
+                            block = self.ledger.any().get_block(tx, &final_vote_hashes[1]);
                             debug_assert!(final_vote_hashes.len() == 2);
                         }
                     }
@@ -337,14 +324,14 @@ impl RequestAggregator {
 
                 // 4. Ledger by hash
                 if block.is_none() {
-                    block = self.ledger.any().get_block(&tx, hash);
+                    block = self.ledger.any().get_block(tx, hash);
                     // Confirmation status. Generate final votes for confirmed
                     if let Some(b) = &block {
                         let confirmation_height_info = self
                             .ledger
                             .store
                             .confirmation_height
-                            .get(&tx, &b.account())
+                            .get(tx, &b.account())
                             .unwrap_or_default();
                         generate_final_vote =
                             confirmation_height_info.height >= b.sideband().unwrap().height;
@@ -354,11 +341,11 @@ impl RequestAggregator {
                 // 5. Ledger by root
                 if block.is_none() && !root.is_zero() {
                     // Search for block root
-                    let successor = self.ledger.any().block_successor(&tx, &(*root).into());
+                    let successor = self.ledger.any().block_successor(tx, &(*root).into());
 
                     // Search for account root
                     if let Some(successor) = successor {
-                        let successor_block = self.ledger.any().get_block(&tx, &successor).unwrap();
+                        let successor_block = self.ledger.any().get_block(tx, &successor).unwrap();
                         block = Some(successor_block);
 
                         // 5. Votes in cache for successor
@@ -375,7 +362,7 @@ impl RequestAggregator {
                                     .ledger
                                     .store
                                     .confirmation_height
-                                    .get(&tx, &b.account())
+                                    .get(tx, &b.account())
                                     .unwrap();
                                 generate_final_vote =
                                     confirmation_height_info.height >= b.sideband().unwrap().height;
@@ -413,6 +400,7 @@ impl RequestAggregator {
                 }
             }
         }
+
         // Unique votes
         cached_votes.sort_by(|a, b| a.signature.cmp(&b.signature));
         cached_votes.dedup_by(|a, b| a.signature == b.signature);
@@ -421,145 +409,48 @@ impl RequestAggregator {
         for vote in cached_votes {
             self.reply_action(&vote, channel);
         }
+
         self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedHashes,
             Direction::In,
             cached_hashes.len() as u64,
         );
+
         self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedVotes,
             Direction::In,
             cached_votes_len,
         );
-        (to_generate, to_generate_final)
+
+        AggregateResult {
+            remaining_normal: to_generate,
+            remaining_final: to_generate_final,
+        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
             name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "pools".to_string(),
-                count: guard.requests.len(),
-                sizeof_element: ChannelPoolContainer::ELEMENT_SIZE,
-            })],
+            vec![guard.queue.collect_container_info("queue")],
         )
     }
 }
 
+impl Drop for RequestAggregator {
+    fn drop(&mut self) {
+        debug_assert!(self.threads.lock().unwrap().is_empty())
+    }
+}
+
+type RequestType = Vec<(BlockHash, Root)>;
+type ValueType = (RequestType, Arc<ChannelEnum>);
+
 struct RequestAggregatorData {
-    requests: ChannelPoolContainer,
+    queue: FairQueue<ValueType, NoValue>,
     stopped: bool,
-}
-
-/**
- * Holds a buffer of incoming requests from an endpoint.
- * Extends the lifetime of the corresponding channel. The channel is updated on a new request arriving from the same endpoint, such that only the newest channel is held
- */
-struct ChannelPool {
-    hashes_roots: Vec<(BlockHash, Root)>,
-    channel: Arc<ChannelEnum>,
-    endpoint: SocketAddrV6,
-    start: Instant,
-    deadline: Instant,
-}
-
-impl ChannelPool {
-    pub fn new(channel: Arc<ChannelEnum>) -> Self {
-        let now = Instant::now();
-        Self {
-            hashes_roots: Vec::new(),
-            endpoint: channel.remote_endpoint(),
-            channel,
-            start: now,
-            deadline: now,
-        }
-    }
-
-    pub fn insert_hashes_roots(&mut self, hashes_roots: &Vec<(BlockHash, Root)>) {
-        let old = self.hashes_roots.clone();
-        self.hashes_roots
-            .reserve(self.hashes_roots.len() + hashes_roots.len());
-        self.hashes_roots.clear();
-        self.hashes_roots.extend_from_slice(&hashes_roots);
-        self.hashes_roots.extend_from_slice(&old);
-    }
-}
-
-#[derive(Default)]
-struct ChannelPoolContainer {
-    by_endpoint: HashMap<SocketAddrV6, ChannelPool>,
-    by_deadline: BTreeMap<Instant, Vec<SocketAddrV6>>,
-}
-
-impl ChannelPoolContainer {
-    pub const ELEMENT_SIZE: usize =
-        size_of::<ChannelPool>() + size_of::<SocketAddrV6>() * 2 + size_of::<Instant>();
-
-    pub fn insert(&mut self, pool: ChannelPool) {
-        let endpoint = pool.endpoint;
-        let deadline = pool.deadline;
-
-        if let Some(old) = self.by_endpoint.insert(pool.endpoint, pool) {
-            self.remove_deadline(&old.endpoint, old.deadline);
-        }
-
-        self.by_deadline.entry(deadline).or_default().push(endpoint);
-    }
-
-    pub fn len(&self) -> usize {
-        self.by_endpoint.len()
-    }
-
-    pub fn get(&self, addr: &SocketAddrV6) -> Option<&ChannelPool> {
-        self.by_endpoint.get(addr)
-    }
-
-    pub fn modify(&mut self, endpoint: &SocketAddrV6, mut f: impl FnMut(&mut ChannelPool)) -> bool {
-        if let Some(pool) = self.by_endpoint.get_mut(endpoint) {
-            let old_deadline = pool.deadline;
-            let endpoint = pool.endpoint;
-            f(pool);
-            let new_deadline = pool.deadline;
-            if new_deadline != old_deadline {
-                self.remove_deadline(&endpoint, old_deadline);
-                self.by_deadline
-                    .entry(new_deadline)
-                    .or_default()
-                    .push(endpoint);
-            }
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn remove(&mut self, endpoint: &SocketAddrV6) -> Option<ChannelPool> {
-        let pool = self.by_endpoint.remove(endpoint)?;
-        self.remove_deadline(endpoint, pool.deadline);
-        Some(pool)
-    }
-
-    pub fn iter_by_deadline(&self) -> impl Iterator<Item = &ChannelPool> {
-        self.by_deadline
-            .values()
-            .flat_map(|addrs| addrs.iter().map(|a| self.by_endpoint.get(a).unwrap()))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.by_endpoint.is_empty()
-    }
-
-    fn remove_deadline(&mut self, endpoint: &SocketAddrV6, deadline: Instant) {
-        let addrs = self.by_deadline.get_mut(&deadline).unwrap();
-        if addrs.len() > 1 {
-            addrs.retain(|i| i != endpoint);
-        } else {
-            self.by_deadline.remove(&deadline);
-        }
-    }
 }
 
 pub trait RequestAggregatorExt {
@@ -585,7 +476,7 @@ impl RequestAggregatorExt for Arc<RequestAggregator> {
             }));
 
         let mut guard = self.threads.lock().unwrap();
-        for _ in 0..self.request_aggregator_threads {
+        for _ in 0..self.config.threads {
             let self_l = Arc::clone(self);
             guard.push(
                 std::thread::Builder::new()
@@ -595,4 +486,9 @@ impl RequestAggregatorExt for Arc<RequestAggregator> {
             );
         }
     }
+}
+
+struct AggregateResult {
+    remaining_normal: Vec<Arc<BlockEnum>>,
+    remaining_final: Vec<Arc<BlockEnum>>,
 }

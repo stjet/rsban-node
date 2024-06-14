@@ -23,18 +23,15 @@ pub extern "C" fn rsn_request_aggregator_add(
     handle: &RequestAggregatorHandle,
     channel: &ChannelHandle,
     hashes_roots: &HashesRootsVecHandle,
-) {
-    handle.0.add(Arc::clone(channel), &hashes_roots.0);
+) -> bool {
+    handle
+        .0
+        .request(hashes_roots.0.clone(), Arc::clone(channel))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_request_aggregator_len(handle: &RequestAggregatorHandle) -> usize {
     handle.0.len()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_request_aggregator_max_delay_ms(handle: &RequestAggregatorHandle) -> u64 {
-    handle.0.max_delay.as_millis() as u64
 }
 
 pub struct HashesRootsVecHandle(Vec<(BlockHash, Root)>);

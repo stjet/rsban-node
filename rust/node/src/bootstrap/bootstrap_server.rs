@@ -224,7 +224,7 @@ impl BootstrapServerImpl {
 
         let mut tx = self.ledger.read_txn();
         for ((request, channel), _) in batch {
-            tx.refresh_if_needed(Duration::from_millis(500));
+            tx.refresh_if_needed();
 
             if !channel.max(TrafficType::Bootstrap) {
                 let response = self.process(&tx, request);

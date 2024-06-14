@@ -150,7 +150,7 @@ impl LocalBlockBroadcaster {
         // TODO: Mutex is held during IO, but it should be fine since it's not performance critical
         let mut tx = self.ledger.read_txn();
         data.local_blocks.retain(|entry| {
-            tx.refresh_if_needed(Duration::from_millis(500));
+            tx.refresh_if_needed();
 
             if entry.last_broadcast.is_none() {
                 // This block has never been broadcasted, keep it so it's broadcasted at least once

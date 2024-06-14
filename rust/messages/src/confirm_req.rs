@@ -12,7 +12,7 @@ use std::fmt::{Debug, Display, Write};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {
-    roots_hashes: Vec<(BlockHash, Root)>,
+    pub roots_hashes: Vec<(BlockHash, Root)>,
 }
 
 impl ConfirmReq {

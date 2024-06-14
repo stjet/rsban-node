@@ -40,12 +40,11 @@ public:
 	request_aggregator (request_aggregator const &) = delete;
 	~request_aggregator ();
 
+	using request_type = std::vector<std::pair<nano::block_hash, nano::root>>;
 	/** Add a new request by \p channel_a for hashes \p hashes_roots_a */
-	void add (std::shared_ptr<nano::transport::channel> const & channel_a, std::vector<std::pair<nano::block_hash, nano::root>> const & hashes_roots_a);
-	/** Returns the number of currently queued request pools */
-	std::size_t size ();
-	bool empty ();
-	std::chrono::milliseconds get_max_delay () const;
+	bool request (request_type const & request, std::shared_ptr<nano::transport::channel> const &);
+	std::size_t size () const;
+	bool empty () const;
 
 	rsnano::RequestAggregatorHandle * handle;
 };

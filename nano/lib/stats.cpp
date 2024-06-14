@@ -170,7 +170,7 @@ void nano::stats::add (stat::type type, stat::detail detail, stat::dir dir, uint
 {
 	rsnano::rsn_stat_add (handle,
 	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
+	static_cast<uint16_t> (detail),
 	static_cast<uint8_t> (dir),
 	value);
 }
@@ -186,6 +186,6 @@ uint64_t nano::stats::count (stat::type type, stat::detail detail, stat::dir dir
 {
 	return rsnano::rsn_stat_count (handle,
 	static_cast<uint8_t> (type),
-	static_cast<uint8_t> (detail),
+	static_cast<uint16_t> (detail),
 	static_cast<uint8_t> (dir));
 }

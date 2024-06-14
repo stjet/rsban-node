@@ -35,6 +35,7 @@ enum class type : uint8_t
 	drop,
 	aggregator,
 	requests,
+	request_aggregator,
 	filter,
 	telemetry,
 	vote_generator,
@@ -69,7 +70,7 @@ enum class type : uint8_t
 };
 
 /** Optional detail type */
-enum class detail : uint8_t
+enum class detail : uint16_t
 {
 	all = 0,
 
@@ -285,7 +286,7 @@ enum class detail : uint8_t
 	// confirmation height
 	blocks_confirmed,
 
-	// [request] aggregator
+	// request aggregator
 	aggregator_accepted,
 	aggregator_dropped,
 
@@ -296,6 +297,10 @@ enum class detail : uint8_t
 	requests_generated_votes,
 	requests_cannot_vote,
 	requests_unknown,
+	
+	// request_aggregator
+	request_hashes,
+	overfill_hashes,
 
 	// duplicate
 	duplicate_publish_message,

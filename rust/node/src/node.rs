@@ -15,7 +15,7 @@ use crate::{
         LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
         OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
         ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers, RequestAggregator,
-        RequestAggregatorExt, VoteApplier, VoteCache, VoteGenerator, VoteProcessor,
+        RequestAggregatorExt, VoteApplier, VoteCache, VoteGenerators, VoteProcessor,
         VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
@@ -57,7 +57,6 @@ use serde::Serialize;
 use std::{
     borrow::Borrow,
     collections::{HashMap, VecDeque},
-    net::{Ipv6Addr, SocketAddrV6},
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -97,8 +96,7 @@ pub struct Node {
     pub vote_cache: Arc<Mutex<VoteCache>>,
     pub block_processor: Arc<BlockProcessor>,
     pub wallets: Arc<Wallets>,
-    pub vote_generator: Arc<VoteGenerator>,
-    pub final_generator: Arc<VoteGenerator>,
+    pub vote_generators: Arc<VoteGenerators>,
     pub active: Arc<ActiveElections>,
     pub vote_router: Arc<VoteRouter>,
     pub vote_processor: Arc<VoteProcessor>,
@@ -326,42 +324,19 @@ impl Node {
                 (*cb)(msg, channel);
             });
 
-        let vote_generator = Arc::new(VoteGenerator::new(
+        let vote_generators = Arc::new(VoteGenerators::new(
             Arc::clone(&ledger),
             Arc::clone(&wallets),
             Arc::clone(&history),
-            false, //none-final
             Arc::clone(&stats),
             Arc::clone(&representative_register),
             Arc::clone(&network),
             Arc::clone(&vote_processor_queue),
-            network_params.network.clone(),
             Arc::clone(&async_rt),
             node_id.public_key(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0),
             Arc::clone(&inbound),
-            Duration::from_secs(network_params.voting.delay_s as u64),
-            Duration::from_millis(config.vote_generator_delay_ms as u64),
-            config.vote_generator_threshold as usize,
-        ));
-
-        let final_generator = Arc::new(VoteGenerator::new(
-            Arc::clone(&ledger),
-            Arc::clone(&wallets),
-            Arc::clone(&history),
-            true, //final
-            Arc::clone(&stats),
-            Arc::clone(&representative_register),
-            Arc::clone(&network),
-            Arc::clone(&vote_processor_queue),
-            network_params.network.clone(),
-            Arc::clone(&async_rt),
-            node_id.public_key(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0),
-            Arc::clone(&inbound),
-            Duration::from_secs(network_params.voting.delay_s as u64),
-            Duration::from_millis(config.vote_generator_delay_ms as u64),
-            config.vote_generator_threshold as usize,
+            &config,
+            &network_params,
         ));
 
         let vote_applier = Arc::new(VoteApplier::new(
@@ -369,7 +344,7 @@ impl Node {
             network_params.clone(),
             online_reps.clone(),
             stats.clone(),
-            final_generator.clone(),
+            vote_generators.clone(),
             block_processor.clone(),
             config.clone(),
             history.clone(),
@@ -382,9 +357,7 @@ impl Node {
         let vote_router = Arc::new(VoteRouter::new(
             vote_cache.clone(),
             recently_confirmed.clone(),
-            ledger.clone(),
             network_params.clone(),
-            online_reps.clone(),
             stats.clone(),
             vote_applier.clone(),
         ));
@@ -399,8 +372,7 @@ impl Node {
             Arc::clone(&workers),
             Arc::clone(&history),
             Arc::clone(&block_processor),
-            Arc::clone(&vote_generator),
-            Arc::clone(&final_generator),
+            vote_generators.clone(),
             Arc::clone(&network),
             Arc::clone(&vote_cache),
             Arc::clone(&stats),
@@ -549,11 +521,9 @@ impl Node {
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.request_aggregator.clone(),
             stats.clone(),
-            vote_generator.clone(),
-            final_generator.clone(),
+            vote_generators.clone(),
             history.clone(),
             ledger.clone(),
-            wallets.clone(),
             vote_router.clone(),
         ));
 
@@ -1120,8 +1090,7 @@ impl Node {
             vote_cache,
             block_processor,
             wallets,
-            vote_generator,
-            final_generator,
+            vote_generators,
             active,
             vote_processor,
             websocket,
@@ -1190,9 +1159,8 @@ impl Node {
                     .unwrap()
                     .collect_container_info("vote_cache"),
                 self.vote_router.collect_container_info("vote_router"),
-                self.vote_generator.collect_container_info("vote_generator"),
-                self.final_generator
-                    .collect_container_info("vote_generator_final"),
+                self.vote_generators
+                    .collect_container_info("vote_generators"),
                 self.ascendboot
                     .collect_container_info("bootstrap_ascending"),
                 self.unchecked.collect_container_info("unchecked"),
@@ -1296,8 +1264,7 @@ impl NodeExt for Arc<Node> {
         self.vote_processor.start();
         self.block_processor.start();
         self.active.start();
-        self.vote_generator.start();
-        self.final_generator.start();
+        self.vote_generators.start();
         self.request_aggregator.start();
         self.confirming_set.start();
         self.hinted_scheduler.start();
@@ -1350,8 +1317,7 @@ impl NodeExt for Arc<Node> {
         self.optimistic_scheduler.stop();
         self.priority_scheduler.stop();
         self.active.stop();
-        self.vote_generator.stop();
-        self.final_generator.stop();
+        self.vote_generators.stop();
         self.confirming_set.stop();
         self.telemetry.stop();
         if let Some(ws_listener) = &self.websocket {

@@ -110,7 +110,7 @@ impl VoteGenerator {
 
     pub fn set_reply_action(
         &self,
-        action: Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
+        action: Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
     ) {
         let mut guard = self.shared_state.reply_action.lock().unwrap();
         *guard = Some(action);
@@ -230,7 +230,7 @@ struct SharedState {
     spacing: Mutex<VoteSpacing>,
     vote_generator_delay: Duration,
     vote_generator_threshold: usize,
-    reply_action: Mutex<Option<Box<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>>>,
+    reply_action: Mutex<Option<Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>>>,
 }
 
 impl SharedState {

@@ -1,8 +1,7 @@
-use super::{LocalVoteHistory, VoteGenerator, VoteRouter};
+use super::{LocalVoteHistory, VoteGenerators, VoteRouter};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
-    wallets::Wallets,
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
@@ -65,11 +64,9 @@ impl RequestAggregatorConfig {
 pub struct RequestAggregator {
     config: RequestAggregatorConfig,
     stats: Arc<Stats>,
-    generator: Arc<VoteGenerator>,
-    final_generator: Arc<VoteGenerator>,
+    vote_generators: Arc<VoteGenerators>,
     local_votes: Arc<LocalVoteHistory>,
     ledger: Arc<Ledger>,
-    wallets: Arc<Wallets>,
     vote_router: Arc<VoteRouter>,
     mutex: Mutex<RequestAggregatorData>,
     condition: Condvar,
@@ -80,21 +77,17 @@ impl RequestAggregator {
     pub fn new(
         config: RequestAggregatorConfig,
         stats: Arc<Stats>,
-        generator: Arc<VoteGenerator>,
-        final_generator: Arc<VoteGenerator>,
+        vote_generators: Arc<VoteGenerators>,
         local_votes: Arc<LocalVoteHistory>,
         ledger: Arc<Ledger>,
-        wallets: Arc<Wallets>,
         vote_router: Arc<VoteRouter>,
     ) -> Self {
         let max_queue = config.max_queue;
         Self {
             stats,
-            generator,
-            final_generator,
+            vote_generators,
             local_votes,
             ledger,
-            wallets,
             vote_router,
             config,
             condition: Condvar::new(),
@@ -108,7 +101,6 @@ impl RequestAggregator {
 
     pub fn request(&self, request: RequestType, channel: Arc<ChannelEnum>) -> bool {
         // This should be checked before calling request
-        debug_assert!(self.wallets.voting_reps_count() > 0);
         debug_assert!(!request.is_empty());
         let request_len = request.len();
 
@@ -213,8 +205,8 @@ impl RequestAggregator {
         if !remaining.remaining_normal.is_empty() {
             // Generate votes for the remaining hashes
             let generated = self
-                .generator
-                .generate(&remaining.remaining_normal, channel.clone());
+                .vote_generators
+                .generate_non_final_votes(&remaining.remaining_normal, channel.clone());
             self.stats.add_dir(
                 StatType::Requests,
                 DetailType::RequestsCannotVote,
@@ -226,8 +218,8 @@ impl RequestAggregator {
         if !remaining.remaining_final.is_empty() {
             // Generate final votes for the remaining hashes
             let generated = self
-                .final_generator
-                .generate(&remaining.remaining_final, channel.clone());
+                .vote_generators
+                .generate_final_votes(&remaining.remaining_final, channel.clone());
             self.stats.add_dir(
                 StatType::Requests,
                 DetailType::RequestsCannotVote,
@@ -460,16 +452,8 @@ pub trait RequestAggregatorExt {
 impl RequestAggregatorExt for Arc<RequestAggregator> {
     fn start(&self) {
         let self_w = Arc::downgrade(self);
-        self.generator
-            .set_reply_action(Box::new(move |vote, channel| {
-                if let Some(self_l) = self_w.upgrade() {
-                    self_l.reply_action(vote, channel);
-                }
-            }));
-
-        let self_w = Arc::downgrade(self);
-        self.final_generator
-            .set_reply_action(Box::new(move |vote, channel| {
+        self.vote_generators
+            .set_reply_action(Arc::new(move |vote, channel| {
                 if let Some(self_l) = self_w.upgrade() {
                     self_l.reply_action(vote, channel);
                 }

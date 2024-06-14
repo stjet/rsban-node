@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     Election, ElectionData, ElectionStatus, LocalVoteHistory, RecentlyConfirmedCache, TallyKey,
-    VoteGenerator,
+    VoteGenerators,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -31,7 +31,7 @@ pub struct VoteApplier {
     network_params: NetworkParams,
     online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
-    final_generator: Arc<VoteGenerator>,
+    vote_generators: Arc<VoteGenerators>,
     block_processor: Arc<BlockProcessor>,
     node_config: NodeConfig,
     history: Arc<LocalVoteHistory>,
@@ -43,12 +43,12 @@ pub struct VoteApplier {
 }
 
 impl VoteApplier {
-    pub fn new(
+    pub(crate) fn new(
         ledger: Arc<Ledger>,
         network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
-        final_generator: Arc<VoteGenerator>,
+        vote_generators: Arc<VoteGenerators>,
         block_processor: Arc<BlockProcessor>,
         node_config: NodeConfig,
         history: Arc<LocalVoteHistory>,
@@ -62,7 +62,7 @@ impl VoteApplier {
             network_params,
             online_reps,
             stats,
-            final_generator,
+            vote_generators,
             block_processor,
             node_config,
             history,
@@ -285,8 +285,8 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 && self.node_config.enable_voting
                 && self.wallets.voting_reps_count() > 0
             {
-                self.final_generator
-                    .add(&election.root, &status_winner_hash);
+                self.vote_generators
+                    .generate_final_vote(&election.root, &status_winner_hash);
             }
             if election_lock.final_weight >= self.online_reps.lock().unwrap().delta() {
                 self.confirm_once(election_lock, election);

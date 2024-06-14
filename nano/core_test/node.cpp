@@ -12,7 +12,6 @@
 #include <nano/node/transport/fake.hpp>
 #include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/tcp_listener.hpp>
-#include <nano/node/vote_generator.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
@@ -2205,7 +2204,7 @@ TEST (node, vote_by_hash_bundle)
 
 	for (auto const & block : blocks)
 	{
-		system.nodes[0]->generator.add (block->root (), block->hash ());
+		system.nodes[0]->enqueue_vote_request (block->root (), block->hash ());
 	}
 
 	// Verify that bundling occurs. While reaching 12 should be common on most hardware in release mode,

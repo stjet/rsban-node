@@ -1,11 +1,10 @@
+use super::ActiveTransactionsHandle;
 use crate::{
     cementation::ConfirmingSetHandle, ledger::datastore::LedgerHandle, NetworkConstantsDto,
     OptimisticSchedulerConfigDto, StatHandle,
 };
 use rsnano_node::consensus::{OptimisticScheduler, OptimisticSchedulerExt};
 use std::sync::Arc;
-
-use super::ActiveTransactionsHandle;
 
 pub struct OptimisticSchedulerHandle(pub Arc<OptimisticScheduler>);
 

@@ -29,7 +29,6 @@
 #include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/unchecked_map.hpp>
 #include <nano/node/vote_cache.hpp>
-#include <nano/node/vote_generator.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/node/wallet.hpp>
 #include <nano/node/websocket.hpp>
@@ -110,6 +109,7 @@ public:
 	nano::account get_node_id () const;
 	nano::telemetry_data local_telemetry () const;
 	void connect (nano::endpoint const &);
+	void enqueue_vote_request(nano::root const & root, nano::block_hash const & hash);
 
 public:
 	nano::keypair node_id;
@@ -141,7 +141,6 @@ public:
 	nano::vote_cache vote_cache;
 	nano::block_processor block_processor;
 	nano::wallets wallets;
-	nano::vote_generator generator;
 	nano::active_elections active;
 	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;

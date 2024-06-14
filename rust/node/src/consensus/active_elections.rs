@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
     ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteApplier, VoteCache, VoteGenerator, VoteRouter, NEXT_ELECTION_ID,
+    VoteApplier, VoteCache, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -106,8 +106,7 @@ pub struct ActiveElections {
     pub recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
     history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,
-    generator: Arc<VoteGenerator>,
-    final_generator: Arc<VoteGenerator>,
+    vote_generators: Arc<VoteGenerators>,
     network: Arc<Network>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
@@ -125,7 +124,7 @@ pub struct ActiveElections {
 }
 
 impl ActiveElections {
-    pub fn new(
+    pub(crate) fn new(
         network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
         wallets: Arc<Wallets>,
@@ -135,8 +134,7 @@ impl ActiveElections {
         workers: Arc<dyn ThreadPool>,
         history: Arc<LocalVoteHistory>,
         block_processor: Arc<BlockProcessor>,
-        generator: Arc<VoteGenerator>,
-        final_generator: Arc<VoteGenerator>,
+        vote_generators: Arc<VoteGenerators>,
         network: Arc<Network>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
@@ -171,8 +169,7 @@ impl ActiveElections {
             node_config,
             history,
             block_processor,
-            generator,
-            final_generator,
+            vote_generators,
             network,
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
@@ -569,13 +566,15 @@ impl ActiveElections {
                     .inc(StatType::Election, DetailType::GenerateVoteFinal);
                 let winner = election_guard.status.winner.as_ref().unwrap().hash();
                 trace!(qualified_root = ?election.qualified_root, %winner, "type" = "final", "broadcast vote");
-                self.final_generator.add(&election.root, &winner); // Broadcasts vote to the network
+                self.vote_generators
+                    .generate_final_vote(&election.root, &winner); // Broadcasts vote to the network
             } else {
                 self.stats
                     .inc(StatType::Election, DetailType::GenerateVoteNormal);
                 let winner = election_guard.status.winner.as_ref().unwrap().hash();
                 trace!(qualified_root = ?election.qualified_root, %winner, "type" = "normal", "broadcast vote");
-                self.generator.add(&election.root, &winner); // Broadcasts vote to the network
+                self.vote_generators
+                    .generate_non_final_vote(&election.root, &winner); // Broadcasts vote to the network
             }
         }
     }

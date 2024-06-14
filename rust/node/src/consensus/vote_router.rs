@@ -1,10 +1,9 @@
 use super::{Election, RecentlyConfirmedCache, VoteApplier, VoteCache};
-use crate::{consensus::VoteApplierExt, stats::Stats, NetworkParams, OnlineReps};
+use crate::{consensus::VoteApplierExt, stats::Stats, NetworkParams};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Amount, BlockHash, Vote, VoteCode, VoteSource,
+    BlockHash, Vote, VoteCode, VoteSource,
 };
-use rsnano_ledger::Ledger;
 use std::{
     collections::HashMap,
     mem::size_of,
@@ -19,9 +18,7 @@ pub struct VoteRouter {
     vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     recently_confirmed: Arc<RecentlyConfirmedCache>,
-    ledger: Arc<Ledger>,
     network_params: NetworkParams,
-    online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     vote_applier: Arc<VoteApplier>,
 }
@@ -30,9 +27,7 @@ impl VoteRouter {
     pub fn new(
         vote_cache: Arc<Mutex<VoteCache>>,
         recently_confirmed: Arc<RecentlyConfirmedCache>,
-        ledger: Arc<Ledger>,
         network_params: NetworkParams,
-        online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         vote_applier: Arc<VoteApplier>,
     ) -> Self {
@@ -48,9 +43,7 @@ impl VoteRouter {
             vote_processed_observers: Mutex::new(Vec::new()),
             vote_cache,
             recently_confirmed,
-            ledger,
             network_params,
-            online_reps,
             stats,
             vote_applier,
         }
@@ -170,21 +163,6 @@ impl VoteRouter {
             existing.strong_count() > 0
         } else {
             false
-        }
-    }
-
-    /// Calculates minimum time delay between subsequent votes when processing non-final votes
-    fn cooldown_time(&self, weight: Amount) -> Duration {
-        let online_stake = { self.online_reps.lock().unwrap().trended() };
-        if weight > online_stake / 20 {
-            // Reps with more than 5% weight
-            Duration::from_secs(1)
-        } else if weight > online_stake / 100 {
-            // Reps with more than 1% weight
-            Duration::from_secs(5)
-        } else {
-            // The rest of smaller reps
-            Duration::from_secs(15)
         }
     }
 

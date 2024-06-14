@@ -12,7 +12,6 @@ mod rep_tiers;
 mod request_aggregator;
 mod vote;
 mod vote_cache;
-mod vote_generator;
 mod vote_processor;
 mod vote_processor_queue;
 mod vote_spacing;
@@ -33,7 +32,6 @@ pub use request_aggregator::{RequestAggregatorConfigDto, RequestAggregatorHandle
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_cache::VoteCacheHandle;
-pub use vote_generator::VoteGeneratorHandle;
 pub use vote_processor::{
     VoteProcessorConfigDto, VoteProcessorHandle, VoteProcessorVoteProcessedCallback,
 };

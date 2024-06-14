@@ -127,8 +127,6 @@ add_library(
   unchecked_map.hpp
   vote_cache.hpp
   vote_cache.cpp
-  vote_generator.hpp
-  vote_generator.cpp
   vote_processor.hpp
   vote_processor.cpp
   vote_spacing.hpp

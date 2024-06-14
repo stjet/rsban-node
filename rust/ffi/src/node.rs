@@ -6,9 +6,8 @@ use crate::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
         ElectionStatusHandle, FfiAccountBalanceCallback, HintedSchedulerHandle,
         LocalVoteHistoryHandle, ManualSchedulerHandle, OptimisticSchedulerHandle, RepTiersHandle,
-        RequestAggregatorHandle, VoteCacheHandle, VoteGeneratorHandle, VoteHandle,
-        VoteProcessorHandle, VoteProcessorQueueHandle, VoteProcessorVoteProcessedCallback,
-        VoteWithWeightInfoVecHandle,
+        RequestAggregatorHandle, VoteCacheHandle, VoteHandle, VoteProcessorHandle,
+        VoteProcessorQueueHandle, VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
     },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
@@ -26,7 +25,7 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::{BlockHash, Vote, VoteCode, VoteSource};
+use rsnano_core::{BlockHash, Root, Vote, VoteCode, VoteSource};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
@@ -281,13 +280,6 @@ pub extern "C" fn rsn_node_wallets(handle: &NodeHandle) -> *mut LmdbWalletsHandl
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_vote_generator(handle: &NodeHandle) -> *mut VoteGeneratorHandle {
-    Box::into_raw(Box::new(VoteGeneratorHandle(Arc::clone(
-        &handle.0.vote_generator,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_active(handle: &NodeHandle) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::clone(
         &handle.0.active,
@@ -442,6 +434,18 @@ pub unsafe extern "C" fn rsn_node_vote(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_election_active(handle: &NodeHandle, hash: *const u8) -> bool {
     handle.0.vote_router.active(&BlockHash::from_ptr(hash))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_enqueue_vote_request(
+    handle: &NodeHandle,
+    root: *const u8,
+    hash: *const u8,
+) {
+    handle
+        .0
+        .vote_generators
+        .generate_non_final_vote(&Root::from_ptr(root), &BlockHash::from_ptr(hash));
 }
 
 #[no_mangle]

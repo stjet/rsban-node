@@ -21,7 +21,6 @@
 #include <nano/node/scheduler/priority.hpp>
 #include <nano/node/telemetry.hpp>
 #include <nano/node/transport/tcp_listener.hpp>
-#include <nano/node/vote_generator.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
@@ -197,7 +196,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
 	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
 	wallets{ rsnano::rsn_node_wallets (handle) },
-	generator{ rsnano::rsn_node_vote_generator (handle) },
 	active (*this, rsnano::rsn_node_active (handle)),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (handle) },
 	scheduler{ *scheduler_impl },
@@ -491,6 +489,11 @@ void nano::node::connect (nano::endpoint const & endpoint)
 {
 	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };
 	rsnano::rsn_node_connect (handle, &dto);
+}
+
+void nano::node::enqueue_vote_request(nano::root const & root, nano::block_hash const & hash)
+{
+	rsnano::rsn_node_enqueue_vote_request(handle, root.bytes.data(), hash.bytes.data());
 }
 
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)

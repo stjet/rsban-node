@@ -176,7 +176,7 @@ bool nano::test::active (nano::node & node, std::vector<nano::block_hash> hashes
 {
 	for (auto & hash : hashes)
 	{
-		if (!node.active.active (hash))
+		if (!node.election_active (hash))
 		{
 			return false;
 		}

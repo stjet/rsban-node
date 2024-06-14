@@ -26,11 +26,11 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::{Vote, VoteCode};
+use rsnano_core::{BlockHash, Vote, VoteCode, VoteSource};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelEnum, NetworkExt, PeerConnectorExt},
+    transport::{ChannelEnum, PeerConnectorExt},
 };
 use std::{
     ffi::{c_char, c_void},
@@ -424,6 +424,24 @@ pub unsafe extern "C" fn rsn_node_connect(handle: &NodeHandle, endpoint: &Endpoi
 #[no_mangle]
 pub extern "C" fn rsn_node_bootstrap_wallet(handle: &NodeHandle) {
     handle.0.bootstrap_wallet();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_vote(
+    handle: &NodeHandle,
+    vote: &VoteHandle,
+    hash: *const u8,
+) -> u8 {
+    let result = handle.0.vote_router.vote(vote, VoteSource::Live);
+    result
+        .get(&BlockHash::from_ptr(hash))
+        .cloned()
+        .unwrap_or(VoteCode::Invalid) as u8
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_election_active(handle: &NodeHandle, hash: *const u8) -> bool {
+    handle.0.vote_router.active(&BlockHash::from_ptr(hash))
 }
 
 #[no_mangle]

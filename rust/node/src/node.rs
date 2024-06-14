@@ -410,13 +410,14 @@ impl Node {
             flags.clone(),
             recently_confirmed,
             vote_applier,
+            vote_router.clone(),
         ));
 
         active.initialize();
 
         let vote_processor = Arc::new(VoteProcessor::new(
             Arc::clone(&vote_processor_queue),
-            Arc::clone(&active),
+            vote_router.clone(),
             Arc::clone(&stats),
             on_vote,
         ));
@@ -547,13 +548,13 @@ impl Node {
 
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.clone(),
-            Arc::clone(&stats),
-            Arc::clone(&vote_generator),
-            Arc::clone(&final_generator),
-            Arc::clone(&history),
-            Arc::clone(&ledger),
-            Arc::clone(&wallets),
-            Arc::clone(&active),
+            stats.clone(),
+            vote_generator.clone(),
+            final_generator.clone(),
+            history.clone(),
+            ledger.clone(),
+            wallets.clone(),
+            vote_router.clone(),
             network_params.network.is_dev_network(),
         ));
         request_aggregator.start();
@@ -729,7 +730,7 @@ impl Node {
         let vote_cache_w = Arc::downgrade(&vote_cache);
         let wallets_w = Arc::downgrade(&wallets);
         let channels_w = Arc::downgrade(&network);
-        active.add_vote_processed_observer(Box::new(move |vote, source, results| {
+        vote_router.add_vote_processed_observer(Box::new(move |vote, source, results| {
             let Some(ledger) = ledger_w.upgrade() else {
                 return;
             };

@@ -155,6 +155,13 @@ pub struct ElectionData {
 }
 
 impl ElectionData {
+    pub fn is_confirmed(&self) -> bool {
+        matches!(
+            self.state,
+            ElectionState::Confirmed | ElectionState::ExpiredConfirmed
+        )
+    }
+
     pub fn update_status_to_confirmed(&mut self, election: &Election) {
         self.status.election_end = SystemTime::now();
         self.status.election_duration = election.election_start.elapsed();

@@ -164,6 +164,15 @@ impl VoteRouter {
         results
     }
 
+    pub fn active(&self, hash: &BlockHash) -> bool {
+        let state = self.shared.1.lock().unwrap();
+        if let Some(existing) = state.elections.get(hash) {
+            existing.strong_count() > 0
+        } else {
+            false
+        }
+    }
+
     /// Calculates minimum time delay between subsequent votes when processing non-final votes
     fn cooldown_time(&self, weight: Amount) -> Duration {
         let online_stake = { self.online_reps.lock().unwrap().trended() };
@@ -191,7 +200,7 @@ impl VoteRouter {
         }
     }
 
-    fn trigger_vote_cache(&self, hash: &BlockHash) -> bool {
+    pub fn trigger_vote_cache(&self, hash: &BlockHash) -> bool {
         let cached = self.vote_cache.lock().unwrap().find(hash);
         for cached_vote in &cached {
             self.vote(cached_vote, VoteSource::Cache);

@@ -10,7 +10,7 @@ use crate::{core::BlockHandle, utils::ContextWrapper, VoidPointerCallback};
 use num_traits::FromPrimitive;
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, VoteSource};
 use rsnano_node::consensus::{
-    ActiveElections, ActiveElectionsConfig, ActiveElectionsExt, Election,
+    ActiveElections, ActiveElectionsConfig, ActiveElectionsExt, Election, VoteApplierExt,
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -49,14 +49,16 @@ pub unsafe extern "C" fn rsn_active_transactions_add_election_winner_details(
     hash: *const u8,
     election: &ElectionHandle,
 ) {
-    handle.add_election_winner_details(BlockHash::from_ptr(hash), Arc::clone(election));
+    handle
+        .vote_applier
+        .add_election_winner_details(BlockHash::from_ptr(hash), Arc::clone(election));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_election_winner_details_len(
     handle: &ActiveTransactionsHandle,
 ) -> usize {
-    handle.election_winner_details_len()
+    handle.vote_applier.election_winner_details_len()
 }
 
 #[no_mangle]
@@ -64,7 +66,9 @@ pub unsafe extern "C" fn rsn_active_transactions_tally_impl(
     handle: &ActiveTransactionsHandle,
     lock_handle: &mut ElectionLockHandle,
 ) -> *mut TallyBlocksHandle {
-    let tally = handle.tally_impl(lock_handle.0.as_mut().unwrap());
+    let tally = handle
+        .vote_applier
+        .tally_impl(lock_handle.0.as_mut().unwrap());
     Box::into_raw(Box::new(TallyBlocksHandle(
         tally
             .iter()
@@ -296,14 +300,6 @@ pub unsafe extern "C" fn rsn_active_transactions_election(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_active_transactions_active_block(
-    handle: &ActiveTransactionsHandle,
-    hash: *const u8,
-) -> bool {
-    handle.active_block(&BlockHash::from_ptr(hash))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_active_transactions_publish(
     handle: &ActiveTransactionsHandle,
     block: &BlockHandle,
@@ -318,7 +314,9 @@ pub unsafe extern "C" fn rsn_active_transactions_vote(
     vote: &VoteHandle,
     source: u8,
 ) -> *mut VoteResultMapHandle {
-    let result = handle.vote(vote, VoteSource::from_u8(source).unwrap());
+    let result = handle
+        .vote_router
+        .vote(vote, VoteSource::from_u8(source).unwrap());
     VoteResultMapHandle::new(&result)
 }
 
@@ -331,7 +329,7 @@ pub unsafe extern "C" fn rsn_active_transactions_vote2(
     block_hash: *const u8,
     vote_source: u8,
 ) -> u8 {
-    handle.vote2(
+    handle.vote_applier.vote(
         election,
         &Account::from_ptr(rep),
         timestamp,

@@ -13,7 +13,6 @@
 
 #include <deque>
 #include <memory>
-#include <unordered_map>
 
 namespace nano
 {
@@ -69,15 +68,9 @@ public:
 
 	void stop ();
 
-	// Distinguishes replay votes, cannot be determined if the block is not in any election
-	std::unordered_map<nano::block_hash, nano::vote_code> vote (std::shared_ptr<nano::vote> const &, nano::vote_source = nano::vote_source::live);
 	// Is the root of this block in the roots container
 	bool active (nano::block const &) const;
 	bool active (nano::qualified_root const &) const;
-	/**
-	 * Is the block hash present in any active election
-	 */
-	bool active (nano::block_hash const &) const;
 	std::shared_ptr<nano::election> election (nano::qualified_root const &) const;
 	// Returns a list of elections sorted by difficulty
 	std::vector<std::shared_ptr<nano::election>> list_active (std::size_t = std::numeric_limits<std::size_t>::max ());

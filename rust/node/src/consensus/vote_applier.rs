@@ -13,10 +13,14 @@ use super::{
     Election, ElectionData, ElectionStatus, LocalVoteHistory, RecentlyConfirmedCache, TallyKey,
     VoteGenerator,
 };
-use rsnano_core::{Account, Amount, BlockEnum, BlockHash, VoteCode, VoteSource};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Account, Amount, BlockEnum, BlockHash, VoteCode, VoteSource,
+};
 use rsnano_ledger::Ledger;
 use std::{
     collections::{BTreeMap, HashMap},
+    mem::size_of,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard},
     time::{Duration, SystemTime},
 };
@@ -85,13 +89,6 @@ impl VoteApplier {
         }
     }
 
-    pub fn confirmed_locked(&self, guard: &MutexGuard<ElectionData>) -> bool {
-        matches!(
-            guard.state,
-            ElectionState::Confirmed | ElectionState::ExpiredConfirmed
-        )
-    }
-
     pub fn tally_impl(
         &self,
         guard: &mut MutexGuard<ElectionData>,
@@ -150,9 +147,31 @@ impl VoteApplier {
         first - second >= delta
     }
 
+    pub fn add_election_winner_details(&self, hash: BlockHash, election: Arc<Election>) {
+        self.election_winner_details
+            .lock()
+            .unwrap()
+            .insert(hash, election);
+    }
+
+    pub fn election_winner_details_len(&self) -> usize {
+        self.election_winner_details.lock().unwrap().len()
+    }
+
     pub fn remove_election_winner_details(&self, hash: &BlockHash) -> Option<Arc<Election>> {
         let mut guard = self.election_winner_details.lock().unwrap();
         guard.remove(hash)
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "election_winner_details".to_string(),
+                count: self.election_winner_details.lock().unwrap().len(),
+                sizeof_element: size_of::<BlockHash>() + size_of::<Arc<Election>>(),
+            })],
+        )
     }
 }
 
@@ -234,7 +253,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
             ?weight,
             "vote processed");
 
-        if !self.confirmed_locked(&guard) {
+        if !guard.is_confirmed() {
             self.confirm_if_quorum(guard, election);
         }
         VoteCode::Vote

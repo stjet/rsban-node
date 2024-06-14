@@ -439,6 +439,15 @@ bool nano::node::online () const
 	return representative_register.total_weight () > online_reps.delta ();
 }
 
+nano::vote_code nano::node::vote (nano::vote const & vote, nano::block_hash hash)
+{
+	return static_cast<nano::vote_code>(rsnano::rsn_node_vote(handle, vote.get_handle(), hash.bytes.data()));
+}
+
+bool nano::node::election_active (nano::block_hash const & hash) const {
+	return rsnano::rsn_node_election_active(handle, hash.bytes.data());
+}
+
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
 {
 	active.process_confirmed (status_a, iteration_a);

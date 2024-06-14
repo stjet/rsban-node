@@ -1,4 +1,4 @@
-use super::{ActiveElections, ActiveElectionsExt, VoteProcessorQueue};
+use super::{VoteProcessorQueue, VoteRouter};
 use crate::{
     stats::{DetailType, StatType, Stats},
     transport::ChannelEnum,
@@ -72,7 +72,7 @@ impl VoteProcessorConfig {
 pub struct VoteProcessor {
     threads: Mutex<Vec<JoinHandle<()>>>,
     queue: Arc<VoteProcessorQueue>,
-    active: Arc<ActiveElections>,
+    vote_router: Arc<VoteRouter>,
     stats: Arc<Stats>,
     vote_processed:
         Mutex<Vec<Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>>>,
@@ -82,13 +82,13 @@ pub struct VoteProcessor {
 impl VoteProcessor {
     pub fn new(
         queue: Arc<VoteProcessorQueue>,
-        active: Arc<ActiveElections>,
+        vote_router: Arc<VoteRouter>,
         stats: Arc<Stats>,
         on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) -> Self {
         Self {
             queue,
-            active,
+            vote_router,
             stats,
             vote_processed: Mutex::new(vec![on_vote]),
             threads: Mutex::new(Vec::new()),
@@ -142,7 +142,7 @@ impl VoteProcessor {
     pub fn vote_blocking(&self, vote: &Arc<Vote>, channel: &Option<Arc<ChannelEnum>>) -> VoteCode {
         let mut result = VoteCode::Invalid;
         if vote.validate().is_ok() {
-            let vote_results = self.active.vote(vote, VoteSource::Live);
+            let vote_results = self.vote_router.vote(vote, VoteSource::Live);
 
             // Aggregate results for individual hashes
             let mut replay = false;

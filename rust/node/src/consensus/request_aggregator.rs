@@ -1,4 +1,4 @@
-use super::{ActiveElections, LocalVoteHistory, VoteGenerator};
+use super::{LocalVoteHistory, VoteGenerator, VoteRouter};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
@@ -37,7 +37,7 @@ pub struct RequestAggregator {
     local_votes: Arc<LocalVoteHistory>,
     ledger: Arc<Ledger>,
     wallets: Arc<Wallets>,
-    active: Arc<ActiveElections>,
+    vote_router: Arc<VoteRouter>,
     pub max_delay: Duration,
     small_delay: Duration,
     max_channel_requests: usize,
@@ -56,7 +56,7 @@ impl RequestAggregator {
         local_votes: Arc<LocalVoteHistory>,
         ledger: Arc<Ledger>,
         wallets: Arc<Wallets>,
-        active: Arc<ActiveElections>,
+        vote_router: Arc<VoteRouter>,
         is_dev_network: bool,
     ) -> Self {
         Self {
@@ -66,7 +66,7 @@ impl RequestAggregator {
             local_votes,
             ledger,
             wallets,
-            active,
+            vote_router,
             max_delay: if is_dev_network {
                 Duration::from_millis(50)
             } else {
@@ -293,7 +293,16 @@ impl RequestAggregator {
 
                 // 3. Election winner by hash
                 if block.is_none() {
-                    block = self.active.winner(hash).map(|b| (*b).clone());
+                    if let Some(election) = self.vote_router.election(hash) {
+                        block = election
+                            .mutex
+                            .lock()
+                            .unwrap()
+                            .status
+                            .winner
+                            .as_ref()
+                            .map(|b| (**b).clone())
+                    }
                 }
 
                 // 4. Ledger by hash

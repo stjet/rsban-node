@@ -236,22 +236,6 @@ std::deque<nano::election_status> nano::active_elections::recently_cemented_list
 	return result;
 }
 
-// Validate a vote and apply it to the current election if one exists
-std::unordered_map<nano::block_hash, nano::vote_code> nano::active_elections::vote (std::shared_ptr<nano::vote> const & vote, nano::vote_source source)
-{
-	auto result_handle = rsnano::rsn_active_transactions_vote (handle, vote->get_handle (), static_cast<uint8_t> (source));
-	std::unordered_map<nano::block_hash, nano::vote_code> result;
-	auto len = rsnano::rsn_vote_result_map_len (result_handle);
-	for (auto i = 0; i < len; ++i)
-	{
-		nano::block_hash hash;
-		auto code = rsnano::rsn_vote_result_map_get (result_handle, i, hash.bytes.data ());
-		result.emplace (hash, static_cast<nano::vote_code> (code));
-	}
-	rsnano::rsn_vote_result_map_destroy (result_handle);
-	return result;
-}
-
 bool nano::active_elections::active (nano::qualified_root const & root_a) const
 {
 	return rsnano::rsn_active_transactions_active_root (handle, root_a.bytes.data ());
@@ -260,11 +244,6 @@ bool nano::active_elections::active (nano::qualified_root const & root_a) const
 bool nano::active_elections::active (nano::block const & block_a) const
 {
 	return rsnano::rsn_active_transactions_active (handle, block_a.get_handle ());
-}
-
-bool nano::active_elections::active (const nano::block_hash & hash) const
-{
-	return rsnano::rsn_active_transactions_active_block (handle, hash.bytes.data ());
 }
 
 std::shared_ptr<nano::election> nano::active_elections::election (nano::qualified_root const & root_a) const

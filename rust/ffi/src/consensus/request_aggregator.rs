@@ -40,7 +40,7 @@ pub extern "C" fn rsn_request_aggregator_create(
             Arc::clone(&local_votes),
             Arc::clone(&ledger),
             Arc::clone(&wallets),
-            Arc::clone(&active),
+            active.vote_router.clone(),
             is_dev_network,
         ),
     ))))

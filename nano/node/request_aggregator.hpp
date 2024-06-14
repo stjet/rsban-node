@@ -11,14 +11,20 @@
 
 namespace nano
 {
-class active_elections;
-class ledger;
-class local_vote_history;
-class node_config;
-class stats;
-class vote_generator;
-class wallets;
+class request_aggregator_config final
+{
+public:
+	request_aggregator_config() = default;
+	explicit request_aggregator_config(rsnano::RequestAggregatorConfigDto const & dto);
 
+	rsnano::RequestAggregatorConfigDto into_dto() const;
+	nano::error deserialize (nano::tomlconfig &);
+
+public:
+	size_t threads;
+	size_t max_queue;
+	size_t batch_size;
+};
 /**
  * Pools together confirmation requests, separately for each endpoint.
  * Requests are added from network messages, and aggregated to minimize bandwidth and vote generation. Example:

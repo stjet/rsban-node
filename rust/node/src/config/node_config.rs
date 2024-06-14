@@ -4,7 +4,9 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfig,
     bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
-    consensus::{ActiveElectionsConfig, VoteCacheConfig, VoteProcessorConfig},
+    consensus::{
+        ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
+    },
     stats::StatsConfig,
     transport::TcpConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
@@ -101,6 +103,7 @@ pub struct NodeConfig {
     pub active_elections: ActiveElectionsConfig,
     pub vote_processor: VoteProcessorConfig,
     pub tcp: TcpConfig,
+    pub request_aggregator: RequestAggregatorConfig,
 }
 
 #[derive(Clone)]
@@ -314,6 +317,7 @@ impl NodeConfig {
             } else {
                 Default::default()
             },
+            request_aggregator: RequestAggregatorConfig::new(parallelism),
         }
     }
 
@@ -510,6 +514,10 @@ impl NodeConfig {
 
         toml.put_child("vote_processor", &mut |writer| {
             self.vote_processor.serialize_toml(writer)
+        })?;
+
+        toml.put_child("request_aggregator", &mut |writer| {
+            self.request_aggregator.serialize_toml(writer)
         })?;
 
         Ok(())

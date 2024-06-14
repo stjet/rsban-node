@@ -6,7 +6,7 @@ use crate::{
     wallets::Wallets,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     BlockEnum, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -21,10 +21,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[derive(Debug, Clone)]
 pub struct RequestAggregatorConfig {
-    threads: usize,
-    max_queue: usize,
-    batch_size: usize,
+    pub threads: usize,
+    pub max_queue: usize,
+    pub batch_size: usize,
 }
 
 impl RequestAggregatorConfig {
@@ -34,6 +35,24 @@ impl RequestAggregatorConfig {
             max_queue: 128,
             batch_size: 16,
         }
+    }
+
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "max_queue",
+            self.max_queue,
+            "Maximum number of queued requests per peer. \ntype:uint64",
+        )?;
+        toml.put_usize(
+            "threads",
+            self.threads,
+            "Number of threads for request processing. \ntype:uint64",
+        )?;
+        toml.put_usize(
+            "batch_size",
+            self.batch_size,
+            "Number of requests to process in a single batch. \ntype:uint64",
+        )
     }
 }
 

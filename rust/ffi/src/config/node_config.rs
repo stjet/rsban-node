@@ -7,7 +7,10 @@ use super::{
 use crate::{
     block_processing::BlockProcessorConfigDto,
     bootstrap::BootstrapServerConfigDto,
-    consensus::{ActiveElectionsConfigDto, VoteCacheConfigDto, VoteProcessorConfigDto},
+    consensus::{
+        ActiveElectionsConfigDto, RequestAggregatorConfigDto, VoteCacheConfigDto,
+        VoteProcessorConfigDto,
+    },
     fill_ipc_config_dto, fill_stat_config_dto,
     utils::FfiToml,
     HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
@@ -17,6 +20,7 @@ use num::FromPrimitive;
 use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
     config::{NodeConfig, Peer},
+    consensus::RequestAggregatorConfig,
     transport::TcpConfig,
     NetworkParams,
 };
@@ -103,6 +107,7 @@ pub struct NodeConfigDto {
     pub active_elections: ActiveElectionsConfigDto,
     pub vote_processor: VoteProcessorConfigDto,
     pub tcp: TcpConfigDto,
+    pub request_aggregator: RequestAggregatorConfigDto,
 }
 
 #[repr(C)]
@@ -291,6 +296,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.active_elections = (&cfg.active_elections).into();
     dto.vote_processor = (&cfg.vote_processor).into();
     dto.tcp = (&cfg.tcp).into();
+    dto.request_aggregator = (&cfg.request_aggregator).into();
 }
 
 #[no_mangle]
@@ -426,6 +432,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             active_elections: (&value.active_elections).into(),
             vote_processor: (&value.vote_processor).into(),
             tcp: (&value.tcp).into(),
+            request_aggregator: (&value.request_aggregator).into(),
         };
 
         Ok(cfg)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/node/request_aggregator.hpp"
 #include <nano/lib/config.hpp>
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/errors.hpp>
@@ -137,6 +138,7 @@ public:
 	nano::active_elections_config active_elections;
 	nano::vote_processor_config vote_processor;
 	nano::transport::tcp_config tcp;
+	nano::request_aggregator_config request_aggregator;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

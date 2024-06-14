@@ -1,6 +1,6 @@
 use crate::transport::ChannelHandle;
 use rsnano_core::{BlockHash, Root};
-use rsnano_node::consensus::RequestAggregator;
+use rsnano_node::consensus::{RequestAggregator, RequestAggregatorConfig};
 use std::{ops::Deref, sync::Arc};
 
 pub struct RequestAggregatorHandle(pub Arc<RequestAggregator>);
@@ -58,4 +58,31 @@ pub unsafe extern "C" fn rsn_hashes_roots_vec_push(
     handle
         .0
         .push((BlockHash::from_ptr(hash), Root::from_ptr(root)))
+}
+
+#[repr(C)]
+pub struct RequestAggregatorConfigDto {
+    pub threads: usize,
+    pub max_queue: usize,
+    pub batch_size: usize,
+}
+
+impl From<&RequestAggregatorConfigDto> for RequestAggregatorConfig {
+    fn from(value: &RequestAggregatorConfigDto) -> Self {
+        Self {
+            threads: value.threads,
+            max_queue: value.max_queue,
+            batch_size: value.batch_size,
+        }
+    }
+}
+
+impl From<&RequestAggregatorConfig> for RequestAggregatorConfigDto {
+    fn from(value: &RequestAggregatorConfig) -> Self {
+        Self {
+            threads: value.threads,
+            max_queue: value.max_queue,
+            batch_size: value.batch_size,
+        }
+    }
 }

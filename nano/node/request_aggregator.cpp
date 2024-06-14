@@ -49,3 +49,29 @@ std::chrono::milliseconds nano::request_aggregator::get_max_delay () const
 {
 	return std::chrono::milliseconds{ rsnano::rsn_request_aggregator_max_delay_ms (handle) };
 }
+
+
+/*
+ * request_aggregator_config
+ */
+
+nano::request_aggregator_config::request_aggregator_config(rsnano::RequestAggregatorConfigDto const & dto) :
+	max_queue{dto.max_queue},
+	threads{dto.threads},
+	batch_size{dto.batch_size}
+{
+}
+
+rsnano::RequestAggregatorConfigDto nano::request_aggregator_config::into_dto() const
+{
+	return{threads, max_queue, batch_size};
+}
+
+nano::error nano::request_aggregator_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("max_queue", max_queue);
+	toml.get ("threads", threads);
+	toml.get ("batch_size", batch_size);
+
+	return toml.get_error ();
+}

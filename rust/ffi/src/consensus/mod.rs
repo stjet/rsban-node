@@ -29,7 +29,7 @@ pub use manual_scheduler::ManualSchedulerHandle;
 pub use optimistic_scheduler::OptimisticSchedulerHandle;
 pub use priority_scheduler::ElectionSchedulerHandle;
 pub use rep_tiers::RepTiersHandle;
-pub use request_aggregator::RequestAggregatorHandle;
+pub use request_aggregator::{RequestAggregatorConfigDto, RequestAggregatorHandle};
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_cache::VoteCacheHandle;

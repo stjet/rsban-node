@@ -161,30 +161,6 @@ nano::container_info const & nano::container_info_leaf::get_info () const
 	return info;
 }
 
-void nano::remove_all_files_in_dir (std::filesystem::path const & dir)
-{
-	for (auto & p : std::filesystem::directory_iterator (dir))
-	{
-		auto path = p.path ();
-		if (std::filesystem::is_regular_file (path))
-		{
-			std::filesystem::remove (path);
-		}
-	}
-}
-
-void nano::move_all_files_to_dir (std::filesystem::path const & from, std::filesystem::path const & to)
-{
-	for (auto & p : std::filesystem::directory_iterator (from))
-	{
-		auto path = p.path ();
-		if (std::filesystem::is_regular_file (path))
-		{
-			std::filesystem::rename (path, to / path.filename ());
-		}
-	}
-}
-
 /*
  * Backing code for "release_assert" & "debug_assert", which are macros
  */

@@ -39,25 +39,6 @@ void nano::websocket::listener::run ()
 	rsnano::rsn_websocket_listener_run (handle);
 }
 
-void nano::websocket::listener::broadcast_confirmation (std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, nano::amount const & amount_a, std::string const & subtype, nano::election_status const & election_status_a, std::vector<nano::vote_with_weight_info> const & election_votes_a)
-{
-	auto vec_handle = rsnano::rsn_vote_with_weight_info_vec_create ();
-	for (const auto & info : election_votes_a)
-	{
-		auto dto{ info.into_dto () };
-		rsnano::rsn_vote_with_weight_info_vec_push (vec_handle, &dto);
-	}
-	rsnano::rsn_websocket_listener_broadcast_confirmation (
-	handle,
-	block_a->get_handle (),
-	account_a.bytes.data (),
-	amount_a.bytes.data (),
-	subtype.c_str (),
-	election_status_a.handle,
-	vec_handle);
-	rsnano::rsn_vote_with_weight_info_vec_destroy (vec_handle);
-}
-
 void nano::websocket::listener::broadcast (nano::websocket::message message_a)
 {
 	rsnano::rsn_websocket_listener_broadcast (handle, message_a.handle);
@@ -103,39 +84,11 @@ nano::websocket::message nano::websocket::message_builder::work_failed (nano::wo
  * websocket_server
  */
 
-nano::websocket_server::websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a, nano::wallets & wallets_a, nano::active_elections & active_elections_a, nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a)
-{
-	auto config_dto{ config_a.to_dto () };
-	auto listener_handle = rsnano::rsn_websocket_server_create (&config_dto, wallets_a.rust_handle, async_rt.handle,
-	active_elections_a.handle, telemetry_a.handle, vote_processor_a.handle);
-
-	if (listener_handle != nullptr)
-	{
-		server = std::make_unique<nano::websocket::listener> (listener_handle);
-	}
-}
-
 nano::websocket_server::websocket_server (rsnano::WebsocketListenerHandle * handle)
 {
 	if (handle != nullptr)
 	{
 		server = std::make_unique<nano::websocket::listener> (handle);
-	}
-}
-
-void nano::websocket_server::start ()
-{
-	if (server)
-	{
-		server->run ();
-	}
-}
-
-void nano::websocket_server::stop ()
-{
-	if (server)
-	{
-		server->stop ();
 	}
 }
 

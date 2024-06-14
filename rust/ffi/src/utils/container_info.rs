@@ -1,8 +1,6 @@
-use std::ffi::{c_char, CStr};
-
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
-
 use crate::StringDto;
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
+use std::ffi::{c_char, CStr};
 
 #[repr(C)]
 pub struct ContainerInfoDto {
@@ -22,13 +20,6 @@ impl From<&ContainerInfo> for ContainerInfoDto {
 }
 
 pub struct ContainerInfoComponentHandle(pub ContainerInfoComponent);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_container_info_component_clone(
-    handle: *mut ContainerInfoComponentHandle,
-) -> *mut ContainerInfoComponentHandle {
-    Box::into_raw(Box::new(ContainerInfoComponentHandle((*handle).0.clone())))
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_container_info_component_destroy(

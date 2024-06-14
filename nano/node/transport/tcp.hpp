@@ -85,8 +85,6 @@ namespace transport
 		{
 			return nano::transport::transport_type::tcp;
 		}
-
-		bool alive () const override;
 	};
 
 	class tcp_channels final : public std::enable_shared_from_this<tcp_channels>

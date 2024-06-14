@@ -1,5 +1,8 @@
+use crate::{
+    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
+    ErrorCodeDto, StatHandle, VoidPointerCallback,
+};
 use num::FromPrimitive;
-
 use rsnano_node::{
     stats::SocketStats,
     transport::{
@@ -16,11 +19,6 @@ use std::{
     time::Duration,
 };
 use tracing::debug;
-
-use crate::{
-    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
-    ErrorCodeDto, StatHandle, VoidPointerCallback,
-};
 
 pub struct SocketHandle(pub Arc<Socket>);
 
@@ -228,11 +226,6 @@ pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCal
 #[no_mangle]
 pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
     DELETE_TCP_SOCKET_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_default_timeout_value(handle: *mut SocketHandle) -> u64 {
-    (*handle).default_timeout_value()
 }
 
 #[no_mangle]

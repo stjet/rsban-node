@@ -157,11 +157,6 @@ std::string nano::transport::channel_tcp::to_string () const
 	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());
 }
 
-bool nano::transport::channel_tcp::alive () const
-{
-	return rsnano::rsn_channel_tcp_is_alive (handle);
-}
-
 /*
  * tcp_channels
  */

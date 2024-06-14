@@ -49,15 +49,6 @@ public:
 	bootstrap_server (bootstrap_server const &) = delete;
 	~bootstrap_server ();
 
-	void start ();
-	void stop ();
-
-	/**
-	 * Process `asc_pull_req` message coming from network.
-	 * Reply will be sent back over passed in `channel`
-	 */
-	bool request (nano::asc_pull_req const & message, std::shared_ptr<nano::transport::channel> channel);
-
 	void set_response_callback (std::function<void (nano::asc_pull_ack const &, std::shared_ptr<nano::transport::channel> &)> callback);
 
 	rsnano::BootstrapServerHandle * handle;

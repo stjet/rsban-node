@@ -140,29 +140,6 @@ std::size_t nano::representative_register::representative_count ()
 {
 	return rsnano::rsn_representative_register_count (handle);
 }
-
-void nano::representative_register::cleanup_reps ()
-{
-	rsnano::rsn_representative_register_cleanup_reps (handle);
-}
-
-std::optional<std::chrono::milliseconds> nano::representative_register::last_request_elapsed (std::shared_ptr<nano::transport::channel> const & target_channel) const
-{
-	auto elapsed_ms = rsnano::rsn_representative_register_last_request_elapsed_ms (handle, target_channel->handle);
-	if (elapsed_ms < 0)
-	{
-		return {};
-	}
-	else
-	{
-		return std::chrono::milliseconds (elapsed_ms);
-	}
-}
-
-void nano::representative_register::on_rep_request (std::shared_ptr<nano::transport::channel> const & target_channel)
-{
-	rsnano::rsn_representative_register_on_rep_request (handle, target_channel->handle);
-}
 //
 //------------------------------------------------------------------------------
 // rep_crawler

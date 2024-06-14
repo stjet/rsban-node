@@ -48,7 +48,6 @@ public:
 	nano::pull_info const &);
 	bulk_pull_client (bulk_pull_client const &) = delete;
 	~bulk_pull_client ();
-	void request ();
 
 	rsnano::BulkPullClientHandle * handle;
 };
@@ -68,7 +67,6 @@ public:
 	bulk_pull_server (bulk_pull_server const &) = delete;
 	~bulk_pull_server ();
 	std::shared_ptr<nano::block> get_next ();
-	void send_next ();
 	nano::block_hash get_current () const;
 	nano::bulk_pull::count_t get_max_count () const;
 	nano::bulk_pull::count_t get_sent_count () const;
@@ -83,7 +81,6 @@ public:
 	bulk_pull_account_server (bulk_pull_server const &) = delete;
 	~bulk_pull_account_server ();
 	std::pair<std::unique_ptr<nano::pending_key>, std::unique_ptr<nano::pending_info>> get_next ();
-	void send_frontier ();
 	nano::pending_key current_key ();
 	bool pending_address_only ();
 	bool pending_include_address ();

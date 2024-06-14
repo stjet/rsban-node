@@ -28,11 +28,6 @@ nano::vote_processor_queue::~vote_processor_queue ()
 	rsnano::rsn_vote_processor_queue_destroy (handle);
 }
 
-bool nano::vote_processor_queue::empty () const
-{
-	return rsnano::rsn_vote_processor_queue_is_empty (handle);
-}
-
 bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle);

@@ -8,8 +8,6 @@
 
 #include <boost/format.hpp>
 
-#include <stdexcept>
-
 namespace
 {
 rsnano::ChannelHandle * create_fake_channel (nano::node & node)
@@ -46,11 +44,6 @@ void nano::transport::fake::channel::send (nano::message & message_a, std::funct
 std::string nano::transport::fake::channel::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());
-}
-
-bool nano::transport::fake::channel::alive () const
-{
-	return rsnano::rsn_channel_is_alive (handle);
 }
 
 nano::endpoint nano::transport::fake::channel::get_remote_endpoint () const

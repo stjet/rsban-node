@@ -23,11 +23,6 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_destroy(handle: *mut BootstrapI
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_initiator_initialize(handle: &BootstrapInitiatorHandle) {
-    handle.initialize();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_initiator_bootstrap(
     handle: &BootstrapInitiatorHandle,
     force: bool,
@@ -67,15 +62,6 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_bootstrap_lazy(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_initiator_bootstrap_wallet(
-    handle: &BootstrapInitiatorHandle,
-    accounts: &AccountVecHandle,
-) {
-    let accounts = accounts.iter().cloned().collect();
-    handle.bootstrap_wallet(accounts);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_initiator_in_progress(
     handle: &BootstrapInitiatorHandle,
 ) -> bool {
@@ -110,11 +96,6 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_current_wallet_attempt(
         Some(attempt) => BootstrapAttemptHandle::new(attempt),
         None => std::ptr::null_mut(),
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_initiator_start(handle: &BootstrapInitiatorHandle) {
-    handle.start();
 }
 
 #[no_mangle]

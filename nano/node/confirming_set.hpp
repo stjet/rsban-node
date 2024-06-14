@@ -25,7 +25,6 @@ class confirming_set final
 {
 public:
 	confirming_set (rsnano::ConfirmingSetHandle * handle);
-	confirming_set (nano::ledger & ledger, std::chrono::milliseconds batch_time = std::chrono::milliseconds{ 500 });
 	~confirming_set ();
 	// Adds a block to the set of blocks to be confirmed
 	void add (nano::block_hash const & hash);

@@ -117,28 +117,11 @@ namespace websocket
 		/** Close all websocket sessions and stop listening for new connections */
 		void stop ();
 
-		/** Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block") */
-		void broadcast_confirmation (
-		std::shared_ptr<nano::block> const & block_a,
-		nano::account const & account_a,
-		nano::amount const & amount_a,
-		std::string const & subtype,
-		nano::election_status const & election_status_a,
-		std::vector<nano::vote_with_weight_info> const & election_votes_a);
-
 		/** Broadcast \p message to all session subscribing to the message topic. */
 		void broadcast (nano::websocket::message message_a);
 
 		std::uint16_t listening_port ();
 
-		/**
-		 * Per-topic subscribers check. Relies on all sessions correctly increasing and
-		 * decreasing the subscriber counts themselves.
-		 */
-		bool any_subscriber (nano::websocket::topic const & topic_a) const
-		{
-			return subscriber_count (topic_a) > 0;
-		}
 		/** Getter for subscriber count of a specific topic*/
 		std::size_t subscriber_count (nano::websocket::topic const & topic_a) const;
 
@@ -152,16 +135,9 @@ namespace websocket
 class websocket_server
 {
 public:
-	websocket_server (rsnano::async_runtime & async_rt, nano::websocket::config & config_a,
-	nano::wallets & wallets_a, nano::active_elections & active_elections_a,
-	nano::telemetry & telemetry_a, nano::vote_processor & vote_processor_a);
-
 	websocket_server (rsnano::WebsocketListenerHandle * handle);
 
 	rsnano::WebsocketListenerHandle * get_handle ();
-
-	void start ();
-	void stop ();
 
 public:
 	// TODO: Encapsulate, this is public just because existing code needs it

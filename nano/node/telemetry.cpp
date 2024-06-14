@@ -29,19 +29,9 @@ nano::telemetry::~telemetry ()
 	rsnano::rsn_telemetry_destroy (handle);
 }
 
-void nano::telemetry::start ()
-{
-	rsnano::rsn_telemetry_start (handle);
-}
-
-void nano::telemetry::stop ()
-{
-	rsnano::rsn_telemetry_stop (handle);
-}
-
 void nano::telemetry::trigger ()
 {
-	rsnano::rsn_telemetry_trigger (handle);
+    rsnano::rsn_telemetry_trigger (handle);
 }
 
 nano::telemetry_data nano::telemetry::local_telemetry () const

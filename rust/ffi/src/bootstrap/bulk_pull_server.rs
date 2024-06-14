@@ -70,11 +70,6 @@ pub unsafe extern "C" fn rsn_bulk_pull_server_request(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bulk_pull_server_send_next(handle: *mut BulkPullServerHandle) {
-    (*handle).0.send_next();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bulk_pull_server_get_next(
     handle: *mut BulkPullServerHandle,
 ) -> *mut BlockHandle {

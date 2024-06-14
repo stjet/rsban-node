@@ -24,18 +24,6 @@ nano::block_processor::block_processor (rsnano::BlockProcessorHandle * handle) :
 {
 }
 
-nano::block_processor::block_processor (nano::node & node_a)
-{
-	auto config_dto{ node_a.config->to_dto () };
-	handle = rsnano::rsn_block_processor_create (
-	&config_dto,
-	node_a.flags.handle,
-	node_a.ledger.handle,
-	node_a.unchecked.handle,
-	node_a.stats->handle,
-	&node_a.config->network_params.work.dto);
-}
-
 nano::block_processor::~block_processor ()
 {
 	rsnano::rsn_block_processor_destroy (handle);

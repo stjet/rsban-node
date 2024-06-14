@@ -2,11 +2,6 @@
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/node.hpp>
 
-nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
-	handle{ rsnano::rsn_distributed_work_factory_create (node_a.work.handle, node_a.async_rt.handle) }
-{
-}
-
 nano::distributed_work_factory::distributed_work_factory (rsnano::DistributedWorkFactoryHandle * handle) :
 	handle{ handle }
 {

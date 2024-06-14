@@ -1,16 +1,12 @@
+use super::ContextWrapper;
+use crate::VoidPointerCallback;
+use rsnano_node::utils::{ThreadPool, ThreadPoolImpl};
 use std::{
     ffi::{c_char, c_void, CStr},
     ops::Deref,
     sync::Arc,
     time::Duration,
 };
-
-use crate::VoidPointerCallback;
-use rsnano_node::utils::{ThreadPool, ThreadPoolImpl};
-
-use super::ContextWrapper;
-
-pub struct VoidFnCallbackHandle(Option<Box<dyn FnOnce()>>);
 
 pub struct ThreadPoolHandle(pub Arc<dyn ThreadPool>);
 
@@ -72,16 +68,4 @@ pub unsafe extern "C" fn rsn_thread_pool_add_delayed_task(
     (*handle)
         .0
         .add_delayed_task(Duration::from_millis(delay_ms), callback);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_void_fn_callback_call(f: *mut VoidFnCallbackHandle) {
-    if let Some(cb) = (*f).0.take() {
-        cb();
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_void_fn_callback_destroy(f: *mut VoidFnCallbackHandle) {
-    drop(Box::from_raw(f))
 }

@@ -57,18 +57,16 @@ nano::public_key nano::wallet_store::deterministic_insert (store::transaction co
 	return key;
 }
 
-nano::public_key nano::wallet_store::deterministic_insert (store::transaction const & transaction_a, uint32_t const index)
-{
-	nano::public_key key;
-	rsnano::rsn_lmdb_wallet_store_deterministic_insert_at (rust_handle, transaction_a.get_rust_handle (), index, key.bytes.data ());
-	return key;
-}
-
 nano::raw_key nano::wallet_store::deterministic_key (store::transaction const & transaction_a, uint32_t index_a)
 {
 	nano::raw_key key;
 	rsnano::rsn_lmdb_wallet_store_deterministic_key (rust_handle, transaction_a.get_rust_handle (), index_a, key.bytes.data ());
 	return key;
+}
+
+void nano::wallet_store::password (nano::raw_key & password_a) const
+{
+    rsnano::rsn_lmdb_wallet_store_password (rust_handle, password_a.bytes.data ());
 }
 
 uint32_t nano::wallet_store::deterministic_index_get (store::transaction const & transaction_a)
@@ -131,40 +129,9 @@ nano::wallet_store::~wallet_store ()
 		rsnano::rsn_lmdb_wallet_store_destroy (rust_handle);
 }
 
-bool nano::wallet_store::is_open () const
-{
-	return rsnano::rsn_lmdb_wallet_store_is_open (rust_handle);
-}
-
-void nano::wallet_store::lock ()
-{
-	rsnano::rsn_lmdb_wallet_store_lock (rust_handle);
-}
-
-void nano::wallet_store::password (nano::raw_key & password_a) const
-{
-	rsnano::rsn_lmdb_wallet_store_password (rust_handle, password_a.bytes.data ());
-}
-
 void nano::wallet_store::set_password (nano::raw_key const & password_a)
 {
 	rsnano::rsn_lmdb_wallet_store_set_password (rust_handle, password_a.bytes.data ());
-}
-
-std::vector<nano::account> nano::wallet_store::accounts (store::transaction const & transaction_a)
-{
-	rsnano::U256ArrayDto dto;
-	rsnano::rsn_lmdb_wallet_store_accounts (rust_handle, transaction_a.get_rust_handle (), &dto);
-	std::vector<nano::account> result;
-	result.reserve (dto.count);
-	for (int i = 0; i < dto.count; ++i)
-	{
-		nano::account account;
-		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (account.bytes));
-		result.push_back (account);
-	}
-	rsnano::rsn_u256_array_destroy (&dto);
-	return result;
 }
 
 bool nano::wallet_store::is_representative (store::transaction const & transaction_a)
@@ -201,11 +168,6 @@ void nano::wallet_store::erase (store::transaction const & transaction_a, nano::
 	rsnano::rsn_lmdb_wallet_store_erase (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data ());
 }
 
-nano::key_type nano::wallet_store::key_type (store::transaction const & transaction_a, nano::account const & account)
-{
-	return static_cast<nano::key_type> (rsnano::rsn_lmdb_wallet_store_key_type (rust_handle, transaction_a.get_rust_handle (), account.bytes.data ()));
-}
-
 bool nano::wallet_store::fetch (store::transaction const & transaction_a, nano::account const & pub, nano::raw_key & prv)
 {
 	return !rsnano::rsn_lmdb_wallet_store_fetch (rust_handle, transaction_a.get_rust_handle (), pub.bytes.data (), prv.bytes.data ());
@@ -223,40 +185,9 @@ void nano::wallet_store::serialize_json (store::transaction const & transaction_
 	string_a = rsnano::convert_dto_to_string (dto);
 }
 
-void nano::wallet_store::write_backup (store::transaction const & transaction_a, std::filesystem::path const & path_a)
-{
-	rsnano::rsn_lmdb_wallet_store_write_backup (rust_handle, transaction_a.get_rust_handle (), path_a.c_str ());
-}
-
 bool nano::wallet_store::move (store::transaction const & transaction_a, nano::wallet_store & other_a, std::vector<nano::public_key> const & keys)
 {
 	return !rsnano::rsn_lmdb_wallet_store_move (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle, reinterpret_cast<const uint8_t *> (keys.data ()), keys.size ());
-}
-
-bool nano::wallet_store::import (store::transaction const & transaction_a, nano::wallet_store & other_a)
-{
-	return !rsnano::rsn_lmdb_wallet_store_import (rust_handle, transaction_a.get_rust_handle (), other_a.rust_handle);
-}
-
-bool nano::wallet_store::work_get (store::transaction const & transaction_a, nano::public_key const & pub_a, uint64_t & work_a)
-{
-	return !rsnano::rsn_lmdb_wallet_store_work_get (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), &work_a);
-}
-
-void nano::wallet_store::work_put (store::transaction const & transaction_a, nano::public_key const & pub_a, uint64_t work_a)
-{
-	rsnano::rsn_lmdb_wallet_store_work_put (rust_handle, transaction_a.get_rust_handle (), pub_a.bytes.data (), work_a);
-}
-
-unsigned nano::wallet_store::version (store::transaction const & transaction_a)
-{
-	return rsnano::rsn_lmdb_wallet_store_version (rust_handle, transaction_a.get_rust_handle ());
-}
-
-void nano::wallet_store::destroy (store::transaction const & transaction_a)
-{
-	if (rust_handle != nullptr)
-		rsnano::rsn_lmdb_wallet_store_destroy2 (rust_handle, transaction_a.get_rust_handle ());
 }
 
 nano::kdf::kdf (unsigned kdf_work) :
@@ -284,16 +215,6 @@ nano::wallet_action_thread::~wallet_action_thread ()
 	rsnano::rsn_wallet_action_thread_destroy (handle);
 }
 
-void nano::wallet_action_thread::start ()
-{
-	rsnano::rsn_wallet_action_thread_start (handle);
-}
-
-void nano::wallet_action_thread::stop ()
-{
-	rsnano::rsn_wallet_action_thread_stop (handle);
-}
-
 namespace
 {
 void wrapped_wallet_action_callback (void * context, rsnano::WalletHandle * wallet_handle)
@@ -308,24 +229,6 @@ void delete_wallet_action_context (void * context)
 	auto action = static_cast<std::function<void (nano::wallet &)> *> (context);
 	delete action;
 }
-}
-
-void nano::wallet_action_thread::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
-{
-	nano::amount amount{ amount_a };
-	auto context = new std::function<void (nano::wallet &)> (action_a);
-	rsnano::rsn_wallet_action_thread_queue_wallet_action (
-	handle,
-	amount.bytes.data (),
-	wallet_a->handle,
-	wrapped_wallet_action_callback,
-	context,
-	delete_wallet_action_context);
-}
-
-size_t nano::wallet_action_thread::size ()
-{
-	return rsnano::rsn_wallet_action_thread_len (handle);
 }
 
 namespace
@@ -354,12 +257,6 @@ void delete_start_election_context (void * context)
 	auto callback = static_cast<std::function<void (std::shared_ptr<nano::block> const &)> *> (context);
 	delete callback;
 }
-}
-
-void nano::wallet_action_thread::set_observer (std::function<void (bool)> observer_a)
-{
-	auto context = new std::function<void (bool)> (observer_a);
-	rsnano::rsn_wallet_action_thread_set_observer (handle, wrapped_wallet_action_observer, context, delete_wallet_action_observer_context);
 }
 
 nano::wallet::representatives_lock::representatives_lock (rsnano::RepresentativesLockHandle * handle) :
@@ -429,49 +326,10 @@ nano::wallet::~wallet ()
 		rsnano::rsn_wallet_destroy (handle);
 }
 
-bool nano::wallet::insert_watch (store::transaction const & transaction_a, nano::public_key const & pub_a)
-{
-	return store.insert_watch (transaction_a, pub_a);
-}
-
-// Update work for account if latest root is root_a
-void nano::wallet::work_update (store::transaction const & transaction_a, nano::account const & account_a, nano::root const & root_a, uint64_t work_a)
-{
-	rsnano::rsn_wallet_work_update (handle, transaction_a.get_rust_handle (), account_a.bytes.data (), root_a.bytes.data (), work_a);
-}
-
-uint32_t nano::wallet::deterministic_check (store::transaction const & transaction_a, uint32_t index)
-{
-	return rsnano::rsn_wallet_deterministic_check (handle, transaction_a.get_rust_handle (), index);
-}
-
-bool nano::wallet::live ()
-{
-	return rsnano::rsn_wallet_live (handle);
-}
-
 size_t nano::wallet::representatives_count () const
 {
 	auto representatives_lk (representatives_mutex.lock ());
 	return representatives_lk.size ();
-}
-
-void nano::wallet::insert_representative (nano::account const & rep)
-{
-	auto representatives_lk (representatives_mutex.lock ());
-	representatives_lk.insert (rep);
-}
-
-std::unordered_set<nano::account> nano::wallet::get_representatives ()
-{
-	auto representatives_lk (representatives_mutex.lock ());
-	return representatives_lk.get_all ();
-}
-
-void nano::wallet::set_representatives (std::unordered_set<nano::account> const & reps)
-{
-	auto representatives_lk (representatives_mutex.lock ());
-	representatives_lk.set (reps);
 }
 
 //---------------------------------------
@@ -550,11 +408,6 @@ std::shared_ptr<nano::wallet> nano::wallets::wallets_mutex_lock::find (nano::wal
 	return wallet;
 }
 
-void nano::wallets::wallets_mutex_lock::insert (nano::wallet_id const & wallet_id, std::shared_ptr<nano::wallet> wallet)
-{
-	rsnano::rsn_lmdb_wallets_mutex_lock_insert (handle, wallet_id.bytes.data (), wallet->handle);
-}
-
 std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets::wallets_mutex_lock::get_all ()
 {
 	auto vec_handle = rsnano::rsn_lmdb_wallets_mutex_lock_get_all (handle);
@@ -574,11 +427,6 @@ std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> nano::wallets
 size_t nano::wallets::wallets_mutex_lock::size () const
 {
 	return rsnano::rsn_lmdb_wallets_mutex_lock_size (handle);
-}
-
-void nano::wallets::wallets_mutex_lock::erase (nano::wallet_id const & wallet_id)
-{
-	rsnano::rsn_lmdb_wallets_mutex_lock_erase (handle, wallet_id.bytes.data ());
 }
 
 nano::wallets::wallets_mutex::wallets_mutex (rsnano::LmdbWalletsHandle * handle) :
@@ -751,12 +599,6 @@ nano::wallets_error nano::wallets::get_accounts (nano::wallet_id const & wallet_
 	return error;
 }
 
-std::vector<nano::account> nano::wallets::get_accounts (size_t max_results)
-{
-	rsnano::account_vec acc_vec{ rsnano::rsn_wallets_get_accounts (rust_handle, max_results) };
-	return acc_vec.into_vector ();
-}
-
 nano::wallets_error nano::wallets::work_get (nano::wallet_id const & wallet_id, nano::account const & account, uint64_t & work)
 {
 	auto result = rsnano::rsn_wallets_work_get2 (rust_handle, wallet_id.bytes.data (), account.bytes.data (), &work);
@@ -811,13 +653,6 @@ nano::wallets_error nano::wallets::insert_adhoc (nano::wallet_id const & wallet_
 	return static_cast<nano::wallets_error> (rsnano::rsn_wallets_insert_adhoc2 (rust_handle, wallet_id.bytes.data (), key_a.bytes.data (), generate_work_a, account.bytes.data ()));
 }
 
-nano::public_key nano::wallets::insert_adhoc (const std::shared_ptr<nano::wallet> & wallet, nano::raw_key const & key_a, bool generate_work_a)
-{
-	nano::public_key result;
-	rsnano::rsn_wallets_insert_adhoc (rust_handle, wallet->handle, key_a.bytes.data (), generate_work_a, result.bytes.data ());
-	return result;
-}
-
 std::shared_ptr<nano::block> nano::wallets::receive_action (const std::shared_ptr<nano::wallet> & wallet, nano::block_hash const & send_hash_a, nano::account const & representative_a, nano::uint128_union const & amount_a, nano::account const & account_a, uint64_t work_a, bool generate_work_a)
 {
 	auto block_handle = rsnano::rsn_wallets_receive_action (rust_handle, wallet->handle, send_hash_a.bytes.data (), representative_a.bytes.data (), amount_a.bytes.data (), account_a.bytes.data (), work_a, generate_work_a);
@@ -853,37 +688,9 @@ bool nano::wallets::receive_sync (const std::shared_ptr<nano::wallet> & wallet, 
 	return rsnano::rsn_wallets_receive_sync (rust_handle, wallet->handle, block_a->get_handle (), representative_a.bytes.data (), amount.bytes.data ());
 }
 
-void nano::wallets::set_start_election_callback (std::function<void (std::shared_ptr<nano::block> const &)> callback)
-{
-	auto context = new std::function<void (std::shared_ptr<nano::block> const &)> (callback);
-	rsnano::rsn_wallets_set_start_election_callback (rust_handle, start_election_wrapper, context, delete_start_election_context);
-}
-
-bool nano::wallets::search_receivable (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & wallet_transaction_a)
-{
-	return rsnano::rsn_wallets_search_receivable (rust_handle, wallet->handle, wallet_transaction_a.get_rust_handle ());
-}
-
-bool nano::wallets::enter_password (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, std::string const & password_a)
-{
-	return rsnano::rsn_wallets_enter_password (rust_handle, wallet->handle, transaction_a.get_rust_handle (), password_a.c_str ());
-}
-
 void nano::wallets::enter_initial_password (const std::shared_ptr<nano::wallet> & wallet)
 {
 	rsnano::rsn_wallets_enter_initial_password (rust_handle, wallet->handle);
-}
-
-nano::public_key nano::wallets::change_seed (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count)
-{
-	nano::public_key pub_key;
-	rsnano::rsn_wallets_change_seed (rust_handle, wallet->handle, transaction_a.get_rust_handle (), prv_a.bytes.data (), count, pub_key.bytes.data ());
-	return pub_key;
-}
-
-void nano::wallets::work_cache_blocking (const std::shared_ptr<nano::wallet> & wallet, nano::account const & account_a, nano::root const & root_a)
-{
-	rsnano::rsn_wallets_work_cache_blocking (rust_handle, wallet->handle, account_a.bytes.data (), root_a.bytes.data ());
 }
 
 nano::root nano::wallets::get_delayed_work (nano::account const & account)
@@ -893,43 +700,9 @@ nano::root nano::wallets::get_delayed_work (nano::account const & account)
 	return result;
 }
 
-void nano::wallets::erase_delayed_work (nano::account const & account)
-{
-	rsnano::rsn_wallets_erase_delayed_work (rust_handle, account.bytes.data ());
-}
-
-void nano::wallets::set_actions_observer (std::function<void (bool)> observer_a)
-{
-	auto context = new std::function<void (bool)> (observer_a);
-	rsnano::rsn_wallets_set_observer (rust_handle, wrapped_wallet_action_observer, context, delete_wallet_action_observer_context);
-}
-
-void nano::wallets::start_actions ()
-{
-	rsnano::rsn_wallets_start (rust_handle);
-}
-
 void nano::wallets::stop_actions ()
 {
 	rsnano::rsn_wallets_stop (rust_handle);
-}
-
-void nano::wallets::queue_wallet_action (nano::uint128_t const & amount_a, std::shared_ptr<nano::wallet> const & wallet_a, std::function<void (nano::wallet &)> action_a)
-{
-	nano::amount amount{ amount_a };
-	auto context = new std::function<void (nano::wallet &)> (action_a);
-	rsnano::rsn_wallets_queue_wallet_action (
-	rust_handle,
-	amount.bytes.data (),
-	wallet_a->handle,
-	wrapped_wallet_action_callback,
-	context,
-	delete_wallet_action_context);
-}
-
-size_t nano::wallets::actions_size ()
-{
-	return rsnano::rsn_wallets_actions_size (rust_handle);
 }
 
 nano::wallet_representatives_lock nano::wallets::lock_representatives () const
@@ -994,13 +767,6 @@ nano::wallets_error nano::wallets::lock (nano::wallet_id const & wallet_id)
 	return static_cast<nano::wallets_error> (error);
 }
 
-nano::public_key nano::wallets::deterministic_insert (const std::shared_ptr<nano::wallet> & wallet, store::transaction const & transaction_a, bool generate_work_a)
-{
-	nano::public_key key;
-	rsnano::rsn_wallets_deterministic_insert (rust_handle, wallet->handle, transaction_a.get_rust_handle (), generate_work_a, key.bytes.data ());
-	return key;
-}
-
 nano::wallets_error nano::wallets::deterministic_insert (nano::wallet_id const & wallet_id, uint32_t const index, bool generate_work_a, nano::account & account)
 {
 	auto result = rsnano::rsn_wallets_deterministic_insert2 (rust_handle, wallet_id.bytes.data (), index, generate_work_a, account.bytes.data ());
@@ -1017,21 +783,6 @@ nano::wallets_error nano::wallets::deterministic_index_get (nano::wallet_id cons
 {
 	auto result = rsnano::rsn_wallets_deterministic_index_get (rust_handle, wallet_id.bytes.data (), &index);
 	return static_cast<nano::wallets_error> (result);
-}
-
-void nano::wallets::backup (std::filesystem::path const & backup_path)
-{
-	if (rsnano::rsn_wallets_backup (rust_handle, backup_path.c_str ()) != 0)
-	{
-		throw std::runtime_error ("backup failed");
-	}
-}
-
-void nano::wallets::work_cache_blocking (nano::wallet_id const & wallet_id, nano::account const & account_a, nano::root const & root_a)
-{
-	auto lock{ mutex.lock () };
-	auto wallet{ lock.find (wallet_id) };
-	work_cache_blocking (wallet, account_a, root_a);
 }
 
 std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
@@ -1190,59 +941,9 @@ bool nano::wallets::rep_exists (nano::account const & rep) const
 	return lock_representatives ().exists (rep);
 }
 
-bool nano::wallets::should_republish_vote (nano::account const & voting_account) const
-{
-	auto lck{ lock_representatives () };
-	return !lck.have_half_rep () && !lck.exists (voting_account);
-}
-
 void nano::wallets::compute_reps ()
 {
 	rsnano::rsn_wallets_compute_reps (rust_handle);
-}
-
-void nano::wallets::receive_confirmed (nano::block_hash const & hash_a, nano::account const & destination_a)
-{
-	rsnano::rsn_wallets_receive_confirmed (rust_handle, hash_a.bytes.data (), destination_a.bytes.data ());
-}
-
-std::vector<nano::wallet_id> nano::wallets::get_wallet_ids (nano::store::transaction const & transaction_a)
-{
-	rsnano::U256ArrayDto dto;
-	rsnano::rsn_lmdb_wallets_get_wallet_ids (rust_handle, transaction_a.get_rust_handle (), &dto);
-	std::vector<nano::wallet_id> wallet_ids;
-	for (int i = 0; i < dto.count; ++i)
-	{
-		nano::wallet_id id;
-		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (id.bytes));
-		wallet_ids.push_back (id);
-	}
-	rsnano::rsn_u256_array_destroy (&dto);
-	return wallet_ids;
-}
-
-nano::block_hash nano::wallets::get_block_hash (bool & error_a, nano::store::transaction const & transaction_a, std::string const & id_a)
-{
-	nano::block_hash result;
-	error_a = !rsnano::rsn_lmdb_wallets_get_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), result.bytes.data ());
-	return result;
-}
-
-void nano::wallets::work_ensure (std::shared_ptr<nano::wallet> wallet, nano::account const & account_a, nano::root const & root_a)
-{
-	rsnano::rsn_wallets_work_ensure (rust_handle, wallet->handle, account_a.bytes.data (), root_a.bytes.data ());
-}
-
-bool nano::wallets::action_complete (std::shared_ptr<nano::wallet> wallet, std::shared_ptr<nano::block> const & block_a, nano::account const & account_a, bool const generate_work_a, nano::block_details const & details_a)
-{
-	auto block_handle = block_a == nullptr ? nullptr : block_a->get_handle ();
-	auto error = rsnano::rsn_wallets_action_complete (rust_handle, wallet->handle, block_handle, account_a.bytes.data (), generate_work_a, &details_a.dto) != 0;
-	return error;
-}
-
-bool nano::wallets::set_block_hash (nano::store::transaction const & transaction_a, std::string const & id_a, nano::block_hash const & hash)
-{
-	return !rsnano::rsn_lmdb_wallets_set_block_hash (rust_handle, transaction_a.get_rust_handle (), id_a.c_str (), hash.bytes.data ());
 }
 
 namespace
@@ -1261,12 +962,6 @@ nano::store::iterator<nano::account, nano::wallet_value> to_iterator (rsnano::Lm
 nano::store::iterator<nano::account, nano::wallet_value> nano::wallet_store::begin (nano::store::transaction const & transaction_a)
 {
 	auto it_handle{ rsnano::rsn_lmdb_wallet_store_begin (rust_handle, transaction_a.get_rust_handle ()) };
-	return to_iterator (it_handle);
-}
-
-nano::store::iterator<nano::account, nano::wallet_value> nano::wallet_store::begin (store::transaction const & transaction_a, nano::account const & key)
-{
-	auto it_handle{ rsnano::rsn_lmdb_wallet_store_begin_at_account (rust_handle, transaction_a.get_rust_handle (), key.bytes.data ()) };
 	return to_iterator (it_handle);
 }
 

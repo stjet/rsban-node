@@ -35,11 +35,6 @@ pub unsafe extern "C" fn rsn_frontier_req_server_destroy(handle: *mut FrontierRe
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_frontier_req_server_send_next(handle: *mut FrontierReqServerHandle) {
-    (*handle).0.send_next()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_frontier_req_server_current(
     handle: *mut FrontierReqServerHandle,
     current: *mut u8,

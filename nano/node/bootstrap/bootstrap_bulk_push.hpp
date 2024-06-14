@@ -1,10 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-
 #include <nano/node/common.hpp>
-
-#include <future>
 
 namespace nano
 {
@@ -24,9 +21,6 @@ class bulk_push_client final : public std::enable_shared_from_this<nano::bulk_pu
 public:
 	explicit bulk_push_client (std::shared_ptr<nano::node> const &, std::shared_ptr<nano::bootstrap_client> const &, std::shared_ptr<nano::bootstrap_attempt_legacy> const &);
 	~bulk_push_client ();
-	void start ();
-	bool get_result ();
-	void set_result (bool value);
 	rsnano::BulkPushClientHandle * handle;
 };
 }

@@ -43,16 +43,6 @@ std::string nano::bootstrap_attempt::id () const
 	return rsnano::convert_dto_to_string (str_result);
 }
 
-uint64_t nano::bootstrap_attempt::get_incremental_id () const
-{
-	return rsnano::rsn_bootstrap_attempt_incremental_id (handle);
-}
-
-bool nano::bootstrap_attempt::should_log ()
-{
-	return rsnano::rsn_bootstrap_attempt_should_log (handle);
-}
-
 uint64_t nano::bootstrap_attempt::total_blocks () const
 {
 	return rsnano::rsn_bootstrap_attempt_total_blocks (handle);
@@ -78,24 +68,9 @@ bool nano::bootstrap_attempt::get_started () const
 	return rsnano::rsn_bootstrap_attempt_started (handle);
 }
 
-bool nano::bootstrap_attempt::set_started ()
-{
-	return rsnano::rsn_bootstrap_attempt_set_started (handle);
-}
-
-nano::bootstrap_mode nano::bootstrap_attempt::get_mode () const
-{
-	return static_cast<nano::bootstrap_mode> (rsnano::rsn_bootstrap_attempt_bootstrap_mode (handle));
-}
-
 unsigned nano::bootstrap_attempt::get_requeued_pulls () const
 {
 	return rsnano::rsn_bootstrap_attempt_requeued_pulls (handle);
-}
-
-void nano::bootstrap_attempt::inc_requeued_pulls ()
-{
-	rsnano::rsn_bootstrap_attempt_requeued_pulls_inc (handle);
 }
 
 bool nano::bootstrap_attempt::get_frontiers_received () const
@@ -103,39 +78,9 @@ bool nano::bootstrap_attempt::get_frontiers_received () const
 	return rsnano::rsn_bootstrap_attempt_frontiers_received (handle);
 }
 
-void nano::bootstrap_attempt::set_frontiers_received (bool value)
-{
-	rsnano::rsn_bootstrap_attempt_frontiers_received_set (handle, value);
-}
-
-std::chrono::seconds nano::bootstrap_attempt::duration () const
-{
-	return std::chrono::seconds (rsnano::rsn_bootstrap_attempt_duration_seconds (handle));
-}
-
 bool nano::bootstrap_attempt::get_stopped () const
 {
 	return rsnano::rsn_bootstrap_attempt_stopped (handle);
-}
-
-void nano::bootstrap_attempt::set_stopped ()
-{
-	rsnano::rsn_bootstrap_attempt_set_stopped (handle);
-}
-
-bool nano::bootstrap_attempt::still_pulling ()
-{
-	return rsnano::rsn_bootstrap_attempt_still_pulling (handle);
-}
-
-void nano::bootstrap_attempt::pull_started ()
-{
-	rsnano::rsn_bootstrap_attempt_pull_started (handle);
-}
-
-void nano::bootstrap_attempt::pull_finished ()
-{
-	rsnano::rsn_bootstrap_attempt_pull_finished (handle);
 }
 
 void nano::bootstrap_attempt::run ()
@@ -146,24 +91,6 @@ void nano::bootstrap_attempt::run ()
 void nano::bootstrap_attempt::stop ()
 {
 	rsnano::rsn_bootstrap_attempt_stop (handle);
-}
-
-void nano::bootstrap_attempt::notify_all ()
-{
-	rsnano::rsn_bootstrap_attempt_notifiy_all (handle);
-}
-
-std::string nano::bootstrap_attempt::mode_text ()
-{
-	std::size_t len;
-	auto ptr{ rsnano::rsn_bootstrap_attempt_bootstrap_mode_text (handle, &len) };
-	std::string mode_text (ptr, len);
-	return mode_text;
-}
-
-bool nano::bootstrap_attempt::process_block (std::shared_ptr<nano::block> const & block_a, nano::account const & known_account_a, uint64_t pull_blocks_processed, nano::bulk_pull::count_t max_blocks, bool block_expected, unsigned retry_limit)
-{
-	return rsnano::rsn_bootstrap_attempt_process_block (handle, block_a->get_handle (), known_account_a.bytes.data (), pull_blocks_processed, max_blocks, block_expected, retry_limit);
 }
 
 void nano::bootstrap_attempt::block_processed (store::transaction const & tx, nano::block_status const & result, nano::block const & block)

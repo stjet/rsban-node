@@ -44,11 +44,6 @@ nano::frontier_req_server::~frontier_req_server ()
 	rsnano::rsn_frontier_req_server_destroy (handle);
 }
 
-void nano::frontier_req_server::send_next ()
-{
-	rsnano::rsn_frontier_req_server_send_next (handle);
-}
-
 nano::public_key nano::frontier_req_server::current () const
 {
 	nano::public_key result;

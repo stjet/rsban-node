@@ -25,12 +25,6 @@ public:
 	virtual ~bootstrap_attempt ();
 	virtual void run ();
 	virtual void stop ();
-	bool still_pulling ();
-	void pull_started ();
-	void pull_finished ();
-	bool should_log ();
-	std::string mode_text ();
-	virtual bool process_block (std::shared_ptr<nano::block> const &, nano::account const &, uint64_t, nano::bulk_pull::count_t, bool, unsigned);
 	virtual void get_information (boost::property_tree::ptree &) = 0;
 	virtual void block_processed (nano::store::transaction const & tx, nano::block_status const & result, nano::block const & block);
 	uint64_t total_blocks () const;
@@ -38,19 +32,11 @@ public:
 	unsigned get_pulling () const;
 	void inc_pulling ();
 	bool get_stopped () const;
-	void set_stopped ();
 	bool get_started () const;
-	bool set_started ();
-	nano::bootstrap_mode get_mode () const;
 	unsigned get_requeued_pulls () const;
-	void inc_requeued_pulls ();
 	bool get_frontiers_received () const;
-	void set_frontiers_received (bool);
-	std::chrono::seconds duration () const;
 
 	std::string id () const;
-	uint64_t get_incremental_id () const;
-	void notify_all ();
 	rsnano::BootstrapAttemptHandle * handle;
 };
 }

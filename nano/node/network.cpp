@@ -80,11 +80,6 @@ void nano::network::inbound (const nano::message & message, const std::shared_pt
 	node.live_message_processor.process (message, channel);
 }
 
-void nano::network::dump_channels () const
-{
-	rsnano::rsn_tcp_channels_dump (tcp_channels->handle);
-}
-
 // Send keepalives to all the peers we've been notified of
 void nano::network::merge_peers (std::array<nano::endpoint, 8> const & peers_a)
 {
@@ -142,23 +137,6 @@ nano::syn_cookies::syn_cookies (rsnano::SynCookiesHandle * handle) :
 nano::syn_cookies::~syn_cookies ()
 {
 	rsnano::rsn_syn_cookies_destroy (handle);
-}
-
-std::optional<nano::uint256_union> nano::syn_cookies::assign (nano::endpoint const & endpoint_a)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	nano::uint256_union cookie;
-	if (rsnano::rsn_syn_cookies_assign (handle, &endpoint_dto, cookie.bytes.data ()))
-	{
-		return cookie;
-	}
-
-	return std::nullopt;
-}
-
-void nano::syn_cookies::purge (std::chrono::seconds const & cutoff_a)
-{
-	rsnano::rsn_syn_cookies_purge (handle, cutoff_a.count ());
 }
 
 std::size_t nano::syn_cookies::cookies_size ()

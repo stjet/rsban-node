@@ -21,6 +21,7 @@ use tracing::trace;
 
 use crate::{
     config::NetworkConstants,
+    consensus::{VoteBroadcaster, VoteProcessorQueue},
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelEnum, InboundCallback, Network},
@@ -28,9 +29,9 @@ use crate::{
     wallets::Wallets,
 };
 
-use super::{LocalVoteHistory, VoteBroadcaster, VoteProcessorQueue, VoteSpacing};
+use super::{LocalVoteHistory, VoteSpacing};
 
-pub struct VoteGenerator {
+pub(crate) struct VoteGenerator {
     ledger: Arc<Ledger>,
     vote_generation_queue: ProcessingQueue<(Root, BlockHash)>,
     shared_state: Arc<SharedState>,
@@ -42,7 +43,7 @@ impl VoteGenerator {
     const MAX_REQUESTS: usize = 2048;
     const MAX_HASHES: usize = 12;
 
-    pub fn new(
+    pub(crate) fn new(
         ledger: Arc<Ledger>,
         wallets: Arc<Wallets>,
         history: Arc<LocalVoteHistory>,
@@ -108,7 +109,7 @@ impl VoteGenerator {
         }
     }
 
-    pub fn set_reply_action(
+    pub(crate) fn set_reply_action(
         &self,
         action: Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
     ) {
@@ -116,7 +117,7 @@ impl VoteGenerator {
         *guard = Some(action);
     }
 
-    pub fn start(&self) {
+    pub(crate) fn start(&self) {
         let shared_state_clone = Arc::clone(&self.shared_state);
         *self.thread.lock().unwrap() = Some(
             thread::Builder::new()
@@ -127,7 +128,7 @@ impl VoteGenerator {
         self.vote_generation_queue.start();
     }
 
-    pub fn stop(&self) {
+    pub(crate) fn stop(&self) {
         self.vote_generation_queue.stop();
         self.shared_state.stopped.store(true, Ordering::SeqCst);
         self.shared_state.condition.notify_all();
@@ -137,12 +138,12 @@ impl VoteGenerator {
     }
 
     /// Queue items for vote generation, or broadcast votes already in cache
-    pub fn add(&self, root: &Root, hash: &BlockHash) {
+    pub(crate) fn add(&self, root: &Root, hash: &BlockHash) {
         self.vote_generation_queue.add((*root, *hash));
     }
 
     /// Queue blocks for vote generation, returning the number of successful candidates.
-    pub fn generate(&self, blocks: &[Arc<BlockEnum>], channel: Arc<ChannelEnum>) -> usize {
+    pub(crate) fn generate(&self, blocks: &[Arc<BlockEnum>], channel: Arc<ChannelEnum>) -> usize {
         let req_candidates = {
             let txn = self.ledger.read_txn();
             blocks
@@ -175,7 +176,7 @@ impl VoteGenerator {
     /// Check if block is eligible for vote generation
     /// @param transaction : needs `tables::final_votes` lock
     /// @return: Should vote
-    pub fn should_vote(
+    pub(crate) fn should_vote(
         &self,
         txn: &mut LmdbWriteTransaction,
         root: &Root,
@@ -184,7 +185,7 @@ impl VoteGenerator {
         self.shared_state.should_vote(txn, root, hash)
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let candidates_count;
         let requests_count;
         {

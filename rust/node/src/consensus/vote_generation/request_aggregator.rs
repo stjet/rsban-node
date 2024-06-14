@@ -1,18 +1,21 @@
-use super::{LocalVoteHistory, VoteGenerators, VoteRouter};
+use super::{
+    request_aggregator_impl::{AggregateResult, RequestAggregatorImpl},
+    LocalVoteHistory, VoteGenerators,
+};
 use crate::{
+    consensus::VoteRouter,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
-    BlockEnum, BlockHash, NoValue, Root, Vote,
+    BlockHash, NoValue, Root, Vote,
 };
 use rsnano_ledger::Ledger;
-use rsnano_messages::{ConfirmAck, Message, Publish};
+use rsnano_messages::{ConfirmAck, Message};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::min,
-    collections::HashSet,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
 };
@@ -261,165 +264,36 @@ impl RequestAggregator {
         requests: &RequestType,
         channel: &Arc<ChannelEnum>,
     ) -> AggregateResult {
-        let mut to_generate: Vec<Arc<BlockEnum>> = Vec::new();
-        let mut to_generate_final: Vec<Arc<BlockEnum>> = Vec::new();
-        let mut cached_votes: Vec<Arc<Vote>> = Vec::new();
-        let mut cached_hashes: HashSet<BlockHash> = HashSet::new();
-        for (hash, root) in requests {
-            // 0. Hashes already sent
-            if cached_hashes.contains(hash) {
-                continue;
-            }
+        let mut aggregator = RequestAggregatorImpl::new(
+            &self.local_votes,
+            &self.ledger,
+            &self.vote_router,
+            &self.stats,
+            tx,
+            channel,
+        );
 
-            // 1. Votes in cache
-            let find_votes = self.local_votes.votes(root, hash, false);
-            if !find_votes.is_empty() {
-                for found_vote in find_votes {
-                    for found_hash in &found_vote.hashes {
-                        cached_hashes.insert(*found_hash);
-                    }
-                    cached_votes.push(found_vote);
-                }
-            } else {
-                let mut generate_vote = true;
-                let mut generate_final_vote = false;
-                let mut block = None;
+        aggregator.add_votes(requests);
 
-                // 2. Final votes
-                let final_vote_hashes = self.ledger.store.final_vote.get(tx, *root);
-                if !final_vote_hashes.is_empty() {
-                    generate_final_vote = true;
-                    block = self.ledger.any().get_block(tx, &final_vote_hashes[0]);
-                    // Allow same root vote
-                    if let Some(b) = &block {
-                        if final_vote_hashes.len() > 1 {
-                            to_generate_final.push(Arc::new(b.clone()));
-                            block = self.ledger.any().get_block(tx, &final_vote_hashes[1]);
-                            debug_assert!(final_vote_hashes.len() == 2);
-                        }
-                    }
-                }
-
-                // 3. Election winner by hash
-                if block.is_none() {
-                    if let Some(election) = self.vote_router.election(hash) {
-                        block = election
-                            .mutex
-                            .lock()
-                            .unwrap()
-                            .status
-                            .winner
-                            .as_ref()
-                            .map(|b| (**b).clone())
-                    }
-                }
-
-                // 4. Ledger by hash
-                if block.is_none() {
-                    block = self.ledger.any().get_block(tx, hash);
-                    // Confirmation status. Generate final votes for confirmed
-                    if let Some(b) = &block {
-                        let confirmation_height_info = self
-                            .ledger
-                            .store
-                            .confirmation_height
-                            .get(tx, &b.account())
-                            .unwrap_or_default();
-                        generate_final_vote =
-                            confirmation_height_info.height >= b.sideband().unwrap().height;
-                    }
-                }
-
-                // 5. Ledger by root
-                if block.is_none() && !root.is_zero() {
-                    // Search for block root
-                    let successor = self.ledger.any().block_successor(tx, &(*root).into());
-
-                    // Search for account root
-                    if let Some(successor) = successor {
-                        let successor_block = self.ledger.any().get_block(tx, &successor).unwrap();
-                        block = Some(successor_block);
-
-                        // 5. Votes in cache for successor
-                        let mut find_successor_votes =
-                            self.local_votes.votes(root, &successor, false);
-                        if !find_successor_votes.is_empty() {
-                            cached_votes.append(&mut find_successor_votes);
-                            generate_vote = false;
-                        }
-                        // Confirmation status. Generate final votes for confirmed successor
-                        if let Some(b) = &block {
-                            if generate_vote {
-                                let confirmation_height_info = self
-                                    .ledger
-                                    .store
-                                    .confirmation_height
-                                    .get(tx, &b.account())
-                                    .unwrap();
-                                generate_final_vote =
-                                    confirmation_height_info.height >= b.sideband().unwrap().height;
-                            }
-                        }
-                    }
-                }
-
-                if let Some(block) = block {
-                    // Generate new vote
-                    if generate_vote {
-                        if generate_final_vote {
-                            to_generate_final.push(Arc::new(block.clone()));
-                        } else {
-                            to_generate.push(Arc::new(block.clone()));
-                        }
-                    }
-
-                    // Let the node know about the alternative block
-                    if block.hash() != *hash {
-                        let publish = Message::Publish(Publish::new(block));
-                        channel.send(
-                            &publish,
-                            None,
-                            BufferDropPolicy::Limiter,
-                            TrafficType::Generic,
-                        );
-                    }
-                } else {
-                    self.stats.inc_dir(
-                        StatType::Requests,
-                        DetailType::RequestsUnknown,
-                        Direction::In,
-                    );
-                }
-            }
-        }
-
-        // Unique votes
-        cached_votes.sort_by(|a, b| a.signature.cmp(&b.signature));
-        cached_votes.dedup_by(|a, b| a.signature == b.signature);
-
-        let cached_votes_len = cached_votes.len() as u64;
-        for vote in cached_votes {
-            self.reply_action(&vote, channel);
+        for vote in &aggregator.cached_votes {
+            self.reply_action(vote, channel);
         }
 
         self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedHashes,
             Direction::In,
-            cached_hashes.len() as u64,
+            aggregator.cached_hashes.len() as u64,
         );
 
         self.stats.add_dir(
             StatType::Requests,
             DetailType::RequestsCachedVotes,
             Direction::In,
-            cached_votes_len,
+            aggregator.cached_votes.len() as u64,
         );
 
-        AggregateResult {
-            remaining_normal: to_generate,
-            remaining_final: to_generate_final,
-        }
+        aggregator.get_result()
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -470,9 +344,4 @@ impl RequestAggregatorExt for Arc<RequestAggregator> {
             );
         }
     }
-}
-
-struct AggregateResult {
-    remaining_normal: Vec<Arc<BlockEnum>>,
-    remaining_final: Vec<Arc<BlockEnum>>,
 }

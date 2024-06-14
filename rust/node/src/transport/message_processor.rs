@@ -97,6 +97,7 @@ impl LiveMessageProcessor {
             }
             Message::ConfirmReq(req) => {
                 // Don't load nodes with disabled voting
+                // TODO: This check should be cached somewhere
                 if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
                     if !req.roots_hashes().is_empty() {
                         self.request_aggregator

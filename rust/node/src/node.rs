@@ -557,7 +557,6 @@ impl Node {
             vote_router.clone(),
             network_params.network.is_dev_network(),
         ));
-        request_aggregator.start();
 
         let backlog_population = Arc::new(BacklogPopulation::new(
             BacklogPopulationConfig {
@@ -1300,6 +1299,7 @@ impl NodeExt for Arc<Node> {
         self.active.start();
         self.vote_generator.start();
         self.final_generator.start();
+        self.request_aggregator.start();
         self.confirming_set.start();
         self.hinted_scheduler.start();
         self.manual_scheduler.start();

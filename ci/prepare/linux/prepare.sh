@@ -19,7 +19,8 @@ zlib1g-dev \
 cmake \
 git \
 valgrind \
-libssl-dev
+libssl-dev \
+pkg-config
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 

@@ -119,7 +119,6 @@ impl RequestAggregator {
             mutex: Mutex::new(RequestAggregatorData {
                 requests: ChannelPoolContainer::default(),
                 stopped: false,
-                started: false,
             }),
             threads: Mutex::new(Vec::new()),
         }
@@ -159,10 +158,6 @@ impl RequestAggregator {
     }
 
     pub fn run(&self) {
-        let mut guard = self.mutex.lock().unwrap();
-        guard.started = true;
-        drop(guard);
-        self.condition.notify_all();
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             if !guard.requests.is_empty() {
@@ -457,7 +452,6 @@ impl RequestAggregator {
 struct RequestAggregatorData {
     requests: ChannelPoolContainer,
     stopped: bool,
-    started: bool,
 }
 
 /**
@@ -574,19 +568,6 @@ pub trait RequestAggregatorExt {
 
 impl RequestAggregatorExt for Arc<RequestAggregator> {
     fn start(&self) {
-        {
-            let mut guard = self.threads.lock().unwrap();
-            for _ in 0..self.request_aggregator_threads {
-                let self_l = Arc::clone(self);
-                guard.push(
-                    std::thread::Builder::new()
-                        .name("Req aggregator".to_string())
-                        .spawn(move || self_l.run())
-                        .unwrap(),
-                );
-            }
-        }
-
         let self_w = Arc::downgrade(self);
         self.generator
             .set_reply_action(Box::new(move |vote, channel| {
@@ -603,7 +584,15 @@ impl RequestAggregatorExt for Arc<RequestAggregator> {
                 }
             }));
 
-        let guard = self.mutex.lock().unwrap();
-        drop(self.condition.wait_while(guard, |g| !g.started).unwrap());
+        let mut guard = self.threads.lock().unwrap();
+        for _ in 0..self.request_aggregator_threads {
+            let self_l = Arc::clone(self);
+            guard.push(
+                std::thread::Builder::new()
+                    .name("Req aggregator".to_string())
+                    .spawn(move || self_l.run())
+                    .unwrap(),
+            );
+        }
     }
 }

@@ -1,15 +1,3 @@
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  set(PLATFORM_SECURE_SOURCE plat/osx/working.mm)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  set(PLATFORM_SECURE_SOURCE plat/windows/working.cpp)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(PLATFORM_SECURE_SOURCE plat/posix/working.cpp)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  set(PLATFORM_SECURE_SOURCE plat/posix/working.cpp)
-else()
-  error("Unknown platform: ${CMAKE_SYSTEM_NAME}")
-endif()
-
 add_library(
   secure
   ${PLATFORM_SECURE_SOURCE}
@@ -30,8 +18,7 @@ add_library(
   rep_weights.hpp
   rep_weights.cpp
   utility.hpp
-  utility.cpp
-  working.hpp)
+  utility.cpp)
 
 target_link_libraries(secure nano_lib crypto_lib Boost::system)
 

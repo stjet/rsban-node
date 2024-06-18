@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{utils::TomlWriter, Vote, VoteCode, VoteSource};
 use std::{
-    cmp::min,
+    cmp::{max, min},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
@@ -30,7 +30,7 @@ impl VoteProcessorConfig {
             max_pr_queue: 256,
             max_non_pr_queue: 32,
             pr_priority: 3,
-            threads: min(4, parallelism),
+            threads: max(1, min(4, parallelism / 2)),
             batch_size: 1024,
         }
     }

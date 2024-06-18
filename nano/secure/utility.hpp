@@ -2,8 +2,6 @@
 
 #include <nano/lib/config.hpp>
 
-#include <functional>
-
 namespace nano
 {
 // OS-specific way of finding a path to a home directory.

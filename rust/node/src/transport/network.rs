@@ -1,8 +1,8 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, NetworkFilter,
-    NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl, Socket,
-    SocketExtensions, SocketObserver, TcpConfig, TcpMessageManager, TrafficType, TransportType,
+    ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, MessageProcessor,
+    NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl,
+    Socket, SocketExtensions, SocketObserver, TcpConfig, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -37,7 +37,7 @@ pub struct NetworkOptions {
     pub async_rt: Arc<AsyncRuntime>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
-    pub tcp_message_manager: Arc<TcpMessageManager>,
+    pub tcp_message_manager: Arc<MessageProcessor>,
     pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
@@ -53,7 +53,7 @@ impl NetworkOptions {
             async_rt: Arc::new(AsyncRuntime::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
-            tcp_message_manager: Arc::new(TcpMessageManager::default()),
+            tcp_message_manager: Arc::new(MessageProcessor::default()),
             port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -67,7 +67,7 @@ pub struct Network {
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
-    pub tcp_message_manager: Arc<TcpMessageManager>,
+    pub tcp_message_manager: Arc<MessageProcessor>,
     flags: NodeFlags,
     stats: Arc<Stats>,
     sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,

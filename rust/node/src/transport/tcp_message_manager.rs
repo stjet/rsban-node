@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-pub struct TcpMessageManager {
+pub struct MessageProcessor {
     max_entries: usize,
     state: Mutex<TcpMessageManagerState>,
     producer_condition: Condvar,
@@ -18,7 +18,7 @@ struct TcpMessageManagerState {
     stopped: bool,
 }
 
-impl TcpMessageManager {
+impl MessageProcessor {
     pub fn new(incoming_connections_max: usize) -> Self {
         Self {
             max_entries: incoming_connections_max * MAX_ENTRIES_PER_CONNECTION + 1,
@@ -77,7 +77,7 @@ impl TcpMessageManager {
     }
 }
 
-impl Default for TcpMessageManager {
+impl Default for MessageProcessor {
     fn default() -> Self {
         Self::new(2048)
     }
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn put_and_get_one_message() {
-        let manager = TcpMessageManager::new(1);
+        let manager = MessageProcessor::new(1);
         assert_eq!(manager.size(), 0);
         manager.put(
             DeserializedMessage::new(Message::BulkPush, Default::default()),
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn block_when_max_entries_reached() {
-        let mut manager = TcpMessageManager::new(1);
+        let mut manager = MessageProcessor::new(1);
         let blocked_notification = Arc::new((Mutex::new(false), Condvar::new()));
         let blocked_notification2 = blocked_notification.clone();
         manager.blocked = Some(Box::new(move || {

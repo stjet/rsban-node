@@ -54,7 +54,7 @@ pub use socket::*;
 use std::{net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
-pub use tcp_message_manager::TcpMessageManager;
+pub use tcp_message_manager::MessageProcessor;
 pub use tcp_stream::TcpStream;
 pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;

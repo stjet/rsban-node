@@ -24,9 +24,10 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        Network, NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
-        PeerCacheConnector, PeerCacheUpdater, PeerConnector, ResponseServerFactory, SocketObserver,
-        SynCookies, TcpListener, TcpListenerExt, TcpMessageManager, TrafficType,
+        MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        ResponseServerFactory, SocketObserver, SynCookies, TcpListener, TcpListenerExt,
+        TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -179,7 +180,7 @@ impl Node {
             async_rt: Arc::clone(&async_rt),
             network_params: network_params.clone(),
             stats: Arc::clone(&stats),
-            tcp_message_manager: Arc::new(TcpMessageManager::new(
+            tcp_message_manager: Arc::new(MessageProcessor::new(
                 config.tcp_incoming_connections_max as usize,
             )),
             port: config.peering_port.unwrap_or(0),

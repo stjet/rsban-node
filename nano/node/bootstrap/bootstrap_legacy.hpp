@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
+
 #include <boost/property_tree/ptree_fwd.hpp>
 
 namespace nano

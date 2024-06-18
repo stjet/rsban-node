@@ -84,4 +84,3 @@ size_t nano::transport::channel::channel_id () const
 {
 	return rsnano::rsn_channel_id (handle);
 }
-

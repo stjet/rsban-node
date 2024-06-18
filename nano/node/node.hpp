@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/secure/common.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
@@ -102,14 +103,14 @@ public:
 	bool block_confirmed_or_being_confirmed (nano::block_hash const &);
 
 	bool online () const;
-	nano::vote_code vote (nano::vote const & vote, nano::block_hash hash = nano::block_hash(0));
+	nano::vote_code vote (nano::vote const & vote, nano::block_hash hash = nano::block_hash (0));
 	bool election_active (nano::block_hash const & hash) const;
 	bool init_error () const;
 	uint64_t get_confirmation_height (store::transaction const &, nano::account &);
 	nano::account get_node_id () const;
 	nano::telemetry_data local_telemetry () const;
 	void connect (nano::endpoint const &);
-	void enqueue_vote_request(nano::root const & root, nano::block_hash const & hash);
+	void enqueue_vote_request (nano::root const & root, nano::block_hash const & hash);
 
 public:
 	nano::keypair node_id;

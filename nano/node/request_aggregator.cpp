@@ -37,28 +37,28 @@ bool nano::request_aggregator::request (request_type const & request, std::share
 
 std::size_t nano::request_aggregator::size () const
 {
-	return rsnano::rsn_request_aggregator_len(handle);
+	return rsnano::rsn_request_aggregator_len (handle);
 }
 
 bool nano::request_aggregator::empty () const
 {
-	return rsnano::rsn_request_aggregator_len(handle) == 0;
+	return rsnano::rsn_request_aggregator_len (handle) == 0;
 }
 
 /*
  * request_aggregator_config
  */
 
-nano::request_aggregator_config::request_aggregator_config(rsnano::RequestAggregatorConfigDto const & dto) :
-	max_queue{dto.max_queue},
-	threads{dto.threads},
-	batch_size{dto.batch_size}
+nano::request_aggregator_config::request_aggregator_config (rsnano::RequestAggregatorConfigDto const & dto) :
+	max_queue{ dto.max_queue },
+	threads{ dto.threads },
+	batch_size{ dto.batch_size }
 {
 }
 
-rsnano::RequestAggregatorConfigDto nano::request_aggregator_config::into_dto() const
+rsnano::RequestAggregatorConfigDto nano::request_aggregator_config::into_dto () const
 {
-	return{threads, max_queue, batch_size};
+	return { threads, max_queue, batch_size };
 }
 
 nano::error nano::request_aggregator_config::deserialize (nano::tomlconfig & toml)

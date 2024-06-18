@@ -297,7 +297,7 @@ enum class detail : uint16_t
 	requests_generated_votes,
 	requests_cannot_vote,
 	requests_unknown,
-	
+
 	// request_aggregator
 	request_hashes,
 	overfill_hashes,

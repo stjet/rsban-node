@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nano/node/request_aggregator.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/diagnosticsconfig.hpp>
 #include <nano/lib/errors.hpp>

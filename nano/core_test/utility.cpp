@@ -5,7 +5,9 @@
 #include <nano/secure/utility.hpp>
 
 #include <gtest/gtest.h>
+
 #include <boost/filesystem.hpp>
+
 #include <thread>
 
 using namespace std::chrono_literals;

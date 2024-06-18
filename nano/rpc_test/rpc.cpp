@@ -5426,7 +5426,7 @@ TEST (rpc, stats_clear)
 	auto const rpc_ctx = add_rpc (system, node);
 	nano::keypair key;
 	node->stats->inc (nano::stat::type::ledger, nano::stat::detail::fork, nano::stat::dir::in);
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::ledger,nano::stat::detail::fork, nano::stat::dir::in));
+	ASSERT_EQ (1, node->stats->count (nano::stat::type::ledger, nano::stat::detail::fork, nano::stat::dir::in));
 	boost::property_tree::ptree request;
 	request.put ("action", "stats_clear");
 	auto response (wait_response (system, rpc_ctx, request));

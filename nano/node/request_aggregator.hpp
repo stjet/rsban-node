@@ -14,10 +14,10 @@ namespace nano
 class request_aggregator_config final
 {
 public:
-	request_aggregator_config() = default;
-	explicit request_aggregator_config(rsnano::RequestAggregatorConfigDto const & dto);
+	request_aggregator_config () = default;
+	explicit request_aggregator_config (rsnano::RequestAggregatorConfigDto const & dto);
 
-	rsnano::RequestAggregatorConfigDto into_dto() const;
+	rsnano::RequestAggregatorConfigDto into_dto () const;
 	nano::error deserialize (nano::tomlconfig &);
 
 public:

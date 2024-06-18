@@ -48,16 +48,16 @@ TEST (request_aggregator, one)
 	request.emplace_back (send1->hash (), send1->root ());
 	auto client = nano::transport::create_client_socket (node);
 	std::shared_ptr<nano::transport::channel> dummy_channel = create_dummy_channel (node, client);
-	node.aggregator.request(request, dummy_channel);
+	node.aggregator.request (request, dummy_channel);
 	ASSERT_TIMELY (3s, node.aggregator.empty ());
 	// Not yet in the ledger
 	ASSERT_TIMELY_EQ (3s, 1, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_unknown));
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	node.aggregator.request(request, dummy_channel);
+	node.aggregator.request (request, dummy_channel);
 	// In the ledger but no vote generated yet
 	ASSERT_TIMELY (3s, 0 < node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes));
 	ASSERT_TIMELY (3s, node.aggregator.empty ());
-	node.aggregator.request(request, dummy_channel);
+	node.aggregator.request (request, dummy_channel);
 	// Already cached
 	ASSERT_TIMELY (3s, node.aggregator.empty ());
 	ASSERT_TIMELY_EQ (3s, 3, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_accepted));
@@ -112,9 +112,9 @@ TEST (request_aggregator, one_update)
 					.build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), receive1));
 
-	auto dummy_channel = nano::test::fake_channel(node);
+	auto dummy_channel = nano::test::fake_channel (node);
 
-	std::vector<std::pair<nano::block_hash, nano::root>> request1{ {send2->hash (), send2->root ()}};
+	std::vector<std::pair<nano::block_hash, nano::root>> request1{ { send2->hash (), send2->root () } };
 	node.aggregator.request (request1, dummy_channel);
 
 	// Update the pool of requests with another hash

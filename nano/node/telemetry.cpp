@@ -31,7 +31,7 @@ nano::telemetry::~telemetry ()
 
 void nano::telemetry::trigger ()
 {
-    rsnano::rsn_telemetry_trigger (handle);
+	rsnano::rsn_telemetry_trigger (handle);
 }
 
 nano::telemetry_data nano::telemetry::local_telemetry () const

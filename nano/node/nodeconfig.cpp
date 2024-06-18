@@ -115,7 +115,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.active_elections = config.active_elections.into_dto ();
 	dto.vote_processor = config.vote_processor.to_dto ();
 	dto.tcp = config.tcp.to_dto ();
-	dto.request_aggregator = config.request_aggregator.into_dto();
+	dto.request_aggregator = config.request_aggregator.into_dto ();
 	return dto;
 }
 
@@ -238,7 +238,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	active_elections = nano::active_elections_config{ dto.active_elections };
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 	tcp = nano::transport::tcp_config{ dto.tcp };
-	request_aggregator = nano::request_aggregator_config{dto.request_aggregator};
+	request_aggregator = nano::request_aggregator_config{ dto.request_aggregator };
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const

@@ -439,11 +439,12 @@ bool nano::node::online () const
 
 nano::vote_code nano::node::vote (nano::vote const & vote, nano::block_hash hash)
 {
-	return static_cast<nano::vote_code>(rsnano::rsn_node_vote(handle, vote.get_handle(), hash.bytes.data()));
+	return static_cast<nano::vote_code> (rsnano::rsn_node_vote (handle, vote.get_handle (), hash.bytes.data ()));
 }
 
-bool nano::node::election_active (nano::block_hash const & hash) const {
-	return rsnano::rsn_node_election_active(handle, hash.bytes.data());
+bool nano::node::election_active (nano::block_hash const & hash) const
+{
+	return rsnano::rsn_node_election_active (handle, hash.bytes.data ());
 }
 
 void nano::node::process_confirmed (nano::election_status const & status_a, uint64_t iteration_a)
@@ -491,9 +492,9 @@ void nano::node::connect (nano::endpoint const & endpoint)
 	rsnano::rsn_node_connect (handle, &dto);
 }
 
-void nano::node::enqueue_vote_request(nano::root const & root, nano::block_hash const & hash)
+void nano::node::enqueue_vote_request (nano::root const & root, nano::block_hash const & hash)
 {
-	rsnano::rsn_node_enqueue_vote_request(handle, root.bytes.data(), hash.bytes.data());
+	rsnano::rsn_node_enqueue_vote_request (handle, root.bytes.data (), hash.bytes.data ());
 }
 
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)

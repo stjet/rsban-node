@@ -18,4 +18,3 @@ nano::bulk_push_client::~bulk_push_client ()
 {
 	rsnano::rsn_bulk_push_client_destroy (handle);
 }
-

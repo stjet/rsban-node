@@ -170,7 +170,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	outbound_limiter{ rsnano::rsn_node_outbound_bandwidth_limiter (handle) },
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_tcp_message_manager (handle), rsnano::rsn_node_network_filter (handle)) },
+	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
 	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator (handle)),
 	bootstrap_server{ rsnano::rsn_node_bootstrap_server (handle) },

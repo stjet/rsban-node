@@ -89,7 +89,6 @@ impl ResponseServerFactory {
             Arc::clone(&self.network.publish_filter),
             Arc::new(self.network_params.clone()),
             Arc::clone(&self.stats),
-            Arc::clone(&self.network.tcp_message_manager),
             message_visitor_factory,
             true,
             self.syn_cookies.clone(),

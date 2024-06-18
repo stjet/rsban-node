@@ -17,10 +17,10 @@ using namespace std::chrono_literals;
  * network
  */
 
-nano::network::network (nano::node & node, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
+nano::network::network (nano::node & node, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::NetworkFilterHandle * filter_handle) :
 	node{ node },
 	syn_cookies{ make_shared<nano::syn_cookies> (syn_cookies_handle) },
-	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, mgr_handle, filter_handle) }
+	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, filter_handle) }
 {
 }
 

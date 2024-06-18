@@ -161,9 +161,8 @@ std::string nano::transport::channel_tcp::to_string () const
  * tcp_channels
  */
 
-nano::transport::tcp_channels::tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle) :
+nano::transport::tcp_channels::tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::NetworkFilterHandle * filter_handle) :
 	handle{ handle },
-	tcp_message_manager{ mgr_handle },
 	publish_filter{ std::make_shared<nano::network_filter> (filter_handle) }
 {
 }

@@ -24,7 +24,6 @@ std::shared_ptr<nano::transport::tcp_listener> const & observer_a,
 std::shared_ptr<nano::transport::request_response_visitor_factory> visitor_factory_a,
 std::shared_ptr<nano::thread_pool> const & bootstrap_workers_a,
 nano::network_filter const & publish_filter_a,
-nano::tcp_message_manager & tcp_message_manager_a,
 nano::syn_cookies & syn_cookies_a,
 nano::ledger & ledger_a,
 nano::block_processor & block_processor_a,
@@ -47,7 +46,6 @@ bool allow_bootstrap_a)
 	params.disable_bootstrap_bulk_pull_server = flags_a.disable_bootstrap_bulk_pull_server ();
 	params.disable_tcp_realtime = flags_a.disable_tcp_realtime ();
 	params.request_response_visitor_factory = visitor_factory_a->handle;
-	params.tcp_message_manager = tcp_message_manager_a.handle;
 	params.allow_bootstrap = allow_bootstrap_a;
 	params.syn_cookies = syn_cookies_a.handle;
 	params.node_id_priv = node_id_a.prv.bytes.data ();

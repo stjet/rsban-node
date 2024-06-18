@@ -6,7 +6,7 @@ use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelMode, InboundMessageQueue, NetworkExt, Socket, SocketExtensions},
+    transport::{ChannelMode, NetworkExt, Socket, SocketExtensions},
     NetworkParams,
 };
 use async_trait::async_trait;
@@ -79,7 +79,6 @@ pub struct ResponseServerImpl {
     pub disable_bootstrap_bulk_pull_server: bool,
     message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
     message_deserializer: Arc<MessageDeserializer<Arc<Socket>>>,
-    tcp_message_manager: Arc<InboundMessageQueue>,
     allow_bootstrap: bool,
     notify_stop: Notify,
     last_keepalive: Mutex<Option<Keepalive>>,
@@ -100,7 +99,6 @@ impl ResponseServerImpl {
         publish_filter: Arc<NetworkFilter>,
         network_params: Arc<NetworkParams>,
         stats: Arc<Stats>,
-        tcp_message_manager: Arc<InboundMessageQueue>,
         message_visitor_factory: Arc<BootstrapMessageVisitorFactory>,
         allow_bootstrap: bool,
         syn_cookies: Arc<SynCookies>,
@@ -143,7 +141,6 @@ impl ResponseServerImpl {
                 publish_filter,
                 socket_clone,
             )),
-            tcp_message_manager,
             allow_bootstrap,
             notify_stop: Notify::new(),
             last_keepalive: Mutex::new(None),
@@ -168,7 +165,6 @@ impl ResponseServerImpl {
             disable_bootstrap_bulk_pull_server: true,
             message_visitor_factory: Arc::new(BootstrapMessageVisitorFactory::new_null()),
             message_deserializer: Arc::new(MessageDeserializer::new_null()),
-            tcp_message_manager: Arc::new(InboundMessageQueue::new(1)),
             allow_bootstrap: false,
             notify_stop: Notify::new(),
             last_keepalive: Mutex::new(None),
@@ -259,7 +255,9 @@ impl ResponseServerImpl {
     fn queue_realtime(&self, message: DeserializedMessage) {
         let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
         channel.set_last_packet_received(SystemTime::now());
-        self.tcp_message_manager.put(message, channel);
+        if let Some(network) = self.network.upgrade() {
+            network.tcp_message_manager.put(message, channel);
+        }
     }
 
     fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {

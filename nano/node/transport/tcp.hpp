@@ -92,7 +92,7 @@ namespace transport
 		friend class nano::transport::channel_tcp;
 
 	public:
-		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::TcpMessageManagerHandle * mgr_handle, rsnano::NetworkFilterHandle * filter_handle);
+		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::NetworkFilterHandle * filter_handle);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
 		~tcp_channels ();
 
@@ -113,7 +113,6 @@ namespace transport
 		uint16_t port () const;
 		std::size_t get_next_channel_id ();
 
-		nano::tcp_message_manager tcp_message_manager;
 		std::shared_ptr<nano::network_filter> publish_filter;
 
 	public:

@@ -43,7 +43,6 @@ pub struct CreateTcpServerParams {
     pub disable_bootstrap_bulk_pull_server: bool,
     pub disable_tcp_realtime: bool,
     pub request_response_visitor_factory: *mut RequestResponseVisitorFactoryHandle,
-    pub tcp_message_manager: *mut TcpMessageManagerHandle,
     pub allow_bootstrap: bool,
     pub syn_cookies: *mut SynCookiesHandle,
     pub node_id_priv: *const u8,
@@ -60,7 +59,6 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
-    let tcp_message_manager = Arc::clone(&*params.tcp_message_manager);
     let channels = Arc::clone(&(*params.tcp_channels));
     let mut server = ResponseServerImpl::new(
         &channels,
@@ -69,7 +67,6 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
         publish_filter,
         network,
         stats,
-        tcp_message_manager,
         visitor_factory,
         params.allow_bootstrap,
         Arc::clone(&*params.syn_cookies),

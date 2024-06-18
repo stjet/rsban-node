@@ -1273,7 +1273,7 @@ TEST (rpc, history_pruning)
 	ASSERT_TIMELY (5s, nano::test::exists (*node0, blocks));
 	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 
-	nano::test::confirm(node0->ledger, blocks);
+	nano::test::confirm (node0->ledger, blocks);
 
 	// Prune block "change"
 	{

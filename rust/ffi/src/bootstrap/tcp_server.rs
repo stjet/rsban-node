@@ -53,16 +53,17 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     let socket = Arc::clone(&(*params.socket));
     let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let publish_filter = Arc::clone(&*params.publish_filter);
-    let network = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
+    let network_params = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));
     let visitor_factory = Arc::clone(&(*params.request_response_visitor_factory).0);
     let channels = Arc::clone(&(*params.tcp_channels));
     let mut server = ResponseServerImpl::new(
         &channels,
+        channels.inbound_queue.clone(),
         socket,
         config,
         publish_filter,
-        network,
+        network_params,
         stats,
         visitor_factory,
         params.allow_bootstrap,

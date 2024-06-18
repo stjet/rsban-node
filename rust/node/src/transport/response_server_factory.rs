@@ -2,7 +2,8 @@ use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use super::{
-    Network, NullSocketObserver, OutboundBandwidthLimiter, ResponseServerImpl, Socket, SynCookies,
+    InboundMessageQueue, Network, NullSocketObserver, OutboundBandwidthLimiter, ResponseServerImpl,
+    Socket, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -23,6 +24,7 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) block_processor: Arc<BlockProcessor>,
     pub(crate) bootstrap_initiator: Arc<BootstrapInitiator>,
     pub(crate) network: Arc<Network>,
+    pub(crate) inbound_queue: Arc<InboundMessageQueue>,
     pub(crate) node_flags: NodeFlags,
     pub(crate) network_params: NetworkParams,
     pub(crate) node_config: NodeConfig,
@@ -62,6 +64,7 @@ impl ResponseServerFactory {
                 ledger,
             )),
             network,
+            inbound_queue: Arc::new(InboundMessageQueue::new(1)),
             node_flags: flags,
             network_params,
             node_config: config,
@@ -84,6 +87,7 @@ impl ResponseServerFactory {
 
         Arc::new(ResponseServerImpl::new(
             &self.network.clone(),
+            self.inbound_queue.clone(),
             socket,
             Arc::new(self.node_config.clone()),
             Arc::clone(&self.network.publish_filter),

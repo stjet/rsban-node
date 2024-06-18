@@ -291,7 +291,7 @@ TEST (election, continuous_voting)
 				 .build ();
 
 	ASSERT_TRUE (nano::test::process (node1, { send1 }));
-	nano::test::confirm(node1.ledger, send1);
+	nano::test::confirm (node1.ledger, send1);
 
 	node1.stats->clear ();
 

@@ -172,6 +172,9 @@ impl Node {
             "Worker".to_string(),
         ));
 
+        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
+            config.tcp_incoming_connections_max as usize,
+        ));
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
@@ -181,9 +184,7 @@ impl Node {
             async_rt: Arc::clone(&async_rt),
             network_params: network_params.clone(),
             stats: Arc::clone(&stats),
-            inbound_queue: Arc::new(InboundMessageQueue::new(
-                config.tcp_incoming_connections_max as usize,
-            )),
+            inbound_queue: inbound_message_queue.clone(),
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: Arc::clone(&outbound_limiter),
@@ -431,6 +432,7 @@ impl Node {
             block_processor: block_processor.clone(),
             bootstrap_initiator: bootstrap_initiator.clone(),
             network: network.clone(),
+            inbound_queue: inbound_message_queue.clone(),
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             node_config: config.clone(),
@@ -605,15 +607,9 @@ impl Node {
         let message_processor = Mutex::new(MessageProcessor::new(
             flags.clone(),
             config.clone(),
-            network.clone(),
+            inbound_message_queue.clone(),
+            live_message_processor.clone(),
         ));
-
-        let processor = Arc::downgrade(&live_message_processor);
-        network.set_sink(Box::new(move |msg, channel| {
-            if let Some(processor) = processor.upgrade() {
-                processor.process(msg.message, &channel);
-            }
-        }));
 
         let ongoing_bootstrap = Arc::new(OngoingBootstrap::new(
             network_params.clone(),

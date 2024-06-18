@@ -133,7 +133,7 @@ void nano::test::confirm (nano::ledger & ledger, std::shared_ptr<nano::block> co
 
 void nano::test::confirm (nano::ledger & ledger, nano::block_hash const & hash)
 {
-	ledger.confirm (*ledger.store.tx_begin_write(), hash);
+	ledger.confirm (*ledger.store.tx_begin_write (), hash);
 }
 
 bool nano::test::block_or_pruned_all_exists (nano::node & node, std::vector<nano::block_hash> hashes)

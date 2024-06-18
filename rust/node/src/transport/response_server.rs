@@ -1,6 +1,6 @@
 use super::{
-    ChannelEnum, HandshakeProcess, HandshakeStatus, MessageDeserializer, Network, NetworkFilter,
-    SynCookies,
+    ChannelEnum, HandshakeProcess, HandshakeStatus, InboundMessageQueue, MessageDeserializer,
+    Network, NetworkFilter, SynCookies,
 };
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
@@ -85,6 +85,7 @@ pub struct ResponseServerImpl {
     node_id: KeyPair,
     protocol_info: ProtocolInfo,
     network: Weak<Network>,
+    inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
     initiate_handshake_listener: OutputListenerMt<()>,
 }
@@ -94,6 +95,7 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 impl ResponseServerImpl {
     pub fn new(
         network: &Arc<Network>,
+        inbound_queue: Arc<InboundMessageQueue>,
         socket: Arc<Socket>,
         config: Arc<NodeConfig>,
         publish_filter: Arc<NetworkFilter>,
@@ -113,6 +115,7 @@ impl ResponseServerImpl {
         let remote_endpoint = socket.get_remote().unwrap_or(NULL_ENDPOINT);
         Self {
             network: Arc::downgrade(network),
+            inbound_queue,
             socket,
             channel: Mutex::new(None),
             config,
@@ -171,6 +174,7 @@ impl ResponseServerImpl {
             node_id: KeyPair::from(1),
             protocol_info: ProtocolInfo::default(),
             network: Arc::downgrade(&Arc::new(Network::new_null())),
+            inbound_queue: Arc::new(InboundMessageQueue::new(1)),
             handshake_process: HandshakeProcess::new_null(),
             initiate_handshake_listener: OutputListenerMt::new(),
         }
@@ -255,9 +259,7 @@ impl ResponseServerImpl {
     fn queue_realtime(&self, message: DeserializedMessage) {
         let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
         channel.set_last_packet_received(SystemTime::now());
-        if let Some(network) = self.network.upgrade() {
-            network.inbound_queue.put(message, channel);
-        }
+        self.inbound_queue.put(message, channel);
     }
 
     fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {

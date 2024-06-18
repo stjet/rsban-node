@@ -128,7 +128,7 @@ TEST (active_elections, confirm_frontier)
 		// we cannot use the same block instance on 2 different nodes, so make a copy
 		auto send_copy = builder.make_block ().from (*send).build ();
 		ASSERT_TRUE (nano::test::process (node1, { send_copy }));
-		nano::test::confirm(node1.ledger, send_copy);
+		nano::test::confirm (node1.ledger, send_copy);
 	}
 
 	// The rep crawler would otherwise request confirmations in order to find representatives
@@ -192,7 +192,7 @@ TEST (active_elections, keep_local)
 	ASSERT_NE (nullptr, send6);
 
 	// force-confirm blocks
-	nano::test::confirm(node.ledger, send6);
+	nano::test::confirm (node.ledger, send6);
 
 	nano::state_block_builder builder{};
 	const auto receive1 = builder.make_block ()

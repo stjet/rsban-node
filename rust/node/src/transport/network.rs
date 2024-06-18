@@ -24,7 +24,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -67,10 +67,10 @@ pub struct Network {
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
+    // TODO remove inbound_queue as soon as it isn't used by C++ anymore
     pub inbound_queue: Arc<InboundMessageQueue>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    pub sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
     next_channel_id: AtomicUsize,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
@@ -94,7 +94,7 @@ impl Network {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: options.allow_local_peers,
-            inbound_queue: options.inbound_queue.clone(),
+            inbound_queue: options.inbound_queue,
             state: Mutex::new(State {
                 attempts: Default::default(),
                 channels: Default::default(),
@@ -108,7 +108,6 @@ impl Network {
             tcp_config: options.tcp_config,
             flags: options.flags,
             stats: options.stats,
-            sink: RwLock::new(Box::new(|_, _| {})),
             next_channel_id: AtomicUsize::new(1),
             network_params: network,
             limiter: options.limiter,
@@ -261,17 +260,12 @@ impl Network {
         Ok(())
     }
 
-    pub fn set_sink(&self, sink: Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>) {
-        *self.sink.write().unwrap() = sink;
-    }
-
     pub fn new_null() -> Self {
         Self::new(NetworkOptions::new_test_instance())
     }
 
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
-            self.inbound_queue.stop();
             self.close();
         }
     }
@@ -621,12 +615,6 @@ impl Network {
         // Disconnect
         if channel.get_type() == TransportType::Tcp {
             self.erase_channel_by_endpoint(&channel.remote_endpoint())
-        }
-    }
-
-    pub fn queue_message(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
-        if !self.stopped.load(Ordering::SeqCst) {
-            self.inbound_queue.put(message, channel);
         }
     }
 }

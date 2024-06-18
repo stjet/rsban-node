@@ -1,4 +1,4 @@
-use super::{Network, NetworkExt};
+use super::{InboundMessageQueue, LiveMessageProcessor, Network};
 use crate::config::{NodeConfig, NodeFlags};
 use std::{
     sync::{
@@ -17,13 +17,19 @@ pub struct MessageProcessor {
 }
 
 impl MessageProcessor {
-    pub fn new(flags: NodeFlags, config: NodeConfig, network: Arc<Network>) -> Self {
+    pub fn new(
+        flags: NodeFlags,
+        config: NodeConfig,
+        inbound_queue: Arc<InboundMessageQueue>,
+        live_message_processor: Arc<LiveMessageProcessor>,
+    ) -> Self {
         Self {
             flags,
             config,
             processing_threads: Vec::new(),
             state: Arc::new(State {
-                network,
+                inbound_queue,
+                live_message_processor,
                 stopped: AtomicBool::new(false),
             }),
         }
@@ -47,6 +53,7 @@ impl MessageProcessor {
 
     pub fn stop(&mut self) {
         self.state.stopped.store(true, Ordering::SeqCst);
+        self.state.inbound_queue.stop();
         for t in self.processing_threads.drain(..) {
             t.join().unwrap();
         }
@@ -62,14 +69,16 @@ impl Drop for MessageProcessor {
 
 struct State {
     stopped: AtomicBool,
-    network: Arc<Network>,
+    live_message_processor: Arc<LiveMessageProcessor>,
+    inbound_queue: Arc<InboundMessageQueue>,
 }
 
 impl State {
     fn run(&self) {
         while !self.stopped.load(Ordering::SeqCst) {
-            if let Some((message, channel)) = self.network.inbound_queue.next() {
-                (self.network.sink.read().unwrap())(message, channel)
+            if let Some((message, channel)) = self.inbound_queue.next() {
+                self.live_message_processor
+                    .process(message.message, &channel);
             }
         }
     }

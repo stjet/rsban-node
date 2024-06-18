@@ -438,7 +438,7 @@ TEST (inactive_votes_cache, multiple_votes)
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node.active.election (send1->qualified_root ()));
 	std::this_thread::sleep_for (500ms);
-	ASSERT_EQ (3, election->votes ().size ()); // 2 votes and 1 default not_an_acount
+	ASSERT_TIMELY_EQ (5s, 3, election->votes ().size ()); // 2 votes and 1 default not_an_account
 	ASSERT_EQ (2, node.stats->count (nano::stat::type::election, nano::stat::detail::vote_cached));
 }
 

@@ -1,6 +1,6 @@
 use rsnano_messages::{Keepalive, Message};
 
-use super::{Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
+use super::{MessageProcessor, Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
@@ -17,11 +17,10 @@ pub struct NetworkThreads {
     cleanup_thread: Option<JoinHandle<()>>,
     keepalive_thread: Option<JoinHandle<()>>,
     reachout_thread: Option<JoinHandle<()>>,
-    processing_threads: Vec<JoinHandle<()>>,
+    message_processor: MessageProcessor,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
     peer_connector: Arc<PeerConnector>,
-    config: NodeConfig,
     flags: NodeFlags,
     network_params: NetworkParams,
     stats: Arc<Stats>,
@@ -41,14 +40,17 @@ impl NetworkThreads {
         keepalive_factory: Arc<KeepaliveFactory>,
     ) -> Self {
         Self {
+            message_processor: MessageProcessor::new(
+                flags.clone(),
+                config.clone(),
+                network.clone(),
+            ),
             cleanup_thread: None,
             keepalive_thread: None,
             reachout_thread: None,
-            processing_threads: Vec::new(),
             stopped: Arc::new((Condvar::new(), Mutex::new(false))),
             network,
             peer_connector,
-            config,
             flags,
             network_params,
             stats,
@@ -104,27 +106,13 @@ impl NetworkThreads {
                 .unwrap(),
         );
 
-        if !self.flags.disable_tcp_realtime {
-            for _ in 0..self.config.network_threads {
-                let channels = Arc::clone(&self.network);
-                self.processing_threads.push(
-                    std::thread::Builder::new()
-                        .name("Pkt processing".to_string())
-                        .spawn(move || {
-                            channels.process_messages();
-                        })
-                        .unwrap(),
-                );
-            }
-        }
+        self.message_processor.start();
     }
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
         self.stopped.0.notify_all();
         self.network.stop();
-        for t in self.processing_threads.drain(..) {
-            t.join().unwrap();
-        }
+        self.message_processor.stop();
         if let Some(t) = self.keepalive_thread.take() {
             t.join().unwrap();
         }
@@ -140,7 +128,6 @@ impl NetworkThreads {
 impl Drop for NetworkThreads {
     fn drop(&mut self) {
         // All threads must be stopped before this destructor
-        debug_assert!(self.processing_threads.is_empty());
         debug_assert!(self.cleanup_thread.is_none());
         debug_assert!(self.keepalive_thread.is_none());
     }

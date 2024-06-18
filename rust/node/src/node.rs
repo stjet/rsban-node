@@ -24,9 +24,9 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
-        LiveMessageProcessor, MessageProcessor, Network, NetworkFilter, NetworkOptions,
-        NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater,
-        PeerConnector, ResponseServerFactory, SocketObserver, SynCookies, TcpListener,
+        MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        RealtimeMessageHandler, ResponseServerFactory, SocketObserver, SynCookies, TcpListener,
         TcpListenerExt, TrafficType,
     },
     utils::{
@@ -114,7 +114,7 @@ pub struct Node {
     pub ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
-    pub live_message_processor: Arc<LiveMessageProcessor>,
+    pub live_message_processor: Arc<RealtimeMessageHandler>,
     message_processor: Mutex<MessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
@@ -568,7 +568,7 @@ impl Node {
             websocket.clone(),
         ));
 
-        let live_message_processor = Arc::new(LiveMessageProcessor::new(
+        let live_message_processor = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
             network.clone(),
             peer_connector.clone(),

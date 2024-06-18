@@ -39,7 +39,7 @@ pub use channel_tcp::*;
 pub use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::InboundMessageQueue;
-pub use live_message_processor::LiveMessageProcessor;
+pub use live_message_processor::RealtimeMessageHandler;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use message_processor::*;
 pub use network::*;

@@ -15,7 +15,7 @@ use tracing::trace;
 
 use super::{peer_connector, ChannelEnum, Network, PeerConnector};
 
-pub struct LiveMessageProcessor {
+pub struct RealtimeMessageHandler {
     stats: Arc<Stats>,
     network: Arc<Network>,
     peer_connector: Arc<PeerConnector>,
@@ -30,7 +30,7 @@ pub struct LiveMessageProcessor {
     ascend_boot: Arc<BootstrapAscending>,
 }
 
-impl LiveMessageProcessor {
+impl RealtimeMessageHandler {
     pub fn new(
         stats: Arc<Stats>,
         network: Arc<Network>,

@@ -1,4 +1,4 @@
-use super::{InboundMessageQueue, LiveMessageProcessor};
+use super::{InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
 use std::{
     sync::{
@@ -21,7 +21,7 @@ impl MessageProcessor {
         flags: NodeFlags,
         config: NodeConfig,
         inbound_queue: Arc<InboundMessageQueue>,
-        live_message_processor: Arc<LiveMessageProcessor>,
+        live_message_processor: Arc<RealtimeMessageHandler>,
     ) -> Self {
         Self {
             flags,
@@ -69,7 +69,7 @@ impl Drop for MessageProcessor {
 
 struct State {
     stopped: AtomicBool,
-    live_message_processor: Arc<LiveMessageProcessor>,
+    live_message_processor: Arc<RealtimeMessageHandler>,
     inbound_queue: Arc<InboundMessageQueue>,
 }
 

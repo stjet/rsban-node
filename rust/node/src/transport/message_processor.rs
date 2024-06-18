@@ -1,4 +1,4 @@
-use super::{InboundMessageQueue, LiveMessageProcessor, Network};
+use super::{InboundMessageQueue, LiveMessageProcessor};
 use crate::config::{NodeConfig, NodeFlags};
 use std::{
     sync::{

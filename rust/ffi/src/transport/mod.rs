@@ -1,7 +1,6 @@
 mod bandwidth_limiter;
 mod channel;
 mod channel_tcp;
-mod live_message_processor;
 mod network_filter;
 mod network_threads;
 mod socket;
@@ -20,7 +19,6 @@ pub use socket::{
 };
 pub use syn_cookies::SynCookiesHandle;
 
-pub use live_message_processor::LiveMessageProcessorHandle;
 pub use network_threads::NetworkThreadsHandle;
 pub use socket::SocketFfiObserver;
 pub use tcp_channels::TcpChannelsHandle;

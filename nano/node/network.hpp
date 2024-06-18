@@ -69,18 +69,6 @@ public:
 	static std::size_t const confirm_ack_hashes_max = 12;
 };
 
-class live_message_processor
-{
-public:
-	live_message_processor (rsnano::LiveMessageProcessorHandle * handle);
-	live_message_processor (live_message_processor const &) = delete;
-	~live_message_processor ();
-
-	void process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel);
-
-	rsnano::LiveMessageProcessorHandle * handle;
-};
-
 class network_threads
 {
 public:

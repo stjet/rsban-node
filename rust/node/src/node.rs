@@ -122,6 +122,7 @@ pub struct Node {
     ongoing_bootstrap: Arc<OngoingBootstrap>,
     peer_cache_updater: TimerThread<PeerCacheUpdater>,
     peer_cache_connector: TimerThread<PeerCacheConnector>,
+    pub inbound_message_queue: Arc<InboundMessageQueue>,
     stopped: AtomicBool,
 }
 
@@ -1113,6 +1114,7 @@ impl Node {
             ledger_pruning,
             network_threads,
             message_processor,
+            inbound_message_queue,
             stopped: AtomicBool::new(false),
         }
     }

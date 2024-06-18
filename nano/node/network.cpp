@@ -77,7 +77,7 @@ void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> b
 
 void nano::network::inbound (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
 {
-	node.live_message_processor.process (message, channel);
+	rsnano::rsn_node_inbound(node.handle, message.handle, channel->handle);
 }
 
 // Send keepalives to all the peers we've been notified of
@@ -149,21 +149,6 @@ std::string nano::network::to_string (nano::networks network)
 	rsnano::StringDto result;
 	rsnano::rsn_network_to_string (static_cast<uint16_t> (network), &result);
 	return rsnano::convert_dto_to_string (result);
-}
-
-nano::live_message_processor::live_message_processor (rsnano::LiveMessageProcessorHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::live_message_processor::~live_message_processor ()
-{
-	rsnano::rsn_live_message_processor_destroy (handle);
-}
-
-void nano::live_message_processor::process (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
-{
-	rsnano::rsn_live_message_processor_process (handle, message.handle, channel->handle);
 }
 
 nano::network_threads::network_threads (rsnano::NetworkThreadsHandle * handle) :

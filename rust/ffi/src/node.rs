@@ -11,13 +11,13 @@ use crate::{
     },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
+    messages::MessageHandle,
     representatives::{OnlineRepsHandle, RepCrawlerHandle, RepresentativeRegisterHandle},
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
-        ChannelHandle, EndpointDto, LiveMessageProcessorHandle, NetworkFilterHandle,
-        NetworkThreadsHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle,
-        TcpChannelsHandle,
+        ChannelHandle, EndpointDto, NetworkFilterHandle, NetworkThreadsHandle,
+        OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -358,15 +358,6 @@ pub extern "C" fn rsn_node_backlog_population(handle: &NodeHandle) -> *mut Backl
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_live_message_processor(
-    handle: &NodeHandle,
-) -> *mut LiveMessageProcessorHandle {
-    Box::into_raw(Box::new(LiveMessageProcessorHandle(Arc::clone(
-        &handle.0.live_message_processor,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_network_threads(handle: &NodeHandle) -> *mut NetworkThreadsHandle {
     Box::into_raw(Box::new(NetworkThreadsHandle(Arc::clone(
         &handle.0.network_threads,
@@ -437,6 +428,18 @@ pub unsafe extern "C" fn rsn_node_enqueue_vote_request(
         .0
         .vote_generators
         .generate_non_final_vote(&Root::from_ptr(root), &BlockHash::from_ptr(hash));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_inbound(
+    handle: &NodeHandle,
+    message: &MessageHandle,
+    channel: &ChannelHandle,
+) {
+    handle
+        .0
+        .inbound_message_queue
+        .put(message.0.clone(), (**channel).clone())
 }
 
 #[no_mangle]

@@ -15,6 +15,7 @@ use tracing::trace;
 
 use super::{peer_connector, ChannelEnum, Network, PeerConnector};
 
+/// Handle realtime messages (as opposed to bootstrap messages)
 pub struct RealtimeMessageHandler {
     stats: Arc<Stats>,
     network: Arc<Network>,

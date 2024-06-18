@@ -24,10 +24,10 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
-        LiveMessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
-        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        ResponseServerFactory, SocketObserver, SynCookies, TcpListener, TcpListenerExt,
-        TrafficType,
+        LiveMessageProcessor, MessageProcessor, Network, NetworkFilter, NetworkOptions,
+        NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater,
+        PeerConnector, ResponseServerFactory, SocketObserver, SynCookies, TcpListener,
+        TcpListenerExt, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -115,6 +115,7 @@ pub struct Node {
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     pub live_message_processor: Arc<LiveMessageProcessor>,
+    message_processor: Mutex<MessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
     pub peer_connector: Arc<PeerConnector>,
@@ -594,13 +595,18 @@ impl Node {
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
             network.clone(),
             peer_connector.clone(),
-            config.clone(),
             flags.clone(),
             network_params.clone(),
             stats.clone(),
             syn_cookies.clone(),
             keepalive_factory.clone(),
         )));
+
+        let message_processor = Mutex::new(MessageProcessor::new(
+            flags.clone(),
+            config.clone(),
+            network.clone(),
+        ));
 
         let processor = Arc::downgrade(&live_message_processor);
         network.set_sink(Box::new(move |msg, channel| {
@@ -1110,6 +1116,7 @@ impl Node {
             live_message_processor,
             ledger_pruning,
             network_threads,
+            message_processor,
             stopped: AtomicBool::new(false),
         }
     }
@@ -1217,6 +1224,8 @@ impl NodeExt for Arc<Node> {
     fn start(&self) {
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
+        self.message_processor.lock().unwrap().start();
+
         if !self.flags.disable_legacy_bootstrap && !self.flags.disable_ongoing_bootstrap {
             self.ongoing_bootstrap.ongoing_bootstrap();
         }
@@ -1331,6 +1340,7 @@ impl NodeExt for Arc<Node> {
         self.stats.stop();
         self.workers.stop();
         self.local_block_broadcaster.stop();
+        self.message_processor.lock().unwrap().stop();
         self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
 
         // work pool is not stopped on purpose due to testing setup

@@ -1,11 +1,10 @@
-use rsnano_messages::{Keepalive, Message};
-
-use super::{MessageProcessor, Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
+use super::{Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
     NetworkParams,
 };
+use rsnano_messages::{Keepalive, Message};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex},
@@ -17,7 +16,6 @@ pub struct NetworkThreads {
     cleanup_thread: Option<JoinHandle<()>>,
     keepalive_thread: Option<JoinHandle<()>>,
     reachout_thread: Option<JoinHandle<()>>,
-    message_processor: MessageProcessor,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
     peer_connector: Arc<PeerConnector>,
@@ -32,7 +30,6 @@ impl NetworkThreads {
     pub fn new(
         network: Arc<Network>,
         peer_connector: Arc<PeerConnector>,
-        config: NodeConfig,
         flags: NodeFlags,
         network_params: NetworkParams,
         stats: Arc<Stats>,
@@ -40,11 +37,6 @@ impl NetworkThreads {
         keepalive_factory: Arc<KeepaliveFactory>,
     ) -> Self {
         Self {
-            message_processor: MessageProcessor::new(
-                flags.clone(),
-                config.clone(),
-                network.clone(),
-            ),
             cleanup_thread: None,
             keepalive_thread: None,
             reachout_thread: None,
@@ -105,14 +97,11 @@ impl NetworkThreads {
                 .spawn(move || reachout.run())
                 .unwrap(),
         );
-
-        self.message_processor.start();
     }
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
         self.stopped.0.notify_all();
         self.network.stop();
-        self.message_processor.stop();
         if let Some(t) = self.keepalive_thread.take() {
             t.join().unwrap();
         }

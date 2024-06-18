@@ -15,7 +15,7 @@ use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, Message};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
-    cmp::min,
+    cmp::{max, min},
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
 };
@@ -31,7 +31,7 @@ pub struct RequestAggregatorConfig {
 impl RequestAggregatorConfig {
     pub fn new(parallelism: usize) -> Self {
         Self {
-            threads: min(parallelism, 4),
+            threads: max(1, min(parallelism / 2, 4)),
             max_queue: 128,
             batch_size: 16,
         }

@@ -2189,8 +2189,7 @@ TEST (node, vote_by_hash_bundle)
 	}
 
 	// Confirming last block will confirm whole chain and allow us to generate votes for those blocks later
-	ASSERT_TRUE (nano::test::start_elections (system, node, { blocks.back () }, true));
-	ASSERT_TIMELY (5s, nano::test::confirmed (node, { blocks.back () }));
+	nano::test::confirm(node.ledger, blocks.back());
 
 	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	nano::keypair key1;
@@ -2368,8 +2367,7 @@ TEST (node, epoch_conflict_confirm)
 	ASSERT_TRUE (nano::test::process (node1, { send, send2, open }));
 
 	// Confirm open block in node1 to allow generating votes
-	ASSERT_TRUE (nano::test::start_elections (system, node1, { open }, true));
-	ASSERT_TIMELY (5s, nano::test::confirmed (node1, { open }));
+	nano::test::confirm(node1.ledger, open);
 
 	// Process initial blocks on node0
 	ASSERT_TRUE (nano::test::process (node0, { send, send2, open }));
@@ -2954,8 +2952,7 @@ TEST (node, rollback_vote_self)
 
 	// Process and mark the first 2 blocks as confirmed to allow voting
 	ASSERT_TRUE (nano::test::process (node, { send1, open }));
-	ASSERT_TRUE (nano::test::start_elections (system, node, { send1, open }, true));
-	ASSERT_TIMELY_EQ (5s, node.ledger.cemented_count (), 3);
+	nano::test::confirm(node.ledger, open);
 
 	// wait until the rep weights have caught up with the weight transfer
 	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount / 2, node.weight (key.pub));

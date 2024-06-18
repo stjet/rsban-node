@@ -20,8 +20,7 @@ use num::FromPrimitive;
 use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
     config::{NodeConfig, Peer},
-    consensus::RequestAggregatorConfig,
-    transport::TcpConfig,
+    transport::{MessageProcessorConfig, TcpConfig},
     NetworkParams,
 };
 use std::{
@@ -108,6 +107,7 @@ pub struct NodeConfigDto {
     pub vote_processor: VoteProcessorConfigDto,
     pub tcp: TcpConfigDto,
     pub request_aggregator: RequestAggregatorConfigDto,
+    pub message_processor: MessageProcessorConfigDto,
 }
 
 #[repr(C)]
@@ -297,6 +297,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.vote_processor = (&cfg.vote_processor).into();
     dto.tcp = (&cfg.tcp).into();
     dto.request_aggregator = (&cfg.request_aggregator).into();
+    dto.message_processor = (&cfg.message_processor).into();
 }
 
 #[no_mangle]
@@ -433,8 +434,33 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             vote_processor: (&value.vote_processor).into(),
             tcp: (&value.tcp).into(),
             request_aggregator: (&value.request_aggregator).into(),
+            message_processor: (&value.message_processor).into(),
         };
 
         Ok(cfg)
+    }
+}
+
+#[repr(C)]
+pub struct MessageProcessorConfigDto {
+    pub threads: usize,
+    pub max_queue: usize,
+}
+
+impl From<&MessageProcessorConfigDto> for MessageProcessorConfig {
+    fn from(value: &MessageProcessorConfigDto) -> Self {
+        Self {
+            threads: value.threads,
+            max_queue: value.max_queue,
+        }
+    }
+}
+
+impl From<&MessageProcessorConfig> for MessageProcessorConfigDto {
+    fn from(value: &MessageProcessorConfig) -> Self {
+        Self {
+            threads: value.threads,
+            max_queue: value.max_queue,
+        }
     }
 }

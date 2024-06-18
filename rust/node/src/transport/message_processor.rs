@@ -1,12 +1,46 @@
+use rsnano_core::utils::TomlWriter;
+
 use super::{InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
 use std::{
+    cmp::{max, min},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
     thread::JoinHandle,
 };
+
+#[derive(Clone)]
+pub struct MessageProcessorConfig {
+    pub threads: usize,
+    pub max_queue: usize,
+}
+
+impl MessageProcessorConfig {
+    pub fn new(parallelism: usize) -> Self {
+        Self {
+            threads: min(2, max(parallelism / 4, 1)),
+            max_queue: 64,
+        }
+    }
+}
+
+impl MessageProcessorConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "threads",
+            self.threads,
+            "Number of threads to use for message processing. \ntype:uint64",
+        )?;
+
+        toml.put_usize(
+            "max_queue",
+            self.max_queue,
+            "Maximum number of messages per peer to queue for processing. \ntype:uint64",
+        )
+    }
+}
 
 /// Process inbound messages from other nodes
 pub struct MessageProcessor {
@@ -41,7 +75,7 @@ impl MessageProcessor {
                 let state = self.state.clone();
                 self.processing_threads.push(
                     std::thread::Builder::new()
-                        .name("Pkt processing".to_string())
+                        .name("Msg processing".to_string())
                         .spawn(move || {
                             state.run();
                         })

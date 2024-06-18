@@ -8,7 +8,7 @@ use crate::{
         ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
     },
     stats::StatsConfig,
-    transport::TcpConfig,
+    transport::{MessageProcessorConfig, TcpConfig},
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
@@ -104,6 +104,7 @@ pub struct NodeConfig {
     pub vote_processor: VoteProcessorConfig,
     pub tcp: TcpConfig,
     pub request_aggregator: RequestAggregatorConfig,
+    pub message_processor: MessageProcessorConfig,
 }
 
 #[derive(Clone)]
@@ -318,6 +319,7 @@ impl NodeConfig {
                 Default::default()
             },
             request_aggregator: RequestAggregatorConfig::new(parallelism),
+            message_processor: MessageProcessorConfig::new(parallelism),
         }
     }
 
@@ -518,6 +520,10 @@ impl NodeConfig {
 
         toml.put_child("request_aggregator", &mut |writer| {
             self.request_aggregator.serialize_toml(writer)
+        })?;
+
+        toml.put_child("message_processor", &mut |writer| {
+            self.message_processor.serialize_toml(writer)
         })?;
 
         Ok(())

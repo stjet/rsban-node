@@ -77,7 +77,7 @@ void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> b
 
 void nano::network::inbound (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)
 {
-	rsnano::rsn_node_inbound(node.handle, message.handle, channel->handle);
+	rsnano::rsn_node_inbound (node.handle, message.handle, channel->handle);
 }
 
 // Send keepalives to all the peers we've been notified of

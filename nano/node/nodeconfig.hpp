@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nano/lib/rsnano.hpp"
 #include "nano/node/request_aggregator.hpp"
 
 #include <nano/lib/config.hpp>
@@ -38,6 +39,20 @@ enum class frontiers_confirmation_mode : uint8_t
 	automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
 	disabled, // Do not confirm frontiers
 	invalid
+};
+
+class message_processor_config final
+{
+public:
+	message_processor_config () = default;
+	message_processor_config (rsnano::MessageProcessorConfigDto const & dto);
+
+	rsnano::MessageProcessorConfigDto into_dto () const;
+	nano::error deserialize (nano::tomlconfig & toml);
+
+public:
+	size_t threads;
+	size_t max_queue;
 };
 
 /**
@@ -140,6 +155,7 @@ public:
 	nano::vote_processor_config vote_processor;
 	nano::transport::tcp_config tcp;
 	nano::request_aggregator_config request_aggregator;
+	nano::message_processor_config message_processor;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

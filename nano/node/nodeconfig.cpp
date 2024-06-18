@@ -116,6 +116,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.vote_processor = config.vote_processor.to_dto ();
 	dto.tcp = config.tcp.to_dto ();
 	dto.request_aggregator = config.request_aggregator.into_dto ();
+	dto.message_processor = config.message_processor.into_dto ();
 	return dto;
 }
 
@@ -239,6 +240,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	vote_processor = nano::vote_processor_config{ dto.vote_processor };
 	tcp = nano::transport::tcp_config{ dto.tcp };
 	request_aggregator = nano::request_aggregator_config{ dto.request_aggregator };
+	message_processor = nano::message_processor_config{ dto.message_processor };
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -344,6 +346,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("request_aggregator");
 			request_aggregator.deserialize (config_l);
+		}
+
+		if (toml.has_key ("message_processor"))
+		{
+			auto config_l = toml.get_required_child ("message_processor");
+			message_processor.deserialize (config_l);
 		}
 
 		if (toml.has_key ("work_peers"))
@@ -985,4 +993,23 @@ std::size_t nano::node_flags::bootstrap_interval () const
 void nano::node_flags::set_bootstrap_interval (std::size_t size)
 {
 	set_flag ([size] (rsnano::NodeFlagsDto & dto) { dto.bootstrap_interval = size; });
+}
+
+nano::message_processor_config::message_processor_config (rsnano::MessageProcessorConfigDto const & dto) :
+	threads{ dto.threads },
+	max_queue{ dto.max_queue }
+{
+}
+
+rsnano::MessageProcessorConfigDto nano::message_processor_config::into_dto () const
+{
+	return { threads, max_queue };
+}
+
+nano::error nano::message_processor_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("threads", threads);
+	toml.get ("max_queue", max_queue);
+
+	return toml.get_error ();
 }

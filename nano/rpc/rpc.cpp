@@ -5,8 +5,6 @@
 
 #include <boost/format.hpp>
 
-#include <iostream>
-
 nano::rpc::rpc (boost::asio::io_context & io_ctx_a, nano::rpc_config config_a, nano::rpc_handler_interface & rpc_handler_interface_a) :
 	config (std::move (config_a)),
 	acceptor (io_ctx_a),

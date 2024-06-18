@@ -775,6 +775,11 @@ nano::wallets_error nano::wallets::deterministic_index_get (nano::wallet_id cons
 	return static_cast<nano::wallets_error> (result);
 }
 
+void nano::wallets::work_cache_blocking (nano::wallet_id const & wallet_id, nano::account const & account_a, nano::root const & root_a)
+{
+	rsnano::rsn_wallets_work_cache_blocking (rust_handle, wallet_id.bytes.data(), account_a.bytes.data(), root_a.bytes.data());
+}
+
 std::shared_ptr<nano::block> nano::wallets::send_action (nano::wallet_id const & wallet_id, nano::account const & source_a, nano::account const & account_a, nano::uint128_t const & amount_a, uint64_t work_a, bool generate_work_a, boost::optional<std::string> id_a)
 {
 	auto lock{ mutex.lock () };

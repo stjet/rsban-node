@@ -14,7 +14,9 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkThresholdsDto},
     NetworkParamsDto, NodeConfigDto, StringDto, VoidPointerCallback,
 };
-use rsnano_core::{work::WorkThresholds, Account, Amount, BlockEnum, BlockHash, RawKey, WalletId};
+use rsnano_core::{
+    work::WorkThresholds, Account, Amount, BlockEnum, BlockHash, RawKey, Root, WalletId,
+};
 use rsnano_node::{
     config::NodeConfig,
     wallets::{Wallet, Wallets, WalletsError, WalletsExt},
@@ -1051,4 +1053,20 @@ pub unsafe extern "C" fn rsn_wallets_serialize(
         }
         Err(e) => e as u8,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_wallets_work_cache_blocking(
+    handle: &mut LmdbWalletsHandle,
+    wallet_id: *const u8,
+    account: *const u8,
+    root: *const u8,
+) {
+    handle
+        .work_cache_blocking2(
+            &WalletId::from_ptr(wallet_id),
+            &Account::from_ptr(account),
+            &Root::from_ptr(root),
+        )
+        .unwrap();
 }

@@ -35,7 +35,7 @@ use std::{
 };
 use tracing::{info, warn};
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Debug)]
 pub enum WalletsError {
     None,
     Generic,
@@ -285,7 +285,19 @@ impl Wallets {
         }
     }
 
-    pub fn work_cache_blocking(&self, wallet: &Wallet, account: &Account, root: &Root) {
+    pub fn work_cache_blocking2(
+        &self,
+        wallet_id: &WalletId,
+        account: &Account,
+        root: &Root,
+    ) -> Result<(), WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Self::get_wallet(&guard, wallet_id)?;
+        self.work_cache_blocking(wallet, account, root);
+        Ok(())
+    }
+
+    fn work_cache_blocking(&self, wallet: &Wallet, account: &Account, root: &Root) {
         if self.distributed_work.work_generation_enabled() {
             let difficulty = self.work_thresholds.threshold_base(WorkVersion::Work1);
             if let Some(work) = self.distributed_work.make_blocking(

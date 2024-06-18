@@ -84,7 +84,15 @@ impl InboundMessageQueue {
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(name.into(), vec![])
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![self
+                .state
+                .lock()
+                .unwrap()
+                .queue
+                .collect_container_info("queue")],
+        )
     }
 }
 

@@ -1,14 +1,18 @@
-use super::{InboundMessageQueue, RealtimeMessageHandler};
+use super::{ChannelEnum, InboundMessageQueue, Origin, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
-use rsnano_core::utils::TomlWriter;
+use rsnano_core::{utils::TomlWriter, NoValue};
+use rsnano_messages::DeserializedMessage;
 use std::{
     cmp::{max, min},
+    collections::VecDeque,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
     thread::JoinHandle,
+    time::Instant,
 };
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct MessageProcessorConfig {
@@ -113,12 +117,31 @@ impl State {
         while !self.stopped.load(Ordering::SeqCst) {
             let batch = self.inbound_queue.next_batch(Self::MAX_BATCH_SIZE);
             if !batch.is_empty() {
-                for ((message, channel), _) in batch {
-                    self.realtime_handler.process(message.message, &channel);
-                }
+                self.handle_batch(batch);
             } else {
                 self.inbound_queue.wait_for_messages();
             }
+        }
+    }
+
+    fn handle_batch(
+        &self,
+        batch: VecDeque<((DeserializedMessage, Arc<ChannelEnum>), Origin<NoValue>)>,
+    ) {
+        let start = Instant::now();
+        let batch_size = batch.len();
+        for ((message, channel), _) in batch {
+            self.realtime_handler.process(message.message, &channel);
+        }
+
+        let elapsed_millis = start.elapsed().as_millis();
+        if elapsed_millis > 100 {
+            debug!(
+                "Processed {} messages in {} milliseconds (rate of {} messages per second)",
+                batch_size,
+                elapsed_millis,
+                batch_size as u128 * 1000 / elapsed_millis
+            );
         }
     }
 }

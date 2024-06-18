@@ -84,11 +84,11 @@ public:
 	 * Maximum number of elections that should be present in this container
 	 * NOTE: This is only a soft limit, it is possible for this container to exceed this count
 	 */
-	int64_t limit (nano::election_behavior behavior = nano::election_behavior::normal) const;
+	int64_t limit (nano::election_behavior behavior) const;
 	/**
 	 * How many election slots are available for specified election type
 	 */
-	int64_t vacancy (nano::election_behavior behavior = nano::election_behavior::normal) const;
+	int64_t vacancy (nano::election_behavior behavior) const;
 	void set_vacancy_update (std::function<void ()> callback);
 	void vacancy_update ();
 

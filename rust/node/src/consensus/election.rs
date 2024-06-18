@@ -124,7 +124,7 @@ impl Election {
 
     pub fn time_to_live(&self) -> Duration {
         match self.behavior {
-            ElectionBehavior::Normal => Duration::from_secs(60 * 5),
+            ElectionBehavior::Manual | ElectionBehavior::Priority => Duration::from_secs(60 * 5),
             ElectionBehavior::Hinted | ElectionBehavior::Optimistic => Duration::from_secs(30),
         }
     }
@@ -255,7 +255,8 @@ pub enum ElectionState {
 #[derive(FromPrimitive, Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum ElectionBehavior {
-    Normal,
+    Manual,
+    Priority,
     /**
      * Hinted elections:
      * - shorter timespan
@@ -274,7 +275,8 @@ pub enum ElectionBehavior {
 impl From<ElectionBehavior> for DetailType {
     fn from(value: ElectionBehavior) -> Self {
         match value {
-            ElectionBehavior::Normal => DetailType::Normal,
+            ElectionBehavior::Manual => DetailType::Manual,
+            ElectionBehavior::Priority => DetailType::Priority,
             ElectionBehavior::Hinted => DetailType::Hinted,
             ElectionBehavior::Optimistic => DetailType::Optimistic,
         }

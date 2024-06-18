@@ -137,7 +137,7 @@ impl PriorityScheduler {
     }
 
     fn predicate(&self, buckets: &Buckets) -> bool {
-        self.active.vacancy(ElectionBehavior::Normal) > 0 && !buckets.is_empty()
+        self.active.vacancy(ElectionBehavior::Priority) > 0 && !buckets.is_empty()
     }
 
     pub fn run(&self) {
@@ -157,7 +157,8 @@ impl PriorityScheduler {
                     drop(guard);
                     self.stats
                         .inc(StatType::ElectionScheduler, DetailType::InsertPriority);
-                    let (inserted, election) = self.active.insert(&block, ElectionBehavior::Normal);
+                    let (inserted, election) =
+                        self.active.insert(&block, ElectionBehavior::Priority);
                     if inserted {
                         self.stats.inc(
                             StatType::ElectionScheduler,

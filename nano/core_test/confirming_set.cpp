@@ -222,7 +222,7 @@ TEST (confirmation_callback, election_winner_details_clearing_node_process_confi
 	std::make_shared<nano::election> (
 	*node, send,
 	[] (std::shared_ptr<nano::block> const &) {},
-	[] (nano::account const &) {}, nano::election_behavior::normal));
+	[] (nano::account const &) {}, nano::election_behavior::priority));
 	nano::election_status election;
 	election.set_winner (send);
 	node->process_confirmed (election, 1000000);

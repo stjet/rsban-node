@@ -150,7 +150,8 @@ impl ActiveElections {
             mutex: Mutex::new(ActiveElectionsState {
                 roots: OrderedRoots::default(),
                 stopped: false,
-                normal_count: 0,
+                manual_count: 0,
+                priority_count: 0,
                 hinted_count: 0,
                 optimistic_count: 0,
             }),
@@ -359,7 +360,8 @@ impl ActiveElections {
     /// NOTE: This is only a soft limit, it is possible for this container to exceed this count
     pub fn limit(&self, behavior: ElectionBehavior) -> usize {
         match behavior {
-            ElectionBehavior::Normal => self.config.size,
+            ElectionBehavior::Manual => usize::MAX,
+            ElectionBehavior::Priority => self.config.size,
             ElectionBehavior::Hinted => {
                 self.config.hinted_limit_percentage * self.config.size / 100
             }
@@ -373,8 +375,9 @@ impl ActiveElections {
     pub fn vacancy(&self, behavior: ElectionBehavior) -> i64 {
         let guard = self.mutex.lock().unwrap();
         match behavior {
-            ElectionBehavior::Normal => {
-                self.limit(ElectionBehavior::Normal) as i64 - guard.roots.len() as i64
+            ElectionBehavior::Manual => i64::MAX,
+            ElectionBehavior::Priority => {
+                self.limit(ElectionBehavior::Priority) as i64 - guard.roots.len() as i64
             }
             ElectionBehavior::Hinted | ElectionBehavior::Optimistic => {
                 self.limit(behavior) as i64 - guard.count_by_behavior(behavior) as i64
@@ -658,31 +661,6 @@ impl ActiveElections {
         election.mutex.lock().unwrap().is_confirmed()
     }
 
-    pub fn erase_oldest(&self) {
-        let guard = self.mutex.lock().unwrap();
-        let mut it = guard.roots.iter_sequenced();
-        if let Some((_, election)) = it.next() {
-            let election = Arc::clone(election);
-            drop(it);
-            self.cleanup_election(guard, &election)
-        }
-    }
-
-    /// Erase elections if we're over capacity
-    pub fn trim(&self) {
-        /*
-         * Both normal and hinted election schedulers are well-behaved, meaning they first check for AEC vacancy before inserting new elections.
-         * However, it is possible that AEC will be temporarily overfilled in case it's running at full capacity and election hinting or manual queue kicks in.
-         * That case will lead to unwanted churning of elections, so this allows for AEC to be overfilled to 125% until erasing of elections happens.
-         */
-        while self.vacancy(ElectionBehavior::Normal)
-            < -(self.limit(ElectionBehavior::Normal) as i64 / 4)
-        {
-            self.stats.inc(StatType::Active, DetailType::EraseOldest);
-            self.erase_oldest();
-        }
-    }
-
     /// Minimum time between broadcasts of the current winner of an election, as a backup to requesting confirmations
     fn base_latency(&self) -> Duration {
         if self.network_params.network.is_dev_network() {
@@ -695,7 +673,9 @@ impl ActiveElections {
     /// Calculates time delay between broadcasting confirmation requests
     pub fn confirm_req_time(&self, election: &Election) -> Duration {
         match election.behavior {
-            ElectionBehavior::Normal | ElectionBehavior::Hinted => self.base_latency() * 5,
+            ElectionBehavior::Priority | ElectionBehavior::Manual | ElectionBehavior::Hinted => {
+                self.base_latency() * 5
+            }
             ElectionBehavior::Optimistic => self.base_latency() * 2,
         }
     }
@@ -916,7 +896,7 @@ impl ActiveElections {
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "normal".to_string(),
-                    count: guard.count_by_behavior(ElectionBehavior::Normal),
+                    count: guard.count_by_behavior(ElectionBehavior::Priority),
                     sizeof_element: 0,
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
@@ -984,7 +964,8 @@ impl PartialOrd for TallyKey {
 pub struct ActiveElectionsState {
     pub roots: OrderedRoots,
     pub stopped: bool,
-    pub normal_count: usize,
+    pub manual_count: usize,
+    pub priority_count: usize,
     pub hinted_count: usize,
     pub optimistic_count: usize,
 }
@@ -992,7 +973,8 @@ pub struct ActiveElectionsState {
 impl ActiveElectionsState {
     pub fn count_by_behavior(&self, behavior: ElectionBehavior) -> usize {
         match behavior {
-            ElectionBehavior::Normal => self.normal_count,
+            ElectionBehavior::Manual => self.manual_count,
+            ElectionBehavior::Priority => self.priority_count,
             ElectionBehavior::Hinted => self.hinted_count,
             ElectionBehavior::Optimistic => self.optimistic_count,
         }
@@ -1000,7 +982,8 @@ impl ActiveElectionsState {
 
     pub fn count_by_behavior_mut(&mut self, behavior: ElectionBehavior) -> &mut usize {
         match behavior {
-            ElectionBehavior::Normal => &mut self.normal_count,
+            ElectionBehavior::Manual => &mut self.manual_count,
+            ElectionBehavior::Priority => &mut self.priority_count,
             ElectionBehavior::Hinted => &mut self.hinted_count,
             ElectionBehavior::Optimistic => &mut self.optimistic_count,
         }
@@ -1295,8 +1278,6 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             let mut guard = election.mutex.lock().unwrap();
             self.broadcast_vote(election, &mut guard);
         }
-
-        self.trim();
 
         (inserted, election_result)
     }

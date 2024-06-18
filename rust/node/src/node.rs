@@ -627,7 +627,7 @@ impl Node {
         let manual_weak = Arc::downgrade(&manual_scheduler);
         wallets.set_start_election_callback(Box::new(move |block| {
             if let Some(manual) = manual_weak.upgrade() {
-                manual.push(block, None, ElectionBehavior::Normal);
+                manual.push(block, None);
             }
         }));
 

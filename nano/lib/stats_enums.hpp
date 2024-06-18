@@ -211,7 +211,8 @@ enum class detail : uint16_t
 	broadcast_block_repeat,
 
 	// election types
-	normal,
+	manual,
+	priority,
 	hinted,
 	optimistic,
 

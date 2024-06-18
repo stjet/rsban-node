@@ -45,16 +45,11 @@ impl ManualScheduler {
         self.condition.notify_all();
     }
 
-    pub fn push(
-        &self,
-        block: Arc<BlockEnum>,
-        previous_balance: Option<Amount>,
-        election_behavior: ElectionBehavior,
-    ) {
+    pub fn push(&self, block: Arc<BlockEnum>, previous_balance: Option<Amount>) {
         let mut guard = self.mutex.lock().unwrap();
         guard
             .queue
-            .push_back((block, previous_balance, election_behavior));
+            .push_back((block, previous_balance, ElectionBehavior::Manual));
         self.notify();
     }
 

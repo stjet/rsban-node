@@ -30,7 +30,7 @@ void nano::scheduler::manual::stop ()
 	rsnano::rsn_manual_scheduler_stop (handle);
 }
 
-void nano::scheduler::manual::push (std::shared_ptr<nano::block> const & block_a, boost::optional<nano::uint128_t> const & previous_balance_a, nano::election_behavior election_behavior_a)
+void nano::scheduler::manual::push (std::shared_ptr<nano::block> const & block_a, boost::optional<nano::uint128_t> const & previous_balance_a)
 {
 	uint8_t * previous_ptr = nullptr;
 	nano::amount amount;
@@ -39,5 +39,5 @@ void nano::scheduler::manual::push (std::shared_ptr<nano::block> const & block_a
 		amount = previous_balance_a.value ();
 		previous_ptr = amount.bytes.data ();
 	}
-	rsnano::rsn_manual_scheduler_push (handle, block_a->get_handle (), previous_ptr, static_cast<uint8_t> (election_behavior_a));
+	rsnano::rsn_manual_scheduler_push (handle, block_a->get_handle (), previous_ptr);
 }

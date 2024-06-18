@@ -218,7 +218,8 @@ pub enum DetailType {
     BroadcastBlockRepeat,
 
     // election types
-    Normal,
+    Manual,
+    Priority,
     Hinted,
     Optimistic,
 

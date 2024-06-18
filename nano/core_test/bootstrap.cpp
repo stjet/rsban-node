@@ -3,6 +3,7 @@
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/bootstrap/bootstrap_lazy.hpp>
 #include <nano/secure/ledger.hpp>
+#include <nano/test_common/chains.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
@@ -2118,32 +2119,12 @@ TEST (bulk, genesis_pruning)
 	node_flags.set_enable_pruning (true);
 
 	auto node1 = system.add_node (config, node_flags);
-	auto wallet_id = node1->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	auto blocks = nano::test::setup_chain (system, *node1, 3);
+	auto send1 = blocks[0];
+	auto send2 = blocks[1];
+	auto send3 = blocks[2];
 
-	// do 3 sends from genesis to key2
-	nano::keypair key2;
-	auto send1 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
-	ASSERT_NE (nullptr, send1);
-	auto send2 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
-	ASSERT_NE (nullptr, send2);
-	auto send3 (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
-	ASSERT_NE (nullptr, send3);
-
-	ASSERT_EQ (nano::wallets_error::none, node1->wallets.remove_account (wallet_id, nano::dev::genesis_key.pub));
-
-	ASSERT_TIMELY_EQ (5s, send3->hash (), node1->latest (nano::dev::genesis_key.pub));
-
-	ASSERT_TRUE (nano::test::start_elections (system, *node1, { send1 }, true));
-	ASSERT_TIMELY (5s, node1->active.active (send2->qualified_root ()));
-	ASSERT_EQ (0, node1->ledger.pruned_count ());
-
-	ASSERT_TRUE (nano::test::start_elections (system, *node1, { send2 }, true));
-	ASSERT_TIMELY (5s, node1->active.active (send3->qualified_root ()));
-	ASSERT_EQ (0, node1->ledger.pruned_count ());
-
-	ASSERT_TRUE (nano::test::start_elections (system, *node1, { send3 }, true));
-	ASSERT_TIMELY (5s, nano::test::confirmed (*node1, { send3 }));
+	ASSERT_EQ (4, node1->ledger.block_count ());
 
 	node1->ledger_pruning (2, false);
 	ASSERT_EQ (2, node1->ledger.pruned_count ());

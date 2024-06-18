@@ -70,7 +70,7 @@ pub struct Network {
     pub inbound_queue: Arc<InboundMessageQueue>,
     flags: NodeFlags,
     stats: Arc<Stats>,
-    sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
+    pub sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
     next_channel_id: AtomicUsize,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
@@ -633,7 +633,6 @@ impl Network {
 
 pub trait NetworkExt {
     fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account);
-    fn process_messages(&self);
     fn keepalive(&self);
 }
 
@@ -684,14 +683,6 @@ impl NetworkExt for Arc<Network> {
 
         for observer in observers {
             observer(channel.clone());
-        }
-    }
-
-    fn process_messages(&self) {
-        while !self.stopped.load(Ordering::SeqCst) {
-            if let Some((message, channel)) = self.inbound_queue.next() {
-                (self.sink.read().unwrap())(message, channel)
-            }
         }
     }
 

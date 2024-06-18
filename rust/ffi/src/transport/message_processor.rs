@@ -1,10 +1,10 @@
-use rsnano_node::transport::MessageProcessor;
+use rsnano_node::transport::InboundMessageQueue;
 use std::{ops::Deref, sync::Arc};
 
-pub struct TcpMessageManagerHandle(pub Arc<MessageProcessor>);
+pub struct TcpMessageManagerHandle(pub Arc<InboundMessageQueue>);
 
 impl Deref for TcpMessageManagerHandle {
-    type Target = Arc<MessageProcessor>;
+    type Target = Arc<InboundMessageQueue>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -16,7 +16,7 @@ pub extern "C" fn rsn_tcp_message_manager_create(
     incoming_connections_max: usize,
 ) -> *mut TcpMessageManagerHandle {
     Box::into_raw(Box::new(TcpMessageManagerHandle(Arc::new(
-        MessageProcessor::new(incoming_connections_max),
+        InboundMessageQueue::new(incoming_connections_max),
     ))))
 }
 

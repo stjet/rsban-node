@@ -5,24 +5,19 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-pub struct MessageProcessor {
+pub struct InboundMessageQueue {
     max_entries: usize,
-    state: Mutex<TcpMessageManagerState>,
+    state: Mutex<State>,
     producer_condition: Condvar,
     consumer_condition: Condvar,
     blocked: Option<Box<dyn Fn() + Send + Sync>>,
 }
 
-struct TcpMessageManagerState {
-    entries: VecDeque<(DeserializedMessage, Arc<ChannelEnum>)>,
-    stopped: bool,
-}
-
-impl MessageProcessor {
+impl InboundMessageQueue {
     pub fn new(incoming_connections_max: usize) -> Self {
         Self {
             max_entries: incoming_connections_max * MAX_ENTRIES_PER_CONNECTION + 1,
-            state: Mutex::new(TcpMessageManagerState {
+            state: Mutex::new(State {
                 entries: VecDeque::new(),
                 stopped: false,
             }),
@@ -77,13 +72,18 @@ impl MessageProcessor {
     }
 }
 
-impl Default for MessageProcessor {
+impl Default for InboundMessageQueue {
     fn default() -> Self {
         Self::new(2048)
     }
 }
 
 const MAX_ENTRIES_PER_CONNECTION: usize = 16;
+
+struct State {
+    entries: VecDeque<(DeserializedMessage, Arc<ChannelEnum>)>,
+    stopped: bool,
+}
 
 #[cfg(test)]
 mod tests {
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn put_and_get_one_message() {
-        let manager = MessageProcessor::new(1);
+        let manager = InboundMessageQueue::new(1);
         assert_eq!(manager.size(), 0);
         manager.put(
             DeserializedMessage::new(Message::BulkPush, Default::default()),
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn block_when_max_entries_reached() {
-        let mut manager = MessageProcessor::new(1);
+        let mut manager = InboundMessageQueue::new(1);
         let blocked_notification = Arc::new((Mutex::new(false), Condvar::new()));
         let blocked_notification2 = blocked_notification.clone();
         manager.blocked = Some(Box::new(move || {

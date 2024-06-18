@@ -23,8 +23,8 @@ use crate::{
     representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, InboundCallback, KeepaliveFactory, LiveMessageProcessor,
-        MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
+        LiveMessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
         OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
         ResponseServerFactory, SocketObserver, SynCookies, TcpListener, TcpListenerExt,
         TrafficType,
@@ -180,7 +180,7 @@ impl Node {
             async_rt: Arc::clone(&async_rt),
             network_params: network_params.clone(),
             stats: Arc::clone(&stats),
-            tcp_message_manager: Arc::new(MessageProcessor::new(
+            tcp_message_manager: Arc::new(InboundMessageQueue::new(
                 config.tcp_incoming_connections_max as usize,
             )),
             port: config.peering_port.unwrap_or(0),

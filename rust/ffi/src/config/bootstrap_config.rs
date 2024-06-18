@@ -1,4 +1,4 @@
-use rsnano_node::bootstrap::{AccountSetsConfig, BootstrapAscendingConfig};
+use rsnano_node::{bootstrap::AccountSetsConfig, config::BootstrapAscendingToml};
 use std::time::Duration;
 
 #[repr(C)]
@@ -21,8 +21,8 @@ pub struct AccountSetsConfigDto {
     pub cooldown_ms: u64,
 }
 
-impl From<&BootstrapAscendingConfig> for BootstrapAscendingConfigDto {
-    fn from(value: &BootstrapAscendingConfig) -> Self {
+impl From<&BootstrapAscendingToml> for BootstrapAscendingConfigDto {
+    fn from(value: &BootstrapAscendingToml) -> Self {
         Self {
             requests_limit: value.requests_limit,
             database_requests_limit: value.database_requests_limit,
@@ -36,7 +36,7 @@ impl From<&BootstrapAscendingConfig> for BootstrapAscendingConfigDto {
     }
 }
 
-impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingConfig {
+impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingToml {
     fn from(value: &BootstrapAscendingConfigDto) -> Self {
         Self {
             requests_limit: value.requests_limit,
@@ -80,5 +80,5 @@ pub unsafe extern "C" fn rsn_account_sets_config_create(result: *mut AccountSets
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_config_create(result: *mut BootstrapAscendingConfigDto) {
-    (*result) = (&BootstrapAscendingConfig::default()).into()
+    (*result) = (&BootstrapAscendingToml::default()).into()
 }

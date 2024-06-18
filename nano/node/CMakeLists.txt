@@ -29,8 +29,6 @@ add_library(
   bootstrap/bootstrap.cpp
   bootstrap/bootstrap_server.hpp
   bootstrap/bootstrap_server.cpp
-  bootstrap_ascending/service.hpp
-  bootstrap_ascending/service.cpp
   cli.hpp
   cli.cpp
   common.hpp

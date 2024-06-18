@@ -546,11 +546,12 @@ impl Node {
         ));
 
         let ascendboot = Arc::new(BootstrapAscending::new(
-            Arc::clone(&block_processor),
-            Arc::clone(&ledger),
-            Arc::clone(&stats),
-            Arc::clone(&network),
+            block_processor.clone(),
+            ledger.clone(),
+            stats.clone(),
+            network.clone(),
             config.clone(),
+            global_config.into(),
             network_params.network.clone(),
         ));
 

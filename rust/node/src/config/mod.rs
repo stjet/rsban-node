@@ -1,4 +1,5 @@
 mod block_processor;
+mod bootstrap_ascending;
 mod converters;
 mod daemon_config;
 mod diagnostics_config;
@@ -14,6 +15,7 @@ mod websocket_config;
 use std::path::{Path, PathBuf};
 
 pub use block_processor::*;
+pub use bootstrap_ascending::*;
 pub use daemon_config::*;
 pub use diagnostics_config::*;
 pub use network_constants::*;

@@ -1,10 +1,10 @@
 use super::{
-    block_processor::BlockProcessorToml, DiagnosticsConfig, HintedSchedulerConfig, Networks,
-    OptimisticSchedulerConfig, WebsocketConfig,
+    block_processor::BlockProcessorToml, BootstrapAscendingToml, DiagnosticsConfig,
+    HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
     block_processing::BlockProcessorConfig,
-    bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig},
+    bootstrap::BootstrapServerConfig,
     consensus::{
         ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
     },
@@ -68,7 +68,7 @@ pub struct NodeConfig {
     pub use_memory_pools: bool,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
-    pub bootstrap_ascending: BootstrapAscendingConfig,
+    pub bootstrap_ascending: BootstrapAscendingToml,
     pub bootstrap_server: BootstrapServerConfig,
     pub bootstrap_bandwidth_limit: usize,
     pub bootstrap_bandwidth_burst_ratio: f64,

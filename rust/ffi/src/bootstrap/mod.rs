@@ -1,4 +1,3 @@
-mod bootstrap_ascending;
 mod bootstrap_attempt;
 mod bootstrap_attempts;
 mod bootstrap_client;
@@ -18,7 +17,6 @@ mod request_response_visitor_factory;
 mod tcp_listener;
 mod tcp_server;
 
-pub use bootstrap_ascending::BootstrapAscendingHandle;
 pub use bootstrap_initiator::BootstrapInitiatorHandle;
 pub use bootstrap_server::{BootstrapServerConfigDto, BootstrapServerHandle};
 pub use request_response_visitor_factory::RequestResponseVisitorFactoryHandle;

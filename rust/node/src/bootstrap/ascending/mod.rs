@@ -1,6 +1,5 @@
 mod account_sets;
 mod account_sets_config;
-mod bootstrap_ascending_config;
 mod iterator;
 mod ordered_blocking;
 mod ordered_priorities;
@@ -23,7 +22,6 @@ use crate::{
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
 pub use account_sets_config::*;
-pub use bootstrap_ascending_config::*;
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
@@ -57,7 +55,7 @@ pub struct BootstrapAscending {
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
     mutex: Mutex<BootstrapAscendingImpl>,
     condition: Condvar,
-    config: NodeConfig,
+    node_config: NodeConfig,
     /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
     /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
     database_limiter: BandwidthLimiter,
@@ -69,7 +67,8 @@ impl BootstrapAscending {
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
         network: Arc<Network>,
-        config: NodeConfig,
+        node_config: NodeConfig,
+        config: BootstrapAscendingConfig,
         network_constants: NetworkConstants,
     ) -> Self {
         Self {
@@ -80,19 +79,19 @@ impl BootstrapAscending {
                 stopped: false,
                 accounts: AccountSets::new(
                     Arc::clone(&stats),
-                    config.bootstrap_ascending.account_sets.clone(),
+                    node_config.bootstrap_ascending.account_sets.clone(),
                 ),
-                scoring: PeerScoring::new(network_constants, config.bootstrap_ascending.clone()),
+                scoring: PeerScoring::new(network_constants, config.clone()),
                 iterator: BufferedIterator::new(Arc::clone(&ledger)),
                 tags: OrderedTags::default(),
-                throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
+                throttle: Throttle::new(compute_throttle_size(&ledger, &node_config)),
             }),
             condition: Condvar::new(),
             database_limiter: BandwidthLimiter::new(
                 1.0,
-                config.bootstrap_ascending.database_requests_limit,
+                node_config.bootstrap_ascending.database_requests_limit,
             ),
-            config,
+            node_config,
             stats,
             network,
             ledger,
@@ -123,7 +122,7 @@ impl BootstrapAscending {
                 HashType::Account
             },
             start: tag.start,
-            count: self.config.bootstrap_ascending.pull_count as u8,
+            count: self.node_config.bootstrap_ascending.pull_count as u8,
         };
         let request = Message::AscPullReq(AscPullReq {
             id: tag.id,
@@ -161,14 +160,16 @@ impl BootstrapAscending {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped
             && self.block_processor.queue_len(BlockSource::Bootstrap)
-                > self.config.bootstrap_ascending.block_wait_count
+                > self.node_config.bootstrap_ascending.block_wait_count
         {
             // Blockprocessor is relatively slow, sleeping here instead of using conditions
             guard = self
                 .condition
-                .wait_timeout_while(guard, self.config.bootstrap_ascending.throttle_wait, |g| {
-                    !g.stopped
-                })
+                .wait_timeout_while(
+                    guard,
+                    self.node_config.bootstrap_ascending.throttle_wait,
+                    |g| !g.stopped,
+                )
                 .unwrap()
                 .0;
         }
@@ -182,7 +183,7 @@ impl BootstrapAscending {
                 return channel;
             }
 
-            let sleep = self.config.bootstrap_ascending.throttle_wait;
+            let sleep = self.node_config.bootstrap_ascending.throttle_wait;
             guard = self
                 .condition
                 .wait_timeout_while(guard, sleep, |g| !g.stopped)
@@ -264,9 +265,11 @@ impl BootstrapAscending {
             self.stats
                 .inc(StatType::BootstrapAscending, DetailType::Throttled);
             self.condition
-                .wait_timeout_while(data, self.config.bootstrap_ascending.throttle_wait, |g| {
-                    !g.stopped
-                })
+                .wait_timeout_while(
+                    data,
+                    self.node_config.bootstrap_ascending.throttle_wait,
+                    |g| !g.stopped,
+                )
                 .unwrap()
                 .0
         } else {
@@ -293,9 +296,9 @@ impl BootstrapAscending {
             guard.scoring.timeout();
             guard
                 .throttle
-                .resize(compute_throttle_size(&self.ledger, &self.config));
+                .resize(compute_throttle_size(&self.ledger, &self.node_config));
             while let Some(front) = guard.tags.front() {
-                if front.time.elapsed() <= self.config.bootstrap_ascending.timeout {
+                if front.time.elapsed() <= self.node_config.bootstrap_ascending.timeout {
                     break;
                 }
 
@@ -323,7 +326,7 @@ impl BootstrapAscending {
                 Sample::BootstrapTagDuration,
                 (
                     0,
-                    self.config.bootstrap_ascending.timeout.as_millis() as i64,
+                    self.node_config.bootstrap_ascending.timeout.as_millis() as i64,
                 ),
                 tag.time.elapsed().as_millis() as i64,
             );
@@ -604,5 +607,33 @@ fn compute_throttle_size(ledger: &Ledger, config: &NodeConfig) -> usize {
         16
     } else {
         size_new as usize
+    }
+}
+
+#[derive(Clone)]
+pub struct BootstrapAscendingConfig {
+    /// Maximum number of un-responded requests per channel
+    pub requests_limit: usize,
+    pub database_requests_limit: usize,
+    pub pull_count: usize,
+    pub timeout: Duration,
+    pub throttle_coefficient: usize,
+    pub throttle_wait: Duration,
+    pub account_sets: AccountSetsConfig,
+    pub block_wait_count: usize,
+}
+
+impl Default for BootstrapAscendingConfig {
+    fn default() -> Self {
+        Self {
+            requests_limit: 64,
+            database_requests_limit: 1024,
+            pull_count: BlocksAckPayload::MAX_BLOCKS,
+            timeout: Duration::from_secs(3),
+            throttle_coefficient: 16,
+            throttle_wait: Duration::from_millis(100),
+            account_sets: Default::default(),
+            block_wait_count: 1000,
+        }
     }
 }

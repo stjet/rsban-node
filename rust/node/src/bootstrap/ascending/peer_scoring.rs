@@ -1,4 +1,3 @@
-use super::BootstrapAscendingConfig;
 use crate::{
     config::NetworkConstants,
     transport::{ChannelEnum, TrafficType},
@@ -7,6 +6,8 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Weak},
 };
+
+use super::BootstrapAscendingConfig;
 
 /// Container for tracking and scoring peers with respect to bootstrapping
 pub(crate) struct PeerScoring {

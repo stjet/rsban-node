@@ -1,10 +1,9 @@
-use crate::bootstrap::AccountSetsConfig;
+use crate::bootstrap::{AccountSetsConfig, BootstrapAscendingConfig};
 use rsnano_core::utils::TomlWriter;
-use rsnano_messages::BlocksAckPayload;
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct BootstrapAscendingConfig {
+pub struct BootstrapAscendingToml {
     /// Maximum number of un-responded requests per channel
     pub requests_limit: usize,
     pub database_requests_limit: usize,
@@ -16,7 +15,7 @@ pub struct BootstrapAscendingConfig {
     pub block_wait_count: usize,
 }
 
-impl BootstrapAscendingConfig {
+impl BootstrapAscendingToml {
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize ("requests_limit", self.requests_limit, "Request limit to ascending bootstrap after which requests will be dropped.\nNote: changing to unlimited (0) is not recommended.\ntype:uint64")?;
         toml.put_usize ("database_requests_limit", self.database_requests_limit, "Request limit for accounts from database after which requests will be dropped.\nNote: changing to unlimited (0) is not recommended as this operation competes for resources on querying the database.\ntype:uint64")?;
@@ -47,17 +46,18 @@ impl BootstrapAscendingConfig {
     }
 }
 
-impl Default for BootstrapAscendingConfig {
+impl Default for BootstrapAscendingToml {
     fn default() -> Self {
+        let config = BootstrapAscendingConfig::default();
         Self {
-            requests_limit: 64,
-            database_requests_limit: 1024,
-            pull_count: BlocksAckPayload::MAX_BLOCKS,
-            timeout: Duration::from_secs(3),
-            throttle_coefficient: 16,
-            throttle_wait: Duration::from_millis(100),
-            account_sets: Default::default(),
-            block_wait_count: 1000,
+            requests_limit: config.requests_limit,
+            database_requests_limit: config.database_requests_limit,
+            pull_count: config.pull_count,
+            timeout: config.timeout,
+            throttle_coefficient: config.throttle_coefficient,
+            throttle_wait: config.throttle_wait,
+            account_sets: config.account_sets,
+            block_wait_count: config.block_wait_count,
         }
     }
 }

@@ -157,7 +157,7 @@ target_link_libraries(
   Boost::system
   Boost::thread
   OpenSSL::SSL
- ${CMAKE_DL_LIBS}
+  ${CMAKE_DL_LIBS}
   ${psapi_lib})
 
 target_compile_definitions(

@@ -1,7 +1,6 @@
-use rsnano_core::utils::TomlWriter;
-
 use super::{InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
+use rsnano_core::utils::TomlWriter;
 use std::{
     cmp::{max, min},
     sync::{
@@ -108,10 +107,17 @@ struct State {
 }
 
 impl State {
+    const MAX_BATCH_SIZE: usize = 1024 * 4;
+
     fn run(&self) {
         while !self.stopped.load(Ordering::SeqCst) {
-            if let Some((message, channel)) = self.inbound_queue.next() {
-                self.realtime_handler.process(message.message, &channel);
+            let batch = self.inbound_queue.next_batch(Self::MAX_BATCH_SIZE);
+            if !batch.is_empty() {
+                for ((message, channel), _) in batch {
+                    self.realtime_handler.process(message.message, &channel);
+                }
+            } else {
+                self.inbound_queue.wait_for_messages();
             }
         }
     }

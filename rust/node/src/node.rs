@@ -173,7 +173,8 @@ impl Node {
         ));
 
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
-            config.tcp_incoming_connections_max as usize,
+            config.message_processor.max_queue,
+            stats.clone(),
         ));
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
@@ -1171,6 +1172,8 @@ impl Node {
                 self.local_block_broadcaster
                     .collect_container_info("local_block_broadcaster"),
                 self.rep_tiers.collect_container_info("rep_tiers"),
+                self.inbound_message_queue
+                    .collect_container_info("message_processor"),
             ],
         )
     }

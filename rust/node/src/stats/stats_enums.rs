@@ -63,6 +63,9 @@ pub enum StatType {
     RepTiers,
     SynCookies,
     PeerHistory,
+    MessageProcessor,
+    MessageProcessorOverfill,
+    MessageProcessorType,
 
     BootstrapAscending,
     BootstrapAscendingAccounts,

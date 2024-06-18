@@ -64,7 +64,7 @@ impl ResponseServerFactory {
                 ledger,
             )),
             network,
-            inbound_queue: Arc::new(InboundMessageQueue::new(1)),
+            inbound_queue: Arc::new(InboundMessageQueue::default()),
             node_flags: flags,
             network_params,
             node_config: config,

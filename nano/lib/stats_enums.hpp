@@ -64,6 +64,9 @@ enum class type : uint8_t
 	rep_tiers,
 	syn_cookies,
 	peer_history,
+	message_processor,
+	message_processor_overfill,
+	message_processor_type,
 
 	bootstrap_ascending,
 	bootstrap_ascending_accounts,

@@ -1,4 +1,7 @@
-use super::ChannelEnum;
+use crate::stats::{DetailType, StatType, Stats};
+
+use super::{ChannelEnum, FairQueue, Origin};
+use rsnano_core::{utils::ContainerInfoComponent, NoValue};
 use rsnano_messages::DeserializedMessage;
 use std::{
     collections::VecDeque,
@@ -6,59 +9,69 @@ use std::{
 };
 
 pub struct InboundMessageQueue {
-    max_entries: usize,
     state: Mutex<State>,
-    producer_condition: Condvar,
-    consumer_condition: Condvar,
-    blocked: Option<Box<dyn Fn() + Send + Sync>>,
+    condition: Condvar,
+    stats: Arc<Stats>,
 }
 
 impl InboundMessageQueue {
-    pub fn new(incoming_connections_max: usize) -> Self {
+    pub fn new(max_queue: usize, stats: Arc<Stats>) -> Self {
         Self {
-            max_entries: incoming_connections_max * MAX_ENTRIES_PER_CONNECTION + 1,
             state: Mutex::new(State {
-                entries: VecDeque::new(),
+                queue: FairQueue::new(Box::new(move |_| max_queue), Box::new(|_| 1)),
                 stopped: false,
             }),
-            producer_condition: Condvar::new(),
-            consumer_condition: Condvar::new(),
-            blocked: None,
+            condition: Condvar::new(),
+            stats,
         }
     }
 
-    pub fn put(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
-        {
-            let mut lock = self.state.lock().unwrap();
-            while lock.entries.len() >= self.max_entries && !lock.stopped {
-                if let Some(callback) = &self.blocked {
-                    callback();
-                }
-                lock = self.producer_condition.wait(lock).unwrap();
-            }
-            lock.entries.push_back((message, channel));
+    pub fn put(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) -> bool {
+        let message_type = message.message.message_type();
+        let added = self
+            .state
+            .lock()
+            .unwrap()
+            .queue
+            .push((message, channel.clone()), Origin::new(NoValue {}, channel));
+
+        if added {
+            self.stats
+                .inc(StatType::MessageProcessor, DetailType::Process);
+            self.stats
+                .inc(StatType::MessageProcessorType, message_type.into());
+
+            self.condition.notify_all();
+        } else {
+            self.stats
+                .inc(StatType::MessageProcessor, DetailType::Overfill);
+            self.stats
+                .inc(StatType::MessageProcessorOverfill, message_type.into());
         }
-        self.consumer_condition.notify_one();
+
+        added
     }
 
-    pub fn next(&self) -> Option<(DeserializedMessage, Arc<ChannelEnum>)> {
-        let result = {
-            let mut lock = self.state.lock().unwrap();
-            while lock.entries.is_empty() && !lock.stopped {
-                lock = self.consumer_condition.wait(lock).unwrap();
-            }
-            if !lock.entries.is_empty() {
-                Some(lock.entries.pop_front().unwrap())
-            } else {
-                None
-            }
-        };
-        self.producer_condition.notify_one();
-        result
+    pub fn next_batch(
+        &self,
+        max_batch_size: usize,
+    ) -> VecDeque<((DeserializedMessage, Arc<ChannelEnum>), Origin<NoValue>)> {
+        self.state.lock().unwrap().queue.next_batch(max_batch_size)
+    }
+
+    pub fn wait_for_messages(&self) {
+        let state = self.state.lock().unwrap();
+        if !state.queue.is_empty() {
+            return;
+        }
+        drop(
+            self.condition
+                .wait_while(state, |s| !s.stopped && s.queue.is_empty()),
+        )
     }
 
     pub fn size(&self) -> usize {
-        self.state.lock().unwrap().entries.len()
+        self.state.lock().unwrap().queue.len()
     }
 
     /// Stop container and notify waiting threads
@@ -67,21 +80,22 @@ impl InboundMessageQueue {
             let mut lock = self.state.lock().unwrap();
             lock.stopped = true;
         }
-        self.consumer_condition.notify_all();
-        self.producer_condition.notify_all();
+        self.condition.notify_all();
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(name.into(), vec![])
     }
 }
 
 impl Default for InboundMessageQueue {
     fn default() -> Self {
-        Self::new(2048)
+        Self::new(64, Arc::new(Stats::default()))
     }
 }
 
-const MAX_ENTRIES_PER_CONNECTION: usize = 16;
-
 struct State {
-    entries: VecDeque<(DeserializedMessage, Arc<ChannelEnum>)>,
+    queue: FairQueue<(DeserializedMessage, Arc<ChannelEnum>), NoValue>,
     stopped: bool,
 }
 
@@ -89,59 +103,17 @@ struct State {
 mod tests {
     use super::*;
     use rsnano_messages::Message;
-    use std::thread::spawn;
 
     #[test]
     fn put_and_get_one_message() {
-        let manager = InboundMessageQueue::new(1);
+        let manager = InboundMessageQueue::new(1, Arc::new(Stats::default()));
         assert_eq!(manager.size(), 0);
         manager.put(
             DeserializedMessage::new(Message::BulkPush, Default::default()),
             Arc::new(ChannelEnum::new_null()),
         );
         assert_eq!(manager.size(), 1);
-        assert!(manager.next().is_some());
+        assert!(manager.next_batch(1000).len(), 1);
         assert_eq!(manager.size(), 0);
-    }
-
-    #[test]
-    fn block_when_max_entries_reached() {
-        let mut manager = InboundMessageQueue::new(1);
-        let blocked_notification = Arc::new((Mutex::new(false), Condvar::new()));
-        let blocked_notification2 = blocked_notification.clone();
-        manager.blocked = Some(Box::new(move || {
-            let (mutex, condvar) = blocked_notification2.as_ref();
-            let mut lock = mutex.lock().unwrap();
-            *lock = true;
-            condvar.notify_one();
-        }));
-        let manager = Arc::new(manager);
-
-        let message = DeserializedMessage::new(Message::BulkPush, Default::default());
-        let channel = Arc::new(ChannelEnum::new_null());
-
-        // Fill the queue
-        for _ in 0..manager.max_entries {
-            manager.put(message.clone(), channel.clone());
-        }
-
-        assert_eq!(manager.size(), manager.max_entries);
-
-        // This task will wait until a message is consumed
-        let manager_clone = manager.clone();
-        let handle = spawn(move || {
-            manager_clone.put(message, channel);
-        });
-
-        let (mutex, condvar) = blocked_notification.as_ref();
-        let mut lock = mutex.lock().unwrap();
-        while !*lock {
-            lock = condvar.wait(lock).unwrap();
-        }
-
-        assert_eq!(manager.size(), manager.max_entries);
-        manager.next();
-        assert!(handle.join().is_ok());
-        assert_eq!(manager.size(), manager.max_entries);
     }
 }

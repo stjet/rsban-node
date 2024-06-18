@@ -174,7 +174,7 @@ impl ResponseServerImpl {
             node_id: KeyPair::from(1),
             protocol_info: ProtocolInfo::default(),
             network: Arc::downgrade(&Arc::new(Network::new_null())),
-            inbound_queue: Arc::new(InboundMessageQueue::new(1)),
+            inbound_queue: Arc::new(InboundMessageQueue::default()),
             handshake_process: HandshakeProcess::new_null(),
             initiate_handshake_listener: OutputListenerMt::new(),
         }
@@ -260,6 +260,7 @@ impl ResponseServerImpl {
         let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
         channel.set_last_packet_received(SystemTime::now());
         self.inbound_queue.put(message, channel);
+        // TODO: Throttle if not added
     }
 
     fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {

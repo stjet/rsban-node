@@ -1,8 +1,8 @@
 mod bandwidth_limiter;
 mod channel;
 mod channel_tcp;
+mod inbound_message_queue;
 mod live_message_processor;
-mod message_processor;
 mod network_filter;
 mod network_threads;
 mod socket;
@@ -15,7 +15,7 @@ pub use channel_tcp::{
     ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
     SendBufferCallbackWrapper,
 };
-pub use message_processor::TcpMessageManagerHandle;
+pub use inbound_message_queue::TcpMessageManagerHandle;
 pub use network_filter::NetworkFilterHandle;
 pub use socket::{
     EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,

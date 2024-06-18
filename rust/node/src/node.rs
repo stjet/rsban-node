@@ -550,9 +550,7 @@ impl Node {
             ledger.clone(),
             stats.clone(),
             network.clone(),
-            config.clone(),
             global_config.into(),
-            network_params.network.clone(),
         ));
 
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(

@@ -8,6 +8,8 @@ use rsnano_core::{
 use rsnano_messages::ProtocolInfo;
 use std::{sync::Mutex, time::Duration};
 
+use crate::bootstrap::BootstrapAscendingConfig;
+
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));
 
@@ -96,7 +98,8 @@ impl NetworkConstants {
             current_network: Networks::NanoLiveNetwork,
             protocol_version: protocol_info.version_using,
             protocol_version_min: protocol_info.version_min,
-            bootstrap_protocol_version_min: 0x13,
+            bootstrap_protocol_version_min: BootstrapAscendingConfig::default()
+                .min_protocol_version,
             default_node_port: 7075,
             default_rpc_port: 7076,
             default_ipc_port: 7077,

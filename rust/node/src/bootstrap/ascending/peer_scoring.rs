@@ -1,7 +1,4 @@
-use crate::{
-    config::NetworkConstants,
-    transport::{ChannelEnum, TrafficType},
-};
+use crate::transport::{ChannelEnum, TrafficType};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Weak},
@@ -12,15 +9,13 @@ use super::BootstrapAscendingConfig;
 /// Container for tracking and scoring peers with respect to bootstrapping
 pub(crate) struct PeerScoring {
     scoring: Scoring,
-    network_constants: NetworkConstants,
     config: BootstrapAscendingConfig,
 }
 
 impl PeerScoring {
-    pub fn new(network_constants: NetworkConstants, config: BootstrapAscendingConfig) -> Self {
+    pub fn new(config: BootstrapAscendingConfig) -> Self {
         Self {
             scoring: Scoring::default(),
-            network_constants,
             config,
         }
     }
@@ -70,7 +65,7 @@ impl PeerScoring {
 
     pub fn sync(&mut self, channels: &[Arc<ChannelEnum>]) {
         for channel in channels {
-            if channel.network_version() >= self.network_constants.bootstrap_protocol_version_min {
+            if channel.network_version() >= self.config.min_protocol_version {
                 if !self.scoring.contains(channel.channel_id()) {
                     if !channel.max(TrafficType::Bootstrap) {
                         self.scoring.insert(PeerScore::new(channel));

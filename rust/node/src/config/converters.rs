@@ -34,6 +34,7 @@ impl From<&GlobalConfig> for BootstrapAscendingConfig {
             throttle_wait: config.throttle_wait,
             account_sets: config.account_sets.clone(),
             block_wait_count: config.block_wait_count,
+            min_protocol_version: value.network_params.network.bootstrap_protocol_version_min,
         }
     }
 }

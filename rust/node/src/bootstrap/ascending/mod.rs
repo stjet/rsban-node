@@ -17,7 +17,7 @@ use self::{
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
-    config::{NetworkConstants, NodeConfig},
+    config::NetworkConstants,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
@@ -55,7 +55,7 @@ pub struct BootstrapAscending {
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
     mutex: Mutex<BootstrapAscendingImpl>,
     condition: Condvar,
-    node_config: NodeConfig,
+    config: BootstrapAscendingConfig,
     /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
     /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
     database_limiter: BandwidthLimiter,
@@ -67,9 +67,7 @@ impl BootstrapAscending {
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
         network: Arc<Network>,
-        node_config: NodeConfig,
         config: BootstrapAscendingConfig,
-        network_constants: NetworkConstants,
     ) -> Self {
         Self {
             block_processor,
@@ -77,21 +75,15 @@ impl BootstrapAscending {
             timeout_thread: Mutex::new(None),
             mutex: Mutex::new(BootstrapAscendingImpl {
                 stopped: false,
-                accounts: AccountSets::new(
-                    Arc::clone(&stats),
-                    node_config.bootstrap_ascending.account_sets.clone(),
-                ),
-                scoring: PeerScoring::new(network_constants, config.clone()),
+                accounts: AccountSets::new(Arc::clone(&stats), config.account_sets.clone()),
+                scoring: PeerScoring::new(config.clone()),
                 iterator: BufferedIterator::new(Arc::clone(&ledger)),
                 tags: OrderedTags::default(),
-                throttle: Throttle::new(compute_throttle_size(&ledger, &node_config)),
+                throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
             }),
             condition: Condvar::new(),
-            database_limiter: BandwidthLimiter::new(
-                1.0,
-                node_config.bootstrap_ascending.database_requests_limit,
-            ),
-            node_config,
+            database_limiter: BandwidthLimiter::new(1.0, config.database_requests_limit),
+            config,
             stats,
             network,
             ledger,
@@ -122,7 +114,7 @@ impl BootstrapAscending {
                 HashType::Account
             },
             start: tag.start,
-            count: self.node_config.bootstrap_ascending.pull_count as u8,
+            count: self.config.pull_count as u8,
         };
         let request = Message::AscPullReq(AscPullReq {
             id: tag.id,
@@ -159,17 +151,12 @@ impl BootstrapAscending {
     fn wait_blockprocessor(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped
-            && self.block_processor.queue_len(BlockSource::Bootstrap)
-                > self.node_config.bootstrap_ascending.block_wait_count
+            && self.block_processor.queue_len(BlockSource::Bootstrap) > self.config.block_wait_count
         {
             // Blockprocessor is relatively slow, sleeping here instead of using conditions
             guard = self
                 .condition
-                .wait_timeout_while(
-                    guard,
-                    self.node_config.bootstrap_ascending.throttle_wait,
-                    |g| !g.stopped,
-                )
+                .wait_timeout_while(guard, self.config.throttle_wait, |g| !g.stopped)
                 .unwrap()
                 .0;
         }
@@ -183,7 +170,7 @@ impl BootstrapAscending {
                 return channel;
             }
 
-            let sleep = self.node_config.bootstrap_ascending.throttle_wait;
+            let sleep = self.config.throttle_wait;
             guard = self
                 .condition
                 .wait_timeout_while(guard, sleep, |g| !g.stopped)
@@ -265,11 +252,7 @@ impl BootstrapAscending {
             self.stats
                 .inc(StatType::BootstrapAscending, DetailType::Throttled);
             self.condition
-                .wait_timeout_while(
-                    data,
-                    self.node_config.bootstrap_ascending.throttle_wait,
-                    |g| !g.stopped,
-                )
+                .wait_timeout_while(data, self.config.throttle_wait, |g| !g.stopped)
                 .unwrap()
                 .0
         } else {
@@ -296,9 +279,9 @@ impl BootstrapAscending {
             guard.scoring.timeout();
             guard
                 .throttle
-                .resize(compute_throttle_size(&self.ledger, &self.node_config));
+                .resize(compute_throttle_size(&self.ledger, &self.config));
             while let Some(front) = guard.tags.front() {
-                if front.time.elapsed() <= self.node_config.bootstrap_ascending.timeout {
+                if front.time.elapsed() <= self.config.timeout {
                     break;
                 }
 
@@ -324,10 +307,7 @@ impl BootstrapAscending {
                 .inc(StatType::BootstrapAscending, DetailType::Reply);
             self.stats.sample(
                 Sample::BootstrapTagDuration,
-                (
-                    0,
-                    self.node_config.bootstrap_ascending.timeout.as_millis() as i64,
-                ),
+                (0, self.config.timeout.as_millis() as i64),
                 tag.time.elapsed().as_millis() as i64,
             );
 
@@ -598,11 +578,10 @@ impl BootstrapAscendingImpl {
     }
 }
 
-fn compute_throttle_size(ledger: &Ledger, config: &NodeConfig) -> usize {
+fn compute_throttle_size(ledger: &Ledger, config: &BootstrapAscendingConfig) -> usize {
     // Scales logarithmically with ledger block
     // Returns: config.throttle_coefficient * sqrt(block_count)
-    let size_new =
-        config.bootstrap_ascending.throttle_coefficient as u64 * sqrt(ledger.block_count());
+    let size_new = config.throttle_coefficient as u64 * sqrt(ledger.block_count());
     if size_new == 0 {
         16
     } else {
@@ -621,6 +600,8 @@ pub struct BootstrapAscendingConfig {
     pub throttle_wait: Duration,
     pub account_sets: AccountSetsConfig,
     pub block_wait_count: usize,
+    /** Minimum accepted protocol version used when bootstrapping */
+    pub min_protocol_version: u8,
 }
 
 impl Default for BootstrapAscendingConfig {
@@ -634,6 +615,7 @@ impl Default for BootstrapAscendingConfig {
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
             block_wait_count: 1000,
+            min_protocol_version: 0x13,
         }
     }
 }

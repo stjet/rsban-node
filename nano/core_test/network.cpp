@@ -612,7 +612,7 @@ TEST (network, duplicate_revert_publish)
 	publish.set_digest (digest);
 	node.network->inbound (publish, channel);
 	// TODO: inbound is queued and not immediately adding to publish filter
-	//ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
+	// ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
 }
 
 TEST (network, tcp_no_accept_excluded_peers)

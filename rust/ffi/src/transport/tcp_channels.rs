@@ -1,20 +1,8 @@
-use super::{
-    ChannelHandle, EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle,
-    SocketFfiObserver, SynCookiesHandle, TcpMessageManagerHandle,
-};
-use crate::{
-    messages::MessageHandle,
-    utils::{AsyncRuntimeHandle, ThreadPoolHandle},
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
-};
+use super::{ChannelHandle, EndpointDto};
+use crate::messages::MessageHandle;
 use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
-use rsnano_node::{
-    config::NodeConfig,
-    transport::{ChannelEnum, ChannelMode, Network, NetworkOptions},
-    NetworkParams,
-};
+use rsnano_node::transport::{ChannelEnum, ChannelMode, Network};
 use std::{
-    ffi::c_void,
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::Arc,
@@ -27,47 +15,6 @@ impl Deref for TcpChannelsHandle {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-#[repr(C)]
-pub struct TcpChannelsOptionsDto {
-    pub node_config: *const NodeConfigDto,
-    pub publish_filter: *mut NetworkFilterHandle,
-    pub async_rt: *mut AsyncRuntimeHandle,
-    pub network: *mut NetworkParamsDto,
-    pub stats: *mut StatHandle,
-    pub tcp_message_manager: *mut TcpMessageManagerHandle,
-    pub port: u16,
-    pub flags: *mut NodeFlagsHandle,
-    pub limiter: *mut OutboundBandwidthLimiterHandle,
-    pub node_id_prv: *const u8,
-    pub syn_cookies: *mut SynCookiesHandle,
-    pub workers: *mut ThreadPoolHandle,
-    pub socket_observer: *mut c_void,
-}
-
-impl TryFrom<&TcpChannelsOptionsDto> for NetworkOptions {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &TcpChannelsOptionsDto) -> Result<Self, Self::Error> {
-        unsafe {
-            let observer = Arc::new(SocketFfiObserver::new(value.socket_observer));
-            let node_config = NodeConfig::try_from(&*value.node_config)?;
-            Ok(Self {
-                allow_local_peers: node_config.allow_local_peers,
-                tcp_config: node_config.tcp,
-                publish_filter: (*value.publish_filter).0.clone(),
-                network_params: NetworkParams::try_from(&*value.network)?,
-                async_rt: Arc::clone(&(*value.async_rt).0),
-                stats: (*value.stats).0.clone(),
-                tcp_message_manager: (*value.tcp_message_manager).deref().clone(),
-                port: value.port,
-                flags: (*value.flags).0.lock().unwrap().clone(),
-                limiter: (*value.limiter).0.clone(),
-                observer,
-            })
-        }
     }
 }
 

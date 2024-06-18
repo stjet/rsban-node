@@ -2,10 +2,7 @@ use super::{
     request_response_visitor_factory::RequestResponseVisitorFactoryHandle, TcpListenerHandle,
 };
 use crate::{
-    transport::{
-        NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpChannelsHandle,
-        TcpMessageManagerHandle,
-    },
+    transport::{NetworkFilterHandle, SocketHandle, SynCookiesHandle, TcpChannelsHandle},
     utils::AsyncRuntimeHandle,
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };

@@ -17,7 +17,7 @@ use crate::{
     transport::{
         ChannelHandle, EndpointDto, LiveMessageProcessorHandle, NetworkFilterHandle,
         NetworkThreadsHandle, OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle,
-        TcpChannelsHandle, TcpMessageManagerHandle,
+        TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,

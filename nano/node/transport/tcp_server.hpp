@@ -18,7 +18,6 @@ class network;
 class ledger;
 class block_processor;
 class bootstrap_initiator;
-class tcp_message_manager;
 class syn_cookies;
 }
 

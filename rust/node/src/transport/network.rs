@@ -37,7 +37,7 @@ pub struct NetworkOptions {
     pub async_rt: Arc<AsyncRuntime>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
-    pub tcp_message_manager: Arc<InboundMessageQueue>,
+    pub inbound_queue: Arc<InboundMessageQueue>,
     pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
@@ -53,7 +53,7 @@ impl NetworkOptions {
             async_rt: Arc::new(AsyncRuntime::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
-            tcp_message_manager: Arc::new(InboundMessageQueue::default()),
+            inbound_queue: Arc::new(InboundMessageQueue::default()),
             port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -67,7 +67,7 @@ pub struct Network {
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
-    pub tcp_message_manager: Arc<InboundMessageQueue>,
+    pub inbound_queue: Arc<InboundMessageQueue>,
     flags: NodeFlags,
     stats: Arc<Stats>,
     sink: RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
@@ -94,7 +94,7 @@ impl Network {
             port: AtomicU16::new(options.port),
             stopped: AtomicBool::new(false),
             allow_local_peers: options.allow_local_peers,
-            tcp_message_manager: options.tcp_message_manager.clone(),
+            inbound_queue: options.inbound_queue.clone(),
             state: Mutex::new(State {
                 attempts: Default::default(),
                 channels: Default::default(),
@@ -271,7 +271,7 @@ impl Network {
 
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
-            self.tcp_message_manager.stop();
+            self.inbound_queue.stop();
             self.close();
         }
     }
@@ -626,7 +626,7 @@ impl Network {
 
     pub fn queue_message(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) {
         if !self.stopped.load(Ordering::SeqCst) {
-            self.tcp_message_manager.put(message, channel);
+            self.inbound_queue.put(message, channel);
         }
     }
 }
@@ -689,7 +689,7 @@ impl NetworkExt for Arc<Network> {
 
     fn process_messages(&self) {
         while !self.stopped.load(Ordering::SeqCst) {
-            if let Some((message, channel)) = self.tcp_message_manager.next() {
+            if let Some((message, channel)) = self.inbound_queue.next() {
                 (self.sink.read().unwrap())(message, channel)
             }
         }

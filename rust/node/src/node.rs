@@ -181,7 +181,7 @@ impl Node {
             async_rt: Arc::clone(&async_rt),
             network_params: network_params.clone(),
             stats: Arc::clone(&stats),
-            tcp_message_manager: Arc::new(InboundMessageQueue::new(
+            inbound_queue: Arc::new(InboundMessageQueue::new(
                 config.tcp_incoming_connections_max as usize,
             )),
             port: config.peering_port.unwrap_or(0),

@@ -2,7 +2,6 @@
 
 #include "nano/lib/rsnano.hpp"
 #include "nano/node/election.hpp"
-#include "nano/node/nodeconfig.hpp"
 
 #include <nano/node/common.hpp>
 #include <nano/node/transport/channel.hpp>
@@ -21,17 +20,6 @@ class node_flags;
 class network;
 class syn_cookies;
 class logger;
-
-class tcp_message_manager final
-{
-public:
-	explicit tcp_message_manager (rsnano::TcpMessageManagerHandle * handle);
-	explicit tcp_message_manager (unsigned incoming_connections_max_a);
-	tcp_message_manager (tcp_message_manager const &) = delete;
-	tcp_message_manager (tcp_message_manager &&) = delete;
-	~tcp_message_manager ();
-	rsnano::TcpMessageManagerHandle * handle;
-};
 
 namespace transport
 {

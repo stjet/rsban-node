@@ -4,7 +4,6 @@
 #include "nano/node/transport/channel.hpp"
 #include "nano/node/transport/socket.hpp"
 #include "nano/node/transport/tcp_listener.hpp"
-#include "nano/node/transport/tcp_server.hpp"
 #include "nano/node/transport/traffic_type.hpp"
 #include "nano/secure/network_filter.hpp"
 
@@ -26,25 +25,6 @@
 #include <memory>
 #include <stdexcept>
 #include <unordered_set>
-
-/*
- * tcp_message_manager
- */
-
-nano::tcp_message_manager::tcp_message_manager (unsigned incoming_connections_max_a) :
-	handle{ rsnano::rsn_tcp_message_manager_create (incoming_connections_max_a) }
-{
-}
-
-nano::tcp_message_manager::tcp_message_manager (rsnano::TcpMessageManagerHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::tcp_message_manager::~tcp_message_manager ()
-{
-	rsnano::rsn_tcp_message_manager_destroy (handle);
-}
 
 /*
  * channel_tcp

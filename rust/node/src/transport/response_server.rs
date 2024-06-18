@@ -256,7 +256,7 @@ impl ResponseServerImpl {
         let channel = self.channel.lock().unwrap().as_ref().unwrap().clone();
         channel.set_last_packet_received(SystemTime::now());
         if let Some(network) = self.network.upgrade() {
-            network.tcp_message_manager.put(message, channel);
+            network.inbound_queue.put(message, channel);
         }
     }
 

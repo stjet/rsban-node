@@ -55,7 +55,7 @@ impl<'a> RequestAggregatorImpl<'a> {
             }
 
             if !self.add_cached_votes(root, hash) {
-                self.do_the_other_complex_thing(root, hash)
+                self.process(root, hash)
             }
         }
 
@@ -76,7 +76,7 @@ impl<'a> RequestAggregatorImpl<'a> {
         true
     }
 
-    fn do_the_other_complex_thing(&mut self, root: &Root, hash: &BlockHash) {
+    fn process(&mut self, root: &Root, hash: &BlockHash) {
         let mut generate_vote = true;
         let mut generate_final_vote = false;
         let mut block = None;

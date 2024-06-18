@@ -121,7 +121,7 @@ mod tests {
             Arc::new(ChannelEnum::new_null()),
         );
         assert_eq!(manager.size(), 1);
-        assert!(manager.next_batch(1000).len(), 1);
+        assert_eq!(manager.next_batch(1000).len(), 1);
         assert_eq!(manager.size(), 0);
     }
 }

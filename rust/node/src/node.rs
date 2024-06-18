@@ -8,15 +8,14 @@ use crate::{
         BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
     },
     cementation::ConfirmingSet,
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    config::{FrontiersConfirmationMode, GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionBehavior,
-        ElectionEndCallback, ElectionStatusType, HintedScheduler, HintedSchedulerExt,
-        LocalVoteHistory, ManualScheduler, ManualSchedulerExt, OptimisticScheduler,
-        OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher,
-        ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers, RequestAggregator,
-        RequestAggregatorExt, VoteApplier, VoteCache, VoteGenerators, VoteProcessor,
-        VoteProcessorExt, VoteProcessorQueue, VoteRouter,
+        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
+        ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
+        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
+        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
+        VoteCache, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -138,6 +137,12 @@ impl Node {
         account_balance_changed: AccountBalanceChangedCallback,
         on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
     ) -> Self {
+        let global_config = GlobalConfig {
+            node_config: config.clone(),
+            flags: flags.clone(),
+            network_params: network_params.clone(),
+        };
+        let global_config = &global_config;
         let application_path = application_path.into();
         let node_id = NodeIdKeyFile::default()
             .initialize(&application_path)
@@ -270,12 +275,10 @@ impl Node {
         ));
 
         let block_processor = Arc::new(BlockProcessor::new(
-            Arc::new(config.clone()),
-            Arc::new(flags.clone()),
-            Arc::clone(&ledger),
-            Arc::clone(&unchecked),
-            Arc::clone(&stats),
-            Arc::new(network_params.work.clone()),
+            global_config.into(),
+            ledger.clone(),
+            unchecked.clone(),
+            stats.clone(),
         ));
 
         let distributed_work = Arc::new(DistributedWorkFactory::new(

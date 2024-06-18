@@ -20,4 +20,38 @@ pub use node_rpc_config::*;
 pub use opencl_config::*;
 pub use optimistic_scheduler_config::*;
 pub use rpc_config::*;
+use rsnano_node::config::BlockProcessorToml;
 pub use websocket_config::*;
+
+#[repr(C)]
+pub struct BlockProcessorConfigDto {
+    pub max_peer_queue: usize,
+    pub max_system_queue: usize,
+    pub priority_live: usize,
+    pub priority_bootstrap: usize,
+    pub priority_local: usize,
+}
+
+impl From<&BlockProcessorConfigDto> for BlockProcessorToml {
+    fn from(value: &BlockProcessorConfigDto) -> Self {
+        Self {
+            max_peer_queue: value.max_peer_queue,
+            max_system_queue: value.max_system_queue,
+            priority_live: value.priority_live,
+            priority_bootstrap: value.priority_bootstrap,
+            priority_local: value.priority_local,
+        }
+    }
+}
+
+impl From<&BlockProcessorToml> for BlockProcessorConfigDto {
+    fn from(value: &BlockProcessorToml) -> Self {
+        Self {
+            max_peer_queue: value.max_peer_queue,
+            max_system_queue: value.max_system_queue,
+            priority_live: value.priority_live,
+            priority_bootstrap: value.priority_bootstrap,
+            priority_local: value.priority_local,
+        }
+    }
+}

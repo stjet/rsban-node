@@ -265,3 +265,9 @@ impl WorkThresholds {
         self.difficulty_block(block) >= self.threshold2(block.work_version(), details)
     }
 }
+
+impl Default for WorkThresholds {
+    fn default() -> Self {
+        PUBLISH_FULL.clone()
+    }
+}

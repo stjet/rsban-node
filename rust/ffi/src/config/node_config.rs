@@ -5,7 +5,6 @@ use super::{
     TxnTrackingConfigDto,
 };
 use crate::{
-    block_processing::BlockProcessorConfigDto,
     bootstrap::BootstrapServerConfigDto,
     consensus::{
         ActiveElectionsConfigDto, RequestAggregatorConfigDto, VoteCacheConfigDto,
@@ -13,8 +12,8 @@ use crate::{
     },
     fill_ipc_config_dto, fill_stat_config_dto,
     utils::FfiToml,
-    HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto, OptimisticSchedulerConfigDto,
-    StatConfigDto, WebsocketConfigDto,
+    BlockProcessorConfigDto, HintedSchedulerConfigDto, IpcConfigDto, NetworkParamsDto,
+    OptimisticSchedulerConfigDto, StatConfigDto, WebsocketConfigDto,
 };
 use num::FromPrimitive;
 use rsnano_core::{utils::get_cpu_count, Account, Amount};

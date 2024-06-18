@@ -1,5 +1,7 @@
 use rsnano_ledger::GenerateCacheFlags;
 
+use crate::block_processing::BlockProcessorConfig;
+
 #[derive(Clone)]
 pub struct NodeFlags {
     pub config_overrides: Vec<String>,
@@ -72,8 +74,8 @@ impl NodeFlags {
             disable_connection_cleanup: false,
             generate_cache: GenerateCacheFlags::new(),
             inactive_node: false,
-            block_processor_batch_size: 0,
-            block_processor_full_size: 65536,
+            block_processor_batch_size: BlockProcessorConfig::default().batch_size,
+            block_processor_full_size: BlockProcessorConfig::default().full_size,
             block_processor_verification_size: 0,
             vote_processor_capacity: 144 * 1024,
             bootstrap_interval: 0,

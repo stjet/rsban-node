@@ -1,12 +1,11 @@
 use super::UncheckedMap;
 use crate::{
-    config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
     transport::{ChannelEnum, FairQueue, Origin},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    work::{WorkThresholds, WORK_THRESHOLDS_STUB},
+    work::WorkThresholds,
     BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
@@ -109,6 +108,40 @@ impl BlockProcessorWaiter {
     }
 }
 
+#[derive(Clone)]
+pub struct BlockProcessorConfig {
+    // Maximum number of blocks to queue from network peers
+    pub max_peer_queue: usize,
+    //
+    // Maximum number of blocks to queue from system components (local RPC, bootstrap)
+    pub max_system_queue: usize,
+
+    // Higher priority gets processed more frequently
+    pub priority_live: usize,
+    pub priority_bootstrap: usize,
+    pub priority_local: usize,
+    pub batch_max_time: Duration,
+    pub full_size: usize,
+    pub batch_size: usize,
+    pub work_thresholds: WorkThresholds,
+}
+
+impl Default for BlockProcessorConfig {
+    fn default() -> Self {
+        Self {
+            max_peer_queue: 128,
+            max_system_queue: 16 * 1024,
+            priority_live: 1,
+            priority_bootstrap: 8,
+            priority_local: 16,
+            batch_max_time: Duration::from_millis(500),
+            full_size: 65536,
+            batch_size: 0,
+            work_thresholds: WorkThresholds::default(),
+        }
+    }
+}
+
 pub struct BlockProcessor {
     thread: Mutex<Option<JoinHandle<()>>>,
     processor_loop: Arc<BlockProcessorLoop>,
@@ -116,26 +149,24 @@ pub struct BlockProcessor {
 
 impl BlockProcessor {
     pub fn new(
-        config: Arc<NodeConfig>,
-        flags: Arc<NodeFlags>,
+        config: BlockProcessorConfig,
         ledger: Arc<Ledger>,
         unchecked_map: Arc<UncheckedMap>,
         stats: Arc<Stats>,
-        work: Arc<WorkThresholds>,
     ) -> Self {
-        let processor_config = config.block_processor.clone();
+        let config_l = config.clone();
         let max_size_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
-            BlockSource::Live => processor_config.max_peer_queue,
-            _ => processor_config.max_system_queue,
+            BlockSource::Live => config_l.max_peer_queue,
+            _ => config_l.max_system_queue,
         });
 
-        let processor_config = config.block_processor.clone();
+        let config_l = config.clone();
         let priority_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
-            BlockSource::Live => processor_config.priority_live,
+            BlockSource::Live => config.priority_live,
             BlockSource::Bootstrap | BlockSource::BootstrapLegacy | BlockSource::Unchecked => {
-                processor_config.priority_bootstrap
+                config_l.priority_bootstrap
             }
-            BlockSource::Local => processor_config.priority_local,
+            BlockSource::Local => config_l.priority_local,
             _ => 1,
         });
 
@@ -144,7 +175,7 @@ impl BlockProcessor {
                 mutex: Mutex::new(BlockProcessorImpl {
                     queue: FairQueue::new(max_size_query, priority_query),
                     last_log: None,
-                    config: Arc::clone(&config),
+                    config: config.clone(),
                     stopped: false,
                 }),
                 condition: Condvar::new(),
@@ -152,8 +183,6 @@ impl BlockProcessor {
                 unchecked_map,
                 config,
                 stats,
-                work,
-                flags,
                 blocks_rolled_back: Mutex::new(None),
                 block_rolled_back: Mutex::new(Vec::new()),
                 block_processed: Mutex::new(Vec::new()),
@@ -165,12 +194,10 @@ impl BlockProcessor {
 
     pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
         BlockProcessor::new(
-            Arc::new(NodeConfig::new_test_instance()),
-            Arc::new(NodeFlags::default()),
+            BlockProcessorConfig::default(),
             ledger,
             Arc::new(UncheckedMap::default()),
             Arc::new(Stats::default()),
-            Arc::new(WORK_THRESHOLDS_STUB.clone()),
         )
     }
 
@@ -282,10 +309,8 @@ struct BlockProcessorLoop {
     condition: Condvar,
     ledger: Arc<Ledger>,
     unchecked_map: Arc<UncheckedMap>,
-    config: Arc<NodeConfig>,
+    config: BlockProcessorConfig,
     stats: Arc<Stats>,
-    work: Arc<WorkThresholds>,
-    flags: Arc<NodeFlags>,
     blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>>>,
     block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum) + Send + Sync>>>,
     block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>>>,
@@ -375,7 +400,7 @@ impl BlockProcessorLoop {
         source: BlockSource,
         channel: Option<Arc<ChannelEnum>>,
     ) -> bool {
-        if self.work.validate_entry_block(&block) {
+        if self.config.work_thresholds.validate_entry_block(&block) {
             // true => error
             self.stats
                 .inc(StatType::Blockprocessor, DetailType::InsufficientWork);
@@ -430,11 +455,11 @@ impl BlockProcessorLoop {
     }
 
     pub fn full(&self) -> bool {
-        self.total_queue_len() >= self.flags.block_processor_full_size
+        self.total_queue_len() >= self.config.full_size
     }
 
     pub fn half_full(&self) -> bool {
-        self.total_queue_len() >= self.flags.block_processor_full_size / 2
+        self.total_queue_len() >= self.config.full_size / 2
     }
 
     // TODO: Remove and replace all checks with calls to size (block_source)
@@ -487,14 +512,10 @@ impl BlockProcessorLoop {
         let mut number_of_blocks_processed = 0;
         let mut number_of_forced_processed = 0;
 
-        let deadline_reached = || {
-            timer_l.elapsed()
-                > Duration::from_millis(self.config.block_processor_batch_max_time_ms as u64)
-        };
+        let deadline_reached = || timer_l.elapsed() > self.config.batch_max_time;
 
         while !lock_a.queue.is_empty()
-            && (!deadline_reached()
-                || number_of_blocks_processed < self.flags.block_processor_batch_size)
+            && (!deadline_reached() || number_of_blocks_processed < self.config.batch_size)
         {
             // TODO: Cleaner periodical logging
             if lock_a.should_log() {
@@ -678,7 +699,7 @@ impl BlockProcessorLoop {
 struct BlockProcessorImpl {
     pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
     pub last_log: Option<Instant>,
-    config: Arc<NodeConfig>,
+    config: BlockProcessorConfig,
     stopped: bool,
 }
 

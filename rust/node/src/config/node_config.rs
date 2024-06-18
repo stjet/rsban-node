@@ -1,5 +1,6 @@
 use super::{
-    DiagnosticsConfig, HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
+    block_processor::BlockProcessorToml, DiagnosticsConfig, HintedSchedulerConfig, Networks,
+    OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
     block_processing::BlockProcessorConfig,
@@ -99,7 +100,7 @@ pub struct NodeConfig {
     pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
-    pub block_processor: BlockProcessorConfig,
+    pub block_processor: BlockProcessorToml,
     pub active_elections: ActiveElectionsConfig,
     pub vote_processor: VoteProcessorConfig,
     pub tcp: TcpConfig,
@@ -241,7 +242,9 @@ impl NodeConfig {
             bootstrap_initiator_threads: 1,
             bootstrap_serving_threads: max(parallelism / 2, 2) as u32,
             bootstrap_frontier_request_count: 1024 * 1024,
-            block_processor_batch_max_time_ms: 500,
+            block_processor_batch_max_time_ms: BlockProcessorConfig::default()
+                .batch_max_time
+                .as_millis() as i64,
             allow_local_peers: !(network_params.network.is_live_network()
                 || network_params.network.is_test_network()), // disable by default for live network
             vote_minimum: Amount::raw(*GXRB_RATIO),
@@ -311,7 +314,7 @@ impl NodeConfig {
             } else {
                 Duration::from_secs(60)
             },
-            block_processor: BlockProcessorConfig::new(),
+            block_processor: BlockProcessorToml::new(),
             vote_processor: VoteProcessorConfig::new(parallelism),
             tcp: if network_params.network.is_dev_network() {
                 TcpConfig::for_dev_network()

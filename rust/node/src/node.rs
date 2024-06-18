@@ -114,7 +114,6 @@ pub struct Node {
     pub ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
     pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
-    pub live_message_processor: Arc<RealtimeMessageHandler>,
     message_processor: Mutex<MessageProcessor>,
     pub network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
@@ -568,7 +567,7 @@ impl Node {
             websocket.clone(),
         ));
 
-        let live_message_processor = Arc::new(RealtimeMessageHandler::new(
+        let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
             network.clone(),
             peer_connector.clone(),
@@ -583,11 +582,11 @@ impl Node {
             ascendboot.clone(),
         ));
 
-        let live_message_processor_weak = Arc::downgrade(&live_message_processor);
+        let realtime_message_handler_weak = Arc::downgrade(&realtime_message_handler);
         *inbound_impl.write().unwrap() =
             Box::new(move |msg: DeserializedMessage, channel: Arc<ChannelEnum>| {
-                if let Some(processor) = live_message_processor_weak.upgrade() {
-                    processor.process(msg.message, &channel);
+                if let Some(handler) = realtime_message_handler_weak.upgrade() {
+                    handler.process(msg.message, &channel);
                 }
             });
 
@@ -609,7 +608,7 @@ impl Node {
             flags.clone(),
             config.clone(),
             inbound_message_queue.clone(),
-            live_message_processor.clone(),
+            realtime_message_handler.clone(),
         ));
 
         let ongoing_bootstrap = Arc::new(OngoingBootstrap::new(
@@ -1110,7 +1109,6 @@ impl Node {
             ascendboot,
             local_block_broadcaster,
             process_live_dispatcher,
-            live_message_processor,
             ledger_pruning,
             network_threads,
             message_processor,

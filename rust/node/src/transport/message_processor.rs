@@ -21,7 +21,7 @@ impl MessageProcessor {
         flags: NodeFlags,
         config: NodeConfig,
         inbound_queue: Arc<InboundMessageQueue>,
-        live_message_processor: Arc<RealtimeMessageHandler>,
+        realtime_handler: Arc<RealtimeMessageHandler>,
     ) -> Self {
         Self {
             flags,
@@ -29,7 +29,7 @@ impl MessageProcessor {
             processing_threads: Vec::new(),
             state: Arc::new(State {
                 inbound_queue,
-                live_message_processor,
+                realtime_handler,
                 stopped: AtomicBool::new(false),
             }),
         }
@@ -69,7 +69,7 @@ impl Drop for MessageProcessor {
 
 struct State {
     stopped: AtomicBool,
-    live_message_processor: Arc<RealtimeMessageHandler>,
+    realtime_handler: Arc<RealtimeMessageHandler>,
     inbound_queue: Arc<InboundMessageQueue>,
 }
 
@@ -77,8 +77,7 @@ impl State {
     fn run(&self) {
         while !self.stopped.load(Ordering::SeqCst) {
             if let Some((message, channel)) = self.inbound_queue.next() {
-                self.live_message_processor
-                    .process(message.message, &channel);
+                self.realtime_handler.process(message.message, &channel);
             }
         }
     }

@@ -11,7 +11,7 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
         let vote = vote.0.deref().clone();
-        Message::ConfirmAck(ConfirmAck::new(vote))
+        Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote))
     })
 }
 

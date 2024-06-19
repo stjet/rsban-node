@@ -242,7 +242,7 @@ impl RequestAggregator {
     }
 
     fn reply_action(&self, vote: &Arc<Vote>, channel: &ChannelEnum) {
-        let confirm = Message::ConfirmAck(ConfirmAck::new((**vote).clone()));
+        let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote((**vote).clone()));
         channel.send(
             &confirm,
             None,

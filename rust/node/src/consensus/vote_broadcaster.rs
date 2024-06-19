@@ -35,7 +35,7 @@ impl VoteBroadcaster {
     pub fn broadcast(&self, vote: Arc<Vote>) {
         self.flood_vote_pr(vote.deref().clone());
 
-        let ack = Message::ConfirmAck(ConfirmAck::new(vote.deref().clone()));
+        let ack = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote.deref().clone()));
         self.network.flood_message(&ack, 2.0);
 
         self.vote_processor_queue
@@ -43,7 +43,7 @@ impl VoteBroadcaster {
     }
 
     fn flood_vote_pr(&self, vote: Vote) {
-        let message = Message::ConfirmAck(ConfirmAck::new(vote));
+        let message = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
         for rep in self
             .representative_register
             .lock()

@@ -120,7 +120,9 @@ impl Message {
                 Message::BulkPullAccount(BulkPullAccount::deserialize(&mut stream)?)
             }
             MessageType::BulkPush => Message::BulkPush,
-            MessageType::ConfirmAck => Message::ConfirmAck(ConfirmAck::deserialize(&mut stream)?),
+            MessageType::ConfirmAck => {
+                Message::ConfirmAck(ConfirmAck::deserialize(&mut stream, header.extensions)?)
+            }
             MessageType::ConfirmReq => {
                 Message::ConfirmReq(ConfirmReq::deserialize(&mut stream, header.extensions)?)
             }
@@ -175,7 +177,7 @@ mod tests {
 
     #[test]
     fn exact_confirm_ack() {
-        let message = Message::ConfirmAck(ConfirmAck::new(Vote::new_test_instance()));
+        let message = Message::ConfirmAck(ConfirmAck::new_with_own_vote(Vote::new_test_instance()));
         assert_deserializable(&message);
     }
 

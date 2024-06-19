@@ -10,6 +10,20 @@ use rsnano_core::{
 use serde::ser::{SerializeSeq, SerializeStruct};
 use std::fmt::{Debug, Display, Write};
 
+/*
+ * Binary Format:
+ * [message_header] Common message header
+ * [N x (32 bytes (block hash) + 32 bytes (root))] Pairs of (block_hash, root)
+ * - The count is determined by the header's count bits.
+ *
+ * Header extensions:
+ * - [0xf000] Count (for V1 protocol)
+ * - [0x0f00] Block type
+ *   - Not used anymore (V25.1+), but still present and set to `not_a_block = 0x1` for backwards compatibility
+ * - [0xf000 (high), 0x00f0 (low)] Count V2 (for V2 protocol)
+ * - [0x0001] Confirm V2 flag
+ * - [0x0002] Reserved for V3+ versioning
+ */
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConfirmReq {
     pub roots_hashes: Vec<(BlockHash, Root)>,

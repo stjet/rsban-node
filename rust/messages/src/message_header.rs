@@ -91,6 +91,18 @@ impl ProtocolInfo {
     }
 }
 
+/*
+ * Common Header Binary Format:
+ * [2 bytes] Network (big endian)
+ * [1 byte] Maximum protocol version
+ * [1 byte] Protocol version currently in use
+ * [1 byte] Minimum protocol version
+ * [1 byte] Message type
+ * [2 bytes] Extensions (message-specific flags and properties)
+ *
+ * Notes:
+ * - The structure and bit usage of the `extensions` field vary by message type.
+ */
 #[derive(Clone, PartialEq, Eq)]
 pub struct MessageHeader {
     pub message_type: MessageType,

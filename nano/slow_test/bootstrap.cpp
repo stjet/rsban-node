@@ -15,9 +15,6 @@
 
 #include <boost/format.hpp>
 
-#include <map>
-#include <thread>
-
 using namespace std::chrono_literals;
 
 namespace

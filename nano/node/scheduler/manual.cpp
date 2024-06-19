@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+
 #include <nano/node/active_elections.hpp>
 #include <nano/node/election.hpp>
 #include <nano/node/node.hpp>

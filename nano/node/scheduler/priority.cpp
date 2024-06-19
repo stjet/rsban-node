@@ -30,4 +30,3 @@ bool nano::scheduler::priority::empty () const
 {
 	return rsnano::rsn_election_scheduler_empty (handle);
 }
-

@@ -16,10 +16,3 @@ impl Deref for BootstrapClientHandle {
 pub unsafe extern "C" fn rsn_bootstrap_client_destroy(handle: *mut BootstrapClientHandle) {
     drop(Box::from_raw(handle))
 }
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_client_socket(
-    handle: *mut BootstrapClientHandle,
-) -> *mut SocketHandle {
-    SocketHandle::new(Arc::clone((*handle).0.get_socket()))
-}

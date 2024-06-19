@@ -19,17 +19,6 @@ impl Deref for VoteCacheHandle {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_vote_cache_create(
-    config: &VoteCacheConfigDto,
-    stats: &StatHandle,
-) -> *mut VoteCacheHandle {
-    let config = VoteCacheConfig::from(config);
-    Box::into_raw(Box::new(VoteCacheHandle(Arc::new(Mutex::new(
-        VoteCache::new(config, Arc::clone(stats)),
-    )))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_vote_cache_destroy(handle: *mut VoteCacheHandle) {
     drop(Box::from_raw(handle));
 }

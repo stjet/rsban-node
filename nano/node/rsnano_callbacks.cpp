@@ -1,4 +1,5 @@
 #include "boost/thread/latch.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/rsnano.hpp>

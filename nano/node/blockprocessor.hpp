@@ -2,6 +2,7 @@
 
 #include <nano/node/transport/channel.hpp>
 #include <nano/secure/common.hpp>
+
 #include <memory>
 #include <optional>
 

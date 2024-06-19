@@ -20,4 +20,3 @@ nano::scheduler::component::component (rsnano::NodeHandle * handle) :
 nano::scheduler::component::~component ()
 {
 }
-

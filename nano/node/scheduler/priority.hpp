@@ -2,6 +2,7 @@
 
 #include <nano/lib/numbers.hpp>
 #include <nano/node/election_status.hpp>
+
 #include <boost/optional.hpp>
 
 namespace rsnano

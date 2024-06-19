@@ -120,7 +120,7 @@ namespace
 		{
 			channel = nano::transport::channel_handle_to_channel (channel_handle);
 		}
-		obs->vote.notify (vote, channel, static_cast<nano::vote_source>(source), static_cast<nano::vote_code> (code));
+		obs->vote.notify (vote, channel, static_cast<nano::vote_source> (source), static_cast<nano::vote_code> (code));
 	}
 
 }

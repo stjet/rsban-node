@@ -8,28 +8,8 @@ use std::sync::Arc;
 pub struct ManualSchedulerHandle(pub Arc<ManualScheduler>);
 
 #[no_mangle]
-pub extern "C" fn rsn_manual_scheduler_create(
-    stats: &StatHandle,
-    active: &ActiveTransactionsHandle,
-) -> *mut ManualSchedulerHandle {
-    Box::into_raw(Box::new(ManualSchedulerHandle(Arc::new(
-        ManualScheduler::new(Arc::clone(stats), Arc::clone(active)),
-    ))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_manual_scheduler_destroy(handle: *mut ManualSchedulerHandle) {
     drop(Box::from_raw(handle));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_manual_scheduler_start(handle: &ManualSchedulerHandle) {
-    handle.0.start();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_manual_scheduler_stop(handle: &ManualSchedulerHandle) {
-    handle.0.stop();
 }
 
 #[no_mangle]

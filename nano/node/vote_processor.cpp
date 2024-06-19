@@ -30,7 +30,7 @@ nano::vote_processor_queue::~vote_processor_queue ()
 
 bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
-	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle, static_cast<uint8_t>(nano::vote_source::live));
+	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle, static_cast<uint8_t> (nano::vote_source::live));
 }
 
 nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
@@ -45,7 +45,7 @@ nano::vote_processor::~vote_processor ()
 
 nano::vote_code nano::vote_processor::vote_blocking (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
-	return static_cast<nano::vote_code> (rsnano::rsn_vote_processor_vote_blocking (handle, vote->get_handle (), channel_a->handle, static_cast<uint8_t>(nano::vote_source::live)));
+	return static_cast<nano::vote_code> (rsnano::rsn_vote_processor_vote_blocking (handle, vote->get_handle (), channel_a->handle, static_cast<uint8_t> (nano::vote_source::live)));
 }
 
 /*

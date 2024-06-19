@@ -961,6 +961,12 @@ impl PartialOrd for TallyKey {
     }
 }
 
+impl From<Amount> for TallyKey {
+    fn from(value: Amount) -> Self {
+        Self(value)
+    }
+}
+
 pub struct ActiveElectionsState {
     pub roots: OrderedRoots,
     pub stopped: bool,

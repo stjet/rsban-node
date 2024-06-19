@@ -3,10 +3,10 @@ use rsnano_core::{Account, Amount};
 use rsnano_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
 use std::collections::HashMap;
 use std::mem::size_of;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, RwLock};
 
 pub struct RepWeights {
-    rep_amounts: Mutex<HashMap<Account, Amount>>,
+    rep_amounts: RwLock<HashMap<Account, Amount>>,
     store: Arc<LmdbRepWeightStore>,
     min_weight: Amount,
 }
@@ -14,24 +14,24 @@ pub struct RepWeights {
 impl RepWeights {
     pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount) -> Self {
         RepWeights {
-            rep_amounts: Mutex::new(HashMap::new()),
+            rep_amounts: RwLock::new(HashMap::new()),
             store,
             min_weight,
         }
     }
 
-    fn get(&self, guard: &MutexGuard<HashMap<Account, Amount>>, account: &Account) -> Amount {
-        guard.get(account).cloned().unwrap_or_default()
+    fn get(&self, weights: &HashMap<Account, Amount>, account: &Account) -> Amount {
+        weights.get(account).cloned().unwrap_or_default()
     }
 
     pub fn get_rep_amounts(&self) -> HashMap<Account, Amount> {
-        self.rep_amounts.lock().unwrap().clone()
+        self.rep_amounts.read().unwrap().clone()
     }
 
     /// Only use this method when loading rep weights from the database table
     pub fn copy_from(&self, other: &RepWeights) {
-        let mut guard_this = self.rep_amounts.lock().unwrap();
-        let guard_other = other.rep_amounts.lock().unwrap();
+        let mut guard_this = self.rep_amounts.write().unwrap();
+        let guard_other = other.rep_amounts.read().unwrap();
         for (account, amount) in guard_other.iter() {
             let prev_amount = self.get(&guard_this, account);
             self.put_cache(&mut guard_this, *account, prev_amount.wrapping_add(*amount));
@@ -47,20 +47,20 @@ impl RepWeights {
         let previous_weight = self.store.get(tx, representative).unwrap_or_default();
         let new_weight = previous_weight.wrapping_add(amount);
         self.put_store(tx, representative, previous_weight, new_weight);
-        let mut guard = self.rep_amounts.lock().unwrap();
+        let mut guard = self.rep_amounts.write().unwrap();
         self.put_cache(&mut guard, representative, new_weight);
     }
 
     fn put_cache(
         &self,
-        guard: &mut MutexGuard<HashMap<Account, Amount>>,
+        weights: &mut HashMap<Account, Amount>,
         representative: Account,
         new_weight: Amount,
     ) {
         if new_weight < self.min_weight || new_weight.is_zero() {
-            guard.remove(&representative);
+            weights.remove(&representative);
         } else {
-            guard.insert(representative, new_weight);
+            weights.insert(representative, new_weight);
         }
     }
 
@@ -82,12 +82,12 @@ impl RepWeights {
 
     /// Only use this method when loading rep weights from the database table!
     pub fn representation_put(&self, representative: Account, weight: Amount) {
-        let mut guard = self.rep_amounts.lock().unwrap();
+        let mut guard = self.rep_amounts.write().unwrap();
         self.put_cache(&mut guard, representative, weight);
     }
 
     pub fn representation_get(&self, account: &Account) -> Amount {
-        let guard = self.rep_amounts.lock().unwrap();
+        let guard = self.rep_amounts.read().unwrap();
         self.get(&guard, account)
     }
 
@@ -106,7 +106,7 @@ impl RepWeights {
             let new_weight_2 = previous_weight_2.wrapping_add(amount_2);
             self.put_store(tx, rep_1, previous_weight_1, new_weight_1);
             self.put_store(tx, rep_2, previous_weight_2, new_weight_2);
-            let mut guard = self.rep_amounts.lock().unwrap();
+            let mut guard = self.rep_amounts.write().unwrap();
             self.put_cache(&mut guard, rep_1, new_weight_1);
             self.put_cache(&mut guard, rep_2, new_weight_2);
         } else {
@@ -119,7 +119,7 @@ impl RepWeights {
     }
 
     pub fn count(&self) -> usize {
-        self.rep_amounts.lock().unwrap().len()
+        self.rep_amounts.read().unwrap().len()
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

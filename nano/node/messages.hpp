@@ -118,7 +118,7 @@ public:
 class confirm_ack final : public message
 {
 public:
-	confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const &);
+	confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const &, bool rebroadcasted = false);
 	confirm_ack (nano::confirm_ack const & other_a);
 	confirm_ack (rsnano::MessageHandle * handle_a);
 	void visit (nano::message_visitor &) const override;

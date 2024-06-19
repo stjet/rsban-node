@@ -8,10 +8,15 @@ use rsnano_messages::{ConfirmAck, Message};
 pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     constants: *mut NetworkConstantsDto,
     vote: &VoteHandle,
+    rebroadcasted: bool,
 ) -> *mut MessageHandle {
     create_message_handle2(constants, || {
         let vote = vote.0.deref().clone();
-        Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote))
+        let ack = match rebroadcasted {
+            true => ConfirmAck::new_with_own_vote(vote),
+            false => ConfirmAck::new_with_rebroadcasted_vote(vote),
+        };
+        Message::ConfirmAck(ack)
     })
 }
 

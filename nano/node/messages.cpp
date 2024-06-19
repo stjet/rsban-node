@@ -327,11 +327,11 @@ std::string nano::confirm_req::to_string () const
 rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants, nano::vote const & vote_a)
 {
 	auto constants_dto{ constants.to_dto () };
-	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle ());
+	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle (), rebroadcasted);
 }
 
-nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a) :
-	message (create_confirm_ack_handle (constants, *vote_a))
+nano::confirm_ack::confirm_ack (nano::network_constants const & constants, std::shared_ptr<nano::vote> const & vote_a, bool rebroadcasted) :
+	message (create_confirm_ack_handle (constants, *vote_a, rebroadcasted))
 {
 }
 

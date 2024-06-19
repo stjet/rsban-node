@@ -119,9 +119,20 @@ pub struct Buckets {
 
 impl Buckets {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
+    /// @param maximum number of blocks that this container can hold, this is a soft and approximate limit.
     pub fn new(maximum: usize) -> Self {
+        let minimums = Self::create_minimums();
+        let buckets = Self::create_buckets(&minimums, maximum);
+        Self {
+            buckets,
+            minimums,
+            current: 0,
+            maximum,
+        }
+    }
+
+    fn create_minimums() -> VecDeque<u128> {
         let mut minimums = VecDeque::new();
-        minimums.push_back(0);
 
         let mut build_region = |begin: u128, end: u128, count: usize| {
             let width = (end - begin) / (count as u128);
@@ -130,6 +141,7 @@ impl Buckets {
             }
         };
 
+        build_region(0, 1 << 88, 1);
         build_region(1 << 88, 1 << 92, 2);
         build_region(1 << 92, 1 << 96, 4);
         build_region(1 << 96, 1 << 100, 8);
@@ -138,20 +150,19 @@ impl Buckets {
         build_region(1 << 108, 1 << 112, 8);
         build_region(1 << 112, 1 << 116, 4);
         build_region(1 << 116, 1 << 120, 2);
-        minimums.push_back(1 << 120);
+        build_region(1 << 120, 1 << 127, 1);
 
+        minimums
+    }
+
+    fn create_buckets(minimums: &VecDeque<u128>, maximum: usize) -> VecDeque<Bucket> {
         let bucket_max = max(1, maximum / minimums.len());
         let buckets = minimums
             .iter()
             .map(|_| Bucket::new(bucket_max))
             .collect::<VecDeque<_>>();
 
-        Self {
-            buckets,
-            minimums,
-            current: 0,
-            maximum,
-        }
+        buckets
     }
 
     /// Push a block and its associated time into the prioritization container.

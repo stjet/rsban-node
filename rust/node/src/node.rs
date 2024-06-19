@@ -733,10 +733,10 @@ impl Node {
                 return;
             };
             let rep_weight = ledger.weight(&vote.voting_account);
-            vote_cache
-                .lock()
-                .unwrap()
-                .observe(vote, rep_weight, source, results.clone());
+
+            if source != VoteSource::Cache {
+                vote_cache.lock().unwrap().insert(vote, rep_weight, results);
+            }
 
             // Republish vote if it is new and the node does not host a principal representative (or close to)
             let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);

@@ -47,7 +47,7 @@ fn main() {
         Arc::new(NullSocketObserver::new()),
         Box::new(|_, _, _, _, _, _| {}),
         Box::new(|_, _| {}),
-        Box::new(|_, _, _| {}),
+        Box::new(|_, _, _, _| {}),
     ));
 
     node.start();

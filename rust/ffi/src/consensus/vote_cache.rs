@@ -90,7 +90,7 @@ pub unsafe extern "C" fn rsn_vote_cache_vote(
         .0
         .lock()
         .unwrap()
-        .insert(vote, Amount::from_ptr(weight));
+        .insert(vote, Amount::from_ptr(weight), &HashMap::new());
 }
 
 #[repr(C)]

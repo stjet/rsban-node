@@ -48,14 +48,16 @@ impl ValueType {
 
 /// A class which holds an ordered set of blocks to be scheduled, ordered by their block arrival time
 pub struct Bucket {
+    minimum_balance: Amount,
     maximum: usize,
     queue: BTreeSet<ValueType>,
 }
 
 impl Bucket {
-    pub fn new(maximum: usize) -> Self {
+    pub fn new(maximum: usize, minimum_balance: Amount) -> Self {
         Self {
             maximum,
+            minimum_balance,
             queue: BTreeSet::new(),
         }
     }
@@ -106,10 +108,6 @@ pub struct Buckets {
     /// container for the buckets to be read in round robin fashion
     buckets: VecDeque<Bucket>,
 
-    /// thresholds that define the bands for each bucket, the minimum balance an account must have to enter a bucket,
-    /// the container writes a block to the lowest indexed bucket that has balance larger than the bucket's minimum value
-    minimums: VecDeque<u128>,
-
     /// index of bucket to read next
     current: usize,
 
@@ -121,23 +119,22 @@ impl Buckets {
     /// Prioritization constructor, construct a container containing approximately 'maximum' number of blocks.
     /// @param maximum number of blocks that this container can hold, this is a soft and approximate limit.
     pub fn new(maximum: usize) -> Self {
-        let minimums = Self::create_minimums();
-        let buckets = Self::create_buckets(&minimums, maximum);
         Self {
-            buckets,
-            minimums,
+            buckets: Self::create_buckets(maximum),
             current: 0,
             maximum,
         }
     }
 
-    fn create_minimums() -> VecDeque<u128> {
-        let mut minimums = VecDeque::new();
-
+    fn create_buckets(maximum: usize) -> VecDeque<Bucket> {
+        let mut buckets = VecDeque::new();
+        const SIZE_EXPECTED: usize = 62;
+        let bucket_max = max(1, maximum / SIZE_EXPECTED);
         let mut build_region = |begin: u128, end: u128, count: usize| {
             let width = (end - begin) / (count as u128);
             for i in 0..count {
-                minimums.push_back(begin + (i as u128 * width))
+                let minimum_balance = begin + (i as u128 * width);
+                buckets.push_back(Bucket::new(bucket_max, minimum_balance.into()))
             }
         };
 
@@ -152,16 +149,6 @@ impl Buckets {
         build_region(1 << 116, 1 << 120, 2);
         build_region(1 << 120, 1 << 127, 1);
 
-        minimums
-    }
-
-    fn create_buckets(minimums: &VecDeque<u128>, maximum: usize) -> VecDeque<Bucket> {
-        let bucket_max = max(1, maximum / minimums.len());
-        let buckets = minimums
-            .iter()
-            .map(|_| Bucket::new(bucket_max))
-            .collect::<VecDeque<_>>();
-
         buckets
     }
 
@@ -169,9 +156,7 @@ impl Buckets {
     /// The time is given here because sideband might not exist in the case of state blocks.
     pub fn push(&mut self, time: u64, block: Arc<BlockEnum>, priority: Amount) {
         let was_empty = self.is_empty();
-        let index = self.index(&priority);
-        let bucket = &mut self.buckets[index];
-        bucket.push(time, block);
+        self.find_bucket(priority).push(time, block);
 
         if was_empty {
             self.seek();
@@ -239,19 +224,18 @@ impl Buckets {
         eprintln!("current: {}", self.current);
     }
 
-    pub fn index(&self, amount: &Amount) -> usize {
-        self.minimums
-            .iter()
-            .enumerate()
-            .find_map(|(i, min)| {
-                if amount.number() < *min {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(self.minimums.len())
-            - 1
+    pub fn find_bucket(&mut self, amount: Amount) -> &mut Bucket {
+        let mut bucket = None;
+
+        for b in self.buckets.iter_mut() {
+            if b.minimum_balance > amount {
+                break;
+            }
+            bucket = Some(b);
+        }
+
+        // There should always be a bucket with a minimum_balance of 0
+        bucket.unwrap()
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -290,18 +274,6 @@ mod tests {
         assert_eq!(buckets.len(), 0);
         assert!(buckets.is_empty());
         assert_eq!(buckets.bucket_count(), 62);
-    }
-
-    #[test]
-    fn index_min() {
-        let buckets = Buckets::default();
-        assert_eq!(buckets.index(&Amount::zero()), 0);
-    }
-
-    #[test]
-    fn index_max() {
-        let buckets = Buckets::default();
-        assert_eq!(buckets.index(&Amount::MAX), buckets.bucket_count() - 1);
     }
 
     #[test]

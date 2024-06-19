@@ -13,8 +13,8 @@ pub unsafe extern "C" fn rsn_message_confirm_ack_create(
     create_message_handle2(constants, || {
         let vote = vote.0.deref().clone();
         let ack = match rebroadcasted {
-            true => ConfirmAck::new_with_own_vote(vote),
-            false => ConfirmAck::new_with_rebroadcasted_vote(vote),
+            true => ConfirmAck::new_with_rebroadcasted_vote(vote),
+            false => ConfirmAck::new_with_own_vote(vote),
         };
         Message::ConfirmAck(ack)
     })

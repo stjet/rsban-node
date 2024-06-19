@@ -324,7 +324,7 @@ std::string nano::confirm_req::to_string () const
  * confirm_ack
  */
 
-rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants, nano::vote const & vote_a)
+rsnano::MessageHandle * create_confirm_ack_handle (nano::network_constants const & constants, nano::vote const & vote_a, bool rebroadcasted)
 {
 	auto constants_dto{ constants.to_dto () };
 	return rsnano::rsn_message_confirm_ack_create (&constants_dto, vote_a.get_handle (), rebroadcasted);

@@ -740,8 +740,9 @@ impl Node {
             let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);
             if processed {
                 if wallets.should_republish_vote(vote.voting_account) {
-                    let ack =
-                        Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote.as_ref().clone()));
+                    let ack = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
+                        vote.as_ref().clone(),
+                    ));
                     channels.flood_message(&ack, 0.5);
                 }
             }

@@ -21,7 +21,8 @@ use crate::{
 
 use super::{
     BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapConnections,
-    BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy, PullInfo, PullsCache,
+    BootstrapConnectionsConfig, BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy,
+    PullInfo, PullsCache,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -34,7 +35,7 @@ pub struct BootstrapInitiator {
     condition: Condvar,
     threads: Mutex<Vec<JoinHandle<()>>>,
     pub connections: Arc<BootstrapConnections>,
-    config: NodeConfig,
+    node_config: NodeConfig,
     stopped: AtomicBool,
     pub cache: Arc<Mutex<PullsCache>>,
     stats: Arc<Stats>,
@@ -50,7 +51,8 @@ pub struct BootstrapInitiator {
 
 impl BootstrapInitiator {
     pub fn new(
-        config: NodeConfig,
+        node_config: NodeConfig,
+        config: BootstrapConnectionsConfig,
         flags: NodeFlags,
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
@@ -71,7 +73,7 @@ impl BootstrapInitiator {
             }),
             condition: Condvar::new(),
             threads: Mutex::new(Vec::new()),
-            config: config.clone(),
+            node_config: node_config.clone(),
             stopped: AtomicBool::new(false),
             cache: Arc::clone(&cache),
             stats: Arc::clone(&stats),
@@ -86,11 +88,9 @@ impl BootstrapInitiator {
             connections: Arc::new(BootstrapConnections::new(
                 attempts,
                 config,
-                flags,
                 network,
                 async_rt,
                 workers,
-                network_params,
                 socket_observer,
                 stats,
                 outbound_limiter,
@@ -108,7 +108,7 @@ impl BootstrapInitiator {
             condition: Condvar::new(),
             threads: Mutex::new(Vec::new()),
             connections: Arc::new(BootstrapConnections::new_null()),
-            config: NodeConfig::new_test_instance(),
+            node_config: NodeConfig::new_test_instance(),
             stopped: AtomicBool::new(false),
             cache: Arc::new(Mutex::new(PullsCache::new())),
             stats: Arc::new(Stats::default()),
@@ -253,7 +253,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .unwrap(),
         );
 
-        for _ in 0..self.config.bootstrap_initiator_threads {
+        for _ in 0..self.node_config.bootstrap_initiator_threads {
             let self_l = Arc::clone(self);
             threads.push(
                 std::thread::Builder::new()
@@ -308,7 +308,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     incremental_id as u64,
                     Arc::clone(&self.connections),
                     self.network_params.clone(),
-                    self.config.clone(),
+                    self.node_config.clone(),
                     Arc::clone(&self.stats),
                     self.flags.clone(),
                     frontiers_age_a,
@@ -345,7 +345,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     incremental_id as u64,
                     Arc::clone(&self.connections),
                     self.network_params.clone(),
-                    self.config.clone(),
+                    self.node_config.clone(),
                     Arc::clone(&self.stats),
                     self.flags.clone(),
                     u32::MAX,
@@ -446,7 +446,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     incremental_id as u64,
                     Arc::clone(&self.connections),
                     Arc::clone(&self.workers),
-                    self.config.clone(),
+                    self.node_config.clone(),
                     Arc::clone(&self.stats),
                 )
                 .unwrap(),

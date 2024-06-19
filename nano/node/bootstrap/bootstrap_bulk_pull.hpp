@@ -35,22 +35,6 @@ public:
 class bootstrap_client;
 class bootstrap_connections;
 
-/**
- * Client side of a bulk_pull request. Created when the bootstrap_attempt wants to make a bulk_pull request to the remote side.
- */
-class bulk_pull_client final : public std::enable_shared_from_this<nano::bulk_pull_client>
-{
-public:
-	bulk_pull_client (
-	std::shared_ptr<nano::node> const & node_a,
-	std::shared_ptr<nano::bootstrap_client> const &,
-	std::shared_ptr<nano::bootstrap_attempt> const &,
-	nano::pull_info const &);
-	bulk_pull_client (bulk_pull_client const &) = delete;
-	~bulk_pull_client ();
-
-	rsnano::BulkPullClientHandle * handle;
-};
 class bootstrap_attempt_wallet;
 
 class bulk_pull;

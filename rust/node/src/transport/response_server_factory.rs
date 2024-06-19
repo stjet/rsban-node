@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessor,
-    bootstrap::{BootstrapInitiator, BootstrapMessageVisitorFactory},
+    bootstrap::{BootstrapConnectionsConfig, BootstrapInitiator, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::Stats,
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
@@ -34,7 +34,7 @@ pub(crate) struct ResponseServerFactory {
 impl ResponseServerFactory {
     pub(crate) fn new_null() -> Self {
         let ledger = Arc::new(Ledger::new_null());
-        let config = NodeConfig::new_test_instance();
+        let node_config = NodeConfig::new_test_instance();
         let flags = NodeFlags::default();
         let network = Arc::new(Network::new_null());
         let runtime = Arc::new(AsyncRuntime::default());
@@ -50,7 +50,8 @@ impl ResponseServerFactory {
             workers: Arc::new(ThreadPoolImpl::new_test_instance()),
             block_processor: block_processor.clone(),
             bootstrap_initiator: Arc::new(BootstrapInitiator::new(
-                config.clone(),
+                node_config.clone(),
+                BootstrapConnectionsConfig::default(),
                 flags.clone(),
                 network.clone(),
                 runtime,
@@ -67,7 +68,7 @@ impl ResponseServerFactory {
             inbound_queue: Arc::new(InboundMessageQueue::default()),
             node_flags: flags,
             network_params,
-            node_config: config,
+            node_config,
             syn_cookies: Arc::new(SynCookies::new(1)),
         }
     }

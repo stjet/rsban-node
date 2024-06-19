@@ -1,7 +1,6 @@
 use super::{
     ordered_blocking::{BlockingEntry, OrderedBlocking},
     ordered_priorities::OrderedPriorities,
-    AccountSetsConfig,
 };
 use crate::{
     bootstrap::ascending::ordered_priorities::PriorityEntry,
@@ -21,6 +20,25 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
+#[derive(Clone)]
+pub struct AccountSetsConfig {
+    pub consideration_count: usize,
+    pub priorities_max: usize,
+    pub blocking_max: usize,
+    pub cooldown: Duration,
+}
+
+impl Default for AccountSetsConfig {
+    fn default() -> Self {
+        Self {
+            consideration_count: 4,
+            priorities_max: 256 * 1024,
+            blocking_max: 256 * 1024,
+            cooldown: Duration::from_secs(3),
+        }
+    }
+}
 
 /// This struct tracks accounts various account sets which are shared among the multiple bootstrap threads
 pub(crate) struct AccountSets {

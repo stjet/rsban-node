@@ -1,20 +1,20 @@
 use super::{
     bootstrap_limits, BootstrapAttempts, BootstrapClient, BootstrapInitiator, BootstrapMode,
-    BootstrapStrategy, BulkPullClient, BulkPullClientExt, PullInfo, PullsCache,
+    BootstrapStrategy, BulkPullClient, BulkPullClientConfig, BulkPullClientExt, PullInfo,
+    PullsCache,
 };
 use crate::{
     block_processing::BlockProcessor,
-    config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         ChannelDirection, ChannelEnum, ChannelTcp, Network, NullSocketObserver,
         OutboundBandwidthLimiter, SocketBuilder, SocketExtensions, SocketObserver,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
-    NetworkParams,
 };
 use ordered_float::OrderedFloat;
-use rsnano_core::{utils::PropertyTree, Account, BlockHash, Networks};
+use rsnano_core::{utils::PropertyTree, work::WorkThresholds, Account, BlockHash};
+use rsnano_messages::ProtocolInfo;
 use std::{
     cmp::{max, min},
     collections::{BinaryHeap, HashSet, VecDeque},
@@ -28,6 +28,39 @@ use std::{
 };
 use tracing::debug;
 
+pub struct BootstrapConnectionsConfig {
+    pub bootstrap_connections: u32,
+    pub bootstrap_connections_max: u32,
+    pub tcp_io_timeout: Duration,
+    pub silent_connection_tolerance_time: Duration,
+    pub allow_bootstrap_peers_duplicates: bool,
+    pub disable_legacy_bootstrap: bool,
+    /** Default maximum idle time for a socket before it's automatically closed */
+    pub idle_timeout: Duration,
+    pub lazy_max_pull_blocks: u32,
+    pub work_thresholds: WorkThresholds,
+    pub lazy_retry_limit: u32,
+    pub protocol: ProtocolInfo,
+}
+
+impl Default for BootstrapConnectionsConfig {
+    fn default() -> Self {
+        Self {
+            bootstrap_connections: 4,
+            bootstrap_connections_max: 64,
+            tcp_io_timeout: Duration::from_secs(15),
+            silent_connection_tolerance_time: Duration::from_secs(120),
+            allow_bootstrap_peers_duplicates: false,
+            disable_legacy_bootstrap: false,
+            idle_timeout: Duration::from_secs(120),
+            lazy_max_pull_blocks: 512,
+            work_thresholds: Default::default(),
+            lazy_retry_limit: 64,
+            protocol: Default::default(),
+        }
+    }
+}
+
 /// Container for bootstrap_client objects. Owned by bootstrap_initiator which pools open connections and makes them available
 /// for use by different bootstrap sessions.
 pub struct BootstrapConnections {
@@ -35,15 +68,13 @@ pub struct BootstrapConnections {
     populate_connections_started: AtomicBool,
     attempts: Arc<Mutex<BootstrapAttempts>>,
     mutex: Mutex<BootstrapConnectionsData>,
-    config: NodeConfig,
+    config: BootstrapConnectionsConfig,
     pub connections_count: AtomicU32,
     new_connections_empty: AtomicBool,
     stopped: AtomicBool,
     network: Arc<Network>,
-    flags: NodeFlags,
     workers: Arc<dyn ThreadPool>,
     async_rt: Arc<AsyncRuntime>,
-    network_params: NetworkParams,
     socket_observer: Arc<dyn SocketObserver>,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
@@ -55,12 +86,10 @@ pub struct BootstrapConnections {
 impl BootstrapConnections {
     pub fn new(
         attempts: Arc<Mutex<BootstrapAttempts>>,
-        config: NodeConfig,
-        flags: NodeFlags,
+        config: BootstrapConnectionsConfig,
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
-        network_params: NetworkParams,
         socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         outbound_limiter: Arc<OutboundBandwidthLimiter>,
@@ -81,10 +110,8 @@ impl BootstrapConnections {
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             network,
-            flags,
             workers,
             async_rt,
-            network_params,
             socket_observer,
             stats,
             outbound_limiter,
@@ -100,15 +127,13 @@ impl BootstrapConnections {
             populate_connections_started: AtomicBool::new(false),
             attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
             mutex: Mutex::new(BootstrapConnectionsData::default()),
-            config: NodeConfig::new_test_instance(),
+            config: BootstrapConnectionsConfig::default(),
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             network: Arc::new(Network::new_null()),
-            flags: NodeFlags::default(),
             workers: Arc::new(ThreadPoolImpl::new_null()),
             async_rt: Arc::new(AsyncRuntime::default()),
-            network_params: NetworkParams::new(Networks::NanoDevNetwork),
             socket_observer: Arc::new(NullSocketObserver::new()),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
@@ -243,7 +268,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             && !client_a.pending_stop()
             && !self.network.is_excluded(&client_a.tcp_endpoint())
         {
-            client_a.set_timeout(self.network_params.network.idle_timeout);
+            client_a.set_timeout(self.config.idle_timeout);
             // Push into idle deque
             if !push_front {
                 guard.idle.push_back(Arc::clone(&client_a));
@@ -297,8 +322,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             } else if is_lazy
                 && (pull.attempts
                     <= pull.retry_limit
-                        + (pull.processed as u32
-                            / self.network_params.bootstrap.lazy_max_pull_blocks))
+                        + (pull.processed as u32 / self.config.lazy_max_pull_blocks))
             {
                 debug_assert_eq!(BlockHash::from(pull.account_or_head), pull.head);
 
@@ -503,7 +527,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             for _ in 0..delta {
                 let endpoint = self.network.bootstrap_peer(); // Legacy bootstrap is compatible with older version of protocol
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
-                    && (self.flags.allow_bootstrap_peers_duplicates
+                    && (self.config.allow_bootstrap_peers_duplicates
                         || !endpoints.contains(&endpoint))
                     && !self.network.is_excluded(&endpoint)
                 {
@@ -544,13 +568,9 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             Arc::clone(&self.workers),
             Arc::downgrade(&self.async_rt),
         )
-        .default_timeout(Duration::from_secs(self.config.tcp_io_timeout_s as u64))
-        .silent_connection_tolerance_time(Duration::from_secs(
-            self.network_params
-                .network
-                .silent_connection_tolerance_time_s as u64,
-        ))
-        .idle_timeout(self.network_params.network.idle_timeout)
+        .default_timeout(self.config.tcp_io_timeout)
+        .silent_connection_tolerance_time(self.config.silent_connection_tolerance_time)
+        .idle_timeout(self.config.idle_timeout)
         .observer(Arc::clone(&self.socket_observer))
         .finish();
 
@@ -564,7 +584,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
 
                     let channel_id = self_l.network.get_next_channel_id();
 
-                    let protocol = self_l.network_params.network.protocol_info();
+                    let protocol = self_l.config.protocol;
                     let tcp_channel = Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
                         Arc::clone(&socket_l),
                         SystemTime::now(),
@@ -638,11 +658,17 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         .cloned()
                         .expect("bootstrap initiator not set")
                         .upgrade();
+
+                    let client_config = BulkPullClientConfig {
+                        disable_legacy_bootstrap: self.config.disable_legacy_bootstrap,
+                        retry_limit: self.config.lazy_retry_limit,
+                        work_thresholds: self.config.work_thresholds.clone(),
+                    };
+
                     if let Some(initiator) = initiator {
                         self.workers.push_task(Box::new(move || {
                             let client = Arc::new(BulkPullClient::new(
-                                self_l.network_params.clone(),
-                                self_l.flags.clone(),
+                                client_config,
                                 Arc::clone(&self_l.stats),
                                 Arc::clone(&self_l.block_processor),
                                 connection_l,

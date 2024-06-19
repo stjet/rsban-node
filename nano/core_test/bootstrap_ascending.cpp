@@ -2,7 +2,6 @@
 #include <nano/lib/logging.hpp>
 #include <nano/lib/stats.hpp>
 #include <nano/lib/tomlconfig.hpp>
-#include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/make_store.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/test_common/system.hpp>

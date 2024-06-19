@@ -412,6 +412,7 @@ impl Node {
 
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(
             config.clone(),
+            global_config.into(),
             flags.clone(),
             Arc::clone(&network),
             Arc::clone(&async_rt),

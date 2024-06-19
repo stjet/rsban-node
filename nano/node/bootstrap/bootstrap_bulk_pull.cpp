@@ -53,33 +53,6 @@ void nano::pull_info::load_dto (rsnano::PullInfoDto const & dto)
 	bootstrap_id = dto.bootstrap_id;
 }
 
-nano::bulk_pull_client::bulk_pull_client (
-std::shared_ptr<nano::node> const & node_a,
-std::shared_ptr<nano::bootstrap_client> const & connection_a,
-std::shared_ptr<nano::bootstrap_attempt> const & attempt_a,
-nano::pull_info const & pull_a)
-{
-	auto nw_params{ node_a->network_params.to_dto () };
-	auto pull_dto{ pull_a.to_dto () };
-	handle = rsnano::rsn_bulk_pull_client_create (
-	&nw_params,
-	node_a->flags.handle,
-	node_a->stats->handle,
-	node_a->block_processor.handle,
-	connection_a->handle,
-	attempt_a->handle,
-	node_a->workers->handle,
-	node_a->async_rt.handle,
-	node_a->bootstrap_initiator.connections->handle,
-	node_a->bootstrap_initiator.handle,
-	&pull_dto);
-}
-
-nano::bulk_pull_client::~bulk_pull_client ()
-{
-	rsnano::rsn_bulk_pull_client_destroy (handle);
-}
-
 nano::bulk_pull::count_t nano::bulk_pull_server::get_sent_count () const
 {
 	return rsnano::rsn_bulk_pull_server_sent_count (handle);

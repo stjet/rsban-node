@@ -13,13 +13,11 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::BootstrapMode,
-    config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BlockDeserializer, BufferDropPolicy, TrafficType},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
-    NetworkParams,
 };
-use rsnano_core::{Account, BlockEnum, BlockHash};
+use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
 use rsnano_messages::{BulkPull, Message};
 use tracing::{debug, trace};
 
@@ -28,7 +26,6 @@ pub struct BulkPullClient {
     expected: Mutex<BlockHash>,
     /// Original pull request
     pull: PullInfo,
-    network_params: NetworkParams,
     connection: Arc<BootstrapClient>,
     attempt: Arc<BootstrapStrategy>,
     stats: Arc<Stats>,
@@ -39,7 +36,7 @@ pub struct BulkPullClient {
     /// Tracks the number of blocks successfully deserialized
     pull_blocks: AtomicU64,
     connections: Arc<BootstrapConnections>,
-    flags: NodeFlags,
+    config: BulkPullClientConfig,
     /// Tracks the number of times an unexpected block was received
     unexpected_count: AtomicU64,
 
@@ -50,10 +47,15 @@ pub struct BulkPullClient {
     bootstrap_initiator: Arc<BootstrapInitiator>,
 }
 
+pub struct BulkPullClientConfig {
+    pub disable_legacy_bootstrap: bool,
+    pub retry_limit: u32,
+    pub work_thresholds: WorkThresholds,
+}
+
 impl BulkPullClient {
     pub fn new(
-        network_params: NetworkParams,
-        flags: NodeFlags,
+        config: BulkPullClientConfig,
         stats: Arc<Stats>,
         block_processor: Arc<BlockProcessor>,
         connection: Arc<BootstrapClient>,
@@ -67,7 +69,6 @@ impl BulkPullClient {
         let result = Self {
             expected: Mutex::new(BlockHash::zero()),
             pull,
-            network_params,
             connection,
             attempt,
             stats,
@@ -77,7 +78,7 @@ impl BulkPullClient {
             block_deserializer: BlockDeserializer::new(async_rt),
             pull_blocks: AtomicU64::new(0),
             connections,
-            flags,
+            config,
             unexpected_count: AtomicU64::new(0),
             known_account: Mutex::new(Account::zero()),
             bootstrap_initiator,
@@ -125,8 +126,7 @@ pub trait BulkPullClientExt {
 impl BulkPullClientExt for Arc<BulkPullClient> {
     fn request(&self) {
         debug_assert!(
-            !self.pull.head.is_zero()
-                || self.pull.retry_limit <= self.network_params.bootstrap.lazy_retry_limit
+            !self.pull.head.is_zero() || self.pull.retry_limit <= self.config.retry_limit
         );
         *self.expected.lock().unwrap() = self.pull.head;
         let mut payload = BulkPull::default();
@@ -226,7 +226,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             return;
         };
 
-        if self.network_params.work.validate_entry_block(&block) {
+        if self.config.work_thresholds.validate_entry_block(&block) {
             debug!("Insufficient work for bulk pull block: {}", block.hash());
             self.stats
                 .inc(StatType::Error, DetailType::InsufficientWork);
@@ -239,9 +239,9 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         let mut block_expected = false;
         let expected = self.expected.lock().unwrap().clone();
         // Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
-        let unconfirmed_account_head = self.flags.disable_legacy_bootstrap
+        let unconfirmed_account_head = self.config.disable_legacy_bootstrap
             && self.pull_blocks.load(Ordering::SeqCst) == 0
-            && self.pull.retry_limit <= self.network_params.bootstrap.lazy_retry_limit
+            && self.pull.retry_limit <= self.config.retry_limit
             && expected == self.pull.account_or_head.into()
             && block.account_field() == Some(self.pull.account_or_head.into());
 

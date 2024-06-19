@@ -4,7 +4,6 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/lib/threading.hpp>
-#include <nano/node/bootstrap_ascending/service.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/telemetry.hpp>

@@ -1,5 +1,4 @@
 mod account_sets;
-mod account_sets_config;
 mod iterator;
 mod ordered_blocking;
 mod ordered_priorities;
@@ -8,7 +7,7 @@ mod peer_scoring;
 mod throttle;
 
 use self::{
-    account_sets::AccountSets,
+    account_sets::*,
     iterator::BufferedIterator,
     ordered_tags::{AsyncTag, OrderedTags},
     peer_scoring::PeerScoring,
@@ -17,11 +16,9 @@ use self::{
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
-    config::NetworkConstants,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
-pub use account_sets_config::*;
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
@@ -39,6 +36,8 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+pub use account_sets::AccountSetsConfig;
 
 enum VerifyResult {
     Ok,

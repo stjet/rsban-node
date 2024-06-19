@@ -1,7 +1,6 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include "nano/node/transport/traffic_type.hpp"
 
 #include <nano/node/bootstrap/bootstrap_bulk_pull.hpp>
 #include <nano/node/common.hpp>
@@ -28,7 +27,6 @@ class bootstrap_client final : public std::enable_shared_from_this<bootstrap_cli
 public:
 	bootstrap_client (rsnano::BootstrapClientHandle * handle_a);
 	~bootstrap_client ();
-	std::shared_ptr<nano::transport::socket> get_socket () const;
 	rsnano::BootstrapClientHandle * handle;
 };
 
@@ -40,7 +38,6 @@ class bootstrap_connections final : public std::enable_shared_from_this<bootstra
 {
 public:
 	bootstrap_connections (rsnano::BootstrapConnectionsHandle * handle);
-	bootstrap_connections (nano::node & node_a, nano::bootstrap_initiator & initiator);
 	bootstrap_connections (bootstrap_connections const &) = delete;
 	~bootstrap_connections ();
 	unsigned target_connections (std::size_t pulls_remaining, std::size_t attempts_count) const;

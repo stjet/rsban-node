@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessorConfig,
-    bootstrap::BootstrapServerConfig,
+    bootstrap::{BootstrapConnectionsConfig, BootstrapServerConfig},
     consensus::{
         ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
     },
@@ -237,8 +237,9 @@ impl NodeConfig {
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
             signature_checker_threads: (parallelism / 2) as u32,
             enable_voting,
-            bootstrap_connections: 4,
-            bootstrap_connections_max: 64,
+            bootstrap_connections: BootstrapConnectionsConfig::default().bootstrap_connections,
+            bootstrap_connections_max: BootstrapConnectionsConfig::default()
+                .bootstrap_connections_max,
             bootstrap_initiator_threads: 1,
             bootstrap_serving_threads: max(parallelism / 2, 2) as u32,
             bootstrap_frontier_request_count: 1024 * 1024,

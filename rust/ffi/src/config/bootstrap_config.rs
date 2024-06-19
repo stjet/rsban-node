@@ -1,4 +1,4 @@
-use rsnano_node::{bootstrap::AccountSetsConfig, config::BootstrapAscendingToml};
+use rsnano_node::config::{AccountSetsToml, BootstrapAscendingToml};
 use std::time::Duration;
 
 #[repr(C)]
@@ -51,8 +51,8 @@ impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingToml {
     }
 }
 
-impl From<&AccountSetsConfig> for AccountSetsConfigDto {
-    fn from(value: &AccountSetsConfig) -> Self {
+impl From<&AccountSetsToml> for AccountSetsConfigDto {
+    fn from(value: &AccountSetsToml) -> Self {
         Self {
             consideration_count: value.consideration_count,
             priorities_max: value.priorities_max,
@@ -62,7 +62,7 @@ impl From<&AccountSetsConfig> for AccountSetsConfigDto {
     }
 }
 
-impl From<&AccountSetsConfigDto> for AccountSetsConfig {
+impl From<&AccountSetsConfigDto> for AccountSetsToml {
     fn from(value: &AccountSetsConfigDto) -> Self {
         Self {
             consideration_count: value.consideration_count,
@@ -75,7 +75,7 @@ impl From<&AccountSetsConfigDto> for AccountSetsConfig {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_account_sets_config_create(result: *mut AccountSetsConfigDto) {
-    (*result) = (&AccountSetsConfig::default()).into()
+    (*result) = (&AccountSetsToml::default()).into()
 }
 
 #[no_mangle]

@@ -11,7 +11,7 @@ pub struct BootstrapAscendingToml {
     pub timeout: Duration,
     pub throttle_coefficient: usize,
     pub throttle_wait: Duration,
-    pub account_sets: AccountSetsConfig,
+    pub account_sets: AccountSetsToml,
     pub block_wait_count: usize,
 }
 
@@ -56,8 +56,43 @@ impl Default for BootstrapAscendingToml {
             timeout: config.timeout,
             throttle_coefficient: config.throttle_coefficient,
             throttle_wait: config.throttle_wait,
-            account_sets: config.account_sets,
+            account_sets: (&config.account_sets).into(),
             block_wait_count: config.block_wait_count,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct AccountSetsToml {
+    pub consideration_count: usize,
+    pub priorities_max: usize,
+    pub blocking_max: usize,
+    pub cooldown: Duration,
+}
+
+impl AccountSetsToml {
+    pub(crate) fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize ("consideration_count", self.consideration_count, "Limit the number of account candidates to consider and also the number of iterations.\ntype:uint64")?;
+        toml.put_usize(
+            "priorities_max",
+            self.priorities_max,
+            "Cutoff size limit for the priority list.\ntype:uint64",
+        )?;
+        toml.put_usize(
+            "blocking_max",
+            self.blocking_max,
+            "Cutoff size limit for the blocked accounts from the priority list.\ntype:uint64",
+        )?;
+        toml.put_u64(
+            "cooldown",
+            self.cooldown.as_millis() as u64,
+            "Waiting time for an account to become available.\ntype:milliseconds",
+        )
+    }
+}
+
+impl Default for AccountSetsToml {
+    fn default() -> Self {
+        (&AccountSetsConfig::default()).into()
     }
 }

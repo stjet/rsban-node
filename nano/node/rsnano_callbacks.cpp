@@ -1,8 +1,4 @@
 #include "boost/thread/latch.hpp"
-#include "nano/lib/blocks.hpp"
-#include "nano/lib/numbers.hpp"
-#include "nano/node/distributed_work_factory.hpp"
-
 #include <nano/lib/config.hpp>
 #include <nano/lib/logging.hpp>
 #include <nano/lib/rsnano.hpp>

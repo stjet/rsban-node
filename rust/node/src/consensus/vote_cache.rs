@@ -87,7 +87,7 @@ impl VoteCache {
         source: VoteSource,
         results: HashMap<BlockHash, VoteCode>,
     ) {
-        if !matches!(source, VoteSource::Live) {
+        if matches!(source, VoteSource::Cache) {
             return;
         }
 

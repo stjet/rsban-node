@@ -106,7 +106,7 @@ namespace
 		obs->account_balance.notify (nano::account::from_bytes (account), is_pending);
 	}
 
-	void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t code)
+	void on_vote_processed (void * context, rsnano::VoteHandle * vote_handle, rsnano::ChannelHandle * channel_handle, uint8_t source, uint8_t code)
 	{
 		auto observers = static_cast<std::weak_ptr<nano::node_observers> *> (context);
 		auto obs = observers->lock ();
@@ -120,7 +120,7 @@ namespace
 		{
 			channel = nano::transport::channel_handle_to_channel (channel_handle);
 		}
-		obs->vote.notify (vote, channel, static_cast<nano::vote_code> (code));
+		obs->vote.notify (vote, channel, static_cast<nano::vote_source>(source), static_cast<nano::vote_code> (code));
 	}
 
 }

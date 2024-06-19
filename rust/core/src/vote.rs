@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime};
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum VoteSource {
     Live,
+    Rebroadcast,
     Cache,
 }
 

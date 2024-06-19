@@ -9,6 +9,7 @@ use crate::{
     Telemetry,
 };
 use peer_connector::PeerConnectorExt;
+use rsnano_core::VoteSource;
 use rsnano_messages::{Message, TelemetryAck};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::trace;
@@ -108,8 +109,12 @@ impl RealtimeMessageHandler {
             }
             Message::ConfirmAck(ack) => {
                 if !ack.vote().voting_account.is_zero() {
+                    let source = match ack.is_rebroadcasted() {
+                        true => VoteSource::Rebroadcast,
+                        false => VoteSource::Live,
+                    };
                     self.vote_processor_queue
-                        .vote(&Arc::new(ack.vote().clone()), channel);
+                        .vote(Arc::new(ack.vote().clone()), channel, source);
                 }
             }
             Message::NodeIdHandshake(_) => {

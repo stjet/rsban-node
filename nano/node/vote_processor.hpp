@@ -15,7 +15,6 @@ namespace store
 {
 	class component;
 }
-class node_observers;
 class stats;
 class node_config;
 class logger;

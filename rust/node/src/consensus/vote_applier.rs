@@ -219,7 +219,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
 
             let mut past_cooldown = true;
             // Only cooldown live votes
-            if vote_source == VoteSource::Live {
+            if vote_source != VoteSource::Cache {
                 let cooldown = self.cooldown_time(weight);
                 past_cooldown = last_vote.time <= SystemTime::now() - cooldown;
             }
@@ -232,18 +232,12 @@ impl VoteApplierExt for Arc<VoteApplier> {
             .last_votes
             .insert(*rep, VoteInfo::new(timestamp, *block_hash));
 
-        if vote_source == VoteSource::Live {
+        if vote_source != VoteSource::Cache {
             (election.live_vote_action)(*rep);
         }
 
-        self.stats.inc(
-            StatType::Election,
-            if vote_source == VoteSource::Live {
-                DetailType::VoteNew
-            } else {
-                DetailType::VoteCached
-            },
-        );
+        self.stats.inc(StatType::Election, DetailType::Vote);
+        self.stats.inc(StatType::ElectionVote, vote_source.into());
         tracing::trace!(
             qualified_root = ?election.qualified_root,
             account = %rep,

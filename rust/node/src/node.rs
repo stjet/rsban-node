@@ -46,7 +46,7 @@ use rsnano_core::{
         Deserialize, SerdePropertyTree, StreamExt, SystemTimeFactory,
     },
     work::WorkPoolImpl,
-    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode,
+    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode, VoteSource,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
@@ -136,7 +136,9 @@ impl Node {
         socket_observer: Arc<dyn SocketObserver>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteCode) + Send + Sync>,
+        on_vote: Box<
+            dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteSource, VoteCode) + Send + Sync,
+        >,
     ) -> Self {
         let global_config = GlobalConfig {
             node_config: config.clone(),
@@ -809,7 +811,7 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let online_reps_w = Arc::downgrade(&online_reps);
-        vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, code| {
+        vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {
             debug_assert!(code != VoteCode::Invalid);
             let Some(rep_crawler) = rep_crawler_w.upgrade() else {
                 return;
@@ -820,6 +822,11 @@ impl Node {
             let Some(channel) = &channel else {
                 return; // Channel expired when waiting for vote to be processed
             };
+            // Ignore republished votes
+            if source != VoteSource::Live {
+                return;
+            }
+
             let active_in_rep_crawler = rep_crawler.process(Arc::clone(vote), Arc::clone(channel));
             if active_in_rep_crawler {
                 // Representative is defined as online if replying to live votes or rep_crawler queries

@@ -3,7 +3,7 @@ use crate::{
     representatives::RepresentativeRegister,
     transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
-use rsnano_core::Vote;
+use rsnano_core::{Vote, VoteSource};
 use rsnano_messages::{ConfirmAck, Message};
 use std::{
     ops::Deref,
@@ -39,7 +39,7 @@ impl VoteBroadcaster {
         self.network.flood_message(&ack, 2.0);
 
         self.vote_processor_queue
-            .vote(&vote, &self.loopback_channel);
+            .vote(vote, &self.loopback_channel, VoteSource::Live);
     }
 
     fn flood_vote_pr(&self, vote: Vote) {

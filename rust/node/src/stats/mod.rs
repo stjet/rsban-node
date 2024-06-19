@@ -7,6 +7,7 @@ mod stats_enums;
 mod stats_log_sink;
 
 pub use ledger_stats::LedgerStats;
+use rsnano_core::VoteSource;
 use rsnano_ledger::BlockStatus;
 use rsnano_messages::Message;
 pub use socket_stats::SocketStats;
@@ -39,5 +40,15 @@ impl From<BlockStatus> for DetailType {
 impl From<&Message> for DetailType {
     fn from(value: &Message) -> Self {
         value.message_type().into()
+    }
+}
+
+impl From<VoteSource> for DetailType {
+    fn from(value: VoteSource) -> Self {
+        match value {
+            VoteSource::Live => Self::Live,
+            VoteSource::Rebroadcast => Self::Rebroadcast,
+            VoteSource::Cache => Self::Cache,
+        }
     }
 }

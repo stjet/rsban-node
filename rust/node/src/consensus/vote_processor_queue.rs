@@ -6,7 +6,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Vote,
+    Vote, VoteSource,
 };
 use rsnano_ledger::Ledger;
 use std::{
@@ -67,14 +67,14 @@ impl VoteProcessorQueue {
         self.data.lock().unwrap().queue.is_empty()
     }
 
-    pub fn vote(&self, vote_a: &Arc<Vote>, channel_a: &Arc<ChannelEnum>) -> bool {
-        let tier = self.rep_tiers.tier(&vote_a.voting_account);
+    pub fn vote(&self, vote: Arc<Vote>, channel: &Arc<ChannelEnum>, source: VoteSource) -> bool {
+        let tier = self.rep_tiers.tier(&vote.voting_account);
 
         let added = {
             let mut guard = self.data.lock().unwrap();
             guard
                 .queue
-                .push(Arc::clone(vote_a), Origin::new(tier, Arc::clone(channel_a)))
+                .push((vote, source), Origin::new(tier, Arc::clone(channel)))
         };
 
         if added {
@@ -90,7 +90,10 @@ impl VoteProcessorQueue {
         added
     }
 
-    pub fn wait_for_votes(&self, max_batch_size: usize) -> VecDeque<(Arc<Vote>, Origin<RepTier>)> {
+    pub fn wait_for_votes(
+        &self,
+        max_batch_size: usize,
+    ) -> VecDeque<((Arc<Vote>, VoteSource), Origin<RepTier>)> {
         let mut guard = self.data.lock().unwrap();
         loop {
             if guard.stopped {
@@ -139,5 +142,5 @@ impl VoteProcessorQueue {
 
 struct VoteProcessorQueueData {
     stopped: bool,
-    queue: FairQueue<Arc<Vote>, RepTier>,
+    queue: FairQueue<(Arc<Vote>, VoteSource), RepTier>,
 }

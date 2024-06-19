@@ -98,13 +98,15 @@ pub fn create_websocket_server(
     }));
 
     let server_w = Arc::downgrade(&server);
-    vote_processor.add_vote_processed_callback(Box::new(move |vote, _channel, vote_code| {
-        if let Some(server) = server_w.upgrade() {
-            if server.any_subscriber(Topic::Vote) {
-                server.broadcast(&vote_received(vote, vote_code));
+    vote_processor.add_vote_processed_callback(Box::new(
+        move |vote, _channel, _source, vote_code| {
+            if let Some(server) = server_w.upgrade() {
+                if server.any_subscriber(Topic::Vote) {
+                    server.broadcast(&vote_received(vote, vote_code));
+                }
             }
-        }
-    }));
+        },
+    ));
 
     Some(server)
 }

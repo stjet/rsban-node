@@ -27,7 +27,6 @@ class election_status;
 enum class election_status_type : uint8_t;
 class ledger;
 class logger;
-class node_observers;
 class telemetry_data;
 class vote;
 class wallets;

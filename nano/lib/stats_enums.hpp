@@ -21,6 +21,7 @@ enum class type : uint8_t
 	vote_processor_tier,
 	vote_processor_overfill,
 	election,
+	election_vote,
 	http_callback,
 	ipc,
 	tcp,
@@ -97,6 +98,7 @@ enum class detail : uint16_t
 	success,
 	unknown,
 	cache,
+	rebroadcast,
 	queue_overflow,
 
 	// processing queue

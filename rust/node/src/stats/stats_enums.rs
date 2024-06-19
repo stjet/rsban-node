@@ -20,6 +20,7 @@ pub enum StatType {
     VoteProcessorTier,
     VoteProcessorOverfill,
     Election,
+    ElectionVote,
     HttpCallback,
     Ipc,
     Tcp,
@@ -104,6 +105,7 @@ pub enum DetailType {
     Success,
     Unknown,
     Cache,
+    Rebroadcast,
     QueueOverflow,
 
     // processing queue

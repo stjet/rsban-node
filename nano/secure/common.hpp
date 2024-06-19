@@ -262,6 +262,7 @@ enum class vote_code
 enum class vote_source
 {
 	live,
+	rebroadcast,
 	cache,
 };
 

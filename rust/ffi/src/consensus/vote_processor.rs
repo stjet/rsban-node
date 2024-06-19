@@ -1,5 +1,6 @@
 use super::VoteHandle;
 use crate::transport::ChannelHandle;
+use num::FromPrimitive;
 use rsnano_node::consensus::{VoteProcessor, VoteProcessorConfig};
 use std::{ffi::c_void, ops::Deref, sync::Arc};
 
@@ -14,7 +15,7 @@ impl Deref for VoteProcessorHandle {
 }
 
 pub type VoteProcessorVoteProcessedCallback =
-    unsafe extern "C" fn(*mut c_void, *mut VoteHandle, *mut ChannelHandle, u8);
+    unsafe extern "C" fn(*mut c_void, *mut VoteHandle, *mut ChannelHandle, u8, u8);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_processor_destroy(handle: *mut VoteProcessorHandle) {
@@ -26,8 +27,13 @@ pub extern "C" fn rsn_vote_processor_vote_blocking(
     handle: &VoteProcessorHandle,
     vote: &VoteHandle,
     channel: &ChannelHandle,
+    source: u8,
 ) -> u8 {
-    handle.0.vote_blocking(vote, &Some(channel.deref().clone())) as u8
+    handle.0.vote_blocking(
+        vote,
+        &Some(channel.deref().clone()),
+        FromPrimitive::from_u8(source).unwrap(),
+    ) as u8
 }
 
 #[repr(C)]

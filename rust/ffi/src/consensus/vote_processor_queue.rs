@@ -1,5 +1,6 @@
 use super::VoteHandle;
 use crate::transport::ChannelHandle;
+use num::FromPrimitive;
 use rsnano_node::consensus::VoteProcessorQueue;
 use std::{ops::Deref, sync::Arc};
 
@@ -23,6 +24,11 @@ pub extern "C" fn rsn_vote_processor_queue_vote(
     handle: &VoteProcessorQueueHandle,
     vote: &VoteHandle,
     channel: &ChannelHandle,
+    source: u8,
 ) -> bool {
-    handle.0.vote(vote, channel)
+    handle.0.vote(
+        (**vote).clone(),
+        channel,
+        FromPrimitive::from_u8(source).unwrap(),
+    )
 }

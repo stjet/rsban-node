@@ -50,7 +50,7 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_wallet_create(
             incremental_id,
             Arc::clone(connections),
             Arc::clone(workers),
-            config,
+            config.receive_minimum,
             Arc::clone(stats),
         )
         .unwrap(),

@@ -3,10 +3,9 @@ use super::{
     BootstrapMode, BulkPullAccountClient, BulkPullAccountClientExt,
 };
 use crate::{
-    block_processing::BlockProcessor, config::NodeConfig, stats::Stats, utils::ThreadPool,
-    websocket::WebsocketListener,
+    block_processing::BlockProcessor, stats::Stats, utils::ThreadPool, websocket::WebsocketListener,
 };
-use rsnano_core::{utils::PropertyTree, Account};
+use rsnano_core::{utils::PropertyTree, Account, Amount};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -20,7 +19,7 @@ pub struct BootstrapAttemptWallet {
     mutex: Mutex<WalletData>,
     connections: Arc<BootstrapConnections>,
     workers: Arc<dyn ThreadPool>,
-    config: NodeConfig,
+    receive_minimum: Amount,
     stats: Arc<Stats>,
     ledger: Arc<Ledger>,
     bootstrap_initiator: Weak<BootstrapInitiator>,
@@ -36,7 +35,7 @@ impl BootstrapAttemptWallet {
         incremental_id: u64,
         connections: Arc<BootstrapConnections>,
         workers: Arc<dyn ThreadPool>,
-        config: NodeConfig,
+        receive_minimum: Amount,
         stats: Arc<Stats>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
@@ -54,7 +53,7 @@ impl BootstrapAttemptWallet {
             }),
             connections,
             workers,
-            config,
+            receive_minimum,
             stats,
             ledger,
             bootstrap_initiator: Arc::downgrade(&bootstrap_initiator),
@@ -160,7 +159,7 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
                         connection_l.unwrap(),
                         Arc::clone(&self_l),
                         account,
-                        self_l.config.clone(),
+                        self_l.receive_minimum,
                         Arc::clone(&self_l.stats),
                         Arc::clone(&self_l.connections),
                         Arc::clone(&self_l.ledger),

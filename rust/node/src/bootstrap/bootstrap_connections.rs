@@ -1,7 +1,7 @@
 use super::{
-    bootstrap_limits, BootstrapAttempts, BootstrapClient, BootstrapInitiator, BootstrapMode,
-    BootstrapStrategy, BulkPullClient, BulkPullClientConfig, BulkPullClientExt, PullInfo,
-    PullsCache,
+    bootstrap_limits, BootstrapAttempts, BootstrapClient, BootstrapInitiator,
+    BootstrapInitiatorConfig, BootstrapMode, BootstrapStrategy, BulkPullClient,
+    BulkPullClientConfig, BulkPullClientExt, PullInfo, PullsCache,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -13,8 +13,7 @@ use crate::{
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use ordered_float::OrderedFloat;
-use rsnano_core::{utils::PropertyTree, work::WorkThresholds, Account, BlockHash};
-use rsnano_messages::ProtocolInfo;
+use rsnano_core::{utils::PropertyTree, Account, BlockHash};
 use std::{
     cmp::{max, min},
     collections::{BinaryHeap, HashSet, VecDeque},
@@ -28,39 +27,6 @@ use std::{
 };
 use tracing::debug;
 
-pub struct BootstrapConnectionsConfig {
-    pub bootstrap_connections: u32,
-    pub bootstrap_connections_max: u32,
-    pub tcp_io_timeout: Duration,
-    pub silent_connection_tolerance_time: Duration,
-    pub allow_bootstrap_peers_duplicates: bool,
-    pub disable_legacy_bootstrap: bool,
-    /** Default maximum idle time for a socket before it's automatically closed */
-    pub idle_timeout: Duration,
-    pub lazy_max_pull_blocks: u32,
-    pub work_thresholds: WorkThresholds,
-    pub lazy_retry_limit: u32,
-    pub protocol: ProtocolInfo,
-}
-
-impl Default for BootstrapConnectionsConfig {
-    fn default() -> Self {
-        Self {
-            bootstrap_connections: 4,
-            bootstrap_connections_max: 64,
-            tcp_io_timeout: Duration::from_secs(15),
-            silent_connection_tolerance_time: Duration::from_secs(120),
-            allow_bootstrap_peers_duplicates: false,
-            disable_legacy_bootstrap: false,
-            idle_timeout: Duration::from_secs(120),
-            lazy_max_pull_blocks: 512,
-            work_thresholds: Default::default(),
-            lazy_retry_limit: 64,
-            protocol: Default::default(),
-        }
-    }
-}
-
 /// Container for bootstrap_client objects. Owned by bootstrap_initiator which pools open connections and makes them available
 /// for use by different bootstrap sessions.
 pub struct BootstrapConnections {
@@ -68,7 +34,7 @@ pub struct BootstrapConnections {
     populate_connections_started: AtomicBool,
     attempts: Arc<Mutex<BootstrapAttempts>>,
     mutex: Mutex<BootstrapConnectionsData>,
-    config: BootstrapConnectionsConfig,
+    config: BootstrapInitiatorConfig,
     pub connections_count: AtomicU32,
     new_connections_empty: AtomicBool,
     stopped: AtomicBool,
@@ -86,7 +52,7 @@ pub struct BootstrapConnections {
 impl BootstrapConnections {
     pub fn new(
         attempts: Arc<Mutex<BootstrapAttempts>>,
-        config: BootstrapConnectionsConfig,
+        config: BootstrapInitiatorConfig,
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
@@ -127,7 +93,7 @@ impl BootstrapConnections {
             populate_connections_started: AtomicBool::new(false),
             attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
             mutex: Mutex::new(BootstrapConnectionsData::default()),
-            config: BootstrapConnectionsConfig::default(),
+            config: BootstrapInitiatorConfig::default(),
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),

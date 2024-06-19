@@ -25,7 +25,7 @@ use tracing::debug;
 pub struct LegacyBootstrapConfig {
     pub frontier_request_count: u32,
     pub frontier_retry_limit: u32,
-    pub disable_bootstrap_bulk_push_client: bool,
+    pub disable_bulk_push_client: bool,
 }
 
 /// Legacy bootstrap session. This is made up of 3 phases: frontier requests, bootstrap pulls, bootstrap pushes.
@@ -217,7 +217,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
         if !self.attempt.stopped() {
             debug!("Completed legacy pulls");
 
-            if !self.config.disable_bootstrap_bulk_push_client {
+            if !self.config.disable_bulk_push_client {
                 guard = self.request_push(guard);
             }
         }

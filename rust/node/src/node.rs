@@ -425,19 +425,18 @@ impl Node {
         );
 
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(
-            config.clone(),
             global_config.into(),
             flags.clone(),
-            Arc::clone(&network),
-            Arc::clone(&async_rt),
-            Arc::clone(&workers),
+            network.clone(),
+            async_rt.clone(),
+            workers.clone(),
             network_params.clone(),
-            Arc::clone(&socket_observer),
-            Arc::clone(&stats),
-            Arc::clone(&outbound_limiter),
-            Arc::clone(&block_processor),
+            socket_observer.clone(),
+            stats.clone(),
+            outbound_limiter.clone(),
+            block_processor.clone(),
             websocket.clone(),
-            Arc::clone(&ledger),
+            ledger.clone(),
         ));
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();

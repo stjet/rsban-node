@@ -1,3 +1,25 @@
+use super::{
+    BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapConnections,
+    BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy, LegacyBootstrapConfig, PullInfo,
+    PullsCache,
+};
+use crate::{
+    block_processing::BlockProcessor,
+    bootstrap::BootstrapAttemptWallet,
+    config::NodeFlags,
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::{Network, OutboundBandwidthLimiter, SocketObserver},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
+    websocket::WebsocketListener,
+    NetworkParams,
+};
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    work::WorkThresholds,
+    Account, Amount, BlockHash, HashOrAccount, Networks, XRB_RATIO,
+};
+use rsnano_ledger::Ledger;
+use rsnano_messages::ProtocolInfo;
 use std::{
     collections::{HashMap, VecDeque},
     net::SocketAddrV6,
@@ -6,36 +28,69 @@ use std::{
         Arc, Condvar, Mutex,
     },
     thread::JoinHandle,
+    time::Duration,
 };
 
-use crate::{
-    block_processing::BlockProcessor,
-    bootstrap::BootstrapAttemptWallet,
-    config::{NodeConfig, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{Network, OutboundBandwidthLimiter, SocketObserver},
-    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
-    websocket::WebsocketListener,
-    NetworkParams,
-};
+#[derive(Clone)]
+pub struct BootstrapInitiatorConfig {
+    pub bootstrap_connections: u32,
+    pub bootstrap_connections_max: u32,
+    pub tcp_io_timeout: Duration,
+    pub silent_connection_tolerance_time: Duration,
+    pub allow_bootstrap_peers_duplicates: bool,
+    pub disable_legacy_bootstrap: bool,
+    /** Default maximum idle time for a socket before it's automatically closed */
+    pub idle_timeout: Duration,
+    pub lazy_max_pull_blocks: u32,
+    pub work_thresholds: WorkThresholds,
+    pub lazy_retry_limit: u32,
+    pub protocol: ProtocolInfo,
+    pub frontier_request_count: u32,
+    pub frontier_retry_limit: u32,
+    pub disable_bulk_push_client: bool,
+    pub bootstrap_initiator_threads: u32,
+    pub receive_minimum: Amount,
+}
 
-use super::{
-    BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapConnections,
-    BootstrapConnectionsConfig, BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy,
-    LegacyBootstrapConfig, PullInfo, PullsCache,
-};
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockHash, HashOrAccount, Networks,
-};
-use rsnano_ledger::Ledger;
+impl Default for BootstrapInitiatorConfig {
+    fn default() -> Self {
+        Self {
+            bootstrap_connections: 4,
+            bootstrap_connections_max: 64,
+            tcp_io_timeout: Duration::from_secs(15),
+            silent_connection_tolerance_time: Duration::from_secs(120),
+            allow_bootstrap_peers_duplicates: false,
+            disable_legacy_bootstrap: false,
+            idle_timeout: Duration::from_secs(120),
+            lazy_max_pull_blocks: 512,
+            work_thresholds: Default::default(),
+            lazy_retry_limit: 64,
+            protocol: Default::default(),
+            frontier_request_count: 1024 * 1024,
+            frontier_retry_limit: 16,
+            disable_bulk_push_client: false,
+            bootstrap_initiator_threads: 1,
+            receive_minimum: Amount::raw(*XRB_RATIO),
+        }
+    }
+}
+
+impl From<&BootstrapInitiatorConfig> for LegacyBootstrapConfig {
+    fn from(value: &BootstrapInitiatorConfig) -> Self {
+        Self {
+            frontier_request_count: value.frontier_request_count,
+            frontier_retry_limit: value.frontier_retry_limit,
+            disable_bulk_push_client: value.disable_bulk_push_client,
+        }
+    }
+}
 
 pub struct BootstrapInitiator {
     mutex: Mutex<Data>,
     condition: Condvar,
     threads: Mutex<Vec<JoinHandle<()>>>,
     pub connections: Arc<BootstrapConnections>,
-    node_config: NodeConfig,
+    config: BootstrapInitiatorConfig,
     stopped: AtomicBool,
     pub cache: Arc<Mutex<PullsCache>>,
     stats: Arc<Stats>,
@@ -51,8 +106,7 @@ pub struct BootstrapInitiator {
 
 impl BootstrapInitiator {
     pub fn new(
-        node_config: NodeConfig,
-        config: BootstrapConnectionsConfig,
+        config: BootstrapInitiatorConfig,
         flags: NodeFlags,
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
@@ -73,7 +127,7 @@ impl BootstrapInitiator {
             }),
             condition: Condvar::new(),
             threads: Mutex::new(Vec::new()),
-            node_config: node_config.clone(),
+            config: config.clone(),
             stopped: AtomicBool::new(false),
             cache: Arc::clone(&cache),
             stats: Arc::clone(&stats),
@@ -108,7 +162,7 @@ impl BootstrapInitiator {
             condition: Condvar::new(),
             threads: Mutex::new(Vec::new()),
             connections: Arc::new(BootstrapConnections::new_null()),
-            node_config: NodeConfig::new_test_instance(),
+            config: Default::default(),
             stopped: AtomicBool::new(false),
             cache: Arc::new(Mutex::new(PullsCache::new())),
             stats: Arc::new(Stats::default()),
@@ -218,14 +272,6 @@ impl BootstrapInitiator {
             })],
         )
     }
-
-    fn legacy_config(&self) -> LegacyBootstrapConfig {
-        LegacyBootstrapConfig {
-            frontier_request_count: self.node_config.bootstrap_frontier_request_count,
-            frontier_retry_limit: self.network_params.bootstrap.frontier_retry_limit,
-            disable_bootstrap_bulk_push_client: self.flags.disable_bootstrap_bulk_push_client,
-        }
-    }
 }
 
 impl Drop for BootstrapInitiator {
@@ -261,7 +307,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .unwrap(),
         );
 
-        for _ in 0..self.node_config.bootstrap_initiator_threads {
+        for _ in 0..self.config.bootstrap_initiator_threads {
             let self_l = Arc::clone(self);
             threads.push(
                 std::thread::Builder::new()
@@ -315,7 +361,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     id_a,
                     incremental_id as u64,
                     Arc::clone(&self.connections),
-                    self.legacy_config(),
+                    (&self.config).into(),
                     Arc::clone(&self.stats),
                     frontiers_age_a,
                     start_account_a,
@@ -350,7 +396,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     id_a,
                     incremental_id as u64,
                     Arc::clone(&self.connections),
-                    self.legacy_config(),
+                    (&self.config).into(),
                     Arc::clone(&self.stats),
                     u32::MAX,
                     Account::zero(),
@@ -450,7 +496,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     incremental_id as u64,
                     Arc::clone(&self.connections),
                     Arc::clone(&self.workers),
-                    self.node_config.clone(),
+                    self.config.receive_minimum,
                     Arc::clone(&self.stats),
                 )
                 .unwrap(),

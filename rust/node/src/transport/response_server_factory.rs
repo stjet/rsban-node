@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessor,
-    bootstrap::{BootstrapConnectionsConfig, BootstrapInitiator, BootstrapMessageVisitorFactory},
+    bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig, BootstrapMessageVisitorFactory},
     config::{NodeConfig, NodeFlags},
     stats::Stats,
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
@@ -50,8 +50,7 @@ impl ResponseServerFactory {
             workers: Arc::new(ThreadPoolImpl::new_test_instance()),
             block_processor: block_processor.clone(),
             bootstrap_initiator: Arc::new(BootstrapInitiator::new(
-                node_config.clone(),
-                BootstrapConnectionsConfig::default(),
+                BootstrapInitiatorConfig::default(),
                 flags.clone(),
                 network.clone(),
                 runtime,

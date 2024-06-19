@@ -1,7 +1,7 @@
 use super::{AccountSetsToml, GlobalConfig};
 use crate::{
     block_processing::BlockProcessorConfig,
-    bootstrap::{AccountSetsConfig, BootstrapAscendingConfig, BootstrapConnectionsConfig},
+    bootstrap::{AccountSetsConfig, BootstrapAscendingConfig, BootstrapInitiatorConfig},
 };
 use std::time::Duration;
 
@@ -63,7 +63,7 @@ impl From<&AccountSetsConfig> for AccountSetsToml {
     }
 }
 
-impl From<&GlobalConfig> for BootstrapConnectionsConfig {
+impl From<&GlobalConfig> for BootstrapInitiatorConfig {
     fn from(value: &GlobalConfig) -> Self {
         Self {
             bootstrap_connections: value.node_config.bootstrap_connections,
@@ -82,6 +82,11 @@ impl From<&GlobalConfig> for BootstrapConnectionsConfig {
             work_thresholds: value.network_params.work.clone(),
             lazy_retry_limit: value.network_params.bootstrap.lazy_retry_limit,
             protocol: value.network_params.network.protocol_info(),
+            frontier_request_count: value.node_config.bootstrap_frontier_request_count,
+            frontier_retry_limit: value.network_params.bootstrap.frontier_retry_limit,
+            disable_bulk_push_client: value.flags.disable_bootstrap_bulk_push_client,
+            bootstrap_initiator_threads: value.node_config.bootstrap_initiator_threads,
+            receive_minimum: value.node_config.receive_minimum,
         }
     }
 }

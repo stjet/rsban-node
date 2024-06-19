@@ -1,5 +1,4 @@
 use crate::{
-    config::NodeConfig,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TrafficType},
 };
@@ -24,7 +23,7 @@ pub struct BulkPullAccountClient {
     connection: Arc<BootstrapClient>,
     attempt: Arc<BootstrapAttemptWallet>,
     account: Account,
-    config: NodeConfig,
+    receive_minimum: Amount,
     stats: Arc<Stats>,
     pull_blocks: AtomicU64,
     connections: Arc<BootstrapConnections>,
@@ -37,7 +36,7 @@ impl BulkPullAccountClient {
         connection: Arc<BootstrapClient>,
         attempt: Arc<BootstrapAttemptWallet>,
         account: Account,
-        config: NodeConfig,
+        receive_minimum: Amount,
         stats: Arc<Stats>,
         connections: Arc<BootstrapConnections>,
         ledger: Arc<Ledger>,
@@ -48,7 +47,7 @@ impl BulkPullAccountClient {
             connection,
             attempt,
             account,
-            config,
+            receive_minimum,
             stats,
             pull_blocks: AtomicU64::new(0),
             connections,
@@ -73,7 +72,7 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
     fn request(&self) {
         let req = Message::BulkPullAccount(BulkPullAccount {
             account: self.account,
-            minimum_amount: self.config.receive_minimum,
+            minimum_amount: self.receive_minimum,
             flags: BulkPullAccountFlags::PendingHashAndAmount,
         });
 
@@ -129,7 +128,7 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
                         let balance = Amount::deserialize(&mut reader).unwrap();
                         if this_l.pull_blocks.load(Ordering::SeqCst) == 0 || !pending.is_zero() {
                             if this_l.pull_blocks.load(Ordering::SeqCst) == 0
-                                || balance >= this_l.config.receive_minimum
+                                || balance >= this_l.receive_minimum
                             {
                                 this_l.pull_blocks.fetch_add(1, Ordering::SeqCst);
                                 {

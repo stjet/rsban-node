@@ -1,7 +1,20 @@
+use super::{LocalVoteHistory, VoteSpacing};
+use crate::{
+    consensus::VoteBroadcaster,
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::ChannelEnum,
+    utils::ProcessingQueue,
+    wallets::Wallets,
+};
+use rsnano_core::{
+    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent},
+    BlockEnum, BlockHash, Root, Vote,
+};
+use rsnano_ledger::{Ledger, Writer};
+use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
     mem::size_of,
-    net::SocketAddrV6,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -10,26 +23,7 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-use rsnano_core::{
-    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent},
-    Account, BlockEnum, BlockHash, Root, Vote,
-};
-use rsnano_ledger::{Ledger, Writer};
-use rsnano_store_lmdb::LmdbWriteTransaction;
 use tracing::trace;
-
-use crate::{
-    config::NetworkConstants,
-    consensus::{VoteBroadcaster, VoteProcessorQueue},
-    representatives::RepresentativeRegister,
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelEnum, InboundCallback, Network},
-    utils::{AsyncRuntime, ProcessingQueue},
-    wallets::Wallets,
-};
-
-use super::{LocalVoteHistory, VoteSpacing};
 
 pub(crate) struct VoteGenerator {
     ledger: Arc<Ledger>,
@@ -49,30 +43,11 @@ impl VoteGenerator {
         history: Arc<LocalVoteHistory>,
         is_final: bool,
         stats: Arc<Stats>,
-        representative_register: Arc<Mutex<RepresentativeRegister>>,
-        network: Arc<Network>,
-        vote_processor_queue: Arc<VoteProcessorQueue>,
-        network_constants: NetworkConstants,
-        async_rt: Arc<AsyncRuntime>,
-        node_id: Account,
-        local_endpoint: SocketAddrV6,
-        inbound: InboundCallback,
         voting_delay: Duration,
         vote_generator_delay: Duration,
         vote_generator_threshold: usize,
+        vote_broadcaster: Arc<VoteBroadcaster>,
     ) -> Self {
-        let vote_broadcaster = VoteBroadcaster {
-            representative_register,
-            network,
-            vote_processor_queue,
-            network_constants,
-            stats: Arc::clone(&stats),
-            async_rt,
-            node_id,
-            local_endpoint,
-            inbound,
-        };
-
         let shared_state = Arc::new(SharedState {
             ledger: Arc::clone(&ledger),
             history,
@@ -227,7 +202,7 @@ struct SharedState {
     stopped: AtomicBool,
     queues: Mutex<Queues>,
     stats: Arc<Stats>,
-    vote_broadcaster: VoteBroadcaster,
+    vote_broadcaster: Arc<VoteBroadcaster>,
     spacing: Mutex<VoteSpacing>,
     vote_generator_delay: Duration,
     vote_generator_threshold: usize,

@@ -1,9 +1,8 @@
 use crate::{
     config::NodeConfig,
-    consensus::VoteProcessorQueue,
-    representatives::RepresentativeRegister,
+    consensus::VoteBroadcaster,
     stats::Stats,
-    transport::{ChannelEnum, InboundCallback, Network},
+    transport::{ChannelEnum, ChannelInProc, InboundCallback, Network, OutboundBandwidthLimiter},
     utils::AsyncRuntime,
     wallets::Wallets,
     NetworkParams,
@@ -14,13 +13,39 @@ use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, PublicKey
 use rsnano_ledger::Ledger;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{Arc, Mutex},
-    time::Duration,
+    sync::Arc,
+    time::{Duration, SystemTime},
 };
 
 pub struct VoteGenerators {
     non_final_vote_generator: VoteGenerator,
     final_vote_generator: VoteGenerator,
+}
+
+pub(crate) fn create_loopback_channel(
+    node_id: PublicKey,
+    network: &Network,
+    stats: Arc<Stats>,
+    network_params: &NetworkParams,
+    inbound: InboundCallback,
+    runtime: &Arc<AsyncRuntime>,
+) -> Arc<ChannelEnum> {
+    let local_endpoint = SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0);
+    Arc::new(ChannelEnum::InProc(ChannelInProc::new(
+        network.get_next_channel_id(),
+        SystemTime::now(),
+        network_params.network.clone(),
+        network.publish_filter.clone(),
+        stats,
+        Arc::new(OutboundBandwidthLimiter::default()),
+        Arc::clone(&inbound),
+        Arc::clone(&inbound),
+        runtime,
+        local_endpoint,
+        local_endpoint,
+        node_id,
+        node_id,
+    )))
 }
 
 impl VoteGenerators {
@@ -29,34 +54,20 @@ impl VoteGenerators {
         wallets: Arc<Wallets>,
         history: Arc<LocalVoteHistory>,
         stats: Arc<Stats>,
-        representative_register: Arc<Mutex<RepresentativeRegister>>,
-        network: Arc<Network>,
-        vote_processor_queue: Arc<VoteProcessorQueue>,
-        runtime: Arc<AsyncRuntime>,
-        node_id: PublicKey,
-        inbound: InboundCallback,
         config: &NodeConfig,
         network_params: &NetworkParams,
+        vote_broadcaster: Arc<VoteBroadcaster>,
     ) -> Self {
-        let port = network.port();
-
         let non_final_vote_generator = VoteGenerator::new(
             ledger.clone(),
             wallets.clone(),
             history.clone(),
             false, //none-final
             stats.clone(),
-            representative_register.clone(),
-            network.clone(),
-            vote_processor_queue.clone(),
-            network_params.network.clone(),
-            runtime.clone(),
-            node_id.clone(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, port, 0, 0),
-            inbound.clone(),
             Duration::from_secs(network_params.voting.delay_s as u64),
             Duration::from_millis(config.vote_generator_delay_ms as u64),
             config.vote_generator_threshold as usize,
+            vote_broadcaster.clone(),
         );
 
         let final_vote_generator = VoteGenerator::new(
@@ -65,17 +76,10 @@ impl VoteGenerators {
             history,
             true, //final
             stats,
-            representative_register,
-            network,
-            vote_processor_queue,
-            network_params.network.clone(),
-            runtime,
-            node_id,
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, port, 0, 0),
-            inbound,
             Duration::from_secs(network_params.voting.delay_s as u64),
             Duration::from_millis(config.vote_generator_delay_ms as u64),
             config.vote_generator_threshold as usize,
+            vote_broadcaster,
         );
 
         Self {

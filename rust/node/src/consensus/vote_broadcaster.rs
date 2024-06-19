@@ -1,61 +1,45 @@
-use rsnano_core::{Account, Vote};
-use rsnano_messages::{ConfirmAck, Message};
-
 use super::VoteProcessorQueue;
 use crate::{
-    config::NetworkConstants,
     representatives::RepresentativeRegister,
-    stats::Stats,
-    transport::{
-        BufferDropPolicy, ChannelEnum, ChannelInProc, InboundCallback, Network,
-        OutboundBandwidthLimiter, TrafficType,
-    },
-    utils::AsyncRuntime,
+    transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
+use rsnano_core::Vote;
+use rsnano_messages::{ConfirmAck, Message};
 use std::{
-    net::SocketAddrV6,
     ops::Deref,
     sync::{Arc, Mutex},
-    time::SystemTime,
 };
 
 pub struct VoteBroadcaster {
-    pub representative_register: Arc<Mutex<RepresentativeRegister>>,
-    pub network: Arc<Network>,
-    pub vote_processor_queue: Arc<VoteProcessorQueue>,
-    pub network_constants: NetworkConstants,
-    pub stats: Arc<Stats>,
-    pub async_rt: Arc<AsyncRuntime>,
-    pub node_id: Account,
-    pub local_endpoint: SocketAddrV6,
-    pub inbound: InboundCallback,
+    representative_register: Arc<Mutex<RepresentativeRegister>>,
+    network: Arc<Network>,
+    vote_processor_queue: Arc<VoteProcessorQueue>,
+    loopback_channel: Arc<ChannelEnum>,
 }
 
 impl VoteBroadcaster {
+    pub fn new(
+        representative_register: Arc<Mutex<RepresentativeRegister>>,
+        network: Arc<Network>,
+        vote_processor_queue: Arc<VoteProcessorQueue>,
+        loopback_channel: Arc<ChannelEnum>,
+    ) -> Self {
+        Self {
+            representative_register,
+            network,
+            vote_processor_queue,
+            loopback_channel,
+        }
+    }
+
     pub fn broadcast(&self, vote: Arc<Vote>) {
         self.flood_vote_pr(vote.deref().clone());
 
         let ack = Message::ConfirmAck(ConfirmAck::new(vote.deref().clone()));
         self.network.flood_message(&ack, 2.0);
 
-        let loopback_channel = ChannelInProc::new(
-            self.network.get_next_channel_id(),
-            SystemTime::now(),
-            self.network_constants.clone(),
-            Arc::clone(&self.network.publish_filter),
-            Arc::clone(&self.stats),
-            Arc::new(OutboundBandwidthLimiter::default()),
-            Arc::clone(&self.inbound),
-            Arc::clone(&self.inbound),
-            &self.async_rt,
-            self.local_endpoint,
-            self.local_endpoint,
-            self.node_id,
-            self.node_id,
-        );
-
         self.vote_processor_queue
-            .vote(&vote, &Arc::new(ChannelEnum::InProc(loopback_channel)));
+            .vote(&vote, &self.loopback_channel);
     }
 
     fn flood_vote_pr(&self, vote: Vote) {

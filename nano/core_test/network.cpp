@@ -363,7 +363,7 @@ TEST (receivable_processor, confirm_insufficient_pos)
 	ASSERT_EQ (1, election->votes ().size ());
 	node1.network->inbound (con1, channel1);
 	ASSERT_TIMELY_EQ (5s, 2, election->votes ().size ())
-	//ASSERT_FALSE (election->confirmed ());
+	// ASSERT_FALSE (election->confirmed ());
 }
 
 TEST (receivable_processor, confirm_sufficient_pos)
@@ -388,7 +388,7 @@ TEST (receivable_processor, confirm_sufficient_pos)
 	ASSERT_EQ (1, election->votes ().size ());
 	node1.network->inbound (con1, channel1);
 	ASSERT_TIMELY_EQ (5s, 2, election->votes ().size ())
-	//ASSERT_TRUE (election->confirmed ());
+	// ASSERT_TRUE (election->confirmed ());
 }
 
 TEST (receivable_processor, send_with_receive)

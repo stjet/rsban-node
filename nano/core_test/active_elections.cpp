@@ -1160,7 +1160,7 @@ TEST (active_elections, activate_account_chain)
 	ASSERT_TIMELY (3s, node.block_confirmed (send2->hash ()));
 	// On cementing, the next election is started
 	ASSERT_TIMELY (3s, node.active.active (open->qualified_root ())); // Destination account activated
-	ASSERT_TIMELY (3s, node.active.active (send3->qualified_root ()));  // Block successor activated
+	ASSERT_TIMELY (3s, node.active.active (send3->qualified_root ())); // Block successor activated
 	auto election4 = node.active.election (send3->qualified_root ());
 	ASSERT_NE (nullptr, election4);
 	ASSERT_EQ (1, election4->blocks ().count (send3->hash ()));

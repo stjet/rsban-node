@@ -10,12 +10,13 @@ use crate::{
     cementation::ConfirmingSet,
     config::{FrontiersConfirmationMode, GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
-        ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
-        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
-        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
-        VoteCache, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
+        create_loopback_channel, AccountBalanceChangedCallback, ActiveElections,
+        ActiveElectionsExt, ElectionEndCallback, ElectionStatusType, HintedScheduler,
+        HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
+        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
+        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
+        RequestAggregator, RequestAggregatorExt, VoteApplier, VoteBroadcaster, VoteCache,
+        VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -331,19 +332,30 @@ impl Node {
                 (*cb)(msg, channel);
             });
 
+        let loopback_channel = create_loopback_channel(
+            node_id.public_key(),
+            &network,
+            stats.clone(),
+            &network_params,
+            inbound,
+            &async_rt,
+        );
+
+        let vote_broadcaster = Arc::new(VoteBroadcaster::new(
+            representative_register.clone(),
+            network.clone(),
+            vote_processor_queue.clone(),
+            loopback_channel,
+        ));
+
         let vote_generators = Arc::new(VoteGenerators::new(
             Arc::clone(&ledger),
             Arc::clone(&wallets),
             Arc::clone(&history),
             Arc::clone(&stats),
-            Arc::clone(&representative_register),
-            Arc::clone(&network),
-            Arc::clone(&vote_processor_queue),
-            Arc::clone(&async_rt),
-            node_id.public_key(),
-            Arc::clone(&inbound),
             &config,
             &network_params,
+            vote_broadcaster,
         ));
 
         let vote_applier = Arc::new(VoteApplier::new(

@@ -106,6 +106,7 @@ pub struct NodeConfig {
     pub tcp: TcpConfig,
     pub request_aggregator: RequestAggregatorConfig,
     pub message_processor: MessageProcessorConfig,
+    pub priority_scheduler_enabled: bool,
 }
 
 #[derive(Clone)]
@@ -324,6 +325,7 @@ impl NodeConfig {
             },
             request_aggregator: RequestAggregatorConfig::new(parallelism),
             message_processor: MessageProcessorConfig::new(parallelism),
+            priority_scheduler_enabled: true,
         }
     }
 

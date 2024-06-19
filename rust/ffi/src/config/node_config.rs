@@ -107,6 +107,7 @@ pub struct NodeConfigDto {
     pub tcp: TcpConfigDto,
     pub request_aggregator: RequestAggregatorConfigDto,
     pub message_processor: MessageProcessorConfigDto,
+    pub priority_scheduler_enabled: bool,
 }
 
 #[repr(C)]
@@ -297,6 +298,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.tcp = (&cfg.tcp).into();
     dto.request_aggregator = (&cfg.request_aggregator).into();
     dto.message_processor = (&cfg.message_processor).into();
+    dto.priority_scheduler_enabled = cfg.priority_scheduler_enabled;
 }
 
 #[no_mangle]
@@ -434,6 +436,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             tcp: (&value.tcp).into(),
             request_aggregator: (&value.request_aggregator).into(),
             message_processor: (&value.message_processor).into(),
+            priority_scheduler_enabled: value.priority_scheduler_enabled,
         };
 
         Ok(cfg)

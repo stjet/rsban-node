@@ -1051,19 +1051,10 @@ impl Node {
         ));
 
         Self {
-            peer_cache_updater: TimerThread::new(
-                "Peer history",
-                peer_cache_updater,
-                if network_params.network.is_dev_network() {
-                    Duration::from_secs(1)
-                } else {
-                    Duration::from_secs(15)
-                },
-            ),
+            peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
                 "Net reachout",
                 peer_cache_connector,
-                network_params.network.merge_period,
             ),
             ongoing_bootstrap,
             peer_connector,
@@ -1282,7 +1273,9 @@ impl NodeExt for Arc<Node> {
         self.hinted_scheduler.start();
         self.manual_scheduler.start();
         self.optimistic_scheduler.start();
-        self.priority_scheduler.start();
+        if self.config.priority_scheduler_enabled {
+            self.priority_scheduler.start();
+        }
         self.backlog_population.start();
         self.bootstrap_server.start();
         if !self.flags.disable_ascending_bootstrap {
@@ -1294,8 +1287,18 @@ impl NodeExt for Arc<Node> {
         self.telemetry.start();
         self.stats.start();
         self.local_block_broadcaster.start();
-        self.peer_cache_updater.start();
-        self.peer_cache_connector.start();
+
+        let peer_cache_update_interval = if self.network_params.network.is_dev_network() {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(15)
+        };
+        self.peer_cache_updater.start(peer_cache_update_interval);
+
+        if !self.network_params.network.merge_period.is_zero() {
+            self.peer_cache_connector
+                .start(self.network_params.network.merge_period);
+        }
         self.vote_router.start();
     }
 

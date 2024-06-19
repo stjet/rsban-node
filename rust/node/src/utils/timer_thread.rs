@@ -14,7 +14,6 @@ pub struct TimerThread<T: Runnable + 'static> {
     thread_name: String,
     task: Mutex<Option<T>>,
     thread: Mutex<Option<JoinHandle<()>>>,
-    interval: Duration,
     cancel_token: CancellationToken,
     run_immediately: bool,
     start_listener: OutputListenerMt<TimerStartEvent>,
@@ -23,29 +22,27 @@ pub struct TimerThread<T: Runnable + 'static> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TimerStartEvent {
     pub thread_name: String,
-    pub interval: Duration,
     pub run_immediately: bool,
+    pub interval: Duration,
 }
 
 impl<T: Runnable> TimerThread<T> {
-    pub fn new(name: impl Into<String>, task: T, interval: Duration) -> Self {
+    pub fn new(name: impl Into<String>, task: T) -> Self {
         Self {
             thread_name: name.into(),
             task: Mutex::new(Some(task)),
             thread: Mutex::new(None),
-            interval,
             cancel_token: CancellationToken::new(),
             run_immediately: false,
             start_listener: OutputListenerMt::new(),
         }
     }
 
-    pub fn new_run_immedately(name: impl Into<String>, task: T, interval: Duration) -> Self {
+    pub fn new_run_immedately(name: impl Into<String>, task: T) -> Self {
         Self {
             thread_name: name.into(),
             task: Mutex::new(Some(task)),
             thread: Mutex::new(None),
-            interval,
             cancel_token: CancellationToken::new(),
             run_immediately: true,
             start_listener: OutputListenerMt::new(),
@@ -60,10 +57,10 @@ impl<T: Runnable> TimerThread<T> {
         self.start_listener.track()
     }
 
-    pub fn start(&self) {
+    pub fn start(&self, interval: Duration) {
         self.start_listener.emit(TimerStartEvent {
             thread_name: self.thread_name.clone(),
-            interval: self.interval,
+            interval,
             run_immediately: self.run_immediately,
         });
 
@@ -75,7 +72,6 @@ impl<T: Runnable> TimerThread<T> {
             .expect("task already taken");
 
         let cancel_token = self.cancel_token.clone();
-        let interval = self.interval.clone();
         let run_immediately = self.run_immediately;
         let handle = std::thread::Builder::new()
             .name(self.thread_name.clone())

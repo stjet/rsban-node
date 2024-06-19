@@ -83,20 +83,22 @@ impl NetworkThreads {
                 .unwrap(),
         );
 
-        let reachout = ReachoutLoop {
-            stopped: self.stopped.clone(),
-            network_params: self.network_params.clone(),
-            stats: self.stats.clone(),
-            network: self.network.clone(),
-            peer_connector: self.peer_connector.clone(),
-        };
+        if !self.network_params.network.merge_period.is_zero() {
+            let reachout = ReachoutLoop {
+                stopped: self.stopped.clone(),
+                reachout_interval: self.network_params.network.merge_period,
+                stats: self.stats.clone(),
+                network: self.network.clone(),
+                peer_connector: self.peer_connector.clone(),
+            };
 
-        self.reachout_thread = Some(
-            std::thread::Builder::new()
-                .name("Net reachout".to_string())
-                .spawn(move || reachout.run())
-                .unwrap(),
-        );
+            self.reachout_thread = Some(
+                std::thread::Builder::new()
+                    .name("Net reachout".to_string())
+                    .spawn(move || reachout.run())
+                    .unwrap(),
+            );
+        }
     }
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
@@ -253,7 +255,7 @@ impl KeepaliveLoop {
 
 struct ReachoutLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
-    network_params: NetworkParams,
+    reachout_interval: Duration,
     stats: Arc<Stats>,
     network: Arc<Network>,
     peer_connector: Arc<PeerConnector>,
@@ -266,7 +268,7 @@ impl ReachoutLoop {
             stopped = self
                 .stopped
                 .0
-                .wait_timeout(stopped, self.network_params.network.merge_period)
+                .wait_timeout(stopped, self.reachout_interval)
                 .unwrap()
                 .0;
 
@@ -283,7 +285,7 @@ impl ReachoutLoop {
                     self.peer_connector.connect_to(peer);
 
                     // Throttle reachout attempts
-                    std::thread::sleep(self.network_params.network.merge_period);
+                    std::thread::sleep(self.reachout_interval);
                 }
             }
 

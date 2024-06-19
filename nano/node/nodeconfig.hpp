@@ -156,6 +156,7 @@ public:
 	nano::transport::tcp_config tcp;
 	nano::request_aggregator_config request_aggregator;
 	nano::message_processor_config message_processor;
+	bool priority_scheduler_enabled{ true };
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

@@ -117,6 +117,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.tcp = config.tcp.to_dto ();
 	dto.request_aggregator = config.request_aggregator.into_dto ();
 	dto.message_processor = config.message_processor.into_dto ();
+	dto.priority_scheduler_enabled = config.priority_scheduler_enabled;
 	return dto;
 }
 
@@ -241,6 +242,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	tcp = nano::transport::tcp_config{ dto.tcp };
 	request_aggregator = nano::request_aggregator_config{ dto.request_aggregator };
 	message_processor = nano::message_processor_config{ dto.message_processor };
+	priority_scheduler_enabled = dto.priority_scheduler_enabled;
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const

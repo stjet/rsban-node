@@ -404,7 +404,6 @@ TEST (receivable_processor, send_with_receive)
 	nano::keypair key2;
 	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
-	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
 	nano::block_builder builder;
 	auto block1 = builder
 				  .send ()
@@ -426,6 +425,7 @@ TEST (receivable_processor, send_with_receive)
 	ASSERT_EQ (0, node1.balance (key2.pub));
 	ASSERT_EQ (amount - node1.config->receive_minimum.number (), node2.balance (nano::dev::genesis_key.pub));
 	ASSERT_EQ (0, node2.balance (key2.pub));
+	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
 	ASSERT_TIMELY (10s, node1.balance (key2.pub) == node1.config->receive_minimum.number () && node2.balance (key2.pub) == node1.config->receive_minimum.number ());
 	ASSERT_EQ (amount - node1.config->receive_minimum.number (), node1.balance (nano::dev::genesis_key.pub));
 	ASSERT_EQ (node1.config->receive_minimum.number (), node1.balance (key2.pub));
@@ -550,15 +550,9 @@ TEST (DISABLED_network, peer_max_tcp_attempts)
 }
 #endif
 
-namespace nano
+TEST (network, peer_max_tcp_attempts_subnetwork)
 {
-namespace transport
-{
-	TEST (network, peer_max_tcp_attempts_subnetwork)
-	{
-		// TODO reimplement in Rust
-	}
-}
+	// TODO reimplement in Rust
 }
 
 // Send two publish messages and asserts that the duplication is detected.

@@ -1,19 +1,29 @@
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
-
 use super::ChannelEnum;
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeMap, VecDeque},
-    sync::{Arc, Weak},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
-pub struct Origin<S> {
+/// Holds user supplied source type(s) and an optional channel.
+/// This is used to uniquely identify and categorize the source of a request.
+#[derive(Clone)]
+pub struct Origin<S>
+where
+    S: Ord + Copy,
+{
     pub source: S,
+
+    /// This can be null for some sources (eg. local RPC) to indicate that the source is not associated with a channel.
     pub channel: Option<Arc<ChannelEnum>>,
 }
 
-impl<S> Origin<S> {
+impl<S> Origin<S>
+where
+    S: Ord + Copy,
+{
     pub fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
         Self {
             source,
@@ -24,54 +34,10 @@ impl<S> Origin<S> {
     pub fn new_opt(source: S, channel: Option<Arc<ChannelEnum>>) -> Self {
         Self { source, channel }
     }
-}
-
-impl<S> From<S> for Origin<S> {
-    fn from(value: S) -> Self {
-        Origin {
-            source: value,
-            channel: None,
-        }
-    }
-}
-
-#[derive(Clone)]
-struct OriginEntry<S>
-where
-    S: Ord + Copy,
-{
-    source: S,
-
-    // Optional is needed to distinguish between a source with no associated channel and a source with an expired channel
-    // TODO: Store channel as shared_ptr after networking fixes are done
-    maybe_channel: Option<Weak<ChannelEnum>>,
-}
-
-impl<S> OriginEntry<S>
-where
-    S: Ord + Copy,
-{
-    pub fn new(source: S) -> Self {
-        Self {
-            source,
-            maybe_channel: None,
-        }
-    }
-
-    pub fn new_with_channel(source: S, channel: &Arc<ChannelEnum>) -> Self {
-        Self {
-            source,
-            maybe_channel: Some(Arc::downgrade(channel)),
-        }
-    }
 
     pub fn is_alive(&self) -> bool {
-        if let Some(maybe_channel) = &self.maybe_channel {
-            if let Some(channel) = maybe_channel.upgrade() {
-                channel.is_alive()
-            } else {
-                false
-            }
+        if let Some(channel) = &self.channel {
+            channel.is_alive()
         } else {
             // Some sources (eg. local RPC) don't have an associated channel, never remove their queue
             true
@@ -79,31 +45,7 @@ where
     }
 }
 
-impl<S> From<&Origin<S>> for OriginEntry<S>
-where
-    S: Ord + Copy,
-{
-    fn from(value: &Origin<S>) -> Self {
-        Self {
-            source: value.source,
-            maybe_channel: value.channel.as_ref().map(Arc::downgrade),
-        }
-    }
-}
-
-impl<S> From<&OriginEntry<S>> for Origin<S>
-where
-    S: Ord + Copy,
-{
-    fn from(value: &OriginEntry<S>) -> Self {
-        Self {
-            source: value.source,
-            channel: value.maybe_channel.as_ref().and_then(|c| c.upgrade()),
-        }
-    }
-}
-
-impl<S> PartialEq for OriginEntry<S>
+impl<S> PartialEq for Origin<S>
 where
     S: Ord + Copy,
 {
@@ -112,9 +54,9 @@ where
     }
 }
 
-impl<S> Eq for OriginEntry<S> where S: Ord + Copy {}
+impl<S> Eq for Origin<S> where S: Ord + Copy {}
 
-impl<S> Ord for OriginEntry<S>
+impl<S> Ord for Origin<S>
 where
     S: Ord + Copy,
 {
@@ -124,21 +66,33 @@ where
             return source_ordering;
         }
 
-        match (self.maybe_channel.as_ref(), other.maybe_channel.as_ref()) {
+        match (self.channel.as_ref(), other.channel.as_ref()) {
             (None, None) => Ordering::Equal,
-            (Some(c1), Some(c2)) => c1.as_ptr().cmp(&c2.as_ptr()),
+            (Some(c1), Some(c2)) => Arc::as_ptr(c1).cmp(&Arc::as_ptr(c2)),
             (Some(_), None) => Ordering::Greater,
             (None, Some(_)) => Ordering::Less,
         }
     }
 }
 
-impl<S> PartialOrd for OriginEntry<S>
+impl<S> PartialOrd for Origin<S>
 where
     S: Ord + Copy,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl<S> From<S> for Origin<S>
+where
+    S: Ord + Copy,
+{
+    fn from(value: S) -> Self {
+        Origin {
+            source: value,
+            channel: None,
+        }
     }
 }
 
@@ -183,9 +137,9 @@ pub struct FairQueue<R, S>
 where
     S: Ord + Copy,
 {
-    queues: BTreeMap<OriginEntry<S>, Entry<R>>,
+    queues: BTreeMap<Origin<S>, Entry<R>>,
     last_update: Instant,
-    current_queue_key: Option<OriginEntry<S>>,
+    current_queue_key: Option<Origin<S>>,
     max_size_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     priority_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     counter: usize,
@@ -212,22 +166,19 @@ where
     }
 
     pub fn queue_len(&self, source: &Origin<S>) -> usize {
-        self.queues
-            .get(&source.into())
-            .map(|q| q.len())
-            .unwrap_or_default()
+        self.queues.get(source).map(|q| q.len()).unwrap_or_default()
     }
 
     pub fn max_len(&self, source: &Origin<S>) -> usize {
         self.queues
-            .get(&source.into())
+            .get(source)
             .map(|q| q.max_size)
             .unwrap_or_default()
     }
 
     pub fn priority(&self, source: &Origin<S>) -> usize {
         self.queues
-            .get(&source.into())
+            .get(source)
             .map(|q| q.priority)
             .unwrap_or_default()
     }
@@ -263,8 +214,7 @@ where
     /// Request will be dropped if the queue is full
     /// @return true if added, false if dropped
     pub fn push(&mut self, request: R, source: Origin<S>) -> bool {
-        let origin_entry = OriginEntry::from(&source);
-        let entry = self.queues.entry(origin_entry).or_insert_with(|| {
+        let entry = self.queues.entry(source.clone()).or_insert_with(|| {
             let max_size = (self.max_size_query)(&source);
             let priority = (self.priority_query)(&source);
             Entry::new(max_size, priority)
@@ -285,7 +235,7 @@ where
         let queue = self.queues.get_mut(it).unwrap();
         self.counter += 1;
         self.total_len -= 1;
-        Some((queue.pop().unwrap(), it.into()))
+        Some((queue.pop().unwrap(), it.clone()))
     }
 
     fn should_seek(&self) -> bool {
@@ -306,6 +256,7 @@ where
     }
 
     pub fn next_batch(&mut self, max_count: usize) -> VecDeque<(R, Origin<S>)> {
+        self.periodic_update(Duration::from_secs(30));
         let count = min(self.len(), max_count);
 
         let mut result = VecDeque::new();
@@ -322,13 +273,13 @@ where
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "queues".to_string(),
                     count: self.queues.len(),
-                    sizeof_element: std::mem::size_of::<OriginEntry<S>>()
+                    sizeof_element: std::mem::size_of::<Origin<S>>()
                         + std::mem::size_of::<Entry<R>>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "total_size".to_string(),
                     count: self.len(),
-                    sizeof_element: std::mem::size_of::<OriginEntry<S>>()
+                    sizeof_element: std::mem::size_of::<Origin<S>>()
                         + std::mem::size_of::<Entry<R>>(),
                 }),
             ],
@@ -369,8 +320,8 @@ where
 
     fn update(&mut self) {
         for (source, queue) in self.queues.iter_mut() {
-            queue.max_size = (self.max_size_query)(&source.into());
-            queue.priority = (self.priority_query)(&source.into());
+            queue.max_size = (self.max_size_query)(source);
+            queue.priority = (self.priority_query)(source);
         }
     }
 }
@@ -575,7 +526,7 @@ mod tests {
         queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel2)));
         queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel3)));
 
-        // Either closing or resetting the channel should make it eligable for cleanup
+        // Only closing the channel should make it eligable for cleanup
         channel1.close();
         drop(channel2);
 
@@ -589,6 +540,6 @@ mod tests {
         assert!(queue.periodic_update(Duration::ZERO));
 
         assert!(queue.is_empty());
-        assert_eq!(queue.queues_len(), 1);
+        assert_eq!(queue.queues_len(), 2);
     }
 }

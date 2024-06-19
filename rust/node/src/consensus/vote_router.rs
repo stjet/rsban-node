@@ -116,11 +116,11 @@ impl VoteRouter {
         filter: &BlockHash,
     ) -> HashMap<BlockHash, VoteCode> {
         debug_assert!(vote.validate().is_ok());
+        // If present, filter should be set to one of the hashes in the vote
+        debug_assert!(filter.is_zero() || vote.hashes.iter().any(|h| h == filter));
 
         let mut results = HashMap::new();
         let mut process = HashMap::new();
-        let mut inactive = Vec::new(); // Hashes that should be added to inactive vote cache
-
         {
             let guard = self.shared.1.lock().unwrap();
             for hash in &vote.hashes {
@@ -134,19 +134,15 @@ impl VoteRouter {
                     continue;
                 }
 
-                if let Some(existing) = guard.elections.get(hash) {
-                    if let Some(election) = existing.upgrade() {
-                        process.insert(*hash, election.clone());
-                    }
-                }
-
-                if process.contains_key(hash) {
-                    // There was an active election for hash
-                } else if !self.recently_confirmed.hash_exists(hash) {
-                    inactive.push(*hash);
-                    results.insert(*hash, VoteCode::Indeterminate);
+                let election = guard.elections.get(hash).and_then(|e| e.upgrade());
+                if let Some(election) = election {
+                    process.insert(*hash, election.clone());
                 } else {
-                    results.insert(*hash, VoteCode::Replay);
+                    if !self.recently_confirmed.hash_exists(hash) {
+                        results.insert(*hash, VoteCode::Indeterminate);
+                    } else {
+                        results.insert(*hash, VoteCode::Replay);
+                    }
                 }
             }
         }

@@ -107,8 +107,11 @@ impl VoteRouter {
         let state = self.shared.1.lock().unwrap();
         state.elections.get(hash)?.upgrade()
     }
-    ///
-    /// Validate a vote and apply it to the current election if one exists
+
+    /// Route vote to associated elections
+    /// Distinguishes replay votes, cannot be determined if the block is not in any election
+    /// If 'filter' parameter is non-zero, only elections for the specified hash are notified.
+    /// This eliminates duplicate processing when triggering votes from the vote_cache as the result of a specific election being created.
     pub fn vote_filter(
         &self,
         vote: &Arc<Vote>,
@@ -163,7 +166,8 @@ impl VoteRouter {
         results
     }
 
-    /// Validate a vote and apply it to the current election if one exists
+    /// Route vote to associated elections
+    /// Distinguishes replay votes, cannot be determined if the block is not in any election
     pub fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode> {
         self.vote_filter(vote, source, &BlockHash::zero())
     }

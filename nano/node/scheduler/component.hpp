@@ -6,7 +6,6 @@
 #include <nano/node/election.hpp>
 
 #include <memory>
-#include <string>
 
 namespace nano
 {
@@ -33,7 +32,6 @@ class component final
 	std::unique_ptr<nano::scheduler::priority> priority_impl;
 
 public:
-	explicit component (nano::node & node);
 	explicit component (rsnano::NodeHandle *);
 	~component ();
 

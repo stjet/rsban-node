@@ -21,12 +21,6 @@ nano::vote_cache::vote_cache (rsnano::VoteCacheHandle * handle) :
 {
 }
 
-nano::vote_cache::vote_cache (vote_cache_config const & config_a, nano::stats & stats_a)
-{
-	auto config_dto{ config_a.to_dto () };
-	handle = rsnano::rsn_vote_cache_create (&config_dto, stats_a.handle);
-}
-
 nano::vote_cache::~vote_cache ()
 {
 	rsnano::rsn_vote_cache_destroy (handle);

@@ -21,13 +21,9 @@ namespace nano::scheduler
 class manual final
 {
 public:
-	manual (nano::node & node);
 	manual (rsnano::ManualSchedulerHandle * handle);
 	manual (manual const &) = delete;
 	~manual ();
-
-	void start ();
-	void stop ();
 
 	// Manualy start an election for a block
 	// Call action with confirmed block, may be different than what we started with

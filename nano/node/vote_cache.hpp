@@ -38,7 +38,6 @@ class vote_cache final
 {
 public:
 	explicit vote_cache (rsnano::VoteCacheHandle * handle);
-	explicit vote_cache (vote_cache_config const &, nano::stats &);
 	vote_cache (vote_cache const &) = delete;
 	vote_cache (vote_cache &&) = delete;
 	~vote_cache ();

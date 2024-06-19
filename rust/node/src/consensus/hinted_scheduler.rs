@@ -19,7 +19,7 @@ use std::{
         Arc, Condvar, Mutex,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use super::{ActiveElections, ElectionBehavior, VoteCache};

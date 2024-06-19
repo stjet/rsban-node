@@ -14,12 +14,6 @@
  * hinted
  */
 
-nano::scheduler::hinted::hinted (nano::scheduler::hinted_config const & config_a, nano::node & node_a, nano::vote_cache & vote_cache_a, nano::active_elections & active_a, nano::online_reps & online_reps_a, nano::stats & stats_a)
-{
-	auto config_dto{ config_a.into_dto () };
-	handle = rsnano::rsn_hinted_scheduler_create (&config_dto, active_a.handle, node_a.ledger.handle, stats_a.handle, vote_cache_a.handle, node_a.confirming_set.handle, online_reps_a.get_handle ());
-}
-
 nano::scheduler::hinted::hinted (rsnano::HintedSchedulerHandle * handle) :
 	handle{ handle }
 {
@@ -28,21 +22,6 @@ nano::scheduler::hinted::hinted (rsnano::HintedSchedulerHandle * handle) :
 nano::scheduler::hinted::~hinted ()
 {
 	rsnano::rsn_hinted_scheduler_destroy (handle);
-}
-
-void nano::scheduler::hinted::start ()
-{
-	rsnano::rsn_hinted_scheduler_start (handle);
-}
-
-void nano::scheduler::hinted::stop ()
-{
-	rsnano::rsn_hinted_scheduler_stop (handle);
-}
-
-void nano::scheduler::hinted::notify ()
-{
-	rsnano::rsn_hinted_scheduler_notify (handle);
 }
 
 /*

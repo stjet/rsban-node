@@ -9,13 +9,6 @@
 #include <nano/node/scheduler/optimistic.hpp>
 #include <nano/secure/ledger.hpp>
 
-nano::scheduler::optimistic::optimistic (optimistic_config const & config_a, nano::node & node_a, nano::ledger & ledger_a, nano::active_elections & active_a, nano::network_constants const & network_constants_a, nano::stats & stats_a)
-{
-	auto config_dto{ config_a.into_dto () };
-	auto constants_dto{ network_constants_a.to_dto () };
-	handle = rsnano::rsn_optimistic_scheduler_create (&config_dto, stats_a.handle, active_a.handle, &constants_dto, ledger_a.handle, node_a.confirming_set.handle);
-}
-
 nano::scheduler::optimistic::optimistic (rsnano::OptimisticSchedulerHandle * handle) :
 	handle{ handle }
 {
@@ -24,21 +17,6 @@ nano::scheduler::optimistic::optimistic (rsnano::OptimisticSchedulerHandle * han
 nano::scheduler::optimistic::~optimistic ()
 {
 	rsnano::rsn_optimistic_scheduler_destroy (handle);
-}
-
-void nano::scheduler::optimistic::start ()
-{
-	rsnano::rsn_optimistic_scheduler_start (handle);
-}
-
-void nano::scheduler::optimistic::stop ()
-{
-	rsnano::rsn_optimistic_scheduler_stop (handle);
-}
-
-void nano::scheduler::optimistic::notify ()
-{
-	rsnano::rsn_optimistic_scheduler_notify (handle);
 }
 
 /*

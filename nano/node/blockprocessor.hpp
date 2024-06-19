@@ -2,12 +2,8 @@
 
 #include <nano/node/transport/channel.hpp>
 #include <nano/secure/common.hpp>
-
-#include <functional>
 #include <memory>
 #include <optional>
-#include <thread>
-#include <vector>
 
 namespace nano
 {
@@ -32,7 +28,6 @@ class local_vote_history;
 class election_scheduler;
 class unchecked_map;
 class gap_cache;
-class vote_cache;
 class signature_checker;
 
 namespace websocket

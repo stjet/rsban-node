@@ -41,18 +41,9 @@ class optimistic final
 	struct entry;
 
 public:
-	optimistic (optimistic_config const &, nano::node &, nano::ledger &, nano::active_elections &, nano::network_constants const & network_constants, nano::stats &);
 	optimistic (rsnano::OptimisticSchedulerHandle * handle);
 	optimistic (optimistic const &) = delete;
 	~optimistic ();
-
-	void start ();
-	void stop ();
-
-	/**
-	 * Notify about changes in AEC vacancy
-	 */
-	void notify ();
 
 	rsnano::OptimisticSchedulerHandle * handle;
 };

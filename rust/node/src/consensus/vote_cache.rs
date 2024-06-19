@@ -183,12 +183,13 @@ impl VoteCache {
 
         let mut results = Vec::new();
         for entry in self.cache.iter_by_tally_desc() {
-            if entry.tally() < min_tally {
+            let tally = entry.tally();
+            if tally < min_tally {
                 break;
             }
             results.push(TopEntry {
                 hash: entry.hash,
-                tally: entry.tally(),
+                tally,
                 final_tally: entry.final_tally(),
             })
         }

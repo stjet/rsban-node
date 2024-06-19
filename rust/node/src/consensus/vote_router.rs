@@ -107,9 +107,14 @@ impl VoteRouter {
         let state = self.shared.1.lock().unwrap();
         state.elections.get(hash)?.upgrade()
     }
-
+    ///
     /// Validate a vote and apply it to the current election if one exists
-    pub fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode> {
+    pub fn vote_filter(
+        &self,
+        vote: &Arc<Vote>,
+        source: VoteSource,
+        filter: &BlockHash,
+    ) -> HashMap<BlockHash, VoteCode> {
         debug_assert!(vote.validate().is_ok());
 
         let mut results = HashMap::new();
@@ -119,6 +124,11 @@ impl VoteRouter {
         {
             let guard = self.shared.1.lock().unwrap();
             for hash in &vote.hashes {
+                // Ignore votes for other hashes if a filter is set
+                if !filter.is_zero() && hash != filter {
+                    continue;
+                }
+
                 // Ignore duplicate hashes (should not happen with a well-behaved voting node)
                 if results.contains_key(hash) {
                     continue;
@@ -157,6 +167,11 @@ impl VoteRouter {
         results
     }
 
+    /// Validate a vote and apply it to the current election if one exists
+    pub fn vote(&self, vote: &Arc<Vote>, source: VoteSource) -> HashMap<BlockHash, VoteCode> {
+        self.vote_filter(vote, source, &BlockHash::zero())
+    }
+
     pub fn active(&self, hash: &BlockHash) -> bool {
         let state = self.shared.1.lock().unwrap();
         if let Some(existing) = state.elections.get(hash) {
@@ -181,7 +196,7 @@ impl VoteRouter {
     pub fn trigger_vote_cache(&self, hash: &BlockHash) -> bool {
         let cached = self.vote_cache.lock().unwrap().find(hash);
         for cached_vote in &cached {
-            self.vote(cached_vote, VoteSource::Cache);
+            self.vote_filter(cached_vote, VoteSource::Cache, hash);
         }
         !cached.is_empty()
     }

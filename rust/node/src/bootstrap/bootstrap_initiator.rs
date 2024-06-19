@@ -22,7 +22,7 @@ use crate::{
 use super::{
     BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapConnections,
     BootstrapConnectionsConfig, BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy,
-    PullInfo, PullsCache,
+    LegacyBootstrapConfig, PullInfo, PullsCache,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -218,6 +218,14 @@ impl BootstrapInitiator {
             })],
         )
     }
+
+    fn legacy_config(&self) -> LegacyBootstrapConfig {
+        LegacyBootstrapConfig {
+            frontier_request_count: self.node_config.bootstrap_frontier_request_count,
+            frontier_retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+            disable_bootstrap_bulk_push_client: self.flags.disable_bootstrap_bulk_push_client,
+        }
+    }
 }
 
 impl Drop for BootstrapInitiator {
@@ -307,10 +315,8 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     id_a,
                     incremental_id as u64,
                     Arc::clone(&self.connections),
-                    self.network_params.clone(),
-                    self.node_config.clone(),
+                    self.legacy_config(),
                     Arc::clone(&self.stats),
-                    self.flags.clone(),
                     frontiers_age_a,
                     start_account_a,
                 )
@@ -344,10 +350,8 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     id_a,
                     incremental_id as u64,
                     Arc::clone(&self.connections),
-                    self.network_params.clone(),
-                    self.node_config.clone(),
+                    self.legacy_config(),
                     Arc::clone(&self.stats),
-                    self.flags.clone(),
                     u32::MAX,
                     Account::zero(),
                 )

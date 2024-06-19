@@ -5,10 +5,8 @@ use super::{
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapConnectionsExt,
-    config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     websocket::WebsocketListener,
-    NetworkParams,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{utils::PropertyTree, Account, BlockHash};
@@ -24,18 +22,22 @@ use std::{
 };
 use tracing::debug;
 
+pub struct LegacyBootstrapConfig {
+    pub frontier_request_count: u32,
+    pub frontier_retry_limit: u32,
+    pub disable_bootstrap_bulk_push_client: bool,
+}
+
 /// Legacy bootstrap session. This is made up of 3 phases: frontier requests, bootstrap pulls, bootstrap pushes.
 pub struct BootstrapAttemptLegacy {
     pub attempt: BootstrapAttempt,
     connections: Arc<BootstrapConnections>,
     mutex: Mutex<LegacyData>,
-    network_params: NetworkParams,
-    config: NodeConfig,
+    config: LegacyBootstrapConfig,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
     account_count: AtomicU32,
     block_processor: Weak<BlockProcessor>,
-    flags: NodeFlags,
 }
 
 impl BootstrapAttemptLegacy {
@@ -47,10 +49,8 @@ impl BootstrapAttemptLegacy {
         id: String,
         incremental_id: u64,
         connections: Arc<BootstrapConnections>,
-        network_params: NetworkParams,
-        config: NodeConfig,
+        config: LegacyBootstrapConfig,
         stats: Arc<Stats>,
-        flags: NodeFlags,
         frontiers_age: u32,
         start_account: Account,
     ) -> anyhow::Result<Self> {
@@ -74,13 +74,11 @@ impl BootstrapAttemptLegacy {
                 frontiers: None,
                 bulk_push_targets: Vec::new(),
             }),
-            network_params,
             config,
             ledger,
             stats,
             account_count: AtomicU32::new(0),
             block_processor,
-            flags,
         })
     }
 
@@ -219,7 +217,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
         if !self.attempt.stopped() {
             debug!("Completed legacy pulls");
 
-            if !self.flags.disable_bootstrap_bulk_push_client {
+            if !self.config.disable_bootstrap_bulk_push_client {
                 guard = self.request_push(guard);
             }
         }
@@ -290,7 +288,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
                     let mut client = FrontierReqClient::new(
                         Arc::clone(&connection_l),
                         Arc::clone(&self.ledger),
-                        self.network_params.clone(),
+                        self.config.frontier_retry_limit,
                         Arc::clone(&self.connections),
                     );
                     client.set_attempt(Arc::clone(self));
@@ -298,7 +296,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
                     client.run(
                         &lock_a.start_account,
                         lock_a.frontiers_age,
-                        self.config.bootstrap_frontier_request_count,
+                        self.config.frontier_request_count,
                     );
                     lock_a.frontiers = Some(Arc::downgrade(&client));
                     drop(lock_a);

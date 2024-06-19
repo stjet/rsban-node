@@ -3,7 +3,6 @@ use crate::{
     bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
     utils::ErrorCode,
-    NetworkParams,
 };
 use primitive_types::U256;
 use rsnano_core::{
@@ -26,8 +25,8 @@ pub struct FrontierReqClient {
     connections: Arc<BootstrapConnections>,
     ledger: Arc<Ledger>,
     attempt: Option<Weak<BootstrapAttemptLegacy>>,
-    network_params: NetworkParams,
     condition: Condvar,
+    retry_limit: u32,
 }
 
 struct FrontierReqClientData {
@@ -83,14 +82,14 @@ impl FrontierReqClient {
     pub fn new(
         connection: Arc<BootstrapClient>,
         ledger: Arc<Ledger>,
-        network_params: NetworkParams,
+        retry_limit: u32,
         connections: Arc<BootstrapConnections>,
     ) -> Self {
         Self {
             connection,
             ledger,
             attempt: None,
-            network_params,
+            retry_limit,
             connections,
             condition: Condvar::new(),
             data: Mutex::new(FrontierReqClientData {
@@ -283,7 +282,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                                     count: 0,
                                     attempts: 0,
                                     processed: 0,
-                                    retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                                    retry_limit: self.retry_limit,
                                     bootstrap_id: attempt.attempt.incremental_id,
                                 };
                                 attempt.add_frontier(pull);
@@ -303,7 +302,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                             count: 0,
                             attempts: 0,
                             processed: 0,
-                            retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                            retry_limit: self.retry_limit,
                             bootstrap_id: attempt.attempt.incremental_id,
                         };
                         attempt.add_frontier(pull);
@@ -317,7 +316,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                         count: 0,
                         attempts: 0,
                         processed: 0,
-                        retry_limit: self.network_params.bootstrap.frontier_retry_limit,
+                        retry_limit: self.retry_limit,
                         bootstrap_id: attempt.attempt.incremental_id,
                     };
 

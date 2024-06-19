@@ -231,6 +231,8 @@ pub struct CacheEntry {
     pub hash: BlockHash,
     pub voters: OrderedVoters,
     pub last_vote: Instant,
+    tally: Amount,
+    final_tally: Amount,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -265,19 +267,29 @@ impl CacheEntry {
             hash,
             voters: OrderedVoters::default(),
             last_vote: Instant::now(),
+            tally: Amount::zero(),
+            final_tally: Amount::zero(),
         }
     }
 
+    fn calculate_tally(&mut self) -> (Amount, Amount) {
+        let mut tally = Amount::zero();
+        let mut final_tally = Amount::zero();
+        for voter in self.voters.iter_unordered() {
+            tally = tally.wrapping_add(voter.weight);
+            if voter.vote.is_final() {
+                final_tally = final_tally.wrapping_add(voter.weight);
+            }
+        }
+        (tally, final_tally)
+    }
+
     pub fn tally(&self) -> Amount {
-        self.voters
-            .iter_unordered()
-            .fold(Amount::zero(), |acc, i| acc.wrapping_add(i.weight))
+        self.tally
     }
 
     pub fn final_tally(&self) -> Amount {
-        self.voters
-            .iter_unordered()
-            .fold(Amount::zero(), |acc, i| acc.wrapping_add(i.final_weight()))
+        self.final_tally
     }
 
     pub fn votes(&self) -> Vec<Arc<Vote>> {
@@ -292,6 +304,7 @@ impl CacheEntry {
     pub fn vote(&mut self, vote: &Arc<Vote>, rep_weight: Amount, max_voters: usize) -> bool {
         let updated = self.vote_impl(vote, rep_weight, max_voters);
         if updated {
+            (self.tally, self.final_tally) = self.calculate_tally();
             self.last_vote = Instant::now();
         }
         updated
@@ -305,9 +318,10 @@ impl CacheEntry {
             // Update timestamp if newer but tally remains unchanged as we already counted this rep weight
             // It is not essential to keep tally up to date if rep voting weight changes, elections do tally calculations independently, so in the worst case scenario only our queue ordering will be a bit off
             if vote.timestamp() > existing.vote.timestamp() {
+                let was_final = existing.vote.is_final();
                 self.voters
                     .modify(&representative, Arc::clone(vote), rep_weight);
-                return true;
+                return !was_final && vote.is_final(); // Tally changed only if the vote became final
             } else {
                 return false;
             }

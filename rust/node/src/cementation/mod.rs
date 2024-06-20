@@ -6,3 +6,4 @@ use std::sync::Arc;
 
 type BlockCallback = Box<dyn FnMut(&Arc<BlockEnum>) + Send>;
 type BlockHashCallback = Box<dyn FnMut(BlockHash) + Send>;
+type BatchCementedCallback = Box<dyn FnMut(&CementedNotification) + Send>;

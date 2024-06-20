@@ -78,7 +78,8 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 	}
 	flags.set_config_overrides (tmp_overrides);
 
-	if (auto error = nano::flags_config_conflicts (flags, config.node)){
+	if (auto error = nano::flags_config_conflicts (flags, config.node))
+	{
 		logger.critical (nano::log::type::daemon, "Error parsing command line options: {}", error.message ());
 		std::exit (1);
 	}

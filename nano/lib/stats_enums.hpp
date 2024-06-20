@@ -58,6 +58,7 @@ enum class type : uint8_t
 	active_elections_stopped,
 	active_elections_confirmed,
 	active_elections_dropped,
+	active_elections_timeout,
 	active_elections_cemented,
 	active_timeout,
 	backlog,
@@ -365,7 +366,7 @@ enum class detail : uint16_t
 	insert,
 	insert_failed,
 	//
-    // active_elections
+	// active_elections
 	started,
 	stopped,
 
@@ -435,7 +436,7 @@ enum class detail : uint16_t
 	tier_1,
 	tier_2,
 	tier_3,
-	
+
 	// confirming_set
 	notify_cemented,
 	notify_already_cemented,

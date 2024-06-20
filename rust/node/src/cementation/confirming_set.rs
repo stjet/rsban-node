@@ -1,14 +1,17 @@
-use super::{BlockCallback, BlockHashCallback};
+use super::{BatchCementedCallback, BlockCallback, BlockHashCallback};
+use crate::{
+    stats::{DetailType, StatType, Stats},
+    utils::{ThreadPool, ThreadPoolImpl},
+};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockHash,
+    BlockEnum, BlockHash,
 };
 use rsnano_ledger::{Ledger, Writer};
 use std::{
     collections::{HashSet, VecDeque},
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
-    time::{Duration, Instant},
 };
 
 /// Set of blocks to be durably confirmed
@@ -18,37 +21,47 @@ pub struct ConfirmingSet {
 }
 
 impl ConfirmingSet {
-    pub fn new(ledger: Arc<Ledger>, batch_time: Duration) -> Self {
+    pub fn new(ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
         Self {
             join_handle: Mutex::new(None),
             thread: Arc::new(ConfirmingSetThread {
                 mutex: Mutex::new(ConfirmingSetImpl {
                     stopped: false,
                     set: HashSet::new(),
-                    processing: HashSet::new(),
                 }),
                 condition: Condvar::new(),
                 ledger,
-                batch_time,
-                cemented_observers: Mutex::new(Vec::new()),
-                already_cemented_observers: Mutex::new(Vec::new()),
+                stats,
+                observers: Arc::new(Mutex::new(Observers::default())),
+                notification_workers: ThreadPoolImpl::create(1, "Conf notif"),
             }),
         }
     }
 
-    pub fn add_cemented_observer(&self, callback: BlockCallback) {
+    pub fn add_batch_cemented_observer(&self, callback: BatchCementedCallback) {
         self.thread
-            .cemented_observers
+            .observers
             .lock()
             .unwrap()
+            .batch_cemented
+            .push(callback);
+    }
+
+    pub fn add_cemented_observer(&self, callback: BlockCallback) {
+        self.thread
+            .observers
+            .lock()
+            .unwrap()
+            .cemented
             .push(callback);
     }
 
     pub fn add_already_cemented_observer(&self, callback: BlockHashCallback) {
         self.thread
-            .already_cemented_observers
+            .observers
             .lock()
             .unwrap()
+            .already_cemented
             .push(callback);
     }
 
@@ -58,6 +71,8 @@ impl ConfirmingSet {
     }
 
     pub fn start(&self) {
+        debug_assert!(self.join_handle.lock().unwrap().is_none());
+
         let thread = Arc::clone(&self.thread);
         *self.join_handle.lock().unwrap() = Some(
             std::thread::Builder::new()
@@ -72,6 +87,7 @@ impl ConfirmingSet {
         if let Some(handle) = self.join_handle.lock().unwrap().take() {
             handle.join().unwrap();
         }
+        self.thread.notification_workers.stop();
     }
 
     /// Added blocks will remain in this set until after ledger has them marked as confirmed.
@@ -87,18 +103,11 @@ impl ConfirmingSet {
         let guard = self.thread.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
             name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "set".to_string(),
-                    count: guard.set.len(),
-                    sizeof_element: std::mem::size_of::<BlockHash>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "processing".to_string(),
-                    count: guard.processing.len(),
-                    sizeof_element: std::mem::size_of::<BlockHash>(),
-                }),
-            ],
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "set".to_string(),
+                count: guard.set.len(),
+                sizeof_element: std::mem::size_of::<BlockHash>(),
+            })],
         )
     }
 }
@@ -113,9 +122,9 @@ pub struct ConfirmingSetThread {
     mutex: Mutex<ConfirmingSetImpl>,
     condition: Condvar,
     ledger: Arc<Ledger>,
-    batch_time: Duration,
-    cemented_observers: Mutex<Vec<BlockCallback>>,
-    already_cemented_observers: Mutex<Vec<BlockHashCallback>>,
+    stats: Arc<Stats>,
+    notification_workers: ThreadPoolImpl,
+    observers: Arc<Mutex<Observers>>,
 }
 
 impl ConfirmingSetThread {
@@ -128,98 +137,137 @@ impl ConfirmingSetThread {
     }
 
     fn add(&self, hash: BlockHash) {
-        {
+        let added = {
             let mut guard = self.mutex.lock().unwrap();
-            guard.set.insert(hash);
+            guard.set.insert(hash)
+        };
+
+        if added {
+            self.condition.notify_all();
+            self.stats.inc(StatType::ConfirmingSet, DetailType::Insert);
+        } else {
+            self.stats
+                .inc(StatType::ConfirmingSet, DetailType::Duplicate);
         }
-        self.condition.notify_all();
     }
 
     fn exists(&self, hash: &BlockHash) -> bool {
-        let guard = self.mutex.lock().unwrap();
-        guard.set.contains(hash) || guard.processing.contains(hash)
+        self.mutex.lock().unwrap().set.contains(hash)
     }
 
     fn len(&self) -> usize {
-        let guard = self.mutex.lock().unwrap();
-        guard.set.len() + guard.processing.len()
+        self.mutex.lock().unwrap().set.len()
     }
 
     fn run(&self) {
-        let mut processing = Vec::new();
         let mut guard = self.mutex.lock().unwrap();
-        // Run the confirmation loop until stopped
         while !guard.stopped {
-            guard = self
-                .condition
-                .wait_while(guard, |i| i.set.is_empty() && !i.stopped)
-                .unwrap();
-            // Loop if there are items to process
-            if !guard.stopped && !guard.set.is_empty() {
-                let mut cemented = VecDeque::new();
-                let mut already = VecDeque::new();
-                // Move items in to back buffer and release lock so more items can be added to the front buffer
-                guard.swap_processing_and_set();
-                // Process all items in the back buffer
-                processing.reserve(guard.processing.len());
-                for i in &guard.processing {
-                    processing.push(*i);
-                }
-
-                while !processing.is_empty() && !guard.stopped {
-                    drop(guard); // Waiting for db write is potentially slow
-                    let _write_guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
-                    let mut tx = self.ledger.rw_txn();
-                    guard = self.mutex.lock().unwrap();
-                    // Process items in the back buffer within a single transaction for a limited amount of time
-                    let start = Instant::now();
-                    while let Some(item) = processing.pop() {
-                        if start.elapsed() >= self.batch_time || guard.stopped {
-                            break;
-                        }
-                        drop(guard);
-                        let added = self.ledger.confirm(&mut tx, item);
-                        if !added.is_empty() {
-                            // Confirming this block may implicitly confirm more
-                            cemented.extend(added);
-                        } else {
-                            already.push_back(item);
-                        }
-                        guard = self.mutex.lock().unwrap();
-                    }
-                }
-
+            if !guard.set.is_empty() {
+                let batch = guard.next_batch(256);
                 drop(guard);
-                for i in cemented {
-                    let mut observers = self.cemented_observers.lock().unwrap();
-                    for observer in observers.iter_mut() {
-                        observer(&Arc::new(i.clone()));
-                    }
-                }
-                for i in already {
-                    let mut observers = self.already_cemented_observers.lock().unwrap();
-                    for observer in observers.iter_mut() {
-                        observer(i);
-                    }
-                }
+                self.run_batch(batch);
                 guard = self.mutex.lock().unwrap();
-                // Clear and free back buffer by re-initializing
-                processing.clear();
-                guard.processing.clear();
+            } else {
+                guard = self
+                    .condition
+                    .wait_while(guard, |i| i.set.is_empty() && !i.stopped)
+                    .unwrap();
             }
         }
+    }
+
+    fn run_batch(&self, batch: VecDeque<BlockHash>) {
+        let mut cemented = VecDeque::new();
+        let mut already_cemented = VecDeque::new();
+
+        {
+            // TODO: Properly limiting batch times requires this <guard, transaction> combo to be wrapped in a single object that provides refresh functionality
+            let _guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
+            let mut tx = self.ledger.rw_txn();
+
+            for hash in batch {
+                let added = self.ledger.confirm(&mut tx, hash);
+                let added_len = added.len();
+                if !added.is_empty() {
+                    // Confirming this block may implicitly confirm more
+                    for block in added {
+                        cemented.push_back((block, hash));
+                    }
+
+                    self.stats.add(
+                        StatType::ConfirmingSet,
+                        DetailType::Cemented,
+                        added_len as u64,
+                    );
+                } else {
+                    already_cemented.push_back(hash);
+                    self.stats
+                        .inc(StatType::ConfirmingSet, DetailType::AlreadyCemented);
+                }
+            }
+        }
+
+        let notification = CementedNotification {
+            cemented,
+            already_cemented,
+        };
+
+        let observers = self.observers.clone();
+        self.notification_workers.push_task(Box::new(move || {
+            observers.lock().unwrap().notify_batch(notification);
+        }));
     }
 }
 
 struct ConfirmingSetImpl {
     stopped: bool,
     set: HashSet<BlockHash>,
-    processing: HashSet<BlockHash>,
 }
 
 impl ConfirmingSetImpl {
-    fn swap_processing_and_set(&mut self) {
-        std::mem::swap(&mut self.set, &mut self.processing);
+    fn next_batch(&mut self, max_count: usize) -> VecDeque<BlockHash> {
+        let mut results = VecDeque::new();
+        // TODO: use extract_if once it is stablized
+        while let Some(&hash) = self.set.iter().next() {
+            if results.len() >= max_count {
+                break;
+            }
+            results.push_back(hash);
+            self.set.remove(&hash);
+        }
+        results
+    }
+}
+
+pub(crate) struct CementedNotification {
+    pub cemented: VecDeque<(BlockEnum, BlockHash)>, // block + confirmation root
+    pub already_cemented: VecDeque<BlockHash>,
+}
+
+#[derive(Default)]
+struct Observers {
+    cemented: Vec<BlockCallback>,
+    already_cemented: Vec<BlockHashCallback>,
+    batch_cemented: Vec<BatchCementedCallback>,
+}
+
+impl Observers {
+    fn notify_batch(&mut self, notification: CementedNotification) {
+        for (block, _) in &notification.cemented {
+            for observer in &mut self.cemented {
+                observer(&Arc::new(block.clone()));
+            }
+        }
+
+        for hash in &notification.already_cemented {
+            for observer in &mut self.already_cemented {
+                observer(*hash);
+            }
+        }
+
+        for observer in &mut self.batch_cemented {
+            observer(&notification);
+        }
     }
 }
 
@@ -231,7 +279,7 @@ mod tests {
     #[test]
     fn add_exists() {
         let ledger = Arc::new(Ledger::new_null());
-        let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
+        let confirming_set = ConfirmingSet::new(ledger, Arc::new(Stats::default()));
         let hash = BlockHash::from(1);
         confirming_set.add(hash);
         assert!(confirming_set.exists(&hash));
@@ -253,7 +301,7 @@ mod tests {
                 )
                 .finish(),
         );
-        let confirming_set = ConfirmingSet::new(ledger, Duration::from_millis(500));
+        let confirming_set = ConfirmingSet::new(ledger, Arc::new(Stats::default()));
         confirming_set.start();
         let count = Arc::new(Mutex::new(0));
         let condition = Arc::new(Condvar::new());

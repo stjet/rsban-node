@@ -1,5 +1,8 @@
 use super::ElectionStatus;
-use crate::{stats::DetailType, utils::HardenedConstants};
+use crate::{
+    stats::{DetailType, StatType},
+    utils::HardenedConstants,
+};
 use rsnano_core::{Account, Amount, BlockEnum, BlockHash, QualifiedRoot, Root};
 use std::{
     collections::HashMap,
@@ -85,6 +88,10 @@ impl Election {
 
     pub fn duration(&self) -> Duration {
         self.election_start.elapsed()
+    }
+
+    pub fn state(&self) -> ElectionState {
+        self.mutex.lock().unwrap().state
     }
 
     pub fn transition_active(&self) {
@@ -250,6 +257,36 @@ pub enum ElectionState {
     Confirmed, // confirmed but still listening for votes
     ExpiredConfirmed,
     ExpiredUnconfirmed,
+}
+
+impl ElectionState {
+    pub fn is_confirmed(&self) -> bool {
+        matches!(self, Self::Confirmed | Self::ExpiredConfirmed)
+    }
+}
+
+impl From<ElectionState> for StatType {
+    fn from(value: ElectionState) -> Self {
+        match value {
+            ElectionState::Passive | ElectionState::Active => StatType::ActiveElectionsDropped,
+            ElectionState::Confirmed | ElectionState::ExpiredConfirmed => {
+                StatType::ActiveElectionsConfirmed
+            }
+            ElectionState::ExpiredUnconfirmed => StatType::ActiveElectionsTimeout,
+        }
+    }
+}
+
+impl From<ElectionState> for DetailType {
+    fn from(value: ElectionState) -> Self {
+        match value {
+            ElectionState::Passive => DetailType::Passive,
+            ElectionState::Active => DetailType::Active,
+            ElectionState::Confirmed => DetailType::Confirmed,
+            ElectionState::ExpiredConfirmed => DetailType::ExpiredConfirmed,
+            ElectionState::ExpiredUnconfirmed => DetailType::ExpiredUnconfirmed,
+        }
+    }
 }
 
 #[derive(FromPrimitive, Copy, Clone, Debug)]

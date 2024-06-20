@@ -5,6 +5,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use crate::stats::DetailType;
+
 /**
  * Tag for the type of the election status
  */
@@ -26,6 +28,20 @@ impl ElectionStatusType {
             Self::ActiveConfirmationHeight => "active_confirmation_height",
             Self::InactiveConfirmationHeight => "inactive",
             Self::Stopped => "stopped",
+        }
+    }
+}
+
+impl From<ElectionStatusType> for DetailType {
+    fn from(value: ElectionStatusType) -> Self {
+        match value {
+            ElectionStatusType::Ongoing => DetailType::Ongoing,
+            ElectionStatusType::ActiveConfirmedQuorum => DetailType::ActiveConfirmedQuorum,
+            ElectionStatusType::ActiveConfirmationHeight => DetailType::ActiveConfirmationHeight,
+            ElectionStatusType::InactiveConfirmationHeight => {
+                DetailType::InactiveConfirmationHeight
+            }
+            ElectionStatusType::Stopped => DetailType::Stopped,
         }
     }
 }

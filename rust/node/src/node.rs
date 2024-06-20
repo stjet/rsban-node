@@ -272,10 +272,7 @@ impl Node {
 
         let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
 
-        let confirming_set = Arc::new(ConfirmingSet::new(
-            ledger.clone(),
-            config.confirming_set_batch_time,
-        ));
+        let confirming_set = Arc::new(ConfirmingSet::new(ledger.clone(), stats.clone()));
 
         let vote_cache = Arc::new(Mutex::new(VoteCache::new(
             config.vote_cache.clone(),
@@ -550,7 +547,7 @@ impl Node {
         let priority_clone = Arc::downgrade(&priority_scheduler);
         active_elections.set_activate_successors_callback(Box::new(move |tx, block| {
             if let Some(priority) = priority_clone.upgrade() {
-                priority.activate_successors(&tx, block);
+                priority.activate_successors(tx, block);
             }
         }));
 

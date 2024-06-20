@@ -58,7 +58,7 @@ nano::vote_processor_config::vote_processor_config (rsnano::VoteProcessorConfigD
 	pr_priority{ dto.pr_priority },
 	threads{ dto.threads },
 	batch_size{ dto.batch_size },
-	max_triggered{ dto.max_triggered}
+	max_triggered{ dto.max_triggered }
 {
 }
 

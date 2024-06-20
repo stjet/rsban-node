@@ -22,7 +22,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
@@ -113,7 +113,7 @@ pub struct ActiveElections {
     stats: Arc<Stats>,
     active_started_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
     active_stopped_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
-    activate_successors: Mutex<Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
+    activate_successors: Mutex<Box<dyn Fn(&LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
     election_end: Mutex<Vec<ElectionEndCallback>>,
     account_balance_changed: AccountBalanceChangedCallback,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
@@ -276,7 +276,7 @@ impl ActiveElections {
      */
     pub fn set_activate_successors_callback(
         &self,
-        callback: Box<dyn Fn(LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>,
+        callback: Box<dyn Fn(&LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>,
     ) {
         *self.activate_successors.lock().unwrap() = callback;
     }
@@ -628,8 +628,21 @@ impl ActiveElections {
 
         guard.roots.erase(&election.qualified_root);
 
+        let state = election.state();
         self.stats
-            .inc(self.completion_type(election), election.behavior.into());
+            .inc(StatType::ActiveElections, DetailType::Stopped);
+        self.stats.inc(
+            StatType::ActiveElections,
+            if state.is_confirmed() {
+                DetailType::Confirmed
+            } else {
+                DetailType::Unconfirmed
+            },
+        );
+        self.stats
+            .inc(StatType::ActiveElectionsStopped, state.into());
+        self.stats.inc(state.into(), election.behavior.into());
+
         trace!(election = ?election, "active stopped");
 
         debug!(
@@ -666,16 +679,6 @@ impl ActiveElections {
                 // Clear from publish filter
                 self.clear_publish_filter(&block);
             }
-        }
-    }
-
-    fn completion_type(&self, election: &Election) -> StatType {
-        if self.confirmed(election) {
-            StatType::ActiveElectionsConfirmed
-        } else if election.failed() {
-            StatType::ActiveTimeout
-        } else {
-            StatType::ActiveElectionsDropped
         }
     }
 
@@ -906,6 +909,14 @@ impl ActiveElections {
         self.vote_applier.process_confirmed(status, iteration)
     }
 
+    fn block_already_cemented_callback(&self, hash: &BlockHash) {
+        // Depending on timing there is a situation where the election_winner_details is not reset.
+        // This can happen when a block wins an election, and the block is confirmed + observer
+        // called before the block hash gets added to election_winner_details. If the block is confirmed
+        // callbacks have already been done, so we can safely just remove it.
+        self.vote_applier.remove_election_winner_details(hash);
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -1069,7 +1080,12 @@ pub trait ActiveElectionsExt {
     fn force_confirm(&self, election: &Arc<Election>);
     fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash);
     /// Distinguishes replay votes, cannot be determined if the block is not in any election
-    fn block_cemented_callback(&self, block: &Arc<BlockEnum>);
+    fn block_cemented_callback(
+        &self,
+        tx: &LmdbReadTransaction,
+        block: &BlockEnum,
+        confirmation_root: &BlockHash,
+    );
     fn publish_block(&self, block: &Arc<BlockEnum>) -> bool;
     fn insert(
         &self,
@@ -1081,24 +1097,19 @@ pub trait ActiveElectionsExt {
 impl ActiveElectionsExt for Arc<ActiveElections> {
     fn initialize(&self) {
         let self_w = Arc::downgrade(self);
-        // Register a callback which will get called after a block is cemented
         self.confirming_set
-            .add_cemented_observer(Box::new(move |block| {
+            .add_batch_cemented_observer(Box::new(move |notification| {
                 if let Some(active) = self_w.upgrade() {
-                    active.block_cemented_callback(block);
-                }
-            }));
-
-        let self_w = Arc::downgrade(self);
-        // Register a callback which will get called if a block is already cemented
-        self.confirming_set
-            .add_already_cemented_observer(Box::new(move |hash| {
-                if let Some(active) = self_w.upgrade() {
-                    // Depending on timing there is a situation where the election_winner_details is not reset.
-                    // This can happen when a block wins an election, and the block is confirmed + observer
-                    // called before the block hash gets added to election_winner_details. If the block is confirmed
-                    // callbacks have already been done, so we can safely just remove it.
-                    active.vote_applier.remove_election_winner_details(&hash);
+                    {
+                        let mut tx = active.ledger.read_txn();
+                        for (block, confirmation_root) in &notification.cemented {
+                            tx.refresh_if_needed();
+                            active.block_cemented_callback(&tx, block, confirmation_root);
+                        }
+                    }
+                    for hash in &notification.already_cemented {
+                        active.block_already_cemented_callback(hash);
+                    }
                 }
             }));
 
@@ -1158,7 +1169,12 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         }
     }
 
-    fn block_cemented_callback(&self, block: &Arc<BlockEnum>) {
+    fn block_cemented_callback(
+        &self,
+        tx: &LmdbReadTransaction,
+        block: &BlockEnum,
+        confirmation_root: &BlockHash,
+    ) {
         if let Some(election) = self.election(&block.qualified_root()) {
             self.try_confirm(&election, &block.hash());
         }
@@ -1172,12 +1188,12 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             votes = self.votes_with_weight(election);
         } else {
             status = ElectionStatus {
-                winner: Some(Arc::clone(block)),
+                winner: Some(Arc::new(block.clone())),
                 ..Default::default()
             };
             votes = Vec::new();
         }
-        if self.confirming_set.exists(&block.hash()) {
+        if block.hash() == *confirmation_root {
             status.election_status_type = ElectionStatusType::ActiveConfirmedQuorum;
         } else if election.is_some() {
             status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;
@@ -1189,8 +1205,16 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             .lock()
             .unwrap()
             .push_back(status.clone());
-        let tx = self.ledger.read_txn();
-        self.notify_observers(&tx, &status, &votes);
+
+        self.stats
+            .inc(StatType::ActiveElections, DetailType::Cemented);
+        self.stats.inc(
+            StatType::ActiveElections,
+            status.election_status_type.into(),
+        );
+
+        self.notify_observers(tx, &status, &votes);
+
         let cemented_bootstrap_count_reached =
             self.ledger.cemented_count() >= self.ledger.bootstrap_weight_max_blocks();
         let was_active = status.election_status_type == ElectionStatusType::ActiveConfirmedQuorum
@@ -1200,7 +1224,8 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         if cemented_bootstrap_count_reached && was_active && !self.flags.disable_activate_successors
         {
             let guard = self.activate_successors.lock().unwrap();
-            (guard)(tx, block);
+            //TODO remove Arc
+            (guard)(tx, &Arc::new(block.clone()));
         }
     }
 
@@ -1272,7 +1297,10 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 *guard.count_by_behavior_mut(election.behavior) += 1;
 
                 self.stats
+                    .inc(StatType::ActiveElections, DetailType::Started);
+                self.stats
                     .inc(StatType::ActiveElectionsStarted, election_behavior.into());
+
                 trace!(behavior = ?election_behavior, ?election, "active started");
 
                 debug!(

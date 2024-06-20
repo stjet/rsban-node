@@ -11,6 +11,7 @@ enum class name
 {
 	unknown,
 	io,
+	io_daemon,
 	work,
 	packet_processing,
 	vote_processing,

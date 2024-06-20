@@ -123,7 +123,7 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 				logger.info (nano::log::type::daemon, "Start time: {:%c} UTC", fmt::gmtime (dateTime));
 
 				// IO context runner should be started first and stopped last to allow asio handlers to execute during node start/stop
-				runner = std::make_unique<nano::thread_runner> (async_rt.io_ctx, node->config->io_threads);
+				runner = std::make_unique<nano::thread_runner> (async_rt.io_ctx, node->config->io_threads, nano::thread_role::name::io_daemon);
 
 				node->start ();
 

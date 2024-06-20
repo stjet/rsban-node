@@ -9,7 +9,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::VoteApplierExt,
     representatives::RepresentativeRegister,
-    stats::{DetailType, Sample, StatType, Stats},
+    stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BufferDropPolicy, Network},
     utils::{HardenedConstants, ThreadPool},
     wallets::Wallets,
@@ -288,15 +288,36 @@ impl ActiveElections {
     ) {
         let block = status.winner.as_ref().unwrap();
         let account = block.account();
-        let amount = self
-            .ledger
-            .any()
-            .block_amount(tx, &block.hash())
-            .unwrap_or_default();
-        let is_state_send = block.block_type() == BlockType::State && block.is_send();
-        let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
 
-        {
+        match status.election_status_type {
+            ElectionStatusType::ActiveConfirmedQuorum => self.stats.inc_dir(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveQuorum,
+                Direction::Out,
+            ),
+            ElectionStatusType::ActiveConfirmationHeight => self.stats.inc_dir(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveConfHeight,
+                Direction::Out,
+            ),
+            ElectionStatusType::InactiveConfirmationHeight => self.stats.inc_dir(
+                StatType::ConfirmationObserver,
+                DetailType::InactiveConfHeight,
+                Direction::Out,
+            ),
+            _ => {}
+        }
+
+        if !self.election_end.lock().unwrap().is_empty() {
+            let amount = self
+                .ledger
+                .any()
+                .block_amount(tx, &block.hash())
+                .unwrap_or_default();
+
+            let is_state_send = block.block_type() == BlockType::State && block.is_send();
+            let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
+
             let ended_callbacks = self.election_end.lock().unwrap();
             for callback in ended_callbacks.iter() {
                 (callback)(
@@ -310,11 +331,9 @@ impl ActiveElections {
             }
         }
 
-        if amount > Amount::zero() {
-            (self.account_balance_changed)(&account, false);
-            if block.is_send() {
-                (self.account_balance_changed)(&block.destination().unwrap(), true);
-            }
+        (self.account_balance_changed)(&account, false);
+        if block.is_send() {
+            (self.account_balance_changed)(&block.destination().unwrap(), true);
         }
     }
 

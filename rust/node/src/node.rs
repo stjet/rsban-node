@@ -764,35 +764,6 @@ impl Node {
             channel.send(&msg, None, BufferDropPolicy::Limiter, TrafficType::Generic);
         }));
 
-        // Add block confirmation type stats regardless of http-callback and websocket subscriptions
-        let stats_w = Arc::downgrade(&stats);
-        active_elections.add_election_end_callback(Box::new(
-            move |status, _votes, _account, _amount, _is_state_send, _is_state_epoch| {
-                let Some(stats) = stats_w.upgrade() else {
-                    return;
-                };
-                match status.election_status_type {
-                    ElectionStatusType::ActiveConfirmedQuorum => stats.inc_dir(
-                        StatType::ConfirmationObserver,
-                        DetailType::ActiveQuorum,
-                        Direction::Out,
-                    ),
-                    ElectionStatusType::ActiveConfirmationHeight => stats.inc_dir(
-                        StatType::ConfirmationObserver,
-                        DetailType::ActiveConfHeight,
-                        Direction::Out,
-                    ),
-                    ElectionStatusType::InactiveConfirmationHeight => stats.inc_dir(
-                        StatType::ConfirmationObserver,
-                        DetailType::InactiveConfHeight,
-                        Direction::Out,
-                    ),
-                    ElectionStatusType::Ongoing => unreachable!(),
-                    ElectionStatusType::Stopped => {}
-                }
-            },
-        ));
-
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let online_reps_w = Arc::downgrade(&online_reps);
         vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {

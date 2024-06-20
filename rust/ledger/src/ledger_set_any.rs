@@ -46,6 +46,10 @@ impl<'a> LedgerSetAny<'a> {
 
     pub fn block_amount(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
         let block = self.get_block(tx, hash)?;
+        self.block_amount_for(tx, &block)
+    }
+
+    pub fn block_amount_for(&self, tx: &dyn Transaction, block: &BlockEnum) -> Option<Amount> {
         let block_balance = block.balance();
         if block.previous().is_zero() {
             Some(block_balance)

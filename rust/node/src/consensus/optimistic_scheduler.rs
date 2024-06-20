@@ -6,10 +6,10 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account,
+    Account, AccountInfo, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
+use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
@@ -70,28 +70,31 @@ impl OptimisticScheduler {
         self.condition.notify_all();
     }
 
-    fn activate_predicate(&self, tx: &dyn Transaction, account: &Account) -> bool {
-        let unconfirmed_height = self.ledger.any().account_height(tx, account);
-        let confirmed_height = self.ledger.confirmed().account_height(tx, account);
-        // Account with nothing confirmed yet
-        if confirmed_height == 0 {
-            true
-        }
-        // Chain with a big enough gap between account frontier and confirmation frontier
-        else if unconfirmed_height - confirmed_height > self.config.gap_threshold {
-            true
-        } else {
-            false
-        }
+    fn activate_predicate(
+        &self,
+        account_info: &AccountInfo,
+        conf_info: &ConfirmationHeightInfo,
+    ) -> bool {
+        let big_enough_gap =
+            account_info.block_count - conf_info.height > self.config.gap_threshold;
+
+        let nothing_confirmed_yet = conf_info.height == 0;
+
+        big_enough_gap | nothing_confirmed_yet
     }
 
     /// Called from backlog population to process accounts with unconfirmed blocks
-    pub fn activate(&self, tx: &dyn Transaction, account: &Account) -> bool {
+    pub fn activate(
+        &self,
+        account: &Account,
+        account_info: &AccountInfo,
+        conf_info: &ConfirmationHeightInfo,
+    ) -> bool {
         if !self.config.enabled {
             return false;
         }
 
-        if self.activate_predicate(tx, account) {
+        if self.activate_predicate(account_info, conf_info) {
             {
                 let mut candidates = self.candidates.lock().unwrap();
                 // Prevent duplicate candidate accounts

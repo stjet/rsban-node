@@ -553,6 +553,8 @@ impl Node {
             global_config.into(),
             ledger.clone(),
             stats.clone(),
+            optimistic_scheduler.clone(),
+            priority_scheduler.clone(),
         ));
 
         let ascendboot = Arc::new(BootstrapAscending::new(
@@ -695,19 +697,6 @@ impl Node {
                     None,
                 );
             }
-        }));
-
-        let priority_w = Arc::downgrade(&priority_scheduler);
-        let optimistic_w = Arc::downgrade(&optimistic_scheduler);
-        backlog_population.set_activate_callback(Box::new(move |tx, account| {
-            let Some(priority) = priority_w.upgrade() else {
-                return;
-            };
-            let Some(optimistic) = optimistic_w.upgrade() else {
-                return;
-            };
-            priority.activate(tx, account);
-            optimistic.activate(tx, account);
         }));
 
         let ledger_w = Arc::downgrade(&ledger);

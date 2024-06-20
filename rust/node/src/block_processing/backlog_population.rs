@@ -5,7 +5,10 @@ use std::{
     time::Duration,
 };
 
-use crate::stats::{DetailType, StatType, Stats};
+use crate::{
+    consensus::{OptimisticScheduler, PriorityScheduler},
+    stats::{DetailType, StatType, Stats},
+};
 use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo};
 use rsnano_ledger::Ledger;
@@ -43,12 +46,20 @@ pub struct BacklogPopulation {
     /** Thread that runs the backlog implementation logic. The thread always runs, even if
      *  backlog population is disabled, so that it can service a manual trigger (e.g. via RPC). */
     thread: Mutex<Option<JoinHandle<()>>>,
+    optimistic_scheduler: Arc<OptimisticScheduler>,
+    priority_scheduler: Arc<PriorityScheduler>,
 }
 
 pub type ActivateCallback = Box<dyn Fn(&dyn Transaction, &Account) + Send + Sync>;
 
 impl BacklogPopulation {
-    pub fn new(config: BacklogPopulationConfig, ledger: Arc<Ledger>, stats: Arc<Stats>) -> Self {
+    pub fn new(
+        config: BacklogPopulationConfig,
+        ledger: Arc<Ledger>,
+        stats: Arc<Stats>,
+        optimistic_scheduler: Arc<OptimisticScheduler>,
+        priority_scheduler: Arc<PriorityScheduler>,
+    ) -> Self {
         Self {
             config,
             ledger,
@@ -60,6 +71,8 @@ impl BacklogPopulation {
             })),
             condition: Arc::new(Condvar::new()),
             thread: Mutex::new(None),
+            optimistic_scheduler,
+            priority_scheduler,
         }
     }
 
@@ -72,12 +85,14 @@ impl BacklogPopulation {
         debug_assert!(self.thread.lock().unwrap().is_none());
 
         let thread = BacklogPopulationThread {
-            ledger: Arc::clone(&self.ledger),
-            stats: Arc::clone(&self.stats),
-            activate_callback: Arc::clone(&self.activate_callback),
+            ledger: self.ledger.clone(),
+            stats: self.stats.clone(),
+            activate_callback: self.activate_callback.clone(),
             config: self.config.clone(),
-            mutex: Arc::clone(&self.mutex),
-            condition: Arc::clone(&self.condition),
+            mutex: self.mutex.clone(),
+            condition: self.condition.clone(),
+            optimistic_scheduler: self.optimistic_scheduler.clone(),
+            priority_scheduler: self.priority_scheduler.clone(),
         };
 
         *self.thread.lock().unwrap() = Some(
@@ -128,6 +143,8 @@ struct BacklogPopulationThread {
     config: BacklogPopulationConfig,
     mutex: Arc<Mutex<BacklogPopulationFlags>>,
     condition: Arc<Condvar>,
+    optimistic_scheduler: Arc<OptimisticScheduler>,
+    priority_scheduler: Arc<PriorityScheduler>,
 }
 
 impl BacklogPopulationThread {
@@ -225,6 +242,10 @@ impl BacklogPopulationThread {
                     debug_assert!(false)
                 }
             }
+
+            self.optimistic_scheduler
+                .activate(account, account_info, &conf_info);
+            self.priority_scheduler.activate(txn, account);
         }
     }
 }

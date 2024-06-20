@@ -236,11 +236,8 @@ impl BacklogPopulationThread {
             self.stats.inc(StatType::Backlog, DetailType::Activated);
 
             let callback_lock = self.activate_callback.lock().unwrap();
-            match callback_lock.deref() {
-                Some(callback) => callback(txn, account),
-                None => {
-                    debug_assert!(false)
-                }
+            if let Some(callback) = &*callback_lock {
+                callback(txn, account);
             }
 
             self.optimistic_scheduler

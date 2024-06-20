@@ -11,7 +11,7 @@ use rsnano_core::{
     BlockEnum, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
 use std::{
     collections::VecDeque,
     mem::size_of,
@@ -23,7 +23,6 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
-use tracing::trace;
 
 pub(crate) struct VoteGenerator {
     ledger: Arc<Ledger>,
@@ -148,18 +147,6 @@ impl VoteGenerator {
         result
     }
 
-    /// Check if block is eligible for vote generation
-    /// @param transaction : needs `tables::final_votes` lock
-    /// @return: Should vote
-    pub(crate) fn should_vote(
-        &self,
-        txn: &mut LmdbWriteTransaction,
-        root: &Root,
-        hash: &BlockHash,
-    ) -> bool {
-        self.shared_state.should_vote(txn, root, hash)
-    }
-
     pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let candidates_count;
         let requests_count;
@@ -189,7 +176,7 @@ impl VoteGenerator {
 
 impl Drop for VoteGenerator {
     fn drop(&mut self) {
-        self.stop()
+        debug_assert!(self.thread.lock().unwrap().is_none())
     }
 }
 
@@ -366,26 +353,30 @@ impl SharedState {
     }
 
     fn process_batch(&self, batch: VecDeque<(Root, BlockHash)>) {
-        let mut candidates_new = VecDeque::new();
-        {
-            let writer = if self.is_final {
-                Writer::VotingFinal
-            } else {
-                Writer::Voting
-            };
-            let _guard = self.ledger.write_queue.wait(writer);
-            let mut txn = self.ledger.rw_txn();
-            for (root, hash) in batch {
-                if self.should_vote(&mut txn, &root, &hash) {
-                    candidates_new.push_back((root, hash))
+        let mut verified = VecDeque::new();
+
+        if self.is_final {
+            let _guard = self.ledger.write_queue.wait(Writer::VotingFinal);
+            let mut tx = self.ledger.rw_txn();
+            for (root, hash) in &batch {
+                if self.should_vote_final(&mut tx, root, hash) {
+                    verified.push_back((*root, *hash));
                 }
             }
-        }
+        } else {
+            let tx = self.ledger.read_txn();
+            for (root, hash) in &batch {
+                if self.should_vote_non_final(&tx, root, hash) {
+                    verified.push_back((*root, *hash));
+                }
+            }
+        };
 
-        if !candidates_new.is_empty() {
+        // Submit verified candidates to the main processing thread
+        if !verified.is_empty() {
             let should_notify = {
                 let mut queues = self.queues.lock().unwrap();
-                queues.candidates.extend(candidates_new);
+                queues.candidates.extend(verified);
                 queues.candidates.len() >= VoteGenerator::MAX_HASHES
             };
 
@@ -395,36 +386,35 @@ impl SharedState {
         }
     }
 
-    fn should_vote(&self, txn: &mut LmdbWriteTransaction, root: &Root, hash: &BlockHash) -> bool {
-        let block = self.ledger.any().get_block(txn, hash);
-        let should_vote = if self.is_final {
-            match &block {
-                Some(block) => {
-                    debug_assert!(block.root() == *root);
-                    self.ledger.dependents_confirmed(txn, &block)
-                        && self
-                            .ledger
-                            .store
-                            .final_vote
-                            .put(txn, &block.qualified_root(), hash)
-                }
-                None => false,
-            }
-        } else {
-            match &block {
-                Some(block) => self.ledger.dependents_confirmed(txn, &block),
-                None => false,
-            }
+    fn should_vote_non_final(
+        &self,
+        txn: &LmdbReadTransaction,
+        root: &Root,
+        hash: &BlockHash,
+    ) -> bool {
+        let Some(block) = self.ledger.any().get_block(txn, hash) else {
+            return false;
         };
+        debug_assert!(block.root() == *root);
+        self.ledger.dependents_confirmed(txn, &block)
+    }
 
-        trace!(
-            should_vote,
-            is_final = self.is_final,
-            block = %block.map(|b| b.hash()).unwrap_or_default(),
-            "Should vote"
-        );
-
-        should_vote
+    fn should_vote_final(
+        &self,
+        txn: &mut LmdbWriteTransaction,
+        root: &Root,
+        hash: &BlockHash,
+    ) -> bool {
+        let Some(block) = self.ledger.any().get_block(txn, hash) else {
+            return false;
+        };
+        debug_assert!(block.root() == *root);
+        self.ledger.dependents_confirmed(txn, &block)
+            && self
+                .ledger
+                .store
+                .final_vote
+                .put(txn, &block.qualified_root(), hash)
     }
 }
 

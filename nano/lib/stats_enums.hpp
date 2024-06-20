@@ -33,6 +33,7 @@ enum class type : uint8_t
 	socket,
 	confirmation_height,
 	confirmation_observer,
+	confirming_set,
 	drop,
 	aggregator,
 	requests,
@@ -52,9 +53,12 @@ enum class type : uint8_t
 	bootstrap_server_overfill,
 	bootstrap_server_response,
 	active,
-	active_started,
-	active_confirmed,
-	active_dropped,
+	active_elections,
+	active_elections_started,
+	active_elections_stopped,
+	active_elections_confirmed,
+	active_elections_dropped,
+	active_elections_cemented,
 	active_timeout,
 	backlog,
 	unchecked,
@@ -102,6 +106,11 @@ enum class detail : uint16_t
 	rebroadcast,
 	queue_overflow,
 	triggered,
+	notify,
+	duplicate,
+	confirmed,
+	unconfirmed,
+	cemented,
 
 	// processing queue
 	queue,
@@ -355,6 +364,10 @@ enum class detail : uint16_t
 	// active
 	insert,
 	insert_failed,
+	//
+    // active_elections
+	started,
+	stopped,
 
 	// unchecked
 	put,
@@ -422,6 +435,23 @@ enum class detail : uint16_t
 	tier_1,
 	tier_2,
 	tier_3,
+	
+	// confirming_set
+	notify_cemented,
+	notify_already_cemented,
+	already_cemented,
+
+	// election_state
+	passive,
+	active,
+	expired_confirmed,
+	expired_unconfirmed,
+
+	// election_status_type
+	ongoing,
+	active_confirmed_quorum,
+	active_confirmation_height,
+	inactive_confirmation_height,
 };
 
 /** Direction of the stat. If the direction is irrelevant, use in */

@@ -33,12 +33,12 @@ impl<T: TimerStrategy> ThreadPoolData<T> {
 }
 
 impl ThreadPoolImpl<TimerWrapper> {
-    pub fn create(num_threads: usize, thread_name: String) -> Self {
-        Self::new(num_threads, thread_name, Timer::new())
+    pub fn create(num_threads: usize, thread_name: impl Into<String>) -> Self {
+        Self::new(num_threads, thread_name.into(), Timer::new())
     }
 
     pub fn new_test_instance() -> Self {
-        Self::create(2, "test pool".into())
+        Self::create(2, "test pool")
     }
 }
 
@@ -120,8 +120,6 @@ impl<T: TimerStrategy + 'static> ThreadPool for ThreadPoolImpl<T> {
         }
     }
 }
-
-//todo collect_container_info
 
 impl<T: TimerStrategy + 'static> Drop for ThreadPoolImpl<T> {
     fn drop(&mut self) {

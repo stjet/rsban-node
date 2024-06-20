@@ -32,6 +32,7 @@ pub enum StatType {
     Socket,
     ConfirmationHeight,
     ConfirmationObserver,
+    ConfirmingSet,
     Drop,
     Aggregator,
     Requests,
@@ -51,9 +52,12 @@ pub enum StatType {
     BootstrapServerOverfill,
     BootstrapServerResponse,
     Active,
-    ActiveStarted,
-    ActiveConfirmed,
-    ActiveDropped,
+    ActiveElections,
+    ActiveElectionsStarted,
+    ActiveElectionsStopped,
+    ActiveElectionsConfirmed,
+    ActiveElectionsDropped,
+    ActiveElectionsCemented,
     ActiveTimeout,
     Backlog,
     Unchecked,
@@ -109,6 +113,11 @@ pub enum DetailType {
     Rebroadcast,
     QueueOverflow,
     Triggered,
+    Notify,
+    Duplicate,
+    Confirmed,
+    Unconfirmed,
+    Cemented,
 
     // processing queue
     Queue,
@@ -363,6 +372,10 @@ pub enum DetailType {
     Insert,
     InsertFailed,
 
+    // active_elections
+    Started,
+    Stopped,
+
     // unchecked
     Put,
     Satisfied,
@@ -429,6 +442,23 @@ pub enum DetailType {
     Tier1,
     Tier2,
     Tier3,
+
+    // confirming_set
+    NotifyCemented,
+    NotifyAlreadyCemented,
+    AlreadyCemented,
+
+    // election_state
+    Passive,
+    Active,
+    ExpiredConfirmed,
+    ExpiredUnconfirmed,
+
+    // election_status_type
+    Ongoing,
+    ActiveConfirmedQuorum,
+    ActiveConfirmationHeight,
+    InactiveConfirmationHeight,
 }
 
 impl DetailType {

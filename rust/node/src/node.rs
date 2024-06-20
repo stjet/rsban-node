@@ -77,6 +77,8 @@ pub struct Node {
     pub stats: Arc<Stats>,
     pub workers: Arc<dyn ThreadPool>,
     pub bootstrap_workers: Arc<dyn ThreadPool>,
+    wallet_workers: Arc<dyn ThreadPool>,
+    election_workers: Arc<dyn ThreadPool>,
     flags: NodeFlags,
     work: Arc<WorkPoolImpl>,
     pub distributed_work: Arc<DistributedWorkFactory>,
@@ -177,10 +179,15 @@ impl Node {
 
         let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(config.borrow().into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));
+
         let workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
             config.background_threads as usize,
             "Worker".to_string(),
         ));
+        let wallet_workers: Arc<dyn ThreadPool> =
+            Arc::new(ThreadPoolImpl::create(1, "Wallet work"));
+        let election_workers: Arc<dyn ThreadPool> =
+            Arc::new(ThreadPoolImpl::create(1, "Election work"));
 
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
             config.message_processor.max_queue,
@@ -372,7 +379,7 @@ impl Node {
             wallets.clone(),
             recently_confirmed.clone(),
             confirming_set.clone(),
-            workers.clone(),
+            election_workers.clone(),
         ));
 
         let vote_router = Arc::new(VoteRouter::new(
@@ -690,7 +697,7 @@ impl Node {
 
         let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
             config.bootstrap_serving_threads as usize,
-            "Bootstrap work".to_string(),
+            "Bootstrap work",
         ));
 
         process_live_dispatcher.connect(&block_processor);
@@ -903,7 +910,7 @@ impl Node {
             }
         }
 
-        let workers_w = Arc::downgrade(&workers);
+        let workers_w = Arc::downgrade(&wallet_workers);
         let wallets_w = Arc::downgrade(&wallets);
         confirming_set.add_cemented_observer(Box::new(move |block| {
             let Some(workers) = workers_w.upgrade() else {
@@ -913,6 +920,7 @@ impl Node {
                 return;
             };
 
+            // TODO: Is it neccessary to call this for all blocks?
             if block.is_send() {
                 let block = block.clone();
                 workers.push_task(Box::new(move || {
@@ -1044,6 +1052,8 @@ impl Node {
             node_id,
             workers,
             bootstrap_workers,
+            wallet_workers,
+            election_workers,
             distributed_work,
             unchecked,
             telemetry,
@@ -1296,6 +1306,9 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.bootstrap_workers.stop();
+        self.wallet_workers.stop();
+        self.election_workers.stop();
         self.vote_router.stop();
         self.peer_connector.stop();
         self.ledger_pruning.stop();

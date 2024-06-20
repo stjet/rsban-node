@@ -671,11 +671,11 @@ impl ActiveElections {
 
     fn completion_type(&self, election: &Election) -> StatType {
         if self.confirmed(election) {
-            StatType::ActiveConfirmed
+            StatType::ActiveElectionsConfirmed
         } else if election.failed() {
             StatType::ActiveTimeout
         } else {
-            StatType::ActiveDropped
+            StatType::ActiveElectionsDropped
         }
     }
 
@@ -1272,7 +1272,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 *guard.count_by_behavior_mut(election.behavior) += 1;
 
                 self.stats
-                    .inc(StatType::ActiveStarted, election_behavior.into());
+                    .inc(StatType::ActiveElectionsStarted, election_behavior.into());
                 trace!(behavior = ?election_behavior, ?election, "active started");
 
                 debug!(

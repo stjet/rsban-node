@@ -245,7 +245,8 @@ impl BacklogPopulationThread {
 
             self.optimistic_scheduler
                 .activate(account, account_info, &conf_info);
-            self.priority_scheduler.activate(txn, account);
+            self.priority_scheduler
+                .activate_with_info(txn, account, account_info, &conf_info);
         }
     }
 }

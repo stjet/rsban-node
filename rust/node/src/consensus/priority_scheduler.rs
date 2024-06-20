@@ -4,8 +4,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
-    utils::{seconds_since_epoch, ContainerInfoComponent},
-    Account, BlockEnum, QualifiedRoot, Root,
+    utils::ContainerInfoComponent, Account, AccountInfo, BlockEnum, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -50,76 +49,77 @@ impl PriorityScheduler {
 
     pub fn activate(&self, tx: &dyn Transaction, account: &Account) -> bool {
         debug_assert!(!account.is_zero());
-
-        let head = self
-            .ledger
-            .confirmed()
-            .account_head(tx, account)
-            .unwrap_or_default();
-        if self
-            .ledger
-            .any()
-            .account_head(tx, account)
-            .unwrap_or_default()
-            == head
-        {
-            return false;
-        }
-
-        let root = if head.is_zero() {
-            Root::from(account)
-        } else {
-            head.into()
-        };
-
-        let successor = self
-            .ledger
-            .any()
-            .block_successor_by_qualified_root(tx, &QualifiedRoot::new(root, head))
-            .unwrap();
-
-        let block = self.ledger.any().get_block(tx, &successor).unwrap();
-
-        if !self.ledger.dependents_confirmed(tx, &block) {
-            return false;
-        }
-
-        let previous_balance = self
-            .ledger
-            .confirmed()
-            .block_balance(tx, &head)
-            .unwrap_or_default();
-        let balance_priority = max(block.balance(), previous_balance);
-
-        let time_priority = if !head.is_zero() {
-            self.ledger
-                .confirmed()
-                .get_block(tx, &head)
-                .unwrap()
-                .sideband()
-                .unwrap()
-                .timestamp
-        } else {
-            // New accounts get current timestamp i.e. lowest priority
-            seconds_since_epoch()
+        if let Some(account_info) = self.ledger.any().get_account(tx, account) {
+            let conf_info = self
+                .ledger
+                .store
+                .confirmation_height
+                .get(tx, account)
+                .unwrap_or_default();
+            if conf_info.height < account_info.block_count {
+                return self.activate_with_info(tx, account, &account_info, &conf_info);
+            }
         };
 
         self.stats
-            .inc(StatType::ElectionScheduler, DetailType::Activated);
+            .inc(StatType::ElectionScheduler, DetailType::ActivateSkip);
+        false // Not activated
+    }
 
-        trace!(
-            account = account.encode_account(),
-            ?block,
-            time = time_priority,
-            priority = balance_priority.number(),
-            "priority scheduler activated"
+    pub fn activate_with_info(
+        &self,
+        tx: &dyn Transaction,
+        account: &Account,
+        account_info: &AccountInfo,
+        conf_info: &ConfirmationHeightInfo,
+    ) -> bool {
+        debug_assert!(conf_info.frontier != account_info.head);
+
+        let hash = match conf_info.height {
+            0 => account_info.open_block,
+            _ => self
+                .ledger
+                .any()
+                .block_successor(tx, &conf_info.frontier)
+                .unwrap(),
+        };
+
+        let block = self.ledger.any().get_block(tx, &hash).unwrap();
+
+        if !self.ledger.dependents_confirmed(tx, &block) {
+            self.stats
+                .inc(StatType::ElectionScheduler, DetailType::ActivateFailed);
+            return false; // Not activated
+        }
+
+        let balance = block.balance();
+        let previous_balance = self
+            .ledger
+            .any()
+            .block_balance(tx, &conf_info.frontier)
+            .unwrap_or_default();
+        let balance_priority = max(balance, previous_balance);
+
+        let added = self.mutex.lock().unwrap().buckets.push(
+            account_info.modified,
+            Arc::new(block),
+            balance_priority,
         );
 
-        let mut guard = self.mutex.lock().unwrap();
-        guard
-            .buckets
-            .push(time_priority, Arc::new(block), balance_priority);
-        self.notify();
+        if added {
+            self.stats
+                .inc(StatType::ElectionScheduler, DetailType::Activated);
+            trace!(
+                account = account.encode_account(),
+                time = account_info.modified,
+                priority = ?balance_priority,
+                "block activated"
+            );
+            self.notify();
+        } else {
+            self.stats
+                .inc(StatType::ElectionScheduler, DetailType::ActivateFull);
+        }
 
         true // Activated
     }

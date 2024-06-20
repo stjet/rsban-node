@@ -72,11 +72,13 @@ impl Bucket {
         self.queue.pop_first();
     }
 
-    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>) {
-        self.queue.insert(ValueType::new(time, block));
+    /// Returns true if the block was inserted
+    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>) -> bool {
+        let added = self.queue.insert(ValueType::new(time, block));
         if self.queue.len() > self.maximum {
             self.queue.pop_last();
         }
+        added
     }
 
     pub fn len(&self) -> usize {
@@ -154,13 +156,14 @@ impl Buckets {
 
     /// Push a block and its associated time into the prioritization container.
     /// The time is given here because sideband might not exist in the case of state blocks.
-    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>, priority: Amount) {
+    pub fn push(&mut self, time: u64, block: Arc<BlockEnum>, priority: Amount) -> bool {
         let was_empty = self.is_empty();
-        self.find_bucket(priority).push(time, block);
+        let added = self.find_bucket(priority).push(time, block);
 
         if was_empty {
             self.seek();
         }
+        added
     }
 
     /// Moves the bucket pointer to the next bucket

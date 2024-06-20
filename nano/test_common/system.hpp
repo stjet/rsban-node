@@ -36,7 +36,7 @@ namespace test
 
 		void stop ();
 
-		void ledger_initialization_set (std::vector<nano::keypair> const & reps, nano::amount const & reserve = 0);
+		void ledger_initialization_set (std::deque<nano::keypair> const & reps, nano::amount const & reserve = 0);
 		void generate_activity (nano::node &, std::vector<nano::account> &);
 		void generate_mass_activity (uint32_t, nano::node &);
 		void generate_usage_traffic (uint32_t, uint32_t, size_t);

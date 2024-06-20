@@ -346,6 +346,9 @@ enum class detail : uint16_t
 
 	// backlog
 	activated,
+	activate_failed,
+	activate_skip,
+	activate_full,
 
 	// active
 	insert,

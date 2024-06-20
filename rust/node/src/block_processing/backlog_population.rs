@@ -7,7 +7,7 @@ use std::{
 
 use crate::stats::{DetailType, StatType, Stats};
 use primitive_types::U256;
-use rsnano_core::Account;
+use rsnano_core::{Account, AccountInfo};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::Transaction;
 
@@ -168,7 +168,7 @@ impl BacklogPopulationThread {
 
                 let mut count = 0u32;
                 let mut i = self.ledger.any().accounts_range(&transaction, next..);
-                while let Some((account, _)) = i.next() {
+                while let Some((account, info)) = i.next() {
                     if count >= chunk_size {
                         break;
                     }
@@ -180,7 +180,7 @@ impl BacklogPopulationThread {
 
                     self.stats.inc(StatType::Backlog, DetailType::Total);
 
-                    self.activate(&transaction, &account);
+                    self.activate(&transaction, &account, &info);
                     next = (account.number().overflowing_add(U256::from(1)).0).into();
 
                     count += 1;
@@ -206,14 +206,7 @@ impl BacklogPopulationThread {
         }
     }
 
-    pub fn activate(&self, txn: &dyn Transaction, account: &Account) {
-        let account_info = match self.ledger.store.account.get(txn, account) {
-            Some(info) => info,
-            None => {
-                return;
-            }
-        };
-
+    fn activate(&self, txn: &dyn Transaction, account: &Account, account_info: &AccountInfo) {
         let conf_info = self
             .ledger
             .store
@@ -224,6 +217,7 @@ impl BacklogPopulationThread {
         // If conf info is empty then it means then it means nothing is confirmed yet
         if conf_info.height < account_info.block_count {
             self.stats.inc(StatType::Backlog, DetailType::Activated);
+
             let callback_lock = self.activate_callback.lock().unwrap();
             match callback_lock.deref() {
                 Some(callback) => callback(txn, account),

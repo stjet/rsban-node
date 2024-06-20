@@ -1,14 +1,14 @@
 use crate::{
     block_processing::{
-        BacklogPopulation, BacklogPopulationConfig, BlockProcessor, BlockSource,
-        LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
+        BacklogPopulation, BlockProcessor, BlockSource, LocalBlockBroadcaster,
+        LocalBlockBroadcasterExt, UncheckedMap,
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
         BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
     },
     cementation::ConfirmingSet,
-    config::{FrontiersConfirmationMode, GlobalConfig, NodeConfig, NodeFlags},
+    config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
         create_loopback_channel, AccountBalanceChangedCallback, ActiveElections,
         ActiveElectionsExt, ElectionEndCallback, ElectionStatusType, HintedScheduler,
@@ -383,7 +383,7 @@ impl Node {
             vote_applier.clone(),
         ));
 
-        let active = Arc::new(ActiveElections::new(
+        let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
             Arc::clone(&online_reps),
             Arc::clone(&wallets),
@@ -406,7 +406,7 @@ impl Node {
             vote_router.clone(),
         ));
 
-        active.initialize();
+        active_elections.initialize();
 
         let vote_processor = Arc::new(VoteProcessor::new(
             Arc::clone(&vote_processor_queue),
@@ -419,7 +419,7 @@ impl Node {
             config.websocket_config.clone(),
             Arc::clone(&wallets),
             Arc::clone(&async_rt),
-            &active,
+            &active_elections,
             &telemetry,
             &vote_processor,
         );
@@ -479,7 +479,7 @@ impl Node {
             Arc::clone(&network),
             Arc::clone(&async_rt),
             Arc::clone(&ledger),
-            Arc::clone(&active),
+            Arc::clone(&active_elections),
             peer_connector.clone(),
         ));
 
@@ -505,7 +505,7 @@ impl Node {
 
         let hinted_scheduler = Arc::new(HintedScheduler::new(
             config.hinted_scheduler.clone(),
-            Arc::clone(&active),
+            Arc::clone(&active_elections),
             Arc::clone(&ledger),
             Arc::clone(&stats),
             Arc::clone(&vote_cache),
@@ -515,26 +515,26 @@ impl Node {
 
         let manual_scheduler = Arc::new(ManualScheduler::new(
             Arc::clone(&stats),
-            Arc::clone(&active),
+            Arc::clone(&active_elections),
         ));
 
         let optimistic_scheduler = Arc::new(OptimisticScheduler::new(
             config.optimistic_scheduler.clone(),
             Arc::clone(&stats),
-            Arc::clone(&active),
+            Arc::clone(&active_elections),
             network_params.network.clone(),
             Arc::clone(&ledger),
             Arc::clone(&confirming_set),
         ));
 
         let priority_scheduler = Arc::new(PriorityScheduler::new(
-            Arc::clone(&ledger),
-            Arc::clone(&stats),
-            Arc::clone(&active),
+            ledger.clone(),
+            stats.clone(),
+            active_elections.clone(),
         ));
 
         let priority_clone = Arc::downgrade(&priority_scheduler);
-        active.set_activate_successors_callback(Box::new(move |tx, block| {
+        active_elections.set_activate_successors_callback(Box::new(move |tx, block| {
             if let Some(priority) = priority_clone.upgrade() {
                 priority.activate_successors(&tx, block);
             }
@@ -550,13 +550,9 @@ impl Node {
         ));
 
         let backlog_population = Arc::new(BacklogPopulation::new(
-            BacklogPopulationConfig {
-                enabled: config.frontiers_confirmation != FrontiersConfirmationMode::Disabled,
-                batch_size: config.backlog_scan_batch_size,
-                frequency: config.backlog_scan_frequency,
-            },
-            Arc::clone(&ledger),
-            Arc::clone(&stats),
+            global_config.into(),
+            ledger.clone(),
+            stats.clone(),
         ));
 
         let ascendboot = Arc::new(BootstrapAscending::new(
@@ -658,7 +654,7 @@ impl Node {
 
         let block_processor_w = Arc::downgrade(&block_processor);
         let history_w = Arc::downgrade(&history);
-        let active_w = Arc::downgrade(&active);
+        let active_w = Arc::downgrade(&active_elections);
         block_processor.set_blocks_rolled_back_callback(Box::new(
             move |rolled_back, initial_block| {
                 // Deleting from votes cache, stop active transaction
@@ -753,7 +749,7 @@ impl Node {
         let hinted_w = Arc::downgrade(&hinted_scheduler);
         let optimistic_w = Arc::downgrade(&optimistic_scheduler);
         // Notify election schedulers when AEC frees election slot
-        *active.vacancy_update.lock().unwrap() = Box::new(move || {
+        *active_elections.vacancy_update.lock().unwrap() = Box::new(move || {
             let Some(priority) = priority_w.upgrade() else {
                 return;
             };
@@ -781,7 +777,7 @@ impl Node {
 
         // Add block confirmation type stats regardless of http-callback and websocket subscriptions
         let stats_w = Arc::downgrade(&stats);
-        active.add_election_end_callback(Box::new(
+        active_elections.add_election_end_callback(Box::new(
             move |status, _votes, _account, _amount, _is_state_send, _is_state_epoch| {
                 let Some(stats) = stats_w.upgrade() else {
                     return;
@@ -967,7 +963,7 @@ impl Node {
             )
             .parse()
             .unwrap();
-            active.add_election_end_callback(Box::new(
+            active_elections.add_election_end_callback(Box::new(
                 move |status, _weights, account, amount, is_state_send, is_state_epoch| {
                     let block = Arc::clone(status.winner.as_ref().unwrap());
                     if status.election_status_type == ElectionStatusType::ActiveConfirmedQuorum
@@ -1109,7 +1105,7 @@ impl Node {
             block_processor,
             wallets,
             vote_generators,
-            active,
+            active: active_elections,
             vote_processor,
             websocket,
             bootstrap_initiator,

@@ -353,6 +353,9 @@ pub enum DetailType {
 
     // backlog
     Activated,
+    ActivateFailed,
+    ActivateSkip,
+    ActivateFull,
 
     // active
     Insert,

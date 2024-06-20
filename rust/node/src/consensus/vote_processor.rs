@@ -22,6 +22,7 @@ pub struct VoteProcessorConfig {
     pub pr_priority: usize,
     pub threads: usize,
     pub batch_size: usize,
+    pub max_triggered: usize,
 }
 
 impl VoteProcessorConfig {
@@ -32,6 +33,7 @@ impl VoteProcessorConfig {
             pr_priority: 3,
             threads: max(1, min(4, parallelism / 2)),
             batch_size: 1024,
+            max_triggered: 16384,
         }
     }
 }

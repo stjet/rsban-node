@@ -41,6 +41,7 @@ enum class type : uint8_t
 	telemetry,
 	vote_generator,
 	vote_cache,
+	vote_cache_processor,
 	hinting,
 	blockprocessor,
 	blockprocessor_source,
@@ -100,6 +101,7 @@ enum class detail : uint16_t
 	cache,
 	rebroadcast,
 	queue_overflow,
+	triggered,
 
 	// processing queue
 	queue,

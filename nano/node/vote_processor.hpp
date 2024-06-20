@@ -1,7 +1,6 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-
 #include <nano/lib/numbers.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
@@ -10,21 +9,6 @@
 
 namespace nano
 {
-class signature_checker;
-namespace store
-{
-	class component;
-}
-class stats;
-class node_config;
-class logger;
-class online_reps;
-class rep_crawler;
-class ledger;
-class network_params;
-class node_flags;
-class stats;
-class rep_tiers;
 
 namespace transport
 {
@@ -45,6 +29,7 @@ public:
 	size_t pr_priority{ 3 };
 	size_t threads{ 4 };
 	size_t batch_size{ 1024 };
+	size_t max_triggered{ 16384 };
 };
 
 class vote_processor_queue

@@ -57,7 +57,8 @@ nano::vote_processor_config::vote_processor_config (rsnano::VoteProcessorConfigD
 	max_non_pr_queue{ dto.max_non_pr_queue },
 	pr_priority{ dto.pr_priority },
 	threads{ dto.threads },
-	batch_size{ dto.batch_size }
+	batch_size{ dto.batch_size },
+	max_triggered{ dto.max_triggered},
 {
 }
 
@@ -74,5 +75,5 @@ nano::error nano::vote_processor_config::deserialize (nano::tomlconfig & toml)
 
 rsnano::VoteProcessorConfigDto nano::vote_processor_config::to_dto () const
 {
-	return { max_pr_queue, max_non_pr_queue, pr_priority, threads, batch_size };
+	return { max_pr_queue, max_non_pr_queue, pr_priority, threads, batch_size, max_triggered };
 }

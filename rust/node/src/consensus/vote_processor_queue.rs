@@ -67,6 +67,7 @@ impl VoteProcessorQueue {
         self.data.lock().unwrap().queue.is_empty()
     }
 
+    /// Queue vote for processing. @returns true if the vote was queued
     pub fn vote(&self, vote: Arc<Vote>, channel: &Arc<ChannelEnum>, source: VoteSource) -> bool {
         let tier = self.rep_tiers.tier(&vote.voting_account);
 

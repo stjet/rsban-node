@@ -40,6 +40,7 @@ pub enum StatType {
     Telemetry,
     VoteGenerator,
     VoteCache,
+    VoteCacheProcessor,
     Hinting,
     Blockprocessor,
     BlockprocessorSource,
@@ -107,6 +108,7 @@ pub enum DetailType {
     Cache,
     Rebroadcast,
     QueueOverflow,
+    Triggered,
 
     // processing queue
     Queue,

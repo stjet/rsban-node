@@ -5,41 +5,12 @@
 #include <nano/lib/threading.hpp>
 
 #include <algorithm>
-#include <memory>
 #include <string>
-#include <thread>
 #include <vector>
 
 namespace nano
 {
 class tomlconfig;
-
-/**
- * Configuration options for RPC TLS.
- * @note This is deprecated, but kept for a few versions in order to yield a config error message on startup if it's used.
- */
-class rpc_secure_config final
-{
-public:
-	nano::error serialize_toml (nano::tomlconfig &) const;
-	nano::error deserialize_toml (nano::tomlconfig &);
-
-private:
-	/** If true, enable TLS */
-	bool enable{ false };
-	/** If true, log certificate verification details */
-	bool verbose_logging{ false };
-	/** Must be set if the private key PEM is password protected */
-	std::string server_key_passphrase;
-	/** Path to certificate- or chain file. Must be PEM formatted. */
-	std::string server_cert_path;
-	/** Path to private key file. Must be PEM formatted.*/
-	std::string server_key_path;
-	/** Path to dhparam file */
-	std::string server_dh_path;
-	/** Optional path to directory containing client certificates */
-	std::string client_certs_path;
-};
 
 class rpc_process_config final
 {
@@ -73,7 +44,6 @@ public:
 	std::string address;
 	uint16_t port;
 	bool enable_control;
-	rpc_secure_config secure;
 	uint8_t max_json_depth;
 	uint64_t max_request_size;
 	nano::rpc_logging_config rpc_logging;

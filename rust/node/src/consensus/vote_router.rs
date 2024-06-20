@@ -193,14 +193,6 @@ impl VoteRouter {
         }
     }
 
-    pub fn trigger_vote_cache(&self, hash: &BlockHash) -> bool {
-        let cached = self.vote_cache.lock().unwrap().find(hash);
-        for cached_vote in &cached {
-            self.vote_filter(cached_vote, VoteSource::Cache, hash);
-        }
-        !cached.is_empty()
-    }
-
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.shared.1.lock().unwrap();
         ContainerInfoComponent::Composite(

@@ -383,6 +383,20 @@ impl Node {
             vote_applier.clone(),
         ));
 
+        let vote_processor = Arc::new(VoteProcessor::new(
+            vote_processor_queue.clone(),
+            vote_router.clone(),
+            stats.clone(),
+            on_vote,
+        ));
+
+        let vote_cache_processor = Arc::new(VoteCacheProcessor::new(
+            stats.clone(),
+            vote_cache.clone(),
+            vote_router.clone(),
+            config.vote_processor.clone(),
+        ));
+
         let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
             online_reps.clone(),
@@ -404,24 +418,10 @@ impl Node {
             recently_confirmed,
             vote_applier,
             vote_router.clone(),
+            vote_cache_processor.clone(),
         ));
 
         active_elections.initialize();
-
-        let vote_processor = Arc::new(VoteProcessor::new(
-            vote_processor_queue.clone(),
-            vote_router.clone(),
-            stats.clone(),
-            on_vote,
-        ));
-
-        let vote_cache_processor = Arc::new(VoteCacheProcessor::new(
-            stats.clone(),
-            vote_cache.clone(),
-            vote_router.clone(),
-            config.vote_processor.clone(),
-        ));
-
         let websocket = create_websocket_server(
             config.websocket_config.clone(),
             wallets.clone(),

@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
     ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteApplier, VoteCache, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
+    VoteApplier, VoteCache, VoteCacheProcessor, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -121,6 +121,7 @@ pub struct ActiveElections {
     flags: NodeFlags,
     pub vote_applier: Arc<VoteApplier>,
     pub vote_router: Arc<VoteRouter>,
+    vote_cache_processor: Arc<VoteCacheProcessor>,
 }
 
 impl ActiveElections {
@@ -145,6 +146,7 @@ impl ActiveElections {
         recently_confirmed: Arc<RecentlyConfirmedCache>,
         vote_applier: Arc<VoteApplier>,
         vote_router: Arc<VoteRouter>,
+        vote_cache_processor: Arc<VoteCacheProcessor>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveElectionsState {
@@ -185,6 +187,7 @@ impl ActiveElections {
             flags,
             vote_applier,
             vote_router,
+            vote_cache_processor,
         }
     }
 
@@ -1215,7 +1218,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                     .connect(block.hash(), Arc::downgrade(&election));
                 drop(guard);
 
-                self.vote_router.trigger_vote_cache(&block.hash());
+                self.vote_cache_processor.trigger(block.hash());
 
                 self.stats
                     .inc(StatType::Active, DetailType::ElectionBlockConflict);
@@ -1287,7 +1290,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         if inserted {
             debug_assert!(election_result.is_some());
 
-            self.vote_router.trigger_vote_cache(&hash);
+            self.vote_cache_processor.trigger(hash);
 
             {
                 let callbacks = self.active_started_observer.lock().unwrap();

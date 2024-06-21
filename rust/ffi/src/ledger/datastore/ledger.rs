@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
-    ledger::{GenerateCacheHandle, LedgerCacheHandle, LedgerConstantsDto},
+    ledger::{GenerateCacheHandle, LedgerConstantsDto},
     StatHandle, StringDto,
 };
 use num_traits::FromPrimitive;
@@ -15,7 +15,11 @@ use rsnano_ledger::{
     AnyReceivableIterator, BlockStatus, Ledger, LedgerSetAny, LedgerSetConfirmed, Writer,
 };
 use rsnano_node::stats::LedgerStats;
-use std::{ops::Deref, ptr::null_mut, sync::Arc};
+use std::{
+    ops::Deref,
+    ptr::null_mut,
+    sync::{atomic::Ordering, Arc},
+};
 
 pub struct LedgerHandle(pub Arc<Ledger>);
 
@@ -150,13 +154,6 @@ pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
         })
         .collect();
     *(*handle).0.bootstrap_weights.lock().unwrap() = weights;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_get_cache_handle(
-    handle: *mut LedgerHandle,
-) -> *mut LedgerCacheHandle {
-    LedgerCacheHandle::new((*handle).0.cache.clone())
 }
 
 #[no_mangle]
@@ -485,4 +482,24 @@ pub extern "C" fn rsn_receivable_iterator_next(
         }
         None => false,
     }
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_cemented_count(handle: &LedgerHandle) -> u64 {
+    handle.cache.cemented_count.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_block_count(handle: &LedgerHandle) -> u64 {
+    handle.cache.block_count.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_account_count(handle: &LedgerHandle) -> u64 {
+    handle.cache.account_count.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_pruned_count(handle: &LedgerHandle) -> u64 {
+    handle.cache.pruned_count.load(Ordering::SeqCst)
 }

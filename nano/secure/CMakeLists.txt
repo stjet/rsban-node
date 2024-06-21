@@ -9,8 +9,6 @@ add_library(
   generate_cache_flags.cpp
   ledger.hpp
   ledger.cpp
-  ledger_cache.hpp
-  ledger_cache.cpp
   network_filter.hpp
   network_filter.cpp
   pending_info.hpp

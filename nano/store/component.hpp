@@ -26,7 +26,6 @@ namespace store
 	class pruned;
 	class version;
 }
-class ledger_cache;
 
 namespace store
 {

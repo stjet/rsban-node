@@ -4,7 +4,6 @@
 #include <nano/lib/timer.hpp>
 #include <nano/secure/account_info.hpp>
 #include <nano/secure/generate_cache_flags.hpp>
-#include <nano/secure/ledger_cache.hpp>
 #include <nano/secure/pending_info.hpp>
 #include <nano/store/write_queue.hpp>
 
@@ -132,7 +131,6 @@ public:
 	static nano::uint128_t const unit;
 	nano::store::component & store;
 	rsnano::LedgerHandle * handle;
-	nano::ledger_cache cache;
 	nano::ledger_constants & constants;
 };
 }

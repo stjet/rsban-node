@@ -12,9 +12,9 @@ pub struct RepWeightsUpdater {
 }
 
 impl RepWeightsUpdater {
-    pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount, cache: RepWeightCache) -> Self {
+    pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount, cache: &RepWeightCache) -> Self {
         RepWeightsUpdater {
-            weight_cache: cache.take(),
+            weight_cache: cache.inner(),
             store,
             min_weight,
         }
@@ -116,8 +116,7 @@ mod tests {
         let store = Arc::new(LmdbRepWeightStore::new(env).unwrap());
         let account = Account::from(1);
         let rep_weights = RepWeightCache::new();
-        let rep_weights_updater =
-            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero(), &rep_weights);
         assert_eq!(rep_weights.get_weight(&account), Amount::zero());
 
         rep_weights_updater.representation_put(account, Amount::from(1));
@@ -143,8 +142,7 @@ mod tests {
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
         let rep_weights = RepWeightCache::new();
-        let rep_weights_updater =
-            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero(), &rep_weights);
         rep_weights_updater.representation_put(representative, weight);
         let mut tx = env.tx_begin_write();
 
@@ -176,8 +174,7 @@ mod tests {
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
         let rep_weights = RepWeightCache::new();
-        let rep_weights_updater =
-            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero(), &rep_weights);
         rep_weights_updater.representation_put(rep1, weight);
         rep_weights_updater.representation_put(rep2, weight);
         let mut tx = env.tx_begin_write();
@@ -205,7 +202,7 @@ mod tests {
         let min_weight = Amount::from(10);
         let rep_weight = Amount::from(9);
         let rep_weights = RepWeightCache::new();
-        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, rep_weights.clone());
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, &rep_weights);
 
         rep_weights_updater.representation_add(&mut txn, representative, rep_weight);
 
@@ -230,7 +227,7 @@ mod tests {
         let mut txn = env.tx_begin_write();
         let min_weight = Amount::from(10);
         let rep_weights = RepWeightCache::new();
-        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, rep_weights.clone());
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, &rep_weights);
 
         rep_weights_updater.representation_add(
             &mut txn,

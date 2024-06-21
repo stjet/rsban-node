@@ -1,4 +1,4 @@
-use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
+use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, LedgerCache, RepWeightCache};
 use rsnano_core::{Account, Amount, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{LmdbStore, LmdbWriteTransaction, TestDbFile};
 use std::sync::Arc;
@@ -15,8 +15,16 @@ impl LedgerContext {
     pub fn empty() -> Self {
         let db_file = TestDbFile::random();
         let store = Arc::new(LmdbStore::open(&db_file.path).build().unwrap());
+        let rep_weights = Arc::new(RepWeightCache::new());
         let ledger = Arc::new(
-            Ledger::new(store.clone(), LEDGER_CONSTANTS_STUB.clone(), Amount::zero()).unwrap(),
+            Ledger::new(
+                store.clone(),
+                LEDGER_CONSTANTS_STUB.clone(),
+                Amount::zero(),
+                rep_weights,
+                Arc::new(LedgerCache::new()),
+            )
+            .unwrap(),
         );
 
         LedgerContext {

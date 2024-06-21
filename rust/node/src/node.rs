@@ -49,7 +49,7 @@ use rsnano_core::{
     work::WorkPoolImpl,
     Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode, VoteSource,
 };
-use rsnano_ledger::{Ledger, RepWeightCache};
+use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
@@ -181,41 +181,49 @@ impl Node {
         info!("Work peers: {}", config.work_peers.len());
         info!("Node ID: {}", node_id.public_key().to_node_id());
 
+        let (max_blocks, bootstrap_weights) = if (network_params.network.is_live_network()
+            || network_params.network.is_beta_network())
+            && !flags.inactive_node
+        {
+            get_bootstrap_weights(network_params.network.current_network)
+        } else {
+            (0, HashMap::new())
+        };
+
+        let ledger_cache = Arc::new(LedgerCache::new());
+
+        let rep_weights = Arc::new(RepWeightCache::with_bootstrap_weights(
+            bootstrap_weights,
+            max_blocks,
+            ledger_cache.clone(),
+        ));
+
         let mut ledger = Ledger::new(
             store.clone(),
             network_params.ledger.clone(),
             config.representative_vote_weight_minimum,
+            rep_weights,
+            ledger_cache,
         )
         .expect("Could not initialize ledger");
 
-        ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));
-        let ledger = Arc::new(ledger);
-
-        if (network_params.network.is_live_network() || network_params.network.is_beta_network())
-            && !flags.inactive_node
-        {
-            let (max_blocks, weights) =
-                get_bootstrap_weights(network_params.network.current_network);
-            ledger.set_bootstrap_weight_max_blocks(max_blocks);
-
+        if !ledger.rep_weights.bootstrap_weights.is_empty() {
             info!(
                 "Initial bootstrap height: {}",
-                ledger.bootstrap_weight_max_blocks()
+                ledger.rep_weights.bootstrap_weight_max_blocks()
             );
             info!("Current ledger height:    {}", ledger.block_count());
 
             // Use bootstrap weights if initial bootstrap is not completed
-            let use_bootstrap_weight = ledger.block_count() < max_blocks;
+            let use_bootstrap_weight =
+                ledger.block_count() < ledger.rep_weights.bootstrap_weight_max_blocks();
             if use_bootstrap_weight {
                 info!("Using predefined representative weights, since block count is less than bootstrap threshold");
-                *ledger.bootstrap_weights.lock().unwrap() = weights;
-
                 info!("************************************ Bootstrap weights ************************************");
                 // Sort the weights
                 let mut sorted_weights = ledger
+                    .rep_weights
                     .bootstrap_weights
-                    .lock()
-                    .unwrap()
                     .iter()
                     .map(|(account, weight)| (*account, *weight))
                     .collect::<Vec<_>>();
@@ -231,6 +239,9 @@ impl Node {
                 info!("************************************ ================= ************************************");
             }
         }
+
+        ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));
+        let ledger = Arc::new(ledger);
 
         let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(config.borrow().into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));

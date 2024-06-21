@@ -7,7 +7,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, ContainerInfo, ContainerInfoComponent},
+    utils::{seconds_since_epoch, ContainerInfoComponent},
     Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType, ConfirmationHeightInfo,
     Epoch, Link, PendingInfo, PendingKey, Root,
 };
@@ -21,12 +21,11 @@ use rsnano_store_lmdb::{
 };
 use std::{
     collections::{HashMap, VecDeque},
-    mem::size_of,
     net::SocketAddrV6,
     ops::Deref,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        Arc,
     },
     time::SystemTime,
 };
@@ -73,13 +72,10 @@ pub struct Ledger {
     pub store: Arc<LmdbStore>,
     pub cache: Arc<LedgerCache>,
     pub rep_weights_updater: RepWeightsUpdater,
-    pub rep_weights: RepWeightCache,
+    pub rep_weights: Arc<RepWeightCache>,
     pub constants: LedgerConstants,
     pub observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
-    bootstrap_weight_max_blocks: AtomicU64,
-    pub check_bootstrap_weights: AtomicBool,
-    pub bootstrap_weights: Mutex<HashMap<Account, Amount>>,
     pub write_queue: Arc<WriteQueue>,
 }
 
@@ -174,6 +170,8 @@ impl NullLedgerBuilder {
             Arc::new(store),
             LedgerConstants::unit_test(),
             self.min_rep_weight,
+            Arc::new(RepWeightCache::new()),
+            Arc::new(LedgerCache::new()),
         )
         .unwrap()
     }
@@ -185,6 +183,8 @@ impl Ledger {
             Arc::new(LmdbStore::new_null()),
             LedgerConstants::unit_test(),
             Amount::zero(),
+            Arc::new(RepWeightCache::new()),
+            Arc::new(LedgerCache::new()),
         )
         .unwrap()
     }
@@ -197,8 +197,17 @@ impl Ledger {
         store: Arc<LmdbStore>,
         constants: LedgerConstants,
         min_rep_weight: Amount,
+        rep_weights: Arc<RepWeightCache>,
+        cache: Arc<LedgerCache>,
     ) -> anyhow::Result<Self> {
-        Self::with_cache(store, constants, &GenerateCacheFlags::new(), min_rep_weight)
+        Self::with_cache(
+            store,
+            constants,
+            &GenerateCacheFlags::new(),
+            min_rep_weight,
+            rep_weights,
+            cache,
+        )
     }
 
     pub fn with_cache(
@@ -206,15 +215,11 @@ impl Ledger {
         constants: LedgerConstants,
         generate_cache: &GenerateCacheFlags,
         min_rep_weight: Amount,
+        rep_weights: Arc<RepWeightCache>,
+        cache: Arc<LedgerCache>,
     ) -> anyhow::Result<Self> {
-        let cache = Arc::new(LedgerCache::new());
-        let rep_weights = RepWeightCache::new();
-
-        let rep_weights_updater = RepWeightsUpdater::new(
-            store.rep_weight.clone(),
-            min_rep_weight,
-            rep_weights.clone(),
-        );
+        let rep_weights_updater =
+            RepWeightsUpdater::new(store.rep_weight.clone(), min_rep_weight, &rep_weights);
 
         let mut ledger = Self {
             cache,
@@ -224,9 +229,6 @@ impl Ledger {
             constants,
             observer: Arc::new(NullLedgerObserver::new()),
             pruning: AtomicBool::new(false),
-            bootstrap_weight_max_blocks: AtomicU64::new(1),
-            check_bootstrap_weights: AtomicBool::new(true),
-            bootstrap_weights: Mutex::new(HashMap::new()),
             write_queue: Arc::new(WriteQueue::new(false)),
         };
 
@@ -344,12 +346,7 @@ impl Ledger {
     }
 
     pub fn bootstrap_weight_max_blocks(&self) -> u64 {
-        self.bootstrap_weight_max_blocks.load(Ordering::SeqCst)
-    }
-
-    pub fn set_bootstrap_weight_max_blocks(&self, max: u64) {
-        self.bootstrap_weight_max_blocks
-            .store(max, Ordering::SeqCst)
+        self.rep_weights.bootstrap_weight_max_blocks()
     }
 
     pub fn account_receivable(
@@ -413,17 +410,6 @@ impl Ledger {
     /// If the weight is below the cache limit it returns 0.
     /// During bootstrap it returns the preconfigured bootstrap weights.
     pub fn weight(&self, account: &Account) -> Amount {
-        if self.check_bootstrap_weights.load(Ordering::SeqCst) {
-            if self.cache.block_count.load(Ordering::SeqCst) < self.bootstrap_weight_max_blocks() {
-                let weights = self.bootstrap_weights.lock().unwrap();
-                if let Some(&weight) = weights.get(account) {
-                    return weight;
-                }
-            } else {
-                self.check_bootstrap_weights.store(false, Ordering::SeqCst);
-            }
-        }
-
         self.rep_weights.get_weight(account)
     }
 
@@ -538,10 +524,6 @@ impl Ledger {
         }
 
         pruned_count
-    }
-
-    pub fn bootstrap_weight_reached(&self) -> bool {
-        self.cache.block_count.load(Ordering::SeqCst) >= self.bootstrap_weight_max_blocks()
     }
 
     pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &BlockEnum) -> DependentBlocks {
@@ -679,14 +661,7 @@ impl Ledger {
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "bootstrap_weights".to_string(),
-                    count: self.bootstrap_weights.lock().unwrap().len(),
-                    sizeof_element: size_of::<Account>() + size_of::<Amount>(),
-                }),
-                self.rep_weights.collect_container_info("rep_weights"),
-            ],
+            vec![self.rep_weights.collect_container_info("rep_weights")],
         )
     }
 }

@@ -1,9 +1,10 @@
-use std::sync::atomic::Ordering;
+use std::sync::{atomic::Ordering, Arc};
 pub mod helpers;
 use crate::{
     ledger_constants::LEDGER_CONSTANTS_STUB,
     ledger_tests::helpers::{setup_legacy_open_block, setup_open_block, AccountBlockFactory},
-    Ledger, LedgerCache, LedgerContext, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    Ledger, LedgerCache, LedgerContext, RepWeightCache, DEV_GENESIS, DEV_GENESIS_ACCOUNT,
+    DEV_GENESIS_HASH,
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
@@ -193,44 +194,6 @@ fn send_open_receive_rollback() {
         ctx.ledger.weight(&DEV_GENESIS_ACCOUNT),
         LEDGER_CONSTANTS_STUB.genesis_amount
     );
-}
-
-#[test]
-fn bootstrap_rep_weight() {
-    let ctx = LedgerContext::empty();
-    ctx.ledger.set_bootstrap_weight_max_blocks(3);
-    let genesis = ctx.genesis_block_factory();
-    let representative_key = KeyPair::new();
-    let representative_account = representative_key.public_key().into();
-    {
-        let mut txn = ctx.ledger.rw_txn();
-        let mut send = genesis
-            .legacy_send(&txn)
-            .destination(representative_account)
-            .amount(Amount::raw(50))
-            .build();
-        ctx.ledger.process(&mut txn, &mut send).unwrap();
-    }
-    {
-        let mut weights = ctx.ledger.bootstrap_weights.lock().unwrap();
-        weights.insert(representative_account, Amount::raw(1000));
-    }
-    assert_eq!(ctx.ledger.block_count(), 2);
-    assert_eq!(
-        ctx.ledger.weight(&representative_account),
-        Amount::raw(1000)
-    );
-    {
-        let mut txn = ctx.ledger.rw_txn();
-        let mut send = genesis
-            .legacy_send(&txn)
-            .destination(representative_account)
-            .amount(Amount::raw(50))
-            .build();
-        ctx.ledger.process(&mut txn, &mut send).unwrap();
-    }
-    assert_eq!(ctx.ledger.block_count(), 3);
-    assert_eq!(ctx.ledger.weight(&representative_account), Amount::zero());
 }
 
 #[test]
@@ -615,6 +578,8 @@ fn ledger_cache() {
                 ctx.ledger.store.clone(),
                 LEDGER_CONSTANTS_STUB.clone(),
                 Amount::zero(),
+                Arc::new(RepWeightCache::new()),
+                Arc::new(LedgerCache::new()),
             )
             .unwrap();
             check_impl(&new_ledger.cache, expected);

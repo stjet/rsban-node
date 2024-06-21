@@ -273,6 +273,8 @@ impl Observers {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
     use rsnano_core::{ConfirmationHeightInfo, TestAccountChain};
 

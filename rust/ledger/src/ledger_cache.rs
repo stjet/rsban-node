@@ -5,7 +5,7 @@ use std::sync::{atomic::AtomicU64, Arc};
 use crate::{RepWeightCache, RepWeightsUpdater};
 
 pub struct LedgerCache {
-    pub rep_weights_updater: Arc<RepWeightsUpdater>,
+    pub rep_weights_updater: RepWeightsUpdater,
     pub rep_weights: RepWeightCache,
     pub cemented_count: AtomicU64,
     pub block_count: AtomicU64,
@@ -15,7 +15,7 @@ pub struct LedgerCache {
 
 impl LedgerCache {
     pub fn new(rep_weight_store: Arc<LmdbRepWeightStore>, min_weight: Amount) -> Self {
-        let rep_weights_updater = Arc::new(RepWeightsUpdater::new(rep_weight_store, min_weight));
+        let rep_weights_updater = RepWeightsUpdater::new(rep_weight_store, min_weight);
         Self {
             rep_weights: rep_weights_updater.cache(),
             rep_weights_updater,

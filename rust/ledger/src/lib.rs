@@ -14,7 +14,7 @@ mod ledger_constants;
 mod ledger_context;
 mod ledger_set_any;
 mod ledger_set_confirmed;
-mod rep_weights_cache;
+mod rep_weight_cache;
 mod rep_weights_updater;
 mod representative_block_finder;
 mod write_queue;
@@ -31,7 +31,7 @@ pub use ledger_constants::{LedgerConstants, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DE
 pub use ledger_context::LedgerContext;
 pub use ledger_set_any::*;
 pub use ledger_set_confirmed::*;
-pub use rep_weights_cache::*;
+pub use rep_weight_cache::*;
 pub use rep_weights_updater::*;
 pub(crate) use representative_block_finder::RepresentativeBlockFinder;
 pub use write_queue::{WriteGuard, WriteQueue, Writer};

@@ -452,7 +452,7 @@ pub unsafe extern "C" fn rsn_node_get_rep_weight(
 
 #[no_mangle]
 pub extern "C" fn rsn_node_get_rep_weights(handle: &NodeHandle) -> *mut RepWeightsVecHandle {
-    let mut weights = handle.0.ledger.cache.rep_weights_updater.get_rep_weights();
+    let mut weights = handle.0.ledger.cache.rep_weights.read().clone();
     Box::into_raw(Box::new(RepWeightsVecHandle(weights.drain().collect())))
 }
 

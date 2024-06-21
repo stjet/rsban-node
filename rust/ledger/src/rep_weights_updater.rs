@@ -1,9 +1,8 @@
+use crate::RepWeightCache;
 use rsnano_core::{Account, Amount};
 use rsnano_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-
-use crate::RepWeightCache;
 
 /// Updates the representative weights in the ledger and in the in-memory cache
 pub struct RepWeightsUpdater {
@@ -25,14 +24,6 @@ impl RepWeightsUpdater {
         RepWeightCache::new(self.weight_cache.clone())
     }
 
-    fn get(&self, weights: &HashMap<Account, Amount>, account: &Account) -> Amount {
-        weights.get(account).cloned().unwrap_or_default()
-    }
-
-    pub fn get_rep_weights(&self) -> HashMap<Account, Amount> {
-        self.weight_cache.read().unwrap().clone()
-    }
-
     /// Only use this method when loading rep weights from the database table
     pub fn copy_from(&self, other: &HashMap<Account, Amount>) {
         let mut guard_this = self.weight_cache.write().unwrap();
@@ -40,6 +31,10 @@ impl RepWeightsUpdater {
             let prev_amount = self.get(&guard_this, account);
             self.put_cache(&mut guard_this, *account, prev_amount.wrapping_add(*amount));
         }
+    }
+
+    fn get(&self, weights: &HashMap<Account, Amount>, account: &Account) -> Amount {
+        weights.get(account).cloned().unwrap_or_default()
     }
 
     pub fn representation_add(

@@ -43,27 +43,3 @@ uint64_t nano::ledger_cache::account_count () const
 {
 	return rsnano::rsn_ledger_cache_account_count (handle);
 }
-void nano::ledger_cache::add_cemented (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_add_cemented (handle, count);
-}
-void nano::ledger_cache::add_blocks (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_add_blocks (handle, count);
-}
-void nano::ledger_cache::add_pruned (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_add_pruned (handle, count);
-}
-void nano::ledger_cache::add_accounts (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_add_accounts (handle, count);
-}
-void nano::ledger_cache::remove_blocks (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_remove_blocks (handle, count);
-}
-void nano::ledger_cache::remove_accounts (uint64_t count)
-{
-	rsnano::rsn_ledger_cache_remove_accounts (handle, count);
-}

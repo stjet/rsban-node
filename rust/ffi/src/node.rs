@@ -25,7 +25,7 @@ use crate::{
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
 };
-use rsnano_core::{BlockHash, Root, Vote, VoteCode, VoteSource};
+use rsnano_core::{Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
@@ -449,6 +449,52 @@ pub unsafe extern "C" fn rsn_node_inbound(
         .0
         .inbound_message_queue
         .put(message.0.clone(), (**channel).clone());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_get_rep_weight(
+    handle: &NodeHandle,
+    account: *const u8,
+    weight: *mut u8,
+) {
+    let result = handle
+        .0
+        .ledger
+        .cache
+        .rep_weights
+        .representation_get(&Account::from_ptr(account));
+    result.copy_bytes(weight);
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_get_rep_weights(handle: &NodeHandle) -> *mut RepWeightsVecHandle {
+    let mut weights = handle.0.ledger.cache.rep_weights.get_rep_weights();
+    Box::into_raw(Box::new(RepWeightsVecHandle(weights.drain().collect())))
+}
+
+#[repr(C)]
+pub struct RepWeightsVecHandle(Vec<(Account, Amount)>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_rep_weights_vec_destroy(handle: *mut RepWeightsVecHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_rep_weights_vec_len(handle: &RepWeightsVecHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_rep_weights_vec_get(
+    handle: &RepWeightsVecHandle,
+    index: usize,
+    account: *mut u8,
+    weight: *mut u8,
+) {
+    let (acc, wei) = &handle.0[index];
+    acc.copy_bytes(account);
+    wei.copy_bytes(weight);
 }
 
 #[no_mangle]

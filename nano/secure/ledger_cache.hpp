@@ -1,7 +1,6 @@
 #pragma once
 
-#include <nano/secure/rep_weights.hpp>
-
+#include <cstdint>
 namespace rsnano
 {
 class LedgerCacheHandle;
@@ -18,7 +17,6 @@ public:
 	~ledger_cache ();
 	ledger_cache (ledger_cache const &) = delete;
 	ledger_cache & operator= (ledger_cache && other_a);
-	nano::rep_weights const & rep_weights () const;
 	uint64_t cemented_count () const;
 	void add_cemented (uint64_t count);
 	uint64_t block_count () const;
@@ -30,8 +28,5 @@ public:
 	void add_accounts (uint64_t count);
 	void remove_accounts (uint64_t count);
 	rsnano::LedgerCacheHandle * handle;
-
-private:
-	nano::rep_weights rep_weights_m;
 };
 }

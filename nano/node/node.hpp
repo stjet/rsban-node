@@ -110,6 +110,8 @@ public:
 	nano::telemetry_data local_telemetry () const;
 	void connect (nano::endpoint const &);
 	void enqueue_vote_request (nano::root const & root, nano::block_hash const & hash);
+	nano::amount get_rep_weight(nano::account const & account);
+	std::unordered_map<nano::account, nano::uint128_t> get_rep_weights() const;
 
 public:
 	nano::keypair node_id;

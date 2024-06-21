@@ -15,8 +15,6 @@ add_library(
   network_filter.cpp
   pending_info.hpp
   pending_info.cpp
-  rep_weights.hpp
-  rep_weights.cpp
   utility.hpp
   utility.cpp)
 

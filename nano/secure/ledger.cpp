@@ -6,7 +6,6 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
-#include <nano/secure/rep_weights.hpp>
 #include <nano/store/account.hpp>
 #include <nano/store/block.hpp>
 #include <nano/store/component.hpp>

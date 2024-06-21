@@ -2092,8 +2092,8 @@ void nano::json_handler::confirmation_info ()
 					{
 						if (block->hash () == vote.get_hash ())
 						{
-							auto amount (node.ledger.cache.rep_weights ().representation_get (representative));
-							representatives.emplace (std::move (amount), representative);
+							auto amount {node.get_rep_weight (representative)};
+							representatives.emplace (std::move (amount.number()), representative);
 						}
 					}
 					boost::property_tree::ptree representatives_list;
@@ -3451,7 +3451,7 @@ void nano::json_handler::representatives ()
 	{
 		bool const sorting = request.get<bool> ("sorting", false);
 		boost::property_tree::ptree representatives;
-		auto rep_amounts = node.ledger.cache.rep_weights ().get_rep_amounts ();
+		auto rep_amounts = node.get_rep_weights ();
 		if (!sorting) // Simple
 		{
 			std::map<nano::account, nano::uint128_t> ordered (rep_amounts.begin (), rep_amounts.end ());

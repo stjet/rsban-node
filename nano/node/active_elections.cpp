@@ -90,9 +90,9 @@ std::vector<nano::vote_with_weight_info> nano::active_elections::votes_with_weig
 	{
 		if (vote_l.first != nullptr)
 		{
-			auto amount (node.ledger.cache.rep_weights ().representation_get (vote_l.first));
-			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount };
-			sorted_votes.emplace (std::move (amount), vote_info);
+			auto amount = node.get_rep_weight (vote_l.first);
+			nano::vote_with_weight_info vote_info{ vote_l.first, vote_l.second.get_time (), vote_l.second.get_timestamp (), vote_l.second.get_hash (), amount.number() };
+			sorted_votes.emplace (amount.number(), vote_info);
 		}
 		else
 		{

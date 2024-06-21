@@ -139,7 +139,7 @@ TEST (vote_processor, weights)
 	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key2.pub, level2);
 
 	// Wait for representatives
-	ASSERT_TIMELY_EQ (10s, node.ledger.cache.rep_weights ().get_rep_amounts ().size (), 4);
+	ASSERT_TIMELY_EQ (10s, node.get_rep_weights ().size (), 4);
 
 	// Wait for rep tiers to be updated
 	node.stats->clear ();

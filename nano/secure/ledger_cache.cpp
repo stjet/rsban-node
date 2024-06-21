@@ -2,12 +2,12 @@
 #include <nano/secure/ledger_cache.hpp>
 
 nano::ledger_cache::ledger_cache (rsnano::LedgerCacheHandle * handle_a) :
-	handle{ handle_a }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
+	handle{ handle_a } 
 {
 }
 
 nano::ledger_cache::ledger_cache (ledger_cache && other_a) :
-	handle{ other_a.handle }, rep_weights_m{ rsnano::rsn_ledger_cache_weights (handle) }
+	handle{ other_a.handle }
 {
 	other_a.handle = nullptr;
 }
@@ -24,14 +24,9 @@ nano::ledger_cache & nano::ledger_cache::operator= (nano::ledger_cache && other_
 		rsnano::rsn_ledger_cache_destroy (handle);
 	handle = other_a.handle;
 	other_a.handle = nullptr;
-	rep_weights_m = std::move (other_a.rep_weights_m);
 	return *this;
 }
 
-nano::rep_weights const & nano::ledger_cache::rep_weights () const
-{
-	return rep_weights_m;
-}
 uint64_t nano::ledger_cache::cemented_count () const
 {
 	return rsnano::rsn_ledger_cache_cemented_count (handle);

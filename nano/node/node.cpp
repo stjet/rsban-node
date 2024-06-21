@@ -496,6 +496,27 @@ void nano::node::enqueue_vote_request (nano::root const & root, nano::block_hash
 	rsnano::rsn_node_enqueue_vote_request (handle, root.bytes.data (), hash.bytes.data ());
 }
 
+nano::amount nano::node::get_rep_weight(nano::account const & account){
+	nano::amount weight;
+	rsnano::rsn_node_get_rep_weight(handle, account.bytes.data(), weight.bytes.data());
+	return weight;
+}
+
+std::unordered_map<nano::account, nano::uint128_t> nano::node::get_rep_weights() const
+{
+	auto result_handle = rsnano::rsn_node_get_rep_weights(handle);
+	std::unordered_map<nano::account, nano::uint128_t> result;
+	auto len = rsnano::rsn_rep_weights_vec_len(result_handle);
+	for (auto i = 0; i< len; ++i){
+		nano::account rep;
+		nano::amount weight;
+		rsnano::rsn_rep_weights_vec_get(result_handle, i, rep.bytes.data(), weight.bytes.data());
+		result.insert({rep, weight.number()});
+	}
+	rsnano::rsn_rep_weights_vec_destroy(result_handle);
+	return result;
+}
+
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)
 {
 	// Node identifier consists of first 10 characters of node id

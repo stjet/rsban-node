@@ -78,7 +78,7 @@ pub unsafe extern "C" fn rsn_rep_weights_get_rep_amounts(
     handle: *mut RepWeightsHandle,
     result: *mut RepAmountsDto,
 ) {
-    let amounts = (*handle).0.get_rep_amounts();
+    let amounts = (*handle).0.get_rep_weights();
     let items = amounts
         .iter()
         .map(|(account, amount)| RepAmountItemDto {

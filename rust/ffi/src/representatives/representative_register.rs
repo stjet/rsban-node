@@ -34,7 +34,7 @@ pub extern "C" fn rsn_representative_register_create(
 ) -> *mut RepresentativeRegisterHandle {
     Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::new(
         Mutex::new(RepresentativeRegister::new(
-            Arc::clone(ledger),
+            ledger.rep_weights.clone(),
             Arc::clone(online_reps),
             Arc::clone(stats),
             NetworkConstants::try_from(network_constants)

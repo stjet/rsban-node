@@ -283,7 +283,7 @@ impl Node {
         let online_reps = Arc::new(Mutex::new(online_reps));
 
         let representative_register = Arc::new(Mutex::new(RepresentativeRegister::new(
-            ledger.clone(),
+            rep_weights.clone(),
             online_reps.clone(),
             stats.clone(),
             network_params.network.protocol_info(),

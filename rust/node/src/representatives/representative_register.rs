@@ -5,7 +5,7 @@ use crate::{
     OnlineReps,
 };
 use rsnano_core::{Account, Amount};
-use rsnano_ledger::Ledger;
+use rsnano_ledger::RepWeightCache;
 use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
@@ -19,7 +19,7 @@ use tracing::info;
 pub struct RepresentativeRegister {
     by_account: HashMap<Account, Representative>,
     by_channel_id: HashMap<usize, Vec<Account>>,
-    ledger: Arc<Ledger>,
+    rep_weights: Arc<RepWeightCache>,
     online_reps: Arc<Mutex<OnlineReps>>,
     protocol_info: ProtocolInfo,
     stats: Arc<Stats>,
@@ -38,13 +38,13 @@ impl RepresentativeRegister {
         + size_of::<Account>();
 
     pub fn new(
-        ledger: Arc<Ledger>,
+        rep_weights: Arc<RepWeightCache>,
         online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         protocol_info: ProtocolInfo,
     ) -> Self {
         Self {
-            ledger,
+            rep_weights,
             online_reps,
             stats,
             protocol_info,
@@ -108,7 +108,7 @@ impl RepresentativeRegister {
             };
             existing
                 .iter()
-                .any(|account| self.ledger.weight(account) >= min_weight)
+                .any(|account| self.rep_weights.get_weight(account) >= min_weight)
         } else {
             false
         }
@@ -119,7 +119,7 @@ impl RepresentativeRegister {
         let mut result = Amount::zero();
         for (account, rep) in &self.by_account {
             if rep.channel.is_alive() {
-                result += self.ledger.weight(account);
+                result += self.rep_weights.get_weight(account);
             }
         }
         result
@@ -193,7 +193,7 @@ impl RepresentativeRegister {
         let min_protocol_version = min_protocol_version.unwrap_or(self.protocol_info.version_min);
         let mut reps_with_weight = Vec::new();
         for (account, rep) in &self.by_account {
-            let weight = self.ledger.weight(account);
+            let weight = self.rep_weights.get_weight(account);
             if weight > min_weight && rep.channel.network_version() >= min_protocol_version {
                 reps_with_weight.push((rep.clone(), weight));
             }

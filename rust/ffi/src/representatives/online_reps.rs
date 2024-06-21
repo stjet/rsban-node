@@ -30,7 +30,7 @@ pub unsafe extern "C" fn rsn_online_reps_create(
     let online_weight_minimum = Amount::from_ptr(online_weight_minimum);
     let weight_period = Duration::from_secs(weight_period_s);
 
-    let mut online_reps = OnlineReps::new((*ledger_handle).clone());
+    let mut online_reps = OnlineReps::new((*ledger_handle).rep_weights.clone());
     online_reps.set_weight_period(weight_period);
     online_reps.set_online_weight_minimum(online_weight_minimum);
 

@@ -176,27 +176,29 @@ impl RepTiersImpl {
     fn calculate_tiers(&self) {
         self.stats.inc(StatType::RepTiers, DetailType::Loop);
         let stake = self.online_reps.lock().unwrap().trended();
-        let rep_amounts = self.ledger.rep_weights.read().clone();
         let mut representatives_1_l = HashSet::new();
         let mut representatives_2_l = HashSet::new();
         let mut representatives_3_l = HashSet::new();
         let mut ignored = 0;
-        for (&representative, _) in &rep_amounts {
-            // Using ledger weight here because it takes preconfigured bootstrap weights into account
-            let weight = self.ledger.weight(&representative);
-            if weight > stake / 1000 {
-                // 0.1% or above (level 1)
-                representatives_1_l.insert(representative);
-                if weight > stake / 100 {
-                    // 1% or above (level 2)
-                    representatives_2_l.insert(representative);
-                    if weight > stake / 20 {
-                        // 5% or above (level 3)
-                        representatives_3_l.insert(representative);
+        let reps_count;
+        {
+            let rep_weights = self.ledger.rep_weights.read();
+            reps_count = rep_weights.len();
+            for (&representative, &weight) in rep_weights.iter() {
+                if weight > stake / 1000 {
+                    // 0.1% or above (level 1)
+                    representatives_1_l.insert(representative);
+                    if weight > stake / 100 {
+                        // 1% or above (level 2)
+                        representatives_2_l.insert(representative);
+                        if weight > stake / 20 {
+                            // 5% or above (level 3)
+                            representatives_3_l.insert(representative);
+                        }
                     }
+                } else {
+                    ignored += 1;
                 }
-            } else {
-                ignored += 1;
             }
         }
 
@@ -204,7 +206,7 @@ impl RepTiersImpl {
             StatType::RepTiers,
             DetailType::Processed,
             Direction::In,
-            rep_amounts.len() as u64,
+            reps_count as u64,
         );
 
         self.stats.add_dir(

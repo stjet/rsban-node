@@ -1,8 +1,7 @@
 use primitive_types::U256;
-use rsnano_core::utils::{nano_seconds_since_epoch, ContainerInfo, ContainerInfoComponent};
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use rsnano_core::{Account, Amount};
-use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsnano_ledger::RepWeightCache;
 use std::time::Duration;
 use std::{cmp::max, sync::Arc};
 
@@ -14,10 +13,9 @@ use std::time::Instant;
 use super::online_reps_container::OnlineRepsContainer;
 
 pub const ONLINE_WEIGHT_QUORUM: u8 = 67;
-static DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);
 
 pub struct OnlineReps {
-    ledger: Arc<Ledger>,
+    rep_weights: Arc<RepWeightCache>,
     reps: OnlineRepsContainer,
     trended: Amount,
     online: Amount,
@@ -27,9 +25,9 @@ pub struct OnlineReps {
 }
 
 impl OnlineReps {
-    pub fn new(ledger: Arc<Ledger>) -> Self {
+    pub fn new(rep_weights: Arc<RepWeightCache>) -> Self {
         Self {
-            ledger,
+            rep_weights,
             reps: OnlineRepsContainer::new(),
             trended: Amount::zero(),
             online: Amount::zero(),
@@ -53,7 +51,7 @@ impl OnlineReps {
 
     /** Add voting account rep_account to the set of online representatives */
     pub fn observe(&mut self, rep_account: Account) {
-        if self.ledger.weight(&rep_account) > Amount::zero() {
+        if self.rep_weights.get_weight(&rep_account) > Amount::zero() {
             let new_insert = self.reps.insert(rep_account, Instant::now());
             let trimmed = self.reps.trim(self.weight_period);
 
@@ -112,7 +110,7 @@ impl OnlineReps {
     fn calculate_online(&mut self) {
         let mut current = Amount::zero();
         for account in self.reps.iter() {
-            current += self.ledger.weight(account);
+            current += self.rep_weights.get_weight(account);
         }
         self.online = current;
     }
@@ -129,72 +127,4 @@ impl OnlineReps {
     }
 }
 
-pub struct OnlineWeightSampler {
-    ledger: Arc<Ledger>,
-    online_weight_minimum: Amount,
-    max_samples: u64,
-}
-
-impl OnlineWeightSampler {
-    pub fn new(ledger: Arc<Ledger>) -> Self {
-        Self {
-            ledger,
-            online_weight_minimum: DEFAULT_ONLINE_WEIGHT_MINIMUM,
-            max_samples: 4032,
-        }
-    }
-
-    pub fn set_online_weight_minimum(&mut self, minimum: Amount) {
-        self.online_weight_minimum = minimum;
-    }
-
-    pub fn set_max_samples(&mut self, max_samples: u64) {
-        self.max_samples = max_samples;
-    }
-
-    pub fn calculate_trend(&self) -> Amount {
-        self.medium_weight(self.load_samples())
-    }
-
-    fn load_samples(&self) -> Vec<Amount> {
-        let txn = self.ledger.read_txn();
-        let mut items = Vec::with_capacity(self.max_samples as usize + 1);
-        items.push(self.online_weight_minimum);
-        let mut it = self.ledger.store.online_weight.begin(&txn);
-        while !it.is_end() {
-            items.push(*it.current().unwrap().1);
-            it.next();
-        }
-        items
-    }
-
-    fn medium_weight(&self, mut items: Vec<Amount>) -> Amount {
-        let median_idx = items.len() / 2;
-        items.sort();
-        items[median_idx]
-    }
-
-    /** Called periodically to sample online weight */
-    pub fn sample(&self, current_online_weight: Amount) {
-        let mut txn = self.ledger.rw_txn();
-        self.delete_old_samples(&mut txn);
-        self.insert_new_sample(&mut txn, current_online_weight);
-    }
-
-    fn delete_old_samples(&self, txn: &mut LmdbWriteTransaction) {
-        let weight_store = &self.ledger.store.online_weight;
-
-        while weight_store.count(txn) >= self.max_samples {
-            let (&oldest, _) = weight_store.begin(txn).current().unwrap();
-            weight_store.del(txn, oldest);
-        }
-    }
-
-    fn insert_new_sample(&self, txn: &mut LmdbWriteTransaction, current_online_weight: Amount) {
-        self.ledger.store.online_weight.put(
-            txn,
-            nano_seconds_since_epoch(),
-            &current_online_weight,
-        );
-    }
-}
+pub(super) static DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);

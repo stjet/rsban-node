@@ -10,14 +10,14 @@ use crate::{
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        create_loopback_channel, AccountBalanceChangedCallback, ActiveElections,
-        ActiveElectionsExt, ElectionEndCallback, ElectionStatusType, HintedScheduler,
-        HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
-        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
-        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
-        RequestAggregator, RequestAggregatorExt, VoteApplier, VoteBroadcaster, VoteCache,
-        VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
-        VoteRouter,
+        create_loopback_channel, get_bootstrap_weights, log_bootstrap_weights,
+        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
+        ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
+        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
+        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
+        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
+        VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
@@ -43,11 +43,11 @@ use crate::{
 use reqwest::Url;
 use rsnano_core::{
     utils::{
-        as_nano_json, system_time_as_nanoseconds, BufferReader, ContainerInfoComponent,
-        Deserialize, SerdePropertyTree, StreamExt, SystemTimeFactory,
+        as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree,
+        SystemTimeFactory,
     },
     work::WorkPoolImpl,
-    Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode, VoteSource,
+    BlockType, KeyPair, Vote, VoteCode, VoteSource,
 };
 use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
@@ -202,46 +202,14 @@ impl Node {
             store.clone(),
             network_params.ledger.clone(),
             config.representative_vote_weight_minimum,
-            rep_weights,
+            rep_weights.clone(),
             ledger_cache,
         )
         .expect("Could not initialize ledger");
-
-        if !ledger.rep_weights.bootstrap_weights.is_empty() {
-            info!(
-                "Initial bootstrap height: {}",
-                ledger.rep_weights.bootstrap_weight_max_blocks()
-            );
-            info!("Current ledger height:    {}", ledger.block_count());
-
-            // Use bootstrap weights if initial bootstrap is not completed
-            let use_bootstrap_weight =
-                ledger.block_count() < ledger.rep_weights.bootstrap_weight_max_blocks();
-            if use_bootstrap_weight {
-                info!("Using predefined representative weights, since block count is less than bootstrap threshold");
-                info!("************************************ Bootstrap weights ************************************");
-                // Sort the weights
-                let mut sorted_weights = ledger
-                    .rep_weights
-                    .bootstrap_weights
-                    .iter()
-                    .map(|(account, weight)| (*account, *weight))
-                    .collect::<Vec<_>>();
-                sorted_weights.sort_by(|(_, weight_a), (_, weight_b)| weight_b.cmp(weight_a));
-
-                for (rep, weight) in sorted_weights {
-                    info!(
-                        "Using bootstrap rep weight: {} -> {}",
-                        rep.encode_account(),
-                        weight.format_balance(0)
-                    );
-                }
-                info!("************************************ ================= ************************************");
-            }
-        }
-
         ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));
         let ledger = Arc::new(ledger);
+
+        log_bootstrap_weights(&ledger.rep_weights);
 
         let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(config.borrow().into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));
@@ -303,7 +271,7 @@ impl Node {
             ledger.clone(),
         ));
 
-        let mut online_reps = OnlineReps::new(ledger.clone());
+        let mut online_reps = OnlineReps::new(rep_weights.clone());
         online_reps.set_weight_period(Duration::from_secs(network_params.node.weight_period));
         online_reps.set_online_weight_minimum(config.online_weight_minimum);
 
@@ -1456,39 +1424,6 @@ fn make_store(
     Ok(Arc::new(store))
 }
 
-fn get_bootstrap_weights(network: Networks) -> (u64, HashMap<Account, Amount>) {
-    let buffer = get_bootstrap_weights_bin(network);
-    deserialize_bootstrap_weights(buffer)
-}
-
-fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
-    if network == Networks::NanoLiveNetwork {
-        include_bytes!("../../../rep_weights_live.bin")
-    } else {
-        include_bytes!("../../../rep_weights_beta.bin")
-    }
-}
-
-fn deserialize_bootstrap_weights(buffer: &[u8]) -> (u64, HashMap<Account, Amount>) {
-    let mut reader = BufferReader::new(buffer);
-    let mut weights = HashMap::new();
-    let mut max_blocks = 0;
-    if let Ok(count) = reader.read_u128_be() {
-        max_blocks = count as u64;
-        loop {
-            let Ok(account) = Account::deserialize(&mut reader) else {
-                break;
-            };
-            let Ok(weight) = Amount::deserialize(&mut reader) else {
-                break;
-            };
-            weights.insert(account, weight);
-        }
-    }
-
-    (max_blocks, weights)
-}
-
 #[derive(Serialize)]
 struct RpcCallbackMessage {
     account: String,
@@ -1505,29 +1440,9 @@ struct RpcCallbackMessage {
 mod tests {
     use super::*;
     use crate::{transport::NullSocketObserver, utils::TimerStartEvent};
+    use rsnano_core::Networks;
     use std::ops::Deref;
     use uuid::Uuid;
-
-    #[test]
-    fn bootstrap_weights_bin() {
-        assert_eq!(
-            get_bootstrap_weights_bin(Networks::NanoLiveNetwork).len(),
-            6256,
-            "expected live weights don't match'"
-        );
-        assert_eq!(
-            get_bootstrap_weights_bin(Networks::NanoBetaNetwork).len(),
-            0,
-            "expected beta weights don't match'"
-        );
-    }
-
-    #[test]
-    fn bootstrap_weights() {
-        let (max_blocks, weights) = get_bootstrap_weights(Networks::NanoLiveNetwork);
-        assert_eq!(weights.len(), 130);
-        assert_eq!(max_blocks, 184_789_962);
-    }
 
     #[test]
     fn start_peer_cache_updater() {

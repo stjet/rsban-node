@@ -1,4 +1,5 @@
 mod active_elections;
+mod bootstrap_weights;
 mod buckets;
 mod confirmation_solicitor;
 mod election;
@@ -20,6 +21,7 @@ mod vote_processor_queue;
 mod vote_router;
 
 pub use active_elections::*;
+pub(crate) use bootstrap_weights::*;
 pub use buckets::{Buckets, ValueType};
 pub use confirmation_solicitor::ConfirmationSolicitor;
 pub use election::*;

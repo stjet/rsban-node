@@ -49,7 +49,7 @@ use rsnano_core::{
     work::WorkPoolImpl,
     Account, Amount, BlockType, KeyPair, Networks, Vote, VoteCode, VoteSource,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::{Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
@@ -85,6 +85,7 @@ pub struct Node {
     pub store: Arc<LmdbStore>,
     pub unchecked: Arc<UncheckedMap>,
     pub ledger: Arc<Ledger>,
+    pub rep_weight_cache: RepWeightCache,
     pub outbound_limiter: Arc<OutboundBandwidthLimiter>,
     pub syn_cookies: Arc<SynCookies>,
     pub network: Arc<Network>,
@@ -173,6 +174,8 @@ impl Node {
             config.representative_vote_weight_minimum,
         )
         .expect("Could not initialize ledger");
+
+        let rep_weight_cache = ledger.cache.rep_weights_updater.cache();
 
         ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));
         let ledger = Arc::new(ledger);
@@ -1058,6 +1061,7 @@ impl Node {
             syn_cookies,
             network,
             ledger,
+            rep_weight_cache,
             store,
             stats,
             application_path,

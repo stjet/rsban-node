@@ -445,16 +445,14 @@ pub unsafe extern "C" fn rsn_node_get_rep_weight(
 ) {
     let result = handle
         .0
-        .ledger
-        .cache
-        .rep_weights
-        .representation_get(&Account::from_ptr(account));
+        .rep_weight_cache
+        .get_weight(&Account::from_ptr(account));
     result.copy_bytes(weight);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_node_get_rep_weights(handle: &NodeHandle) -> *mut RepWeightsVecHandle {
-    let mut weights = handle.0.ledger.cache.rep_weights.get_rep_weights();
+    let mut weights = handle.0.ledger.cache.rep_weights_updater.get_rep_weights();
     Box::into_raw(Box::new(RepWeightsVecHandle(weights.drain().collect())))
 }
 

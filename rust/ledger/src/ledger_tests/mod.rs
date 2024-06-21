@@ -605,7 +605,7 @@ fn ledger_cache() {
                 expected.cemented_count
             );
             assert_eq!(
-                cache.rep_weights.representation_get(&DEV_GENESIS_ACCOUNT),
+                cache.rep_weights.get_weight(&DEV_GENESIS_ACCOUNT),
                 expected.genesis_weight
             );
             assert_eq!(

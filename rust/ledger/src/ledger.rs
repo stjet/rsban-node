@@ -3,7 +3,7 @@ use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     ledger_set_confirmed::LedgerSetConfirmed,
     BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    LedgerSetAny, RepWeights, RepresentativeBlockFinder, WriteQueue,
+    LedgerSetAny, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -246,13 +246,14 @@ impl Ledger {
             self.store.account.for_each_par(&|_txn, mut i, n| {
                 let mut block_count = 0;
                 let mut account_count = 0;
-                let rep_weights =
-                    RepWeights::new(Arc::clone(&self.store.rep_weight), Amount::zero());
+                let mut rep_weights: HashMap<Account, Amount> = HashMap::new();
                 while !i.eq(&n) {
                     let info = i.current().unwrap().1;
                     block_count += info.block_count;
                     account_count += 1;
-                    rep_weights.representation_put(info.representative, info.balance);
+                    if !info.balance.is_zero() {
+                        rep_weights.insert(info.representative, info.balance);
+                    }
                     i.next();
                 }
                 self.cache
@@ -261,7 +262,7 @@ impl Ledger {
                 self.cache
                     .account_count
                     .fetch_add(account_count, Ordering::SeqCst);
-                self.cache.rep_weights.copy_from(&rep_weights);
+                self.cache.rep_weights_updater.copy_from(&rep_weights);
             });
         }
 
@@ -413,7 +414,7 @@ impl Ledger {
             }
         }
 
-        self.cache.rep_weights.representation_get(account)
+        self.cache.rep_weights.get_weight(account)
     }
 
     /// Returns the exact vote weight for the given representative by doing a database lookup

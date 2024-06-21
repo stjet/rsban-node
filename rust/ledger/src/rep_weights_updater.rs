@@ -1,23 +1,28 @@
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use rsnano_core::{Account, Amount};
 use rsnano_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
 use std::collections::HashMap;
-use std::mem::size_of;
 use std::sync::{Arc, RwLock};
 
-pub struct RepWeights {
-    weights: RwLock<HashMap<Account, Amount>>,
+use crate::RepWeightCache;
+
+/// Updates the representative weights in the ledger and in the in-memory cache
+pub struct RepWeightsUpdater {
+    weight_cache: Arc<RwLock<HashMap<Account, Amount>>>,
     store: Arc<LmdbRepWeightStore>,
     min_weight: Amount,
 }
 
-impl RepWeights {
+impl RepWeightsUpdater {
     pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount) -> Self {
-        RepWeights {
-            weights: RwLock::new(HashMap::new()),
+        RepWeightsUpdater {
+            weight_cache: Arc::new(RwLock::new(HashMap::new())),
             store,
             min_weight,
         }
+    }
+
+    pub fn cache(&self) -> RepWeightCache {
+        RepWeightCache::new(self.weight_cache.clone())
     }
 
     fn get(&self, weights: &HashMap<Account, Amount>, account: &Account) -> Amount {
@@ -25,14 +30,13 @@ impl RepWeights {
     }
 
     pub fn get_rep_weights(&self) -> HashMap<Account, Amount> {
-        self.weights.read().unwrap().clone()
+        self.weight_cache.read().unwrap().clone()
     }
 
     /// Only use this method when loading rep weights from the database table
-    pub fn copy_from(&self, other: &RepWeights) {
-        let mut guard_this = self.weights.write().unwrap();
-        let guard_other = other.weights.read().unwrap();
-        for (account, amount) in guard_other.iter() {
+    pub fn copy_from(&self, other: &HashMap<Account, Amount>) {
+        let mut guard_this = self.weight_cache.write().unwrap();
+        for (account, amount) in other {
             let prev_amount = self.get(&guard_this, account);
             self.put_cache(&mut guard_this, *account, prev_amount.wrapping_add(*amount));
         }
@@ -47,7 +51,7 @@ impl RepWeights {
         let previous_weight = self.store.get(tx, representative).unwrap_or_default();
         let new_weight = previous_weight.wrapping_add(amount);
         self.put_store(tx, representative, previous_weight, new_weight);
-        let mut guard = self.weights.write().unwrap();
+        let mut guard = self.weight_cache.write().unwrap();
         self.put_cache(&mut guard, representative, new_weight);
     }
 
@@ -82,13 +86,8 @@ impl RepWeights {
 
     /// Only use this method when loading rep weights from the database table!
     pub fn representation_put(&self, representative: Account, weight: Amount) {
-        let mut guard = self.weights.write().unwrap();
+        let mut guard = self.weight_cache.write().unwrap();
         self.put_cache(&mut guard, representative, weight);
-    }
-
-    pub fn representation_get(&self, account: &Account) -> Amount {
-        let guard = self.weights.read().unwrap();
-        self.get(&guard, account)
     }
 
     pub fn representation_add_dual(
@@ -106,31 +105,12 @@ impl RepWeights {
             let new_weight_2 = previous_weight_2.wrapping_add(amount_2);
             self.put_store(tx, rep_1, previous_weight_1, new_weight_1);
             self.put_store(tx, rep_2, previous_weight_2, new_weight_2);
-            let mut guard = self.weights.write().unwrap();
+            let mut guard = self.weight_cache.write().unwrap();
             self.put_cache(&mut guard, rep_1, new_weight_1);
             self.put_cache(&mut guard, rep_2, new_weight_2);
         } else {
             self.representation_add(tx, rep_1, amount_1.wrapping_add(amount_2));
         }
-    }
-
-    pub fn item_size() -> usize {
-        size_of::<(Account, Amount)>()
-    }
-
-    pub fn count(&self) -> usize {
-        self.weights.read().unwrap().len()
-    }
-
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "rep_amounts".to_string(),
-                count: self.count(),
-                sizeof_element: Self::item_size(),
-            })],
-        )
     }
 }
 
@@ -144,14 +124,15 @@ mod tests {
         let env = Arc::new(LmdbEnv::new_null());
         let store = Arc::new(LmdbRepWeightStore::new(env).unwrap());
         let account = Account::from(1);
-        let rep_weights = RepWeights::new(store, Amount::zero());
-        assert_eq!(rep_weights.representation_get(&account), Amount::zero());
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
+        let rep_weights = rep_weights_updater.cache();
+        assert_eq!(rep_weights.get_weight(&account), Amount::zero());
 
-        rep_weights.representation_put(account, Amount::from(1));
-        assert_eq!(rep_weights.representation_get(&account), Amount::from(1));
+        rep_weights_updater.representation_put(account, Amount::from(1));
+        assert_eq!(rep_weights.get_weight(&account), Amount::from(1));
 
-        rep_weights.representation_put(account, Amount::from(2));
-        assert_eq!(rep_weights.representation_get(&account), Amount::from(2));
+        rep_weights_updater.representation_put(account, Amount::from(2));
+        assert_eq!(rep_weights.get_weight(&account), Amount::from(2));
     }
 
     #[test]
@@ -169,18 +150,19 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights = RepWeights::new(store, Amount::zero());
-        rep_weights.representation_put(representative, weight);
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
+        let rep_weights = rep_weights_updater.cache();
+        rep_weights_updater.representation_put(representative, weight);
         let mut tx = env.tx_begin_write();
 
         // set weight to 0
-        rep_weights.representation_add(
+        rep_weights_updater.representation_add(
             &mut tx,
             representative,
             Amount::zero().wrapping_sub(weight),
         );
 
-        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(rep_weights.len(), 0);
         assert_eq!(delete_tracker.output(), vec![representative]);
     }
 
@@ -200,13 +182,14 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights = RepWeights::new(store, Amount::zero());
-        rep_weights.representation_put(rep1, weight);
-        rep_weights.representation_put(rep2, weight);
+        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
+        let rep_weights = rep_weights_updater.cache();
+        rep_weights_updater.representation_put(rep1, weight);
+        rep_weights_updater.representation_put(rep2, weight);
         let mut tx = env.tx_begin_write();
 
         // set weight to 0
-        rep_weights.representation_add_dual(
+        rep_weights_updater.representation_add_dual(
             &mut tx,
             rep1,
             Amount::zero().wrapping_sub(weight),
@@ -214,7 +197,7 @@ mod tests {
             Amount::zero().wrapping_sub(weight),
         );
 
-        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(rep_weights.len(), 0);
         assert_eq!(delete_tracker.output(), vec![rep1, rep2]);
     }
 
@@ -227,11 +210,11 @@ mod tests {
         let representative = Account::from(1);
         let min_weight = Amount::from(10);
         let rep_weight = Amount::from(9);
-        let rep_weights = RepWeights::new(store, min_weight);
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight);
 
-        rep_weights.representation_add(&mut txn, representative, rep_weight);
+        rep_weights_updater.representation_add(&mut txn, representative, rep_weight);
 
-        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(rep_weights_updater.cache().len(), 0);
         assert_eq!(put_tracker.output(), vec![(representative, rep_weight)]);
     }
 
@@ -251,15 +234,16 @@ mod tests {
         let put_tracker = store.track_puts();
         let mut txn = env.tx_begin_write();
         let min_weight = Amount::from(10);
-        let rep_weights = RepWeights::new(store, min_weight);
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight);
+        let rep_weights = rep_weights_updater.cache();
 
-        rep_weights.representation_add(
+        rep_weights_updater.representation_add(
             &mut txn,
             representative,
             Amount::zero().wrapping_sub(Amount::from(2)),
         );
 
-        assert_eq!(rep_weights.count(), 0);
+        assert_eq!(rep_weights.len(), 0);
         assert_eq!(put_tracker.output(), vec![(representative, 9.into())]);
     }
 }

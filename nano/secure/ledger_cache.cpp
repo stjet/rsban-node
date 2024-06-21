@@ -2,7 +2,7 @@
 #include <nano/secure/ledger_cache.hpp>
 
 nano::ledger_cache::ledger_cache (rsnano::LedgerCacheHandle * handle_a) :
-	handle{ handle_a } 
+	handle{ handle_a }
 {
 }
 

@@ -2092,8 +2092,8 @@ void nano::json_handler::confirmation_info ()
 					{
 						if (block->hash () == vote.get_hash ())
 						{
-							auto amount {node.get_rep_weight (representative)};
-							representatives.emplace (std::move (amount.number()), representative);
+							auto amount{ node.get_rep_weight (representative) };
+							representatives.emplace (std::move (amount.number ()), representative);
 						}
 					}
 					boost::property_tree::ptree representatives_list;

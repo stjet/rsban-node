@@ -1,4 +1,3 @@
-use super::RepWeightsHandle;
 use rsnano_ledger::LedgerCache;
 use std::{
     ops::Deref,

@@ -75,7 +75,6 @@ public:
 class ledger final
 {
 public:
-	ledger (nano::store::component &, nano::stats &, nano::ledger_constants & constants, nano::generate_cache_flags const & = nano::generate_cache_flags (), nano::uint128_t min_rep_weight_a = 0);
 	ledger (rsnano::LedgerHandle * handle, nano::store::component &, nano::ledger_constants & constants);
 	ledger (nano::ledger const &) = delete;
 	ledger (nano::ledger &&) = delete;

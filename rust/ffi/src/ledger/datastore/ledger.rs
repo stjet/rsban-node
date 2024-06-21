@@ -32,28 +32,6 @@ impl Deref for LedgerHandle {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_create(
-    store: *mut LmdbStoreHandle,
-    constants: *const LedgerConstantsDto,
-    stats: *mut StatHandle,
-    generate_cache: *mut GenerateCacheHandle,
-    min_rep_weight: *const u8,
-) -> *mut LedgerHandle {
-    let stats = (*stats).deref().to_owned();
-    let mut ledger = Ledger::with_cache(
-        (*store).deref().to_owned(),
-        (&*constants).try_into().unwrap(),
-        &*generate_cache,
-        Amount::from_ptr(min_rep_weight),
-    )
-    .unwrap();
-
-    ledger.set_observer(Arc::new(LedgerStats::new(stats)));
-
-    Box::into_raw(Box::new(LedgerHandle(Arc::new(ledger))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_ledger_destroy(handle: *mut LedgerHandle) {
     drop(unsafe { Box::from_raw(handle) });
 }

@@ -21,23 +21,6 @@
 
 #include <optional>
 
-namespace
-{
-rsnano::LedgerHandle * create_ledger_handle (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a, nano::uint128_t min_rep_weight_a)
-{
-	auto constants_dto{ constants.to_dto () };
-	nano::amount min_rep_weight{ min_rep_weight_a };
-	return rsnano::rsn_ledger_create (store_a.get_handle (), &constants_dto, stat_a.handle, generate_cache_flags_a.handle, min_rep_weight.bytes.data ());
-}
-}
-
-nano::ledger::ledger (nano::store::component & store_a, nano::stats & stat_a, nano::ledger_constants & constants, nano::generate_cache_flags const & generate_cache_flags_a, nano::uint128_t min_rep_weight_a) :
-	handle{ create_ledger_handle (store_a, stat_a, constants, generate_cache_flags_a, min_rep_weight_a) },
-	constants{ constants },
-	store{ store_a }
-{
-}
-
 nano::ledger::ledger (rsnano::LedgerHandle * handle, nano::store::component & store_a, nano::ledger_constants & constants) :
 	handle{ handle },
 	constants{ constants },
@@ -231,22 +214,22 @@ nano::epoch nano::ledger::version (store::transaction const & transaction, nano:
 
 uint64_t nano::ledger::cemented_count () const
 {
-	return rsnano::rsn_ledger_cemented_count(handle);
+	return rsnano::rsn_ledger_cemented_count (handle);
 }
 
 uint64_t nano::ledger::block_count () const
 {
-	return rsnano::rsn_ledger_block_count(handle);
+	return rsnano::rsn_ledger_block_count (handle);
 }
 
 uint64_t nano::ledger::account_count () const
 {
-	return rsnano::rsn_ledger_account_count(handle);
+	return rsnano::rsn_ledger_account_count (handle);
 }
 
 uint64_t nano::ledger::pruned_count () const
 {
-	return rsnano::rsn_ledger_pruned_count(handle);
+	return rsnano::rsn_ledger_pruned_count (handle);
 }
 
 nano::ledger_set_any::ledger_set_any (rsnano::LedgerSetAnyHandle * handle) :

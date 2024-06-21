@@ -20,8 +20,6 @@
 #include <boost/format.hpp>
 #include <boost/unordered_set.hpp>
 
-#include <random>
-
 using namespace std::chrono_literals;
 
 /**
@@ -119,68 +117,6 @@ TEST (system, receive_while_synchronizing)
 	for (auto i (threads.begin ()), n (threads.end ()); i != n; ++i)
 	{
 		i->join ();
-	}
-}
-
-TEST (ledger, deep_account_compute)
-{
-	auto store = nano::make_store (nano::unique_path (), nano::dev::constants);
-	ASSERT_FALSE (store->init_error ());
-	nano::stats stats;
-	nano::ledger ledger (*store, stats, nano::dev::constants);
-	auto transaction (store->tx_begin_write ());
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::keypair key;
-	auto balance (nano::dev::constants.genesis_amount - 1);
-	nano::block_builder builder;
-	auto send = builder
-				.send ()
-				.previous (nano::dev::genesis->hash ())
-				.destination (key.pub)
-				.balance (balance)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*pool.generate (nano::dev::genesis->hash ()))
-				.build ();
-	ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, send));
-	auto open = builder
-				.open ()
-				.source (send->hash ())
-				.representative (nano::dev::genesis_key.pub)
-				.account (key.pub)
-				.sign (key.prv, key.pub)
-				.work (*pool.generate (key.pub))
-				.build ();
-	ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, open));
-	auto sprevious (send->hash ());
-	auto rprevious (open->hash ());
-	for (auto i (0), n (100000); i != n; ++i)
-	{
-		balance -= 1;
-		auto send = builder
-					.send ()
-					.previous (sprevious)
-					.destination (key.pub)
-					.balance (balance)
-					.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-					.work (*pool.generate (sprevious))
-					.build ();
-		ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, send));
-		sprevious = send->hash ();
-		auto receive = builder
-					   .receive ()
-					   .previous (rprevious)
-					   .source (send->hash ())
-					   .sign (key.prv, key.pub)
-					   .work (*pool.generate (rprevious))
-					   .build ();
-		ASSERT_EQ (nano::block_status::progress, ledger.process (*transaction, receive));
-		rprevious = receive->hash ();
-		if (i % 100 == 0)
-		{
-			std::cerr << i << ' ';
-		}
-		ledger.any ().block_account (*transaction, sprevious);
-		ledger.any ().block_balance (*transaction, rprevious);
 	}
 }
 

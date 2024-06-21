@@ -81,19 +81,16 @@ impl<'a> BlockInserter<'a> {
     fn update_representative_cache(&mut self) {
         if !self.instructions.old_account_info.head.is_zero() {
             // Move existing representation & add in amount delta
-            self.ledger
-                .cache
-                .rep_weights_updater
-                .representation_add_dual(
-                    self.txn,
-                    self.instructions.old_account_info.representative,
-                    Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
-                    self.instructions.set_account_info.representative,
-                    self.instructions.set_account_info.balance,
-                );
+            self.ledger.rep_weights_updater.representation_add_dual(
+                self.txn,
+                self.instructions.old_account_info.representative,
+                Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
+                self.instructions.set_account_info.representative,
+                self.instructions.set_account_info.balance,
+            );
         } else {
             // Add in amount delta only
-            self.ledger.cache.rep_weights_updater.representation_add(
+            self.ledger.rep_weights_updater.representation_add(
                 self.txn,
                 self.instructions.set_account_info.representative,
                 self.instructions.set_account_info.balance,
@@ -122,7 +119,6 @@ mod tests {
         );
         assert_eq!(
             ledger
-                .cache
                 .rep_weights
                 .get_weight(&instructions.set_account_info.representative),
             instructions.set_account_info.balance
@@ -179,7 +175,7 @@ mod tests {
         let ledger = Ledger::new_null_builder().block(&open).finish();
         insert(&ledger, &mut state, &instructions);
         assert_eq!(
-            ledger.cache.rep_weights.get_weight(&new_representative),
+            ledger.rep_weights.get_weight(&new_representative),
             instructions.set_account_info.balance
         );
     }

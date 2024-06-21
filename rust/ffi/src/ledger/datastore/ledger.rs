@@ -81,82 +81,6 @@ pub unsafe extern "C" fn rsn_ledger_enable_pruning(handle: *mut LedgerHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_bootstrap_weight_max_blocks(handle: *mut LedgerHandle) -> u64 {
-    (*handle).0.bootstrap_weight_max_blocks()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weight_max_blocks(
-    handle: *mut LedgerHandle,
-    max: u64,
-) {
-    (*handle).0.set_bootstrap_weight_max_blocks(max)
-}
-
-#[repr(C)]
-pub struct BootstrapWeightsItem {
-    pub account: [u8; 32],
-    pub weight: [u8; 16],
-}
-
-pub struct BootstrapWeightsRawPtr(Vec<BootstrapWeightsItem>);
-
-#[repr(C)]
-pub struct BootstrapWeightsDto {
-    pub accounts: *const BootstrapWeightsItem,
-    pub count: usize,
-    pub raw_ptr: *mut BootstrapWeightsRawPtr,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_bootstrap_weights(
-    handle: *mut LedgerHandle,
-    result: *mut BootstrapWeightsDto,
-) {
-    let weights = (*handle).0.bootstrap_weights.lock().unwrap().to_owned();
-    let items = weights
-        .iter()
-        .map(|(k, v)| BootstrapWeightsItem {
-            account: *k.as_bytes(),
-            weight: v.to_be_bytes(),
-        })
-        .collect();
-    let raw_ptr = Box::new(BootstrapWeightsRawPtr(items));
-
-    (*result).count = raw_ptr.0.len();
-    (*result).accounts = raw_ptr.0.as_ptr();
-    (*result).raw_ptr = Box::into_raw(raw_ptr);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_destroy_bootstrap_weights_dto(dto: *mut BootstrapWeightsDto) {
-    drop(Box::from_raw((*dto).raw_ptr))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_set_bootstrap_weights(
-    handle: *mut LedgerHandle,
-    accounts: *const BootstrapWeightsItem,
-    count: usize,
-) {
-    let dtos = if accounts.is_null() {
-        &[]
-    } else {
-        std::slice::from_raw_parts(accounts, count)
-    };
-    let weights = dtos
-        .iter()
-        .map(|d| {
-            (
-                Account::from_bytes(d.account),
-                Amount::from_be_bytes(d.weight),
-            )
-        })
-        .collect();
-    *(*handle).0.bootstrap_weights.lock().unwrap() = weights;
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_any(handle: &LedgerHandle) -> *mut LedgerSetAnyHandle {
     let any = std::mem::transmute::<LedgerSetAny, LedgerSetAny<'static>>(handle.any());
     Box::into_raw(Box::new(LedgerSetAnyHandle(any)))
@@ -344,11 +268,6 @@ pub unsafe extern "C" fn rsn_ledger_pruning_action(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_bootstrap_weight_reached(handle: *mut LedgerHandle) -> bool {
-    (*handle).0.bootstrap_weight_reached()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     handle: *mut LedgerHandle,
     txn: *mut TransactionHandle,
@@ -359,15 +278,6 @@ pub unsafe extern "C" fn rsn_ledger_dependent_blocks(
     let dependent = (*handle).0.dependent_blocks((*txn).as_txn(), &block);
     dependent.previous().unwrap_or_default().copy_bytes(result1);
     dependent.link().unwrap_or_default().copy_bytes(result2);
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_ledger_dependents_confirmed(
-    handle: &LedgerHandle,
-    txn: &TransactionHandle,
-    block: &BlockHandle,
-) -> bool {
-    handle.0.dependents_confirmed(txn.as_txn(), &block)
 }
 
 #[no_mangle]
@@ -502,4 +412,13 @@ pub extern "C" fn rsn_ledger_account_count(handle: &LedgerHandle) -> u64 {
 #[no_mangle]
 pub extern "C" fn rsn_ledger_pruned_count(handle: &LedgerHandle) -> u64 {
     handle.cache.pruned_count.load(Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_ledger_dependents_confirmed(
+    handle: &LedgerHandle,
+    txn: &TransactionHandle,
+    block: &BlockHandle,
+) -> bool {
+    handle.0.dependents_confirmed(txn.as_txn(), &block)
 }

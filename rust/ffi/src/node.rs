@@ -4,10 +4,10 @@ use crate::{
     cementation::ConfirmingSetHandle,
     consensus::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
-        ElectionStatusHandle, FfiAccountBalanceCallback, HintedSchedulerHandle,
-        LocalVoteHistoryHandle, ManualSchedulerHandle, OptimisticSchedulerHandle, RepTiersHandle,
-        RequestAggregatorHandle, VoteCacheHandle, VoteHandle, VoteProcessorHandle,
-        VoteProcessorQueueHandle, VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
+        ElectionStatusHandle, FfiAccountBalanceCallback, LocalVoteHistoryHandle,
+        ManualSchedulerHandle, RepTiersHandle, RequestAggregatorHandle, VoteCacheHandle,
+        VoteHandle, VoteProcessorHandle, VoteProcessorQueueHandle,
+        VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
     },
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
@@ -445,14 +445,15 @@ pub unsafe extern "C" fn rsn_node_get_rep_weight(
 ) {
     let result = handle
         .0
-        .rep_weight_cache
+        .ledger
+        .rep_weights
         .get_weight(&Account::from_ptr(account));
     result.copy_bytes(weight);
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_node_get_rep_weights(handle: &NodeHandle) -> *mut RepWeightsVecHandle {
-    let mut weights = handle.0.ledger.cache.rep_weights.read().clone();
+    let mut weights = handle.0.ledger.rep_weights.read().clone();
     Box::into_raw(Box::new(RepWeightsVecHandle(weights.drain().collect())))
 }
 

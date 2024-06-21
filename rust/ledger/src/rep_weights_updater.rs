@@ -12,16 +12,12 @@ pub struct RepWeightsUpdater {
 }
 
 impl RepWeightsUpdater {
-    pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount) -> Self {
+    pub fn new(store: Arc<LmdbRepWeightStore>, min_weight: Amount, cache: RepWeightCache) -> Self {
         RepWeightsUpdater {
-            weight_cache: Arc::new(RwLock::new(HashMap::new())),
+            weight_cache: cache.take(),
             store,
             min_weight,
         }
-    }
-
-    pub fn cache(&self) -> RepWeightCache {
-        RepWeightCache::new(self.weight_cache.clone())
     }
 
     /// Only use this method when loading rep weights from the database table
@@ -119,8 +115,9 @@ mod tests {
         let env = Arc::new(LmdbEnv::new_null());
         let store = Arc::new(LmdbRepWeightStore::new(env).unwrap());
         let account = Account::from(1);
-        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
-        let rep_weights = rep_weights_updater.cache();
+        let rep_weights = RepWeightCache::new();
+        let rep_weights_updater =
+            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
         assert_eq!(rep_weights.get_weight(&account), Amount::zero());
 
         rep_weights_updater.representation_put(account, Amount::from(1));
@@ -145,8 +142,9 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
-        let rep_weights = rep_weights_updater.cache();
+        let rep_weights = RepWeightCache::new();
+        let rep_weights_updater =
+            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
         rep_weights_updater.representation_put(representative, weight);
         let mut tx = env.tx_begin_write();
 
@@ -177,8 +175,9 @@ mod tests {
         );
         let store = Arc::new(LmdbRepWeightStore::new(Arc::clone(&env)).unwrap());
         let delete_tracker = store.track_deletions();
-        let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero());
-        let rep_weights = rep_weights_updater.cache();
+        let rep_weights = RepWeightCache::new();
+        let rep_weights_updater =
+            RepWeightsUpdater::new(store, Amount::zero(), rep_weights.clone());
         rep_weights_updater.representation_put(rep1, weight);
         rep_weights_updater.representation_put(rep2, weight);
         let mut tx = env.tx_begin_write();
@@ -205,11 +204,12 @@ mod tests {
         let representative = Account::from(1);
         let min_weight = Amount::from(10);
         let rep_weight = Amount::from(9);
-        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight);
+        let rep_weights = RepWeightCache::new();
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, rep_weights.clone());
 
         rep_weights_updater.representation_add(&mut txn, representative, rep_weight);
 
-        assert_eq!(rep_weights_updater.cache().len(), 0);
+        assert_eq!(rep_weights.len(), 0);
         assert_eq!(put_tracker.output(), vec![(representative, rep_weight)]);
     }
 
@@ -229,8 +229,8 @@ mod tests {
         let put_tracker = store.track_puts();
         let mut txn = env.tx_begin_write();
         let min_weight = Amount::from(10);
-        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight);
-        let rep_weights = rep_weights_updater.cache();
+        let rep_weights = RepWeightCache::new();
+        let rep_weights_updater = RepWeightsUpdater::new(store, min_weight, rep_weights.clone());
 
         rep_weights_updater.representation_add(
             &mut txn,

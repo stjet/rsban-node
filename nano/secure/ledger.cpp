@@ -174,13 +174,6 @@ bool nano::ledger::is_epoch_link (nano::link const & link_a) const
 	return rsnano::rsn_ledger_is_epoch_link (handle, link_a.bytes.data ());
 }
 
-std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (store::transaction const & transaction_a, nano::block const & block_a) const
-{
-	std::array<nano::block_hash, 2> result;
-	rsnano::rsn_ledger_dependent_blocks (handle, transaction_a.get_rust_handle (), block_a.get_handle (), result[0].bytes.data (), result[1].bytes.data ());
-	return result;
-}
-
 /** Given the block hash of a send block, find the associated receive block that receives that send.
  *  The send block hash is not checked in any way, it is assumed to be correct.
  * @return Return the receive block on success and null on failure
@@ -215,67 +208,9 @@ uint64_t nano::ledger::pruning_action (store::write_transaction & transaction_a,
 	return rsnano::rsn_ledger_pruning_action (handle, transaction_a.get_rust_handle (), hash_a.bytes.data (), batch_size_a);
 }
 
-bool nano::ledger::bootstrap_weight_reached () const
-{
-	return rsnano::rsn_ledger_bootstrap_weight_reached (handle);
-}
-
-size_t nano::ledger::get_bootstrap_weights_size () const
-{
-	return get_bootstrap_weights ().size ();
-}
-
-void nano::ledger::enable_pruning ()
-{
-	rsnano::rsn_ledger_enable_pruning (handle);
-}
-
 bool nano::ledger::pruning_enabled () const
 {
 	return rsnano::rsn_ledger_pruning_enabled (handle);
-}
-
-std::unordered_map<nano::account, nano::uint128_t> nano::ledger::get_bootstrap_weights () const
-{
-	std::unordered_map<nano::account, nano::uint128_t> weights;
-	rsnano::BootstrapWeightsDto dto;
-	rsnano::rsn_ledger_bootstrap_weights (handle, &dto);
-	for (int i = 0; i < dto.count; ++i)
-	{
-		nano::account account;
-		nano::uint128_t amount;
-		auto & item = dto.accounts[i];
-		std::copy (std::begin (item.account), std::end (item.account), std::begin (account.bytes));
-		boost::multiprecision::import_bits (amount, std::begin (item.weight), std::end (item.weight), 8, true);
-		weights.emplace (account, amount);
-	}
-	rsnano::rsn_ledger_destroy_bootstrap_weights_dto (&dto);
-	return weights;
-}
-
-void nano::ledger::set_bootstrap_weights (std::unordered_map<nano::account, nano::uint128_t> const & weights_a)
-{
-	std::vector<rsnano::BootstrapWeightsItem> dtos;
-	dtos.reserve (weights_a.size ());
-	for (auto & it : weights_a)
-	{
-		rsnano::BootstrapWeightsItem dto;
-		std::copy (std::begin (it.first.bytes), std::end (it.first.bytes), std::begin (dto.account));
-		std::fill (std::begin (dto.weight), std::end (dto.weight), 0);
-		boost::multiprecision::export_bits (it.second, std::rbegin (dto.weight), 8, false);
-		dtos.push_back (dto);
-	}
-	rsnano::rsn_ledger_set_bootstrap_weights (handle, dtos.data (), dtos.size ());
-}
-
-uint64_t nano::ledger::get_bootstrap_weight_max_blocks () const
-{
-	return rsnano::rsn_ledger_bootstrap_weight_max_blocks (handle);
-}
-
-void nano::ledger::set_bootstrap_weight_max_blocks (uint64_t max_a)
-{
-	rsnano::rsn_ledger_set_bootstrap_weight_max_blocks (handle, max_a);
 }
 
 nano::epoch nano::ledger::version (nano::block const & block)

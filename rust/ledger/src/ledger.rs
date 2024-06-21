@@ -3,7 +3,7 @@ use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     ledger_set_confirmed::LedgerSetConfirmed,
     BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    LedgerSetAny, RepresentativeBlockFinder, WriteQueue,
+    LedgerSetAny, RepWeightCache, RepWeightsUpdater, RepresentativeBlockFinder, WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -72,6 +72,8 @@ impl LedgerObserver for NullLedgerObserver {}
 pub struct Ledger {
     pub store: Arc<LmdbStore>,
     pub cache: Arc<LedgerCache>,
+    pub rep_weights_updater: RepWeightsUpdater,
+    pub rep_weights: RepWeightCache,
     pub constants: LedgerConstants,
     pub observer: Arc<dyn LedgerObserver>,
     pruning: AtomicBool,
@@ -205,11 +207,19 @@ impl Ledger {
         generate_cache: &GenerateCacheFlags,
         min_rep_weight: Amount,
     ) -> anyhow::Result<Self> {
+        let cache = Arc::new(LedgerCache::new());
+        let rep_weights = RepWeightCache::new();
+
+        let rep_weights_updater = RepWeightsUpdater::new(
+            store.rep_weight.clone(),
+            min_rep_weight,
+            rep_weights.clone(),
+        );
+
         let mut ledger = Self {
-            cache: Arc::new(LedgerCache::new(
-                Arc::clone(&store.rep_weight),
-                min_rep_weight,
-            )),
+            cache,
+            rep_weights,
+            rep_weights_updater,
             store,
             constants,
             observer: Arc::new(NullLedgerObserver::new()),
@@ -262,7 +272,7 @@ impl Ledger {
                 self.cache
                     .account_count
                     .fetch_add(account_count, Ordering::SeqCst);
-                self.cache.rep_weights_updater.copy_from(&rep_weights);
+                self.rep_weights_updater.copy_from(&rep_weights);
             });
         }
 
@@ -414,7 +424,7 @@ impl Ledger {
             }
         }
 
-        self.cache.rep_weights.get_weight(account)
+        self.rep_weights.get_weight(account)
     }
 
     /// Returns the exact vote weight for the given representative by doing a database lookup
@@ -675,7 +685,7 @@ impl Ledger {
                     count: self.bootstrap_weights.lock().unwrap().len(),
                     sizeof_element: size_of::<Account>() + size_of::<Amount>(),
                 }),
-                self.cache.rep_weights.collect_container_info("rep_weights"),
+                self.rep_weights.collect_container_info("rep_weights"),
             ],
         )
     }

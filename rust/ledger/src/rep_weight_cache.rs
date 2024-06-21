@@ -4,11 +4,14 @@ use std::collections::HashMap;
 use std::mem::size_of;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
+/// Returns the cached vote weight for the given representative.
+/// If the weight is below the cache limit it returns 0.
+#[derive(Clone)]
 pub struct RepWeightCache(Arc<RwLock<HashMap<Account, Amount>>>);
 
 impl RepWeightCache {
-    pub fn new(cache: Arc<RwLock<HashMap<Account, Amount>>>) -> Self {
-        Self(cache)
+    pub fn new() -> Self {
+        Self(Arc::new(RwLock::new(HashMap::new())))
     }
 
     pub fn read(&self) -> RwLockReadGuard<HashMap<Account, Amount>> {
@@ -21,6 +24,10 @@ impl RepWeightCache {
 
     pub fn len(&self) -> usize {
         self.0.read().unwrap().len()
+    }
+
+    pub(super) fn take(self) -> Arc<RwLock<HashMap<Account, Amount>>> {
+        self.0
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

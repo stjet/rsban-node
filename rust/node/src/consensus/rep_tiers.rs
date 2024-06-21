@@ -176,7 +176,7 @@ impl RepTiersImpl {
     fn calculate_tiers(&self) {
         self.stats.inc(StatType::RepTiers, DetailType::Loop);
         let stake = self.online_reps.lock().unwrap().trended();
-        let rep_amounts = self.ledger.cache.rep_weights.read().clone();
+        let rep_amounts = self.ledger.rep_weights.read().clone();
         let mut representatives_1_l = HashSet::new();
         let mut representatives_2_l = HashSet::new();
         let mut representatives_3_l = HashSet::new();

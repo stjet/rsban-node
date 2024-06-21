@@ -74,20 +74,17 @@ impl<'a> RollbackInstructionsExecutor<'a> {
     }
 
     fn roll_back_change_in_representative_cache(&mut self, previous_representative: &Account) {
-        self.ledger
-            .cache
-            .rep_weights_updater
-            .representation_add_dual(
-                self.txn,
-                self.instructions.old_account_info.representative,
-                Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
-                *previous_representative,
-                self.instructions.new_balance,
-            );
+        self.ledger.rep_weights_updater.representation_add_dual(
+            self.txn,
+            self.instructions.old_account_info.representative,
+            Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),
+            *previous_representative,
+            self.instructions.new_balance,
+        );
     }
 
     fn roll_back_receive_in_representative_cache(&mut self) {
-        self.ledger.cache.rep_weights_updater.representation_add(
+        self.ledger.rep_weights_updater.representation_add(
             self.txn,
             self.instructions.old_account_info.representative,
             Amount::zero().wrapping_sub(self.instructions.old_account_info.balance),

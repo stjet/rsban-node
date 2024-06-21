@@ -577,7 +577,6 @@ fn ledger_cache() {
         account_count: u64,
         block_count: u64,
         cemented_count: u64,
-        genesis_weight: Amount,
         pruned_count: u64,
     }
 
@@ -587,7 +586,6 @@ fn ledger_cache() {
             account_count: 1 + i,
             block_count: 1 + 2 * (i + 1) - 2,
             cemented_count: 1 + 2 * (i + 1) - 2,
-            genesis_weight: LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(i as u128),
             pruned_count: i,
         };
 
@@ -603,10 +601,6 @@ fn ledger_cache() {
             assert_eq!(
                 cache.cemented_count.load(Ordering::Relaxed),
                 expected.cemented_count
-            );
-            assert_eq!(
-                cache.rep_weights.get_weight(&DEV_GENESIS_ACCOUNT),
-                expected.genesis_weight
             );
             assert_eq!(
                 cache.pruned_count.load(Ordering::Relaxed),
@@ -632,7 +626,6 @@ fn ledger_cache() {
             let mut send = genesis.send(&txn).link(destination.account()).build();
             ctx.ledger.process(&mut txn, &mut send).unwrap();
             expected.block_count += 1;
-            expected.genesis_weight = send.balance_field().unwrap();
             send
         };
         cache_check(&ctx.ledger.cache, &expected);

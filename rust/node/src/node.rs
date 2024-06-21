@@ -144,6 +144,7 @@ impl Node {
             dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteSource, VoteCode) + Send + Sync,
         >,
     ) -> Self {
+        let network_label = network_params.network.get_current_network_as_string();
         let global_config = GlobalConfig {
             node_config: config.clone(),
             flags: flags.clone(),
@@ -167,6 +168,19 @@ impl Node {
         )
         .expect("Could not create LMDB store");
 
+        info!("Node starting, version: {}", VERSION_STRING);
+        info!("Build information: {}", BUILD_INFO);
+        info!("Active network: {}", network_label);
+        info!("Database backend: {}", store.vendor());
+        info!("Data path: {:?}", application_path);
+        info!(
+            "Work pool threads: {} ({})",
+            work.thread_count(),
+            if work.has_opencl() { "OpenCL" } else { "CPU" }
+        );
+        info!("Work peers: {}", config.work_peers.len());
+        info!("Node ID: {}", node_id.public_key().to_node_id());
+
         let mut ledger = Ledger::new(
             store.clone(),
             network_params.ledger.clone(),
@@ -176,6 +190,47 @@ impl Node {
 
         ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));
         let ledger = Arc::new(ledger);
+
+        if (network_params.network.is_live_network() || network_params.network.is_beta_network())
+            && !flags.inactive_node
+        {
+            let (max_blocks, weights) =
+                get_bootstrap_weights(network_params.network.current_network);
+            ledger.set_bootstrap_weight_max_blocks(max_blocks);
+
+            info!(
+                "Initial bootstrap height: {}",
+                ledger.bootstrap_weight_max_blocks()
+            );
+            info!("Current ledger height:    {}", ledger.block_count());
+
+            // Use bootstrap weights if initial bootstrap is not completed
+            let use_bootstrap_weight = ledger.block_count() < max_blocks;
+            if use_bootstrap_weight {
+                info!("Using predefined representative weights, since block count is less than bootstrap threshold");
+                *ledger.bootstrap_weights.lock().unwrap() = weights;
+
+                info!("************************************ Bootstrap weights ************************************");
+                // Sort the weights
+                let mut sorted_weights = ledger
+                    .bootstrap_weights
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .map(|(account, weight)| (*account, *weight))
+                    .collect::<Vec<_>>();
+                sorted_weights.sort_by(|(_, weight_a), (_, weight_b)| weight_b.cmp(weight_a));
+
+                for (rep, weight) in sorted_weights {
+                    info!(
+                        "Using bootstrap rep weight: {} -> {}",
+                        rep.encode_account(),
+                        weight.format_balance(0)
+                    );
+                }
+                info!("************************************ ================= ************************************");
+            }
+        }
 
         let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(config.borrow().into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));
@@ -800,20 +855,6 @@ impl Node {
             }
         }));
 
-        let network_label = network_params.network.get_current_network_as_string();
-        info!("Node starting, version: {}", VERSION_STRING);
-        info!("Build information: {}", BUILD_INFO);
-        info!("Active network: {}", network_label);
-        info!("Database backend: {}", store.vendor());
-        info!("Data path: {:?}", application_path);
-        info!(
-            "Work pool threads: {} ({})",
-            work.thread_count(),
-            if work.has_opencl() { "OpenCL" } else { "CPU" }
-        );
-        info!("Work peers: {}", config.work_peers.len());
-        info!("Node ID: {}", node_id.public_key().to_node_id());
-
         if !distributed_work.work_generation_enabled() {
             info!("Work generation is disabled");
         }
@@ -843,47 +884,6 @@ impl Node {
             );
             if wallets.voting_reps_count() > 1 {
                 warn!("Voting with more than one representative can limit performance");
-            }
-        }
-
-        if (network_params.network.is_live_network() || network_params.network.is_beta_network())
-            && !flags.inactive_node
-        {
-            let (max_blocks, weights) =
-                get_bootstrap_weights(network_params.network.current_network);
-            ledger.set_bootstrap_weight_max_blocks(max_blocks);
-
-            info!(
-                "Initial bootstrap height: {}",
-                ledger.bootstrap_weight_max_blocks()
-            );
-            info!("Current ledger height:    {}", ledger.block_count());
-
-            // Use bootstrap weights if initial bootstrap is not completed
-            let use_bootstrap_weight = ledger.block_count() < max_blocks;
-            if use_bootstrap_weight {
-                info!("Using predefined representative weights, since block count is less than bootstrap threshold");
-                *ledger.bootstrap_weights.lock().unwrap() = weights;
-
-                info!("************************************ Bootstrap weights ************************************");
-                // Sort the weights
-                let mut sorted_weights = ledger
-                    .bootstrap_weights
-                    .lock()
-                    .unwrap()
-                    .iter()
-                    .map(|(account, weight)| (*account, *weight))
-                    .collect::<Vec<_>>();
-                sorted_weights.sort_by(|(_, weight_a), (_, weight_b)| weight_b.cmp(weight_a));
-
-                for (rep, weight) in sorted_weights {
-                    info!(
-                        "Using bootstrap rep weight: {} -> {}",
-                        rep.encode_account(),
-                        weight.format_balance(0)
-                    );
-                }
-                info!("************************************ ================= ************************************");
             }
         }
 

@@ -500,7 +500,7 @@ impl RepCrawlerImpl {
                 .representative_register
                 .lock()
                 .unwrap()
-                .last_request_elapsed(channel)
+                .last_request_elapsed(channel.channel_id())
             {
                 Some(last_request_elapsed) => {
                     // Throttle queries to active reps
@@ -532,7 +532,7 @@ impl RepCrawlerImpl {
         self.representative_register
             .lock()
             .unwrap()
-            .on_rep_request(&channel);
+            .on_rep_request(channel.channel_id());
     }
 
     fn cleanup(&mut self) {

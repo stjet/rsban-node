@@ -75,7 +75,7 @@ pub extern "C" fn rsn_representative_register_is_pr(
     handle: &RepresentativeRegisterHandle,
     channel: &ChannelHandle,
 ) -> bool {
-    handle.0.lock().unwrap().is_pr(channel)
+    handle.0.lock().unwrap().is_pr(channel.channel_id())
 }
 
 #[no_mangle]

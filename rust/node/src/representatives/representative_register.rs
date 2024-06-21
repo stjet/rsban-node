@@ -89,8 +89,8 @@ impl RepresentativeRegister {
         }
     }
 
-    pub fn last_request_elapsed(&self, channel: &ChannelEnum) -> Option<Duration> {
-        self.by_channel_id.get(&channel.channel_id()).map(|i| {
+    pub fn last_request_elapsed(&self, channel_id: usize) -> Option<Duration> {
+        self.by_channel_id.get(&channel_id).map(|i| {
             self.by_account
                 .get(i.first().unwrap())
                 .unwrap()
@@ -100,8 +100,8 @@ impl RepresentativeRegister {
     }
 
     /// Query if a peer manages a principle representative
-    pub fn is_pr(&self, channel: &ChannelEnum) -> bool {
-        if let Some(existing) = self.by_channel_id.get(&channel.channel_id()) {
+    pub fn is_pr(&self, channel_id: usize) -> bool {
+        if let Some(existing) = self.by_channel_id.get(&channel_id) {
             let min_weight = {
                 let guard = self.online_reps.lock().unwrap();
                 guard.minimum_principal_weight()
@@ -125,9 +125,9 @@ impl RepresentativeRegister {
         result
     }
 
-    pub fn on_rep_request(&mut self, channel: &ChannelEnum) {
+    pub fn on_rep_request(&mut self, channel_id: usize) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
-        if let Some(rep_accounts) = self.by_channel_id.get(&channel.channel_id()) {
+        if let Some(rep_accounts) = self.by_channel_id.get(&channel_id) {
             for rep in rep_accounts {
                 self.by_account.get_mut(rep).unwrap().last_request = Instant::now();
             }

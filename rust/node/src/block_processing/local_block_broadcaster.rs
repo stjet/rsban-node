@@ -213,7 +213,7 @@ impl LocalBlockBroadcaster {
         let mut channels = self.network.random_list(usize::MAX, 0);
         {
             let guard = self.representatives.lock().unwrap();
-            channels.retain(|c| !guard.is_pr(c));
+            channels.retain(|c| !guard.is_pr(c.channel_id()));
         }
         channels.truncate(count);
         channels

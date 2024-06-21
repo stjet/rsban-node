@@ -174,6 +174,8 @@ impl NetworkConstants {
             telemetry_request_interval_ms: 500,
             telemetry_broadcast_interval_ms: 500,
             optimistic_activation_delay: Duration::from_secs(2),
+            rep_crawler_normal_interval: Duration::from_millis(500),
+            rep_crawler_warmup_interval: Duration::from_millis(500),
             ..Self::live(work)
         }
     }

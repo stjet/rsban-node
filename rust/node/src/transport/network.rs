@@ -645,7 +645,7 @@ impl NetworkExt for Arc<Network> {
                     state.channels.remove_by_endpoint(&endpoint);
                     drop(state);
                     debug!(
-                        ?node_id,
+                        node_id = node_id.to_node_id(),
                         remote = %endpoint,
                         "Dropping channel, because another channel for the same node ID was found"
                     );

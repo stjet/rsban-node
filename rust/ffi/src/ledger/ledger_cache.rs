@@ -27,13 +27,6 @@ pub unsafe extern "C" fn rsn_ledger_cache_destroy(handle: *mut LedgerCacheHandle
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_ledger_cache_weights(
-    handle: *mut LedgerCacheHandle,
-) -> *mut RepWeightsHandle {
-    RepWeightsHandle::new((*handle).0.rep_weights.clone())
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_ledger_cache_cemented_count(handle: *mut LedgerCacheHandle) -> u64 {
     (*handle).0.cemented_count.load(Ordering::SeqCst)
 }

@@ -325,23 +325,9 @@ pub extern "C" fn rsn_node_tcp_listener(handle: &NodeHandle) -> *mut TcpListener
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_hinted(handle: &NodeHandle) -> *mut HintedSchedulerHandle {
-    Box::into_raw(Box::new(HintedSchedulerHandle(Arc::clone(
-        &handle.0.hinted_scheduler,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_manual(handle: &NodeHandle) -> *mut ManualSchedulerHandle {
     Box::into_raw(Box::new(ManualSchedulerHandle(Arc::clone(
         &handle.0.manual_scheduler,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_optimistic(handle: &NodeHandle) -> *mut OptimisticSchedulerHandle {
-    Box::into_raw(Box::new(OptimisticSchedulerHandle(Arc::clone(
-        &handle.0.optimistic_scheduler,
     ))))
 }
 

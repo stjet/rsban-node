@@ -67,7 +67,7 @@ impl RepWeightCache {
         false
     }
 
-    pub fn get_weight(&self, rep: &Account) -> Amount {
+    pub fn weight(&self, rep: &Account) -> Amount {
         let weights = if self.use_bootstrap_weights() {
             &self.bootstrap_weights
         } else {

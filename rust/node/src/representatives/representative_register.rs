@@ -108,7 +108,7 @@ impl RepresentativeRegister {
             };
             existing
                 .iter()
-                .any(|account| self.rep_weights.get_weight(account) >= min_weight)
+                .any(|account| self.rep_weights.weight(account) >= min_weight)
         } else {
             false
         }
@@ -119,7 +119,7 @@ impl RepresentativeRegister {
         let mut result = Amount::zero();
         for (account, rep) in &self.by_account {
             if rep.channel.is_alive() {
-                result += self.rep_weights.get_weight(account);
+                result += self.rep_weights.weight(account);
             }
         }
         result
@@ -134,16 +134,16 @@ impl RepresentativeRegister {
         }
     }
 
-    pub fn cleanup_reps(&mut self) {
+    pub fn evict(&mut self, channel_ids: &[usize]) {
         let mut to_delete = Vec::new();
-        // Check known rep channels
-        for (account, rep) in &self.by_account {
-            if !rep.channel.is_alive() {
-                // Remove reps with closed channels
-                to_delete.push((*account, rep.channel.channel_id()));
+
+        for channel_id in channel_ids {
+            if let Some(accounts) = self.by_channel_id.get(&channel_id) {
+                for account in accounts {
+                    to_delete.push((*account, *channel_id));
+                }
             }
         }
-
         for (account, channel_id) in to_delete {
             let rep = self.by_account.remove(&account).unwrap();
             self.remove_channel_id(&account, channel_id);
@@ -193,7 +193,7 @@ impl RepresentativeRegister {
         let min_protocol_version = min_protocol_version.unwrap_or(self.protocol_info.version_min);
         let mut reps_with_weight = Vec::new();
         for (account, rep) in &self.by_account {
-            let weight = self.rep_weights.get_weight(account);
+            let weight = self.rep_weights.weight(account);
             if weight > min_weight && rep.channel.network_version() >= min_protocol_version {
                 reps_with_weight.push((rep.clone(), weight));
             }

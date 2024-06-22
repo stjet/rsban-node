@@ -1,6 +1,7 @@
 use super::{Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
+    representatives::RepresentativeRegister,
     stats::{DetailType, StatType, Stats},
     NetworkParams,
 };
@@ -18,6 +19,7 @@ pub struct NetworkThreads {
     reachout_thread: Option<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
+    representative_register: Arc<Mutex<RepresentativeRegister>>,
     peer_connector: Arc<PeerConnector>,
     flags: NodeFlags,
     network_params: NetworkParams,
@@ -35,6 +37,7 @@ impl NetworkThreads {
         stats: Arc<Stats>,
         syn_cookies: Arc<SynCookies>,
         keepalive_factory: Arc<KeepaliveFactory>,
+        representative_register: Arc<Mutex<RepresentativeRegister>>,
     ) -> Self {
         Self {
             cleanup_thread: None,
@@ -48,6 +51,7 @@ impl NetworkThreads {
             stats,
             syn_cookies,
             keepalive_factory,
+            representative_register,
         }
     }
 
@@ -55,10 +59,11 @@ impl NetworkThreads {
         let cleanup = CleanupLoop {
             stopped: self.stopped.clone(),
             network_params: self.network_params.clone(),
-            stats: Arc::clone(&self.stats),
+            stats: self.stats.clone(),
             flags: self.flags.clone(),
-            syn_cookies: Arc::clone(&self.syn_cookies),
-            network: Arc::clone(&self.network),
+            syn_cookies: self.syn_cookies.clone(),
+            network: self.network.clone(),
+            representative_register: self.representative_register.clone(),
         };
 
         self.cleanup_thread = Some(
@@ -131,6 +136,7 @@ struct CleanupLoop {
     flags: NodeFlags,
     syn_cookies: Arc<SynCookies>,
     network: Arc<Network>,
+    representative_register: Arc<Mutex<RepresentativeRegister>>,
 }
 
 impl CleanupLoop {
@@ -152,8 +158,14 @@ impl CleanupLoop {
             self.stats.inc(StatType::Network, DetailType::LoopCleanup);
 
             if !self.flags.disable_connection_cleanup {
-                self.network
+                let removed_channel_ids = self
+                    .network
                     .purge(SystemTime::now() - self.network_params.network.cleanup_cutoff());
+
+                self.representative_register
+                    .lock()
+                    .unwrap()
+                    .evict(&removed_channel_ids);
             }
 
             self.syn_cookies

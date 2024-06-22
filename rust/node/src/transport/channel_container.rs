@@ -176,7 +176,8 @@ impl ChannelContainer {
         }
     }
 
-    pub fn remove_dead(&mut self) {
+    /// Removes dead channels and returns their channel ids
+    pub fn remove_dead(&mut self) -> Vec<usize> {
         let dead_channels: Vec<_> = self
             .by_endpoint
             .values()
@@ -184,10 +185,15 @@ impl ChannelContainer {
             .cloned()
             .collect();
 
-        for channel in dead_channels {
+        for channel in &dead_channels {
             debug!("Removing dead channel: {}", channel.endpoint());
             self.remove_by_endpoint(&channel.endpoint());
         }
+
+        dead_channels
+            .iter()
+            .map(|c| c.channel.channel_id())
+            .collect()
     }
 
     pub fn close_old_protocol_versions(&mut self, min_version: u8) {

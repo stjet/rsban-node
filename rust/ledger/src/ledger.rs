@@ -410,7 +410,7 @@ impl Ledger {
     /// If the weight is below the cache limit it returns 0.
     /// During bootstrap it returns the preconfigured bootstrap weights.
     pub fn weight(&self, account: &Account) -> Amount {
-        self.rep_weights.get_weight(account)
+        self.rep_weights.weight(account)
     }
 
     /// Returns the exact vote weight for the given representative by doing a database lookup

@@ -51,7 +51,7 @@ impl OnlineReps {
 
     /** Add voting account rep_account to the set of online representatives */
     pub fn observe(&mut self, rep_account: Account) {
-        if self.rep_weights.get_weight(&rep_account) > Amount::zero() {
+        if self.rep_weights.weight(&rep_account) > Amount::zero() {
             let new_insert = self.reps.insert(rep_account, Instant::now());
             let trimmed = self.reps.trim(self.weight_period);
 
@@ -110,7 +110,7 @@ impl OnlineReps {
     fn calculate_online(&mut self) {
         let mut current = Amount::zero();
         for account in self.reps.iter() {
-            current += self.rep_weights.get_weight(account);
+            current += self.rep_weights.weight(account);
         }
         self.online = current;
     }

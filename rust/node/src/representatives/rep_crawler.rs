@@ -536,9 +536,6 @@ impl RepCrawlerImpl {
     }
 
     fn cleanup(&mut self) {
-        // Evict reps with dead channels
-        self.representative_register.lock().unwrap().cleanup_reps();
-
         // Evict queries that haven't been responded to in a while
         self.queries.retain(|query| {
             if query.time.elapsed() < self.query_timeout {

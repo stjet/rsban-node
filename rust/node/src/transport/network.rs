@@ -531,9 +531,10 @@ impl Network {
         self.state.lock().unwrap().fanout(scale)
     }
 
-    pub fn purge(&self, cutoff: SystemTime) {
+    /// Returns channel IDs of removed channels
+    pub fn purge(&self, cutoff: SystemTime) -> Vec<usize> {
         let mut guard = self.state.lock().unwrap();
-        guard.purge(cutoff);
+        guard.purge(cutoff)
     }
 
     pub fn erase_channel_by_endpoint(&self, endpoint: &SocketAddrV6) {
@@ -745,7 +746,7 @@ impl State {
         self.channels.clear();
     }
 
-    pub fn purge(&mut self, cutoff: SystemTime) {
+    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<usize> {
         self.channels.close_idle_channels(cutoff);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
@@ -753,10 +754,11 @@ impl State {
             .close_old_protocol_versions(self.network_constants.protocol_version_min);
 
         // Remove channels with dead underlying sockets
-        self.channels.remove_dead();
+        let purged_channel_ids = self.channels.remove_dead();
 
         // Remove keepalive attempt tracking for attempts older than cutoff
         self.attempts.purge(cutoff);
+        purged_channel_ids
     }
 
     pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {

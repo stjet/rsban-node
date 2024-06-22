@@ -447,7 +447,7 @@ pub unsafe extern "C" fn rsn_node_get_rep_weight(
         .0
         .ledger
         .rep_weights
-        .get_weight(&Account::from_ptr(account));
+        .weight(&Account::from_ptr(account));
     result.copy_bytes(weight);
 }
 

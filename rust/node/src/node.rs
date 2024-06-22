@@ -662,6 +662,7 @@ impl Node {
             stats.clone(),
             syn_cookies.clone(),
             keepalive_factory.clone(),
+            representative_register.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(

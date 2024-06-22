@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(
             ledger
                 .rep_weights
-                .get_weight(&instructions.set_account_info.representative),
+                .weight(&instructions.set_account_info.representative),
             instructions.set_account_info.balance
         );
         assert_eq!(ledger.cache.block_count.load(Ordering::Relaxed), 1);
@@ -175,7 +175,7 @@ mod tests {
         let ledger = Ledger::new_null_builder().block(&open).finish();
         insert(&ledger, &mut state, &instructions);
         assert_eq!(
-            ledger.rep_weights.get_weight(&new_representative),
+            ledger.rep_weights.weight(&new_representative),
             instructions.set_account_info.balance
         );
     }

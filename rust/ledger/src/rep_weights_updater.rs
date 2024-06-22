@@ -117,13 +117,13 @@ mod tests {
         let account = Account::from(1);
         let rep_weights = RepWeightCache::new();
         let rep_weights_updater = RepWeightsUpdater::new(store, Amount::zero(), &rep_weights);
-        assert_eq!(rep_weights.get_weight(&account), Amount::zero());
+        assert_eq!(rep_weights.weight(&account), Amount::zero());
 
         rep_weights_updater.representation_put(account, Amount::from(1));
-        assert_eq!(rep_weights.get_weight(&account), Amount::from(1));
+        assert_eq!(rep_weights.weight(&account), Amount::from(1));
 
         rep_weights_updater.representation_put(account, Amount::from(2));
-        assert_eq!(rep_weights.get_weight(&account), Amount::from(2));
+        assert_eq!(rep_weights.weight(&account), Amount::from(2));
     }
 
     #[test]

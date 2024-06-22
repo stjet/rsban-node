@@ -117,10 +117,9 @@ impl RepresentativeRegister {
     /// Get total available weight from representatives
     pub fn total_weight(&self) -> Amount {
         let mut result = Amount::zero();
-        for (account, rep) in &self.by_account {
-            if rep.channel.is_alive() {
-                result += self.rep_weights.weight(account);
-            }
+        let weights = self.rep_weights.read();
+        for (account, _) in &self.by_account {
+            result += weights.get(account).cloned().unwrap_or_default();
         }
         result
     }

@@ -43,11 +43,11 @@ nano::error nano::stats_config::deserialize_toml (nano::tomlconfig & toml)
 	if (log_l)
 	{
 		log_l->get<bool> ("headers", log_headers);
-		auto counters_interval_l = log_counters_interval.count ();
+		long counters_interval_l = log_counters_interval.count ();
 		log_l->get<long> ("interval_counters", counters_interval_l);
 		log_counters_interval = std::chrono::milliseconds{ counters_interval_l };
 
-		auto samples_interval_l = log_samples_interval.count ();
+		long samples_interval_l = log_samples_interval.count ();
 		log_l->get<long> ("interval_samples", samples_interval_l);
 		log_samples_interval = std::chrono::milliseconds{ samples_interval_l };
 

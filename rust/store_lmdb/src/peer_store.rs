@@ -1,8 +1,9 @@
 use crate::{
-    ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction,
+    ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor, Transaction,
     PEERS_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
 use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use std::{
     array::TryFromSliceError,
@@ -72,19 +73,36 @@ impl LmdbPeerStore {
         txn.clear_db(self.database).unwrap();
     }
 
-    pub fn iter<'txn>(
-        &self,
-        txn: &'txn dyn Transaction,
-    ) -> impl Iterator<Item = (SocketAddrV6, SystemTime)> + 'txn {
-        txn.open_ro_cursor(self.database)
-            .expect("Could not read peer store database")
-            .iter_start()
-            .map(|i| i.unwrap())
-            .map(|(k, v)| {
-                let peer: SocketAddrV6 = EndpointBytes::try_from(k).unwrap().into();
-                let time: SystemTime = TimeBytes::try_from(v).unwrap().into();
-                (peer, time)
-            })
+    pub fn iter<'a>(&self, txn: &'a dyn Transaction) -> PeerIterator<'a> {
+        let cursor = txn.open_ro_cursor(self.database).unwrap();
+        PeerIterator {
+            cursor,
+            operation: MDB_FIRST,
+        }
+    }
+}
+
+pub struct PeerIterator<'txn> {
+    cursor: RoCursor<'txn>,
+    operation: MDB_cursor_op,
+}
+
+impl<'txn> Iterator for PeerIterator<'txn> {
+    type Item = (SocketAddrV6, SystemTime);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.cursor.get(None, None, self.operation) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok((Some(k), v)) => {
+                self.operation = MDB_NEXT;
+                Some((
+                    EndpointBytes::try_from(k).unwrap().into(),
+                    TimeBytes::try_from(v).unwrap().into(),
+                ))
+            }
+            Ok(_) => unreachable!(),
+            Err(_) => unreachable!(),
+        }
     }
 }
 

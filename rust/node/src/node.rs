@@ -79,7 +79,7 @@ pub struct Node {
     pub bootstrap_workers: Arc<dyn ThreadPool>,
     wallet_workers: Arc<dyn ThreadPool>,
     election_workers: Arc<dyn ThreadPool>,
-    flags: NodeFlags,
+    pub flags: NodeFlags,
     work: Arc<WorkPoolImpl>,
     pub distributed_work: Arc<DistributedWorkFactory>,
     pub store: Arc<LmdbStore>,
@@ -1173,6 +1173,17 @@ impl Node {
     pub fn ledger_pruning(&self, batch_size: u64, bootstrap_weight_reached: bool) {
         self.ledger_pruning
             .ledger_pruning(batch_size, bootstrap_weight_reached)
+    }
+
+    pub fn inactive_node_flag_defaults() -> NodeFlags {
+        let mut node_flags = NodeFlags::new();
+        node_flags.set_inactive_node(true);
+        node_flags.set_read_only(true);
+        node_flags.generate_cache.disable_all();
+        node_flags.set_disable_bootstrap_listener(true);
+        node_flags.set_disable_tcp_realtime(true);
+
+        node_flags
     }
 }
 

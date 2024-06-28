@@ -1,67 +1,83 @@
-use std::{
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
-};
-
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
-use rsnano_node::{
-    config::{NodeConfig, NodeFlags},
-    node::{Node, NodeExt},
-    transport::NullSocketObserver,
-    utils::AsyncRuntime,
-    working_path_for, NetworkParams,
-};
+use clap::{CommandFactory, Parser};
+use cli::{Cli, Commands};
 use tracing_subscriber::EnvFilter;
 
-fn main() {
-    let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
-        "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
-    ));
-    init_tracing(dirs);
-    // TODO set file descriptors limit
-    let network = Networks::NanoBetaNetwork;
-    let working_path = working_path_for(network).unwrap();
-    std::fs::create_dir_all(&working_path).unwrap();
+mod cli;
 
-    let network_params = NetworkParams::new(network);
-    let config = NodeConfig::new(
-        Some(network_params.network.default_node_port),
-        &network_params,
-        get_cpu_count(),
-    );
-    let flags = NodeFlags::default();
-    let async_rt = Arc::new(AsyncRuntime::default());
-    let work = Arc::new(WorkPoolImpl::new(
-        network_params.work.clone(),
-        config.work_threads as usize,
-        Duration::from_nanos(config.pow_sleep_interval_ns as u64),
-    ));
-
-    let node = Arc::new(Node::new(
-        async_rt,
-        working_path,
-        config,
-        network_params,
-        flags,
-        work,
-        Arc::new(NullSocketObserver::new()),
-        Box::new(|_, _, _, _, _, _| {}),
-        Box::new(|_, _| {}),
-        Box::new(|_, _, _, _| {}),
-    ));
-
-    node.start();
-
-    let finished = Arc::new((Mutex::new(false), Condvar::new()));
-    let finished_clone = finished.clone();
-    ctrlc::set_handler(move || {
-        node.stop();
-        *finished_clone.0.lock().unwrap() = true;
-        finished_clone.1.notify_all();
-    })
-    .expect("Error setting Ctrl-C handler");
-    let guard = finished.0.lock().unwrap();
-    drop(finished.1.wait_while(guard, |g| !*g).unwrap());
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    match &cli.command {
+        Some(Commands::Daemon(daemon)) => {
+            daemon.run();
+        }
+        Some(Commands::Initialize(initialize)) => {
+            initialize.run();
+        }
+        Some(Commands::OnlineWeightClear(online_weight_clear)) => {
+            online_weight_clear.run();
+        }
+        Some(Commands::PeerClear(peer_clear)) => {
+            peer_clear.run();
+        }
+        Some(Commands::ConfirmationHeightClear(confirmation_height_clear)) => {
+            confirmation_height_clear.run();
+        }
+        Some(Commands::ClearSendIds(clear_send_ids)) => {
+            clear_send_ids.run();
+        }
+        Some(Commands::FinalVoteClear(final_vote_clear)) => {
+            final_vote_clear.final_vote_clear()?;
+        }
+        Some(Commands::KeyCreate(key_create)) => {
+            key_create.run();
+        }
+        Some(Commands::WalletList(wallet_list)) => {
+            wallet_list.run();
+        }
+        Some(Commands::WalletCreate(wallet_create)) => {
+            wallet_create.run()?;
+        }
+        Some(Commands::WalletDestroy(wallet_destroy)) => {
+            wallet_destroy.run();
+        }
+        Some(Commands::WalletAddAdhoc(wallet_destroy)) => {
+            wallet_destroy.run();
+        }
+        Some(Commands::WalletChangeSeed(wallet_change_seed)) => {
+            wallet_change_seed.run();
+        }
+        Some(Commands::WalletRemove(wallet_remove)) => {
+            wallet_remove.run();
+        }
+        Some(Commands::WalletDecryptUnsafe(wallet_decrypt_unsafe)) => {
+            wallet_decrypt_unsafe.run();
+        }
+        Some(Commands::WalletRepresentativeGet(wallet_representative_get)) => {
+            wallet_representative_get.run();
+        }
+        Some(Commands::WalletRepresentativeSet(wallet_representative_set)) => {
+            wallet_representative_set.run();
+        }
+        Some(Commands::AccountGet(account_get)) => {
+            account_get.run();
+        }
+        Some(Commands::AccountKey(account_key)) => {
+            account_key.run();
+        }
+        Some(Commands::AccountCreate(account_create)) => {
+            account_create.run();
+        }
+        Some(Commands::KeyExpand(key_expand)) => {
+            key_expand.run();
+        }
+        Some(Commands::Diagnostics(diagnostics)) => {
+            diagnostics.run();
+        }
+        None => {
+            Cli::command().print_help()?;
+        }
+    }
+    Ok(())
 }
 
 fn init_tracing(dirs: impl AsRef<str>) {

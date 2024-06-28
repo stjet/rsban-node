@@ -2,9 +2,10 @@ use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     cementation::ConfirmingSet,
-    config::NodeConfig,
+    config::{NetworkConstants, NodeConfig},
+    stats::Stats,
     transport::{BufferDropPolicy, Network},
-    utils::ThreadPool,
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     work::DistributedWorkFactory,
     NetworkParams, OnlineReps,
 };
@@ -12,12 +13,12 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
-    work::WorkThresholds,
+    work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
     KeyDerivationFunction, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
     WalletId, WorkVersion,
 };
-use rsnano_ledger::{BlockStatus, Ledger};
+use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
@@ -66,13 +67,37 @@ pub struct Wallets {
     block_processor: Arc<BlockProcessor>,
     pub representatives: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
-    kdf: KeyDerivationFunction,
+    pub kdf: KeyDerivationFunction,
     network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
 }
 
 impl Wallets {
+    pub fn new_null(path: &PathBuf) -> anyhow::Result<Self> {
+        Wallets::new(
+            false,
+            Arc::new(LmdbEnv::new(&path).unwrap()),
+            Arc::new(Ledger::new_null()),
+            &NodeConfig::new_test_instance(),
+            8,
+            WorkThresholds::new(0, 0, 0),
+            Arc::new(DistributedWorkFactory::new(
+                Arc::new(WorkPoolImpl::disabled()),
+                Arc::new(AsyncRuntime::default()),
+            )),
+            NetworkParams::new(NetworkConstants::active_network()),
+            Arc::new(ThreadPoolImpl::new_null()),
+            Arc::new(BlockProcessor::new_null()),
+            Arc::new(Mutex::new(OnlineReps::new(Arc::new(RepWeightCache::new())))),
+            Arc::new(Network::new_null()),
+            Arc::new(ConfirmingSet::new(
+                Arc::new(Ledger::new_null()),
+                Arc::new(Stats::default()),
+            )),
+        )
+    }
+
     pub fn new(
         enable_voting: bool,
         env: Arc<LmdbEnv>,
@@ -119,7 +144,7 @@ impl Wallets {
         wallets.initialize(&mut txn)?;
         {
             let mut guard = wallets.mutex.lock().unwrap();
-            let wallet_ids = wallets.get_wallet_ids(&txn);
+            let wallet_ids = wallets.get_wallet_ids();
             for id in wallet_ids {
                 assert!(!guard.contains_key(&id));
                 let representative = node_config.random_representative();
@@ -195,10 +220,11 @@ impl Wallets {
         ))
     }
 
-    pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
+    pub fn get_wallet_ids(&self) -> Vec<WalletId> {
+        let txn = self.env.tx_begin_read();
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
-        let mut i = self.get_store_it(txn, &beginning);
+        let mut i = self.get_store_it(&txn, &beginning);
         while let Some((k, _)) = i.current() {
             let text = std::str::from_utf8(k).unwrap();
             wallet_ids.push(WalletId::decode_hex(text).unwrap());
@@ -427,9 +453,9 @@ impl Wallets {
 
     pub fn reload(&self) {
         let mut guard = self.mutex.lock().unwrap();
-        let mut tx = self.env.tx_begin_write();
         let mut stored_items = HashSet::new();
-        let wallet_ids = self.get_wallet_ids(&tx);
+        let wallet_ids = self.get_wallet_ids();
+        let mut tx = self.env.tx_begin_write();
         for id in wallet_ids {
             // New wallet
             if !guard.contains_key(&id) {
@@ -1885,6 +1911,7 @@ impl WalletsExt for Arc<Wallets> {
                 self.node_config.random_representative(),
                 &PathBuf::from(wallet_id.to_string()),
             ) else {
+                println!("ERROR");
                 return;
             };
             Arc::new(wallet)

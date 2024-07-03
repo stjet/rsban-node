@@ -1,3 +1,7 @@
+use super::{iterator::LmdbIteratorHandle, TransactionHandle};
+use crate::{wallets::kdf::KdfHandle, StringDto};
+use rsnano_core::{Account, PublicKey, RawKey};
+use rsnano_store_lmdb::{LmdbWalletStore, WalletValue};
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,
@@ -5,11 +9,6 @@ use std::{
     ptr,
     sync::Arc,
 };
-
-use super::{iterator::LmdbIteratorHandle, TransactionHandle};
-use crate::{wallets::kdf::KdfHandle, StringDto, U256ArrayDto};
-use rsnano_core::{Account, PublicKey, RawKey};
-use rsnano_store_lmdb::{LmdbWalletStore, WalletValue};
 
 pub struct LmdbWalletStoreHandle(pub Arc<LmdbWalletStore>);
 

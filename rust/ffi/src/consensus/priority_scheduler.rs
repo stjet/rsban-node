@@ -1,11 +1,6 @@
-use super::ActiveTransactionsHandle;
-use crate::{
-    core::BlockHandle,
-    ledger::datastore::{LedgerHandle, TransactionHandle},
-    StatHandle,
-};
+use crate::ledger::datastore::TransactionHandle;
 use rsnano_core::Account;
-use rsnano_node::consensus::{PriorityScheduler, PrioritySchedulerExt};
+use rsnano_node::consensus::PriorityScheduler;
 use std::{ops::Deref, sync::Arc};
 
 pub struct ElectionSchedulerHandle(pub Arc<PriorityScheduler>);

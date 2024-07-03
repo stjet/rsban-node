@@ -16,7 +16,6 @@ use std::{
         Arc, Condvar, Mutex, MutexGuard,
     },
     thread::JoinHandle,
-    time::Duration,
 };
 
 #[derive(Clone, Debug)]

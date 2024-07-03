@@ -1,6 +1,5 @@
 use num::FromPrimitive;
 use rsnano_ledger::BlockStatus;
-use rsnano_messages::MessageType;
 use rsnano_node::stats::{
     DetailType, StatFileWriter, Stats, StatsConfig, StatsJsonWriter, StatsLogSink,
 };

@@ -8,17 +8,11 @@ mod syn_cookies;
 mod tcp_channels;
 
 pub use bandwidth_limiter::OutboundBandwidthLimiterHandle;
-pub use channel::{ChannelHandle, FfiInboundCallback};
-pub use channel_tcp::{
-    ChannelTcpSendBufferCallback, ChannelTcpSendCallback, ChannelTcpSendCallbackWrapper,
-    SendBufferCallbackWrapper,
-};
+pub use channel::ChannelHandle;
+pub use channel_tcp::{ChannelTcpSendBufferCallback, SendBufferCallbackWrapper};
 pub use network_filter::NetworkFilterHandle;
-pub use socket::{
-    EndpointDto, ReadCallbackWrapper, SocketDestroyContext, SocketHandle, SocketReadCallback,
-};
-pub use syn_cookies::SynCookiesHandle;
-
 pub use network_threads::NetworkThreadsHandle;
 pub use socket::SocketFfiObserver;
+pub use socket::{EndpointDto, SocketHandle};
+pub use syn_cookies::SynCookiesHandle;
 pub use tcp_channels::TcpChannelsHandle;

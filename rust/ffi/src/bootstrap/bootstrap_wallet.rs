@@ -4,10 +4,8 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessorHandle, ledger::datastore::LedgerHandle,
-    utils::ThreadPoolHandle, wallets::AccountVecHandle, websocket::WebsocketListenerHandle,
-    NodeConfigDto, StatHandle,
+    utils::ThreadPoolHandle, websocket::WebsocketListenerHandle, NodeConfigDto, StatHandle,
 };
-use rsnano_core::Account;
 use rsnano_node::{
     bootstrap::{BootstrapAttemptWallet, BootstrapAttemptWalletExt, BootstrapStrategy},
     config::NodeConfig,

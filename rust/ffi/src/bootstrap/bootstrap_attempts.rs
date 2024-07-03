@@ -1,4 +1,3 @@
-use super::bootstrap_attempt::BootstrapAttemptHandle;
 use crate::FfiPropertyTree;
 use rsnano_node::bootstrap::BootstrapAttempts;
 use std::{

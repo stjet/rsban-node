@@ -2,7 +2,7 @@ use super::{
     bootstrap_attempt::BootstrapAttemptHandle, bootstrap_attempts::BootstrapAttemptsHandle,
     bootstrap_connections::BootstrapConnectionsHandle, pulls_cache::PullsCacheHandle,
 };
-use crate::{to_rust_string, transport::EndpointDto, wallets::AccountVecHandle};
+use crate::{to_rust_string, transport::EndpointDto};
 use rsnano_core::{Account, HashOrAccount};
 use rsnano_node::bootstrap::{BootstrapInitiator, BootstrapInitiatorExt};
 use std::{ffi::c_char, ops::Deref, sync::Arc};

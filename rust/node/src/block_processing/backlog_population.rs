@@ -1,10 +1,3 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, Condvar, Mutex},
-    thread::{self, JoinHandle},
-    time::Duration,
-};
-
 use crate::{
     consensus::{OptimisticScheduler, PriorityScheduler},
     stats::{DetailType, StatType, Stats},
@@ -13,6 +6,11 @@ use primitive_types::U256;
 use rsnano_core::{Account, AccountInfo};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::Transaction;
+use std::{
+    sync::{Arc, Condvar, Mutex},
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 #[derive(Clone)]
 pub struct BacklogPopulationConfig {

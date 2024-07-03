@@ -1,8 +1,6 @@
-use super::ActiveTransactionsHandle;
-use crate::{core::BlockHandle, StatHandle};
-use num_traits::FromPrimitive;
+use crate::core::BlockHandle;
 use rsnano_core::Amount;
-use rsnano_node::consensus::{ManualScheduler, ManualSchedulerExt};
+use rsnano_node::consensus::ManualScheduler;
 use std::sync::Arc;
 
 pub struct ManualSchedulerHandle(pub Arc<ManualScheduler>);

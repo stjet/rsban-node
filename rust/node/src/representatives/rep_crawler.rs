@@ -2,7 +2,7 @@ use super::{RegisterRepresentativeResult, RepresentativeRegister};
 use crate::{
     config::NodeConfig,
     consensus::ActiveElections,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, Network, PeerConnector, PeerConnectorExt, TrafficType,
         TransportType,
@@ -106,6 +106,7 @@ impl RepCrawler {
         let mut guard = self.rep_crawler_impl.lock().unwrap();
         let mut processed = false;
 
+        let query_timeout = guard.query_timeout;
         let x = guard.deref_mut();
         let queries = &mut x.queries;
         let responses = &mut x.responses;
@@ -123,7 +124,12 @@ impl RepCrawler {
                 );
                 self.stats
                     .inc_dir(StatType::RepCrawler, DetailType::Response, Direction::In);
-                // TODO: Track query response time
+
+                self.stats.sample(
+                    Sample::RepResponseTime,
+                    query.time.elapsed().as_millis() as i64,
+                    (0, query_timeout.as_millis() as i64),
+                );
 
                 responses.push_back((Arc::clone(&channel), Arc::clone(&vote)));
                 query.replies += 1;

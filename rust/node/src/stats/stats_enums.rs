@@ -491,6 +491,7 @@ impl Direction {
 pub enum Sample {
     ActiveElectionDuration,
     BootstrapTagDuration,
+    RepResponseTime,
 }
 
 impl Sample {

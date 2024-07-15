@@ -1,5 +1,5 @@
 use crate::{nullable_lmdb::RoCursor, LmdbDatabase, Transaction};
-use lmdb_sys::{MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
+use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{
     BufferReader, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize,
 };
@@ -249,6 +249,47 @@ where
             }
             Err(lmdb::Error::NotFound) => None,
             Err(e) => panic!("Could not read from cursor: {:?}", e),
+        }
+    }
+}
+
+pub struct LmdbIterator<'txn, K, V, F>
+where
+    F: Fn(&[u8], &[u8]) -> (K, V),
+{
+    cursor: RoCursor<'txn>,
+    operation: MDB_cursor_op,
+    convert: F,
+}
+
+impl<'txn, K, V, F> LmdbIterator<'txn, K, V, F>
+where
+    F: Fn(&[u8], &[u8]) -> (K, V),
+{
+    pub fn new(cursor: RoCursor<'txn>, convert: F) -> Self {
+        Self {
+            cursor,
+            operation: MDB_FIRST,
+            convert,
+        }
+    }
+}
+
+impl<'txn, K, V, F> Iterator for LmdbIterator<'txn, K, V, F>
+where
+    F: Fn(&[u8], &[u8]) -> (K, V),
+{
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.cursor.get(None, None, self.operation) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok((Some(k), v)) => {
+                self.operation = MDB_NEXT;
+                Some((self.convert)(k, v))
+            }
+            Ok(_) => panic!("No key returned"),
+            Err(e) => panic!("Read error {:?}", e),
         }
     }
 }

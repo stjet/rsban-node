@@ -1,7 +1,8 @@
 use crate::{
-    iterator::LmdbRangeIterator, nullable_lmdb::ConfiguredDatabase, parallel_traversal,
-    BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbReadTransaction,
-    LmdbWriteTransaction, Transaction, ACCOUNT_TEST_DATABASE,
+    iterator::{LmdbIterator, LmdbRangeIterator},
+    nullable_lmdb::ConfiguredDatabase,
+    parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
+    LmdbReadTransaction, LmdbWriteTransaction, Transaction, ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 #[cfg(feature = "output_tracking")]
@@ -85,16 +86,16 @@ impl LmdbAccountStore {
         &self,
         tx: &'txn dyn Transaction,
     ) -> impl Iterator<Item = (Account, AccountInfo)> + 'txn {
-        tx.open_ro_cursor(self.database)
-            .unwrap()
-            .iter_start()
-            .map(|i| {
-                let (key, value) = i.unwrap();
-                let account = Account::from_bytes(key.try_into().unwrap());
-                let mut stream = BufferReader::new(value);
-                let info = AccountInfo::deserialize(&mut stream).unwrap();
-                (account, info)
-            })
+        let cursor = tx
+            .open_ro_cursor(self.database)
+            .expect("could not read from account store");
+
+        LmdbIterator::new(cursor, |key, value| {
+            let account = Account::from_bytes(key.try_into().unwrap());
+            let mut stream = BufferReader::new(value);
+            let info = AccountInfo::deserialize(&mut stream).unwrap();
+            (account, info)
+        })
     }
 
     pub fn iter_range<'txn>(

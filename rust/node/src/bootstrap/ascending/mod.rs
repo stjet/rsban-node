@@ -463,13 +463,22 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
         self.block_processor
             .add_batch_processed_observer(Box::new(move |batch| {
                 if let Some(self_l) = self_w.upgrade() {
-                    let mut guard = self_l.mutex.lock().unwrap();
-                    let tx = self_l.ledger.read_txn();
-                    for (result, context) in batch {
-                        guard.inspect(&self_l.ledger, &tx, *result, &context.block);
+                    let mut should_notify = false;
+                    {
+                        let mut guard = self_l.mutex.lock().unwrap();
+                        let tx = self_l.ledger.read_txn();
+                        for (result, context) in batch {
+                            // Do not try to unnecessarily bootstrap live traffic chains
+                            if context.source == BlockSource::Bootstrap {
+                                guard.inspect(&self_l.ledger, &tx, *result, &context.block);
+                                should_notify = true;
+                            }
+                        }
                     }
 
-                    self_l.condition.notify_all();
+                    if should_notify {
+                        self_l.condition.notify_all();
+                    }
                 }
             }))
     }

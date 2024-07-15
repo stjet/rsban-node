@@ -91,7 +91,6 @@ impl NetworkConstants {
 
     fn live(work: WorkThresholds) -> Self {
         let cleanup_period = Duration::from_secs(60);
-        let max_peers_per_ip = 10;
         let protocol_info = ProtocolInfo::default();
         Self {
             work,
@@ -111,8 +110,8 @@ impl NetworkConstants {
             idle_timeout: cleanup_period * 2,
             sync_cookie_cutoff: Duration::from_secs(5),
             bootstrap_interval_s: 15 * 60,
-            max_peers_per_ip,
-            max_peers_per_subnetwork: max_peers_per_ip * 4,
+            max_peers_per_ip: 4,
+            max_peers_per_subnetwork: 16,
             peer_dump_interval: Duration::from_secs(5 * 60),
             ipv6_subnetwork_prefix_for_limiting: 64,
             silent_connection_tolerance_time_s: 120,
@@ -135,6 +134,8 @@ impl NetworkConstants {
             default_rpc_port: 55000,
             default_ipc_port: 56000,
             default_websocket_port: 57000,
+            max_peers_per_ip: 256,
+            max_peers_per_subnetwork: 256,
             ..Self::live(work)
         }
     }
@@ -152,7 +153,6 @@ impl NetworkConstants {
 
     fn dev(work: WorkThresholds) -> Self {
         let cleanup_period = Duration::from_secs(1);
-        let max_peers_per_ip = 20;
         Self {
             current_network: Networks::NanoDevNetwork,
             default_node_port: 44000,
@@ -164,8 +164,8 @@ impl NetworkConstants {
             keepalive_period: Duration::from_secs(1),
             merge_period: Duration::from_millis(10),
             idle_timeout: cleanup_period * 15,
-            max_peers_per_ip,
-            max_peers_per_subnetwork: max_peers_per_ip * 4,
+            max_peers_per_ip: 256, // During tests, all peers are on localhost
+            max_peers_per_subnetwork: 256,
             peer_dump_interval: Duration::from_secs(1),
             vote_broadcast_interval: Duration::from_millis(500),
             block_broadcast_interval: Duration::from_millis(500),

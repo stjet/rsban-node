@@ -1,4 +1,3 @@
-use crate::transport::SocketHandle;
 use rsnano_node::bootstrap::BootstrapClient;
 use std::{ops::Deref, sync::Arc};
 

@@ -8,7 +8,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
-    Account, Amount, BlockBuilder, BlockHash, KeyPair, QualifiedRoot, Root, TestAccountChain,
+    Account, Amount, BlockBuilder, BlockHash, QualifiedRoot, Root, TestAccountChain,
     DEV_GENESIS_KEY, GXRB_RATIO,
 };
 

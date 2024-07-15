@@ -22,10 +22,8 @@ pub use active_elections::{
     FfiAccountBalanceCallback,
 };
 pub use election_status::ElectionStatusHandle;
-pub use hinted_scheduler::HintedSchedulerHandle;
 pub use local_vote_history::LocalVoteHistoryHandle;
 pub use manual_scheduler::ManualSchedulerHandle;
-pub use optimistic_scheduler::OptimisticSchedulerHandle;
 pub use priority_scheduler::ElectionSchedulerHandle;
 pub use rep_tiers::RepTiersHandle;
 pub use request_aggregator::{RequestAggregatorConfigDto, RequestAggregatorHandle};

@@ -1,20 +1,18 @@
 use super::{
     ledger_set_any::LedgerSetAnyHandle,
     ledger_set_confirmed::LedgerSetConfirmedHandle,
-    lmdb::{LmdbStoreHandle, PendingInfoDto, PendingKeyDto, TransactionHandle},
+    lmdb::{PendingInfoDto, PendingKeyDto, TransactionHandle},
     write_queue::WriteGuardHandle,
 };
 use crate::{
     core::{copy_block_array_dto, AccountInfoHandle, BlockArrayDto, BlockHandle},
-    ledger::{GenerateCacheHandle, LedgerConstantsDto},
-    StatHandle, StringDto,
+    StringDto,
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{Account, Amount, BlockEnum, BlockHash, Epoch, Link};
+use rsnano_core::{Account, BlockEnum, BlockHash, Epoch, Link};
 use rsnano_ledger::{
     AnyReceivableIterator, BlockStatus, Ledger, LedgerSetAny, LedgerSetConfirmed, Writer,
 };
-use rsnano_node::stats::LedgerStats;
 use std::{
     ops::Deref,
     ptr::null_mut,

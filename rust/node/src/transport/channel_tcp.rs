@@ -1,5 +1,5 @@
 use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, ChannelDirection, ChannelMode, Network,
+    write_queue::WriteCallback, BufferDropPolicy, Channel, ChannelDirection, ChannelMode,
     OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
 };
 use crate::{

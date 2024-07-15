@@ -74,7 +74,7 @@ impl VoteGenerator {
                 "Voting que".to_string(),
                 1,         // single threaded
                 1024 * 32, // max queue size
-                1024 * 4,  // max batch size,
+                256,       // max batch size,
                 Box::new(move |batch| {
                     shared_state_clone.process_batch(batch);
                 }),

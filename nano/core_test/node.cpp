@@ -1783,7 +1783,6 @@ TEST (node, block_confirm)
 	auto wallet_id2 = node2.wallets.first_wallet_id ();
 	nano::keypair key;
 	nano::state_block_builder builder;
-	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	auto send1 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (nano::dev::genesis->hash ())
@@ -1808,6 +1807,8 @@ TEST (node, block_confirm)
 	node2.start_election (send1_copy);
 	std::shared_ptr<nano::election> election;
 	ASSERT_TIMELY (5s, election = node2.active.election (send1_copy->qualified_root ()));
+	// Make node2 genesis representative so it can vote
+	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
 	ASSERT_TIMELY_EQ (10s, node1.active.recently_cemented_size (), 1);
 }
 

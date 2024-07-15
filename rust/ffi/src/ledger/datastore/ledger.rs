@@ -35,8 +35,8 @@ pub extern "C" fn rsn_ledger_destroy(handle: *mut LedgerHandle) {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_ledger_wait(handle: &LedgerHandle, writer: u8) -> *mut WriteGuardHandle {
-    WriteGuardHandle::new(handle.write_queue.wait(Writer::from_u8(writer).unwrap()))
+pub extern "C" fn rsn_ledger_wait(handle: &LedgerHandle) -> *mut WriteGuardHandle {
+    WriteGuardHandle::new(handle.write_queue.wait(Writer::Testing))
 }
 
 #[no_mangle]

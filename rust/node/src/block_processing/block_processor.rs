@@ -501,7 +501,7 @@ impl BlockProcessorLoop {
         let mut processed = Vec::new();
 
         let _scoped_write_guard = self.ledger.write_queue.wait(Writer::ProcessBatch);
-        let mut transaction = self.ledger.rw_txn();
+        let mut tx = self.ledger.rw_txn();
         let mut lock_a = self.mutex.lock().unwrap();
 
         lock_a.queue.periodic_update(Duration::from_secs(30));
@@ -532,12 +532,12 @@ impl BlockProcessorLoop {
 
             if force {
                 number_of_forced_processed += 1;
-                self.rollback_competitor(&mut transaction, &context.block);
+                self.rollback_competitor(&mut tx, &context.block);
             }
 
             number_of_blocks_processed += 1;
 
-            let result = self.process_one(&mut transaction, &context);
+            let result = self.process_one(&mut tx, &context);
             processed.push((result, context));
 
             lock_a = self.mutex.lock().unwrap();

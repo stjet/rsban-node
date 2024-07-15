@@ -3,7 +3,8 @@ use crate::{
     block_insertion::{BlockInserter, BlockValidatorFactory},
     ledger_set_confirmed::LedgerSetConfirmed,
     BlockRollbackPerformer, DependentBlocks, GenerateCacheFlags, LedgerCache, LedgerConstants,
-    LedgerSetAny, RepWeightCache, RepWeightsUpdater, RepresentativeBlockFinder, WriteQueue,
+    LedgerSetAny, RepWeightCache, RepWeightsUpdater, RepresentativeBlockFinder, WriteGuard,
+    WriteQueue,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
@@ -27,7 +28,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
@@ -327,6 +328,24 @@ impl Ledger {
             },
         );
         self.store.rep_weight.put(txn, genesis_account, Amount::MAX);
+    }
+
+    pub fn refresh_if_needed(
+        &self,
+        write_guard: WriteGuard,
+        mut tx: LmdbWriteTransaction,
+    ) -> (WriteGuard, LmdbWriteTransaction) {
+        if tx.elapsed() > Duration::from_millis(500) {
+            let writer = write_guard.writer;
+            tx.commit();
+            drop(write_guard);
+
+            let write_guard = self.write_queue.wait(writer);
+            tx.renew();
+            (write_guard, tx)
+        } else {
+            (write_guard, tx)
+        }
     }
 
     pub fn any(&self) -> LedgerSetAny {

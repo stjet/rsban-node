@@ -181,11 +181,11 @@ impl ConfirmingSetThread {
         let mut already_cemented = VecDeque::new();
 
         {
-            // TODO: Properly limiting batch times requires this <guard, transaction> combo to be wrapped in a single object that provides refresh functionality
-            let _guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
+            let mut write_guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
             let mut tx = self.ledger.rw_txn();
 
             for hash in batch {
+                (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);
                 let added = self.ledger.confirm(&mut tx, hash);
                 let added_len = added.len();
                 if !added.is_empty() {

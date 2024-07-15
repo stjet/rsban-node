@@ -83,7 +83,7 @@ public:
 	ledger_set_any any () const;
 	ledger_set_confirmed confirmed () const;
 
-	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait (nano::store::writer writer);
+	[[nodiscard ("write_guard blocks other waiters")]] nano::store::write_guard wait ();
 	/** Returns true if this writer is anywhere in the queue. Currently only used in tests */
 	bool queue_contains (nano::store::writer writer);
 	nano::uint128_t account_receivable (store::transaction const &, nano::account const &, bool = false);

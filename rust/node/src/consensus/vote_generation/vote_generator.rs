@@ -11,7 +11,7 @@ use rsnano_core::{
     BlockEnum, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
-use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction};
+use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
 use std::{
     collections::VecDeque,
     mem::size_of,
@@ -356,16 +356,18 @@ impl SharedState {
         let mut verified = VecDeque::new();
 
         if self.is_final {
-            let _guard = self.ledger.write_queue.wait(Writer::VotingFinal);
+            let mut write_guard = self.ledger.write_queue.wait(Writer::VotingFinal);
             let mut tx = self.ledger.rw_txn();
             for (root, hash) in &batch {
+                (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);
                 if self.should_vote_final(&mut tx, root, hash) {
                     verified.push_back((*root, *hash));
                 }
             }
         } else {
-            let tx = self.ledger.read_txn();
+            let mut tx = self.ledger.read_txn();
             for (root, hash) in &batch {
+                tx.refresh_if_needed();
                 if self.should_vote_non_final(&tx, root, hash) {
                     verified.push_back((*root, *hash));
                 }

@@ -48,9 +48,9 @@ nano::ledger_set_confirmed nano::ledger::confirmed () const
 	return { rsnano::rsn_ledger_confirmed (handle) };
 }
 
-nano::store::write_guard nano::ledger::wait (nano::store::writer writer)
+nano::store::write_guard nano::ledger::wait ()
 {
-	auto guard_handle = rsnano::rsn_ledger_wait (handle, static_cast<uint8_t> (writer));
+	auto guard_handle = rsnano::rsn_ledger_wait (handle);
 	return nano::store::write_guard (guard_handle);
 }
 

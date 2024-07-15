@@ -14,12 +14,14 @@ pub enum Writer {
 }
 
 pub struct WriteGuard {
+    pub writer: Writer,
     guard_finish_callback: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl WriteGuard {
-    pub fn new(guard_finish_callback: Arc<dyn Fn() + Send + Sync>) -> Self {
+    pub fn new(writer: Writer, guard_finish_callback: Arc<dyn Fn() + Send + Sync>) -> Self {
         Self {
+            writer,
             guard_finish_callback: Some(guard_finish_callback),
         }
     }
@@ -36,6 +38,7 @@ impl WriteGuard {
 
     pub fn null() -> Self {
         Self {
+            writer: Writer::Testing,
             guard_finish_callback: None,
         }
     }
@@ -87,19 +90,15 @@ impl WriteQueue {
         }
 
         let mut lk = self.data.queue.lock().unwrap();
-        debug_assert!(lk.iter().all(|i| *i != writer));
-
-        // Add writer to the end of the queue if it's not already waiting
-        if !lk.contains(&writer) {
-            lk.push_back(writer);
-        }
+        assert!(lk.iter().all(|i| *i != writer));
+        lk.push_back(writer);
 
         let _result = self
             .data
             .condition
             .wait_while(lk, |queue| queue.front() != Some(&writer));
 
-        self.create_write_guard()
+        self.create_write_guard(writer)
     }
 
     /// Returns true if this writer is anywhere in the queue. Currently only used in tests
@@ -108,12 +107,7 @@ impl WriteQueue {
         self.data.queue.lock().unwrap().contains(&writer)
     }
 
-    /// Doesn't actually pop anything until the returned write_guard is out of scope
-    pub fn pop(&self) -> WriteGuard {
-        self.create_write_guard()
-    }
-
-    fn create_write_guard(&self) -> WriteGuard {
-        WriteGuard::new(Arc::clone(&self.guard_finish_callback))
+    fn create_write_guard(&self, writer: Writer) -> WriteGuard {
+        WriteGuard::new(writer, Arc::clone(&self.guard_finish_callback))
     }
 }

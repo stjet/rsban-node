@@ -98,7 +98,7 @@ TEST (confirmation_callback, confirmed_history)
 	ASSERT_TIMELY (5s, election = nano::test::start_election (system, *node, send1->hash ()));
 	{
 		// The write guard prevents the confirmation height processor doing any writes
-		auto write_guard = node->ledger.wait (nano::store::writer::testing);
+		auto write_guard = node->ledger.wait ();
 
 		// Confirm send1
 		node->active.force_confirm (*election);

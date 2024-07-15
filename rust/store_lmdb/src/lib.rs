@@ -284,6 +284,10 @@ impl LmdbWriteTransaction {
         }
     }
 
+    pub fn elapsed(&self) -> Duration {
+        self.start.elapsed()
+    }
+
     pub fn renew(&mut self) {
         let t = mem::replace(&mut self.txn, RwTxnState::Transitioning);
         self.txn = match t {
@@ -406,10 +410,6 @@ impl Transaction for LmdbWriteTransaction {
             self.refresh();
         }
     }
-}
-
-pub enum Table {
-    ConfirmationHeight,
 }
 
 pub fn parallel_traversal(action: &(impl Fn(U256, U256, bool) + Send + Sync)) {

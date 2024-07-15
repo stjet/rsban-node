@@ -2,7 +2,7 @@ use crate::{
     EnvOptions, LmdbAccountStore, LmdbBlockStore, LmdbConfirmationHeightStore, LmdbDatabase,
     LmdbEnv, LmdbFinalVoteStore, LmdbOnlineWeightStore, LmdbPeerStore, LmdbPendingStore,
     LmdbPrunedStore, LmdbReadTransaction, LmdbRepWeightStore, LmdbVersionStore,
-    LmdbWriteTransaction, NullTransactionTracker, Table, TransactionTracker, STORE_VERSION_CURRENT,
+    LmdbWriteTransaction, NullTransactionTracker, TransactionTracker, STORE_VERSION_CURRENT,
     STORE_VERSION_MINIMUM,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
@@ -121,11 +121,6 @@ impl LmdbStore {
 
     pub fn copy_db(&self, destination: &Path) -> anyhow::Result<()> {
         copy_db(&self.env, destination)
-    }
-
-    pub fn tx_begin_write_for(&self, _to_lock: &[Table]) -> LmdbWriteTransaction {
-        // locking tables is not needed for LMDB because there can only ever be one write transaction at a time
-        self.env.tx_begin_write()
     }
 
     pub fn rebuild_db(&self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {

@@ -1,11 +1,9 @@
+use super::TrafficType;
+use crate::utils::ErrorCode;
 use std::{
     collections::VecDeque,
     sync::{Arc, Mutex},
 };
-
-use crate::utils::ErrorCode;
-
-use super::TrafficType;
 
 pub type WriteCallback = Box<dyn FnOnce(ErrorCode, usize) + Send>;
 

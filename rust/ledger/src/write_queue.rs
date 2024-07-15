@@ -102,33 +102,6 @@ impl WriteQueue {
         self.create_write_guard()
     }
 
-    pub fn try_lock(&self, writer: Writer) -> Option<WriteGuard> {
-        if self.process(writer) {
-            Some(self.pop())
-        } else {
-            None
-        }
-    }
-
-    /// Returns true if this writer is now at the front of the queue
-    pub fn process(&self, writer: Writer) -> bool {
-        if self.data.use_noops {
-            return true;
-        }
-
-        let result = {
-            let mut guard = self.data.queue.lock().unwrap();
-            // Add writer to the end of the queue if it's not already waiting
-            if !guard.contains(&writer) {
-                guard.push_back(writer);
-            }
-
-            *guard.front().unwrap() == writer
-        };
-
-        result
-    }
-
     /// Returns true if this writer is anywhere in the queue. Currently only used in tests
     pub fn contains(&self, writer: Writer) -> bool {
         debug_assert!(!self.data.use_noops);

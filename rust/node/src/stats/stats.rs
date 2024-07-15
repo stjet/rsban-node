@@ -178,7 +178,7 @@ impl Stats {
         self.add_dir_aggregate(stat_type, detail, dir, 1)
     }
 
-    pub fn sample(&self, sample: Sample, expected_min_max: (i64, i64), value: i64) {
+    pub fn sample(&self, sample: Sample, value: i64, expected_min_max: (i64, i64)) {
         self.log_sample(sample, value);
         let key = SamplerKey::new(sample);
         // This is a two-step process to avoid exclusively locking the mutex in the common case
@@ -545,12 +545,12 @@ mod tests {
     #[test]
     fn samples() {
         let stats = Stats::new(StatsConfig::new());
-        stats.sample(Sample::ActiveElectionDuration, (1, 10), 5);
-        stats.sample(Sample::ActiveElectionDuration, (1, 10), 5);
-        stats.sample(Sample::ActiveElectionDuration, (1, 10), 11);
-        stats.sample(Sample::ActiveElectionDuration, (1, 10), 37);
+        stats.sample(Sample::ActiveElectionDuration, 5, (1, 10));
+        stats.sample(Sample::ActiveElectionDuration, 5, (1, 10));
+        stats.sample(Sample::ActiveElectionDuration, 11, (1, 10));
+        stats.sample(Sample::ActiveElectionDuration, 37, (1, 10));
 
-        stats.sample(Sample::BootstrapTagDuration, (1, 10), 2137);
+        stats.sample(Sample::BootstrapTagDuration, 2137, (1, 10));
 
         let samples1 = stats.samples(Sample::ActiveElectionDuration);
         assert_eq!(samples1, [5, 5, 11, 37]);
@@ -558,7 +558,7 @@ mod tests {
         let samples2 = stats.samples(Sample::ActiveElectionDuration);
         assert!(samples2.is_empty());
 
-        stats.sample(Sample::ActiveElectionDuration, (1, 10), 3);
+        stats.sample(Sample::ActiveElectionDuration, 3, (1, 10));
 
         let samples3 = stats.samples(Sample::ActiveElectionDuration);
         assert_eq!(samples3, [3]);

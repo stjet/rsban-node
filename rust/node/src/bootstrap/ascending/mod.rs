@@ -306,8 +306,8 @@ impl BootstrapAscending {
                 .inc(StatType::BootstrapAscending, DetailType::Reply);
             self.stats.sample(
                 Sample::BootstrapTagDuration,
-                (0, self.config.timeout.as_millis() as i64),
                 tag.time.elapsed().as_millis() as i64,
+                (0, self.config.timeout.as_millis() as i64),
             );
 
             guard.scoring.received_message(channel);

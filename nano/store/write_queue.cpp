@@ -48,4 +48,3 @@ void nano::store::write_guard::release ()
 	}
 	owns = false;
 }
-

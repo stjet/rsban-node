@@ -660,8 +660,8 @@ impl ActiveElections {
 
         self.stats.sample(
             Sample::ActiveElectionDuration,
-            (0, 1000 * 60 * 10),
             election.duration().as_millis() as i64,
+            (0, 1000 * 60 * 10),
         ); // 0-10 minutes range
 
         (self.vacancy_update.lock().unwrap())();

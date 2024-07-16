@@ -5,7 +5,7 @@ use std::{
 
 use super::BootstrapInitiator;
 use crate::{
-    block_processing::BlockProcessor,
+    block_processing::{BlockProcessor, BlockSource},
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
@@ -81,7 +81,7 @@ impl BulkPushServerImpl {
         let Some(block_processor) = self.block_processor.upgrade() else {
             return;
         };
-        if !block_processor.half_full() {
+        if block_processor.queue_len(BlockSource::BootstrapLegacy) < 1024 {
             self.receive(server_impl);
         } else {
             thread_pool.add_delayed_task(

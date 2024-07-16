@@ -2,7 +2,7 @@ use super::{BootstrapAttemptLegacy, BootstrapClient, BootstrapConnections};
 use crate::{
     bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
-    utils::ErrorCode,
+    utils::{ErrorCode, ThreadPool},
 };
 use primitive_types::U256;
 use rsnano_core::{
@@ -24,6 +24,7 @@ pub struct FrontierReqClient {
     connection: Arc<BootstrapClient>,
     connections: Arc<BootstrapConnections>,
     ledger: Arc<Ledger>,
+    workers: Arc<dyn ThreadPool>,
     attempt: Option<Weak<BootstrapAttemptLegacy>>,
     condition: Condvar,
     retry_limit: u32,
@@ -84,10 +85,12 @@ impl FrontierReqClient {
         ledger: Arc<Ledger>,
         retry_limit: u32,
         connections: Arc<BootstrapConnections>,
+        workers: Arc<dyn ThreadPool>,
     ) -> Self {
         Self {
             connection,
             ledger,
+            workers,
             attempt: None,
             retry_limit,
             connections,
@@ -195,7 +198,10 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                 // An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
                 // we simply get a size of 0.
                 if size == SIZE_FRONTIER {
-                    this_l.received_frontier(ec, size);
+                    let workers = this_l.workers.clone();
+                    workers.push_task(Box::new(move || {
+                        this_l.received_frontier(ec, size);
+                    }));
                 } else {
                     debug!("Invalid size: expected {}, got {}", SIZE_FRONTIER, size);
                 }

@@ -11,7 +11,7 @@ use super::{
     BootstrapStrategy, PullInfo,
 };
 use crate::{
-    block_processing::BlockProcessor,
+    block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BlockDeserializer, BufferDropPolicy, TrafficType},
@@ -180,7 +180,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
 
     fn throttled_receive_block(&self) {
         debug_assert!(!self.network_error.load(Ordering::Relaxed));
-        if !self.block_processor.half_full() {
+        if self.block_processor.queue_len(BlockSource::BootstrapLegacy) < 1024 {
             self.receive_block();
         } else {
             let self_clone = Arc::clone(self);

@@ -223,6 +223,11 @@ impl Node {
         let election_workers: Arc<dyn ThreadPool> =
             Arc::new(ThreadPoolImpl::create(1, "Election work"));
 
+        let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
+            config.bootstrap_serving_threads as usize,
+            "Bootstrap work",
+        ));
+
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
             config.message_processor.max_queue,
             stats.clone(),
@@ -474,7 +479,7 @@ impl Node {
             flags.clone(),
             network.clone(),
             async_rt.clone(),
-            workers.clone(),
+            bootstrap_workers.clone(),
             network_params.clone(),
             socket_observer.clone(),
             stats.clone(),
@@ -726,11 +731,6 @@ impl Node {
                     }
                 }
             },
-        ));
-
-        let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
-            config.bootstrap_serving_threads as usize,
-            "Bootstrap work",
         ));
 
         process_live_dispatcher.connect(&block_processor);

@@ -19,16 +19,6 @@ pub extern "C" fn rsn_block_processor_destroy(handle: *mut BlockProcessorHandle)
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_block_processor_full(handle: &BlockProcessorHandle) -> bool {
-    handle.full()
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_block_processor_half_full(handle: &BlockProcessorHandle) -> bool {
-    handle.half_full()
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_block_processor_stop(handle: &BlockProcessorHandle) {
     handle.stop();
 }

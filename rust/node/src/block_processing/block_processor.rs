@@ -227,14 +227,6 @@ impl BlockProcessor {
         }
     }
 
-    pub fn full(&self) -> bool {
-        self.processor_loop.full()
-    }
-
-    pub fn half_full(&self) -> bool {
-        self.processor_loop.half_full()
-    }
-
     pub fn total_queue_len(&self) -> usize {
         self.processor_loop.total_queue_len()
     }
@@ -463,14 +455,6 @@ impl BlockProcessorLoop {
         self.add_impl(ctx, None);
     }
 
-    pub fn full(&self) -> bool {
-        self.total_queue_len() >= self.config.full_size
-    }
-
-    pub fn half_full(&self) -> bool {
-        self.total_queue_len() >= self.config.full_size / 2
-    }
-
     // TODO: Remove and replace all checks with calls to size (block_source)
     pub fn total_queue_len(&self) -> usize {
         self.mutex.lock().unwrap().queue.len()
@@ -537,7 +521,6 @@ impl BlockProcessorLoop {
 
         let mut processed = Vec::new();
         for ctx in batch {
-            let hash = ctx.block.hash();
             let force = ctx.source == BlockSource::Forced;
 
             (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);

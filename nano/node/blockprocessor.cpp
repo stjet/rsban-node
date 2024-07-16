@@ -39,16 +39,6 @@ void nano::block_processor::stop ()
 	rsnano::rsn_block_processor_stop (handle);
 }
 
-bool nano::block_processor::full () const
-{
-	return rsnano::rsn_block_processor_full (handle);
-}
-
-bool nano::block_processor::half_full () const
-{
-	return rsnano::rsn_block_processor_half_full (handle);
-}
-
 void nano::block_processor::process_active (std::shared_ptr<nano::block> const & incoming)
 {
 	add (incoming);

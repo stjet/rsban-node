@@ -7,7 +7,7 @@ use std::{
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq)]
 pub enum Writer {
     ConfirmationHeight,
-    ProcessBatch,
+    BlockProcessor,
     Pruning,
     VotingFinal,
     Testing, // Used in tests to emulate a write lock

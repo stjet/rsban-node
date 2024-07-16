@@ -611,6 +611,7 @@ impl Node {
         ));
 
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(
+            config.local_block_broadcaster.clone(),
             block_processor.clone(),
             stats.clone(),
             network.clone(),

@@ -103,9 +103,7 @@ impl Cli {
             Some(Commands::Version) => {
                 Cli::version();
             }
-            Some(Commands::Vacuum(args)) => {
-                args.vacuum();
-            }
+            Some(Commands::Vacuum(args)) => args.vacuum()?,
             Some(Commands::RebuildDatabase(args)) => {
                 args.rebuild_database();
             }

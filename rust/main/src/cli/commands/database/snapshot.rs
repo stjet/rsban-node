@@ -16,14 +16,19 @@ impl SnapshotArgs {
         let source_path = get_path(&self.data_path, &self.network).join("data.ldb");
         let snapshot_path = get_path(&self.data_path, &self.network).join("snapshot.ldb");
 
-        let store = LmdbStore::open_existing(&source_path).unwrap();
-        store.copy_db(&snapshot_path)?;
-
         println!(
             "Database snapshot of {:?} to {:?} in progress",
             source_path, snapshot_path
         );
         println!("This may take a while...");
+
+        let store = LmdbStore::open_existing(&source_path).unwrap();
+        store.copy_db(&snapshot_path)?;
+
+        println!(
+            "Snapshot completed, This can be found at {:?}",
+            snapshot_path
+        );
 
         Ok(())
     }

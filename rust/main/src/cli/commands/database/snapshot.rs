@@ -1,7 +1,6 @@
+use crate::cli::get_path;
 use clap::Parser;
 use rsnano_store_lmdb::LmdbStore;
-
-use crate::cli::get_path;
 
 #[derive(Parser)]
 pub(crate) struct SnapshotArgs {

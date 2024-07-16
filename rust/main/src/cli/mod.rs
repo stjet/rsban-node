@@ -104,9 +104,7 @@ impl Cli {
                 Cli::version();
             }
             Some(Commands::Vacuum(args)) => args.vacuum()?,
-            Some(Commands::RebuildDatabase(args)) => {
-                args.rebuild_database();
-            }
+            Some(Commands::RebuildDatabase(args)) => args.rebuild_database()?,
             Some(Commands::Snapshot(args)) => args.snapshot()?,
             Some(Commands::GenerateConfig(args)) => args.generate_config()?,
             None => Cli::command().print_help()?,

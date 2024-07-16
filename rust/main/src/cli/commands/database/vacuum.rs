@@ -1,10 +1,8 @@
-use std::fs;
-
+use crate::cli::get_path;
 use anyhow::Context;
 use clap::Parser;
 use rsnano_store_lmdb::LmdbStore;
-
-use crate::cli::get_path;
+use std::fs;
 
 #[derive(Parser)]
 pub(crate) struct VacuumArgs {

@@ -1283,6 +1283,7 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.tcp_listener.stop();
         self.bootstrap_workers.stop();
         self.wallet_workers.stop();
         self.election_workers.stop();
@@ -1318,7 +1319,6 @@ impl NodeExt for Arc<Node> {
         }
         self.bootstrap_server.stop();
         self.bootstrap_initiator.stop();
-        self.tcp_listener.stop();
         self.wallets.stop();
         self.stats.stop();
         self.workers.stop();

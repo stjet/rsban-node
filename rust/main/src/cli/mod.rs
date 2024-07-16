@@ -126,7 +126,7 @@ impl Cli {
                 Cli::command().print_help()?;
             }
             Some(Commands::GenerateConfig(generate_config_options)) => {
-                generate_config_options.run();
+                generate_config_options.run()?
             }
             None => {
                 Cli::command().print_help()?;

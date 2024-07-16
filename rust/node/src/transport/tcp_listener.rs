@@ -1,6 +1,6 @@
 use super::{
-    AcceptResult, ChannelDirection, ChannelMode, CompositeSocketObserver, Network,
-    ResponseServerFactory, ResponseServerImpl, Socket, SocketBuilder, SocketObserver, TcpConfig,
+    ChannelDirection, ChannelMode, CompositeSocketObserver, Network, ResponseServerFactory,
+    SocketBuilder, SocketObserver, TcpConfig,
 };
 use crate::{
     config::NodeConfig,
@@ -19,27 +19,7 @@ use std::{
     time::Duration,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
-
-pub struct AcceptReturn {
-    result: AcceptResult,
-    socket: Option<Arc<Socket>>,
-    server: Option<Arc<ResponseServerImpl>>,
-}
-
-impl AcceptReturn {
-    fn error() -> Self {
-        Self::failed(AcceptResult::Error)
-    }
-
-    fn failed(result: AcceptResult) -> Self {
-        Self {
-            result,
-            socket: None,
-            server: None,
-        }
-    }
-}
+use tracing::{debug, error};
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
@@ -151,7 +131,7 @@ impl TcpListenerExt for Arc<TcpListener> {
             let addr = listener
                 .local_addr()
                 .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
-            info!("Listening for incoming connections on: {}", addr);
+            debug!("Listening for incoming connections on: {}", addr);
 
             self_l.network.set_port(addr.port());
             self_l.data.lock().unwrap().local_addr = addr;

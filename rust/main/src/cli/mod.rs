@@ -14,8 +14,9 @@ use commands::{
     wallets::{
         wallet_add_adhoc::WalletAddAdhocArgs, wallet_change_seed::WalletChangeSeedArgs,
         wallet_create::WalletCreateArgs, wallet_decrypt_unsafe::WalletDecryptUnsafeArgs,
-        wallet_destroy::WalletDestroyArgs, wallet_list::WalletListArgs,
-        wallet_remove::WalletRemoveArgs, wallet_representative_get::WalletRepresentativeGetArgs,
+        wallet_destroy::WalletDestroyArgs, wallet_import::WalletImportArgs,
+        wallet_list::WalletListArgs, wallet_remove::WalletRemoveArgs,
+        wallet_representative_get::WalletRepresentativeGetArgs,
         wallet_representative_set::WalletRepresentativeSetArgs,
     },
 };
@@ -75,6 +76,7 @@ impl Cli {
             Some(Commands::WalletChangeSeed(args)) => {
                 args.wallet_change_seed();
             }
+            Some(Commands::WalletImport(args)) => args.wallet_import()?,
             Some(Commands::WalletRemove(args)) => {
                 args.wallet_remove();
             }
@@ -194,6 +196,8 @@ pub(crate) enum Commands {
     WalletCreate(WalletCreateArgs),
     /// Destroys <wallet> and all keys it contains.
     WalletDestroy(WalletDestroyArgs),
+    /// Imports keys in <file> using <password> in to <wallet>.
+    WalletImport(WalletImportArgs),
     /// Insert <key> in to <wallet>.
     WalletAddAdhoc(WalletAddAdhocArgs),
     /// Changes seed for <wallet> to <key>.

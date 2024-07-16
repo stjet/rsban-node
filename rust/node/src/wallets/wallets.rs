@@ -220,6 +220,10 @@ impl Wallets {
         ))
     }
 
+    pub fn wallet_exists(&self, wallet: &WalletId) -> bool {
+        self.mutex.lock().unwrap().contains_key(wallet)
+    }
+
     pub fn get_wallet_ids(&self) -> Vec<WalletId> {
         let txn = self.env.tx_begin_read();
         let mut wallet_ids = Vec::new();

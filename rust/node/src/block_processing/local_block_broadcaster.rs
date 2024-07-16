@@ -7,7 +7,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockEnum, BlockHash,
+    BlockEnum, BlockHash, Networks,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -19,6 +19,46 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+#[derive(Clone)]
+pub struct LocalBlockBroadcasterConfig {
+    pub max_size: usize,
+    pub rebroadcast_interval: Duration,
+    pub max_rebroadcast_interval: Duration,
+    pub broadcast_rate_limit: usize,
+    pub broadcast_rate_burst_ratio: f64,
+    pub cleanup_interval: Duration,
+}
+
+impl LocalBlockBroadcasterConfig {
+    pub fn new(network: Networks) -> Self {
+        match network {
+            Networks::NanoDevNetwork => Self::default_for_dev_network(),
+            _ => Default::default(),
+        }
+    }
+
+    fn default_for_dev_network() -> Self {
+        Self {
+            rebroadcast_interval: Duration::from_secs(1),
+            cleanup_interval: Duration::from_secs(1),
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for LocalBlockBroadcasterConfig {
+    fn default() -> Self {
+        Self {
+            max_size: 1024 * 8,
+            rebroadcast_interval: Duration::from_secs(3),
+            max_rebroadcast_interval: Duration::from_secs(60),
+            broadcast_rate_limit: 32,
+            broadcast_rate_burst_ratio: 3.0,
+            cleanup_interval: Duration::from_secs(60),
+        }
+    }
+}
 
 ///  Broadcasts blocks to the network
 /// Tracks local blocks for more aggressive propagation

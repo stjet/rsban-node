@@ -118,6 +118,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.request_aggregator = config.request_aggregator.into_dto ();
 	dto.message_processor = config.message_processor.into_dto ();
 	dto.priority_scheduler_enabled = config.priority_scheduler_enabled;
+	dto.local_block_broadcaster = config.local_block_broadcaster.into_dto();
 	return dto;
 }
 
@@ -243,6 +244,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	request_aggregator = nano::request_aggregator_config{ dto.request_aggregator };
 	message_processor = nano::message_processor_config{ dto.message_processor };
 	priority_scheduler_enabled = dto.priority_scheduler_enabled;
+	local_block_broadcaster = nano::local_block_broadcaster_config{ dto.local_block_broadcaster};
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -1014,4 +1016,24 @@ nano::error nano::message_processor_config::deserialize (nano::tomlconfig & toml
 	toml.get ("max_queue", max_queue);
 
 	return toml.get_error ();
+}
+
+nano::local_block_broadcaster_config::local_block_broadcaster_config (rsnano::LocalBlockBroadcasterConfigDto const & dto) :
+	max_size{ dto.max_size },
+	rebroadcast_interval{ dto.rebroadcast_interval_s },
+	max_rebroadcast_interval{ dto.rebroadcast_interval_s },
+	broadcast_rate_limit{ dto.broadcast_rate_limit },
+	broadcast_rate_burst_ratio{ dto.broadcast_rate_burst_ratio },
+	cleanup_interval{ dto.cleanup_interval_s }
+{}
+
+rsnano::LocalBlockBroadcasterConfigDto nano::local_block_broadcaster_config::into_dto () const{
+	return {
+		max_size,
+		static_cast<uint64_t>(rebroadcast_interval.count()),
+		static_cast<uint64_t>(max_rebroadcast_interval.count()),
+		broadcast_rate_limit,
+		broadcast_rate_burst_ratio,
+		static_cast<uint64_t>(cleanup_interval.count())
+	};
 }

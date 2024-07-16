@@ -18,6 +18,7 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
+    block_processing::LocalBlockBroadcasterConfig,
     config::{NodeConfig, Peer},
     transport::{MessageProcessorConfig, TcpConfig},
     NetworkParams,
@@ -108,6 +109,7 @@ pub struct NodeConfigDto {
     pub request_aggregator: RequestAggregatorConfigDto,
     pub message_processor: MessageProcessorConfigDto,
     pub priority_scheduler_enabled: bool,
+    pub local_block_broadcaster: LocalBlockBroadcasterConfigDto,
 }
 
 #[repr(C)]
@@ -299,6 +301,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.request_aggregator = (&cfg.request_aggregator).into();
     dto.message_processor = (&cfg.message_processor).into();
     dto.priority_scheduler_enabled = cfg.priority_scheduler_enabled;
+    dto.local_block_broadcaster = (&cfg.local_block_broadcaster).into();
 }
 
 #[no_mangle]
@@ -437,6 +440,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             request_aggregator: (&value.request_aggregator).into(),
             message_processor: (&value.message_processor).into(),
             priority_scheduler_enabled: value.priority_scheduler_enabled,
+            local_block_broadcaster: (&value.local_block_broadcaster).into(),
         };
 
         Ok(cfg)
@@ -463,6 +467,42 @@ impl From<&MessageProcessorConfig> for MessageProcessorConfigDto {
         Self {
             threads: value.threads,
             max_queue: value.max_queue,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct LocalBlockBroadcasterConfigDto {
+    pub max_size: usize,
+    pub rebroadcast_interval_s: u64,
+    pub max_rebroadcast_interval_s: u64,
+    pub broadcast_rate_limit: usize,
+    pub broadcast_rate_burst_ratio: f64,
+    pub cleanup_interval_s: u64,
+}
+
+impl From<&LocalBlockBroadcasterConfig> for LocalBlockBroadcasterConfigDto {
+    fn from(value: &LocalBlockBroadcasterConfig) -> Self {
+        Self {
+            max_size: value.max_size,
+            rebroadcast_interval_s: value.rebroadcast_interval.as_secs() as u64,
+            max_rebroadcast_interval_s: value.max_rebroadcast_interval.as_secs() as u64,
+            broadcast_rate_limit: value.broadcast_rate_limit,
+            broadcast_rate_burst_ratio: value.broadcast_rate_burst_ratio,
+            cleanup_interval_s: value.cleanup_interval.as_secs() as u64,
+        }
+    }
+}
+
+impl From<&LocalBlockBroadcasterConfigDto> for LocalBlockBroadcasterConfig {
+    fn from(value: &LocalBlockBroadcasterConfigDto) -> Self {
+        Self {
+            max_size: value.max_size,
+            rebroadcast_interval: Duration::from_secs(value.rebroadcast_interval_s),
+            max_rebroadcast_interval: Duration::from_secs(value.max_rebroadcast_interval_s),
+            broadcast_rate_limit: value.broadcast_rate_limit,
+            broadcast_rate_burst_ratio: value.broadcast_rate_burst_ratio,
+            cleanup_interval: Duration::from_secs(value.cleanup_interval_s),
         }
     }
 }

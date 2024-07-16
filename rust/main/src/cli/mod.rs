@@ -122,9 +122,6 @@ impl Cli {
             Some(Commands::Snapshot(snapshot_options)) => {
                 snapshot_options.run();
             }
-            Some(Commands::Help) => {
-                Cli::command().print_help()?;
-            }
             Some(Commands::GenerateConfig(generate_config_options)) => {
                 generate_config_options.run()?
             }
@@ -239,8 +236,6 @@ pub(crate) enum Commands {
     Snapshot(SnapshotOptions),
     /// Prints out version.
     Version,
-    /// Print out options.
-    Help,
     /// Write configuration to stdout, populated with defaults suitable for this system. Pass the configuration type node or rpc. See also use_defaults.
     GenerateConfig(GenerateConfigOptions),
 }

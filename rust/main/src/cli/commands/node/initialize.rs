@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use clap::Parser;
+use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -11,10 +11,12 @@ use rsnano_node::{
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 #[derive(Parser)]
+#[command(group = ArgGroup::new("input")
+    .args(&["data_path", "network"]))]
 pub(crate) struct InitializeArgs {
-    #[arg(long)]
+    #[arg(long, group = "input")]
     data_path: Option<String>,
-    #[arg(long)]
+    #[arg(long, group = "input")]
     network: Option<String>,
 }
 

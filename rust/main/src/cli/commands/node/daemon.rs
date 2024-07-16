@@ -1,5 +1,5 @@
 use crate::{cli::get_path, init_tracing};
-use clap::Parser;
+use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -16,10 +16,12 @@ use std::{
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
+#[command(group = ArgGroup::new("input")
+    .args(&["data_path", "network"]))]
 pub(crate) struct DaemonArgs {
-    #[arg(long)]
+    #[arg(long, group = "input")]
     data_path: Option<String>,
-    #[arg(long)]
+    #[arg(long, group = "input")]
     network: Option<String>,
     /// Pass node configuration values. This takes precedence over any values in the configuration file. This option can be repeated multiple times.
     #[arg(long)]

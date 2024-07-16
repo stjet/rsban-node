@@ -55,18 +55,14 @@ impl Cli {
             Some(Commands::ClearSendIds(args)) => {
                 args.clear_send_ids();
             }
-            Some(Commands::FinalVoteClear(args)) => {
-                args.final_vote_clear()?;
-            }
+            Some(Commands::FinalVoteClear(args)) => args.final_vote_clear()?,
             Some(Commands::KeyCreate) => {
                 Cli::key_create();
             }
             Some(Commands::WalletList(args)) => {
                 args.wallet_list();
             }
-            Some(Commands::WalletCreate(args)) => {
-                args.wallet_create()?;
-            }
+            Some(Commands::WalletCreate(args)) => args.wallet_create()?,
             Some(Commands::WalletDestroy(args)) => {
                 args.wallet_destroy();
             }
@@ -113,13 +109,9 @@ impl Cli {
             Some(Commands::RebuildDatabase(args)) => {
                 args.rebuild_database();
             }
-            Some(Commands::Snapshot(args)) => {
-                args.snapshot();
-            }
+            Some(Commands::Snapshot(args)) => args.snapshot()?,
             Some(Commands::GenerateConfig(args)) => args.generate_config()?,
-            None => {
-                Cli::command().print_help()?;
-            }
+            None => Cli::command().print_help()?,
         }
         Ok(())
     }

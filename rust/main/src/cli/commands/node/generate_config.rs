@@ -16,6 +16,7 @@ pub(crate) struct GenerateConfigArgs {
     rpc: bool,
     #[arg(long)]
     use_defaults: bool,
+    // network
 }
 
 impl GenerateConfigArgs {
@@ -36,6 +37,7 @@ impl GenerateConfigArgs {
             config.serialize_toml(&mut toml)?
         } else {
             println!("Configuration type must be either node or rpc");
+            return Ok(());
         }
 
         if !self.use_defaults {

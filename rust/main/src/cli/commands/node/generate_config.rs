@@ -9,7 +9,7 @@ use rsnano_node::{
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["node", "rpc"]))]
-pub(crate) struct GenerateConfigOptions {
+pub(crate) struct GenerateConfigArgs {
     #[arg(long, group = "input")]
     node: bool,
     #[arg(long, group = "input")]
@@ -18,8 +18,8 @@ pub(crate) struct GenerateConfigOptions {
     use_defaults: bool,
 }
 
-impl GenerateConfigOptions {
-    pub(crate) fn run(&self) -> anyhow::Result<()> {
+impl GenerateConfigArgs {
+    pub(crate) fn generate_config(&self) -> anyhow::Result<()> {
         let mut toml = TomlConfig::new();
         let network = NetworkConstants::active_network();
         let mut config_type = "node";

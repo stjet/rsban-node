@@ -8,7 +8,7 @@ use rsnano_node::wallets::Wallets;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletRepresentativeGetOptions {
+pub(crate) struct WalletRepresentativeGetArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long, group = "input")]
@@ -17,8 +17,8 @@ pub(crate) struct WalletRepresentativeGetOptions {
     network: Option<String>,
 }
 
-impl WalletRepresentativeGetOptions {
-    pub(crate) fn run(&self) {
+impl WalletRepresentativeGetArgs {
+    pub(crate) fn wallet_representative_get(&self) {
         let wallet_id = WalletId::decode_hex(&self.wallet).unwrap();
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");

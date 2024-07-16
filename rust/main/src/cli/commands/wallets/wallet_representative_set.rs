@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletRepresentativeSetOptions {
+pub(crate) struct WalletRepresentativeSetArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
@@ -18,8 +18,8 @@ pub(crate) struct WalletRepresentativeSetOptions {
     network: Option<String>,
 }
 
-impl WalletRepresentativeSetOptions {
-    pub(crate) fn run(&self) {
+impl WalletRepresentativeSetArgs {
+    pub(crate) fn wallet_representative_set(&self) {
         let wallet_id = WalletId::decode_hex(&self.wallet).unwrap();
 
         let representative = Account::decode_hex(&self.account).unwrap();

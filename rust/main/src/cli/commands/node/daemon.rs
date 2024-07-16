@@ -16,7 +16,7 @@ use std::{
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
-pub(crate) struct DaemonOptions {
+pub(crate) struct DaemonArgs {
     #[arg(long)]
     data_path: Option<String>,
     #[arg(long)]
@@ -111,8 +111,8 @@ pub(crate) struct DaemonOptions {
     vote_processor_capacity: Option<usize>,
 }
 
-impl DaemonOptions {
-    pub(crate) fn run(&self) {
+impl DaemonArgs {
+    pub(crate) fn daemon(&self) {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));

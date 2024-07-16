@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletDestroyOptions {
+pub(crate) struct WalletDestroyArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long, group = "input")]
@@ -16,8 +16,8 @@ pub(crate) struct WalletDestroyOptions {
     network: Option<String>,
 }
 
-impl WalletDestroyOptions {
-    pub(crate) fn run(&self) {
+impl WalletDestroyArgs {
+    pub(crate) fn wallet_destroy(&self) {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallets = Arc::new(Wallets::new_null(&path).unwrap());

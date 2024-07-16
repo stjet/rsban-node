@@ -1,8 +1,8 @@
 use clap::Parser;
 
 #[derive(Parser)]
-pub(crate) struct VacuumOptions;
+pub(crate) struct VacuumArgs;
 
-impl VacuumOptions {
-    pub(crate) fn run(&self) {}
+impl VacuumArgs {
+    pub(crate) fn vacuum(&self) {}
 }

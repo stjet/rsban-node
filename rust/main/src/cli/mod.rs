@@ -1,30 +1,22 @@
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
     accounts::{
-        account_create::AccountCreateOptions, account_get::AccountGetOptions,
-        account_key::AccountKeyOptions,
+        account_create::AccountCreateArgs, account_get::AccountGetArgs, account_key::AccountKeyArgs,
     },
     clear::{
-        clear_send_ids::ClearSendIdsOptions,
-        confirmation_height_clear::ConfirmationHeightClearOptions,
-        final_vote_clear::FinalVoteClearOptions, online_weight_clear::OnlineWeightClearOptions,
-        peer_clear::PeerClearOptions,
+        clear_send_ids::ClearSendIdsArgs, confirmation_height_clear::ConfirmationHeightClearArgs,
+        final_vote_clear::FinalVoteClearArgs, online_weight_clear::OnlineWeightClearArgs,
+        peer_clear::PeerClearArgs,
     },
-    database::{
-        rebuild_database::RebuildDatabaseOptions, snapshot::SnapshotOptions, vacuum::VacuumOptions,
-    },
-    keys::key_expand::KeyExpandOptions,
-    node::{
-        daemon::DaemonOptions, generate_config::GenerateConfigOptions,
-        initialize::InitializeOptions,
-    },
+    database::{rebuild_database::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
+    keys::key_expand::KeyExpandArgs,
+    node::{daemon::DaemonArgs, generate_config::GenerateConfigArgs, initialize::InitializeArgs},
     wallets::{
-        wallet_add_adhoc::WalletAddAdhocOptions, wallet_change_seed::WalletChangeSeedOptions,
-        wallet_create::WalletCreateOptions, wallet_decrypt_unsafe::WalletDecryptUnsafeOptions,
-        wallet_destroy::WalletDestroyOptions, wallet_list::WalletListOptions,
-        wallet_remove::WalletRemoveOptions,
-        wallet_representative_get::WalletRepresentativeGetOptions,
-        wallet_representative_set::WalletRepresentativeSetOptions,
+        wallet_add_adhoc::WalletAddAdhocArgs, wallet_change_seed::WalletChangeSeedArgs,
+        wallet_create::WalletCreateArgs, wallet_decrypt_unsafe::WalletDecryptUnsafeArgs,
+        wallet_destroy::WalletDestroyArgs, wallet_list::WalletListArgs,
+        wallet_remove::WalletRemoveArgs, wallet_representative_get::WalletRepresentativeGetArgs,
+        wallet_representative_set::WalletRepresentativeSetArgs,
     },
 };
 use rsnano_core::{Account, Amount, BlockHash, KeyPair, Networks, PublicKey, RawKey, SendBlock};
@@ -44,87 +36,85 @@ pub(crate) struct Cli {
 impl Cli {
     pub(crate) fn run(&self) -> anyhow::Result<()> {
         match &self.command {
-            Some(Commands::Daemon(daemon_options)) => {
-                daemon_options.run();
+            Some(Commands::Daemon(args)) => {
+                args.daemon();
             }
-            Some(Commands::Initialize(initialize_options)) => {
-                initialize_options.run();
+            Some(Commands::Initialize(args)) => {
+                args.initialize();
             }
-            Some(Commands::OnlineWeightClear(online_weight_clear_options)) => {
-                online_weight_clear_options.run();
+            Some(Commands::OnlineWeightClear(args)) => {
+                args.online_weight_clear();
             }
-            Some(Commands::PeerClear(peer_clear_options)) => {
-                peer_clear_options.run();
+            Some(Commands::PeerClear(args)) => {
+                args.peer_clear();
             }
-            Some(Commands::ConfirmationHeightClear(confirmation_height_clear_options)) => {
-                confirmation_height_clear_options.run();
+            Some(Commands::ConfirmationHeightClear(args)) => {
+                args.confirmation_height_clear();
             }
-            Some(Commands::ClearSendIds(clear_send_ids_options)) => {
-                clear_send_ids_options.run();
+            Some(Commands::ClearSendIds(args)) => {
+                args.clear_send_ids();
             }
-            Some(Commands::FinalVoteClear(final_vote_clear_options)) => {
-                final_vote_clear_options.final_vote_clear()?;
+            Some(Commands::FinalVoteClear(args)) => {
+                args.final_vote_clear()?;
             }
             Some(Commands::KeyCreate) => {
-                self.key_create();
+                Cli::key_create();
             }
-            Some(Commands::WalletList(wallet_list_options)) => {
-                wallet_list_options.run();
+            Some(Commands::WalletList(args)) => {
+                args.wallet_list();
             }
-            Some(Commands::WalletCreate(wallet_create_options)) => {
-                wallet_create_options.run()?;
+            Some(Commands::WalletCreate(args)) => {
+                args.wallet_create()?;
             }
-            Some(Commands::WalletDestroy(wallet_destroy_options)) => {
-                wallet_destroy_options.run();
+            Some(Commands::WalletDestroy(args)) => {
+                args.wallet_destroy();
             }
-            Some(Commands::WalletAddAdhoc(wallet_destroy_options)) => {
-                wallet_destroy_options.run();
+            Some(Commands::WalletAddAdhoc(args)) => {
+                args.wallet_add_adhoc();
             }
-            Some(Commands::WalletChangeSeed(wallet_change_seed_options)) => {
-                wallet_change_seed_options.run();
+            Some(Commands::WalletChangeSeed(args)) => {
+                args.wallet_change_seed();
             }
-            Some(Commands::WalletRemove(wallet_remove_options)) => {
-                wallet_remove_options.run();
+            Some(Commands::WalletRemove(args)) => {
+                args.wallet_remove();
             }
-            Some(Commands::WalletDecryptUnsafe(wallet_decrypt_unsafe_options)) => {
-                wallet_decrypt_unsafe_options.run();
+            Some(Commands::WalletDecryptUnsafe(args)) => {
+                args.wallet_decrypt_unsafe();
             }
-            Some(Commands::WalletRepresentativeGet(wallet_representative_get_options)) => {
-                wallet_representative_get_options.run();
+            Some(Commands::WalletRepresentativeGet(args)) => {
+                args.wallet_representative_get();
             }
-            Some(Commands::WalletRepresentativeSet(wallet_representative_set_options)) => {
-                wallet_representative_set_options.run();
+            Some(Commands::WalletRepresentativeSet(args)) => {
+                args.wallet_representative_set();
             }
-            Some(Commands::AccountGet(account_get_options)) => {
-                account_get_options.run();
+            Some(Commands::AccountGet(args)) => {
+                args.account_get();
             }
-            Some(Commands::AccountKey(account_key_options)) => {
-                account_key_options.run();
+            Some(Commands::AccountKey(args)) => {
+                args.account_key();
             }
-            Some(Commands::AccountCreate(account_create_options)) => {
-                account_create_options.run();
+            Some(Commands::AccountCreate(args)) => {
+                args.account_create();
             }
-            Some(Commands::KeyExpand(key_expand_options)) => {
-                key_expand_options.run();
+            Some(Commands::KeyExpand(args)) => {
+                args.key_expand();
             }
             Some(Commands::Diagnostics) => {
-                self.diagnostics();
+                Cli::diagnostics();
             }
             Some(Commands::Version) => {
-                self.version();
+                Cli::version();
             }
-            Some(Commands::Vacuum(vacuum_options)) => {
-                vacuum_options.run();
+            Some(Commands::Vacuum(args)) => {
+                args.vacuum();
             }
-            Some(Commands::RebuildDatabase(rebuild_database_options)) => {
-                rebuild_database_options.run();
+            Some(Commands::RebuildDatabase(args)) => {
+                args.rebuild_database();
             }
-            Some(Commands::Snapshot(snapshot_options)) => {
-                snapshot_options.run();
+            Some(Commands::Snapshot(args)) => {
+                args.snapshot();
             }
-            Some(Commands::GenerateConfig(generate_config_options)) => {
-                generate_config_options.run()?
-            }
+            Some(Commands::GenerateConfig(args)) => args.generate_config()?,
             None => {
                 Cli::command().print_help()?;
             }
@@ -132,12 +122,12 @@ impl Cli {
         Ok(())
     }
 
-    fn version(&self) {
+    fn version() {
         println!("Version {}", VERSION_STRING);
         println!("Build Info {}", BUILD_INFO);
     }
 
-    fn diagnostics(&self) {
+    fn diagnostics() {
         let path = get_path(&None, &None);
 
         let wallets = Arc::new(Wallets::new_null(&path).unwrap());
@@ -170,7 +160,7 @@ impl Cli {
         println!("{} nanoseconds", avg_duration);
     }
 
-    fn key_create(&self) {
+    fn key_create() {
         let keypair = KeyPair::new();
         let private_key = keypair.private_key();
         let public_key = keypair.public_key();
@@ -185,59 +175,59 @@ impl Cli {
 #[derive(Subcommand)]
 pub(crate) enum Commands {
     /// Start node daemon.
-    Daemon(DaemonOptions),
+    Daemon(DaemonArgs),
     /// Initialize the data folder, if it is not already initialised. This command is meant to be run when the data folder is empty, to populate it with the genesis block.
-    Initialize(InitializeOptions),
+    Initialize(InitializeArgs),
     /// Generates a adhoc random keypair and prints it to stdout.
     KeyCreate,
     /// Derive public key and account number from <key>.
-    KeyExpand(KeyExpandOptions),
+    KeyExpand(KeyExpandArgs),
     /// Either specify a single --root to clear or --all to clear all final votes (not recommended).
-    FinalVoteClear(FinalVoteClearOptions),
+    FinalVoteClear(FinalVoteClearArgs),
     /// Insert next deterministic key into <wallet>.
-    AccountCreate(AccountCreateOptions),
+    AccountCreate(AccountCreateArgs),
     /// Get account number for the <key>.
-    AccountGet(AccountGetOptions),
+    AccountGet(AccountGetArgs),
     /// Get the public key for <account>.
-    AccountKey(AccountKeyOptions),
+    AccountKey(AccountKeyArgs),
     /// Creates a new wallet with optional <seed> and optional <password>, and prints the ID. Note the legacy --key option can still be used and will function the same as --seed. Use --wallet-list to retrieve the wallet ID in the future.
-    WalletCreate(WalletCreateOptions),
+    WalletCreate(WalletCreateArgs),
     /// Destroys <wallet> and all keys it contains.
-    WalletDestroy(WalletDestroyOptions),
+    WalletDestroy(WalletDestroyArgs),
     /// Insert <key> in to <wallet>.
-    WalletAddAdhoc(WalletAddAdhocOptions),
+    WalletAddAdhoc(WalletAddAdhocArgs),
     /// Changes seed for <wallet> to <key>.
-    WalletChangeSeed(WalletChangeSeedOptions),
+    WalletChangeSeed(WalletChangeSeedArgs),
     /// Prints default representative for <wallet>.
-    WalletRepresentativeGet(WalletRepresentativeGetOptions),
+    WalletRepresentativeGet(WalletRepresentativeGetArgs),
     /// Set <account> as default representative for <wallet>.
-    WalletRepresentativeSet(WalletRepresentativeSetOptions),
+    WalletRepresentativeSet(WalletRepresentativeSetArgs),
     /// Remove <account> from <wallet>.
-    WalletRemove(WalletRemoveOptions),
+    WalletRemove(WalletRemoveArgs),
     /// Decrypts <wallet> using <password>, !!THIS WILL PRINT YOUR PRIVATE KEY TO STDOUT!
-    WalletDecryptUnsafe(WalletDecryptUnsafeOptions),
+    WalletDecryptUnsafe(WalletDecryptUnsafeArgs),
     /// Dumps wallet IDs and public keys.
-    WalletList(WalletListOptions),
+    WalletList(WalletListArgs),
     /// Clear online weight history records.
-    OnlineWeightClear(OnlineWeightClearOptions),
+    OnlineWeightClear(OnlineWeightClearArgs),
     /// Remove all send IDs from the database (dangerous: not intended for production use).
-    ClearSendIds(ClearSendIdsOptions),
+    ClearSendIds(ClearSendIdsArgs),
     /// Clear online peers database dump.
-    PeerClear(PeerClearOptions),
+    PeerClear(PeerClearArgs),
     /// Clear confirmation height. Requires an <account> option that can be 'all' to clear all accounts.
-    ConfirmationHeightClear(ConfirmationHeightClearOptions),
+    ConfirmationHeightClear(ConfirmationHeightClearArgs),
     /// Run internal diagnostics.
     Diagnostics,
     /// Compact database. If data_path is missing, the database in the data directory is compacted. Optional: --unchecked_clear, --clear_send_ids, --online_weight_clear, --peer_clear, --confirmation_height_clear, --rebuild_database. Requires approximately data.ldb size * 2 free space on disk.
-    Vacuum(VacuumOptions),
+    Vacuum(VacuumArgs),
     /// Rebuild LMDB database with --vacuum for best compaction. Requires approximately data.ldb size * 2 free space on disk.
-    RebuildDatabase(RebuildDatabaseOptions),
+    RebuildDatabase(RebuildDatabaseArgs),
     /// Compact database and create snapshot, functions similar to vacuum but does not replace the existing database.
-    Snapshot(SnapshotOptions),
+    Snapshot(SnapshotArgs),
     /// Prints out version.
     Version,
     /// Write configuration to stdout, populated with defaults suitable for this system. Pass the configuration type node or rpc. See also use_defaults.
-    GenerateConfig(GenerateConfigOptions),
+    GenerateConfig(GenerateConfigArgs),
 }
 
 pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) -> PathBuf {

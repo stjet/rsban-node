@@ -2,13 +2,13 @@ use clap::Parser;
 use rsnano_core::Account;
 
 #[derive(Parser)]
-pub(crate) struct AccountKeyOptions {
+pub(crate) struct AccountKeyArgs {
     #[arg(long)]
     account: String,
 }
 
-impl AccountKeyOptions {
-    pub(crate) fn run(&self) {
+impl AccountKeyArgs {
+    pub(crate) fn account_key(&self) {
         let key = Account::decode_account(&self.account).unwrap();
         println!("Hex: {:?}", key);
     }

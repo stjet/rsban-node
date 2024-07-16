@@ -1,8 +1,8 @@
 use clap::Parser;
 
 #[derive(Parser)]
-pub(crate) struct SnapshotOptions;
+pub(crate) struct SnapshotArgs;
 
-impl SnapshotOptions {
-    pub(crate) fn run(&self) {}
+impl SnapshotArgs {
+    pub(crate) fn snapshot(&self) {}
 }

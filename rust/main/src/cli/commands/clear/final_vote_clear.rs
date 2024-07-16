@@ -8,7 +8,7 @@ use rsnano_store_lmdb::LmdbStore;
     .args(&["root", "all"]))]
 #[command(group = ArgGroup::new("input2")
     .args(&["data_path", "network"]))]
-pub(crate) struct FinalVoteClearOptions {
+pub(crate) struct FinalVoteClearArgs {
     #[arg(long, group = "input1")]
     root: Option<String>,
     #[arg(long, group = "input1")]
@@ -19,7 +19,7 @@ pub(crate) struct FinalVoteClearOptions {
     network: Option<String>,
 }
 
-impl FinalVoteClearOptions {
+impl FinalVoteClearArgs {
     pub(crate) fn final_vote_clear(&self) -> anyhow::Result<()> {
         let path = get_path(&self.data_path, &self.network);
         let path = path.join("data.ldb");

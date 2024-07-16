@@ -11,15 +11,15 @@ use rsnano_node::{
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 #[derive(Parser)]
-pub(crate) struct InitializeOptions {
+pub(crate) struct InitializeArgs {
     #[arg(long)]
     data_path: Option<String>,
     #[arg(long)]
     network: Option<String>,
 }
 
-impl InitializeOptions {
-    pub(crate) fn run(&self) {
+impl InitializeArgs {
+    pub(crate) fn initialize(&self) {
         let network_params = if let Some(network) = &self.network {
             NetworkParams::new(Networks::from_str(&network).unwrap())
         } else {

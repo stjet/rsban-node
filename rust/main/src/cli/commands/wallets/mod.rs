@@ -3,6 +3,7 @@ pub(crate) mod wallet_change_seed;
 pub(crate) mod wallet_create;
 pub(crate) mod wallet_decrypt_unsafe;
 pub(crate) mod wallet_destroy;
+pub(crate) mod wallet_import;
 pub(crate) mod wallet_list;
 pub(crate) mod wallet_remove;
 pub(crate) mod wallet_representative_get;

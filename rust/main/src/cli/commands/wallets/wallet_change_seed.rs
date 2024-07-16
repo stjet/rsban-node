@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletChangeSeedOptions {
+pub(crate) struct WalletChangeSeedArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
@@ -18,8 +18,8 @@ pub(crate) struct WalletChangeSeedOptions {
     network: Option<String>,
 }
 
-impl WalletChangeSeedOptions {
-    pub(crate) fn run(&self) {
+impl WalletChangeSeedArgs {
+    pub(crate) fn wallet_change_seed(&self) {
         let wallet_id = WalletId::decode_hex(&self.wallet).unwrap();
 
         let seed = RawKey::decode_hex(&self.seed).unwrap();

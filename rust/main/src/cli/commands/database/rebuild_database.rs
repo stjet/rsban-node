@@ -1,8 +1,8 @@
 use clap::Parser;
 
 #[derive(Parser)]
-pub(crate) struct RebuildDatabaseOptions;
+pub(crate) struct RebuildDatabaseArgs;
 
-impl RebuildDatabaseOptions {
-    pub(crate) fn run(&self) {}
+impl RebuildDatabaseArgs {
+    pub(crate) fn rebuild_database(&self) {}
 }

@@ -201,14 +201,16 @@ impl From<ConfiguredResponse> for Response {
 mod tests {
     use super::*;
     use reqwest::StatusCode;
+    use tokio::net::TcpListener;
 
     #[tokio::test]
     async fn make_real_request() {
-        let _server = test_http_server::start("0.0.0.0:3000").await;
+        let port = get_available_port().await;
+        let _server = test_http_server::start(("0.0.0.0", port)).await;
 
         let client = HttpClient::new();
         let result = client
-            .post_json("http://127.0.0.1:3000", &vec!["hello"])
+            .post_json(format!("http://127.0.0.1:{}", port), &vec!["hello"])
             .await
             .unwrap();
         assert_eq!(result.status(), StatusCode::OK);
@@ -308,6 +310,23 @@ mod tests {
         async fn root(Json(mut payload): Json<Vec<String>>) -> Json<Vec<String>> {
             payload.push("world".to_string());
             Json(payload)
+        }
+    }
+
+    async fn get_available_port() -> u16 {
+        for port in 1025..65535 {
+            if is_port_available(port).await {
+                return port;
+            }
+        }
+
+        panic!("Could not find an available port");
+    }
+
+    async fn is_port_available(port: u16) -> bool {
+        match TcpListener::bind(("127.0.0.1", port)).await {
+            Ok(_) => true,
+            Err(_) => false,
         }
     }
 }

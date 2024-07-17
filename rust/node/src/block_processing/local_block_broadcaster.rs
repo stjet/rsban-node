@@ -7,22 +7,64 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockEnum, BlockHash,
+    BlockEnum, BlockHash, Networks,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
-use rsnano_store_lmdb::Transaction;
 use std::{
-    collections::{HashMap, VecDeque},
+    cmp::min,
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     mem::size_of,
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+use tracing::debug;
+
+#[derive(Clone)]
+pub struct LocalBlockBroadcasterConfig {
+    pub max_size: usize,
+    pub rebroadcast_interval: Duration,
+    pub max_rebroadcast_interval: Duration,
+    pub broadcast_rate_limit: usize,
+    pub broadcast_rate_burst_ratio: f64,
+    pub cleanup_interval: Duration,
+}
+
+impl LocalBlockBroadcasterConfig {
+    pub fn new(network: Networks) -> Self {
+        match network {
+            Networks::NanoDevNetwork => Self::default_for_dev_network(),
+            _ => Default::default(),
+        }
+    }
+
+    fn default_for_dev_network() -> Self {
+        Self {
+            rebroadcast_interval: Duration::from_secs(1),
+            cleanup_interval: Duration::from_secs(1),
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for LocalBlockBroadcasterConfig {
+    fn default() -> Self {
+        Self {
+            max_size: 1024 * 8,
+            rebroadcast_interval: Duration::from_secs(3),
+            max_rebroadcast_interval: Duration::from_secs(60),
+            broadcast_rate_limit: 32,
+            broadcast_rate_burst_ratio: 3.0,
+            cleanup_interval: Duration::from_secs(60),
+        }
+    }
+}
 
 ///  Broadcasts blocks to the network
 /// Tracks local blocks for more aggressive propagation
 pub struct LocalBlockBroadcaster {
+    config: LocalBlockBroadcasterConfig,
     block_processor: Arc<BlockProcessor>,
     stats: Arc<Stats>,
     ledger: Arc<Ledger>,
@@ -37,13 +79,8 @@ pub struct LocalBlockBroadcaster {
 }
 
 impl LocalBlockBroadcaster {
-    const MAX_SIZE: usize = 1024 * 8;
-    const CHECK_INTERVAL: Duration = Duration::from_secs(30);
-    const BROADCAST_INTERVAL: Duration = Duration::from_secs(60);
-    const BROADCAST_RATE_LIMIT: usize = 32;
-    const BROADCAST_RATE_BURST_RATIO: f64 = 3.0;
-
     pub fn new(
+        config: LocalBlockBroadcasterConfig,
         block_processor: Arc<BlockProcessor>,
         stats: Arc<Stats>,
         network: Arc<Network>,
@@ -53,6 +90,11 @@ impl LocalBlockBroadcaster {
         enabled: bool,
     ) -> Self {
         Self {
+            limiter: BandwidthLimiter::new(
+                config.broadcast_rate_burst_ratio,
+                config.broadcast_rate_limit,
+            ),
+            config,
             block_processor,
             stats,
             network,
@@ -64,12 +106,9 @@ impl LocalBlockBroadcaster {
             mutex: Mutex::new(LocalBlockBroadcasterData {
                 stopped: false,
                 local_blocks: Default::default(),
+                cleanup_interval: Instant::now(),
             }),
             condition: Condvar::new(),
-            limiter: BandwidthLimiter::new(
-                Self::BROADCAST_RATE_BURST_RATIO,
-                Self::BROADCAST_RATE_LIMIT,
-            ),
         }
     }
 
@@ -84,18 +123,31 @@ impl LocalBlockBroadcaster {
     fn run(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
-            self.stats
-                .inc(StatType::LocalBlockBroadcaster, DetailType::Loop);
             guard = self
                 .condition
-                .wait_timeout(guard, Self::CHECK_INTERVAL)
+                .wait_timeout(guard, Duration::from_secs(1))
                 .unwrap()
                 .0;
-            if !guard.stopped {
-                self.cleanup(&mut guard);
+
+            if !guard.stopped && !guard.local_blocks.is_empty() {
+                self.stats
+                    .inc(StatType::LocalBlockBroadcaster, DetailType::Loop);
+
+                if guard.cleanup_interval.elapsed() >= self.config.cleanup_interval {
+                    guard.cleanup_interval = Instant::now();
+                    guard = self.cleanup(guard);
+                }
+
                 guard = self.run_broadcasts(guard);
             }
         }
+    }
+
+    fn rebroadcast_interval(&self, rebroadcasts: u32) -> Duration {
+        min(
+            self.config.rebroadcast_interval * rebroadcasts,
+            self.config.max_rebroadcast_interval,
+        )
     }
 
     fn run_broadcasts<'a>(
@@ -103,18 +155,25 @@ impl LocalBlockBroadcaster {
         mut guard: MutexGuard<'a, LocalBlockBroadcasterData>,
     ) -> MutexGuard<'a, LocalBlockBroadcasterData> {
         let mut to_broadcast = Vec::new();
-        let now = Instant::now();
-        guard.local_blocks.modify(|entry| {
-            if entry.last_broadcast.is_none()
-                || entry.last_broadcast.unwrap().elapsed() >= Self::BROADCAST_INTERVAL
-            {
-                entry.last_broadcast = Some(now);
-                to_broadcast.push(Arc::clone(&entry.block));
-            }
-        });
+
+        // Iterate blocks with next_broadcast <= now
+        for entry in guard.local_blocks.iter_by_next_broadcast(Instant::now()) {
+            to_broadcast.push(entry.clone());
+        }
+
+        // Modify multi index container outside of the loop to avoid invalidating iterators
+        for entry in &to_broadcast {
+            guard.local_blocks.modify_entry(&entry.block.hash(), |i| {
+                i.rebroadcasts += 1;
+                let now = Instant::now();
+                i.last_broadcast = Some(now);
+                i.next_broadcast = now + self.rebroadcast_interval(i.rebroadcasts);
+            });
+        }
+
         drop(guard);
 
-        for block in to_broadcast {
+        for entry in to_broadcast {
             while !self.limiter.should_pass(1) {
                 guard = self.mutex.lock().unwrap();
                 guard = self
@@ -127,47 +186,62 @@ impl LocalBlockBroadcaster {
                 }
             }
 
+            debug!(
+                "Broadcasting block: {} (rebroadcasts so far: {})",
+                entry.block.hash(),
+                entry.rebroadcasts + 1,
+            );
+
             self.stats.inc_dir(
                 StatType::LocalBlockBroadcaster,
                 DetailType::Broadcast,
                 Direction::Out,
             );
 
-            self.flood_block_initial((*block).clone());
+            self.flood_block_initial((*entry.block).clone());
         }
 
         self.mutex.lock().unwrap()
     }
 
-    fn cleanup(&self, data: &mut LocalBlockBroadcasterData) {
-        // Erase oldest blocks if the queue gets too big
-        while data.local_blocks.len() > Self::MAX_SIZE {
-            self.stats
-                .inc(StatType::LocalBlockBroadcaster, DetailType::EraseOldest);
-            data.local_blocks.pop_front();
+    fn cleanup<'a>(
+        &'a self,
+        mut data: MutexGuard<'a, LocalBlockBroadcasterData>,
+    ) -> MutexGuard<'a, LocalBlockBroadcasterData> {
+        // Copy the local blocks to avoid holding the mutex during IO
+        let local_blocks_copy = data.local_blocks.all_entries();
+        drop(data);
+        let mut already_confirmed = HashSet::new();
+        {
+            let tx = self.ledger.read_txn();
+            for entry in local_blocks_copy {
+                // This block has never been broadcasted, keep it so it's broadcasted at least once
+                if entry.last_broadcast.is_none() {
+                    continue;
+                }
+
+                if self.confirming_set.exists(&entry.block.hash())
+                    || self
+                        .ledger
+                        .confirmed()
+                        .block_exists_or_pruned(&tx, &entry.block.hash())
+                {
+                    self.stats.inc(
+                        StatType::LocalBlockBroadcaster,
+                        DetailType::AlreadyConfirmed,
+                    );
+                    already_confirmed.insert(entry.block.hash());
+                }
+            }
         }
 
-        // TODO: Mutex is held during IO, but it should be fine since it's not performance critical
-        let mut tx = self.ledger.read_txn();
-        data.local_blocks.retain(|entry| {
-            tx.refresh_if_needed();
+        data = self.mutex.lock().unwrap();
+        // Erase blocks that have been confirmed
 
-            if entry.last_broadcast.is_none() {
-                // This block has never been broadcasted, keep it so it's broadcasted at least once
-                return true;
-            }
-            if self.confirming_set.exists(&entry.block.hash())
-                || self
-                    .ledger
-                    .confirmed()
-                    .block_exists_or_pruned(&tx, &entry.block.hash())
-            {
-                self.stats
-                    .inc(StatType::LocalBlockBroadcaster, DetailType::EraseConfirmed);
-                return false;
-            }
-            true
-        });
+        data.local_blocks
+            .retain(|e| !already_confirmed.contains(&e.block.hash()));
+
+        data
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -251,12 +325,22 @@ impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
                         let mut guard = self_l.mutex.lock().unwrap();
                         guard.local_blocks.push_back(LocalEntry {
                             block: Arc::clone(&context.block),
-                            arrival: Instant::now(),
                             last_broadcast: None,
+                            next_broadcast: Instant::now(),
+                            rebroadcasts: 0,
                         });
                         self_l
                             .stats
                             .inc(StatType::LocalBlockBroadcaster, DetailType::Insert);
+
+                        // Erase oldest blocks if the queue gets too big
+                        while guard.local_blocks.len() > self_l.config.max_size {
+                            self_l
+                                .stats
+                                .inc(StatType::LocalBlockBroadcaster, DetailType::EraseOldest);
+                            guard.local_blocks.pop_front();
+                        }
+
                         should_notify = true;
                     }
                 }
@@ -273,14 +357,27 @@ impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
                 };
 
                 let mut guard = self_l.mutex.lock().unwrap();
-                let erased = guard.local_blocks.remove(&block.hash());
-                if erased {
-                    self_l.stats.add_dir(
+                if guard.local_blocks.remove(&block.hash()) {
+                    self_l.stats.inc_dir(
                         StatType::LocalBlockBroadcaster,
                         DetailType::Rollback,
                         Direction::In,
-                        1,
                     );
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        self.confirming_set
+            .add_cemented_observer(Box::new(move |block| {
+                let Some(self_l) = self_w.upgrade() else {
+                    return;
+                };
+
+                let mut guard = self_l.mutex.lock().unwrap();
+                if guard.local_blocks.remove(&block.hash()) {
+                    self_l
+                        .stats
+                        .inc(StatType::LocalBlockBroadcaster, DetailType::Cemented);
                 }
             }));
     }
@@ -304,18 +401,22 @@ impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
 struct LocalBlockBroadcasterData {
     stopped: bool,
     local_blocks: OrderedLocals,
+    cleanup_interval: Instant,
 }
 
+#[derive(Clone)]
 struct LocalEntry {
     block: Arc<BlockEnum>,
-    arrival: Instant,
     last_broadcast: Option<Instant>,
+    next_broadcast: Instant,
+    rebroadcasts: u32,
 }
 
 #[derive(Default)]
 struct OrderedLocals {
     by_hash: HashMap<BlockHash, LocalEntry>,
     sequenced: VecDeque<BlockHash>,
+    by_next_broadcast: BTreeMap<Instant, Vec<BlockHash>>,
 }
 
 impl OrderedLocals {
@@ -324,30 +425,55 @@ impl OrderedLocals {
         self.sequenced.len()
     }
 
+    fn is_empty(&self) -> bool {
+        self.sequenced.is_empty()
+    }
+
     fn push_back(&mut self, entry: LocalEntry) {
         let hash = entry.block.hash();
+        let next_broadcast = entry.next_broadcast;
         if let Some(old) = self.by_hash.insert(entry.block.hash(), entry) {
             self.sequenced.retain(|i| *i != old.block.hash());
         }
         self.sequenced.push_back(hash);
+        self.by_next_broadcast
+            .entry(next_broadcast)
+            .or_default()
+            .push(hash);
     }
 
-    fn modify(&mut self, mut f: impl FnMut(&mut LocalEntry)) {
-        for hash in &self.sequenced {
-            if let Some(entry) = self.by_hash.get_mut(hash) {
-                f(entry);
+    fn iter_by_next_broadcast(&self, upper_bound: Instant) -> impl Iterator<Item = &LocalEntry> {
+        self.by_next_broadcast
+            .values()
+            .flat_map(|hashes| hashes.iter().map(|h| self.by_hash.get(h).unwrap()))
+            .take_while(move |i| i.next_broadcast <= upper_bound)
+    }
+
+    fn modify_entry(&mut self, hash: &BlockHash, mut f: impl FnMut(&mut LocalEntry)) {
+        if let Some(entry) = self.by_hash.get_mut(hash) {
+            let old_next_broadcast = entry.next_broadcast;
+            f(entry);
+            if entry.next_broadcast != old_next_broadcast {
+                remove_by_next_broadcast(&mut self.by_next_broadcast, old_next_broadcast, hash);
+                self.by_next_broadcast
+                    .entry(entry.next_broadcast)
+                    .or_default()
+                    .push(*hash);
             }
         }
     }
 
     fn pop_front(&mut self) -> Option<LocalEntry> {
         let hash = self.sequenced.pop_front()?;
-        self.by_hash.remove(&hash)
+        let entry = self.by_hash.remove(&hash).unwrap();
+        remove_by_next_broadcast(&mut self.by_next_broadcast, entry.next_broadcast, &hash);
+        Some(entry)
     }
 
     fn remove(&mut self, hash: &BlockHash) -> bool {
-        if let Some(_) = self.by_hash.remove(hash) {
+        if let Some(entry) = self.by_hash.remove(hash) {
             self.sequenced.retain(|i| i != hash);
+            remove_by_next_broadcast(&mut self.by_next_broadcast, entry.next_broadcast, hash);
             true
         } else {
             false
@@ -358,9 +484,27 @@ impl OrderedLocals {
         self.by_hash.retain(|hash, entry| {
             let retain = f(entry);
             if !retain {
-                self.sequenced.retain(|i| i != hash)
+                self.sequenced.retain(|i| i != hash);
+                remove_by_next_broadcast(&mut self.by_next_broadcast, entry.next_broadcast, hash);
             }
             retain
         });
+    }
+
+    fn all_entries(&self) -> Vec<LocalEntry> {
+        self.by_hash.values().cloned().collect()
+    }
+}
+
+fn remove_by_next_broadcast(
+    map: &mut BTreeMap<Instant, Vec<BlockHash>>,
+    next: Instant,
+    hash: &BlockHash,
+) {
+    let mut hashes = map.remove(&next).unwrap();
+
+    if hashes.len() > 1 {
+        hashes.retain(|i| i != hash);
+        map.insert(next, hashes);
     }
 }

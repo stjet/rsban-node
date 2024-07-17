@@ -128,6 +128,10 @@ impl PeerConnectorExt for Arc<PeerConnector> {
     fn connect_to(&self, peer: SocketAddrV6) {
         self.connect_listener.emit(peer);
 
+        if self.cancel_token.is_cancelled() {
+            return;
+        }
+
         if !self.network.track_connection_attempt(&peer) {
             return;
         }

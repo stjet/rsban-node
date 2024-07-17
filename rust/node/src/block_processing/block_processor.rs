@@ -11,8 +11,9 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
+    collections::VecDeque,
     mem::size_of,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -226,14 +227,6 @@ impl BlockProcessor {
         }
     }
 
-    pub fn full(&self) -> bool {
-        self.processor_loop.full()
-    }
-
-    pub fn half_full(&self) -> bool {
-        self.processor_loop.half_full()
-    }
-
     pub fn total_queue_len(&self) -> usize {
         self.processor_loop.total_queue_len()
     }
@@ -323,9 +316,17 @@ impl BlockProcessorLoop {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             if !guard.queue.is_empty() {
-                drop(guard);
+                if guard.should_log() {
+                    info!(
+                        "{} blocks (+ {} forced) in processing_queue",
+                        guard.queue.len(),
+                        guard
+                            .queue
+                            .queue_len(&Origin::new_opt(BlockSource::Forced, None))
+                    );
+                }
 
-                let mut processed = self.process_batch();
+                let mut processed = self.process_batch(guard);
 
                 // Set results for futures when not holding the lock
                 for (result, context) in processed.iter_mut() {
@@ -454,14 +455,6 @@ impl BlockProcessorLoop {
         self.add_impl(ctx, None);
     }
 
-    pub fn full(&self) -> bool {
-        self.total_queue_len() >= self.config.full_size
-    }
-
-    pub fn half_full(&self) -> bool {
-        self.total_queue_len() >= self.config.full_size / 2
-    }
-
     // TODO: Remove and replace all checks with calls to size (block_source)
     pub fn total_queue_len(&self) -> usize {
         self.mutex.lock().unwrap().queue.len()
@@ -497,60 +490,58 @@ impl BlockProcessorLoop {
         self.unchecked_map.trigger(hash_or_account);
     }
 
-    pub fn process_batch(&self) -> Vec<(BlockStatus, Arc<BlockProcessorContext>)> {
-        let mut processed = Vec::new();
+    fn next_batch(
+        &self,
+        data: &mut BlockProcessorImpl,
+        max_count: usize,
+    ) -> VecDeque<Arc<BlockProcessorContext>> {
+        data.queue.periodic_update(Duration::from_secs(30));
+        let mut results = VecDeque::new();
+        while !data.queue.is_empty() && results.len() < max_count {
+            results.push_back(data.next());
+        }
+        results
+    }
 
-        let _scoped_write_guard = self.ledger.write_queue.wait(Writer::ProcessBatch);
+    pub fn process_batch(
+        &self,
+        mut guard: MutexGuard<BlockProcessorImpl>,
+    ) -> Vec<(BlockStatus, Arc<BlockProcessorContext>)> {
+        let batch = self.next_batch(&mut guard, 256);
+        drop(guard);
+
+        let mut write_guard = self.ledger.write_queue.wait(Writer::BlockProcessor);
         let mut tx = self.ledger.rw_txn();
-        let mut lock_a = self.mutex.lock().unwrap();
 
-        lock_a.queue.periodic_update(Duration::from_secs(30));
-
-        let timer_l = Instant::now();
+        let timer = Instant::now();
 
         // Processing blocks
         let mut number_of_blocks_processed = 0;
         let mut number_of_forced_processed = 0;
 
-        let deadline_reached = || timer_l.elapsed() > self.config.batch_max_time;
+        let mut processed = Vec::new();
+        for ctx in batch {
+            let force = ctx.source == BlockSource::Forced;
 
-        while !lock_a.queue.is_empty()
-            && (!deadline_reached() || number_of_blocks_processed < self.config.batch_size)
-        {
-            // TODO: Cleaner periodical logging
-            if lock_a.should_log() {
-                info!(
-                    "{} blocks (+ {} forced) in processing queue",
-                    lock_a.queue.len(),
-                    lock_a.queue.queue_len(&BlockSource::Forced.into())
-                );
-            }
-            let context = lock_a.next();
-            let force = context.source == BlockSource::Forced;
-
-            drop(lock_a);
+            (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);
 
             if force {
                 number_of_forced_processed += 1;
-                self.rollback_competitor(&mut tx, &context.block);
+                self.rollback_competitor(&mut tx, &ctx.block);
             }
 
             number_of_blocks_processed += 1;
 
-            let result = self.process_one(&mut tx, &context);
-            processed.push((result, context));
-
-            lock_a = self.mutex.lock().unwrap();
+            let result = self.process_one(&mut tx, &ctx);
+            processed.push((result, ctx));
         }
 
-        drop(lock_a);
-
-        if number_of_blocks_processed != 0 && timer_l.elapsed() > Duration::from_millis(100) {
+        if number_of_blocks_processed != 0 && timer.elapsed() > Duration::from_millis(100) {
             debug!(
                 "Processed {} blocks ({} blocks were forced) in {} ms",
                 number_of_blocks_processed,
                 number_of_forced_processed,
-                timer_l.elapsed().as_millis(),
+                timer.elapsed().as_millis(),
             );
         }
         processed

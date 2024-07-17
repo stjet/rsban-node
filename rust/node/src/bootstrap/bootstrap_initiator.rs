@@ -16,7 +16,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
-    Account, Amount, BlockHash, HashOrAccount, Networks, XRB_RATIO,
+    Account, Amount, HashOrAccount, Networks, XRB_RATIO,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
@@ -194,16 +194,6 @@ impl BootstrapInitiator {
         }
     }
 
-    fn lazy_requeue(&self, hash_a: BlockHash, previous_a: BlockHash) {
-        let lazy_attempt = self.current_lazy_attempt();
-        if let Some(lazy_attempt) = lazy_attempt {
-            let BootstrapStrategy::Lazy(lazy) = &*lazy_attempt else {
-                unreachable!()
-            };
-            lazy.lazy_requeue(&hash_a, &previous_a);
-        }
-    }
-
     pub fn clear_pulls(&self, bootstrap_id: u64) {
         self.connections.clear_pulls(bootstrap_id);
     }
@@ -358,6 +348,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     Arc::downgrade(&self.block_processor),
                     self_w,
                     Arc::clone(&self.ledger),
+                    self.workers.clone(),
                     id_a,
                     incremental_id as u64,
                     Arc::clone(&self.connections),
@@ -392,12 +383,13 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.websocket.as_ref().cloned(),
                     Arc::downgrade(&self.block_processor),
                     self_w,
-                    Arc::clone(&self.ledger),
+                    self.ledger.clone(),
+                    self.workers.clone(),
                     id_a,
                     incremental_id as u64,
-                    Arc::clone(&self.connections),
+                    self.connections.clone(),
                     (&self.config).into(),
-                    Arc::clone(&self.stats),
+                    self.stats.clone(),
                     u32::MAX,
                     Account::zero(),
                 )

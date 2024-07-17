@@ -293,6 +293,11 @@ impl Node {
         let election_workers: Arc<dyn ThreadPool> =
             Arc::new(ThreadPoolImpl::create(1, "Election work"));
 
+        let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
+            config.bootstrap_serving_threads as usize,
+            "Bootstrap work",
+        ));
+
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
             config.message_processor.max_queue,
             stats.clone(),
@@ -544,7 +549,7 @@ impl Node {
             flags.clone(),
             network.clone(),
             async_rt.clone(),
-            workers.clone(),
+            bootstrap_workers.clone(),
             network_params.clone(),
             socket_observer.clone(),
             stats.clone(),
@@ -681,6 +686,7 @@ impl Node {
         ));
 
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(
+            config.local_block_broadcaster.clone(),
             block_processor.clone(),
             stats.clone(),
             network.clone(),
@@ -795,11 +801,6 @@ impl Node {
                     }
                 }
             },
-        ));
-
-        let bootstrap_workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
-            config.bootstrap_serving_threads as usize,
-            "Bootstrap work",
         ));
 
         process_live_dispatcher.connect(&block_processor);
@@ -1364,6 +1365,7 @@ impl NodeExt for Arc<Node> {
         }
         info!("Node stopping...");
 
+        self.tcp_listener.stop();
         self.bootstrap_workers.stop();
         self.wallet_workers.stop();
         self.election_workers.stop();
@@ -1399,7 +1401,6 @@ impl NodeExt for Arc<Node> {
         }
         self.bootstrap_server.stop();
         self.bootstrap_initiator.stop();
-        self.tcp_listener.stop();
         self.wallets.stop();
         self.stats.stop();
         self.workers.stop();

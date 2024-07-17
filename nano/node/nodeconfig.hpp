@@ -55,6 +55,20 @@ public:
 	size_t max_queue;
 };
 
+class local_block_broadcaster_config final
+{
+public:
+	local_block_broadcaster_config () = default;
+	local_block_broadcaster_config (rsnano::LocalBlockBroadcasterConfigDto const & dto);
+	rsnano::LocalBlockBroadcasterConfigDto into_dto () const;
+
+	std::size_t max_size{ 1024 * 8 };
+	std::chrono::seconds rebroadcast_interval{ 3 };
+	std::chrono::seconds max_rebroadcast_interval{ 60 };
+	std::size_t broadcast_rate_limit{ 32 };
+	double broadcast_rate_burst_ratio{ 3 };
+	std::chrono::seconds cleanup_interval{ 60 };
+};
 /**
  * Node configuration
  */
@@ -157,6 +171,7 @@ public:
 	nano::request_aggregator_config request_aggregator;
 	nano::message_processor_config message_processor;
 	bool priority_scheduler_enabled{ true };
+	nano::local_block_broadcaster_config local_block_broadcaster;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

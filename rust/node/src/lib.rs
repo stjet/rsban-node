@@ -1,5 +1,4 @@
 #![allow(clippy::missing_safety_doc)]
-#![allow(dead_code)]
 
 #[macro_use]
 extern crate num_derive;

@@ -3,7 +3,7 @@ use super::{
     HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
 };
 use crate::{
-    block_processing::BlockProcessorConfig,
+    block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
     bootstrap::{BootstrapInitiatorConfig, BootstrapServerConfig},
     consensus::{
         ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
@@ -107,6 +107,7 @@ pub struct NodeConfig {
     pub request_aggregator: RequestAggregatorConfig,
     pub message_processor: MessageProcessorConfig,
     pub priority_scheduler_enabled: bool,
+    pub local_block_broadcaster: LocalBlockBroadcasterConfig,
 }
 
 #[derive(Clone)]
@@ -327,6 +328,9 @@ impl NodeConfig {
             request_aggregator: RequestAggregatorConfig::new(parallelism),
             message_processor: MessageProcessorConfig::new(parallelism),
             priority_scheduler_enabled: true,
+            local_block_broadcaster: LocalBlockBroadcasterConfig::new(
+                network_params.network.current_network,
+            ),
         }
     }
 

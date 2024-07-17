@@ -1,4 +1,5 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
@@ -21,16 +22,18 @@ pub(crate) struct InitializeArgs {
 }
 
 impl InitializeArgs {
-    pub(crate) fn initialize(&self) {
+    pub(crate) fn initialize(&self) -> Result<()> {
         let network_params = if let Some(network) = &self.network {
-            NetworkParams::new(Networks::from_str(&network).unwrap())
+            NetworkParams::new(
+                Networks::from_str(&network).map_err(|e| anyhow!("Network is invalid: {:?}", e))?,
+            )
         } else {
             DEV_NETWORK_PARAMS.to_owned()
         };
 
         let path = get_path(&self.data_path, &self.network);
 
-        std::fs::create_dir_all(&path).unwrap();
+        std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
         let config = NodeConfig::new(
             Some(network_params.network.default_node_port),
@@ -62,5 +65,7 @@ impl InitializeArgs {
 
         node.start();
         node.stop();
+
+        Ok(())
     }
 }

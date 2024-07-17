@@ -1,4 +1,5 @@
 use crate::{cli::get_path, init_tracing};
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
@@ -114,7 +115,7 @@ pub(crate) struct DaemonArgs {
 }
 
 impl DaemonArgs {
-    pub(crate) fn daemon(&self) {
+    pub(crate) fn daemon(&self) -> Result<()> {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));
@@ -122,14 +123,16 @@ impl DaemonArgs {
         init_tracing(dirs);
 
         let network_params = if let Some(network) = &self.network {
-            NetworkParams::new(Networks::from_str(&network).unwrap())
+            NetworkParams::new(
+                Networks::from_str(&network).map_err(|e| anyhow!("Network is invalid: {:?}", e))?,
+            )
         } else {
-            DEV_NETWORK_PARAMS.to_owned()
+            DEV_NETWORK_PARAMS.clone()
         };
 
         let path = get_path(&self.data_path, &self.network);
 
-        std::fs::create_dir_all(&path).unwrap();
+        std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
         let config = NodeConfig::new(
             Some(network_params.network.default_node_port),
@@ -175,6 +178,8 @@ impl DaemonArgs {
 
         let guard = finished.0.lock().unwrap();
         drop(finished.1.wait_while(guard, |g| !*g).unwrap());
+
+        Ok(())
     }
 
     pub(crate) fn set_flags(&self, node_flags: &mut NodeFlags) {
@@ -265,8 +270,5 @@ impl DaemonArgs {
         if let Some(vote_processor_capacity) = self.vote_processor_capacity {
             node_flags.set_vote_processor_capacity(vote_processor_capacity);
         }
-        //if self.bootstrap_interval {
-        //node_flags.set_bootstrap_interval(true);
-        //}
     }
 }

@@ -10,11 +10,11 @@ use commands::{
         peer_clear::PeerClearArgs,
     },
     database::{rebuild_database::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
-    keys::key_expand::KeyExpandArgs,
+    key::KeyCommand,
     node::NodeCommand,
     wallet::WalletCommand,
 };
-use rsnano_core::{Account, KeyPair, Networks};
+use rsnano_core::Networks;
 use rsnano_node::{config::NetworkConstants, working_path};
 use std::{path::PathBuf, str::FromStr};
 
@@ -34,39 +34,23 @@ impl Cli {
             Some(Commands::ConfirmationHeightClear(args)) => args.confirmation_height_clear(),
             Some(Commands::ClearSendIds(args)) => args.clear_send_ids(),
             Some(Commands::FinalVoteClear(args)) => args.final_vote_clear()?,
-            Some(Commands::KeyCreate) => Cli::key_create(),
             Some(Commands::Wallet(command)) => command.run()?,
             Some(Commands::AccountGet(args)) => args.account_get(),
             Some(Commands::AccountKey(args)) => args.account_key(),
             Some(Commands::AccountCreate(args)) => args.account_create(),
-            Some(Commands::KeyExpand(args)) => args.key_expand(),
             Some(Commands::Vacuum(args)) => args.vacuum()?,
             Some(Commands::RebuildDatabase(args)) => args.rebuild_database()?,
             Some(Commands::Snapshot(args)) => args.snapshot()?,
             Some(Commands::Node(command)) => command.run()?,
+            Some(Commands::Key(command)) => command.run()?,
             None => Cli::command().print_long_help()?,
         }
         Ok(())
-    }
-
-    fn key_create() {
-        let keypair = KeyPair::new();
-        let private_key = keypair.private_key();
-        let public_key = keypair.public_key();
-        let account = Account::encode_account(&public_key);
-
-        println!("Private: {:?}", private_key);
-        println!("Public: {:?}", public_key);
-        println!("Account: {:?}", account);
     }
 }
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// Generates a adhoc random keypair and prints it to stdout.
-    KeyCreate,
-    /// Derive public key and account number from <key>.
-    KeyExpand(KeyExpandArgs),
     /// Either specify a single --root to clear or --all to clear all final votes (not recommended).
     FinalVoteClear(FinalVoteClearArgs),
     /// Insert next deterministic key into <wallet>.
@@ -75,6 +59,8 @@ pub(crate) enum Commands {
     AccountGet(AccountGetArgs),
     /// Get the public key for <account>.
     AccountKey(AccountKeyArgs),
+    /// Key subcommands
+    Key(KeyCommand),
     /// Node subcommands
     Node(NodeCommand),
     /// Wallet subcommands

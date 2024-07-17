@@ -5,15 +5,15 @@ use rsnano_store_lmdb::LmdbStore;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct PeerClearArgs {
+pub(crate) struct PeersArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl PeerClearArgs {
-    pub(crate) fn peer_clear(&self) {
+impl PeersArgs {
+    pub(crate) fn peers(&self) {
         let path = get_path(&self.data_path, &self.network);
         let path = path.join("data.ldb");
 

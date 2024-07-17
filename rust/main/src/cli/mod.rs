@@ -2,11 +2,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
     account::AccountCommand,
-    clear::{
-        clear_send_ids::ClearSendIdsArgs, confirmation_height_clear::ConfirmationHeightClearArgs,
-        final_vote_clear::FinalVoteClearArgs, online_weight_clear::OnlineWeightClearArgs,
-        peer_clear::PeerClearArgs,
-    },
+    clear::ClearCommand,
     database::{rebuild::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
     key::KeyCommand,
     node::NodeCommand,
@@ -27,11 +23,6 @@ pub(crate) struct Cli {
 impl Cli {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.command {
-            Some(Commands::OnlineWeightClear(args)) => args.online_weight_clear(),
-            Some(Commands::PeerClear(args)) => args.peer_clear(),
-            Some(Commands::ConfirmationHeightClear(args)) => args.confirmation_height_clear(),
-            Some(Commands::ClearSendIds(args)) => args.clear_send_ids(),
-            Some(Commands::FinalVoteClear(args)) => args.final_vote_clear()?,
             Some(Commands::Wallet(command)) => command.run()?,
             Some(Commands::Vacuum(args)) => args.vacuum()?,
             Some(Commands::RebuildDatabase(args)) => args.rebuild_database()?,
@@ -39,6 +30,7 @@ impl Cli {
             Some(Commands::Account(command)) => command.run()?,
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Key(command)) => command.run()?,
+            Some(Commands::Clear(command)) => command.run()?,
             None => Cli::command().print_long_help()?,
         }
         Ok(())
@@ -47,24 +39,16 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// Either specify a single --root to clear or --all to clear all final votes (not recommended).
-    FinalVoteClear(FinalVoteClearArgs),
-    /// Account subcommands
+    /// Clear command
+    Clear(ClearCommand),
+    /// Account command
     Account(AccountCommand),
-    /// Key subcommands
+    /// Key command
     Key(KeyCommand),
-    /// Node subcommands
+    /// Node command
     Node(NodeCommand),
-    /// Wallet subcommands
+    /// Wallet command
     Wallet(WalletCommand),
-    /// Clear online weight history records.
-    OnlineWeightClear(OnlineWeightClearArgs),
-    /// Remove all send IDs from the database (dangerous: not intended for production use).
-    ClearSendIds(ClearSendIdsArgs),
-    /// Clear online peers database dump.
-    PeerClear(PeerClearArgs),
-    /// Clear confirmation height. Requires an <account> option that can be 'all' to clear all accounts.
-    ConfirmationHeightClear(ConfirmationHeightClearArgs),
     /// Compact database. If data_path is missing, the database in the data directory is compacted.
     /// Optional: --unchecked_clear, --clear_send_ids, --online_weight_clear, --peer_clear, --confirmation_height_clear, --rebuild_database.
     /// Requires approximately data.ldb size * 2 free space on disk.

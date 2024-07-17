@@ -5,15 +5,15 @@ use rsnano_store_lmdb::LmdbStore;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct OnlineWeightClearArgs {
+pub(crate) struct OnlineWeightArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl OnlineWeightClearArgs {
-    pub(crate) fn online_weight_clear(&self) {
+impl OnlineWeightArgs {
+    pub(crate) fn online_weight(&self) {
         let path = get_path(&self.data_path, &self.network);
         let path = path.join("data.ldb");
 

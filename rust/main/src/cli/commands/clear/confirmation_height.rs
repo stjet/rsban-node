@@ -10,7 +10,7 @@ use rsnano_store_lmdb::LmdbStore;
     .args(&["account", "all"]))]
 #[command(group = ArgGroup::new("input2")
     .args(&["data_path", "network"]))]
-pub(crate) struct ConfirmationHeightClearArgs {
+pub(crate) struct ConfirmationHeightArgs {
     #[arg(long, group = "input1")]
     account: Option<String>,
     #[arg(long, group = "input1")]
@@ -21,8 +21,8 @@ pub(crate) struct ConfirmationHeightClearArgs {
     network: Option<String>,
 }
 
-impl ConfirmationHeightClearArgs {
-    pub(crate) fn confirmation_height_clear(&self) {
+impl ConfirmationHeightArgs {
+    pub(crate) fn confirmation_height(&self) {
         let path = get_path(&self.data_path, &self.network);
         let path = path.join("data.ldb");
 

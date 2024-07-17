@@ -1,12 +1,8 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
-    account::AccountCommand,
-    clear::ClearCommand,
-    database::{rebuild::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
-    key::KeyCommand,
-    node::NodeCommand,
-    wallet::WalletCommand,
+    account::AccountCommand, clear::ClearCommand, database::DatabaseCommand, key::KeyCommand,
+    node::NodeCommand, wallet::WalletCommand,
 };
 use rsnano_core::Networks;
 use rsnano_node::{config::NetworkConstants, working_path};
@@ -24,9 +20,7 @@ impl Cli {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.command {
             Some(Commands::Wallet(command)) => command.run()?,
-            Some(Commands::Vacuum(args)) => args.vacuum()?,
-            Some(Commands::RebuildDatabase(args)) => args.rebuild_database()?,
-            Some(Commands::Snapshot(args)) => args.snapshot()?,
+            Some(Commands::Database(command)) => command.run()?,
             Some(Commands::Account(command)) => command.run()?,
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Key(command)) => command.run()?,
@@ -49,15 +43,8 @@ pub(crate) enum Commands {
     Node(NodeCommand),
     /// Wallet command
     Wallet(WalletCommand),
-    /// Compact database. If data_path is missing, the database in the data directory is compacted.
-    /// Optional: --unchecked_clear, --clear_send_ids, --online_weight_clear, --peer_clear, --confirmation_height_clear, --rebuild_database.
-    /// Requires approximately data.ldb size * 2 free space on disk.
-    Vacuum(VacuumArgs),
-    /// Rebuild LMDB database with --vacuum for best compaction.
-    /// Requires approximately data.ldb size * 2 free space on disk.
-    RebuildDatabase(RebuildDatabaseArgs),
-    /// Compact database and create snapshot, functions similar to vacuum but does not replace the existing database.
-    Snapshot(SnapshotArgs),
+    /// Database command
+    Database(DatabaseCommand),
 }
 
 pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) -> PathBuf {

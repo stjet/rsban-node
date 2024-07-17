@@ -19,7 +19,7 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
     transport::{BufferDropPolicy, ChannelEnum, ChannelMode, Network, TrafficType},
-    NetworkParams,
+    NetworkParams, DEV_NETWORK_PARAMS,
 };
 
 /**
@@ -49,6 +49,24 @@ pub struct Telemetry {
 
 impl Telemetry {
     const MAX_SIZE: usize = 1024;
+
+    pub fn new_null() -> Self {
+        Self {
+            config: TelementryConfig::default(),
+            node_config: NodeConfig::new_test_instance(),
+            stats: Arc::new(Stats::default()),
+            ledger: Arc::new(Ledger::new_null()),
+            unchecked: Arc::new(UncheckedMap::default()),
+            thread: Mutex::new(None),
+            condition: Condvar::default(),
+            mutex: Mutex::new(TelemetryImpl::default()),
+            network_params: DEV_NETWORK_PARAMS.to_owned(),
+            network: Arc::new(Network::new_null()),
+            node_id: KeyPair::new(),
+            startup_time: Instant::now(),
+            notify: Mutex::new(vec![]),
+        }
+    }
 
     pub fn new(
         config: TelementryConfig,
@@ -527,6 +545,7 @@ impl Drop for Telemetry {
     }
 }
 
+#[derive(Default)]
 pub struct TelementryConfig {
     pub enable_ongoing_requests: bool,
     pub enable_ongoing_broadcasts: bool,
@@ -536,6 +555,7 @@ pub trait TelementryExt {
     fn start(&self);
 }
 
+#[derive(Default)]
 struct TelemetryImpl {
     stopped: bool,
     triggered: bool,

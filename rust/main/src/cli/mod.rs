@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
-    account::AccountCommand, clear::ClearCommand, database::DatabaseCommand, key::KeyCommand,
-    node::NodeCommand, wallet::WalletCommand,
+    account::AccountCommand, clear::ClearCommand, database::DatabaseCommand, debug::DebugCommand,
+    key::KeyCommand, node::NodeCommand, wallet::WalletCommand,
 };
 use rsnano_core::Networks;
 use rsnano_node::{config::NetworkConstants, working_path};
@@ -25,6 +25,7 @@ impl Cli {
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Key(command)) => command.run()?,
             Some(Commands::Clear(command)) => command.run()?,
+            Some(Commands::Debug(command)) => command.run()?,
             None => Cli::command().print_long_help()?,
         }
         Ok(())
@@ -45,6 +46,8 @@ pub(crate) enum Commands {
     Wallet(WalletCommand),
     /// Database command
     Database(DatabaseCommand),
+    /// Debug command
+    Debug(DebugCommand),
 }
 
 pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) -> PathBuf {

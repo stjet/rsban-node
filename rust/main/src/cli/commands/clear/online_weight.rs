@@ -14,8 +14,7 @@ pub(crate) struct OnlineWeightArgs {
 
 impl OnlineWeightArgs {
     pub(crate) fn online_weight(&self) {
-        let path = get_path(&self.data_path, &self.network);
-        let path = path.join("data.ldb");
+        let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
         match LmdbStore::open_existing(&path) {
             Ok(store) => {

@@ -8,11 +8,11 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletChangeSeedArgs {
+pub(crate) struct AddAdhocArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
-    seed: String,
+    key: String,
     #[arg(long)]
     password: Option<String>,
     #[arg(long, group = "input")]
@@ -21,13 +21,12 @@ pub(crate) struct WalletChangeSeedArgs {
     network: Option<String>,
 }
 
-impl WalletChangeSeedArgs {
-    pub(crate) fn wallet_change_seed(&self) -> Result<()> {
+impl AddAdhocArgs {
+    pub(crate) fn wallet_add_adhoc(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 
-        let seed =
-            RawKey::decode_hex(&self.seed).map_err(|e| anyhow!("Seed is invalid: {:?}", e))?;
+        let key = RawKey::decode_hex(&self.key).map_err(|e| anyhow!("Key is invalid: {:?}", e))?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
@@ -40,8 +39,8 @@ impl WalletChangeSeedArgs {
         wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
         wallets
-            .change_seed(wallet_id, &seed, 0)
-            .map_err(|e| anyhow!("Failed to change seed: {:?}", e))?;
+            .insert_adhoc2(&wallet_id, &key, false)
+            .map_err(|e| anyhow!("Failed to insert adhoc key: {:?}", e))?;
 
         Ok(())
     }

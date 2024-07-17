@@ -8,7 +8,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletListArgs {
+pub(crate) struct ListArgs {
     #[arg(long)]
     password: Option<String>,
     #[arg(long, group = "input")]
@@ -17,7 +17,7 @@ pub(crate) struct WalletListArgs {
     network: Option<String>,
 }
 
-impl WalletListArgs {
+impl ListArgs {
     pub(crate) fn wallet_list(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 

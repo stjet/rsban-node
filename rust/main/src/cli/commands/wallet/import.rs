@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::PathBuf, sync::Arc};
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct WalletImportArgs {
+pub(crate) struct ImportArgs {
     #[arg(long)]
     file: String,
     #[arg(long)]
@@ -24,7 +24,7 @@ pub(crate) struct WalletImportArgs {
     network: Option<String>,
 }
 
-impl WalletImportArgs {
+impl ImportArgs {
     pub(crate) fn wallet_import(&self) -> Result<()> {
         let mut file = File::open(PathBuf::from(&self.file))?;
         let mut contents = String::new();

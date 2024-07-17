@@ -1,15 +1,13 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
-    accounts::{
-        account_create::AccountCreateArgs, account_get::AccountGetArgs, account_key::AccountKeyArgs,
-    },
+    account::AccountCommand,
     clear::{
         clear_send_ids::ClearSendIdsArgs, confirmation_height_clear::ConfirmationHeightClearArgs,
         final_vote_clear::FinalVoteClearArgs, online_weight_clear::OnlineWeightClearArgs,
         peer_clear::PeerClearArgs,
     },
-    database::{rebuild_database::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
+    database::{rebuild::RebuildDatabaseArgs, snapshot::SnapshotArgs, vacuum::VacuumArgs},
     key::KeyCommand,
     node::NodeCommand,
     wallet::WalletCommand,
@@ -35,12 +33,10 @@ impl Cli {
             Some(Commands::ClearSendIds(args)) => args.clear_send_ids(),
             Some(Commands::FinalVoteClear(args)) => args.final_vote_clear()?,
             Some(Commands::Wallet(command)) => command.run()?,
-            Some(Commands::AccountGet(args)) => args.account_get(),
-            Some(Commands::AccountKey(args)) => args.account_key(),
-            Some(Commands::AccountCreate(args)) => args.account_create(),
             Some(Commands::Vacuum(args)) => args.vacuum()?,
             Some(Commands::RebuildDatabase(args)) => args.rebuild_database()?,
             Some(Commands::Snapshot(args)) => args.snapshot()?,
+            Some(Commands::Account(command)) => command.run()?,
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Key(command)) => command.run()?,
             None => Cli::command().print_long_help()?,
@@ -53,12 +49,8 @@ impl Cli {
 pub(crate) enum Commands {
     /// Either specify a single --root to clear or --all to clear all final votes (not recommended).
     FinalVoteClear(FinalVoteClearArgs),
-    /// Insert next deterministic key into <wallet>.
-    AccountCreate(AccountCreateArgs),
-    /// Get account number for the <key>.
-    AccountGet(AccountGetArgs),
-    /// Get the public key for <account>.
-    AccountKey(AccountKeyArgs),
+    /// Account subcommands
+    Account(AccountCommand),
     /// Key subcommands
     Key(KeyCommand),
     /// Node subcommands

@@ -1,4 +1,4 @@
-pub(crate) mod accounts;
+pub(crate) mod account;
 pub(crate) mod clear;
 pub(crate) mod database;
 pub(crate) mod key;

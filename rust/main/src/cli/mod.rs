@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
-    account::AccountCommand, clear::ClearCommand, database::DatabaseCommand, debug::DebugCommand,
-    key::KeyCommand, node::NodeCommand, wallet::WalletCommand,
+    account::AccountCommand, clear::ClearCommand, database::DatabaseCommand,
+    debugging::DebugCommand, key::KeyCommand, node::NodeCommand, wallet::WalletCommand,
 };
 use rsnano_core::Networks;
 use rsnano_node::{config::NetworkConstants, working_path};

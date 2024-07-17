@@ -1,4 +1,5 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rand::{thread_rng, Rng};
 use rsnano_core::{RawKey, WalletId};
@@ -20,24 +21,32 @@ pub(crate) struct WalletCreateArgs {
 }
 
 impl WalletCreateArgs {
-    pub(crate) fn wallet_create(&self) -> anyhow::Result<()> {
+    pub(crate) fn wallet_create(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
-        let wallets = Arc::new(Wallets::new_null(&path).unwrap());
+
+        let wallets = Arc::new(
+            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
+        );
 
         wallets.create(wallet_id);
+
         println!("{:?}", wallet_id);
 
-        if let Some(password) = &self.password {
-            wallets.enter_password(wallet_id, password).unwrap();
-        } else if let Some(seed) = &self.seed {
-            match RawKey::decode_hex(seed) {
-                Ok(key) => {
-                    wallets.change_seed(wallet_id, &key, 0).unwrap();
-                }
-                Err(_) => println!("Invalid seed"),
-            }
+        let password = self.password.clone().unwrap_or_default();
+
+        wallets
+            .enter_password(wallet_id, &password)
+            .map_err(|e| anyhow!("Failed to enter password: {:?}", e))?;
+
+        if let Some(seed) = &self.seed {
+            let key = RawKey::decode_hex(seed)
+                .map_err(|e| anyhow!("Failed to enter password: {:?}", e))?;
+
+            wallets
+                .change_seed(wallet_id, &key, 0)
+                .map_err(|e| anyhow!("Failed to change seed: {:?}", e))?;
         }
 
         Ok(())

@@ -1,7 +1,8 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::WalletId;
-use rsnano_node::wallets::Wallets;
+use rsnano_node::wallets::{Wallets, WalletsExt};
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -10,6 +11,8 @@ use std::sync::Arc;
 pub(crate) struct WalletDestroyArgs {
     #[arg(long)]
     wallet: String,
+    #[arg(long)]
+    password: Option<String>,
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
@@ -17,14 +20,22 @@ pub(crate) struct WalletDestroyArgs {
 }
 
 impl WalletDestroyArgs {
-    pub(crate) fn wallet_destroy(&self) {
+    pub(crate) fn wallet_destroy(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(Wallets::new_null(&path).unwrap());
+        let wallets = Arc::new(
+            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
+        );
 
-        match WalletId::decode_hex(&self.wallet) {
-            Ok(wallet) => wallets.destroy(&wallet),
-            Err(_) => println!("Invalid wallet id"),
-        }
+        let wallet_id = WalletId::decode_hex(&self.wallet)
+            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+
+        let password = self.password.clone().unwrap_or_default();
+
+        wallets.ensure_wallet_is_unlocked(wallet_id, &password);
+
+        wallets.destroy(&wallet_id);
+
+        Ok(())
     }
 }

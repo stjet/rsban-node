@@ -1,5 +1,6 @@
 use crate::cli::get_path;
 use anyhow::Context;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::WalletId;
 use rsnano_node::wallets::{Wallets, WalletsExt};
@@ -24,21 +25,24 @@ pub(crate) struct WalletImportArgs {
 }
 
 impl WalletImportArgs {
-    pub(crate) fn wallet_import(&self) -> anyhow::Result<()> {
+    pub(crate) fn wallet_import(&self) -> Result<()> {
         let mut file = File::open(PathBuf::from(&self.file))?;
         let mut contents = String::new();
+
         file.read_to_string(&mut contents)
             .context("Unable to read <file> contents")?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
-        let wallets = Arc::new(Wallets::new_null(&path).unwrap());
 
-        let mut password = String::new();
-        if let Some(pass) = self.password.to_owned() {
-            password = pass;
-        }
+        let wallets = Arc::new(
+            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
+        );
+
+        let password = self.password.clone().unwrap_or_default();
+
+        wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
         if wallets.wallet_exists(&wallet_id) {
             let valid = wallets.ensure_wallet_is_unlocked(wallet_id, &password);
@@ -46,12 +50,12 @@ impl WalletImportArgs {
                 wallets.import_replace(wallet_id, &contents, &password)?
             } else {
                 eprintln!("Invalid password for wallet {}. New wallet should have empty (default) password or passwords for new wallet & json file should match", wallet_id);
-                return Err(anyhow::anyhow!("Invalid arguments"));
+                return Err(anyhow!("Invalid arguments"));
             }
         } else {
             if !self.force {
                 eprintln!("Wallet doesn't exist");
-                return Err(anyhow::anyhow!("Invalid arguments"));
+                return Err(anyhow!("Invalid arguments"));
             } else {
                 wallets.import(wallet_id, &contents)?
             }

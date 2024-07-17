@@ -59,32 +59,16 @@ impl Cli {
             Some(Commands::KeyCreate) => {
                 Cli::key_create();
             }
-            Some(Commands::WalletList(args)) => {
-                args.wallet_list();
-            }
+            Some(Commands::WalletList(args)) => args.wallet_list()?,
             Some(Commands::WalletCreate(args)) => args.wallet_create()?,
-            Some(Commands::WalletDestroy(args)) => {
-                args.wallet_destroy();
-            }
-            Some(Commands::WalletAddAdhoc(args)) => {
-                args.wallet_add_adhoc();
-            }
-            Some(Commands::WalletChangeSeed(args)) => {
-                args.wallet_change_seed();
-            }
+            Some(Commands::WalletDestroy(args)) => args.wallet_destroy()?,
+            Some(Commands::WalletAddAdhoc(args)) => args.wallet_add_adhoc()?,
+            Some(Commands::WalletChangeSeed(args)) => args.wallet_change_seed()?,
             Some(Commands::WalletImport(args)) => args.wallet_import()?,
-            Some(Commands::WalletRemove(args)) => {
-                args.wallet_remove();
-            }
-            Some(Commands::WalletDecryptUnsafe(args)) => {
-                args.wallet_decrypt_unsafe();
-            }
-            Some(Commands::WalletRepresentativeGet(args)) => {
-                args.wallet_representative_get();
-            }
-            Some(Commands::WalletRepresentativeSet(args)) => {
-                args.wallet_representative_set();
-            }
+            Some(Commands::WalletRemove(args)) => args.wallet_remove()?,
+            Some(Commands::WalletDecryptUnsafe(args)) => args.wallet_decrypt_unsafe()?,
+            Some(Commands::WalletRepresentativeGet(args)) => args.wallet_representative_get()?,
+            Some(Commands::WalletRepresentativeSet(args)) => args.wallet_representative_set()?,
             Some(Commands::AccountGet(args)) => {
                 args.account_get();
             }

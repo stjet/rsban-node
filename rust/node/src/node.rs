@@ -47,9 +47,9 @@ use rsnano_core::{
         SystemTimeFactory,
     },
     work::WorkPoolImpl,
-    BlockType, KeyPair, Vote, VoteCode, VoteSource,
+    BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Vote, VoteCode, VoteSource,
 };
-use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
+use rsnano_ledger::{BlockStatus, Ledger, LedgerCache, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
@@ -70,7 +70,7 @@ use tracing::{debug, error, info, warn};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
-    application_path: PathBuf,
+    pub application_path: PathBuf,
     pub node_id: KeyPair,
     pub config: NodeConfig,
     network_params: NetworkParams,
@@ -1174,6 +1174,20 @@ impl Node {
     pub fn ledger_pruning(&self, batch_size: u64, bootstrap_weight_reached: bool) {
         self.ledger_pruning
             .ledger_pruning(batch_size, bootstrap_weight_reached)
+    }
+
+    pub fn process_local(&self, block: BlockEnum) -> Option<BlockStatus> {
+        self.block_processor
+            .add_blocking(Arc::new(block), BlockSource::Local)
+    }
+
+    pub fn block(&self, hash: &BlockHash) -> Option<BlockEnum> {
+        let tx = self.ledger.read_txn();
+        self.ledger.any().get_block(&tx, hash)
+    }
+
+    pub fn get_node_id(&self) -> PublicKey {
+        self.node_id.public_key()
     }
 }
 

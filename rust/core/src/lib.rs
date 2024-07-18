@@ -19,6 +19,7 @@ use blake2::{
     Blake2bVar,
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
+use rand::{thread_rng, Rng};
 pub use vote::*;
 
 mod key_pair;
@@ -100,6 +101,14 @@ u256_struct!(Link);
 u256_struct!(PublicKey);
 u256_struct!(Root);
 u256_struct!(WalletId);
+
+impl WalletId {
+    pub fn random() -> Self {
+        let secret: [u8; 32] = thread_rng().gen();
+        let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
+        Self::from_bytes(*keys.public_key().as_bytes())
+    }
+}
 
 impl serde::Serialize for HashOrAccount {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

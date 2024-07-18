@@ -6,12 +6,12 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::TcpStream,
-    utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool},
+    utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool},
     NetworkParams,
 };
 use async_trait::async_trait;
 use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr},
+    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
     sync::{
         atomic::{AtomicU16, Ordering},
         Arc, Condvar, Mutex,
@@ -46,7 +46,7 @@ impl Drop for TcpListener {
 
 struct TcpListenerData {
     stopped: bool,
-    local_addr: SocketAddr,
+    local_addr: SocketAddrV6,
 }
 
 impl TcpListener {
@@ -69,7 +69,7 @@ impl TcpListener {
             network,
             data: Mutex::new(TcpListenerData {
                 stopped: false,
-                local_addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
+                local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
             network_params,
             runtime: Arc::clone(&runtime),
@@ -92,17 +92,13 @@ impl TcpListener {
         self.network.count_by_mode(ChannelMode::Realtime)
     }
 
-    pub fn local_address(&self) -> SocketAddr {
+    pub fn local_address(&self) -> SocketAddrV6 {
         let guard = self.data.lock().unwrap();
         if !guard.stopped {
             guard.local_addr
         } else {
-            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)
+            SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)
         }
-    }
-
-    fn is_stopped(&self) -> bool {
-        self.data.lock().unwrap().stopped
     }
 }
 
@@ -130,11 +126,16 @@ impl TcpListenerExt for Arc<TcpListener> {
 
             let addr = listener
                 .local_addr()
-                .unwrap_or(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0));
+                .map(|a| match a {
+                    SocketAddr::V6(v6) => v6,
+                    _ => unreachable!(), // We only use V6 addresses
+                })
+                .unwrap_or(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0));
             debug!("Listening for incoming connections on: {}", addr);
 
             self_l.network.set_port(addr.port());
-            self_l.data.lock().unwrap().local_addr = addr;
+            self_l.data.lock().unwrap().local_addr =
+                SocketAddrV6::new(Ipv6Addr::LOCALHOST, addr.port(), 0, 0);
 
             self_l.run(listener).await
         });
@@ -202,9 +203,4 @@ impl TcpListenerExt for Arc<TcpListener> {
             _ = run_loop => {}
         }
     }
-}
-
-fn is_temporary_error(ec: ErrorCode) -> bool {
-    return ec.val == 11 // would block
-                        || ec.val ==  4; // interrupted system call
 }

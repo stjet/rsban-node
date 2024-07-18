@@ -10,7 +10,7 @@ pub use epoch::EpochsHandle;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     deterministic_key, sign_message, validate_message, Account, BlockHash, DifficultyV1, KeyPair,
-    PublicKey, RawKey, Signature,
+    PublicKey, RawKey, Signature, WalletId,
 };
 use rsnano_node::utils::ip_address_hash_raw;
 use std::{ffi::CStr, net::Ipv6Addr, os::raw::c_char, slice};
@@ -120,9 +120,8 @@ pub unsafe extern "C" fn rsn_keypair_create_from_hex_str(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_random_wallet_id(result: *mut u8) {
-    let secret = thread_rng().gen::<[u8; 32]>();
-    let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
-    slice::from_raw_parts_mut(result, 32).copy_from_slice(keys.public_key().as_bytes());
+    let wallet_id = WalletId::random();
+    slice::from_raw_parts_mut(result, 32).copy_from_slice(wallet_id.as_bytes());
 }
 
 #[no_mangle]

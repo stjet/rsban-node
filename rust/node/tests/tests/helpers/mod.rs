@@ -1,22 +1,31 @@
-use rsnano_core::{work::WorkPoolImpl, Amount, Networks};
+use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
-    node::Node,
+    node::{Node, NodeExt},
     transport::NullSocketObserver,
     unique_path,
     utils::AsyncRuntime,
+    wallets::WalletsExt,
     NetworkParams,
 };
-use std::{net::TcpListener, sync::Arc, time::Duration};
+use std::{
+    net::TcpListener,
+    sync::{Arc, OnceLock},
+    thread::sleep,
+    time::{Duration, Instant},
+};
+use tracing_subscriber::EnvFilter;
 
 pub(crate) struct System {
     runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
-    work: Arc<WorkPoolImpl>,
+    pub work: Arc<WorkPoolImpl>,
+    nodes: Vec<Arc<Node>>,
 }
 
 impl System {
     pub(crate) fn new() -> Self {
+        init_tracing();
         let network_params = NetworkParams::new(Networks::NanoDevNetwork);
 
         Self {
@@ -27,6 +36,7 @@ impl System {
                 Duration::ZERO,
             )),
             network_params,
+            nodes: Vec::new(),
         }
     }
 
@@ -45,10 +55,37 @@ impl System {
         }
     }
 
-    fn create_node(&mut self, config: NodeConfig) -> Node {
+    pub(crate) fn make_disconnected_node(&mut self) -> Arc<Node> {
+        let config = Self::default_config();
+        let node = self.new_node(config, NodeFlags::default());
+        node.start();
+        self.nodes.push(node.clone());
+        node
+    }
+
+    fn make_connected_node(&mut self, config: NodeConfig) -> Arc<Node> {
+        let node = self.new_node(config, NodeFlags::default());
+        let wallet_id = WalletId::random();
+        node.wallets.create(wallet_id);
+        node.start();
+        self.nodes.push(node.clone());
+
+        if self.nodes.len() > 1 {
+            // TODO: connect to other nodes
+        } else {
+            // Ensure no bootstrap initiators are in progress
+            while node.bootstrap_initiator.in_progress() {
+                sleep(Duration::from_millis(10));
+            }
+        }
+
+        node
+    }
+
+    fn new_node(&self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
         let path = unique_path().expect("Could not get a unique path");
-        let flags = NodeFlags::default();
-        let node = Node::new(
+
+        Arc::new(Node::new(
             self.runtime.clone(),
             path,
             config,
@@ -59,9 +96,22 @@ impl System {
             Box::new(|_, _, _, _, _, _| {}),
             Box::new(|_, _| {}),
             Box::new(|_, _, _, _| {}),
-        );
+        ))
+    }
 
-        node
+    fn stop(&mut self) {
+        for node in &self.nodes {
+            node.stop();
+            std::fs::remove_dir_all(&node.application_path)
+                .expect("Could not delete node data dir");
+        }
+        self.work.stop();
+    }
+}
+
+impl Drop for System {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 
@@ -76,9 +126,9 @@ impl<'a> NodeBuilder<'a> {
         self
     }
 
-    pub(crate) fn finish(self) -> Node {
+    pub(crate) fn finish(self) -> Arc<Node> {
         let config = self.config.unwrap_or_else(|| System::default_config());
-        self.system.create_node(config)
+        self.system.make_connected_node(config)
     }
 }
 
@@ -93,4 +143,57 @@ fn is_port_available(port: u16) -> bool {
         Ok(_) => true,
         Err(_) => false,
     }
+}
+
+pub(crate) fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) {
+    let start = Instant::now();
+    while start.elapsed() < duration {
+        if check() {
+            panic!("never check failed");
+        }
+        sleep(Duration::from_millis(50));
+    }
+}
+
+pub(crate) fn assert_timely<F>(timeout: Duration, mut check: F, error_message: &str)
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    while start.elapsed() < timeout {
+        if check() {
+            return;
+        }
+        sleep(Duration::from_millis(50));
+    }
+    panic!("{}", error_message);
+}
+
+pub(crate) fn assert_timely_eq<T, F>(timeout: Duration, mut check: F, expected: T)
+where
+    T: PartialEq,
+    F: FnMut() -> T,
+{
+    let start = Instant::now();
+    while start.elapsed() < timeout {
+        if check() == expected {
+            return;
+        }
+        sleep(Duration::from_millis(50));
+    }
+    panic!("timeout");
+}
+
+static TRACING_INITIALIZED: OnceLock<()> = OnceLock::new();
+
+fn init_tracing() {
+    TRACING_INITIALIZED.get_or_init(|| {
+        let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("off"));
+        let filter = EnvFilter::builder().parse_lossy(dirs);
+
+        tracing_subscriber::fmt::fmt()
+            .with_env_filter(filter)
+            .with_ansi(true)
+            .init();
+    });
 }

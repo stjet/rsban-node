@@ -311,7 +311,11 @@ impl Node {
 
         let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
 
-        let confirming_set = Arc::new(ConfirmingSet::new(ledger.clone(), stats.clone()));
+        let confirming_set = Arc::new(ConfirmingSet::new(
+            config.confirming_set.clone(),
+            ledger.clone(),
+            stats.clone(),
+        ));
 
         let vote_cache = Arc::new(Mutex::new(VoteCache::new(
             config.vote_cache.clone(),

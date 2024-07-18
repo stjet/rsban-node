@@ -611,26 +611,52 @@ impl Ledger {
     }
 
     pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<BlockEnum> {
+        self.confirm_max(txn, hash, 1024 * 128)
+    }
+
+    /// Both stack and result set are bounded to limit maximum memory usage
+    /// Callers must ensure that the target block was confirmed, and if not, call this function multiple times
+    pub fn confirm_max(
+        &self,
+        txn: &mut LmdbWriteTransaction,
+        hash: BlockHash,
+        max_blocks: usize,
+    ) -> VecDeque<BlockEnum> {
         let mut result = VecDeque::new();
-        let mut stack = Vec::new();
-        stack.push(hash);
-        while let Some(&hash) = stack.last() {
+
+        let mut stack = VecDeque::new();
+        stack.push_back(hash);
+        while let Some(&hash) = stack.back() {
             let block = self.any().get_block(txn, &hash).unwrap();
+
             let dependents = self.dependent_blocks(txn, &block);
             for dependent in dependents.iter() {
-                if !self.confirmed().block_exists_or_pruned(txn, dependent) {
-                    stack.push(*dependent);
+                if !dependent.is_zero() && !self.confirmed().block_exists_or_pruned(txn, dependent)
+                {
+                    stack.push_back(*dependent);
+
+                    // Limit the stack size to avoid excessive memory usage
+                    // This will forget the bottom of the dependency tree
+                    if stack.len() > max_blocks {
+                        stack.pop_front();
+                    }
                 }
             }
 
-            if stack.last() == Some(&hash) {
-                stack.pop();
+            if stack.back() == Some(&hash) {
+                stack.pop_back();
                 if !self.confirmed().block_exists_or_pruned(txn, &hash) {
+                    // We must only confirm blocks that have their dependencies confirmed
                     self.confirm_block(txn, &block);
                     result.push_back(block);
                 }
             } else {
-                // unconfirmed dependencies were added
+                // Unconfirmed dependencies were added
+            }
+
+            // Early return might leave parts of the dependency tree unconfirmed
+            if result.len() >= max_blocks {
+                break;
             }
         }
         result

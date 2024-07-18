@@ -1,14 +1,19 @@
 use account_count::AccountCountArgs;
 use anyhow::Result;
 use block_count::BlockCountArgs;
+use block_dump::BlockDumpArgs;
 use cemented_block_count::CementedBlockCountArgs;
 use clap::{CommandFactory, Parser, Subcommand};
+use dump_representatives::DumpRepresentativesArgs;
+use dump_trended_weight::DumpTrendedWeightArgs;
 use peers::PeersArgs;
 
 pub(crate) mod account_count;
 pub(crate) mod block_count;
 pub(crate) mod block_dump;
 pub(crate) mod cemented_block_count;
+pub(crate) mod dump_representatives;
+pub(crate) mod dump_trended_weight;
 pub(crate) mod peers;
 
 #[derive(Subcommand)]
@@ -20,7 +25,7 @@ pub(crate) enum DebugSubcommands {
     /// Display the number of blocks
     BlockCount(BlockCountArgs),
     /// Display all the blocks in the ledger in text format
-    BlockDump,
+    BlockDump(BlockDumpArgs),
     /// Generate bootstrap sequence of blocks
     BootstrapGenerate,
     /// Displays the number of cemented (confirmed) blocks
@@ -32,9 +37,9 @@ pub(crate) enum DebugSubcommands {
     /// Dump frontiers which have matching unchecked keys
     DumpFrontierUncheckedDependents,
     /// List representatives and weights
-    DumpRepresentatives,
+    DumpRepresentatives(DumpRepresentativesArgs),
     /// Dump trended weights table
-    DumpTrendedWeight,
+    DumpTrendedWeight(DumpTrendedWeightArgs),
     /// Consolidates the nano_node_backtrace.dump file
     ///
     /// Requires addr2line installed on Linux
@@ -95,15 +100,15 @@ impl DebugCommand {
             Some(DebugSubcommands::AccountCount(args)) => args.account_count()?,
             Some(DebugSubcommands::AccountVersions) => DebugCommand::account_version(),
             Some(DebugSubcommands::BlockCount(args)) => args.block_count()?,
-            Some(DebugSubcommands::BlockDump) => DebugCommand::block_dump(),
+            Some(DebugSubcommands::BlockDump(args)) => args.block_dump()?,
             Some(DebugSubcommands::BootstrapGenerate) => DebugCommand::bootstrap_generate(),
             Some(DebugSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
             Some(DebugSubcommands::CompareRepWeights) => DebugCommand::compare_rep_weights(),
             Some(DebugSubcommands::DumpFrontierUncheckedDependents) => {
                 DebugCommand::dump_frontier_unchecked_dependents()
             }
-            Some(DebugSubcommands::DumpRepresentatives) => DebugCommand::dump_representatives(),
-            Some(DebugSubcommands::DumpTrendedWeight) => DebugCommand::dump_trended_weight(),
+            Some(DebugSubcommands::DumpRepresentatives(args)) => args.dump_representatives()?,
+            Some(DebugSubcommands::DumpTrendedWeight(args)) => args.dump_trended_weight()?,
             Some(DebugSubcommands::GenerateCrashReport) => DebugCommand::generate_crash_report(),
             Some(DebugSubcommands::OpenCL) => DebugCommand::opencl(),
             Some(DebugSubcommands::OutputLastBacktraceDump) => {
@@ -140,10 +145,6 @@ impl DebugCommand {
         // Implement the logic for account_version
     }
 
-    fn block_dump() {
-        // Implement the logic for block_dump
-    }
-
     fn bootstrap_generate() {
         // Implement the logic for bootstrap_generate
     }
@@ -155,16 +156,6 @@ impl DebugCommand {
     fn dump_frontier_unchecked_dependents() {
         println!("Running dump_frontier_unchecked_dependents");
         // Implement the logic for dump_frontier_unchecked_dependents
-    }
-
-    fn dump_representatives() {
-        println!("Running dump_representatives");
-        // Implement the logic for dump_representatives
-    }
-
-    fn dump_trended_weight() {
-        println!("Running dump_trended_weight");
-        // Implement the logic for dump_trended_weight
     }
 
     fn generate_crash_report() {

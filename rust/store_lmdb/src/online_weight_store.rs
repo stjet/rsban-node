@@ -59,6 +59,10 @@ impl LmdbOnlineWeightStore {
     pub fn clear(&self, txn: &mut LmdbWriteTransaction) {
         txn.clear_db(self.database).unwrap();
     }
+
+    pub fn end<'txn>(&self) -> OnlineWeightIterator<'txn> {
+        LmdbIteratorImpl::null_iterator()
+    }
 }
 
 #[cfg(test)]

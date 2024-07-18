@@ -89,9 +89,8 @@ impl StatType {
 #[derive(FromPrimitive, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum DetailType {
-    All = 0,
-
     // common
+    All = 0,
     Ok,
     Loop,
     LoopCleanup,
@@ -119,6 +118,7 @@ pub enum DetailType {
     Confirmed,
     Unconfirmed,
     Cemented,
+    Cooldown,
 
     // processing queue
     Queue,
@@ -447,7 +447,9 @@ pub enum DetailType {
     // confirming_set
     NotifyCemented,
     NotifyAlreadyCemented,
+    NotifyIntermediate,
     AlreadyCemented,
+    CementingHash,
 
     // election_state
     Passive,

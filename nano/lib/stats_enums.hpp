@@ -82,9 +82,8 @@ enum class type : uint8_t
 /** Optional detail type */
 enum class detail : uint16_t
 {
-	all = 0,
-
 	// common
+	all = 0,
 	ok,
 	loop,
 	loop_cleanup,
@@ -112,6 +111,7 @@ enum class detail : uint16_t
 	confirmed,
 	unconfirmed,
 	cemented,
+	cooldown,
 
 	// processing queue
 	queue,
@@ -440,7 +440,9 @@ enum class detail : uint16_t
 	// confirming_set
 	notify_cemented,
 	notify_already_cemented,
+	notify_intermediate,
 	already_cemented,
+	cementing_hash,
 
 	// election_state
 	passive,

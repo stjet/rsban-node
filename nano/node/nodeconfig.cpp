@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include "nano/node/active_elections.hpp"
 
 #include <nano/crypto_lib/random_pool.hpp>
@@ -119,6 +120,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.message_processor = config.message_processor.into_dto ();
 	dto.priority_scheduler_enabled = config.priority_scheduler_enabled;
 	dto.local_block_broadcaster = config.local_block_broadcaster.into_dto();
+	dto.confirming_set = config.confirming_set.into_dto();
 	return dto;
 }
 
@@ -245,6 +247,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	message_processor = nano::message_processor_config{ dto.message_processor };
 	priority_scheduler_enabled = dto.priority_scheduler_enabled;
 	local_block_broadcaster = nano::local_block_broadcaster_config{ dto.local_block_broadcaster};
+	confirming_set = nano::confirming_set_config{ dto.confirming_set };
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -1035,5 +1038,17 @@ rsnano::LocalBlockBroadcasterConfigDto nano::local_block_broadcaster_config::int
 		broadcast_rate_limit,
 		broadcast_rate_burst_ratio,
 		static_cast<uint64_t>(cleanup_interval.count())
+	};
+}
+
+nano::confirming_set_config::confirming_set_config (rsnano::ConfirmingSetConfigDto const & dto) :
+	max_blocks{ dto.max_blocks},
+	max_queued_notifications{ dto.max_queued_notifications}
+{}
+
+rsnano::ConfirmingSetConfigDto nano::confirming_set_config::into_dto () const{
+	return {
+		max_blocks,
+		max_queued_notifications
 	};
 }

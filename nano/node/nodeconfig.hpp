@@ -69,6 +69,19 @@ public:
 	double broadcast_rate_burst_ratio{ 3 };
 	std::chrono::seconds cleanup_interval{ 60 };
 };
+
+class confirming_set_config final
+{
+public:
+	confirming_set_config() = default;
+	confirming_set_config(rsnano::ConfirmingSetConfigDto const &dto);
+	rsnano::ConfirmingSetConfigDto into_dto () const;
+
+	/** Maximum number of dependent blocks to be stored in memory during processing */
+	size_t max_blocks{ 64 * 128 };
+	size_t max_queued_notifications{ 8 };
+};
+
 /**
  * Node configuration
  */
@@ -172,6 +185,7 @@ public:
 	nano::message_processor_config message_processor;
 	bool priority_scheduler_enabled{ true };
 	nano::local_block_broadcaster_config local_block_broadcaster;
+	nano::confirming_set_config confirming_set;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

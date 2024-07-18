@@ -14,6 +14,22 @@ use std::{
     thread::JoinHandle,
 };
 
+#[derive(Clone)]
+pub struct ConfirmingSetConfig {
+    /// Maximum number of dependent blocks to be stored in memory during processing
+    pub max_blocks: usize,
+    pub max_queued_notifications: usize,
+}
+
+impl Default for ConfirmingSetConfig {
+    fn default() -> Self {
+        Self {
+            max_blocks: 64 * 128,
+            max_queued_notifications: 8,
+        }
+    }
+}
+
 /// Set of blocks to be durably confirmed
 pub struct ConfirmingSet {
     thread: Arc<ConfirmingSetThread>,

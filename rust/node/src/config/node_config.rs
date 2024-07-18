@@ -5,6 +5,7 @@ use super::{
 use crate::{
     block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
     bootstrap::{BootstrapInitiatorConfig, BootstrapServerConfig},
+    cementation::ConfirmingSetConfig,
     consensus::{
         ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
     },
@@ -108,6 +109,7 @@ pub struct NodeConfig {
     pub message_processor: MessageProcessorConfig,
     pub priority_scheduler_enabled: bool,
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
+    pub confirming_set: ConfirmingSetConfig,
 }
 
 #[derive(Clone)]
@@ -331,6 +333,7 @@ impl NodeConfig {
             local_block_broadcaster: LocalBlockBroadcasterConfig::new(
                 network_params.network.current_network,
             ),
+            confirming_set: Default::default(),
         }
     }
 

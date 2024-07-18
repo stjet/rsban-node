@@ -19,6 +19,7 @@ use num::FromPrimitive;
 use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
+    cementation::ConfirmingSetConfig,
     config::{NodeConfig, Peer},
     transport::{MessageProcessorConfig, TcpConfig},
     NetworkParams,
@@ -110,6 +111,7 @@ pub struct NodeConfigDto {
     pub message_processor: MessageProcessorConfigDto,
     pub priority_scheduler_enabled: bool,
     pub local_block_broadcaster: LocalBlockBroadcasterConfigDto,
+    pub confirming_set: ConfirmingSetConfigDto,
 }
 
 #[repr(C)]
@@ -302,6 +304,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.message_processor = (&cfg.message_processor).into();
     dto.priority_scheduler_enabled = cfg.priority_scheduler_enabled;
     dto.local_block_broadcaster = (&cfg.local_block_broadcaster).into();
+    dto.confirming_set = (&cfg.confirming_set).into();
 }
 
 #[no_mangle]
@@ -441,6 +444,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             message_processor: (&value.message_processor).into(),
             priority_scheduler_enabled: value.priority_scheduler_enabled,
             local_block_broadcaster: (&value.local_block_broadcaster).into(),
+            confirming_set: (&value.confirming_set).into(),
         };
 
         Ok(cfg)
@@ -503,6 +507,30 @@ impl From<&LocalBlockBroadcasterConfigDto> for LocalBlockBroadcasterConfig {
             broadcast_rate_limit: value.broadcast_rate_limit,
             broadcast_rate_burst_ratio: value.broadcast_rate_burst_ratio,
             cleanup_interval: Duration::from_secs(value.cleanup_interval_s),
+        }
+    }
+}
+
+#[repr(C)]
+pub struct ConfirmingSetConfigDto {
+    pub max_blocks: usize,
+    pub max_queued_notifications: usize,
+}
+
+impl From<&ConfirmingSetConfigDto> for ConfirmingSetConfig {
+    fn from(value: &ConfirmingSetConfigDto) -> Self {
+        Self {
+            max_blocks: value.max_blocks,
+            max_queued_notifications: value.max_queued_notifications,
+        }
+    }
+}
+
+impl From<&ConfirmingSetConfig> for ConfirmingSetConfigDto {
+    fn from(value: &ConfirmingSetConfig) -> Self {
+        Self {
+            max_blocks: value.max_blocks,
+            max_queued_notifications: value.max_queued_notifications,
         }
     }
 }

@@ -7,6 +7,7 @@ use peers::PeersArgs;
 
 pub(crate) mod account_count;
 pub(crate) mod block_count;
+pub(crate) mod block_dump;
 pub(crate) mod cemented_block_count;
 pub(crate) mod peers;
 

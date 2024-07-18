@@ -120,6 +120,10 @@ impl LocalBlockBroadcaster {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.mutex.lock().unwrap().local_blocks.len()
+    }
+
     fn run(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {

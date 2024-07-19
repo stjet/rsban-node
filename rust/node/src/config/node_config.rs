@@ -110,6 +110,7 @@ pub struct NodeConfig {
     pub priority_scheduler_enabled: bool,
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
     pub confirming_set: ConfirmingSetConfig,
+    pub monitor: MonitorConfig,
 }
 
 #[derive(Clone)]
@@ -334,6 +335,7 @@ impl NodeConfig {
                 network_params.network.current_network,
             ),
             confirming_set: Default::default(),
+            monitor: Default::default(),
         }
     }
 
@@ -540,6 +542,8 @@ impl NodeConfig {
             self.message_processor.serialize_toml(writer)
         })?;
 
+        toml.put_child("monitor", &mut |writer| self.monitor.serialize_toml(writer))?;
+
         Ok(())
     }
 
@@ -555,5 +559,36 @@ fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static
         FrontiersConfirmationMode::Automatic => "auto",
         FrontiersConfirmationMode::Disabled => "disabled",
         FrontiersConfirmationMode::Invalid => "auto",
+    }
+}
+
+#[derive(Clone)]
+pub struct MonitorConfig {
+    pub enabled: bool,
+    pub interval: Duration,
+}
+
+impl Default for MonitorConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval: Duration::from_secs(60),
+        }
+    }
+}
+
+impl MonitorConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_bool(
+            "enable",
+            self.enabled,
+            "Enable or disable periodic node status logging\ntype:bool",
+        )?;
+
+        toml.put_u64(
+            "interval",
+            self.interval.as_secs(),
+            "Interval between status logs\ntype:seconds",
+        )
     }
 }

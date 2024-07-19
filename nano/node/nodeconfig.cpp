@@ -121,6 +121,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.priority_scheduler_enabled = config.priority_scheduler_enabled;
 	dto.local_block_broadcaster = config.local_block_broadcaster.into_dto();
 	dto.confirming_set = config.confirming_set.into_dto();
+	dto.monitor = config.monitor.into_dto();
 	return dto;
 }
 
@@ -248,6 +249,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	priority_scheduler_enabled = dto.priority_scheduler_enabled;
 	local_block_broadcaster = nano::local_block_broadcaster_config{ dto.local_block_broadcaster};
 	confirming_set = nano::confirming_set_config{ dto.confirming_set };
+	monitor = nano::monitor_config { dto.monitor};
 }
 
 nano::error nano::node_config::serialize_toml (nano::tomlconfig & toml) const
@@ -359,6 +361,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("message_processor");
 			message_processor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("monitor"))
+		{
+			auto config_l = toml.get_required_child ("monitor");
+			monitor.deserialize (config_l);
 		}
 
 		if (toml.has_key ("work_peers"))
@@ -1052,3 +1060,27 @@ rsnano::ConfirmingSetConfigDto nano::confirming_set_config::into_dto () const{
 		max_queued_notifications
 	};
 }
+
+nano::monitor_config::monitor_config (rsnano::MonitorConfigDto const & dto) :
+	enabled{ dto.enabled},
+	interval{ dto.interval_s}
+{}
+
+
+rsnano::MonitorConfigDto nano::monitor_config::into_dto () const{
+	return {
+		enabled,
+		static_cast<uint64_t>(interval.count())
+	};
+}
+
+nano::error nano::monitor_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("enabled", enabled);
+	auto interval_l = interval.count ();
+	toml.get ("interval", interval_l);
+	interval = std::chrono::seconds{ interval_l };
+
+	return toml.get_error ();
+}
+

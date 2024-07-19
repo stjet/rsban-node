@@ -1305,8 +1305,9 @@ impl NodeExt for Arc<Node> {
         }
         self.vote_router.start();
 
-        // TODO check if enabled + config file
-        self.monitor.start(Duration::from_secs(2));
+        if self.config.monitor.enabled {
+            self.monitor.start(self.config.monitor.interval);
+        }
     }
 
     fn stop(&self) {

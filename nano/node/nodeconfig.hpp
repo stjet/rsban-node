@@ -82,6 +82,19 @@ public:
 	size_t max_queued_notifications{ 8 };
 };
 
+class monitor_config final
+{
+public:
+	monitor_config() = default;
+	monitor_config(rsnano::MonitorConfigDto const & dto);
+	rsnano::MonitorConfigDto into_dto () const;
+	nano::error deserialize (nano::tomlconfig &);
+
+public:
+	bool enabled{ true };
+	std::chrono::seconds interval{ 60s };
+};
+
 /**
  * Node configuration
  */
@@ -186,6 +199,7 @@ public:
 	bool priority_scheduler_enabled{ true };
 	nano::local_block_broadcaster_config local_block_broadcaster;
 	nano::confirming_set_config confirming_set;
+	nano::monitor_config monitor;
 
 public:
 	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);

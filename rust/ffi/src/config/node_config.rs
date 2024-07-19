@@ -20,7 +20,7 @@ use rsnano_core::{utils::get_cpu_count, Account, Amount};
 use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
     cementation::ConfirmingSetConfig,
-    config::{NodeConfig, Peer},
+    config::{MonitorConfig, NodeConfig, Peer},
     transport::{MessageProcessorConfig, TcpConfig},
     NetworkParams,
 };
@@ -112,6 +112,7 @@ pub struct NodeConfigDto {
     pub priority_scheduler_enabled: bool,
     pub local_block_broadcaster: LocalBlockBroadcasterConfigDto,
     pub confirming_set: ConfirmingSetConfigDto,
+    pub monitor: MonitorConfigDto,
 }
 
 #[repr(C)]
@@ -152,6 +153,30 @@ pub struct PeerDto {
     pub address: [u8; 128],
     pub address_len: usize,
     pub port: u16,
+}
+
+#[repr(C)]
+pub struct MonitorConfigDto {
+    pub enabled: bool,
+    pub interval_s: u64,
+}
+
+impl From<&MonitorConfig> for MonitorConfigDto {
+    fn from(value: &MonitorConfig) -> Self {
+        Self {
+            enabled: value.enabled,
+            interval_s: value.interval.as_secs(),
+        }
+    }
+}
+
+impl From<&MonitorConfigDto> for MonitorConfig {
+    fn from(value: &MonitorConfigDto) -> Self {
+        Self {
+            enabled: value.enabled,
+            interval: Duration::from_secs(value.interval_s),
+        }
+    }
 }
 
 #[no_mangle]
@@ -305,6 +330,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.priority_scheduler_enabled = cfg.priority_scheduler_enabled;
     dto.local_block_broadcaster = (&cfg.local_block_broadcaster).into();
     dto.confirming_set = (&cfg.confirming_set).into();
+    dto.monitor = (&cfg.monitor).into();
 }
 
 #[no_mangle]
@@ -445,6 +471,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             priority_scheduler_enabled: value.priority_scheduler_enabled,
             local_block_broadcaster: (&value.local_block_broadcaster).into(),
             confirming_set: (&value.confirming_set).into(),
+            monitor: (&value.monitor).into(),
         };
 
         Ok(cfg)

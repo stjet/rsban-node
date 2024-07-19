@@ -102,6 +102,12 @@ impl Election {
             .state_change(ElectionState::Passive, ElectionState::Active);
     }
 
+    pub fn cancel(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        let current = guard.state;
+        let _ = guard.state_change(current, ElectionState::Cancelled);
+    }
+
     pub fn set_last_req(&self) {
         *self.last_req.write().unwrap() = Some(Instant::now());
     }
@@ -200,21 +206,23 @@ impl ElectionData {
 
     fn valid_change(expected: ElectionState, desired: ElectionState) -> bool {
         match expected {
-            ElectionState::Passive => match desired {
+            ElectionState::Passive => matches!(
+                desired,
                 ElectionState::Active
-                | ElectionState::Confirmed
-                | ElectionState::ExpiredUnconfirmed => true,
-                _ => false,
-            },
-            ElectionState::Active => match desired {
-                ElectionState::Confirmed | ElectionState::ExpiredUnconfirmed => true,
-                _ => false,
-            },
-            ElectionState::Confirmed => match desired {
-                ElectionState::ExpiredConfirmed => true,
-                _ => false,
-            },
-            _ => false,
+                    | ElectionState::Confirmed
+                    | ElectionState::ExpiredUnconfirmed
+                    | ElectionState::Cancelled
+            ),
+            ElectionState::Active => matches!(
+                desired,
+                ElectionState::Confirmed
+                    | ElectionState::ExpiredUnconfirmed
+                    | ElectionState::Cancelled
+            ),
+            ElectionState::Confirmed => matches!(desired, ElectionState::ExpiredConfirmed),
+            ElectionState::Cancelled
+            | ElectionState::ExpiredConfirmed
+            | ElectionState::ExpiredUnconfirmed => false,
         }
     }
 

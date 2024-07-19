@@ -264,9 +264,8 @@ impl Default for Buckets {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::KeyPair;
-
     use super::*;
+    use rsnano_core::KeyPair;
 
     #[test]
     fn construction() {

@@ -1,15 +1,19 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
+use clear::ClearCommand;
+use info::InfoCommand;
 use rebuild::RebuildArgs;
 use snapshot::SnapshotArgs;
 use vacuum::VacuumArgs;
 
+pub(crate) mod clear;
+pub(crate) mod info;
 pub(crate) mod rebuild;
 pub(crate) mod snapshot;
 pub(crate) mod vacuum;
 
 #[derive(Subcommand)]
-pub(crate) enum DatabaseSubcommands {
+pub(crate) enum LedgerSubcommands {
     /// Compact database. If data_path is missing, the database in the data directory is compacted.
     ///
     /// Optional: --unchecked_clear, --clear_send_ids, --online_weight_clear, --peer_clear, --confirmation_height_clear, --rebuild_database.
@@ -21,21 +25,27 @@ pub(crate) enum DatabaseSubcommands {
     Rebuild(RebuildArgs),
     /// Compact database and create snapshot, functions similar to vacuum but does not replace the existing database.
     Snapshot(SnapshotArgs),
+    /// Clear subcommands
+    Clear(ClearCommand),
+    /// Info subcommands
+    Info(InfoCommand),
 }
 
 #[derive(Parser)]
-pub(crate) struct DatabaseCommand {
+pub(crate) struct LedgerCommand {
     #[command(subcommand)]
-    pub subcommand: Option<DatabaseSubcommands>,
+    pub subcommand: Option<LedgerSubcommands>,
 }
 
-impl DatabaseCommand {
+impl LedgerCommand {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
-            Some(DatabaseSubcommands::Vacuum(args)) => args.vacuum()?,
-            Some(DatabaseSubcommands::Rebuild(args)) => args.rebuild()?,
-            Some(DatabaseSubcommands::Snapshot(args)) => args.snapshot()?,
-            None => DatabaseCommand::command().print_long_help()?,
+            Some(LedgerSubcommands::Vacuum(args)) => args.vacuum()?,
+            Some(LedgerSubcommands::Rebuild(args)) => args.rebuild()?,
+            Some(LedgerSubcommands::Snapshot(args)) => args.snapshot()?,
+            Some(LedgerSubcommands::Clear(command)) => command.run()?,
+            Some(LedgerSubcommands::Info(command)) => command.run()?,
+            None => LedgerCommand::command().print_long_help()?,
         }
 
         Ok(())

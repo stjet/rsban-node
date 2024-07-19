@@ -22,7 +22,7 @@ pub(crate) struct AddAdhocArgs {
 }
 
 impl AddAdhocArgs {
-    pub(crate) fn wallet_add_adhoc(&self) -> Result<()> {
+    pub(crate) fn add_adhoc(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 

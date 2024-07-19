@@ -22,7 +22,7 @@ pub(crate) struct RemoveArgs {
 }
 
 impl RemoveArgs {
-    pub(crate) fn wallet_remove(&self) -> Result<()> {
+    pub(crate) fn remove(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallets = Arc::new(

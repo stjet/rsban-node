@@ -20,7 +20,7 @@ pub(crate) struct RepresentativeGetArgs {
 }
 
 impl RepresentativeGetArgs {
-    pub(crate) fn wallet_representative_get(&self) -> Result<()> {
+    pub(crate) fn representative_get(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 

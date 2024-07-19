@@ -20,7 +20,7 @@ pub(crate) struct DecryptUnsafeArgs {
 }
 
 impl DecryptUnsafeArgs {
-    pub(crate) fn wallet_decrypt_unsafe(&self) -> Result<()> {
+    pub(crate) fn decrypt_unsafe(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::decode_hex(&self.wallet)

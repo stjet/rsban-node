@@ -8,7 +8,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct CreateArgs {
+pub(crate) struct CreateAccountArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
@@ -19,8 +19,8 @@ pub(crate) struct CreateArgs {
     network: Option<String>,
 }
 
-impl CreateArgs {
-    pub(crate) fn create(&self) -> Result<()> {
+impl CreateAccountArgs {
+    pub(crate) fn create_account(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallets = Arc::new(

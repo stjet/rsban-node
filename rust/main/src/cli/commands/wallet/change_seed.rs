@@ -22,7 +22,7 @@ pub(crate) struct ChangeSeedArgs {
 }
 
 impl ChangeSeedArgs {
-    pub(crate) fn wallet_change_seed(&self) -> Result<()> {
+    pub(crate) fn change_seed(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 

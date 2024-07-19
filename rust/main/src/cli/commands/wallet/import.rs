@@ -25,7 +25,7 @@ pub(crate) struct ImportArgs {
 }
 
 impl ImportArgs {
-    pub(crate) fn wallet_import(&self) -> Result<()> {
+    pub(crate) fn import(&self) -> Result<()> {
         let mut file = File::open(PathBuf::from(&self.file))?;
         let mut contents = String::new();
 

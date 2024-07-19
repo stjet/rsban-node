@@ -37,15 +37,15 @@ impl DumpTrendedWeightArgs {
             ledger_cache,
         )?);
 
-        let mut txn = ledger.store.tx_begin_read();
-
-        let mut iter = ledger.store.online_weight.begin(&mut txn);
-
         let sampler = OnlineWeightSampler::new(ledger.clone());
 
         let current = sampler.calculate_trend().number();
 
         println!("Trended Weight {}", current);
+
+        let mut txn = ledger.store.tx_begin_read();
+
+        let mut iter = ledger.store.online_weight.begin(&mut txn);
 
         loop {
             match iter.current() {

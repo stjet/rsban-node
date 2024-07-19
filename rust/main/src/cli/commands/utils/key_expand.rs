@@ -3,13 +3,13 @@ use clap::Parser;
 use rsnano_core::{Account, PublicKey, RawKey};
 
 #[derive(Parser)]
-pub(crate) struct ExpandArgs {
+pub(crate) struct KeyExpandArgs {
     #[arg(long)]
     key: String,
 }
 
-impl ExpandArgs {
-    pub(crate) fn expand(&self) -> Result<()> {
+impl KeyExpandArgs {
+    pub(crate) fn key_expand(&self) -> Result<()> {
         let private_key =
             RawKey::decode_hex(&self.key).map_err(|e| anyhow!("Key is invalid: {:?}", e))?;
         let public_key =

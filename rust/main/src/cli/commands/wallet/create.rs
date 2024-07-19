@@ -21,7 +21,7 @@ pub(crate) struct CreateArgs {
 }
 
 impl CreateArgs {
-    pub(crate) fn wallet_create(&self) -> Result<()> {
+    pub(crate) fn create(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());

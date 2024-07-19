@@ -22,7 +22,7 @@ pub(crate) struct RepresentativeSetArgs {
 }
 
 impl RepresentativeSetArgs {
-    pub(crate) fn wallet_representative_set(&self) -> Result<()> {
+    pub(crate) fn representative_set(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 

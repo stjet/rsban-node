@@ -18,7 +18,7 @@ pub(crate) struct ListArgs {
 }
 
 impl ListArgs {
-    pub(crate) fn wallet_list(&self) -> Result<()> {
+    pub(crate) fn list(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallets = Arc::new(

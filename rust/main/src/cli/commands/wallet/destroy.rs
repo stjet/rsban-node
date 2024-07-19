@@ -20,7 +20,7 @@ pub(crate) struct DestroyArgs {
 }
 
 impl DestroyArgs {
-    pub(crate) fn wallet_destroy(&self) -> Result<()> {
+    pub(crate) fn destroy(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallets = Arc::new(

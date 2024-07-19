@@ -418,10 +418,12 @@ impl ActiveElections {
     }
 
     pub fn clear(&self) {
+        // TODO: Call erased_callback for each election
         {
             let mut guard = self.mutex.lock().unwrap();
             guard.roots.clear();
         }
+
         (self.vacancy_update.lock().unwrap())()
     }
 
@@ -636,7 +638,11 @@ impl ActiveElections {
 
         self.vote_router.disconnect_election(election);
 
-        guard.roots.erase(&election.qualified_root);
+        // Erase root info
+        let entry = guard
+            .roots
+            .erase(&election.qualified_root)
+            .expect("election not found");
 
         let state = election.state();
         self.stats
@@ -668,11 +674,17 @@ impl ActiveElections {
 
         drop(guard);
 
+        // Track election duration
         self.stats.sample(
             Sample::ActiveElectionDuration,
             election.duration().as_millis() as i64,
             (0, 1000 * 60 * 10),
         ); // 0-10 minutes range
+
+        // Notify observers without holding the lock
+        if let Some(callback) = entry.erased_callback {
+            callback(election)
+        }
 
         (self.vacancy_update.lock().unwrap())();
 
@@ -736,7 +748,7 @@ impl ActiveElections {
 
     pub fn election(&self, hash: &QualifiedRoot) -> Option<Arc<Election>> {
         let guard = self.mutex.lock().unwrap();
-        guard.roots.get(hash).cloned()
+        guard.roots.get(hash).map(|i| i.election.clone())
     }
 
     pub fn votes_with_weight(&self, election: &Election) -> Vec<VoteWithWeightInfo> {
@@ -819,7 +831,7 @@ impl ActiveElections {
             .unwrap()
             .roots
             .iter_sequenced()
-            .map(|(_, election)| Arc::clone(election))
+            .map(|i| i.election.clone())
             .take(max)
             .collect()
     }
@@ -832,15 +844,15 @@ impl ActiveElections {
         guard
             .roots
             .iter_sequenced()
-            .map(|(_, election)| Arc::clone(election))
+            .map(|i| i.election.clone())
             .take(max)
             .collect()
     }
 
     pub fn erase(&self, root: &QualifiedRoot) -> bool {
         let guard = self.mutex.lock().unwrap();
-        if let Some(election) = guard.roots.get(root) {
-            let election = Arc::clone(election);
+        if let Some(entry) = guard.roots.get(root) {
+            let election = entry.election.clone();
             self.cleanup_election(guard, &election);
             true
         } else {
@@ -1044,7 +1056,7 @@ impl ActiveElectionsState {
 
 #[derive(Default)]
 pub struct OrderedRoots {
-    by_root: HashMap<QualifiedRoot, Arc<Election>>,
+    by_root: HashMap<QualifiedRoot, Entry>,
     sequenced: Vec<QualifiedRoot>,
 }
 
@@ -1054,20 +1066,23 @@ impl OrderedRoots {
     }
     pub const ELEMENT_SIZE: usize = size_of::<QualifiedRoot>() * 2 + size_of::<Arc<Election>>();
 
-    pub fn insert(&mut self, root: QualifiedRoot, election: Arc<Election>) {
-        if self.by_root.insert(root.clone(), election).is_none() {
+    pub fn insert(&mut self, entry: Entry) {
+        let root = entry.root.clone();
+        if self.by_root.insert(root.clone(), entry).is_none() {
             self.sequenced.push(root);
         }
     }
 
-    pub fn get(&self, root: &QualifiedRoot) -> Option<&Arc<Election>> {
+    pub fn get(&self, root: &QualifiedRoot) -> Option<&Entry> {
         self.by_root.get(root)
     }
 
-    pub fn erase(&mut self, root: &QualifiedRoot) {
-        if let Some(_) = self.by_root.remove(root) {
+    pub fn erase(&mut self, root: &QualifiedRoot) -> Option<Entry> {
+        let erased = self.by_root.remove(root);
+        if erased.is_some() {
             self.sequenced.retain(|x| x != root)
         }
+        erased
     }
 
     pub fn clear(&mut self) {
@@ -1079,10 +1094,8 @@ impl OrderedRoots {
         self.sequenced.len()
     }
 
-    pub fn iter_sequenced(&self) -> impl Iterator<Item = (&QualifiedRoot, &Arc<Election>)> {
-        self.sequenced
-            .iter()
-            .map(|r| (r, self.by_root.get(r).unwrap()))
+    pub fn iter_sequenced(&self) -> impl Iterator<Item = &Entry> {
+        self.sequenced.iter().map(|r| self.by_root.get(r).unwrap())
     }
 }
 
@@ -1104,6 +1117,7 @@ pub trait ActiveElectionsExt {
         &self,
         block: &Arc<BlockEnum>,
         election_behavior: ElectionBehavior,
+        erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>);
 }
 
@@ -1246,8 +1260,8 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         let mut guard = self.mutex.lock().unwrap();
         let root = block.qualified_root();
         let mut result = true;
-        if let Some(election) = guard.roots.get(&root) {
-            let election = Arc::clone(election);
+        if let Some(entry) = guard.roots.get(&root) {
+            let election = entry.election.clone();
             drop(guard);
             result = self.publish(block, &election);
             if !result {
@@ -1271,6 +1285,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         &self,
         block: &Arc<BlockEnum>,
         election_behavior: ElectionBehavior,
+        erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>) {
         let mut election_result = None;
         let mut inserted = false;
@@ -1286,7 +1301,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         let existing = guard.roots.get(&root);
 
         if let Some(existing) = existing {
-            election_result = Some(Arc::clone(existing));
+            election_result = Some(existing.election.clone());
         } else {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
@@ -1304,7 +1319,11 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                     Box::new(|_| {}),
                     observer_rep_cb,
                 ));
-                guard.roots.insert(root, Arc::clone(&election));
+                guard.roots.insert(Entry {
+                    root,
+                    election: election.clone(),
+                    erased_callback,
+                });
                 self.vote_router.connect(hash, Arc::downgrade(&election));
 
                 // Keep track of election count by election type
@@ -1359,3 +1378,11 @@ pub(crate) struct ActiveElectionsInfo {
     pub hinted: usize,
     pub optimistic: usize,
 }
+
+struct Entry {
+    root: QualifiedRoot,
+    election: Arc<Election>,
+    erased_callback: Option<ErasedCallback>,
+}
+
+pub(crate) type ErasedCallback = Box<dyn Fn(&Arc<Election>) + Send + Sync>;

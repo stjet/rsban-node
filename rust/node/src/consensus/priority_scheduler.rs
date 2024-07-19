@@ -158,7 +158,7 @@ impl PriorityScheduler {
                     self.stats
                         .inc(StatType::ElectionScheduler, DetailType::InsertPriority);
                     let (inserted, election) =
-                        self.active.insert(&block, ElectionBehavior::Priority);
+                        self.active.insert(&block, ElectionBehavior::Priority, None);
                     if inserted {
                         self.stats.inc(
                             StatType::ElectionScheduler,

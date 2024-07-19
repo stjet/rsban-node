@@ -195,7 +195,7 @@ impl ActiveElections {
         self.mutex.lock().unwrap().roots.len()
     }
 
-    pub fn info(&self) -> ActiveElectionsInfo {
+    pub(crate) fn info(&self) -> ActiveElectionsInfo {
         let guard = self.mutex.lock().unwrap();
         ActiveElectionsInfo {
             total: guard.roots.len(),
@@ -1257,6 +1257,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
                 self.stats
                     .inc(StatType::Active, DetailType::ElectionBlockConflict);
+                debug!("Block was added to an existing election: {}", block.hash());
             }
         }
 

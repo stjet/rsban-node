@@ -37,6 +37,8 @@ pub enum StatType {
     Aggregator,
     Requests,
     RequestAggregator,
+    RequestAggregatorVote,
+    RequestAggregatorReplies,
     Filter,
     Telemetry,
     VoteGenerator,
@@ -322,10 +324,14 @@ pub enum DetailType {
     RequestsGeneratedVotes,
     RequestsCannotVote,
     RequestsUnknown,
+    RequestsNonFinal,
+    RequestsFinal,
 
     // request_aggregator
     RequestHashes,
     OverfillHashes,
+    NormalVote,
+    FinalVote,
 
     // duplicate
     DuplicatePublishMessage,

@@ -135,6 +135,10 @@ impl Election {
             ElectionBehavior::Hinted | ElectionBehavior::Optimistic => Duration::from_secs(30),
         }
     }
+
+    pub fn contains(&self, hash: &BlockHash) -> bool {
+        self.mutex.lock().unwrap().last_blocks.contains_key(hash)
+    }
 }
 
 impl Debug for Election {

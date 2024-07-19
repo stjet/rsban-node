@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::PathBuf, sync::Arc};
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct ImportArgs {
+pub(crate) struct ImportKeysArgs {
     #[arg(long)]
     file: String,
     #[arg(long)]
@@ -24,7 +24,7 @@ pub(crate) struct ImportArgs {
     network: Option<String>,
 }
 
-impl ImportArgs {
+impl ImportKeysArgs {
     pub(crate) fn import(&self) -> Result<()> {
         let mut file = File::open(PathBuf::from(&self.file))?;
         let mut contents = String::new();

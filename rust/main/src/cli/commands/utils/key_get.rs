@@ -3,12 +3,12 @@ use clap::Parser;
 use rsnano_core::Account;
 
 #[derive(Parser)]
-pub(crate) struct AccountKeyArgs {
+pub(crate) struct KeyGetArgs {
     #[arg(long)]
     account: String,
 }
 
-impl AccountKeyArgs {
+impl KeyGetArgs {
     pub(crate) fn account_key(&self) -> Result<()> {
         let key = Account::decode_account(&self.account)
             .map_err(|e| anyhow!("Account is invalid: {:?}", e))?;

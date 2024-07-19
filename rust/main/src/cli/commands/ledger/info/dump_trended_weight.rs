@@ -11,14 +11,14 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct DumpTrendedWeightArgs {
+pub(crate) struct TrendedWeightArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl DumpTrendedWeightArgs {
+impl TrendedWeightArgs {
     pub(crate) fn dump_trended_weight(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 

@@ -1,11 +1,11 @@
 use account_count::AccountCountArgs;
 use anyhow::Result;
 use block_count::BlockCountArgs;
-use block_dump::BlockDumpArgs;
+use block_dump::Blocks;
 use cemented_block_count::CementedBlockCountArgs;
 use clap::{CommandFactory, Parser, Subcommand};
-use dump_representatives::DumpRepresentativesArgs;
-use dump_trended_weight::DumpTrendedWeightArgs;
+use dump_representatives::RepresentativesArgs;
+use dump_trended_weight::TrendedWeightArgs;
 use peers::PeersArgs;
 
 pub(crate) mod account_count;
@@ -18,19 +18,21 @@ pub(crate) mod peers;
 
 #[derive(Subcommand)]
 pub(crate) enum InfoSubcommands {
-    /// Either specify a single --root to clear or --all to clear all final votes (not recommended).
+    /// Display the number of accounts
     AccountCount(AccountCountArgs),
-    /// Clear online weight history records.
+    /// Display the number of blocks
     BlockCount(BlockCountArgs),
-    /// Remove all send IDs from the database (dangerous: not intended for production use).
-    BlockDump(BlockDumpArgs),
-    /// Clear online peers database dump.
+    /// RDisplay all the blocks in the ledger in text format
+    Blocks(Blocks),
+    /// Display peer IPv6:port connections
     Peers(PeersArgs),
-    /// Clear confirmation height. Requires an <account> option that can be 'all' to clear all accounts.
+    /// Displays the number of cemented (confirmed) blocks
     CementedBlockCount(CementedBlockCountArgs),
     //DumpFrontierUncheckedDependents(DumpFrontierUncheckedDependentsArgs),
-    DumpRepresentatives(DumpRepresentativesArgs),
-    DumpTrendedWeight(DumpTrendedWeightArgs),
+    /// List representatives and weights
+    Representatives(RepresentativesArgs),
+    /// Dump trended weights table
+    TrendedWeight(TrendedWeightArgs),
 }
 
 #[derive(Parser)]
@@ -44,11 +46,11 @@ impl InfoCommand {
         match &self.subcommand {
             Some(InfoSubcommands::AccountCount(args)) => args.account_count()?,
             Some(InfoSubcommands::BlockCount(args)) => args.block_count()?,
-            Some(InfoSubcommands::BlockDump(args)) => args.block_dump()?,
+            Some(InfoSubcommands::Blocks(args)) => args.block_dump()?,
             Some(InfoSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
             Some(InfoSubcommands::Peers(args)) => args.peers()?,
-            Some(InfoSubcommands::DumpTrendedWeight(args)) => args.dump_trended_weight()?,
-            Some(InfoSubcommands::DumpRepresentatives(args)) => args.dump_representatives()?,
+            Some(InfoSubcommands::TrendedWeight(args)) => args.dump_trended_weight()?,
+            Some(InfoSubcommands::Representatives(args)) => args.dump_representatives()?,
             None => InfoCommand::command().print_long_help()?,
         }
 

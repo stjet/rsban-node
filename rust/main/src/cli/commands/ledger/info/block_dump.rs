@@ -6,14 +6,14 @@ use rsnano_store_lmdb::LmdbStore;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct BlockDumpArgs {
+pub(crate) struct Blocks {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl BlockDumpArgs {
+impl Blocks {
     pub(crate) fn block_dump(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 

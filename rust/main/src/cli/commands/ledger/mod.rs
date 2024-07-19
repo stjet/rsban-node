@@ -25,9 +25,9 @@ pub(crate) enum LedgerSubcommands {
     Rebuild(RebuildArgs),
     /// Compact database and create snapshot, functions similar to vacuum but does not replace the existing database.
     Snapshot(SnapshotArgs),
-    /// Clear subcommands
+    /// Commands that clear some part of the ledger
     Clear(ClearCommand),
-    /// Info subcommands
+    /// Commands that get some info from the ledger
     Info(InfoCommand),
 }
 

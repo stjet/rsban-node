@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::{
-    ledger::LedgerCommand, node::NodeCommand, utils::UtilsCommand, wallet::WalletCommand,
+    ledger::LedgerCommand, node::NodeCommand, utils::UtilsCommand, wallets::WalletsCommand,
 };
 use rsnano_core::Networks;
 use rsnano_node::{config::NetworkConstants, working_path};
@@ -18,7 +18,7 @@ pub(crate) struct Cli {
 impl Cli {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.command {
-            Some(Commands::Wallet(command)) => command.run()?,
+            Some(Commands::Wallets(command)) => command.run()?,
             Some(Commands::Utils(command)) => command.run()?,
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Ledger(command)) => command.run()?,
@@ -31,14 +31,14 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// Utils command
+    /// Commands related to the protocol, such as keys and accounts
     Utils(UtilsCommand),
-    /// Ledger command
+    /// Commands to read from and write to the ledger
     Ledger(LedgerCommand),
-    /// Node command
+    /// Commands related to running the node
     Node(NodeCommand),
-    /// Wallet command
-    Wallet(WalletCommand),
+    /// Commands to manage wallets
+    Wallets(WalletsCommand),
     // Debug command
     //Debug(DebugCommand),
 }

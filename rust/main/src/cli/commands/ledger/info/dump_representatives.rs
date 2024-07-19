@@ -10,14 +10,14 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct DumpRepresentativesArgs {
+pub(crate) struct RepresentativesArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl DumpRepresentativesArgs {
+impl RepresentativesArgs {
     pub(crate) fn dump_representatives(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 

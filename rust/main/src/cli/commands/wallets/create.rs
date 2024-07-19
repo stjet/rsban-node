@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct CreateArgs {
+pub(crate) struct CreateWalletArgs {
     #[arg(long)]
     seed: Option<String>,
     #[arg(long)]
@@ -20,8 +20,8 @@ pub(crate) struct CreateArgs {
     network: Option<String>,
 }
 
-impl CreateArgs {
-    pub(crate) fn create(&self) -> Result<()> {
+impl CreateWalletArgs {
+    pub(crate) fn create_wallet(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());

@@ -49,7 +49,7 @@ use rsnano_core::{
     work::WorkPoolImpl,
     BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Vote, VoteCode, VoteSource,
 };
-use rsnano_ledger::{BlockStatus, Ledger, LedgerCache, RepWeightCache};
+use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
@@ -190,12 +190,10 @@ impl Node {
             (0, HashMap::new())
         };
 
-        let ledger_cache = Arc::new(LedgerCache::new());
-
         let rep_weights = Arc::new(RepWeightCache::with_bootstrap_weights(
             bootstrap_weights,
             max_blocks,
-            ledger_cache.clone(),
+            store.cache.clone(),
         ));
 
         let mut ledger = Ledger::new(
@@ -203,7 +201,6 @@ impl Node {
             network_params.ledger.clone(),
             config.representative_vote_weight_minimum,
             rep_weights.clone(),
-            ledger_cache,
         )
         .expect("Could not initialize ledger");
         ledger.set_observer(Arc::new(LedgerStats::new(stats.clone())));

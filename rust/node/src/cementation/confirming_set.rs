@@ -275,7 +275,9 @@ impl ConfirmingSetThread {
                         already_cemented.push_back(hash);
                     }
 
-                    if self.ledger.confirmed().block_exists(&tx, &hash) {
+                    if self.ledger.confirmed().block_exists(&tx, &hash)
+                        || self.mutex.lock().unwrap().stopped
+                    {
                         break;
                     }
                 }
@@ -333,10 +335,9 @@ impl Observers {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use super::*;
     use rsnano_core::{ConfirmationHeightInfo, TestAccountChain};
+    use std::time::Duration;
 
     #[test]
     fn add_exists() {
@@ -382,7 +383,7 @@ mod tests {
 
         let guard = count.lock().unwrap();
         let result = condition
-            .wait_timeout_while(guard, Duration::from_secs(5), |i| *i != 1)
+            .wait_timeout_while(guard, Duration::from_secs(5), |i| *i < 1)
             .unwrap()
             .1;
         assert_eq!(result.timed_out(), false);

@@ -1,8 +1,8 @@
-use crate::LedgerCache;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, Amount,
 };
+use rsnano_store_lmdb::LedgerCache;
 use std::{
     collections::HashMap,
     mem::size_of,

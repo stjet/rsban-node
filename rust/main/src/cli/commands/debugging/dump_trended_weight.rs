@@ -1,7 +1,11 @@
 use crate::cli::get_path;
+use anyhow::anyhow;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::{LmdbEnv, LmdbOnlineWeightStore};
+use rsnano_core::Amount;
+use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
+use rsnano_node::{config::NetworkConstants, NetworkParams, OnlineWeightSampler};
+use rsnano_store_lmdb::LmdbStore;
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -18,19 +22,35 @@ impl DumpTrendedWeightArgs {
     pub(crate) fn dump_trended_weight(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        let env = LmdbEnv::new(&path).unwrap();
+        let network_params = NetworkParams::new(NetworkConstants::active_network());
 
-        let mut txn = env.tx_begin_read();
+        let ledger_cache = Arc::new(LedgerCache::new());
 
-        let store = LmdbOnlineWeightStore::new(Arc::new(env))?;
+        let ledger = Arc::new(Ledger::new(
+            Arc::new(
+                LmdbStore::open_existing(&path)
+                    .map_err(|e| anyhow!("Failed to open store: {:?}", e))?,
+            ),
+            network_params.ledger,
+            Amount::zero(),
+            Arc::new(RepWeightCache::new()),
+            ledger_cache,
+        )?);
 
-        let mut iter = store.begin(&mut txn);
-        let end = store.end();
+        let mut txn = ledger.store.tx_begin_read();
 
-        while iter != end {
+        let mut iter = ledger.store.online_weight.begin(&mut txn);
+
+        let sampler = OnlineWeightSampler::new(ledger.clone());
+
+        let current = sampler.calculate_trend().number();
+
+        println!("Trended Weight {}", current);
+
+        loop {
             match iter.current() {
                 Some((timestamp, amount)) => {
-                    println!("Timestamp {} Weight {:?}", timestamp, amount);
+                    println!("Timestamp {} Weight {}", timestamp, amount.number());
                 }
                 None => break,
             }

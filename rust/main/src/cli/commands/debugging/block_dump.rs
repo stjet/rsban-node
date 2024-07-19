@@ -29,7 +29,7 @@ impl BlockDumpArgs {
             match iter.current() {
                 Some((hash, sideband)) => {
                     println!("{}", hash.to_string());
-                    println!("{}", sideband.block.to_json().unwrap());
+                    println!("{} \n", sideband.block.to_json().unwrap());
                 }
                 None => break,
             }

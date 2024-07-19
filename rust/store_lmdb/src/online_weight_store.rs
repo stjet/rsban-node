@@ -60,7 +60,7 @@ impl LmdbOnlineWeightStore {
         txn.clear_db(self.database).unwrap();
     }
 
-    pub fn end<'txn>(&self) -> OnlineWeightIterator<'txn> {
+    pub fn end(&self) -> OnlineWeightIterator {
         LmdbIteratorImpl::null_iterator()
     }
 }

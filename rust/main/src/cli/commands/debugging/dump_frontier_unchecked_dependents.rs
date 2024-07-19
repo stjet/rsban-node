@@ -10,15 +10,15 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct DumpRepresentativesArgs {
+pub(crate) struct DumpFrontierUncheckedDependentsArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
     network: Option<String>,
 }
 
-impl DumpRepresentativesArgs {
-    pub(crate) fn dump_representatives(&self) -> Result<()> {
+impl DumpFrontierUncheckedDependentsArgs {
+    pub(crate) fn dump_frontier_unchecked_dependents(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
         let network_params = NetworkParams::new(NetworkConstants::active_network());
@@ -36,18 +36,23 @@ impl DumpRepresentativesArgs {
             ledger_cache,
         )?;
 
-        let rep_amounts = ledger.rep_weights.read().to_owned();
-        let mut total = Amount::zero();
+        println!("Outputting any frontier hashes which have associated key hashes in the unchecked table (may take some time)...");
 
-        for (account, amount) in rep_amounts {
-            total += amount;
-            println!(
-                "{} {} {}",
-                account,
-                account.encode_account(),
-                total.number()
-            );
+        // Cache the account heads to make searching quicker against unchecked keys.
+        /*let transaction = ledger.tx_begin_read();
+        let mut frontier_hashes: HashSet<BlockHash> = HashSet::new();
+
+        for (account, info) in ledger.account_begin(&transaction) {
+            frontier_hashes.insert(info.head);
         }
+
+        // Check all unchecked keys for matching frontier hashes. Indicates an issue with process_batch algorithm.
+        node.unchecked.for_each(|key, _info| {
+            if frontier_hashes.contains(&key.key) {
+                println!("{}", key.key.to_string());
+            }
+            });
+            }*/
 
         Ok(())
     }

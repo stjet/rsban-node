@@ -30,9 +30,12 @@ impl CreateArgs {
         let wallet = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 
-        if self.password.is_none() {
-            wallets.ensure_wallet_is_unlocked(wallet, "");
-        }
+        let mut password = String::new();
+        if let Some(pass) = &self.password {
+            password = pass.clone();
+        };
+
+        wallets.ensure_wallet_is_unlocked(wallet, &password);
 
         let public_key = wallets
             .deterministic_insert2(&wallet, false)

@@ -4,17 +4,23 @@ use block_count::BlockCountArgs;
 use block_dump::BlockDumpArgs;
 use cemented_block_count::CementedBlockCountArgs;
 use clap::{CommandFactory, Parser, Subcommand};
+use dump_frontier_unchecked_dependents::DumpFrontierUncheckedDependentsArgs;
 use dump_representatives::DumpRepresentativesArgs;
 use dump_trended_weight::DumpTrendedWeightArgs;
 use peers::PeersArgs;
+use profile_kdf::ProfileKdfArgs;
+use profile_validate::ProfileValidateArgs;
 
 pub(crate) mod account_count;
 pub(crate) mod block_count;
 pub(crate) mod block_dump;
 pub(crate) mod cemented_block_count;
+pub(crate) mod dump_frontier_unchecked_dependents;
 pub(crate) mod dump_representatives;
 pub(crate) mod dump_trended_weight;
 pub(crate) mod peers;
+pub(crate) mod profile_kdf;
+pub(crate) mod profile_validate;
 
 #[derive(Subcommand)]
 pub(crate) enum DebugSubcommands {
@@ -35,7 +41,7 @@ pub(crate) enum DebugSubcommands {
     /// Full comparison is output to logs
     CompareRepWeights,
     /// Dump frontiers which have matching unchecked keys
-    DumpFrontierUncheckedDependents,
+    DumpFrontierUncheckedDependents(DumpFrontierUncheckedDependentsArgs),
     /// List representatives and weights
     DumpRepresentatives(DumpRepresentativesArgs),
     /// Dump trended weights table
@@ -57,13 +63,13 @@ pub(crate) enum DebugSubcommands {
     /// Profile work generation
     ProfileGenerate,
     /// Profile kdf function
-    ProfileKdf,
+    ProfileKdf(ProfileKdfArgs),
     /// Profile active blocks processing (only for nano_dev_network)
     ProfileProcess,
     /// Profile signature generation
     ProfileSign,
     /// Profile work validation
-    ProfileValidate,
+    ProfileValidate(ProfileValidateArgs),
     /// Profile votes processing (only for nano_dev_network)
     ProfileVotes,
     /// Prune accounts up to last confirmed blocks (EXPERIMENTAL)
@@ -104,8 +110,8 @@ impl DebugCommand {
             Some(DebugSubcommands::BootstrapGenerate) => DebugCommand::bootstrap_generate(),
             Some(DebugSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
             Some(DebugSubcommands::CompareRepWeights) => DebugCommand::compare_rep_weights(),
-            Some(DebugSubcommands::DumpFrontierUncheckedDependents) => {
-                DebugCommand::dump_frontier_unchecked_dependents()
+            Some(DebugSubcommands::DumpFrontierUncheckedDependents(args)) => {
+                args.dump_frontier_unchecked_dependents()?
             }
             Some(DebugSubcommands::DumpRepresentatives(args)) => args.dump_representatives()?,
             Some(DebugSubcommands::DumpTrendedWeight(args)) => args.dump_trended_weight()?,
@@ -120,10 +126,10 @@ impl DebugCommand {
                 DebugCommand::profile_frontier_confirmation()
             }
             Some(DebugSubcommands::ProfileGenerate) => DebugCommand::profile_generate(),
-            Some(DebugSubcommands::ProfileKdf) => DebugCommand::profile_kdf(),
+            Some(DebugSubcommands::ProfileKdf(args)) => args.profile_kdf()?,
             Some(DebugSubcommands::ProfileProcess) => DebugCommand::profile_process(),
             Some(DebugSubcommands::ProfileSign) => DebugCommand::profile_sign(),
-            Some(DebugSubcommands::ProfileValidate) => DebugCommand::profile_validate(),
+            Some(DebugSubcommands::ProfileValidate(args)) => args.profile_validate()?,
             Some(DebugSubcommands::ProfileVotes) => DebugCommand::profile_votes(),
             Some(DebugSubcommands::Prune) => DebugCommand::prune(),
             Some(DebugSubcommands::RandomFeed) => DebugCommand::random_feed(),
@@ -153,11 +159,6 @@ impl DebugCommand {
         // Implement the logic for compare_rep_weights
     }
 
-    fn dump_frontier_unchecked_dependents() {
-        println!("Running dump_frontier_unchecked_dependents");
-        // Implement the logic for dump_frontier_unchecked_dependents
-    }
-
     fn generate_crash_report() {
         println!("Running generate_crash_report");
         // Implement the logic for generate_crash_report
@@ -184,11 +185,6 @@ impl DebugCommand {
     fn profile_generate() {
         println!("Running profile_generate");
         // Implement the logic for profile_generate
-    }
-
-    fn profile_kdf() {
-        println!("Running profile_kdf");
-        // Implement the logic for profile_kdf
     }
 
     fn profile_process() {

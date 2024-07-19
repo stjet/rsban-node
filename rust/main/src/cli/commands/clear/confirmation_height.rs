@@ -23,8 +23,7 @@ pub(crate) struct ConfirmationHeightArgs {
 
 impl ConfirmationHeightArgs {
     pub(crate) fn confirmation_height(&self) {
-        let path = get_path(&self.data_path, &self.network);
-        let path = path.join("data.ldb");
+        let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
         let genesis_block = match NetworkConstants::active_network() {
             Networks::NanoDevNetwork => LedgerConstants::dev().genesis,

@@ -261,6 +261,7 @@ pub enum ElectionState {
     Confirmed, // confirmed but still listening for votes
     ExpiredConfirmed,
     ExpiredUnconfirmed,
+    Cancelled,
 }
 
 impl ElectionState {
@@ -277,6 +278,7 @@ impl From<ElectionState> for StatType {
                 StatType::ActiveElectionsConfirmed
             }
             ElectionState::ExpiredUnconfirmed => StatType::ActiveElectionsTimeout,
+            ElectionState::Cancelled => StatType::ActiveElectionsCancelled,
         }
     }
 }
@@ -289,6 +291,7 @@ impl From<ElectionState> for DetailType {
             ElectionState::Confirmed => DetailType::Confirmed,
             ElectionState::ExpiredConfirmed => DetailType::ExpiredConfirmed,
             ElectionState::ExpiredUnconfirmed => DetailType::ExpiredUnconfirmed,
+            ElectionState::Cancelled => DetailType::Cancelled,
         }
     }
 }

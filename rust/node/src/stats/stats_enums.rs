@@ -20,6 +20,7 @@ pub enum StatType {
     VoteProcessorTier,
     VoteProcessorOverfill,
     Election,
+    ElectionCleanup,
     ElectionVote,
     HttpCallback,
     Ipc,
@@ -60,11 +61,13 @@ pub enum StatType {
     ActiveElectionsConfirmed,
     ActiveElectionsDropped,
     ActiveElectionsTimeout,
+    ActiveElectionsCancelled,
     ActiveElectionsCemented,
     ActiveTimeout,
     Backlog,
     Unchecked,
     ElectionScheduler,
+    ElectionBucket,
     OptimisticScheduler,
     Handshake,
     RepCrawler,
@@ -378,6 +381,7 @@ pub enum DetailType {
     // active
     Insert,
     InsertFailed,
+    ElectionCleanup,
 
     // active_elections
     Started,
@@ -462,12 +466,17 @@ pub enum DetailType {
     Active,
     ExpiredConfirmed,
     ExpiredUnconfirmed,
+    Cancelled,
 
     // election_status_type
     Ongoing,
     ActiveConfirmedQuorum,
     ActiveConfirmationHeight,
     InactiveConfirmationHeight,
+
+    // election bucket
+    ActivateSuccess,
+    CancelLowest,
 }
 
 impl DetailType {

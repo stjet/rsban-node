@@ -880,6 +880,9 @@ impl ActiveElections {
             ElectionState::ExpiredConfirmed | ElectionState::ExpiredUnconfirmed => {
                 unreachable!()
             }
+            ElectionState::Cancelled => {
+                return true; // Clean up cancelled elections immediately
+            }
         }
 
         if !guard.is_confirmed() && election.time_to_live() < election.election_start.elapsed() {

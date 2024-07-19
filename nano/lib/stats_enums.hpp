@@ -21,6 +21,7 @@ enum class type : uint8_t
 	vote_processor_tier,
 	vote_processor_overfill,
 	election,
+	election_cleanup,
 	election_vote,
 	http_callback,
 	ipc,
@@ -61,11 +62,13 @@ enum class type : uint8_t
 	active_elections_confirmed,
 	active_elections_dropped,
 	active_elections_timeout,
+	active_elections_cancelled,
 	active_elections_cemented,
 	active_timeout,
 	backlog,
 	unchecked,
 	election_scheduler,
+	election_bucket,
 	optimistic_scheduler,
 	handshake,
 	rep_crawler,
@@ -371,7 +374,8 @@ enum class detail : uint16_t
 	// active
 	insert,
 	insert_failed,
-	//
+	election_cleanup,
+	
 	// active_elections
 	started,
 	stopped,
@@ -455,12 +459,17 @@ enum class detail : uint16_t
 	active,
 	expired_confirmed,
 	expired_unconfirmed,
+	cancelled,
 
 	// election_status_type
 	ongoing,
 	active_confirmed_quorum,
 	active_confirmation_height,
 	inactive_confirmation_height,
+
+	// election bucket
+	activate_success,
+	cancel_lowest,
 };
 
 /** Direction of the stat. If the direction is irrelevant, use in */

@@ -105,7 +105,8 @@ enum class election_state
 	active, // actively request confirmations
 	confirmed, // confirmed but still listening for votes
 	expired_confirmed,
-	expired_unconfirmed
+	expired_unconfirmed,
+	cancelled,
 };
 
 class election_lock

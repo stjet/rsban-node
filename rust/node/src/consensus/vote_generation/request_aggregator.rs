@@ -206,6 +206,9 @@ impl RequestAggregator {
         let remaining = self.aggregate(tx, request, channel);
 
         if !remaining.remaining_normal.is_empty() {
+            self.stats
+                .inc(StatType::RequestAggregatorReplies, DetailType::NormalVote);
+
             // Generate votes for the remaining hashes
             let generated = self
                 .vote_generators
@@ -219,6 +222,9 @@ impl RequestAggregator {
         }
 
         if !remaining.remaining_final.is_empty() {
+            self.stats
+                .inc(StatType::RequestAggregatorReplies, DetailType::FinalVote);
+
             // Generate final votes for the remaining hashes
             let generated = self
                 .vote_generators
@@ -251,11 +257,6 @@ impl RequestAggregator {
         );
     }
 
-    fn erase_duplicates(&self, requests: &mut Vec<(BlockHash, Root)>) {
-        requests.sort_by(|a, b| a.0.cmp(&b.0));
-        requests.dedup_by_key(|i| i.0);
-    }
-
     /// Aggregate requests and send cached votes to channel.
     /// Return the remaining hashes that need vote generation for each block for regular & final vote generators
     fn aggregate(
@@ -274,25 +275,6 @@ impl RequestAggregator {
         );
 
         aggregator.add_votes(requests);
-
-        for vote in &aggregator.cached_votes {
-            self.reply_action(vote, channel);
-        }
-
-        self.stats.add_dir(
-            StatType::Requests,
-            DetailType::RequestsCachedHashes,
-            Direction::In,
-            aggregator.cached_hashes.len() as u64,
-        );
-
-        self.stats.add_dir(
-            StatType::Requests,
-            DetailType::RequestsCachedVotes,
-            Direction::In,
-            aggregator.cached_votes.len() as u64,
-        );
-
         aggregator.get_result()
     }
 

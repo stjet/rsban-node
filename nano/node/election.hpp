@@ -158,6 +158,7 @@ public: // Interface
 	void set_last_vote (nano::account const & account, nano::vote_info vote_info);
 	nano::election_status get_status () const;
 	std::chrono::milliseconds age () const;
+	bool contains (nano::block_hash const &) const;
 
 public: // Information
 	nano::qualified_root qualified_root () const;

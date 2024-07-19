@@ -112,9 +112,6 @@ pub struct Buckets {
 
     /// index of bucket to read next
     current: usize,
-
-    /// maximum number of blocks in whole container, each bucket's maximum is maximum / bucket_number
-    maximum: usize,
 }
 
 impl Buckets {
@@ -124,13 +121,12 @@ impl Buckets {
         Self {
             buckets: Self::create_buckets(maximum),
             current: 0,
-            maximum,
         }
     }
 
     fn create_buckets(maximum: usize) -> VecDeque<Bucket> {
         let mut buckets = VecDeque::new();
-        const SIZE_EXPECTED: usize = 62;
+        const SIZE_EXPECTED: usize = 63;
         let bucket_max = max(1, maximum / SIZE_EXPECTED);
         let mut build_region = |begin: u128, end: u128, count: usize| {
             let width = (end - begin) / (count as u128);
@@ -140,7 +136,8 @@ impl Buckets {
             }
         };
 
-        build_region(0, 1 << 88, 1);
+        build_region(0, 1 << 79, 1);
+        build_region(1 << 79, 1 << 88, 1);
         build_region(1 << 88, 1 << 92, 2);
         build_region(1 << 92, 1 << 96, 4);
         build_region(1 << 96, 1 << 100, 8);
@@ -276,7 +273,7 @@ mod tests {
         let buckets = Buckets::default();
         assert_eq!(buckets.len(), 0);
         assert!(buckets.is_empty());
-        assert_eq!(buckets.bucket_count(), 62);
+        assert_eq!(buckets.bucket_count(), 63);
     }
 
     #[test]
@@ -284,7 +281,7 @@ mod tests {
         let mut buckets = Buckets::default();
         buckets.push(1000, test_block(1), Amount::nano(1000));
         assert_eq!(buckets.len(), 1);
-        assert_eq!(buckets.bucket_size(48), 1);
+        assert_eq!(buckets.bucket_size(49), 1);
     }
 
     #[test]
@@ -292,7 +289,7 @@ mod tests {
         let mut buckets = Buckets::default();
         buckets.push(1000, test_block(1), Amount::nano(1));
         assert_eq!(buckets.len(), 1);
-        assert_eq!(buckets.bucket_size(13), 1);
+        assert_eq!(buckets.bucket_size(14), 1);
     }
 
     // Test two blocks with the same priority
@@ -302,7 +299,7 @@ mod tests {
         buckets.push(1000, test_block(1), Amount::nano(1000));
         buckets.push(1000, test_block(2), Amount::nano(1000));
         assert_eq!(buckets.len(), 2);
-        assert_eq!(buckets.bucket_size(48), 2);
+        assert_eq!(buckets.bucket_size(49), 2);
     }
 
     // Test the same block inserted multiple times

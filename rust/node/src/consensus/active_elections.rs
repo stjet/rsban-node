@@ -195,6 +195,16 @@ impl ActiveElections {
         self.mutex.lock().unwrap().roots.len()
     }
 
+    pub fn info(&self) -> ActiveElectionsInfo {
+        let guard = self.mutex.lock().unwrap();
+        ActiveElectionsInfo {
+            total: guard.roots.len(),
+            priority: guard.priority_count,
+            hinted: guard.hinted_count,
+            optimistic: guard.optimistic_count,
+        }
+    }
+
     pub fn add_election_end_callback(&self, f: ElectionEndCallback) {
         self.election_end.lock().unwrap().push(f);
     }
@@ -1337,4 +1347,11 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
         (inserted, election_result)
     }
+}
+
+pub(crate) struct ActiveElectionsInfo {
+    pub total: usize,
+    pub priority: usize,
+    pub hinted: usize,
+    pub optimistic: usize,
 }

@@ -134,6 +134,10 @@ impl Network {
         }
     }
 
+    pub fn channels_info(&self) -> ChannelsInfo {
+        self.state.lock().unwrap().channels_info()
+    }
+
     pub async fn wait_for_available_inbound_slot(&self) {
         let last_log = Instant::now();
         let log_interval = if self.network_params.network.is_dev_network() {
@@ -944,6 +948,23 @@ impl State {
         AcceptResult::Accepted
     }
 
+    pub fn channels_info(&self) -> ChannelsInfo {
+        let mut info = ChannelsInfo::default();
+        for entry in self.channels.iter() {
+            info.total += 1;
+            match entry.channel.mode() {
+                ChannelMode::Bootstrap => info.bootstrap += 1,
+                ChannelMode::Realtime => info.realtime += 1,
+                _ => {}
+            }
+            match entry.channel.direction() {
+                ChannelDirection::Inbound => info.inbound += 1,
+                ChannelDirection::Outbound => info.outbound += 2,
+            }
+        }
+        info
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -974,6 +995,15 @@ pub enum AcceptResult {
     Accepted,
     Rejected,
     Error,
+}
+
+#[derive(Default)]
+pub(crate) struct ChannelsInfo {
+    pub total: usize,
+    pub realtime: usize,
+    pub bootstrap: usize,
+    pub inbound: usize,
+    pub outbound: usize,
 }
 
 #[cfg(test)]

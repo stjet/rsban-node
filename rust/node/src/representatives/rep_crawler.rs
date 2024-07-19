@@ -118,7 +118,7 @@ impl RepCrawler {
 
             if found {
                 debug!(
-                    "Processing response for block {} from {}",
+                    "Processing response for block: {} from: {}",
                     target_hash,
                     channel.remote_endpoint()
                 );
@@ -163,7 +163,7 @@ impl RepCrawler {
         for channel in target_channels {
             guard.track_rep_request(hash_root, Arc::clone(&channel));
             debug!(
-                "Sending query for block {} to {}",
+                "Sending query for block: {} to: {}",
                 hash_root.0,
                 channel.remote_endpoint()
             );
@@ -285,7 +285,7 @@ impl RepCrawler {
             let rep_weight = self.ledger.weight(&vote.voting_account);
             if rep_weight < minimum {
                 debug!(
-                    "Ignoring vote from account {} with too little voting weight: {}",
+                    "Ignoring vote from account: {} with too little voting weight: {}",
                     vote.voting_account.encode_account(),
                     rep_weight.to_string_dec()
                 );
@@ -302,14 +302,14 @@ impl RepCrawler {
             match result {
                 RegisterRepresentativeResult::Inserted => {
                     info!(
-                        "Found representative {} at {}",
+                        "Found representative: {} at: {}",
                         vote.voting_account.encode_account(),
                         endpoint
                     );
                 }
                 RegisterRepresentativeResult::ChannelChanged(previous) => {
                     warn!(
-                        "Updated representative {} at {} (was at: {})",
+                        "Updated representative: {} at: {} (was at: {})",
                         vote.voting_account.encode_account(),
                         endpoint,
                         previous
@@ -550,7 +550,7 @@ impl RepCrawlerImpl {
 
             if query.replies == 0 {
                 debug!(
-                    "Aborting unresponsive query for block {} from {}",
+                    "Aborting unresponsive query for block: {} from: {}",
                     query.hash,
                     query.channel.remote_endpoint()
                 );
@@ -561,7 +561,7 @@ impl RepCrawlerImpl {
                 );
             } else {
                 debug!(
-                    "Completion of query with {} replies for block {} from {}",
+                    "Completion of query with: {} replies for block: {} from: {}",
                     query.replies,
                     query.hash,
                     query.channel.remote_endpoint()

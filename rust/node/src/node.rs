@@ -19,6 +19,7 @@ use crate::{
         VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
         VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
+    monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
     representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
@@ -126,6 +127,7 @@ pub struct Node {
     peer_cache_updater: TimerThread<PeerCacheUpdater>,
     peer_cache_connector: TimerThread<PeerCacheConnector>,
     pub inbound_message_queue: Arc<InboundMessageQueue>,
+    monitor: TimerThread<Monitor>,
     stopped: AtomicBool,
 }
 
@@ -168,7 +170,7 @@ impl Node {
         )
         .expect("Could not create LMDB store");
 
-        info!("Node starting, version: {}", VERSION_STRING);
+        info!("Version: {}", VERSION_STRING);
         info!("Build information: {}", BUILD_INFO);
         info!("Active network: {}", network_label);
         info!("Database backend: {}", store.vendor());
@@ -1020,6 +1022,17 @@ impl Node {
             workers.clone(),
         ));
 
+        let monitor = TimerThread::new(
+            "Monitor",
+            Monitor::new(
+                ledger.clone(),
+                network.clone(),
+                online_reps.clone(),
+                representative_register.clone(),
+                active_elections.clone(),
+            ),
+        );
+
         Self {
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
@@ -1081,6 +1094,7 @@ impl Node {
             network_threads,
             message_processor,
             inbound_message_queue,
+            monitor,
             stopped: AtomicBool::new(false),
         }
     }
@@ -1290,6 +1304,9 @@ impl NodeExt for Arc<Node> {
                 .start(self.network_params.network.merge_period);
         }
         self.vote_router.start();
+
+        // TODO check if enabled + config file
+        self.monitor.start(Duration::from_secs(2));
     }
 
     fn stop(&self) {
@@ -1341,6 +1358,7 @@ impl NodeExt for Arc<Node> {
         self.local_block_broadcaster.stop();
         self.message_processor.lock().unwrap().stop();
         self.network_threads.lock().unwrap().stop(); // Stop network last to avoid killing in-use sockets
+        self.monitor.stop();
 
         // work pool is not stopped on purpose due to testing setup
     }

@@ -13,6 +13,7 @@ pub mod cementation;
 pub mod config;
 pub mod consensus;
 mod ipc;
+mod monitor;
 pub mod node;
 mod node_id_key_file;
 pub mod nullable_fs;

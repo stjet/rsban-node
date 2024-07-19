@@ -1,5 +1,5 @@
 use super::{ActiveElections, Election, ElectionBehavior};
-use crate::stats::Stats;
+use crate::{consensus::ActiveElectionsExt, stats::Stats};
 use rsnano_core::{Amount, BlockEnum, QualifiedRoot};
 use std::{
     cmp::Ordering,
@@ -70,6 +70,48 @@ impl NewBucket {
             false
         }
     }
+
+    fn election_overfill(&self, data: &BucketData) -> bool {
+        if data.elections.len() < self.config.reserved_elections {
+            false
+        } else if data.elections.len() < self.config.max_elections {
+            self.active.vacancy(ElectionBehavior::Priority) < 0
+        } else {
+            true
+        }
+    }
+}
+
+trait BucketExt {
+    fn activate(&self) -> bool;
+}
+
+impl BucketExt for Arc<NewBucket> {
+    fn activate(&self) -> bool {
+        let mut guard = self.data.lock().unwrap();
+
+        let Some(top) = guard.queue.pop_first() else {
+            return false; // Not activated;
+        };
+
+        let block = top.block;
+        let priority = top.time;
+
+        let self_w = Arc::downgrade(self);
+        let erase_callback = Box::new(move |election: &Arc<Election>| {
+            let Some(self_l) = self_w.upgrade() else {
+                return;
+            };
+            let mut guard = self_l.data.lock().unwrap();
+            guard.elections.erase(&election.qualified_root);
+        });
+
+        let result = self
+            .active
+            .insert(&block, ElectionBehavior::Priority, Some(erase_callback));
+
+        todo!()
+    }
 }
 
 struct BucketData {
@@ -138,5 +180,17 @@ impl OrderedElections {
 
     fn len(&self) -> usize {
         self.sequenced.len()
+    }
+
+    fn erase(&mut self, root: &QualifiedRoot) {
+        if let Some(entry) = self.by_root.remove(root) {
+            let keys = self.by_priority.get_mut(&entry.priority).unwrap();
+            if keys.len() == 1 {
+                self.by_priority.remove(&entry.priority);
+            } else {
+                keys.retain(|i| i != root);
+            }
+            self.sequenced.retain(|i| i != root);
+        }
     }
 }

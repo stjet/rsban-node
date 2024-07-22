@@ -91,7 +91,7 @@ pub struct Node {
     pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
-    pub online_reps_sampler: Arc<OnlineWeightSampler>,
+    pub online_weight_sampler: Arc<OnlineWeightSampler>,
     pub representative_register: Arc<Mutex<RepresentativeRegister>>,
     pub rep_tiers: Arc<RepTiers>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
@@ -274,15 +274,15 @@ impl Node {
             ledger.clone(),
         ));
 
+        let mut online_weight_sampler = OnlineWeightSampler::new(ledger.clone());
+        online_weight_sampler.set_online_weight_minimum(config.online_weight_minimum);
+        online_weight_sampler.set_max_samples(network_params.node.max_weight_samples);
+        let online_weight_sampler = Arc::new(online_weight_sampler);
+
         let mut online_reps = OnlineReps::new(rep_weights.clone());
         online_reps.set_weight_period(Duration::from_secs(network_params.node.weight_period));
         online_reps.set_online_weight_minimum(config.online_weight_minimum);
-
-        let mut online_reps_sampler = OnlineWeightSampler::new(ledger.clone());
-        online_reps_sampler.set_online_weight_minimum(config.online_weight_minimum);
-        online_reps_sampler.set_max_samples(network_params.node.max_weight_samples);
-        let online_reps_sampler = Arc::new(online_reps_sampler);
-        online_reps.set_trended(online_reps_sampler.calculate_trend());
+        online_reps.set_trended(online_weight_sampler.calculate_trend());
 
         let representative_register = Arc::new(Mutex::new(RepresentativeRegister::new(
             rep_weights.clone(),
@@ -1053,7 +1053,7 @@ impl Node {
             work,
             async_rt,
             bootstrap_server,
-            online_reps_sampler,
+            online_weight_sampler,
             representative_register,
             rep_tiers,
             vote_router,
@@ -1374,8 +1374,8 @@ impl NodeExt for Arc<Node> {
             .quorum_info()
             .online_weight;
 
-        self.online_reps_sampler.sample(online);
-        let trend = self.online_reps_sampler.calculate_trend();
+        self.online_weight_sampler.sample(online);
+        let trend = self.online_weight_sampler.calculate_trend();
         self.representative_register
             .lock()
             .unwrap()

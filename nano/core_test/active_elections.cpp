@@ -1394,4 +1394,3 @@ TEST (DISABLED_active_elections, limit_vote_hinted_elections)
 	// Ensure there was no overflow of elections
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::active_elections_dropped, nano::stat::detail::priority));
 }
-

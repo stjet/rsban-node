@@ -1,4 +1,5 @@
 #include "nano/secure/common.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/locks.hpp>
@@ -778,7 +779,7 @@ TEST (node, fork_bootstrap_flip)
 	node_flags.set_disable_lazy_bootstrap (true);
 	auto & node1 = *system.add_node (config0, node_flags);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc(wallet_id1, nano::dev::genesis_key.prv);
+	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
 	nano::node_config config1 (system.get_available_port ());
 	auto & node2 = *system.make_disconnected_node (config1, node_flags);
 	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
@@ -811,13 +812,13 @@ TEST (node, fork_bootstrap_flip)
 	}
 
 	nano::test::confirm (node1.ledger, send1);
-	ASSERT_TIMELY (1s, node1.ledger.any().block_exists (*node1.ledger.store.tx_begin_read (), send1->hash ()));
-	ASSERT_TIMELY (1s, node2.ledger.any().block_exists (*node2.ledger.store.tx_begin_read (), send2->hash ()));
+	ASSERT_TIMELY (1s, node1.ledger.any ().block_exists (*node1.ledger.store.tx_begin_read (), send1->hash ()));
+	ASSERT_TIMELY (1s, node2.ledger.any ().block_exists (*node2.ledger.store.tx_begin_read (), send2->hash ()));
 
 	// Additionally add new peer to confirm & replace bootstrap block
 	node2.network->merge_peer (node1.network->endpoint ());
 
-	ASSERT_TIMELY (10s, node2.ledger.any().block_exists (*node2.ledger.store.tx_begin_read (), send1->hash ()));
+	ASSERT_TIMELY (10s, node2.ledger.any ().block_exists (*node2.ledger.store.tx_begin_read (), send1->hash ()));
 }
 
 TEST (node, fork_open)

@@ -73,8 +73,8 @@ public:
 class confirming_set_config final
 {
 public:
-	confirming_set_config() = default;
-	confirming_set_config(rsnano::ConfirmingSetConfigDto const &dto);
+	confirming_set_config () = default;
+	confirming_set_config (rsnano::ConfirmingSetConfigDto const & dto);
 	rsnano::ConfirmingSetConfigDto into_dto () const;
 
 	/** Maximum number of dependent blocks to be stored in memory during processing */
@@ -85,8 +85,8 @@ public:
 class monitor_config final
 {
 public:
-	monitor_config() = default;
-	monitor_config(rsnano::MonitorConfigDto const & dto);
+	monitor_config () = default;
+	monitor_config (rsnano::MonitorConfigDto const & dto);
 	rsnano::MonitorConfigDto into_dto () const;
 	nano::error deserialize (nano::tomlconfig &);
 
@@ -98,8 +98,8 @@ public:
 class priority_bucket_config final
 {
 public:
-	priority_bucket_config() = default;
-	priority_bucket_config(rsnano::PriorityBucketConfigDto const & dto);
+	priority_bucket_config () = default;
+	priority_bucket_config (rsnano::PriorityBucketConfigDto const & dto);
 	rsnano::PriorityBucketConfigDto into_dto () const;
 	nano::error deserialize (nano::tomlconfig & toml);
 

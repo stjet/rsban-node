@@ -376,7 +376,7 @@ enum class detail : uint16_t
 	insert,
 	insert_failed,
 	election_cleanup,
-	
+
 	// active_elections
 	started,
 	stopped,

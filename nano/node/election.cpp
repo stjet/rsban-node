@@ -261,5 +261,5 @@ nano::election_behavior nano::election::behavior () const
 
 bool nano::election::contains (nano::block_hash const & hash) const
 {
-	return rsnano::rsn_election_contains(handle, hash.bytes.data());
+	return rsnano::rsn_election_contains (handle, hash.bytes.data ());
 }

@@ -57,7 +57,7 @@ TEST (request_aggregator, one)
 
 	// Process and confirm
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	nano::test::confirm(node.ledger, send1);
+	nano::test::confirm (node.ledger, send1);
 
 	// In the ledger but no vote generated yet
 	node.aggregator.request (request, dummy_channel);
@@ -96,7 +96,7 @@ TEST (request_aggregator, one_update)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	nano::test::confirm(node.ledger, send1);
+	nano::test::confirm (node.ledger, send1);
 	auto send2 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (send1->hash ())
@@ -107,7 +107,7 @@ TEST (request_aggregator, one_update)
 				 .work (*node.work_generate_blocking (send1->hash ()))
 				 .build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send2));
-	nano::test::confirm(node.ledger, send2);
+	nano::test::confirm (node.ledger, send2);
 	auto receive1 = nano::state_block_builder ()
 					.account (key1.pub)
 					.previous (0)
@@ -118,7 +118,7 @@ TEST (request_aggregator, one_update)
 					.work (*node.work_generate_blocking (key1.pub))
 					.build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), receive1));
-	nano::test::confirm(node.ledger, receive1);
+	nano::test::confirm (node.ledger, receive1);
 
 	auto dummy_channel = nano::test::fake_channel (node);
 
@@ -162,7 +162,7 @@ TEST (request_aggregator, two)
 				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	nano::test::confirm(node.ledger, send1);
+	nano::test::confirm (node.ledger, send1);
 	auto send2 = builder.make_block ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (send1->hash ())
@@ -182,9 +182,9 @@ TEST (request_aggregator, two)
 					.work (*node.work_generate_blocking (key1.pub))
 					.build ();
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send2));
-	nano::test::confirm(node.ledger, send2);
+	nano::test::confirm (node.ledger, send2);
 	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), receive1));
-	nano::test::confirm(node.ledger, receive1);
+	nano::test::confirm (node.ledger, receive1);
 
 	std::vector<std::pair<nano::block_hash, nano::root>> request;
 	request.emplace_back (send2->hash (), send2->root ());
@@ -237,7 +237,7 @@ TEST (request_aggregator, two_endpoints)
 				 .work (*node1.work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build ();
 	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*node1.store.tx_begin_write (), send1));
-	nano::test::confirm(node1.ledger, send1);
+	nano::test::confirm (node1.ledger, send1);
 
 	auto dummy_channel1 = std::make_shared<nano::transport::inproc::channel> (node1, node1);
 	auto dummy_channel2 = std::make_shared<nano::transport::inproc::channel> (node2, node2);
@@ -314,7 +314,7 @@ TEST (request_aggregator, split)
 	// Two votes were sent, the first one for 12 hashes and the second one for 1 hash
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_accepted));
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_dropped));
-	ASSERT_TIMELY_EQ (3s, 255+1, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_hashes));
+	ASSERT_TIMELY_EQ (3s, 255 + 1, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_hashes));
 	ASSERT_TIMELY_EQ (3s, 2, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes));
 	ASSERT_TIMELY_EQ (3s, 0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_unknown));
 	ASSERT_TIMELY_EQ (3s, 0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_cached_hashes));
@@ -442,7 +442,7 @@ TEST (request_aggregator, cannot_vote)
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 
 	// Confirm send1 and send2
-	nano::test::confirm(node.ledger, {send1, send2});
+	nano::test::confirm (node.ledger, { send1, send2 });
 
 	node.aggregator.request (request, dummy_channel);
 	ASSERT_TIMELY (3s, node.aggregator.empty ());

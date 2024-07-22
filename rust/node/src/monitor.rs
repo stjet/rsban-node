@@ -3,7 +3,6 @@ use crate::{
     representatives::RepresentativeRegister,
     transport::Network,
     utils::{CancellationToken, Runnable},
-    OnlineReps,
 };
 use rsnano_ledger::Ledger;
 use std::{
@@ -15,7 +14,6 @@ use tracing::info;
 pub struct Monitor {
     ledger: Arc<Ledger>,
     network: Arc<Network>,
-    online_reps: Arc<Mutex<OnlineReps>>,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
     active: Arc<ActiveElections>,
     last_time: Option<Instant>,
@@ -27,14 +25,12 @@ impl Monitor {
     pub fn new(
         ledger: Arc<Ledger>,
         network: Arc<Network>,
-        online_reps: Arc<Mutex<OnlineReps>>,
         representative_register: Arc<Mutex<RepresentativeRegister>>,
         active: Arc<ActiveElections>,
     ) -> Self {
         Self {
             ledger,
             network,
-            online_reps,
             representative_register,
             active,
             last_time: None,
@@ -65,17 +61,13 @@ impl Monitor {
         info!("Peers: {} (realtime: {} | bootstrap: {} | inbound connections: {} | outbound connections: {})",
             channels.total, channels.realtime, channels.bootstrap, channels.inbound, channels.outbound);
 
-        let (quorum, online) = {
-            let online = self.online_reps.lock().unwrap();
-            (online.delta(), online.online())
-        };
-        let peered = self.representative_register.lock().unwrap().total_weight();
+        let quorum_info = self.representative_register.lock().unwrap().quorum_info();
 
         info!(
             "Quorum: {} (stake peered: {} | online stake: {})",
-            quorum.format_balance(0),
-            peered.format_balance(0),
-            online.format_balance(0)
+            quorum_info.quorum_delta.format_balance(0),
+            quorum_info.online_weight.format_balance(0),
+            quorum_info.peers_weight.format_balance(0)
         );
 
         let elections = self.active.info();

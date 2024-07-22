@@ -526,7 +526,12 @@ impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: *mut U256ArrayDto) {
-    let accounts = handle.0.online_reps.lock().unwrap().list();
+    let accounts = handle
+        .0
+        .representative_register
+        .lock()
+        .unwrap()
+        .list_online_reps();
     let data = accounts.iter().map(|a| *a.as_bytes()).collect();
     (*result).initialize(data);
 }
@@ -534,5 +539,10 @@ pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_set_online_weight(handle: &NodeHandle, online: *const u8) {
     let amount = Amount::from_ptr(online);
-    handle.0.online_reps.lock().unwrap().set_online(amount);
+    handle
+        .0
+        .representative_register
+        .lock()
+        .unwrap()
+        .set_online(amount);
 }

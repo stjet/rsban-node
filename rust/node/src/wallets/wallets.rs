@@ -3,10 +3,11 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     cementation::ConfirmingSet,
     config::NodeConfig,
+    representatives::RepresentativeRegister,
     transport::{BufferDropPolicy, Network},
     utils::ThreadPool,
     work::DistributedWorkFactory,
-    NetworkParams, OnlineReps,
+    NetworkParams,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
@@ -51,7 +52,6 @@ pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 pub struct Wallets {
     pub handle: Option<LmdbDatabase>,
     pub send_action_ids_handle: Option<LmdbDatabase>,
-    enable_voting: bool,
     env: Arc<LmdbEnv>,
     pub mutex: Mutex<HashMap<WalletId, Arc<Wallet>>>,
     pub node_config: NodeConfig,
@@ -64,8 +64,8 @@ pub struct Wallets {
     workers: Arc<dyn ThreadPool>,
     pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
-    pub representatives: Mutex<WalletRepresentatives>,
-    online_reps: Arc<Mutex<OnlineReps>>,
+    pub representative_wallets: Mutex<WalletRepresentatives>,
+    representatives: Arc<Mutex<RepresentativeRegister>>,
     kdf: KeyDerivationFunction,
     network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
@@ -74,7 +74,6 @@ pub struct Wallets {
 
 impl Wallets {
     pub fn new(
-        enable_voting: bool,
         env: Arc<LmdbEnv>,
         ledger: Arc<Ledger>,
         node_config: &NodeConfig,
@@ -84,7 +83,7 @@ impl Wallets {
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
-        online_reps: Arc<Mutex<OnlineReps>>,
+        representatives: Arc<Mutex<RepresentativeRegister>>,
         network: Arc<Network>,
         confirming_set: Arc<ConfirmingSet>,
     ) -> anyhow::Result<Self> {
@@ -92,7 +91,6 @@ impl Wallets {
         let mut wallets = Self {
             handle: None,
             send_action_ids_handle: None,
-            enable_voting,
             mutex: Mutex::new(HashMap::new()),
             env,
             node_config: node_config.clone(),
@@ -105,11 +103,11 @@ impl Wallets {
             workers,
             wallet_actions: WalletActionThread::new(),
             block_processor,
-            representatives: Mutex::new(WalletRepresentatives::new(
+            representative_wallets: Mutex::new(WalletRepresentatives::new(
                 node_config.vote_minimum,
                 Arc::clone(&ledger),
             )),
-            online_reps,
+            representatives,
             kdf: kdf.clone(),
             network,
             start_election: Mutex::new(None),
@@ -178,7 +176,7 @@ impl Wallets {
     }
 
     pub fn voting_reps_count(&self) -> u64 {
-        self.representatives.lock().unwrap().voting_reps()
+        self.representative_wallets.lock().unwrap().voting_reps()
     }
 
     pub fn get_store_it<'txn>(
@@ -400,9 +398,14 @@ impl Wallets {
 
     pub fn compute_reps(&self) {
         let wallets_guard = self.mutex.lock().unwrap();
-        let mut reps_guard = self.representatives.lock().unwrap();
+        let mut reps_guard = self.representative_wallets.lock().unwrap();
         reps_guard.clear();
-        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
+        let half_principal_weight = self
+            .representatives
+            .lock()
+            .unwrap()
+            .minimum_principal_weight()
+            / 2;
         let tx = self.env.tx_begin_read();
         for (_, wallet) in wallets_guard.iter() {
             let mut representatives = HashSet::new();
@@ -822,7 +825,7 @@ impl Wallets {
     }
 
     pub fn should_republish_vote(&self, voting_account: Account) -> bool {
-        let guard = self.representatives.lock().unwrap();
+        let guard = self.representative_wallets.lock().unwrap();
         !guard.have_half_rep() && !guard.exists(&voting_account)
     }
 
@@ -1081,8 +1084,13 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, key.into());
         }
-        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
-        let mut reps = self.representatives.lock().unwrap();
+        let half_principal_weight = self
+            .representatives
+            .lock()
+            .unwrap()
+            .minimum_principal_weight()
+            / 2;
+        let mut reps = self.representative_wallets.lock().unwrap();
         if reps.check_rep(key, half_principal_weight) {
             wallet.representatives.lock().unwrap().insert(key);
         }
@@ -1132,11 +1140,16 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, self.ledger.latest_root(&block_tx, &key));
         }
-        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
+        let half_principal_weight = self
+            .representatives
+            .lock()
+            .unwrap()
+            .minimum_principal_weight()
+            / 2;
         // Makes sure that the representatives container will
         // be in sync with any added keys.
         tx.commit();
-        let mut rep_guard = self.representatives.lock().unwrap();
+        let mut rep_guard = self.representative_wallets.lock().unwrap();
         if rep_guard.check_rep(key, half_principal_weight) {
             wallet.representatives.lock().unwrap().insert(key);
         }

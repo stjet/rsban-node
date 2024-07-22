@@ -13,8 +13,8 @@ use crate::{
         create_loopback_channel, get_bootstrap_weights, log_bootstrap_weights,
         AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
         ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
-        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityBucketConfig,
-        PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
+        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
         RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
         VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
         VoteProcessorExt, VoteProcessorQueue, VoteRouter,
@@ -91,7 +91,6 @@ pub struct Node {
     pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
-    pub online_reps: Arc<Mutex<OnlineReps>>,
     pub online_reps_sampler: Arc<OnlineWeightSampler>,
     pub representative_register: Arc<Mutex<RepresentativeRegister>>,
     pub rep_tiers: Arc<RepTiers>,
@@ -284,11 +283,10 @@ impl Node {
         online_reps_sampler.set_max_samples(network_params.node.max_weight_samples);
         let online_reps_sampler = Arc::new(online_reps_sampler);
         online_reps.set_trended(online_reps_sampler.calculate_trend());
-        let online_reps = Arc::new(Mutex::new(online_reps));
 
         let representative_register = Arc::new(Mutex::new(RepresentativeRegister::new(
             rep_weights.clone(),
-            online_reps.clone(),
+            online_reps,
             stats.clone(),
             network_params.network.protocol_info(),
         )));
@@ -296,15 +294,13 @@ impl Node {
         let rep_tiers = Arc::new(RepTiers::new(
             ledger.clone(),
             network_params.clone(),
-            online_reps.clone(),
+            representative_register.clone(),
             stats.clone(),
         ));
 
         let vote_processor_queue = Arc::new(VoteProcessorQueue::new(
             config.vote_processor.clone(),
             stats.clone(),
-            online_reps.clone(),
-            ledger.clone(),
             rep_tiers.clone(),
         ));
 
@@ -350,7 +346,6 @@ impl Node {
 
         let wallets = Arc::new(
             Wallets::new(
-                config.enable_voting,
                 wallets_env,
                 ledger.clone(),
                 &config,
@@ -360,7 +355,7 @@ impl Node {
                 network_params.clone(),
                 workers.clone(),
                 block_processor.clone(),
-                online_reps.clone(),
+                representative_register.clone(),
                 network.clone(),
                 confirming_set.clone(),
             )
@@ -409,7 +404,7 @@ impl Node {
         let vote_applier = Arc::new(VoteApplier::new(
             ledger.clone(),
             network_params.clone(),
-            online_reps.clone(),
+            representative_register.clone(),
             stats.clone(),
             vote_generators.clone(),
             block_processor.clone(),
@@ -445,13 +440,10 @@ impl Node {
 
         let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
-            online_reps.clone(),
             wallets.clone(),
             config.clone(),
             ledger.clone(),
             confirming_set.clone(),
-            workers.clone(),
-            history.clone(),
             block_processor.clone(),
             vote_generators.clone(),
             network.clone(),
@@ -526,7 +518,6 @@ impl Node {
             representative_register.clone(),
             stats.clone(),
             config.rep_crawler_query_timeout,
-            online_reps.clone(),
             config.clone(),
             network_params.clone(),
             network.clone(),
@@ -563,7 +554,7 @@ impl Node {
             stats.clone(),
             vote_cache.clone(),
             confirming_set.clone(),
-            online_reps.clone(),
+            representative_register.clone(),
         ));
 
         let manual_scheduler = Arc::new(ManualScheduler::new(
@@ -816,13 +807,13 @@ impl Node {
         }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
-        let online_reps_w = Arc::downgrade(&online_reps);
+        let reps_w = Arc::downgrade(&representative_register);
         vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {
             debug_assert!(code != VoteCode::Invalid);
             let Some(rep_crawler) = rep_crawler_w.upgrade() else {
                 return;
             };
-            let Some(online_reps) = online_reps_w.upgrade() else {
+            let Some(reps) = reps_w.upgrade() else {
                 return;
             };
             let Some(channel) = &channel else {
@@ -836,7 +827,7 @@ impl Node {
             let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.clone());
             if active_in_rep_crawler {
                 // Representative is defined as online if replying to live votes or rep_crawler queries
-                online_reps.lock().unwrap().observe(vote.voting_account);
+                reps.lock().unwrap().observe(vote.voting_account);
             }
         }));
 
@@ -1028,7 +1019,6 @@ impl Node {
             Monitor::new(
                 ledger.clone(),
                 network.clone(),
-                online_reps.clone(),
                 representative_register.clone(),
                 active_elections.clone(),
             ),
@@ -1063,7 +1053,6 @@ impl Node {
             work,
             async_rt,
             bootstrap_server,
-            online_reps,
             online_reps_sampler,
             representative_register,
             rep_tiers,
@@ -1125,7 +1114,7 @@ impl Node {
                 self.rep_crawler.collect_container_info("rep_crawler"),
                 self.block_processor
                     .collect_container_info("block_processor"),
-                self.online_reps
+                self.representative_register
                     .lock()
                     .unwrap()
                     .collect_container_info("online_reps"),
@@ -1378,10 +1367,19 @@ impl NodeExt for Arc<Node> {
     }
 
     fn ongoing_online_weight_calculation(&self) {
-        let online = self.online_reps.lock().unwrap().online();
+        let online = self
+            .representative_register
+            .lock()
+            .unwrap()
+            .quorum_info()
+            .online_weight;
+
         self.online_reps_sampler.sample(online);
         let trend = self.online_reps_sampler.calculate_trend();
-        self.online_reps.lock().unwrap().set_trended(trend);
+        self.representative_register
+            .lock()
+            .unwrap()
+            .set_trended(trend);
     }
 
     fn backup_wallet(&self) {

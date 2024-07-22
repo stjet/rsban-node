@@ -4,14 +4,14 @@ use crate::{
     transport::ChannelEnum,
     OnlineReps, ONLINE_WEIGHT_QUORUM,
 };
-use rsnano_core::{Account, Amount};
+use rsnano_core::{utils::ContainerInfoComponent, Account, Amount};
 use rsnano_ledger::RepWeightCache;
 use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
     mem::size_of,
     net::SocketAddrV6,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::{Duration, Instant},
 };
 use tracing::info;
@@ -20,7 +20,7 @@ pub struct RepresentativeRegister {
     by_account: HashMap<Account, Representative>,
     by_channel_id: HashMap<usize, Vec<Account>>,
     rep_weights: Arc<RepWeightCache>,
-    pub online_reps: Arc<Mutex<OnlineReps>>,
+    online_reps: OnlineReps,
     protocol_info: ProtocolInfo,
     stats: Arc<Stats>,
 }
@@ -39,7 +39,7 @@ impl RepresentativeRegister {
 
     pub fn new(
         rep_weights: Arc<RepWeightCache>,
-        online_reps: Arc<Mutex<OnlineReps>>,
+        online_reps: OnlineReps,
         stats: Arc<Stats>,
         protocol_info: ProtocolInfo,
     ) -> Self {
@@ -51,6 +51,10 @@ impl RepresentativeRegister {
             by_account: HashMap::new(),
             by_channel_id: HashMap::new(),
         }
+    }
+
+    pub fn observe(&mut self, rep_account: Account) {
+        self.online_reps.observe(rep_account);
     }
 
     /// Returns the old channel if the representative was already in the collection
@@ -102,10 +106,7 @@ impl RepresentativeRegister {
     /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel_id: usize) -> bool {
         if let Some(existing) = self.by_channel_id.get(&channel_id) {
-            let min_weight = {
-                let guard = self.online_reps.lock().unwrap();
-                guard.minimum_principal_weight()
-            };
+            let min_weight = { self.online_reps.minimum_principal_weight() };
             existing
                 .iter()
                 .any(|account| self.rep_weights.weight(account) >= min_weight)
@@ -175,7 +176,7 @@ impl RepresentativeRegister {
     pub fn principal_representatives(&self) -> Vec<Representative> {
         self.representatives_filter(
             usize::MAX,
-            self.online_reps.lock().unwrap().minimum_principal_weight(),
+            self.online_reps.minimum_principal_weight(),
             None,
         )
     }
@@ -212,17 +213,44 @@ impl RepresentativeRegister {
         self.by_account.len()
     }
 
+    pub fn trended_weight(&self) -> Amount {
+        self.online_reps.trended()
+    }
+
+    pub fn quorum_delta(&self) -> Amount {
+        self.online_reps.delta()
+    }
+
+    pub fn minimum_principal_weight(&self) -> Amount {
+        self.online_reps.minimum_principal_weight()
+    }
+
+    pub fn set_online(&mut self, amount: Amount) {
+        self.online_reps.set_online(amount)
+    }
+
+    pub fn list_online_reps(&self) -> Vec<Account> {
+        self.online_reps.list()
+    }
+
+    pub fn set_trended(&mut self, trended: Amount) {
+        self.online_reps.set_trended(trended);
+    }
+
     pub fn quorum_info(&self) -> ConfirmationQuorum {
-        let online = self.online_reps.lock().unwrap();
         ConfirmationQuorum {
-            quorum_delta: online.delta(),
+            quorum_delta: self.online_reps.delta(),
             online_weight_quorum_percent: ONLINE_WEIGHT_QUORUM,
-            online_weight_minimum: online.online_weight_minimum(),
-            online_weight: online.online(),
-            trended_weight: online.trended(),
+            online_weight_minimum: self.online_reps.online_weight_minimum(),
+            online_weight: self.online_reps.online(),
+            trended_weight: self.online_reps.trended(),
             peers_weight: self.total_weight(),
-            minimum_principal_weight: online.minimum_principal_weight(),
+            minimum_principal_weight: self.online_reps.minimum_principal_weight(),
         }
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        self.online_reps.collect_container_info(name)
     }
 }
 

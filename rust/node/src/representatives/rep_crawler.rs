@@ -8,7 +8,7 @@ use crate::{
         TransportType,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime},
-    NetworkParams, OnlineReps,
+    NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
@@ -32,7 +32,6 @@ use tracing::{debug, error, info, warn};
 pub struct RepCrawler {
     rep_crawler_impl: Mutex<RepCrawlerImpl>,
     representative_register: Arc<Mutex<RepresentativeRegister>>,
-    online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     config: NodeConfig,
     network_params: NetworkParams,
@@ -52,7 +51,6 @@ impl RepCrawler {
         representative_register: Arc<Mutex<RepresentativeRegister>>,
         stats: Arc<Stats>,
         query_timeout: Duration,
-        online_reps: Arc<Mutex<OnlineReps>>,
         config: NodeConfig,
         network_params: NetworkParams,
         network: Arc<Network>,
@@ -64,7 +62,6 @@ impl RepCrawler {
         let is_dev_network = network_params.network.is_dev_network();
         Self {
             representative_register: Arc::clone(&representative_register),
-            online_reps,
             stats: Arc::clone(&stats),
             config,
             network_params,
@@ -215,8 +212,13 @@ impl RepCrawler {
         while !guard.stopped {
             drop(guard);
 
-            let current_total_weight = self.representative_register.lock().unwrap().total_weight();
-            let sufficient_weight = current_total_weight > self.online_reps.lock().unwrap().delta();
+            let current_total_weight;
+            let sufficient_weight;
+            {
+                let reps = self.representative_register.lock().unwrap();
+                current_total_weight = reps.total_weight();
+                sufficient_weight = current_total_weight > reps.quorum_delta();
+            }
 
             // If online weight drops below minimum, reach out to preconfigured peers
             if !sufficient_weight {
@@ -268,7 +270,10 @@ impl RepCrawler {
         // normally the rep_crawler only tracks principal reps but it can be made to track
         // reps with less weight by setting rep_crawler_weight_minimum to a low value
         let minimum = std::cmp::min(
-            self.online_reps.lock().unwrap().minimum_principal_weight(),
+            self.representative_register
+                .lock()
+                .unwrap()
+                .minimum_principal_weight(),
             self.config.rep_crawler_weight_minimum,
         );
 

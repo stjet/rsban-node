@@ -2,8 +2,8 @@ use crate::{
     cementation::ConfirmingSet,
     config::HintedSchedulerConfig,
     consensus::ActiveElectionsExt,
+    representatives::RepresentativeRegister,
     stats::{DetailType, StatType, Stats},
-    OnlineReps,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -34,7 +34,7 @@ pub struct HintedScheduler {
     confirming_set: Arc<ConfirmingSet>,
     stats: Arc<Stats>,
     vote_cache: Arc<Mutex<VoteCache>>,
-    online_reps: Arc<Mutex<OnlineReps>>,
+    representatives: Arc<Mutex<RepresentativeRegister>>,
     stopped: AtomicBool,
     stopped_mutex: Mutex<()>,
     cooldowns: Mutex<OrderedCooldowns>,
@@ -48,7 +48,7 @@ impl HintedScheduler {
         stats: Arc<Stats>,
         vote_cache: Arc<Mutex<VoteCache>>,
         confirming_set: Arc<ConfirmingSet>,
-        online_reps: Arc<Mutex<OnlineReps>>,
+        representatives: Arc<Mutex<RepresentativeRegister>>,
     ) -> Self {
         Self {
             thread: Mutex::new(None),
@@ -59,7 +59,7 @@ impl HintedScheduler {
             stats,
             vote_cache,
             confirming_set,
-            online_reps,
+            representatives,
             stopped: AtomicBool::new(false),
             stopped_mutex: Mutex::new(()),
             cooldowns: Mutex::new(OrderedCooldowns::new()),
@@ -224,12 +224,12 @@ impl HintedScheduler {
     }
 
     fn tally_threshold(&self) -> Amount {
-        (self.online_reps.lock().unwrap().trended() / 100)
+        (self.representatives.lock().unwrap().trended_weight() / 100)
             * self.config.hinting_theshold_percent as u128
     }
 
     fn final_tally_threshold(&self) -> Amount {
-        self.online_reps.lock().unwrap().delta()
+        self.representatives.lock().unwrap().quorum_delta()
     }
 
     fn cooldown(&self, hash: BlockHash) -> bool {

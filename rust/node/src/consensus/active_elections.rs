@@ -1,7 +1,7 @@
 use super::{
     confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
-    ElectionState, ElectionStatus, ElectionStatusType, LocalVoteHistory, RecentlyConfirmedCache,
-    VoteApplier, VoteCache, VoteCacheProcessor, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
+    ElectionState, ElectionStatus, ElectionStatusType, RecentlyConfirmedCache, VoteApplier,
+    VoteCache, VoteCacheProcessor, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -11,9 +11,9 @@ use crate::{
     representatives::RepresentativeRegister,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BufferDropPolicy, Network},
-    utils::{HardenedConstants, ThreadPool},
+    utils::HardenedConstants,
     wallets::Wallets,
-    NetworkParams, OnlineReps,
+    NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
@@ -94,17 +94,14 @@ pub struct ActiveElections {
     pub mutex: Mutex<ActiveElectionsState>,
     pub condition: Condvar,
     network_params: NetworkParams,
-    pub online_reps: Arc<Mutex<OnlineReps>>,
     wallets: Arc<Wallets>,
     node_config: NodeConfig,
     config: ActiveElectionsConfig,
     ledger: Arc<Ledger>,
     confirming_set: Arc<ConfirmingSet>,
-    workers: Arc<dyn ThreadPool>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
     /// Helper container for storing recently cemented elections (a block from election might be confirmed but not yet cemented by confirmation height processor)
     pub recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
-    history: Arc<LocalVoteHistory>,
     block_processor: Arc<BlockProcessor>,
     vote_generators: Arc<VoteGenerators>,
     network: Arc<Network>,
@@ -127,13 +124,10 @@ pub struct ActiveElections {
 impl ActiveElections {
     pub(crate) fn new(
         network_params: NetworkParams,
-        online_reps: Arc<Mutex<OnlineReps>>,
         wallets: Arc<Wallets>,
         node_config: NodeConfig,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
-        workers: Arc<dyn ThreadPool>,
-        history: Arc<LocalVoteHistory>,
         block_processor: Arc<BlockProcessor>,
         vote_generators: Arc<VoteGenerators>,
         network: Arc<Network>,
@@ -159,18 +153,15 @@ impl ActiveElections {
             }),
             condition: Condvar::new(),
             network_params,
-            online_reps,
             wallets,
             ledger,
             confirming_set,
-            workers,
             recently_confirmed,
             recently_cemented: Arc::new(Mutex::new(BoundedVecDeque::new(
                 node_config.active_elections.confirmation_history_size,
             ))),
             config: node_config.active_elections.clone(),
             node_config,
-            history,
             block_processor,
             vote_generators,
             network,
@@ -1305,10 +1296,10 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         } else {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
-                let online_reps = Arc::clone(&self.online_reps);
+                let representatives = self.representative_register.clone();
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    online_reps.lock().unwrap().observe(rep);
+                    representatives.lock().unwrap().observe(rep);
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);

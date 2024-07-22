@@ -360,7 +360,7 @@ impl Telemetry {
     }
 }
 
-pub const MAJOR_VERSION: u8 = 27; // TODO: get this from cmake
+pub const MAJOR_VERSION: u8 = 28; // TODO: get this from cmake
 pub const MINOR_VERSION: u8 = 0; // TODO: get this from cmake
 pub const PATCH_VERSION: u8 = 0; // TODO: get this from cmake
 pub const PRE_RELEASE_VERSION: u8 = 99; // TODO: get this from cmake

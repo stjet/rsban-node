@@ -514,6 +514,7 @@ pub struct ConfirmationQuorumDto {
     pub online_weight: [u8; 16],
     pub trended_weight: [u8; 16],
     pub peers_weight: [u8; 16],
+    pub minimum_principal_weight: [u8; 16],
 }
 
 impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
@@ -525,6 +526,7 @@ impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
             online_weight: value.online_weight.to_be_bytes(),
             trended_weight: value.trended_weight.to_be_bytes(),
             peers_weight: value.peers_weight.to_be_bytes(),
+            minimum_principal_weight: value.minimum_principal_weight.to_be_bytes(),
         }
     }
 }

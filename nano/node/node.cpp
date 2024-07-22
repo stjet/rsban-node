@@ -321,7 +321,7 @@ nano::uint128_t nano::node::weight (nano::account const & account_a)
 
 nano::uint128_t nano::node::minimum_principal_weight ()
 {
-	return online_reps.minimum_principal_weight ();
+	return quorum().minimum_principal_weight.number();
 }
 
 void nano::node::bootstrap_wallet ()
@@ -524,6 +524,7 @@ nano::ConfirmationQuorum nano::node::quorum() const{
 	result.online_weight =nano::amount::from_bytes(dto.online_weight);
 	result.trended_weight = nano::amount::from_bytes(dto.trended_weight);
 	result.peers_weight =nano::amount::from_bytes(dto.peers_weight);
+	result.minimum_principal_weight =nano::amount::from_bytes(dto.minimum_principal_weight);
 	return result;
 }
 

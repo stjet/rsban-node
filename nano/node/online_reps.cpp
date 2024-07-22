@@ -16,27 +16,6 @@ nano::online_reps::~online_reps ()
 	rsnano::rsn_online_reps_destroy (handle);
 }
 
-nano::uint128_t nano::online_reps::minimum_principal_weight () const
-{
-	nano::amount minimum;
-	rsnano::rsn_online_reps_minimum_principal_weight (handle, minimum.bytes.data ());
-	return minimum.number ();
-}
-
-nano::uint128_t nano::online_reps::trended () const
-{
-	nano::amount trended;
-	rsnano::rsn_online_reps_trended (handle, trended.bytes.data ());
-	return trended.number ();
-}
-
-nano::uint128_t nano::online_reps::online () const
-{
-	nano::amount online;
-	rsnano::rsn_online_reps_online (handle, online.bytes.data ());
-	return online.number ();
-}
-
 void nano::online_reps::set_online (nano::uint128_t online_a)
 {
 	nano::amount online_weight{ online_a };

@@ -221,6 +221,7 @@ impl RepresentativeRegister {
             online_weight: online.online(),
             trended_weight: online.trended(),
             peers_weight: self.total_weight(),
+            minimum_principal_weight: online.minimum_principal_weight(),
         }
     }
 }
@@ -232,4 +233,5 @@ pub struct ConfirmationQuorum {
     pub online_weight: Amount,
     pub trended_weight: Amount,
     pub peers_weight: Amount,
+    pub minimum_principal_weight: Amount,
 }

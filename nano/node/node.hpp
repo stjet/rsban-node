@@ -63,6 +63,7 @@ public:
     nano::amount online_weight;
     nano::amount trended_weight;
     nano::amount peers_weight;
+    nano::amount minimum_principal_weight;
 };
 
 class node final : public std::enable_shared_from_this<nano::node>

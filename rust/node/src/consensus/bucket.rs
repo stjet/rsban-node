@@ -48,7 +48,7 @@ type Priority = u64;
 
 /// A struct which holds an ordered set of blocks to be scheduled, ordered by their block arrival time
 /// TODO: This combines both block ordering and election management, which makes the class harder to test. The functionality should be split.
-pub struct NewBucket {
+pub struct Bucket {
     minimum_balance: Amount,
     config: PriorityBucketConfig,
     active: Arc<ActiveElections>,
@@ -56,7 +56,7 @@ pub struct NewBucket {
     data: Mutex<BucketData>,
 }
 
-impl NewBucket {
+impl Bucket {
     pub fn new(
         minimum_balance: Amount,
         config: PriorityBucketConfig,
@@ -160,7 +160,7 @@ pub(crate) trait BucketExt {
     fn activate(&self) -> bool;
 }
 
-impl BucketExt for Arc<NewBucket> {
+impl BucketExt for Arc<Bucket> {
     fn activate(&self) -> bool {
         let mut guard = self.data.lock().unwrap();
 

@@ -1,4 +1,4 @@
-use super::{ActiveElections, BucketExt, NewBucket, PriorityBucketConfig};
+use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -19,7 +19,7 @@ pub struct PriorityScheduler {
     condition: Condvar,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    buckets: Vec<Arc<NewBucket>>,
+    buckets: Vec<Arc<Bucket>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     cleanup_thread: Mutex<Option<JoinHandle<()>>>,
 }
@@ -28,13 +28,13 @@ fn create_buckets(
     config: PriorityBucketConfig,
     active: Arc<ActiveElections>,
     stats: Arc<Stats>,
-) -> Vec<Arc<NewBucket>> {
+) -> Vec<Arc<Bucket>> {
     let mut buckets = Vec::new();
     let mut build_region = |begin: u128, end: u128, count: usize| {
         let width = (end - begin) / (count as u128);
         for i in 0..count {
             let minimum_balance = begin + (i as u128 * width);
-            buckets.push(Arc::new(NewBucket::new(
+            buckets.push(Arc::new(Bucket::new(
                 minimum_balance.into(),
                 config.clone(),
                 active.clone(),
@@ -166,7 +166,7 @@ impl PriorityScheduler {
         true // Activated
     }
 
-    fn find_bucket(&self, priority: Amount) -> &NewBucket {
+    fn find_bucket(&self, priority: Amount) -> &Bucket {
         let mut result = &self.buckets[0];
         for bucket in &self.buckets[1..] {
             if bucket.can_accept(priority) {

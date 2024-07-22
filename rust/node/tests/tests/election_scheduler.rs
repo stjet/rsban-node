@@ -1,6 +1,6 @@
 use super::helpers::System;
 use rsnano_core::Amount;
-use rsnano_node::consensus::{NewBucket, PriorityBucketConfig};
+use rsnano_node::consensus::{Bucket, PriorityBucketConfig};
 
 mod bucket {
     use std::sync::Arc;
@@ -14,7 +14,7 @@ mod bucket {
         let mut system = System::new();
         let node = system.make_node();
 
-        let bucket = NewBucket::new(
+        let bucket = Bucket::new(
             Amount::nano(1000),
             PriorityBucketConfig::default(),
             node.active.clone(),
@@ -32,7 +32,7 @@ mod bucket {
         let mut system = System::new();
         let node = system.make_node();
 
-        let bucket = NewBucket::new(
+        let bucket = Bucket::new(
             Amount::zero(),
             PriorityBucketConfig::default(),
             node.active.clone(),
@@ -48,7 +48,7 @@ mod bucket {
         let mut system = System::new();
         let node = system.make_node();
 
-        let bucket = NewBucket::new(
+        let bucket = Bucket::new(
             Amount::zero(),
             PriorityBucketConfig::default(),
             node.active.clone(),
@@ -65,7 +65,7 @@ mod bucket {
         let mut system = System::new();
         let node = system.make_node();
 
-        let bucket = NewBucket::new(
+        let bucket = Bucket::new(
             Amount::zero(),
             PriorityBucketConfig::default(),
             node.active.clone(),
@@ -100,7 +100,7 @@ mod bucket {
             max_blocks: 2,
             ..Default::default()
         };
-        let bucket = NewBucket::new(
+        let bucket = Bucket::new(
             Amount::zero(),
             config,
             node.active.clone(),

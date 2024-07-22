@@ -38,8 +38,8 @@ impl CreateWalletArgs {
         let password = self.password.clone().unwrap_or_default();
 
         wallets
-            .enter_password(wallet_id, &password)
-            .map_err(|e| anyhow!("Failed to enter password: {:?}", e))?;
+            .rekey(&wallet_id, &password)
+            .map_err(|e| anyhow!("Failed to set wallet password: {:?}", e))?;
 
         if let Some(seed) = &self.seed {
             let key = RawKey::decode_hex(seed)?;

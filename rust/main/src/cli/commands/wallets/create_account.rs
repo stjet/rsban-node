@@ -30,10 +30,7 @@ impl CreateAccountArgs {
 
         let wallet = WalletId::decode_hex(&self.wallet)?;
 
-        let mut password = String::new();
-        if let Some(pass) = &self.password {
-            password = pass.clone();
-        };
+        let password = self.password.clone().unwrap_or_default();
 
         wallets.ensure_wallet_is_unlocked(wallet, &password);
 

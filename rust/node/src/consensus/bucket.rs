@@ -10,6 +10,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[derive(Clone)]
 pub(crate) struct PriorityBucketConfig {
     /// Maximum number of blocks to sort by priority per bucket.
     max_blocks: usize,
@@ -44,7 +45,30 @@ pub(crate) struct NewBucket {
 }
 
 impl NewBucket {
-    fn available(&self) -> bool {
+    pub fn new(
+        minimum_balance: Amount,
+        config: PriorityBucketConfig,
+        active: Arc<ActiveElections>,
+        stats: Arc<Stats>,
+    ) -> Self {
+        Self {
+            minimum_balance,
+            config,
+            active,
+            stats: stats.clone(),
+            data: Mutex::new(BucketData {
+                queue: BTreeSet::new(),
+                elections: OrderedElections::default(),
+                stats,
+            }),
+        }
+    }
+
+    pub fn can_accept(&self, priority: Amount) -> bool {
+        priority >= self.minimum_balance
+    }
+
+    pub fn available(&self) -> bool {
         let guard = self.data.lock().unwrap();
         if let Some(first) = guard.queue.first() {
             self.election_vacancy(first.time, &guard)
@@ -84,14 +108,14 @@ impl NewBucket {
         }
     }
 
-    fn update(&self) {
+    pub fn update(&self) {
         let guard = self.data.lock().unwrap();
         if self.election_overfill(&guard) {
             guard.cancel_lowest_election();
         }
     }
 
-    fn push(&self, time: u64, block: Arc<BlockEnum>) -> bool {
+    pub fn push(&self, time: u64, block: Arc<BlockEnum>) -> bool {
         let hash = block.hash();
         let mut guard = self.data.lock().unwrap();
         let inserted = guard.queue.insert(BlockEntry { time, block });
@@ -106,15 +130,15 @@ impl NewBucket {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.data.lock().unwrap().queue.len()
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    fn election_count(&self) -> usize {
+    pub fn election_count(&self) -> usize {
         self.data.lock().unwrap().elections.len()
     }
 
@@ -124,7 +148,7 @@ impl NewBucket {
     }
 }
 
-trait BucketExt {
+pub(crate) trait BucketExt {
     fn activate(&self) -> bool;
 }
 

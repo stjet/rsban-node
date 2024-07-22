@@ -13,8 +13,8 @@ use crate::{
         create_loopback_channel, get_bootstrap_weights, log_bootstrap_weights,
         AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
         ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
-        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
-        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityBucketConfig,
+        PriorityScheduler, PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
         RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
         VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
         VoteProcessorExt, VoteProcessorQueue, VoteRouter,
@@ -581,6 +581,7 @@ impl Node {
         ));
 
         let priority_scheduler = Arc::new(PriorityScheduler::new(
+            PriorityBucketConfig::default(),
             ledger.clone(),
             stats.clone(),
             active_elections.clone(),

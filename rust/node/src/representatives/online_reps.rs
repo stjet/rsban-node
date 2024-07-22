@@ -19,7 +19,6 @@ pub struct OnlineReps {
     reps: OnlineRepsContainer,
     trended: Amount,
     online: Amount,
-    minimum: Amount,
     weight_period: Duration,
     online_weight_minimum: Amount,
 }
@@ -31,7 +30,6 @@ impl OnlineReps {
             reps: OnlineRepsContainer::new(),
             trended: Amount::zero(),
             online: Amount::zero(),
-            minimum: Amount::zero(),
             weight_period: Duration::from_secs(5 * 60),
             online_weight_minimum: DEFAULT_ONLINE_WEIGHT_MINIMUM,
         }

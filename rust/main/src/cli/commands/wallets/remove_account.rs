@@ -25,9 +25,7 @@ impl RemoveAccountArgs {
     pub(crate) fn remove_account(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
@@ -35,8 +33,7 @@ impl RemoveAccountArgs {
 
         wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
-        let account = Account::decode_hex(&self.account)
-            .map_err(|e| anyhow!("Account is invalid: {:?}", e))?;
+        let account = Account::decode_hex(&self.account)?;
 
         wallets
             .remove_account(&wallet_id, &account)

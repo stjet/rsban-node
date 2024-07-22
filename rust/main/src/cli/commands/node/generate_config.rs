@@ -18,6 +18,7 @@ pub(crate) struct GenerateConfigArgs {
     //log: bool,
     #[arg(long)]
     use_defaults: bool,
+    // create the file?
     // network
 }
 

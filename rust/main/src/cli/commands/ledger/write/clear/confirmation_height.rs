@@ -41,8 +41,7 @@ impl ConfirmationHeightArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let confirmation_height_store = LmdbConfirmationHeightStore::new(env.clone())
-            .map_err(|e| anyhow!("Failed to open confirmation height database: {:?}", e))?;
+        let confirmation_height_store = LmdbConfirmationHeightStore::new(env.clone())?;
 
         let mut txn = env.tx_begin_write();
 

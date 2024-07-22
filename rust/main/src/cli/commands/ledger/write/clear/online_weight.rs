@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_store_lmdb::{LmdbEnv, LmdbPeerStore};
 use std::sync::Arc;
@@ -20,8 +20,7 @@ impl OnlineWeightArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let online_weight_store = LmdbPeerStore::new(env.clone())
-            .map_err(|e| anyhow!("Failed to open online weight database: {:?}", e))?;
+        let online_weight_store = LmdbPeerStore::new(env.clone())?;
 
         let mut txn = env.tx_begin_write();
 

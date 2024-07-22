@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::Root;
 use rsnano_store_lmdb::{LmdbEnv, LmdbFinalVoteStore};
@@ -28,8 +28,7 @@ impl FinalVoteArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let final_vote_store = LmdbFinalVoteStore::new(env.clone())
-            .map_err(|e| anyhow!("Failed to open final vote database: {:?}", e))?;
+        let final_vote_store = LmdbFinalVoteStore::new(env.clone())?;
 
         let mut txn = env.tx_begin_write();
 

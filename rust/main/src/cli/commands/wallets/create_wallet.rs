@@ -26,9 +26,7 @@ impl CreateWalletArgs {
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         wallets.create(wallet_id);
 
@@ -41,12 +39,11 @@ impl CreateWalletArgs {
             .map_err(|e| anyhow!("Failed to enter password: {:?}", e))?;
 
         if let Some(seed) = &self.seed {
-            let key = RawKey::decode_hex(seed)
-                .map_err(|e| anyhow!("Failed to enter password: {:?}", e))?;
+            let key = RawKey::decode_hex(seed)?;
 
             wallets
                 .change_seed(wallet_id, &key, 0)
-                .map_err(|e| anyhow!("Failed to change seed: {:?}", e))?;
+                .map_err(|e| anyhow!("Failed to set wallet seed: {:?}", e))?;
         }
 
         Ok(())

@@ -36,9 +36,7 @@ impl ImportKeysArgs {
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 

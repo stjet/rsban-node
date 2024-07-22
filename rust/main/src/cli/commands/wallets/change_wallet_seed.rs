@@ -23,17 +23,13 @@ pub(crate) struct ChangeWalletSeedArgs {
 
 impl ChangeWalletSeedArgs {
     pub(crate) fn change_wallet_seed(&self) -> Result<()> {
-        let wallet_id = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let seed =
-            RawKey::decode_hex(&self.seed).map_err(|e| anyhow!("Seed is invalid: {:?}", e))?;
+        let seed = RawKey::decode_hex(&self.seed)?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 
@@ -41,7 +37,7 @@ impl ChangeWalletSeedArgs {
 
         wallets
             .change_seed(wallet_id, &seed, 0)
-            .map_err(|e| anyhow!("Failed to change seed: {:?}", e))?;
+            .map_err(|e| anyhow!("Failed to change wallet seed: {:?}", e))?;
 
         Ok(())
     }

@@ -20,11 +20,10 @@ impl SnapshotArgs {
             "Database snapshot of {:?} to {:?} in progress",
             source_path, snapshot_path
         );
+
         println!("This may take a while...");
 
-        let store = LmdbStore::open(&source_path)
-            .build()
-            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
+        let store = LmdbStore::open(&source_path).build()?;
 
         store.copy_db(&snapshot_path)?;
 

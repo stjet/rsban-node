@@ -23,16 +23,13 @@ pub(crate) struct AddKeyArgs {
 
 impl AddKeyArgs {
     pub(crate) fn add_key(&self) -> Result<()> {
-        let wallet_id = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let key = RawKey::decode_hex(&self.key).map_err(|e| anyhow!("Key is invalid: {:?}", e))?;
+        let key = RawKey::decode_hex(&self.key)?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 
@@ -40,7 +37,7 @@ impl AddKeyArgs {
 
         wallets
             .insert_adhoc2(&wallet_id, &key, false)
-            .map_err(|e| anyhow!("Failed to insert adhoc key: {:?}", e))?;
+            .map_err(|e| anyhow!("Failed to insert key: {:?}", e))?;
 
         Ok(())
     }

@@ -21,9 +21,7 @@ impl ListWalletsArgs {
     pub(crate) fn list_wallets(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 

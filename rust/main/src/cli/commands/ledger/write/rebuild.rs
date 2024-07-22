@@ -15,9 +15,7 @@ impl RebuildArgs {
     pub(crate) fn rebuild(&self) -> anyhow::Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        let store = LmdbStore::open(&path)
-            .build()
-            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
+        let store = LmdbStore::open(&path).build()?;
 
         store.rebuild_db(&mut store.tx_begin_write())
     }

@@ -17,8 +17,7 @@ impl SendIdsArgs {
     pub(crate) fn send_ids(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets =
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?;
+        let wallets = Wallets::new_null(&path)?;
 
         wallets.clear_send_ids();
 

@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_store_lmdb::{LmdbEnv, LmdbPeerStore};
 use std::sync::Arc;
@@ -20,12 +20,11 @@ impl PeersArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let peers_store = LmdbPeerStore::new(env.clone())
-            .map_err(|e| anyhow!("Failed to open peers database: {:?}", e))?;
+        let peer_store = LmdbPeerStore::new(env.clone())?;
 
         let mut txn = env.tx_begin_write();
 
-        peers_store.clear(&mut txn);
+        peer_store.clear(&mut txn);
 
         println!("{}", "Peers were cleared from the database");
 

@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::WalletId;
 use rsnano_node::wallets::{Wallets, WalletsExt};
@@ -23,12 +23,9 @@ impl DestroyWalletArgs {
     pub(crate) fn destroy_wallet(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
-        let wallet_id = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
         let password = self.password.clone().unwrap_or_default();
 

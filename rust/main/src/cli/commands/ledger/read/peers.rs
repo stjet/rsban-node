@@ -34,12 +34,12 @@ impl PeersArgs {
 
             let env = Arc::new(LmdbEnv::new(&path)?);
 
-            let store = LmdbPeerStore::new(env.clone())
+            let peer_store = LmdbPeerStore::new(env.clone())
                 .map_err(|e| anyhow!("Error opening store: {:?}", e))?;
 
             let mut txn = env.tx_begin_read();
 
-            for peer in store.iter(&mut txn) {
+            for peer in peer_store.iter(&mut txn) {
                 println!("{:?}", peer);
             }
         }

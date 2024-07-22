@@ -23,12 +23,9 @@ impl DecryptWalletArgs {
     pub(crate) fn decrypt_wallet(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallet_id = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 

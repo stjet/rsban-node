@@ -23,12 +23,9 @@ impl CreateAccountArgs {
     pub(crate) fn create_account(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
-        let wallet = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet = WalletId::decode_hex(&self.wallet)?;
 
         let mut password = String::new();
         if let Some(pass) = &self.password {

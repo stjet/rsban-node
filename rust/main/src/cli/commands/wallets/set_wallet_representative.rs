@@ -23,17 +23,13 @@ pub(crate) struct SetWalletRepresentativeArgs {
 
 impl SetWalletRepresentativeArgs {
     pub(crate) fn set_representative_wallet(&self) -> Result<()> {
-        let wallet_id = WalletId::decode_hex(&self.wallet)
-            .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+        let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let representative = Account::decode_hex(&self.account)
-            .map_err(|e| anyhow!("Account is invalid: {:?}", e))?;
+        let representative = Account::decode_hex(&self.account)?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let wallets = Arc::new(Wallets::new_null(&path)?);
 
         let password = self.password.clone().unwrap_or_default();
 
@@ -41,7 +37,7 @@ impl SetWalletRepresentativeArgs {
 
         wallets
             .set_representative(wallet_id, representative, false)
-            .map_err(|e| anyhow!("Failed to set representative: {:?}", e))?;
+            .map_err(|e| anyhow!("Failed to set wallet representative: {:?}", e))?;
 
         Ok(())
     }

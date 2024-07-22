@@ -3,6 +3,7 @@ use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::WalletId;
 use rsnano_node::wallets::{Wallets, WalletsExt};
+use rsnano_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -23,7 +24,9 @@ impl DestroyWalletArgs {
     pub(crate) fn destroy_wallet(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(Wallets::new_null(&path)?);
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let wallets = Arc::new(Wallets::new_with_env(env)?);
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 

@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::WalletId;
 use rsnano_node::wallets::{Wallets, WalletsExt};
+use rsnano_store_lmdb::LmdbEnv;
 use std::{fs::File, io::Read, path::PathBuf, sync::Arc};
 
 #[derive(Parser)]
@@ -36,7 +37,9 @@ impl ImportKeysArgs {
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let wallets = Arc::new(Wallets::new_null(&path)?);
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let wallets = Arc::new(Wallets::new_with_env(env)?);
 
         let password = self.password.clone().unwrap_or_default();
 

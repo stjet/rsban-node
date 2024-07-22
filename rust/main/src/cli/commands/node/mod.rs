@@ -5,6 +5,7 @@ use generate_config::GenerateConfigArgs;
 use initialize::InitializeArgs;
 use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, SendBlock};
 use rsnano_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
+use rsnano_store_lmdb::LmdbEnv;
 use run_daemon::RunDaemonArgs;
 use std::{sync::Arc, time::Instant};
 use update_config::UpdateConfigArgs;
@@ -64,11 +65,11 @@ impl NodeCommand {
     }
 
     fn diagnostics() -> Result<()> {
-        let path = get_path(&None, &None);
+        let path = get_path(&None, &None).join("wallets.ldb");
 
-        let wallets = Arc::new(
-            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?,
-        );
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let wallets = Wallets::new_with_env(env)?;
 
         println!("Testing hash function");
 

@@ -4,6 +4,7 @@ use clap::{ArgGroup, Parser};
 use rand::{thread_rng, Rng};
 use rsnano_core::{RawKey, WalletId};
 use rsnano_node::wallets::{Wallets, WalletsExt};
+use rsnano_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -26,7 +27,9 @@ impl CreateWalletArgs {
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
 
-        let wallets = Arc::new(Wallets::new_null(&path)?);
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let wallets = Arc::new(Wallets::new_with_env(env)?);
 
         wallets.create(wallet_id);
 

@@ -3,6 +3,7 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::Account;
 use rsnano_node::wallets::{Wallets, WalletsExt};
+use rsnano_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -21,11 +22,15 @@ impl ListWalletsArgs {
     pub(crate) fn list_wallets(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let wallets = Arc::new(Wallets::new_null(&path)?);
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let wallets = Arc::new(Wallets::new_with_env(env.clone())?);
+
+        let mut txn = env.tx_begin_read();
 
         let password = self.password.clone().unwrap_or_default();
 
-        let wallet_ids = wallets.get_wallet_ids();
+        let wallet_ids = wallets.get_wallet_ids(&mut txn);
 
         for wallet_id in wallet_ids {
             wallets.ensure_wallet_is_unlocked(wallet_id, &password);

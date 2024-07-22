@@ -74,10 +74,10 @@ pub struct Wallets {
 }
 
 impl Wallets {
-    pub fn new_null(path: &PathBuf) -> anyhow::Result<Self> {
+    pub fn new_with_env(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
         Wallets::new(
             false,
-            Arc::new(LmdbEnv::new(&path).unwrap()),
+            env,
             Arc::new(Ledger::new_null()),
             &NodeConfig::new_test_instance(),
             8,
@@ -144,7 +144,7 @@ impl Wallets {
         wallets.initialize(&mut txn)?;
         {
             let mut guard = wallets.mutex.lock().unwrap();
-            let wallet_ids = wallets.get_wallet_ids();
+            let wallet_ids = wallets.get_wallet_ids(&txn);
             for id in wallet_ids {
                 assert!(!guard.contains_key(&id));
                 let representative = node_config.random_representative();
@@ -224,11 +224,10 @@ impl Wallets {
         self.mutex.lock().unwrap().contains_key(wallet)
     }
 
-    pub fn get_wallet_ids(&self) -> Vec<WalletId> {
-        let txn = self.env.tx_begin_read();
+    pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
-        let mut i = self.get_store_it(&txn, &beginning);
+        let mut i = self.get_store_it(txn, &beginning);
         while let Some((k, _)) = i.current() {
             let text = std::str::from_utf8(k).unwrap();
             wallet_ids.push(WalletId::decode_hex(text).unwrap());
@@ -457,9 +456,9 @@ impl Wallets {
 
     pub fn reload(&self) {
         let mut guard = self.mutex.lock().unwrap();
-        let mut stored_items = HashSet::new();
-        let wallet_ids = self.get_wallet_ids();
         let mut tx = self.env.tx_begin_write();
+        let mut stored_items = HashSet::new();
+        let wallet_ids = self.get_wallet_ids(&tx);
         for id in wallet_ids {
             // New wallet
             if !guard.contains_key(&id) {

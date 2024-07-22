@@ -6,15 +6,6 @@
 #include <nano/store/component.hpp>
 #include <nano/store/online_weight.hpp>
 
-nano::online_reps::online_reps (nano::ledger & ledger_a, nano::node_config const & config_a) :
-	handle{ rsnano::rsn_online_reps_create (
-	ledger_a.get_handle (),
-	config_a.network_params.node.weight_period,
-	config_a.online_weight_minimum.bytes.data (),
-	config_a.network_params.node.max_weight_samples) }
-{
-}
-
 nano::online_reps::online_reps (rsnano::OnlineRepsHandle * handle) :
 	handle{ handle }
 {
@@ -23,16 +14,6 @@ nano::online_reps::online_reps (rsnano::OnlineRepsHandle * handle) :
 nano::online_reps::~online_reps ()
 {
 	rsnano::rsn_online_reps_destroy (handle);
-}
-
-void nano::online_reps::observe (nano::account const & rep_a)
-{
-	rsnano::rsn_online_reps_observe (handle, rep_a.bytes.data ());
-}
-
-void nano::online_reps::sample ()
-{
-	rsnano::rsn_online_reps_sample (handle);
 }
 
 nano::uint128_t nano::online_reps::minimum_principal_weight () const
@@ -88,11 +69,6 @@ std::vector<nano::account> nano::online_reps::list ()
 	}
 	rsnano::rsn_u256_array_destroy (&dto);
 	return result;
-}
-
-void nano::online_reps::clear ()
-{
-	rsnano::rsn_online_reps_clear (handle);
 }
 
 rsnano::OnlineRepsHandle * nano::online_reps::get_handle () const

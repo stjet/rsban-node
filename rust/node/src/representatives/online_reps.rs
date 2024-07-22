@@ -14,6 +14,7 @@ use super::online_reps_container::OnlineRepsContainer;
 
 pub const ONLINE_WEIGHT_QUORUM: u8 = 67;
 
+/// Track online representatives and trend online weight
 pub struct OnlineReps {
     rep_weights: Arc<RepWeightCache>,
     reps: OnlineRepsContainer,

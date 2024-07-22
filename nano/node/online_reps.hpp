@@ -17,15 +17,10 @@ class node_config;
 class online_reps final
 {
 public:
-	online_reps (nano::ledger & ledger_a, nano::node_config const & config_a);
 	online_reps (rsnano::OnlineRepsHandle * handle);
 	online_reps (online_reps const &) = delete;
 	online_reps (online_reps &&) = delete;
 	~online_reps ();
-	/** Add voting account \p rep_account to the set of online representatives */
-	void observe (nano::account const & rep_account);
-	/** Called periodically to sample online weight */
-	void sample ();
 	/** Returns the trended online stake */
 	nano::uint128_t trended () const;
 	/** Returns the current online stake */
@@ -35,7 +30,6 @@ public:
 	/** List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period */
 	std::vector<nano::account> list ();
 	nano::uint128_t minimum_principal_weight () const;
-	void clear ();
 	void set_online (nano::uint128_t);
 	rsnano::OnlineRepsHandle * get_handle () const;
 

@@ -30,7 +30,7 @@ pub struct ConfirmReq {
 }
 
 impl ConfirmReq {
-    pub const HASHES_MAX: usize = 7;
+    pub const HASHES_MAX: usize = 255;
 
     // Header extension bits:
     // ----------------------

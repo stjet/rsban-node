@@ -34,7 +34,7 @@ pub(crate) struct VoteGenerator {
 
 impl VoteGenerator {
     const MAX_REQUESTS: usize = 2048;
-    const MAX_HASHES: usize = 12;
+    const MAX_HASHES: usize = 255;
 
     pub(crate) fn new(
         ledger: Arc<Ledger>,

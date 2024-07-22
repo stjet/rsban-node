@@ -1,6 +1,7 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::LmdbEnv;
+use rsnano_node::wallets::Wallets;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
@@ -13,12 +14,16 @@ pub(crate) struct SendIdsArgs {
 }
 
 impl SendIdsArgs {
-    pub(crate) fn send_ids(&self) {
+    pub(crate) fn send_ids(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
-        let lmdb_env = LmdbEnv::new(&path).unwrap();
-        lmdb_env.clear_database("clear_send_ids").unwrap();
+        let wallets =
+            Wallets::new_null(&path).map_err(|e| anyhow!("Failed to create wallets: {:?}", e))?;
+
+        wallets.clear_send_ids();
 
         println!("{}", "Send IDs deleted");
+
+        Ok(())
     }
 }

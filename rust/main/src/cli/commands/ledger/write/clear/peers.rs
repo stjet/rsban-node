@@ -1,6 +1,8 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::LmdbStore;
+use rsnano_store_lmdb::{LmdbEnv, LmdbPeerStore};
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
@@ -13,25 +15,20 @@ pub(crate) struct PeersArgs {
 }
 
 impl PeersArgs {
-    pub(crate) fn peers(&self) {
-        let path = get_path(&self.data_path, &self.network);
-        let path = path.join("data.ldb");
+    pub(crate) fn peers(&self) -> Result<()> {
+        let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        match LmdbStore::open_existing(&path) {
-            Ok(store) => {
-                let mut txn = store.tx_begin_write();
-                store.peer.clear(&mut txn);
-                println!("{}", "Database peers are removed");
-            }
-            Err(_) => {
-                if self.data_path.is_some() {
-                    println!("Database peers is not initialized in the given <data_path>. \nRun <daemon> or <initialize> command with the given <data_path> to initialize it.");
-                } else if self.network.is_some() {
-                    println!("Database peers is not initialized in the default path of the given <network>. \nRun <daemon> or <initialize> command with the given <network> to initialize it.");
-                } else {
-                    println!("Database peers is not initialized in the default path for the default network. \nRun <daemon> or <initialize> command to initialize it.");
-                }
-            }
-        }
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let peers_store = LmdbPeerStore::new(env.clone())
+            .map_err(|e| anyhow!("Failed to open peers database: {:?}", e))?;
+
+        let mut txn = env.tx_begin_write();
+
+        peers_store.clear(&mut txn);
+
+        println!("{}", "Peers were cleared from the database");
+
+        Ok(())
     }
 }

@@ -10,6 +10,7 @@ use get_wallet_representative::GetWalletRepresentativeArgs;
 use import_keys::ImportKeysArgs;
 use list_wallets::ListWalletsArgs;
 use remove_account::RemoveAccountArgs;
+use send_ids::SendIdsArgs;
 use set_wallet_representative::SetWalletRepresentativeArgs;
 
 pub(crate) mod add_key;
@@ -22,6 +23,7 @@ pub(crate) mod get_wallet_representative;
 pub(crate) mod import_keys;
 pub(crate) mod list_wallets;
 pub(crate) mod remove_account;
+pub(crate) mod send_ids;
 pub(crate) mod set_wallet_representative;
 
 #[derive(Subcommand)]
@@ -51,6 +53,8 @@ pub(crate) enum WalletSubcommands {
     DecryptWallet(DecryptWalletArgs),
     /// Dumps wallet IDs and public keys.
     ListWallets(ListWalletsArgs),
+    /// Remove all send IDs from the database (dangerous: not intended for production use).
+    SendIds(SendIdsArgs),
 }
 
 #[derive(Parser)]
@@ -77,6 +81,7 @@ impl WalletsCommand {
             Some(WalletSubcommands::SetWalletRepresentative(args)) => {
                 args.set_representative_wallet()?
             }
+            Some(WalletSubcommands::SendIds(args)) => args.send_ids()?,
             None => WalletsCommand::command().print_long_help()?,
         }
 

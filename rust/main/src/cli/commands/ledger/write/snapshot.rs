@@ -1,4 +1,5 @@
 use crate::cli::get_path;
+use anyhow::anyhow;
 use clap::Parser;
 use rsnano_store_lmdb::LmdbStore;
 
@@ -21,7 +22,10 @@ impl SnapshotArgs {
         );
         println!("This may take a while...");
 
-        let store = LmdbStore::open_existing(&source_path).unwrap();
+        let store = LmdbStore::open(&source_path)
+            .build()
+            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
+
         store.copy_db(&snapshot_path)?;
 
         println!(

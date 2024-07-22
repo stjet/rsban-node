@@ -1,11 +1,14 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::Root;
-use rsnano_store_lmdb::LmdbStore;
+use rsnano_store_lmdb::{LmdbEnv, LmdbFinalVoteStore};
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input1")
-    .args(&["root", "all"]))]
+    .args(&["root", "all"])
+    .required(true))]
 #[command(group = ArgGroup::new("input2")
     .args(&["data_path", "network"]))]
 pub(crate) struct FinalVoteArgs {
@@ -20,40 +23,29 @@ pub(crate) struct FinalVoteArgs {
 }
 
 impl FinalVoteArgs {
-    pub(crate) fn final_vote(&self) -> anyhow::Result<()> {
-        let path = get_path(&self.data_path, &self.network);
-        let path = path.join("data.ldb");
+    pub(crate) fn final_vote(&self) -> Result<()> {
+        let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        match LmdbStore::open_existing(&path) {
-            Ok(store) => {
-                let mut txn = store.tx_begin_write();
-                store.online_weight.clear(&mut txn);
-                if let Some(root) = &self.root {
-                    match Root::decode_hex(root) {
-                        Ok(root_decoded) => {
-                            store.final_vote.del(&mut txn, &root_decoded);
-                            println!("Successfully cleared final votes");
-                        }
-                        Err(_) => {
-                            println!("Invalid root");
-                        }
-                    }
-                } else if self.all {
-                    store.final_vote.clear(&mut txn);
-                    println!("All final votes are cleared");
-                } else {
-                    println!("Either specify a single --root to clear or --all to clear all final votes (not recommended)");
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let final_vote_store = LmdbFinalVoteStore::new(env.clone())
+            .map_err(|e| anyhow!("Failed to open final vote database: {:?}", e))?;
+
+        let mut txn = env.tx_begin_write();
+
+        if let Some(root) = &self.root {
+            match Root::decode_hex(root) {
+                Ok(root_decoded) => {
+                    final_vote_store.del(&mut txn, &root_decoded);
+                    println!("Successfully cleared final vote");
+                }
+                Err(_) => {
+                    println!("Invalid root");
                 }
             }
-            Err(_) => {
-                if self.data_path.is_some() {
-                    println!("Database online weight is not initialized in the given <data_path>. \nRun <daemon> or <initialize> command with the given <data_path> to initialize it.");
-                } else if self.network.is_some() {
-                    println!("Database online weight is not initialized in the default path of the given <network>. \nRun <daemon> or <initialize> command with the given <network> to initialize it.");
-                } else {
-                    println!("Database online weight is not initialized in the default path for the default network. \nRun <daemon> or <initialize> command to initialize it.");
-                }
-            }
+        } else if self.all {
+            final_vote_store.clear(&mut txn);
+            println!("All final votes were cleared from the database");
         }
 
         Ok(())

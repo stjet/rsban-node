@@ -172,13 +172,13 @@ impl LmdbStore {
         self.env.tx_begin_write()
     }
 
-    pub fn open_existing(path: &Path) -> anyhow::Result<Self> {
-        let options = Default::default();
-        let txn_tracker = Arc::new(NullTransactionTracker::new());
+    /*pub fn open_existing(path: &Path) -> anyhow::Result<Self> {
+    let options = Default::default();
+    let txn_tracker = Arc::new(NullTransactionTracker::new());
 
-        let env = LmdbEnv::new_with_txn_tracker(path, &options, txn_tracker)?;
-        Self::new_with_env(env)
-    }
+    let env = LmdbEnv::new_with_txn_tracker(path, &options, txn_tracker)?;
+    Self::new_with_env(env)
+    }*/
 }
 
 fn upgrade_if_needed(path: &Path, backup_before_upgrade: bool) -> Result<(), anyhow::Error> {

@@ -27,7 +27,8 @@ impl RepresentativesArgs {
 
         let ledger = Ledger::new(
             Arc::new(
-                LmdbStore::open_existing(&path)
+                LmdbStore::open(&path)
+                    .build()
                     .map_err(|e| anyhow!("Failed to open store: {:?}", e))?,
             ),
             network_params.ledger,

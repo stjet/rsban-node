@@ -1,4 +1,5 @@
 use crate::cli::get_path;
+use anyhow::anyhow;
 use clap::Parser;
 use rsnano_store_lmdb::LmdbStore;
 
@@ -12,9 +13,11 @@ pub(crate) struct RebuildArgs {
 
 impl RebuildArgs {
     pub(crate) fn rebuild(&self) -> anyhow::Result<()> {
-        let data_path = get_path(&self.data_path, &self.network).join("data.ldb");
+        let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        let store = LmdbStore::open_existing(&data_path).unwrap();
+        let store = LmdbStore::open(&path)
+            .build()
+            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
 
         store.rebuild_db(&mut store.tx_begin_write())
     }

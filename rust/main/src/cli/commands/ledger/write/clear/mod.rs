@@ -4,13 +4,11 @@ use confirmation_height::ConfirmationHeightArgs;
 use final_vote::FinalVoteArgs;
 use online_weight::OnlineWeightArgs;
 use peers::PeersArgs;
-use send_ids::SendIdsArgs;
 
 pub(crate) mod confirmation_height;
 pub(crate) mod final_vote;
 pub(crate) mod online_weight;
 pub(crate) mod peers;
-pub(crate) mod send_ids;
 
 #[derive(Subcommand)]
 pub(crate) enum ClearSubcommands {
@@ -18,9 +16,7 @@ pub(crate) enum ClearSubcommands {
     FinalVote(FinalVoteArgs),
     /// Clear online weight history records.
     OnlineWeight(OnlineWeightArgs),
-    /// Remove all send IDs from the database (dangerous: not intended for production use).
-    SendIds(SendIdsArgs),
-    /// Clear online peers database dump.
+    /// Clear online peers database.
     Peers(PeersArgs),
     /// Clear confirmation height. Requires an <account> option that can be 'all' to clear all accounts.
     ConfirmationHeight(ConfirmationHeightArgs),
@@ -36,10 +32,9 @@ impl ClearCommand {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
             Some(ClearSubcommands::FinalVote(args)) => args.final_vote()?,
-            Some(ClearSubcommands::ConfirmationHeight(args)) => args.confirmation_height(),
-            Some(ClearSubcommands::OnlineWeight(args)) => args.online_weight(),
-            Some(ClearSubcommands::Peers(args)) => args.peers(),
-            Some(ClearSubcommands::SendIds(args)) => args.send_ids(),
+            Some(ClearSubcommands::ConfirmationHeight(args)) => args.confirmation_height()?,
+            Some(ClearSubcommands::OnlineWeight(args)) => args.online_weight()?,
+            Some(ClearSubcommands::Peers(args)) => args.peers()?,
             None => ClearCommand::command().print_long_help()?,
         }
 

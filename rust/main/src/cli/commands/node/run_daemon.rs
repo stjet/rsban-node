@@ -19,7 +19,7 @@ use tracing_subscriber::EnvFilter;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct DaemonArgs {
+pub(crate) struct RunDaemonArgs {
     #[arg(long, group = "input")]
     data_path: Option<String>,
     #[arg(long, group = "input")]
@@ -114,8 +114,8 @@ pub(crate) struct DaemonArgs {
     vote_processor_capacity: Option<usize>,
 }
 
-impl DaemonArgs {
-    pub(crate) fn daemon(&self) -> Result<()> {
+impl RunDaemonArgs {
+    pub(crate) fn run_daemon(&self) -> Result<()> {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));

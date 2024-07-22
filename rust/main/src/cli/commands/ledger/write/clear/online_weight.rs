@@ -1,6 +1,8 @@
 use crate::cli::get_path;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::LmdbStore;
+use rsnano_store_lmdb::{LmdbEnv, LmdbPeerStore};
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
@@ -13,24 +15,20 @@ pub(crate) struct OnlineWeightArgs {
 }
 
 impl OnlineWeightArgs {
-    pub(crate) fn online_weight(&self) {
+    pub(crate) fn online_weight(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        match LmdbStore::open_existing(&path) {
-            Ok(store) => {
-                let mut txn = store.tx_begin_write();
-                store.online_weight.clear(&mut txn);
-                println!("{}", "Online weight records are removed");
-            }
-            Err(_) => {
-                if self.data_path.is_some() {
-                    println!("Database online weight is not initialized in the given <data_path>. \nRun <daemon> or <initialize> command with the given <data_path> to initialize it.");
-                } else if self.network.is_some() {
-                    println!("Database online weight is not initialized in the default path of the given <network>. \nRun <daemon> or <initialize> command with the given <network> to initialize it.");
-                } else {
-                    println!("Database online weight is not initialized in the default path for the default network. \nRun <daemon> or <initialize> command to initialize it.");
-                }
-            }
-        }
+        let env = Arc::new(LmdbEnv::new(&path)?);
+
+        let online_weight_store = LmdbPeerStore::new(env.clone())
+            .map_err(|e| anyhow!("Failed to open online weight database: {:?}", e))?;
+
+        let mut txn = env.tx_begin_write();
+
+        online_weight_store.clear(&mut txn);
+
+        println!("{}", "Online weight records were cleared from the database");
+
+        Ok(())
     }
 }

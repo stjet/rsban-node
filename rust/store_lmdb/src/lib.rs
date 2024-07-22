@@ -32,6 +32,7 @@ pub use lmdb_config::{LmdbConfig, SyncStrategy};
 pub use lmdb_env::*;
 pub use nullable_lmdb::*;
 pub use online_weight_store::LmdbOnlineWeightStore;
+pub use peer_store::tests;
 pub use peer_store::*;
 pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
 pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};

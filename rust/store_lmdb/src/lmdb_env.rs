@@ -189,7 +189,7 @@ impl LmdbEnv {
         Ok(env)
     }
 
-    pub fn clear_database(&self, database: &str) -> lmdb::Result<()> {
+    /*pub fn clear_database(&self, database: &str) -> lmdb::Result<()> {
         let mut txn = self.tx_begin_write();
         let database = unsafe { txn.create_db(Some(database), DatabaseFlags::empty())? };
         txn.clear_db(database)?;
@@ -197,10 +197,10 @@ impl LmdbEnv {
     }
 
     pub fn get_database(&self, database: &str) -> lmdb::Result<LmdbDatabase> {
-        let mut txn = self.tx_begin_write();
-        let database = unsafe { txn.create_db(Some(database), DatabaseFlags::empty())? };
-        Ok(database)
-    }
+    let mut txn = self.tx_begin_write();
+    let database = unsafe { txn.create_db(Some(database), DatabaseFlags::empty())? };
+    Ok(database)
+    }*/
 
     pub fn tx_begin_read(&self) -> LmdbReadTransaction {
         let txn_id = self.next_txn_id.fetch_add(1, Ordering::Relaxed);

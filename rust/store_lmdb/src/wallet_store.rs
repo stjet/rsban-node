@@ -246,29 +246,6 @@ impl LmdbWalletStore {
         Account::from(7)
     }
 
-    pub fn open(txn: &mut LmdbWriteTransaction, path: &Path) -> anyhow::Result<Self> {
-        let path_str = path
-            .as_os_str()
-            .to_str()
-            .ok_or_else(|| anyhow!("invalid path"))?;
-
-        let db = unsafe {
-            txn.rw_txn_mut()
-                .create_db(Some(path_str), DatabaseFlags::empty())
-        }?;
-
-        let store = Self {
-            db_handle: Mutex::new(Some(db)),
-            fans: Mutex::new(Fans::new(0)),
-            kdf: KeyDerivationFunction::new(0),
-        };
-        //store.initialize(txn, path)?;
-
-        *store.db_handle.lock().unwrap() = Some(db);
-
-        Ok(store)
-    }
-
     pub fn initialize(&self, txn: &mut LmdbWriteTransaction, path: &Path) -> anyhow::Result<()> {
         let path_str = path
             .as_os_str()

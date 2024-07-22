@@ -1,23 +1,23 @@
 use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::{CommandFactory, Parser, Subcommand};
-use daemon::DaemonArgs;
 use generate_config::GenerateConfigArgs;
 use initialize::InitializeArgs;
 use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, SendBlock};
 use rsnano_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
+use run_daemon::RunDaemonArgs;
 use std::{sync::Arc, time::Instant};
 use update_config::UpdateConfigArgs;
 
-pub(crate) mod daemon;
 pub(crate) mod generate_config;
 pub(crate) mod initialize;
+pub(crate) mod run_daemon;
 pub(crate) mod update_config;
 
 #[derive(Subcommand)]
 pub(crate) enum NodeSubcommands {
     /// Start node daemon.
-    Daemon(DaemonArgs),
+    RunDaemon(RunDaemonArgs),
     /// Initialize the data folder, if it is not already initialised.
     ///
     /// This command is meant to be run when the data folder is empty, to populate it with the genesis block.
@@ -46,7 +46,7 @@ pub(crate) struct NodeCommand {
 impl NodeCommand {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
-            Some(NodeSubcommands::Daemon(args)) => args.daemon()?,
+            Some(NodeSubcommands::RunDaemon(args)) => args.run_daemon()?,
             Some(NodeSubcommands::Initialize(args)) => args.initialize()?,
             Some(NodeSubcommands::GenerateConfig(args)) => args.generate_config()?,
             Some(NodeSubcommands::UpdateConfig(args)) => args.update_config()?,

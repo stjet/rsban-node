@@ -17,8 +17,9 @@ impl Blocks {
     pub(crate) fn block_dump(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        let store =
-            LmdbStore::open_existing(&path).map_err(|e| anyhow!("Error opening store: {:?}", e))?;
+        let store = LmdbStore::open(&path)
+            .build()
+            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
 
         let mut transaction = store.tx_begin_read();
 

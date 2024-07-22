@@ -1,4 +1,5 @@
 use crate::cli::get_path;
+use anyhow::anyhow;
 use anyhow::Context;
 use clap::Parser;
 use rsnano_store_lmdb::LmdbStore;
@@ -22,7 +23,9 @@ impl VacuumArgs {
         println!("Vacuuming database copy in {:?}", data_path);
         println!("This may take a while...");
 
-        let store = LmdbStore::open_existing(&source_path).unwrap();
+        let store = LmdbStore::open(&source_path)
+            .build()
+            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
 
         match store.copy_db(&vacuum_path) {
             Ok(_) => {

@@ -1,16 +1,18 @@
 use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::WalletId;
+use rsnano_core::{RawKey, WalletId};
 use rsnano_node::wallets::{Wallets, WalletsExt};
 use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct RepresentativeGetArgs {
+pub(crate) struct ChangeWalletSeedArgs {
     #[arg(long)]
     wallet: String,
+    #[arg(long)]
+    seed: String,
     #[arg(long)]
     password: Option<String>,
     #[arg(long, group = "input")]
@@ -19,10 +21,13 @@ pub(crate) struct RepresentativeGetArgs {
     network: Option<String>,
 }
 
-impl RepresentativeGetArgs {
-    pub(crate) fn representative_get(&self) -> Result<()> {
+impl ChangeWalletSeedArgs {
+    pub(crate) fn change_wallet_seed(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
+
+        let seed =
+            RawKey::decode_hex(&self.seed).map_err(|e| anyhow!("Seed is invalid: {:?}", e))?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
@@ -34,11 +39,9 @@ impl RepresentativeGetArgs {
 
         wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
-        let representative = wallets
-            .get_representative(wallet_id)
-            .map_err(|e| anyhow!("Failed to get representative: {:?}", e))?;
-
-        println!("Representative: {:?}", representative);
+        wallets
+            .change_seed(wallet_id, &seed, 0)
+            .map_err(|e| anyhow!("Failed to change seed: {:?}", e))?;
 
         Ok(())
     }

@@ -25,7 +25,7 @@ pub(crate) struct ImportKeysArgs {
 }
 
 impl ImportKeysArgs {
-    pub(crate) fn import(&self) -> Result<()> {
+    pub(crate) fn import_keys(&self) -> Result<()> {
         let mut file = File::open(PathBuf::from(&self.file))?;
         let mut contents = String::new();
 

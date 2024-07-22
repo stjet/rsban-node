@@ -7,10 +7,12 @@ use initialize::InitializeArgs;
 use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, SendBlock};
 use rsnano_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
 use std::{sync::Arc, time::Instant};
+use update_config::UpdateConfigArgs;
 
 pub(crate) mod daemon;
 pub(crate) mod generate_config;
 pub(crate) mod initialize;
+pub(crate) mod update_config;
 
 #[derive(Subcommand)]
 pub(crate) enum NodeSubcommands {
@@ -29,6 +31,10 @@ pub(crate) enum NodeSubcommands {
     /// Pass the configuration type node or rpc.
     /// See also use_defaults.
     GenerateConfig(GenerateConfigArgs),
+    /// Reads the current node configuration and updates it with missing keys and values and delete keys that are no longer used
+    ///
+    /// Updated configuration is written to stdout
+    UpdateConfig(UpdateConfigArgs),
 }
 
 #[derive(Parser)]
@@ -43,6 +49,7 @@ impl NodeCommand {
             Some(NodeSubcommands::Daemon(args)) => args.daemon()?,
             Some(NodeSubcommands::Initialize(args)) => args.initialize()?,
             Some(NodeSubcommands::GenerateConfig(args)) => args.generate_config()?,
+            Some(NodeSubcommands::UpdateConfig(args)) => args.update_config()?,
             Some(NodeSubcommands::Version) => Self::version(),
             Some(NodeSubcommands::Diagnostics) => Self::diagnostics()?,
             None => NodeCommand::command().print_long_help()?,

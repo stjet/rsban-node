@@ -8,7 +8,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct AddAdhocArgs {
+pub(crate) struct AddKeyArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
@@ -21,8 +21,8 @@ pub(crate) struct AddAdhocArgs {
     network: Option<String>,
 }
 
-impl AddAdhocArgs {
-    pub(crate) fn add_adhoc(&self) -> Result<()> {
+impl AddKeyArgs {
+    pub(crate) fn add_key(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)
             .map_err(|e| anyhow!("Wallet id is invalid: {:?}", e))?;
 

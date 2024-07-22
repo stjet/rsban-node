@@ -1,24 +1,28 @@
+use add_key::AddKeyArgs;
 use anyhow::Result;
+use change_wallet_seed::ChangeWalletSeedArgs;
 use clap::{CommandFactory, Parser, Subcommand};
 use create_account::CreateAccountArgs;
-use {
-    add_adhoc::AddAdhocArgs, change_seed::ChangeSeedArgs, create::CreateWalletArgs,
-    decrypt_unsafe::DecryptUnsafeArgs, destroy::DestroyWalletArgs, import::ImportKeysArgs,
-    list::ListArgs, remove::RemoveArgs, representative_get::RepresentativeGetArgs,
-    representative_set::RepresentativeSetArgs,
-};
+use create_wallet::CreateWalletArgs;
+use decrypt_wallet::DecryptWalletArgs;
+use destroy_wallet::DestroyWalletArgs;
+use get_wallet_representative::GetWalletRepresentativeArgs;
+use import_keys::ImportKeysArgs;
+use list_wallets::ListWalletsArgs;
+use remove_account::RemoveAccountArgs;
+use set_wallet_representative::SetWalletRepresentativeArgs;
 
-pub(crate) mod add_adhoc;
-pub(crate) mod change_seed;
-pub(crate) mod create;
+pub(crate) mod add_key;
+pub(crate) mod change_wallet_seed;
 pub(crate) mod create_account;
-pub(crate) mod decrypt_unsafe;
-pub(crate) mod destroy;
-pub(crate) mod import;
-pub(crate) mod list;
-pub(crate) mod remove;
-pub(crate) mod representative_get;
-pub(crate) mod representative_set;
+pub(crate) mod create_wallet;
+pub(crate) mod decrypt_wallet;
+pub(crate) mod destroy_wallet;
+pub(crate) mod get_wallet_representative;
+pub(crate) mod import_keys;
+pub(crate) mod list_wallets;
+pub(crate) mod remove_account;
+pub(crate) mod set_wallet_representative;
 
 #[derive(Subcommand)]
 pub(crate) enum WalletSubcommands {
@@ -34,19 +38,19 @@ pub(crate) enum WalletSubcommands {
     /// Imports keys in <file> using <password> in to <wallet>.
     ImportKeys(ImportKeysArgs),
     /// Insert <key> in to <wallet>.
-    AddAdhoc(AddAdhocArgs),
+    AddKey(AddKeyArgs),
     /// Changes seed for <wallet> to <key>.
-    ChangeSeed(ChangeSeedArgs),
+    ChangeWalletSeed(ChangeWalletSeedArgs),
     /// Prints default representative for <wallet>.
-    RepresentativeGet(RepresentativeGetArgs),
+    GetWalletRepresentative(GetWalletRepresentativeArgs),
     /// Set <account> as default representative for <wallet>.
-    RepresentativeSet(RepresentativeSetArgs),
+    SetWalletRepresentative(SetWalletRepresentativeArgs),
     /// Remove <account> from <wallet>.
-    Remove(RemoveArgs),
+    RemoveAccount(RemoveAccountArgs),
     /// Decrypts <wallet> using <password>, !!THIS WILL PRINT YOUR PRIVATE KEY TO STDOUT!
-    DecryptUnsafe(DecryptUnsafeArgs),
+    DecryptWallet(DecryptWalletArgs),
     /// Dumps wallet IDs and public keys.
-    List(ListArgs),
+    ListWallets(ListWalletsArgs),
 }
 
 #[derive(Parser)]
@@ -59,16 +63,20 @@ impl WalletsCommand {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
             Some(WalletSubcommands::CreateAccount(args)) => args.create_account()?,
-            Some(WalletSubcommands::List(args)) => args.list()?,
+            Some(WalletSubcommands::ListWallets(args)) => args.list_wallets()?,
             Some(WalletSubcommands::CreateWallet(args)) => args.create_wallet()?,
             Some(WalletSubcommands::DestroyWallet(args)) => args.destroy_wallet()?,
-            Some(WalletSubcommands::AddAdhoc(args)) => args.add_adhoc()?,
-            Some(WalletSubcommands::ChangeSeed(args)) => args.change_seed()?,
-            Some(WalletSubcommands::ImportKeys(args)) => args.import()?,
-            Some(WalletSubcommands::Remove(args)) => args.remove()?,
-            Some(WalletSubcommands::DecryptUnsafe(args)) => args.decrypt_unsafe()?,
-            Some(WalletSubcommands::RepresentativeGet(args)) => args.representative_get()?,
-            Some(WalletSubcommands::RepresentativeSet(args)) => args.representative_set()?,
+            Some(WalletSubcommands::AddKey(args)) => args.add_key()?,
+            Some(WalletSubcommands::ChangeWalletSeed(args)) => args.change_wallet_seed()?,
+            Some(WalletSubcommands::ImportKeys(args)) => args.import_keys()?,
+            Some(WalletSubcommands::RemoveAccount(args)) => args.remove_account()?,
+            Some(WalletSubcommands::DecryptWallet(args)) => args.decrypt_wallet()?,
+            Some(WalletSubcommands::GetWalletRepresentative(args)) => {
+                args.get_wallet_representative()?
+            }
+            Some(WalletSubcommands::SetWalletRepresentative(args)) => {
+                args.set_representative_wallet()?
+            }
             None => WalletsCommand::command().print_long_help()?,
         }
 

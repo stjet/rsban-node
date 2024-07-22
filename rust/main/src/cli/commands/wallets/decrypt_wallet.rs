@@ -8,7 +8,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = clap::ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct DecryptUnsafeArgs {
+pub(crate) struct DecryptWalletArgs {
     #[arg(long)]
     wallet: String,
     #[arg(long)]
@@ -19,8 +19,8 @@ pub(crate) struct DecryptUnsafeArgs {
     network: Option<String>,
 }
 
-impl DecryptUnsafeArgs {
-    pub(crate) fn decrypt_unsafe(&self) -> Result<()> {
+impl DecryptWalletArgs {
+    pub(crate) fn decrypt_wallet(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let wallet_id = WalletId::decode_hex(&self.wallet)

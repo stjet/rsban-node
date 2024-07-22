@@ -1,4 +1,4 @@
-use crate::{cli::get_path, init_tracing};
+use crate::cli::{get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};

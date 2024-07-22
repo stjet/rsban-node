@@ -248,7 +248,7 @@ impl NodeConfig {
             bootstrap_connections_max: BootstrapInitiatorConfig::default()
                 .bootstrap_connections_max,
             bootstrap_initiator_threads: 1,
-            bootstrap_serving_threads: max(parallelism / 2, 2) as u32,
+            bootstrap_serving_threads: 1,
             bootstrap_frontier_request_count: BootstrapInitiatorConfig::default()
                 .frontier_request_count,
             block_processor_batch_max_time_ms: BlockProcessorConfig::default()

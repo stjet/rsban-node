@@ -212,7 +212,7 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 
 	nano::keypair key1;
 	nano::send_block_builder builder;
-	auto const amount = ((nano::uint256_t (node_config.online_weight_minimum.number ()) * nano::online_reps::online_weight_quorum ()) / 100).convert_to<nano::uint128_t> () - 1;
+	auto const amount = ((nano::uint256_t (node_config.online_weight_minimum.number ()) * nano::online_weight_quorum ()) / 100).convert_to<nano::uint128_t> () - 1;
 
 	auto const latest = node1.latest (nano::dev::genesis_key.pub);
 	auto const send1 = builder.make_block ()

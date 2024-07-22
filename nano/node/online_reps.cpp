@@ -62,7 +62,7 @@ void nano::online_reps::set_online (nano::uint128_t online_a)
 	rsnano::rsn_online_reps_set_online (handle, online_weight.bytes.data ());
 }
 
-uint8_t nano::online_reps::online_weight_quorum ()
+uint8_t nano::online_weight_quorum ()
 {
 	return rsnano::rsn_online_reps_online_weight_quorum ();
 }

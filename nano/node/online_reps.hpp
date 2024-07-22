@@ -36,7 +36,6 @@ public:
 	std::vector<nano::account> list ();
 	nano::uint128_t minimum_principal_weight () const;
 	void clear ();
-	static uint8_t online_weight_quorum ();
 	void set_online (nano::uint128_t);
 	rsnano::OnlineRepsHandle * get_handle () const;
 
@@ -45,4 +44,6 @@ private:
 
 	friend class election_quorum_minimum_update_weight_before_quorum_checks_Test;
 };
+
+uint8_t online_weight_quorum ();
 }

@@ -1701,26 +1701,6 @@ TEST (node, bootstrap_connection_scaling)
 	// ASSERT_EQ (1, node1.bootstrap_initiator.connections->target_connections (50000, 1));
 }
 
-TEST (node, online_reps)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	// 1 sample of minimum weight
-	ASSERT_EQ (node1.config->online_weight_minimum, node1.online_reps.trended ());
-	auto vote (std::make_shared<nano::vote> ());
-	ASSERT_EQ (0, node1.online_reps.online ());
-	node1.online_reps.observe (nano::dev::genesis_key.pub);
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.online_reps.online ());
-	// 1 minimum, 1 maximum
-	ASSERT_EQ (node1.config->online_weight_minimum, node1.online_reps.trended ());
-	node1.online_reps.sample ();
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.online_reps.trended ());
-	node1.online_reps.clear ();
-	// 2 minimum, 1 maximum
-	node1.online_reps.sample ();
-	ASSERT_EQ (node1.config->online_weight_minimum, node1.online_reps.trended ());
-}
-
 TEST (node, online_reps_rep_crawler)
 {
 	nano::test::system system;

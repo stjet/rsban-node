@@ -2,7 +2,7 @@ use super::Representative;
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::ChannelEnum,
-    OnlineReps,
+    OnlineReps, ONLINE_WEIGHT_QUORUM,
 };
 use rsnano_core::{Account, Amount};
 use rsnano_ledger::RepWeightCache;
@@ -211,4 +211,25 @@ impl RepresentativeRegister {
     pub fn representatives_count(&self) -> usize {
         self.by_account.len()
     }
+
+    pub fn quorum_info(&self) -> ConfirmationQuorum {
+        let online = self.online_reps.lock().unwrap();
+        ConfirmationQuorum {
+            quorum_delta: online.delta(),
+            online_weight_quorum_percent: ONLINE_WEIGHT_QUORUM,
+            online_weight_minimum: online.online_weight_minimum(),
+            online_weight: online.online(),
+            trended_weight: online.trended(),
+            peers_weight: self.total_weight(),
+        }
+    }
+}
+
+pub struct ConfirmationQuorum {
+    pub quorum_delta: Amount,
+    pub online_weight_quorum_percent: u8,
+    pub online_weight_minimum: Amount,
+    pub online_weight: Amount,
+    pub trended_weight: Amount,
+    pub peers_weight: Amount,
 }

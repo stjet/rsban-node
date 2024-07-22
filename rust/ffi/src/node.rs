@@ -29,6 +29,7 @@ use rsnano_core::{Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
+    representatives::ConfirmationQuorum,
     transport::{ChannelEnum, PeerConnectorExt},
 };
 use std::{
@@ -489,4 +490,41 @@ pub unsafe extern "C" fn rsn_node_collect_container_info(
 ) -> *mut ContainerInfoComponentHandle {
     let container_info = handle.0.collect_container_info(to_rust_string(name));
     Box::into_raw(Box::new(ContainerInfoComponentHandle(container_info)))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_confirmation_quorum(
+    handle: &NodeHandle,
+    result: &mut ConfirmationQuorumDto,
+) {
+    *result = handle
+        .0
+        .representative_register
+        .lock()
+        .unwrap()
+        .quorum_info()
+        .into();
+}
+
+#[repr(C)]
+pub struct ConfirmationQuorumDto {
+    pub quorum_delta: [u8; 16],
+    pub online_weight_quorum_percent: u8,
+    pub online_weight_minimum: [u8; 16],
+    pub online_weight: [u8; 16],
+    pub trended_weight: [u8; 16],
+    pub peers_weight: [u8; 16],
+}
+
+impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
+    fn from(value: ConfirmationQuorum) -> Self {
+        Self {
+            quorum_delta: value.quorum_delta.to_be_bytes(),
+            online_weight_quorum_percent: value.online_weight_quorum_percent,
+            online_weight_minimum: value.online_weight_minimum.to_be_bytes(),
+            online_weight: value.online_weight.to_be_bytes(),
+            trended_weight: value.trended_weight.to_be_bytes(),
+            peers_weight: value.peers_weight.to_be_bytes(),
+        }
+    }
 }

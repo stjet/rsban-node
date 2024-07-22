@@ -44,6 +44,10 @@ impl OnlineReps {
         self.online_weight_minimum = minimum;
     }
 
+    pub fn online_weight_minimum(&self) -> Amount {
+        self.online_weight_minimum
+    }
+
     pub fn set_online(&mut self, amount: Amount) {
         self.online = amount;
     }

@@ -1,3 +1,4 @@
+#include "nano/lib/rsnano.hpp"
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
@@ -2123,12 +2124,20 @@ void nano::json_handler::confirmation_info ()
 
 void nano::json_handler::confirmation_quorum ()
 {
-	response_l.put ("quorum_delta", node.online_reps.delta ().convert_to<std::string> ());
-	response_l.put ("online_weight_quorum_percent", std::to_string (nano::online_weight_quorum ()));
-	response_l.put ("online_weight_minimum", node.config->online_weight_minimum.to_string_dec ());
-	response_l.put ("online_stake_total", node.online_reps.online ().convert_to<std::string> ());
-	response_l.put ("trended_stake_total", node.online_reps.trended ().convert_to<std::string> ());
-	response_l.put ("peers_stake_total", node.representative_register.total_weight ().convert_to<std::string> ());
+	rsnano::ConfirmationQuorumDto quorum;
+	rsnano::rsn_node_confirmation_quorum(node.handle, &quorum);
+	auto delta{nano::amount::from_bytes(quorum.quorum_delta)};
+	auto minimum{nano::amount::from_bytes(quorum.online_weight_minimum)};
+	auto online{nano::amount::from_bytes(quorum.online_weight)};
+	auto trended{nano::amount::from_bytes(quorum.trended_weight)};
+	auto peers{nano::amount::from_bytes(quorum.peers_weight)};
+
+	response_l.put ("quorum_delta", delta.to_string_dec());
+	response_l.put ("online_weight_quorum_percent", std::to_string (quorum.online_weight_quorum_percent));
+	response_l.put ("online_weight_minimum", minimum.to_string_dec ());
+	response_l.put ("online_stake_total", online.to_string_dec());
+	response_l.put ("trended_stake_total", trended.to_string_dec());
+	response_l.put ("peers_stake_total", peers.to_string_dec());
 	if (request.get<bool> ("peer_details", false))
 	{
 		boost::property_tree::ptree peers;

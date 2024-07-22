@@ -25,6 +25,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	rsnano::NodeConfigDto dto;
 	dto.optimistic_scheduler = config.optimistic_scheduler.into_dto ();
 	dto.hinted_scheduler = config.hinted_scheduler.into_dto ();
+	dto.priority_bucket = config.priority_bucket.into_dto ();
 	dto.peering_port = config.peering_port.value_or (0);
 	dto.peering_port_defined = config.peering_port.has_value ();
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
@@ -159,6 +160,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	}
 	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
 	hinted_scheduler.load_dto (dto.hinted_scheduler);
+	priority_bucket = nano::priority_bucket_config{dto.priority_bucket};
 	bootstrap_fraction_numerator = dto.bootstrap_fraction_numerator;
 	bootstrap_ascending.load_dto (dto.bootstrap_ascending);
 	bootstrap_server.load_dto (dto.bootstrap_server);
@@ -301,6 +303,12 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto config_l = toml.get_required_child ("optimistic_scheduler");
 			optimistic_scheduler.deserialize (config_l);
+		}
+
+		if (toml.has_key ("priority_bucket"))
+		{
+			auto config_l = toml.get_required_child ("priority_bucket");
+			priority_bucket.deserialize (config_l);
 		}
 
 		if (toml.has_key ("hinted_scheduler"))
@@ -1084,3 +1092,26 @@ nano::error nano::monitor_config::deserialize (nano::tomlconfig & toml)
 	return toml.get_error ();
 }
 
+nano::priority_bucket_config::priority_bucket_config(rsnano::PriorityBucketConfigDto const & dto) :
+	max_blocks{ dto.max_blocks },
+	reserved_elections{ dto.reserved_elections },
+	max_elections{ dto.max_elections }
+{}
+
+
+rsnano::PriorityBucketConfigDto nano::priority_bucket_config::into_dto () const{
+	return {
+		max_blocks,
+		reserved_elections,
+		max_elections
+	};
+}
+
+nano::error nano::priority_bucket_config::deserialize (nano::tomlconfig & toml)
+{
+	toml.get ("max_blocks", max_blocks);
+	toml.get ("reserved_elections", reserved_elections);
+	toml.get ("max_elections", max_elections);
+
+	return toml.get_error ();
+}

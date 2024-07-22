@@ -19,7 +19,6 @@ pub struct PriorityScheduler {
     condition: Condvar,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    active: Arc<ActiveElections>,
     buckets: Vec<Arc<NewBucket>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     cleanup_thread: Mutex<Option<JoinHandle<()>>>,
@@ -31,7 +30,6 @@ fn create_buckets(
     stats: Arc<Stats>,
 ) -> Vec<Arc<NewBucket>> {
     let mut buckets = Vec::new();
-    const SIZE_EXPECTED: usize = 63;
     let mut build_region = |begin: u128, end: u128, count: usize| {
         let width = (end - begin) / (count as u128);
         for i in 0..count {
@@ -72,10 +70,9 @@ impl PriorityScheduler {
             cleanup_thread: Mutex::new(None),
             mutex: Mutex::new(PrioritySchedulerImpl { stopped: false }),
             condition: Condvar::new(),
-            buckets: create_buckets(config, active.clone(), stats.clone()),
+            buckets: create_buckets(config, active, stats.clone()),
             ledger,
             stats,
-            active,
         }
     }
 

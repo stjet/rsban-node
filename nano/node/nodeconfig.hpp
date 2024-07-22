@@ -95,6 +95,25 @@ public:
 	std::chrono::seconds interval{ 60s };
 };
 
+class priority_bucket_config final
+{
+public:
+	priority_bucket_config() = default;
+	priority_bucket_config(rsnano::PriorityBucketConfigDto const & dto);
+	rsnano::PriorityBucketConfigDto into_dto () const;
+	nano::error deserialize (nano::tomlconfig & toml);
+
+public:
+	// Maximum number of blocks to sort by priority per bucket.
+	std::size_t max_blocks{ 1024 * 8 };
+
+	// Number of guaranteed slots per bucket available for election activation.
+	std::size_t reserved_elections{ 100 };
+
+	// Maximum number of slots per bucket available for election activation if the active election count is below the configured limit. (node.active_elections.size)
+	std::size_t max_elections{ 150 };
+};
+
 /**
  * Node configuration
  */
@@ -117,6 +136,7 @@ public:
 	std::optional<uint16_t> peering_port{};
 	nano::scheduler::optimistic_config optimistic_scheduler;
 	nano::scheduler::hinted_config hinted_scheduler;
+	nano::priority_bucket_config priority_bucket;
 	std::vector<std::pair<std::string, uint16_t>> work_peers;
 	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers;
 	std::vector<std::string> preconfigured_peers;

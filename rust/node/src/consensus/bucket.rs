@@ -3,7 +3,7 @@ use crate::{
     consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{Amount, BlockEnum, QualifiedRoot};
+use rsnano_core::{utils::TomlWriter, Amount, BlockEnum, QualifiedRoot};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
@@ -11,15 +11,15 @@ use std::{
 };
 
 #[derive(Clone)]
-pub(crate) struct PriorityBucketConfig {
+pub struct PriorityBucketConfig {
     /// Maximum number of blocks to sort by priority per bucket.
-    max_blocks: usize,
+    pub max_blocks: usize,
 
     /// Number of guaranteed slots per bucket available for election activation.
-    reserved_elections: usize,
+    pub reserved_elections: usize,
 
     /// Maximum number of slots per bucket available for election activation if the active election count is below the configured limit. (node.active_elections.size)
-    max_elections: usize,
+    pub max_elections: usize,
 }
 
 impl Default for PriorityBucketConfig {
@@ -29,6 +29,18 @@ impl Default for PriorityBucketConfig {
             reserved_elections: 100,
             max_elections: 150,
         }
+    }
+}
+
+impl PriorityBucketConfig {
+    pub(crate) fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_usize(
+            "max_blocks",
+            self.max_blocks,
+            "Maximum number of blocks to sort by priority per bucket. \nType: uint64",
+        )?;
+        toml.put_usize ("reserved_elections", self.reserved_elections, "Number of guaranteed slots per bucket available for election activation. \nType: uint64")?;
+        toml.put_usize ("max_elections", self.max_elections, "Maximum number of slots per bucket available for election activation if the active election count is below the configured limit. \nType: uint64")
     }
 }
 
@@ -134,17 +146,8 @@ impl NewBucket {
         self.data.lock().unwrap().queue.len()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     pub fn election_count(&self) -> usize {
         self.data.lock().unwrap().elections.len()
-    }
-
-    fn blocks(&self) -> VecDeque<Arc<BlockEnum>> {
-        let guard = self.data.lock().unwrap();
-        guard.queue.iter().map(|i| i.block.clone()).collect()
     }
 }
 

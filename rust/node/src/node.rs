@@ -581,7 +581,7 @@ impl Node {
         ));
 
         let priority_scheduler = Arc::new(PriorityScheduler::new(
-            PriorityBucketConfig::default(),
+            config.priority_bucket.clone(),
             ledger.clone(),
             stats.clone(),
             active_elections.clone(),

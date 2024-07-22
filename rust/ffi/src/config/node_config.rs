@@ -21,6 +21,7 @@ use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
     cementation::ConfirmingSetConfig,
     config::{MonitorConfig, NodeConfig, Peer},
+    consensus::PriorityBucketConfig,
     transport::{MessageProcessorConfig, TcpConfig},
     NetworkParams,
 };
@@ -35,6 +36,7 @@ pub struct NodeConfigDto {
     pub peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfigDto,
     pub hinted_scheduler: HintedSchedulerConfigDto,
+    pub priority_bucket: PriorityBucketConfigDto,
     pub peering_port_defined: bool,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: [u8; 16],
@@ -205,6 +207,7 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port.unwrap_or_default();
     dto.optimistic_scheduler = (&cfg.optimistic_scheduler).into();
     dto.hinted_scheduler = (&cfg.hinted_scheduler).into();
+    dto.priority_bucket = (&cfg.priority_bucket).into();
     dto.peering_port_defined = cfg.peering_port.is_some();
     dto.bootstrap_fraction_numerator = cfg.bootstrap_fraction_numerator;
     dto.receive_minimum = cfg.receive_minimum.to_be_bytes();
@@ -386,6 +389,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             },
             optimistic_scheduler: (&value.optimistic_scheduler).into(),
             hinted_scheduler: (&value.hinted_scheduler).into(),
+            priority_bucket: (&value.priority_bucket).into(),
             bootstrap_fraction_numerator: value.bootstrap_fraction_numerator,
             receive_minimum: Amount::from_be_bytes(value.receive_minimum),
             online_weight_minimum: Amount::from_be_bytes(value.online_weight_minimum),
@@ -558,6 +562,33 @@ impl From<&ConfirmingSetConfig> for ConfirmingSetConfigDto {
         Self {
             max_blocks: value.max_blocks,
             max_queued_notifications: value.max_queued_notifications,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct PriorityBucketConfigDto {
+    pub max_blocks: usize,
+    pub reserved_elections: usize,
+    pub max_elections: usize,
+}
+
+impl From<&PriorityBucketConfigDto> for PriorityBucketConfig {
+    fn from(value: &PriorityBucketConfigDto) -> Self {
+        Self {
+            max_blocks: value.max_blocks,
+            reserved_elections: value.reserved_elections,
+            max_elections: value.max_elections,
+        }
+    }
+}
+
+impl From<&PriorityBucketConfig> for PriorityBucketConfigDto {
+    fn from(value: &PriorityBucketConfig) -> Self {
+        Self {
+            max_blocks: value.max_blocks,
+            reserved_elections: value.reserved_elections,
+            max_elections: value.max_elections,
         }
     }
 }

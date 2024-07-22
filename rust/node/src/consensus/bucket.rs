@@ -1,9 +1,12 @@
 use super::{ActiveElections, Election, ElectionBehavior};
-use crate::{consensus::ActiveElectionsExt, stats::Stats};
+use crate::{
+    consensus::ActiveElectionsExt,
+    stats::{DetailType, StatType, Stats},
+};
 use rsnano_core::{Amount, BlockEnum, QualifiedRoot};
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     sync::{Arc, Mutex},
 };
 
@@ -80,6 +83,45 @@ impl NewBucket {
             true
         }
     }
+
+    fn update(&self) {
+        let guard = self.data.lock().unwrap();
+        if self.election_overfill(&guard) {
+            guard.cancel_lowest_election();
+        }
+    }
+
+    fn push(&self, time: u64, block: Arc<BlockEnum>) -> bool {
+        let hash = block.hash();
+        let mut guard = self.data.lock().unwrap();
+        let inserted = guard.queue.insert(BlockEntry { time, block });
+        if guard.queue.len() > self.config.max_blocks {
+            if let Some(removed) = guard.queue.pop_last() {
+                inserted && !(removed.time == time && removed.block.hash() == hash)
+            } else {
+                inserted
+            }
+        } else {
+            inserted
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.data.lock().unwrap().queue.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn election_count(&self) -> usize {
+        self.data.lock().unwrap().elections.len()
+    }
+
+    fn blocks(&self) -> VecDeque<Arc<BlockEnum>> {
+        let guard = self.data.lock().unwrap();
+        guard.queue.iter().map(|i| i.block.clone()).collect()
+    }
 }
 
 trait BucketExt {
@@ -106,17 +148,42 @@ impl BucketExt for Arc<NewBucket> {
             guard.elections.erase(&election.qualified_root);
         });
 
-        let result = self
-            .active
-            .insert(&block, ElectionBehavior::Priority, Some(erase_callback));
+        let (inserted, election) =
+            self.active
+                .insert(&block, ElectionBehavior::Priority, Some(erase_callback));
 
-        todo!()
+        if inserted {
+            let election = election.unwrap();
+            guard.elections.insert(ElectionEntry {
+                root: election.qualified_root.clone(),
+                election,
+                priority,
+            });
+            self.stats
+                .inc(StatType::ElectionBucket, DetailType::ActivateSuccess);
+        } else {
+            self.stats
+                .inc(StatType::ElectionBucket, DetailType::ActivateFailed);
+        }
+
+        inserted
     }
 }
 
 struct BucketData {
     queue: BTreeSet<BlockEntry>,
     elections: OrderedElections,
+    stats: Arc<Stats>,
+}
+
+impl BucketData {
+    fn cancel_lowest_election(&self) {
+        if let Some(entry) = self.elections.entry_with_lowest_priority() {
+            entry.election.cancel();
+            self.stats
+                .inc(StatType::ElectionBucket, DetailType::CancelLowest);
+        }
+    }
 }
 
 struct BlockEntry {
@@ -169,6 +236,12 @@ impl OrderedElections {
         assert!(old.is_none());
         self.sequenced.push(root.clone());
         self.by_priority.entry(priority).or_default().push(root);
+    }
+
+    fn entry_with_lowest_priority(&self) -> Option<&ElectionEntry> {
+        self.by_priority
+            .first_key_value()
+            .and_then(|(_, roots)| self.by_root.get(&roots[0]))
     }
 
     fn lowest_priority(&self) -> u64 {

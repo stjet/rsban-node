@@ -6,7 +6,7 @@ use crate::{
 use rsnano_core::{utils::TomlWriter, Amount, BlockEnum, QualifiedRoot};
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap},
     sync::{Arc, Mutex},
 };
 
@@ -48,7 +48,7 @@ type Priority = u64;
 
 /// A struct which holds an ordered set of blocks to be scheduled, ordered by their block arrival time
 /// TODO: This combines both block ordering and election management, which makes the class harder to test. The functionality should be split.
-pub(crate) struct NewBucket {
+pub struct NewBucket {
     minimum_balance: Amount,
     config: PriorityBucketConfig,
     active: Arc<ActiveElections>,
@@ -148,6 +148,11 @@ impl NewBucket {
 
     pub fn election_count(&self) -> usize {
         self.data.lock().unwrap().elections.len()
+    }
+
+    pub fn blocks(&self) -> Vec<Arc<BlockEnum>> {
+        let guard = self.data.lock().unwrap();
+        guard.queue.iter().map(|i| i.block.clone()).collect()
     }
 }
 

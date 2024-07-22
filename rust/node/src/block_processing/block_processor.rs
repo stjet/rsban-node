@@ -23,6 +23,7 @@ use tracing::{debug, error, info, trace};
 pub enum BlockSource {
     Unknown = 0,
     Live,
+    LiveOriginator,
     Bootstrap,
     BootstrapLegacy,
     Unchecked,
@@ -35,6 +36,7 @@ impl From<BlockSource> for DetailType {
         match value {
             BlockSource::Unknown => DetailType::Unknown,
             BlockSource::Live => DetailType::Live,
+            BlockSource::LiveOriginator => DetailType::LiveOriginator,
             BlockSource::Bootstrap => DetailType::Bootstrap,
             BlockSource::BootstrapLegacy => DetailType::BootstrapLegacy,
             BlockSource::Unchecked => DetailType::Unchecked,
@@ -157,13 +159,13 @@ impl BlockProcessor {
     ) -> Self {
         let config_l = config.clone();
         let max_size_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
-            BlockSource::Live => config_l.max_peer_queue,
+            BlockSource::Live | BlockSource::LiveOriginator => config_l.max_peer_queue,
             _ => config_l.max_system_queue,
         });
 
         let config_l = config.clone();
         let priority_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
-            BlockSource::Live => config.priority_live,
+            BlockSource::Live | BlockSource::LiveOriginator => config.priority_live,
             BlockSource::Bootstrap | BlockSource::BootstrapLegacy | BlockSource::Unchecked => {
                 config_l.priority_bootstrap
             }

@@ -164,6 +164,7 @@ enum class detail : uint16_t
 
 	// block source
 	live,
+	live_originator,
 	bootstrap,
 	bootstrap_legacy,
 	unchecked,

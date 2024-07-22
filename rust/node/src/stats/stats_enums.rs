@@ -171,6 +171,7 @@ pub enum DetailType {
 
     // block source
     Live,
+    LiveOriginator,
     Bootstrap,
     BootstrapLegacy,
     Unchecked,

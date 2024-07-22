@@ -521,7 +521,7 @@ impl ActiveElections {
                     .insert(block.hash(), Arc::clone(block));
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
                     election_guard.status.winner = Some(Arc::clone(block));
-                    let message = Message::Publish(Publish::new(block.as_ref().clone()));
+                    let message = Message::Publish(Publish::new_forward(block.as_ref().clone()));
                     self.network
                         .flood_message2(&message, BufferDropPolicy::NoLimiterDrop, 1.0);
                 }

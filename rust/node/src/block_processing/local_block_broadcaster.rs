@@ -262,14 +262,14 @@ impl LocalBlockBroadcaster {
 
     /// Flood block to all PRs and a random selection of non-PRs
     fn flood_block_initial(&self, block: BlockEnum) {
-        let message = Message::Publish(Publish::new(block));
-        for i in self
+        let message = Message::Publish(Publish::new_from_originator(block));
+        for rep in self
             .representatives
             .lock()
             .unwrap()
             .principal_representatives()
         {
-            i.channel.send(
+            rep.channel.send(
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,
@@ -277,8 +277,8 @@ impl LocalBlockBroadcaster {
             )
         }
 
-        for i in self.list_no_pr(self.network.fanout(1.0)) {
-            i.send(
+        for peer in self.list_no_pr(self.network.fanout(1.0)) {
+            peer.send(
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,

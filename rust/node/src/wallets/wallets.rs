@@ -612,7 +612,7 @@ impl Wallets {
 
         if let Some(block) = &block {
             cached_block = true;
-            let msg = Message::Publish(Publish::new(block.clone()));
+            let msg = Message::Publish(Publish::new_forward(block.clone()));
             self.network
                 .flood_message2(&msg, BufferDropPolicy::NoLimiterDrop, 1.0);
         } else {

@@ -431,11 +431,6 @@ bool nano::node::block_confirmed_or_being_confirmed (nano::block_hash const & ha
 	return block_confirmed_or_being_confirmed (*store.tx_begin_read (), hash_a);
 }
 
-bool nano::node::online () const
-{
-	return representative_register.total_weight () > online_reps.delta ();
-}
-
 nano::vote_code nano::node::vote (nano::vote const & vote, nano::block_hash hash)
 {
 	return static_cast<nano::vote_code> (rsnano::rsn_node_vote (handle, vote.get_handle (), hash.bytes.data ()));
@@ -516,6 +511,19 @@ std::unordered_map<nano::account, nano::uint128_t> nano::node::get_rep_weights (
 		result.insert ({ rep, weight.number () });
 	}
 	rsnano::rsn_rep_weights_vec_destroy (result_handle);
+	return result;
+}
+
+nano::ConfirmationQuorum nano::node::quorum() const{
+	rsnano::ConfirmationQuorumDto dto;
+	rsnano::rsn_node_confirmation_quorum(handle, &dto);
+	nano::ConfirmationQuorum result;
+	result.quorum_delta = nano::amount::from_bytes(dto.quorum_delta);
+	result.online_weight_quorum_percent = dto.online_weight_quorum_percent;
+	result.online_weight_minimum =nano::amount::from_bytes(dto.online_weight_minimum);
+	result.online_weight =nano::amount::from_bytes(dto.online_weight);
+	result.trended_weight = nano::amount::from_bytes(dto.trended_weight);
+	result.peers_weight =nano::amount::from_bytes(dto.peers_weight);
 	return result;
 }
 

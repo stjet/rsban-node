@@ -54,6 +54,17 @@ namespace transport
 	class tcp_listener;
 }
 
+class ConfirmationQuorum 
+{
+public:
+	nano::amount quorum_delta;
+    uint8_t online_weight_quorum_percent;
+    nano::amount online_weight_minimum;
+    nano::amount online_weight;
+    nano::amount trended_weight;
+    nano::amount peers_weight;
+};
+
 class node final : public std::enable_shared_from_this<nano::node>
 {
 public:
@@ -101,7 +112,6 @@ public:
 	bool block_confirmed_or_being_confirmed (nano::store::transaction const &, nano::block_hash const &);
 	bool block_confirmed_or_being_confirmed (nano::block_hash const &);
 
-	bool online () const;
 	nano::vote_code vote (nano::vote const & vote, nano::block_hash hash = nano::block_hash (0));
 	bool election_active (nano::block_hash const & hash) const;
 	bool init_error () const;
@@ -112,6 +122,7 @@ public:
 	void enqueue_vote_request (nano::root const & root, nano::block_hash const & hash);
 	nano::amount get_rep_weight (nano::account const & account);
 	std::unordered_map<nano::account, nano::uint128_t> get_rep_weights () const;
+	nano::ConfirmationQuorum quorum() const;
 
 public:
 	nano::keypair node_id;

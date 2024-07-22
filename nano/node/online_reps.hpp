@@ -25,8 +25,6 @@ public:
 	nano::uint128_t trended () const;
 	/** Returns the current online stake */
 	nano::uint128_t online () const;
-	/** Returns the quorum required for confirmation*/
-	nano::uint128_t delta () const;
 	/** List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period */
 	std::vector<nano::account> list ();
 	nano::uint128_t minimum_principal_weight () const;

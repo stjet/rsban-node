@@ -48,13 +48,6 @@ uint8_t nano::online_weight_quorum ()
 	return rsnano::rsn_online_reps_online_weight_quorum ();
 }
 
-nano::uint128_t nano::online_reps::delta () const
-{
-	nano::amount delta;
-	rsnano::rsn_online_reps_delta (handle, delta.bytes.data ());
-	return delta.number ();
-}
-
 std::vector<nano::account> nano::online_reps::list ()
 {
 	rsnano::U256ArrayDto dto;

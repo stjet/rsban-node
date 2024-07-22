@@ -38,12 +38,6 @@ pub unsafe extern "C" fn rsn_online_reps_online(handle: &OnlineRepsHandle, resul
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_online_reps_delta(handle: &OnlineRepsHandle, result: *mut u8) {
-    let amount = handle.online_reps.lock().unwrap().delta();
-    amount.copy_bytes(result);
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_online_reps_set_online(
     handle: *mut OnlineRepsHandle,
     online: *const u8,

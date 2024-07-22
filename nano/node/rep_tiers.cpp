@@ -1,5 +1,4 @@
 #include <nano/lib/rsnano.hpp>
-#include <nano/node/online_reps.hpp>
 #include <nano/node/rep_tiers.hpp>
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>

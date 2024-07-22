@@ -3515,7 +3515,7 @@ void nano::json_handler::representatives_online ()
 	if (!ec)
 	{
 		boost::property_tree::ptree representatives;
-		auto reps (node.online_reps.list ());
+		auto reps (node.list_online_reps ());
 		for (auto & i : reps)
 		{
 			if (accounts_node.is_initialized ())

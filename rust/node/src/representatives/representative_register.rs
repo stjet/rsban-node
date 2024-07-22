@@ -20,7 +20,7 @@ pub struct RepresentativeRegister {
     by_account: HashMap<Account, Representative>,
     by_channel_id: HashMap<usize, Vec<Account>>,
     rep_weights: Arc<RepWeightCache>,
-    online_reps: Arc<Mutex<OnlineReps>>,
+    pub online_reps: Arc<Mutex<OnlineReps>>,
     protocol_info: ProtocolInfo,
     stats: Arc<Stats>,
 }

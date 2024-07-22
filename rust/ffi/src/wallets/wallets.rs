@@ -7,7 +7,7 @@ use crate::{
     cementation::ConfirmingSetHandle,
     core::BlockHandle,
     ledger::datastore::{LedgerHandle, TransactionHandle},
-    representatives::OnlineRepsHandle,
+    representatives::RepresentativeRegisterHandle,
     to_rust_string,
     transport::TcpChannelsHandle,
     utils::{ContextWrapper, ThreadPoolHandle},
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
     network_params: &NetworkParamsDto,
     workers: &ThreadPoolHandle,
     block_processor: &BlockProcessorHandle,
-    online_reps: &OnlineRepsHandle,
+    representatives: &RepresentativeRegisterHandle,
     tcp_channels: &TcpChannelsHandle,
     confirming_set: &ConfirmingSetHandle,
 ) -> *mut LmdbWalletsHandle {
@@ -86,7 +86,7 @@ pub unsafe extern "C" fn rsn_lmdb_wallets_create(
             network_params,
             Arc::clone(workers),
             Arc::clone(block_processor),
-            Arc::clone(online_reps),
+            representatives.0.lock().unwrap().online_reps.clone(),
             Arc::clone(tcp_channels),
             Arc::clone(confirming_set),
         )

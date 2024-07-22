@@ -65,16 +65,6 @@ nano::representative_register::representative_register (rsnano::RepresentativeRe
 {
 }
 
-nano::representative_register::representative_register (nano::node & node_a)
-{
-	auto network_dto{ node_a.config->network_params.network.to_dto () };
-	handle = rsnano::rsn_representative_register_create (
-	node_a.ledger.handle,
-	node_a.online_reps.get_handle (),
-	node_a.stats->handle,
-	&network_dto);
-}
-
 nano::representative_register::~representative_register ()
 {
 	rsnano::rsn_representative_register_destroy (handle);

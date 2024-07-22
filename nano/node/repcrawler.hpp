@@ -63,7 +63,6 @@ public:
 	};
 
 	representative_register (rsnano::RepresentativeRegisterHandle * handle);
-	representative_register (nano::node & node_a);
 	representative_register (representative_register const &) = delete;
 	~representative_register ();
 

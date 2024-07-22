@@ -12,7 +12,7 @@ use crate::{
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
     messages::MessageHandle,
-    representatives::{OnlineRepsHandle, RepCrawlerHandle, RepresentativeRegisterHandle},
+    representatives::{RepCrawlerHandle, RepresentativeRegisterHandle},
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
@@ -23,7 +23,8 @@ use crate::{
     wallets::LmdbWalletsHandle,
     websocket::WebsocketListenerHandle,
     work::{DistributedWorkFactoryHandle, WorkPoolHandle},
-    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, VoidPointerCallback,
+    NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, U256ArrayDto,
+    VoidPointerCallback,
 };
 use rsnano_core::{Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource};
 use rsnano_node::{
@@ -216,14 +217,6 @@ pub extern "C" fn rsn_node_bootstrap_server(handle: &NodeHandle) -> *mut Bootstr
     Box::into_raw(Box::new(BootstrapServerHandle(Arc::clone(
         &handle.0.bootstrap_server,
     ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_online_reps(handle: &NodeHandle) -> *mut OnlineRepsHandle {
-    Box::into_raw(Box::new(OnlineRepsHandle {
-        online_reps: Arc::clone(&handle.0.online_reps),
-        sampler: Arc::clone(&handle.0.online_reps_sampler),
-    }))
 }
 
 #[no_mangle]
@@ -529,4 +522,17 @@ impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
             minimum_principal_weight: value.minimum_principal_weight.to_be_bytes(),
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: *mut U256ArrayDto) {
+    let accounts = handle.0.online_reps.lock().unwrap().list();
+    let data = accounts.iter().map(|a| *a.as_bytes()).collect();
+    (*result).initialize(data);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_set_online_weight(handle: &NodeHandle, online: *const u8) {
+    let amount = Amount::from_ptr(online);
+    handle.0.online_reps.lock().unwrap().set_online(amount);
 }

@@ -1,19 +1,14 @@
-use crate::{
-    ledger::datastore::LedgerHandle,
-    transport::{ChannelHandle, EndpointDto},
-    NetworkConstantsDto, StatHandle,
-};
+use crate::transport::{ChannelHandle, EndpointDto};
 use rsnano_core::{Account, Amount};
-use rsnano_node::{
-    config::NetworkConstants,
-    representatives::{RegisterRepresentativeResult, Representative, RepresentativeRegister},
+use rsnano_node::representatives::{
+    RegisterRepresentativeResult, Representative, RepresentativeRegister,
 };
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
 };
 
-use super::{representative::RepresentativeHandle, OnlineRepsHandle};
+use super::representative::RepresentativeHandle;
 
 pub struct RepresentativeRegisterHandle(pub Arc<Mutex<RepresentativeRegister>>);
 
@@ -23,25 +18,6 @@ impl Deref for RepresentativeRegisterHandle {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_representative_register_create(
-    ledger: &LedgerHandle,
-    online_reps: &OnlineRepsHandle,
-    stats: &StatHandle,
-    network_constants: &NetworkConstantsDto,
-) -> *mut RepresentativeRegisterHandle {
-    Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::new(
-        Mutex::new(RepresentativeRegister::new(
-            ledger.rep_weights.clone(),
-            Arc::clone(online_reps),
-            Arc::clone(stats),
-            NetworkConstants::try_from(network_constants)
-                .unwrap()
-                .protocol_info(),
-        )),
-    ))))
 }
 
 #[no_mangle]

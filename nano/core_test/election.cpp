@@ -212,7 +212,7 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 
 	nano::keypair key1;
 	nano::send_block_builder builder;
-	auto const amount = ((nano::uint256_t (node_config.online_weight_minimum.number ()) * nano::online_weight_quorum ()) / 100).convert_to<nano::uint128_t> () - 1;
+	auto const amount = ((nano::uint256_t (node_config.online_weight_minimum.number ()) * node1.quorum().online_weight_quorum_percent) / 100).convert_to<nano::uint128_t> () - 1;
 
 	auto const latest = node1.latest (nano::dev::genesis_key.pub);
 	auto const send1 = builder.make_block ()
@@ -262,7 +262,7 @@ TEST (election, quorum_minimum_update_weight_before_quorum_checks)
 	ASSERT_FALSE (node1.active.confirmed (*election));
 	{
 		// Modify online_m for online_reps to more than is available, this checks that voting below updates it to current online reps.
-		node1.online_reps.set_online (node_config.online_weight_minimum.number () + 20);
+		node1.set_online_weight (node_config.online_weight_minimum.number () + 20);
 	}
 	ASSERT_EQ (nano::vote_code::vote, node1.vote (*vote2, send1->hash ()));
 	ASSERT_TIMELY (5s, node1.active.confirmed (*election));

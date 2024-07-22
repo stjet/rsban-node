@@ -191,7 +191,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	},
 	vote_processor (rsnano::rsn_node_vote_processor (handle)),
 	block_processor (rsnano::rsn_node_block_processor (handle)),
-	online_reps (rsnano::rsn_node_online_reps (handle)),
 	history{ rsnano::rsn_node_history (handle) },
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
 	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
@@ -527,6 +526,28 @@ nano::ConfirmationQuorum nano::node::quorum() const{
 	result.minimum_principal_weight =nano::amount::from_bytes(dto.minimum_principal_weight);
 	return result;
 }
+
+std::vector<nano::account> nano::node::list_online_reps ()
+{
+	rsnano::U256ArrayDto dto;
+	rsnano::rsn_node_list_online_reps (handle, &dto);
+	std::vector<nano::account> result;
+	result.reserve (dto.count);
+	for (int i = 0; i < dto.count; ++i)
+	{
+		nano::account account;
+		std::copy (std::begin (dto.items[i]), std::end (dto.items[i]), std::begin (account.bytes));
+		result.push_back (account);
+	}
+	rsnano::rsn_u256_array_destroy (&dto);
+	return result;
+}
+
+void nano::node::set_online_weight (nano::uint128_t online_a){
+	nano::amount online_weight{ online_a };
+	rsnano::rsn_node_set_online_weight (handle, online_weight.bytes.data ());
+}
+
 
 std::string nano::node::make_logger_identifier (const nano::keypair & node_id)
 {

@@ -1,4 +1,7 @@
-use super::{online_reps_container::OnlineRepsContainer, Representative};
+use super::{
+    builder::RepresentativeRegisterBuilder, online_reps_container::OnlineRepsContainer,
+    Representative,
+};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::ChannelEnum,
@@ -19,7 +22,6 @@ use std::{
 use tracing::info;
 
 const ONLINE_WEIGHT_QUORUM: u8 = 67;
-pub const DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);
 
 pub struct RepresentativeRegister {
     by_account: HashMap<Account, Representative>,
@@ -40,7 +42,12 @@ pub enum RegisterRepresentativeResult {
 }
 
 impl RepresentativeRegister {
-    pub fn new(rep_weights: Arc<RepWeightCache>, stats: Arc<Stats>) -> Self {
+    pub(super) fn new(
+        rep_weights: Arc<RepWeightCache>,
+        stats: Arc<Stats>,
+        weight_period: Duration,
+        online_weight_minimum: Amount,
+    ) -> Self {
         Self {
             rep_weights,
             stats,
@@ -49,27 +56,13 @@ impl RepresentativeRegister {
             reps: OnlineRepsContainer::new(),
             trended: Amount::zero(),
             online: Amount::zero(),
-            weight_period: Duration::from_secs(5 * 60),
-            online_weight_minimum: DEFAULT_ONLINE_WEIGHT_MINIMUM,
+            weight_period,
+            online_weight_minimum,
         }
     }
 
     pub fn builder() -> RepresentativeRegisterBuilder {
-        RepresentativeRegisterBuilder {
-            stats: None,
-            rep_weights: None,
-            weight_period: Duration::from_secs(5 * 60),
-            online_weight_minimum: DEFAULT_ONLINE_WEIGHT_MINIMUM,
-            trended: None,
-        }
-    }
-
-    pub fn set_weight_period(&mut self, period: Duration) {
-        self.weight_period = period;
-    }
-
-    pub fn set_online_weight_minimum(&mut self, minimum: Amount) {
-        self.online_weight_minimum = minimum;
+        RepresentativeRegisterBuilder::new()
     }
 
     pub fn online_weight_minimum(&self) -> Amount {
@@ -328,54 +321,4 @@ pub struct ConfirmationQuorum {
     pub trended_weight: Amount,
     pub peers_weight: Amount,
     pub minimum_principal_weight: Amount,
-}
-
-pub struct RepresentativeRegisterBuilder {
-    stats: Option<Arc<Stats>>,
-    rep_weights: Option<Arc<RepWeightCache>>,
-    weight_period: Duration,
-    online_weight_minimum: Amount,
-    trended: Option<Amount>,
-}
-
-impl RepresentativeRegisterBuilder {
-    pub fn stats(mut self, stats: Arc<Stats>) -> Self {
-        self.stats = Some(stats);
-        self
-    }
-
-    pub fn rep_weights(mut self, weights: Arc<RepWeightCache>) -> Self {
-        self.rep_weights = Some(weights);
-        self
-    }
-
-    pub fn weight_period(mut self, period: Duration) -> Self {
-        self.weight_period = period;
-        self
-    }
-
-    pub fn online_weight_minimum(mut self, minimum: Amount) -> Self {
-        self.online_weight_minimum = minimum;
-        self
-    }
-
-    pub fn trended(mut self, trended: Amount) -> Self {
-        self.trended = Some(trended);
-        self
-    }
-
-    pub fn finish(self) -> RepresentativeRegister {
-        let stats = self.stats.unwrap_or_else(|| Arc::new(Stats::default()));
-        let rep_weights = self
-            .rep_weights
-            .unwrap_or_else(|| Arc::new(RepWeightCache::new()));
-
-        let mut register = RepresentativeRegister::new(rep_weights, stats);
-        register.set_weight_period(self.weight_period);
-        register.set_online_weight_minimum(self.online_weight_minimum);
-        if let Some(trended) = self.trended {
-            register.set_trended(trended);
-        }
-        register
-    }
 }

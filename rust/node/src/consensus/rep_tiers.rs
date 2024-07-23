@@ -178,7 +178,11 @@ impl RepTiersImpl {
 
     fn calculate_tiers(&self) {
         self.stats.inc(StatType::RepTiers, DetailType::Loop);
-        let stake = self.representatives.lock().unwrap().trended_weight();
+        let stake = self
+            .representatives
+            .lock()
+            .unwrap()
+            .trended_weight_or_minimum_online_weight();
         let mut representatives_1_l = HashSet::new();
         let mut representatives_2_l = HashSet::new();
         let mut representatives_3_l = HashSet::new();

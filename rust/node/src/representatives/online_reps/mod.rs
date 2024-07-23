@@ -65,6 +65,10 @@ impl OnlineReps {
         self.trended_weight
     }
 
+    pub fn trended_weight_or_minimum_online_weight(&self) -> Amount {
+        max(self.trended_weight, self.online_weight_minimum)
+    }
+
     pub fn set_trended(&mut self, trended: Amount) {
         self.trended_weight = trended;
     }
@@ -75,7 +79,7 @@ impl OnlineReps {
     }
 
     pub fn minimum_principal_weight(&self) -> Amount {
-        max(self.trended_weight, self.online_weight_minimum) / 1000 // 0.1% of trended online weight
+        self.trended_weight_or_minimum_online_weight() / 1000 // 0.1% of trended online weight
     }
 
     /// Query if a peer manages a principle representative
@@ -243,6 +247,11 @@ mod tests {
             Amount::nano(60_000_000)
         );
         assert_eq!(online_reps.trended_weight(), Amount::zero(), "trended");
+        assert_eq!(
+            online_reps.trended_weight_or_minimum_online_weight(),
+            Amount::nano(60_000_000),
+            "trended"
+        );
         assert_eq!(online_reps.online_weight(), Amount::zero(), "online");
         assert_eq!(online_reps.peered_weight(), Amount::zero(), "peered");
         assert_eq!(online_reps.peered_reps_count(), 0, "peered count");

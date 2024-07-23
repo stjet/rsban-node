@@ -275,10 +275,10 @@ impl Node {
             ledger.clone(),
         ));
 
-        let mut online_weight_sampler = OnlineWeightSampler::new(ledger.clone());
-        online_weight_sampler.set_online_weight_minimum(config.online_weight_minimum);
-        online_weight_sampler.set_max_samples(network_params.node.max_weight_samples);
-        let online_weight_sampler = Arc::new(online_weight_sampler);
+        let online_weight_sampler = Arc::new(OnlineWeightSampler::new(
+            ledger.clone(),
+            network_params.node.max_weight_samples as usize,
+        ));
 
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.

@@ -224,7 +224,12 @@ impl HintedScheduler {
     }
 
     fn tally_threshold(&self) -> Amount {
-        (self.representatives.lock().unwrap().trended_weight() / 100)
+        (self
+            .representatives
+            .lock()
+            .unwrap()
+            .trended_weight_or_minimum_online_weight()
+            / 100)
             * self.config.hinting_theshold_percent as u128
     }
 

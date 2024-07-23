@@ -92,7 +92,10 @@ fn online_reps() {
     let node = system.make_node();
     // 1 sample of minimum weight
     assert_eq!(
-        node.online_reps.lock().unwrap().trended_weight(),
+        node.online_reps
+            .lock()
+            .unwrap()
+            .trended_weight_or_minimum_online_weight(),
         node.config.online_weight_minimum
     );
     assert_eq!(
@@ -111,13 +114,19 @@ fn online_reps() {
     );
     // 1 minimum, 1 maximum
     assert_eq!(
-        node.online_reps.lock().unwrap().trended_weight(),
+        node.online_reps
+            .lock()
+            .unwrap()
+            .trended_weight_or_minimum_online_weight(),
         node.config.online_weight_minimum
     );
 
     node.ongoing_online_weight_calculation();
     assert_eq!(
-        node.online_reps.lock().unwrap().trended_weight(),
+        node.online_reps
+            .lock()
+            .unwrap()
+            .trended_weight_or_minimum_online_weight(),
         Amount::MAX
     );
 }

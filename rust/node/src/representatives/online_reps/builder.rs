@@ -46,11 +46,11 @@ impl OnlineRepsBuilder {
             .rep_weights
             .unwrap_or_else(|| Arc::new(RepWeightCache::new()));
 
-        let mut register =
+        let mut online_reps =
             OnlineReps::new(rep_weights, self.weight_period, self.online_weight_minimum);
         if let Some(trended) = self.trended {
-            register.set_trended(trended);
+            online_reps.set_trended(trended);
         }
-        register
+        online_reps
     }
 }

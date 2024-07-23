@@ -204,14 +204,14 @@ TEST (node, quick_confirm)
 	auto send = nano::send_block_builder ()
 				.previous (previous)
 				.destination (key.pub)
-				.balance (node1.quorum().quorum_delta.number() + 1)
+				.balance (node1.quorum ().quorum_delta.number () + 1)
 				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
 				.work (*system.work.generate (previous))
 				.build ();
 	node1.process_active (send);
 	ASSERT_TIMELY (10s, !node1.balance (key.pub).is_zero ());
-	ASSERT_EQ (node1.balance (nano::dev::genesis_key.pub), node1.quorum().quorum_delta.number() + 1);
-	ASSERT_EQ (node1.balance (key.pub), genesis_start_balance - (node1.quorum().quorum_delta.number() + 1));
+	ASSERT_EQ (node1.balance (nano::dev::genesis_key.pub), node1.quorum ().quorum_delta.number () + 1);
+	ASSERT_EQ (node1.balance (key.pub), genesis_start_balance - (node1.quorum ().quorum_delta.number () + 1));
 }
 
 TEST (node, node_receive_quorum)
@@ -1708,15 +1708,15 @@ TEST (node, online_reps_rep_crawler)
 	flags.set_disable_rep_crawler (true);
 	auto & node1 = *system.add_node (flags);
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
-	ASSERT_EQ (0, node1.quorum().online_weight.number ());
+	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
 	// Without rep crawler
 	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
-	ASSERT_EQ (0, node1.quorum().online_weight.number ());
+	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
 	// After inserting to rep crawler
 	auto channel = std::make_shared<nano::transport::fake::channel> (node1);
 	node1.rep_crawler.force_query (nano::dev::genesis->hash (), channel);
 	node1.vote_processor.vote_blocking (vote, channel);
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.quorum().online_weight.number());
+	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.quorum ().online_weight.number ());
 }
 
 TEST (node, online_reps_election)
@@ -1741,9 +1741,9 @@ TEST (node, online_reps_election)
 	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
 	// Process vote for ongoing election
 	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), 0, std::vector<nano::block_hash>{ send1->hash () });
-	ASSERT_EQ (0, node1.quorum().online_weight.number ());
+	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
 	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
-	ASSERT_EQ (nano::dev::constants.genesis_amount - nano::Gxrb_ratio, node1.quorum().online_weight.number());
+	ASSERT_EQ (nano::dev::constants.genesis_amount - nano::Gxrb_ratio, node1.quorum ().online_weight.number ());
 }
 
 TEST (node, block_confirm)
@@ -1793,7 +1793,7 @@ TEST (node, confirm_quorum)
 	auto wallet_id = node1.wallets.first_wallet_id ();
 	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
 	// Put greater than node.delta () in pending so quorum can't be reached
-	nano::amount new_balance = node1.quorum().quorum_delta.number() - nano::Gxrb_ratio;
+	nano::amount new_balance = node1.quorum ().quorum_delta.number () - nano::Gxrb_ratio;
 	auto send1 = nano::state_block_builder ()
 				 .account (nano::dev::genesis_key.pub)
 				 .previous (nano::dev::genesis->hash ())

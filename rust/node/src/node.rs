@@ -65,13 +65,14 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex, RwLock,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
     pub application_path: PathBuf,
+    pub relative_time: Instant,
     pub node_id: KeyPair,
     pub config: NodeConfig,
     network_params: NetworkParams,
@@ -279,6 +280,10 @@ impl Node {
         online_weight_sampler.set_max_samples(network_params.node.max_weight_samples);
         let online_weight_sampler = Arc::new(online_weight_sampler);
 
+        // Time relative to the start of the node. This makes time exlicit and enables us to
+        // write time relevant unit tests with ease.
+        let relative_time = Instant::now();
+
         let online_reps = Arc::new(Mutex::new(
             OnlineReps::builder()
                 .rep_weights(rep_weights.clone())
@@ -454,6 +459,7 @@ impl Node {
             vote_applier,
             vote_router.clone(),
             vote_cache_processor.clone(),
+            relative_time,
         ));
 
         active_elections.initialize();
@@ -522,6 +528,7 @@ impl Node {
             ledger.clone(),
             active_elections.clone(),
             peer_connector.clone(),
+            relative_time,
         ));
 
         // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -824,7 +831,9 @@ impl Node {
             let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.clone());
             if active_in_rep_crawler {
                 // Representative is defined as online if replying to live votes or rep_crawler queries
-                reps.lock().unwrap().vote_observed(vote.voting_account);
+                reps.lock()
+                    .unwrap()
+                    .vote_observed(vote.voting_account, relative_time.elapsed());
             }
         }));
 
@@ -1022,6 +1031,7 @@ impl Node {
         );
 
         Self {
+            relative_time,
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
                 "Net reachout",

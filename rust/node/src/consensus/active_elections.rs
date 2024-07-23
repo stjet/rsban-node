@@ -91,6 +91,7 @@ impl Default for ActiveElectionsConfig {
 }
 
 pub struct ActiveElections {
+    relative_time: Instant,
     pub mutex: Mutex<ActiveElectionsState>,
     pub condition: Condvar,
     network_params: NetworkParams,
@@ -141,6 +142,7 @@ impl ActiveElections {
         vote_applier: Arc<VoteApplier>,
         vote_router: Arc<VoteRouter>,
         vote_cache_processor: Arc<VoteCacheProcessor>,
+        relative_time: Instant,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveElectionsState {
@@ -179,6 +181,7 @@ impl ActiveElections {
             vote_applier,
             vote_router,
             vote_cache_processor,
+            relative_time,
         }
     }
 
@@ -1291,9 +1294,13 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
                 let representatives = self.online_reps.clone();
+                let relative_time = self.relative_time;
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    representatives.lock().unwrap().vote_observed(rep);
+                    representatives
+                        .lock()
+                        .unwrap()
+                        .vote_observed(rep, relative_time.elapsed());
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);

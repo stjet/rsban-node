@@ -1,5 +1,6 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
@@ -2125,26 +2126,26 @@ void nano::json_handler::confirmation_info ()
 
 void nano::json_handler::confirmation_quorum ()
 {
-	auto quorum { node.quorum() };
+	auto quorum{ node.quorum () };
 
-	response_l.put ("quorum_delta", quorum.quorum_delta.to_string_dec());
+	response_l.put ("quorum_delta", quorum.quorum_delta.to_string_dec ());
 	response_l.put ("online_weight_quorum_percent", std::to_string (quorum.online_weight_quorum_percent));
 	response_l.put ("online_weight_minimum", quorum.online_weight_minimum.to_string_dec ());
-	response_l.put ("online_stake_total", quorum.online_weight.to_string_dec());
-	response_l.put ("trended_stake_total", quorum.trended_weight.to_string_dec());
-	response_l.put ("peers_stake_total", quorum.peers_weight.to_string_dec());
+	response_l.put ("online_stake_total", quorum.online_weight.to_string_dec ());
+	response_l.put ("trended_stake_total", quorum.trended_weight.to_string_dec ());
+	response_l.put ("peers_stake_total", quorum.peers_weight.to_string_dec ());
 	if (request.get<bool> ("peer_details", false))
 	{
-		auto details = rsnano::rsn_node_representative_details(node.handle);
-		auto len = rsnano::rsn_rep_details_len(details);
+		auto details = rsnano::rsn_node_representative_details (node.handle);
+		auto len = rsnano::rsn_rep_details_len (details);
 		boost::property_tree::ptree peers;
 		for (auto i = 0; i < len; ++i)
 		{
 			nano::account account;
 			nano::amount weight;
 			rsnano::EndpointDto endpoint;
-			rsnano::rsn_rep_details_get(details, i, account.bytes.data(), &endpoint, weight.bytes.data());
-			auto ep = rsnano::dto_to_endpoint(endpoint);
+			rsnano::rsn_rep_details_get (details, i, account.bytes.data (), &endpoint, weight.bytes.data ());
+			auto ep = rsnano::dto_to_endpoint (endpoint);
 			auto ep_str = boost::str (boost::format ("%1%") % ep);
 
 			boost::property_tree::ptree peer_node;
@@ -2154,7 +2155,7 @@ void nano::json_handler::confirmation_quorum ()
 			peers.push_back (std::make_pair ("", peer_node));
 		}
 		response_l.add_child ("peers", peers);
-		rsnano::rsn_rep_details_destroy(details);
+		rsnano::rsn_rep_details_destroy (details);
 	}
 	response_errors ();
 }

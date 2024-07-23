@@ -4,6 +4,7 @@ use rsnano_node::representatives::{OnlineReps, PeeredRep};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use super::representative::RepresentativeHandle;
@@ -33,7 +34,7 @@ pub unsafe extern "C" fn rsn_representative_register_update_or_insert(
 ) {
     let account = Account::from_ptr(account);
     let mut guard = handle.0.lock().unwrap();
-    guard.vote_observed_directly(account, channel.channel_id());
+    guard.vote_observed_directly(account, channel.channel_id(), Duration::MAX);
 }
 
 #[no_mangle]

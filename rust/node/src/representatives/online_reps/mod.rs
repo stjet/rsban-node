@@ -8,16 +8,12 @@ pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 
 use crate::transport::ChannelId;
-#[cfg(test)]
-use mock_instant::Instant;
 use primitive_types::U256;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, Amount,
 };
 use rsnano_ledger::RepWeightCache;
-#[cfg(not(test))]
-use std::time::Instant;
 use std::{cmp::max, sync::Arc, time::Duration};
 use {online_container::OnlineContainer, peered_container::PeeredContainer};
 
@@ -26,7 +22,6 @@ const ONLINE_WEIGHT_QUORUM: u8 = 67;
 /// Keeps track of all representatives that are online
 /// and all representatives to which we have a direct connection
 pub struct OnlineReps {
-    relative_time: Instant,
     rep_weights: Arc<RepWeightCache>,
     online_reps: OnlineContainer,
     peered_reps: PeeredContainer,
@@ -43,7 +38,6 @@ impl OnlineReps {
         online_weight_minimum: Amount,
     ) -> Self {
         Self {
-            relative_time: Instant::now(),
             rep_weights,
             online_reps: OnlineContainer::new(),
             peered_reps: PeeredContainer::new(),
@@ -86,17 +80,12 @@ impl OnlineReps {
 
     /// Add voting account rep_account to the set of online representatives
     /// This can happen for directly connected or indirectly connected reps
-    pub fn vote_observed(&mut self, rep_account: Account) {
+    pub fn vote_observed(&mut self, rep_account: Account, now: Duration) {
         if self.rep_weights.weight(&rep_account) > Amount::zero() {
-            let new_insert = self
+            let new_insert = self.online_reps.insert(rep_account, now);
+            let trimmed = self
                 .online_reps
-                .insert(rep_account, self.relative_time.elapsed());
-            let trimmed = self.online_reps.trim(
-                self.relative_time
-                    .elapsed()
-                    .checked_sub(self.weight_period)
-                    .unwrap_or_default(),
-            );
+                .trim(now.checked_sub(self.weight_period).unwrap_or_default());
 
             if new_insert || trimmed {
                 self.calculate_online_weight();
@@ -109,9 +98,10 @@ impl OnlineReps {
         &mut self,
         rep_account: Account,
         channel_id: ChannelId,
+        now: Duration,
     ) -> InsertResult {
         self.peered_reps
-            .update_or_insert(rep_account, channel_id, self.relative_time.elapsed())
+            .update_or_insert(rep_account, channel_id, now)
     }
 
     fn calculate_online_weight(&mut self) {
@@ -140,18 +130,18 @@ impl OnlineReps {
         result
     }
 
-    pub fn on_rep_request(&mut self, channel_id: ChannelId) {
+    pub fn on_rep_request(&mut self, channel_id: ChannelId, now: Duration) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
         self.peered_reps.modify_by_channel(channel_id, |rep| {
-            rep.last_request = self.relative_time.elapsed();
+            rep.last_request = now;
         });
     }
 
-    pub fn last_request_elapsed(&self, channel_id: ChannelId) -> Option<Duration> {
+    pub fn last_request_elapsed(&self, channel_id: ChannelId, now: Duration) -> Option<Duration> {
         self.peered_reps
             .iter_by_channel(channel_id)
             .next()
-            .map(|rep| self.relative_time.elapsed() - rep.last_request)
+            .map(|rep| now.checked_sub(rep.last_request).unwrap_or_default())
     }
 
     pub fn remove_peer(&mut self, channel_id: ChannelId) -> Vec<Account> {

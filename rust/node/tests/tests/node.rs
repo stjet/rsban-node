@@ -103,7 +103,7 @@ fn online_reps() {
     node.online_reps
         .lock()
         .unwrap()
-        .vote_observed(*DEV_GENESIS_ACCOUNT);
+        .vote_observed(*DEV_GENESIS_ACCOUNT, node.relative_time.elapsed());
 
     assert_eq!(
         node.online_reps.lock().unwrap().online_weight(),

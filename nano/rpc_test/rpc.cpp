@@ -5210,11 +5210,11 @@ TEST (rpc, online_reps)
 	auto wallet_id2 = node2->wallets.first_wallet_id ();
 	nano::keypair key;
 	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	ASSERT_EQ (node2->quorum().online_weight, 0);
+	ASSERT_EQ (node2->quorum ().online_weight, 0);
 	auto send_block (node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key.pub, nano::Gxrb_ratio));
 	ASSERT_NE (nullptr, send_block);
 	ASSERT_TIMELY (10s, !node2->list_online_reps ().empty ());
-	ASSERT_EQ (node2->quorum().online_weight.number(), nano::dev::constants.genesis_amount - nano::Gxrb_ratio);
+	ASSERT_EQ (node2->quorum ().online_weight.number (), nano::dev::constants.genesis_amount - nano::Gxrb_ratio);
 	auto const rpc_ctx = add_rpc (system, node2);
 	boost::property_tree::ptree request;
 	request.put ("action", "representatives_online");

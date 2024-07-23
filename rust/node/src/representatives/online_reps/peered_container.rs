@@ -111,3 +111,32 @@ impl PeeredContainer {
         accounts
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let container = PeeredContainer::new();
+        assert_eq!(container.len(), 0);
+        assert_eq!(container.iter().count(), 0);
+        assert_eq!(container.iter_by_channel(42.into()).count(), 0);
+        assert_eq!(container.accounts_by_channel(42.into()).count(), 0);
+        assert_eq!(container.accounts().count(), 0);
+    }
+
+    #[test]
+    fn insert() {
+        let mut container = PeeredContainer::new();
+        let account = Account::from(1);
+        let channel_id = ChannelId::from(2);
+        let now = Duration::from_secs(3);
+        container.update_or_insert(account, channel_id, now);
+
+        assert_eq!(
+            container.iter().cloned().collect::<Vec<_>>(),
+            vec![PeeredRep::new(account, channel_id, now)]
+        );
+    }
+}

@@ -4,7 +4,7 @@ use crate::transport::ChannelId;
 use rsnano_core::Account;
 
 /// A representative to which we have a direct connection
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PeeredRep {
     pub account: Account,
     pub channel_id: ChannelId,

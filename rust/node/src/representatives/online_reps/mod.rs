@@ -78,40 +78,6 @@ impl OnlineReps {
         self.trended_weight / 1000 // 0.1% of trended online weight
     }
 
-    /// Add voting account rep_account to the set of online representatives
-    /// This can happen for directly connected or indirectly connected reps
-    pub fn vote_observed(&mut self, rep_account: Account, now: Duration) {
-        if self.rep_weights.weight(&rep_account) > Amount::zero() {
-            let new_insert = self.online_reps.insert(rep_account, now);
-            let trimmed = self
-                .online_reps
-                .trim(now.checked_sub(self.weight_period).unwrap_or_default());
-
-            if new_insert || trimmed {
-                self.calculate_online_weight();
-            }
-        }
-    }
-
-    /// Add rep_account to the set of peered representatives
-    pub fn vote_observed_directly(
-        &mut self,
-        rep_account: Account,
-        channel_id: ChannelId,
-        now: Duration,
-    ) -> InsertResult {
-        self.peered_reps
-            .update_or_insert(rep_account, channel_id, now)
-    }
-
-    fn calculate_online_weight(&mut self) {
-        let mut current = Amount::zero();
-        for account in self.online_reps.iter() {
-            current += self.rep_weights.weight(account);
-        }
-        self.online_weight = current;
-    }
-
     /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel_id: ChannelId) -> bool {
         let min_weight = self.minimum_principal_weight();
@@ -129,6 +95,28 @@ impl OnlineReps {
         }
         result
     }
+    ///
+    /// Total number of peered representatives
+    pub fn peered_reps_count(&self) -> usize {
+        self.peered_reps.len()
+    }
+
+    pub fn quorum_percent(&self) -> u8 {
+        ONLINE_WEIGHT_QUORUM
+    }
+
+    /// Returns the quorum required for confirmation
+    pub fn quorum_delta(&self) -> Amount {
+        // Using a larger container to ensure maximum precision
+        let weight = max(
+            max(self.online_weight, self.trended_weight),
+            self.online_weight_minimum,
+        );
+
+        let delta =
+            U256::from(weight.number()) * U256::from(ONLINE_WEIGHT_QUORUM) / U256::from(100);
+        Amount::raw(delta.as_u128())
+    }
 
     pub fn on_rep_request(&mut self, channel_id: ChannelId, now: Duration) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
@@ -144,8 +132,9 @@ impl OnlineReps {
             .map(|rep| now.checked_sub(rep.last_request).unwrap_or_default())
     }
 
-    pub fn remove_peer(&mut self, channel_id: ChannelId) -> Vec<Account> {
-        self.peered_reps.remove(channel_id)
+    /// List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period
+    pub fn online_reps(&self) -> Vec<Account> {
+        self.online_reps.iter().cloned().collect()
     }
 
     /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
@@ -179,31 +168,42 @@ impl OnlineReps {
             .collect()
     }
 
-    /// Total number of peered representatives
-    pub fn peered_reps_count(&self) -> usize {
-        self.peered_reps.len()
+    /// Add voting account rep_account to the set of online representatives
+    /// This can happen for directly connected or indirectly connected reps
+    pub fn vote_observed(&mut self, rep_account: Account, now: Duration) {
+        if self.rep_weights.weight(&rep_account) > Amount::zero() {
+            let new_insert = self.online_reps.insert(rep_account, now);
+            let trimmed = self
+                .online_reps
+                .trim(now.checked_sub(self.weight_period).unwrap_or_default());
+
+            if new_insert || trimmed {
+                self.calculate_online_weight();
+            }
+        }
     }
 
-    /// Returns the quorum required for confirmation
-    pub fn quorum_delta(&self) -> Amount {
-        // Using a larger container to ensure maximum precision
-        let weight = max(
-            max(self.online_weight, self.trended_weight),
-            self.online_weight_minimum,
-        );
-
-        let delta =
-            U256::from(weight.number()) * U256::from(ONLINE_WEIGHT_QUORUM) / U256::from(100);
-        Amount::raw(delta.as_u128())
+    fn calculate_online_weight(&mut self) {
+        let mut current = Amount::zero();
+        for account in self.online_reps.iter() {
+            current += self.rep_weights.weight(account);
+        }
+        self.online_weight = current;
     }
 
-    pub fn quorum_percent(&self) -> u8 {
-        ONLINE_WEIGHT_QUORUM
+    /// Add rep_account to the set of peered representatives
+    pub fn vote_observed_directly(
+        &mut self,
+        rep_account: Account,
+        channel_id: ChannelId,
+        now: Duration,
+    ) -> InsertResult {
+        self.peered_reps
+            .update_or_insert(rep_account, channel_id, now)
     }
 
-    /// List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period
-    pub fn online_reps(&self) -> Vec<Account> {
-        self.online_reps.iter().cloned().collect()
+    pub fn remove_peer(&mut self, channel_id: ChannelId) -> Vec<Account> {
+        self.peered_reps.remove(channel_id)
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -222,5 +222,38 @@ impl OnlineReps {
                 }),
             ],
         )
+    }
+}
+
+impl Default for OnlineReps {
+    fn default() -> Self {
+        Self::builder().finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let online_reps = OnlineReps::default();
+        assert_eq!(
+            online_reps.online_weight_minimum(),
+            Amount::nano(60_000_000)
+        );
+        assert_eq!(online_reps.trended_weight(), Amount::zero(), "trended");
+        assert_eq!(online_reps.online_weight(), Amount::zero(), "online");
+        assert_eq!(online_reps.peered_weight(), Amount::zero(), "peered");
+        assert_eq!(online_reps.peered_reps_count(), 0, "peered count");
+        assert_eq!(online_reps.quorum_percent(), 67, "quorum percent");
+        assert_eq!(
+            online_reps.quorum_delta(),
+            Amount::nano(40_200_000),
+            "quorum delta"
+        );
+
+        //TODO consider min weight here?
+        assert_eq!(online_reps.minimum_principal_weight(), Amount::zero());
     }
 }

@@ -54,7 +54,13 @@ pub(crate) use response_server_factory::*;
 use rsnano_core::Account;
 use rsnano_messages::Message;
 pub use socket::*;
-use std::{fmt::Display, net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
+use std::{
+    fmt::{Debug, Display},
+    net::SocketAddrV6,
+    ops::Deref,
+    sync::Arc,
+    time::SystemTime,
+};
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 pub use tcp_stream::TcpStream;
@@ -74,7 +80,13 @@ impl ChannelId {
 
 impl Display for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+impl Debug for ChannelId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 

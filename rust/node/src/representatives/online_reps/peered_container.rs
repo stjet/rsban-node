@@ -3,6 +3,7 @@ use crate::transport::ChannelId;
 use rsnano_core::Account;
 use std::{collections::HashMap, mem::size_of, time::Duration};
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum InsertResult {
     Inserted,
     Updated,
@@ -127,16 +128,153 @@ mod tests {
     }
 
     #[test]
-    fn insert() {
+    fn insert_one() {
         let mut container = PeeredContainer::new();
         let account = Account::from(1);
         let channel_id = ChannelId::from(2);
         let now = Duration::from_secs(3);
-        container.update_or_insert(account, channel_id, now);
+        assert_eq!(
+            container.update_or_insert(account, channel_id, now),
+            InsertResult::Inserted
+        );
+        assert_eq!(container.len(), 1);
 
         assert_eq!(
             container.iter().cloned().collect::<Vec<_>>(),
             vec![PeeredRep::new(account, channel_id, now)]
         );
+        assert_eq!(
+            container
+                .iter_by_channel(channel_id)
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec![PeeredRep::new(account, channel_id, now)]
+        );
+        assert_eq!(
+            container
+                .accounts_by_channel(channel_id)
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec![account]
+        );
+        assert_eq!(
+            container.accounts().cloned().collect::<Vec<_>>(),
+            vec![account]
+        );
+    }
+
+    #[test]
+    fn insert_two() {
+        let mut container = PeeredContainer::new();
+        assert_eq!(
+            container.update_or_insert(
+                Account::from(100),
+                ChannelId::from(101),
+                Duration::from_secs(1),
+            ),
+            InsertResult::Inserted
+        );
+        assert_eq!(
+            container.update_or_insert(
+                Account::from(200),
+                ChannelId::from(201),
+                Duration::from_secs(2),
+            ),
+            InsertResult::Inserted
+        );
+        assert_eq!(container.len(), 2);
+        assert_eq!(container.iter().count(), 2);
+        assert_eq!(container.accounts().count(), 2);
+    }
+
+    #[test]
+    fn remove_one() {
+        let mut container = PeeredContainer::new();
+
+        let channel_id = ChannelId::from(101);
+        container.update_or_insert(Account::from(100), channel_id, Duration::from_secs(1));
+
+        container.remove(channel_id);
+        assert_eq!(container.len(), 0);
+        assert_eq!(container.iter().count(), 0);
+    }
+
+    #[test]
+    fn remove_from_container_with_multiple_entries() {
+        let mut container = PeeredContainer::new();
+
+        let channel_id = ChannelId::from(1);
+        container.update_or_insert(
+            Account::from(100),
+            ChannelId::from(100),
+            Duration::from_secs(1),
+        );
+        container.update_or_insert(Account::from(200), channel_id, Duration::from_secs(2));
+        container.update_or_insert(
+            Account::from(300),
+            ChannelId::from(101),
+            Duration::from_secs(3),
+        );
+
+        container.remove(channel_id);
+        assert_eq!(container.len(), 2);
+        assert_eq!(container.iter_by_channel(channel_id).count(), 0);
+    }
+
+    #[test]
+    fn modify_by_channel() {
+        let mut container = PeeredContainer::new();
+
+        let channel_id = ChannelId::from(1);
+        container.update_or_insert(
+            Account::from(100),
+            ChannelId::from(100),
+            Duration::from_secs(1),
+        );
+        container.update_or_insert(Account::from(200), channel_id, Duration::from_secs(2));
+
+        let new_value = Duration::from_secs(1234);
+        container.modify_by_channel(channel_id, |rep| {
+            rep.last_request = new_value;
+        });
+        assert_eq!(
+            container
+                .iter_by_channel(channel_id)
+                .next()
+                .unwrap()
+                .last_request,
+            new_value
+        );
+    }
+
+    #[test]
+    fn update_entry() {
+        let mut container = PeeredContainer::new();
+
+        let account = Account::from(1);
+        let channel_id = ChannelId::from(2);
+        container.update_or_insert(account, channel_id, Duration::from_secs(1));
+        assert_eq!(
+            container.update_or_insert(account, channel_id, Duration::from_secs(3)),
+            InsertResult::Updated
+        );
+        assert_eq!(container.len(), 1);
+    }
+
+    #[test]
+    fn channel_changed() {
+        let mut container = PeeredContainer::new();
+
+        let account = Account::from(1);
+        let channel_a = ChannelId::from(2);
+        let channel_b = ChannelId::from(3);
+        container.update_or_insert(account, channel_a, Duration::from_secs(1));
+        assert_eq!(
+            container.update_or_insert(account, channel_b, Duration::from_secs(3)),
+            InsertResult::ChannelChanged(channel_a)
+        );
+        assert_eq!(container.len(), 1);
+        assert_eq!(container.iter_by_channel(channel_a).count(), 0);
+        assert_eq!(container.iter_by_channel(channel_b).count(), 1);
     }
 }

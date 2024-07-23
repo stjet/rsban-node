@@ -1,30 +1,27 @@
+use std::time::Duration;
+
 use crate::transport::ChannelId;
-#[cfg(test)]
-use mock_instant::Instant;
 use rsnano_core::Account;
-use std::sync::Arc;
-#[cfg(not(test))]
-use std::time::Instant;
 
 /// A representative to which we have a direct connection
 #[derive(Clone)]
 pub struct PeeredRep {
     pub account: Account,
     pub channel_id: ChannelId,
-    pub last_request: Instant,
+    pub last_request: Duration,
 }
 
 impl PeeredRep {
-    pub fn new(account: Account, channel_id: ChannelId) -> Self {
+    pub fn new(account: Account, channel_id: ChannelId, last_request: Duration) -> Self {
         Self {
             account,
             channel_id,
-            last_request: Instant::now(),
+            last_request,
         }
     }
 
     #[allow(dead_code)]
     pub(crate) fn new_test_instance() -> Self {
-        Self::new(Account::from(42), 123.into())
+        Self::new(Account::from(42), 123.into(), Duration::from_secs(1))
     }
 }

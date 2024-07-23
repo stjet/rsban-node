@@ -1,12 +1,7 @@
 use super::PeeredRep;
 use crate::transport::ChannelId;
 use rsnano_core::Account;
-use std::{collections::HashMap, mem::size_of};
-
-#[cfg(test)]
-use mock_instant::Instant;
-#[cfg(not(test))]
-use std::time::Instant;
+use std::{collections::HashMap, mem::size_of, time::Duration};
 
 pub enum InsertResult {
     Inserted,
@@ -32,7 +27,12 @@ impl PeeredContainer {
         }
     }
 
-    pub fn update_or_insert(&mut self, account: Account, channel_id: ChannelId) -> InsertResult {
+    pub fn update_or_insert(
+        &mut self,
+        account: Account,
+        channel_id: ChannelId,
+        now: Duration,
+    ) -> InsertResult {
         if let Some(rep) = self.by_account.get_mut(&account) {
             // Update if representative channel was changed
             if rep.channel_id != channel_id {
@@ -50,7 +50,7 @@ impl PeeredContainer {
             }
         } else {
             self.by_account
-                .insert(account, PeeredRep::new(account, channel_id));
+                .insert(account, PeeredRep::new(account, channel_id, now));
 
             let by_id = self.by_channel_id.entry(channel_id).or_default();
             by_id.push(account);

@@ -110,7 +110,8 @@ impl OnlineReps {
         rep_account: Account,
         channel_id: ChannelId,
     ) -> InsertResult {
-        self.peered_reps.update_or_insert(rep_account, channel_id)
+        self.peered_reps
+            .update_or_insert(rep_account, channel_id, self.relative_time.elapsed())
     }
 
     fn calculate_online_weight(&mut self) {
@@ -142,7 +143,7 @@ impl OnlineReps {
     pub fn on_rep_request(&mut self, channel_id: ChannelId) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
         self.peered_reps.modify_by_channel(channel_id, |rep| {
-            rep.last_request = Instant::now();
+            rep.last_request = self.relative_time.elapsed();
         });
     }
 
@@ -150,7 +151,7 @@ impl OnlineReps {
         self.peered_reps
             .iter_by_channel(channel_id)
             .next()
-            .map(|rep| rep.last_request.elapsed())
+            .map(|rep| self.relative_time.elapsed() - rep.last_request)
     }
 
     pub fn remove_peer(&mut self, channel_id: ChannelId) -> Vec<Account> {

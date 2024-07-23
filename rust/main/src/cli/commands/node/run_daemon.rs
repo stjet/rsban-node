@@ -1,7 +1,7 @@
 use crate::cli::{get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
+use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
     config::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
@@ -10,12 +10,10 @@ use rsnano_node::{
     node::{Node, NodeExt},
     transport::NullSocketObserver,
     utils::{AsyncRuntime, TomlConfig},
-    NetworkParams, DEV_NETWORK_PARAMS,
+    NetworkParams,
 };
 use std::{
-    fs,
     path::Path,
-    str::FromStr,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
@@ -124,13 +122,15 @@ impl RunDaemonArgs {
 
         init_tracing(dirs);
 
-        let network_params = if let Some(network) = &self.network {
+        /*let network_params = if let Some(network) = &self.network {
             NetworkParams::new(
                 Networks::from_str(&network).map_err(|e| anyhow!("Network is invalid: {:?}", e))?,
             )
         } else {
             DEV_NETWORK_PARAMS.clone()
-        };
+            };*/
+
+        let network_params = NetworkParams::new(NetworkConstants::active_network());
 
         let path = get_path(&self.data_path, &self.network);
 

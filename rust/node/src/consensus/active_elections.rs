@@ -1293,7 +1293,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 let representatives = self.online_reps.clone();
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    representatives.lock().unwrap().observe(rep);
+                    representatives.lock().unwrap().vote_observed(rep);
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);

@@ -80,8 +80,8 @@ impl OnlineReps {
         self.trended_weight / 1000 // 0.1% of trended online weight
     }
 
-    /** Add voting account rep_account to the set of online representatives */
-    pub fn observe(&mut self, rep_account: Account) {
+    /// Add voting account rep_account to the set of online representatives
+    pub fn vote_observed(&mut self, rep_account: Account) {
         if self.rep_weights.weight(&rep_account) > Amount::zero() {
             let new_insert = self.online_reps.insert(rep_account, Instant::now());
             let trimmed = self.online_reps.trim(self.weight_period);
@@ -92,21 +92,21 @@ impl OnlineReps {
         }
     }
 
+    /// Add rep_account to the set of peered representatives
+    pub fn peer_observed(
+        &mut self,
+        rep_account: Account,
+        channel: Arc<ChannelEnum>,
+    ) -> InsertResult {
+        self.peered_reps.update_or_insert(rep_account, channel)
+    }
+
     fn calculate_online_weight(&mut self) {
         let mut current = Amount::zero();
         for account in self.online_reps.iter() {
             current += self.rep_weights.weight(account);
         }
         self.online_weight = current;
-    }
-
-    /// Returns the old channel if the representative was already in the collection
-    pub fn update_or_insert(
-        &mut self,
-        account: Account,
-        channel: Arc<ChannelEnum>,
-    ) -> InsertResult {
-        self.peered_reps.update_or_insert(account, channel)
     }
 
     /// Query if a peer manages a principle representative

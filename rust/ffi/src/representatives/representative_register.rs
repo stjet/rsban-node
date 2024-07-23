@@ -34,7 +34,7 @@ pub unsafe extern "C" fn rsn_representative_register_update_or_insert(
 ) -> u32 {
     let account = Account::from_ptr(account);
     let mut guard = handle.0.lock().unwrap();
-    match guard.update_or_insert(account, Arc::clone(channel)) {
+    match guard.peer_observed(account, Arc::clone(channel)) {
         InsertResult::Inserted => 0,
         InsertResult::Updated => 1,
         InsertResult::ChannelChanged(addr) => {

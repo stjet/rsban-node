@@ -2,7 +2,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::HintedSchedulerConfig,
     consensus::ActiveElectionsExt,
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
@@ -34,7 +34,7 @@ pub struct HintedScheduler {
     confirming_set: Arc<ConfirmingSet>,
     stats: Arc<Stats>,
     vote_cache: Arc<Mutex<VoteCache>>,
-    representatives: Arc<Mutex<RepresentativeRegister>>,
+    representatives: Arc<Mutex<OnlineReps>>,
     stopped: AtomicBool,
     stopped_mutex: Mutex<()>,
     cooldowns: Mutex<OrderedCooldowns>,
@@ -48,7 +48,7 @@ impl HintedScheduler {
         stats: Arc<Stats>,
         vote_cache: Arc<Mutex<VoteCache>>,
         confirming_set: Arc<ConfirmingSet>,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
     ) -> Self {
         Self {
             thread: Mutex::new(None),

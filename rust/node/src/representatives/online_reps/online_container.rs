@@ -10,24 +10,20 @@ use std::{
 
 use rsnano_core::Account;
 
+/// Collection of all representatives that are currently online
 #[derive(Default)]
-pub(crate) struct OnlineRepsContainer {
+pub(crate) struct OnlineContainer {
     by_time: BTreeMap<Instant, Vec<Account>>,
     by_account: HashMap<Account, Instant>,
 }
 
-impl OnlineRepsContainer {
+impl OnlineContainer {
     pub fn new() -> Self {
         Default::default()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Account> {
         self.by_account.keys()
-    }
-
-    pub fn clear(&mut self) {
-        self.by_account.clear();
-        self.by_time.clear();
     }
 
     /// Returns `true` if it was a new insert and `false` if an entry for that account was already present
@@ -90,14 +86,14 @@ mod tests {
 
     #[test]
     fn empty_container() {
-        let container = OnlineRepsContainer::new();
+        let container = OnlineContainer::new();
         assert_eq!(container.len(), 0);
         assert_eq!(container.iter().count(), 0);
     }
 
     #[test]
     fn insert_one_rep() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
 
         let new_insert = container.insert(Account::from(1), Instant::now());
 
@@ -109,7 +105,7 @@ mod tests {
 
     #[test]
     fn insert_two_reps() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
 
         let new_insert_a = container.insert(Account::from(1), Instant::now());
         let new_insert_b = container.insert(Account::from(2), Instant::now());
@@ -122,7 +118,7 @@ mod tests {
 
     #[test]
     fn insert_same_rep_twice_with_same_time() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
 
         let now = Instant::now();
         let new_insert_a = container.insert(Account::from(1), now);
@@ -136,7 +132,7 @@ mod tests {
 
     #[test]
     fn insert_same_rep_twice_with_different_time() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
 
         let new_insert_a = container.insert(Account::from(1), Instant::now());
         MockClock::advance(Duration::from_secs(1));
@@ -151,20 +147,20 @@ mod tests {
 
     #[test]
     fn trimming_empty_container_does_nothing() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
         assert_eq!(container.trim(Duration::from_secs(1)), false);
     }
 
     #[test]
     fn dont_trim_if_upper_bound_not_reached() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
         container.insert(Account::from(1), Instant::now());
         assert_eq!(container.trim(Duration::from_secs(1)), false);
     }
 
     #[test]
     fn trim_if_upper_bound_reached() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
         container.insert(Account::from(1), Instant::now());
         MockClock::advance(Duration::from_millis(1001));
         assert_eq!(container.trim(Duration::from_secs(1)), true);
@@ -173,7 +169,7 @@ mod tests {
 
     #[test]
     fn trim_multiple_entries() {
-        let mut container = OnlineRepsContainer::new();
+        let mut container = OnlineContainer::new();
 
         container.insert(Account::from(1), Instant::now());
         container.insert(Account::from(2), Instant::now());

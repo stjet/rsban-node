@@ -1,8 +1,6 @@
 use crate::transport::{ChannelHandle, EndpointDto};
 use rsnano_core::{Account, Amount};
-use rsnano_node::representatives::{
-    RegisterRepresentativeResult, Representative, RepresentativeRegister,
-};
+use rsnano_node::representatives::{InsertResult, OnlineReps, Representative};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -10,10 +8,10 @@ use std::{
 
 use super::representative::RepresentativeHandle;
 
-pub struct RepresentativeRegisterHandle(pub Arc<Mutex<RepresentativeRegister>>);
+pub struct RepresentativeRegisterHandle(pub Arc<Mutex<OnlineReps>>);
 
 impl Deref for RepresentativeRegisterHandle {
-    type Target = Arc<Mutex<RepresentativeRegister>>;
+    type Target = Arc<Mutex<OnlineReps>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -37,9 +35,9 @@ pub unsafe extern "C" fn rsn_representative_register_update_or_insert(
     let account = Account::from_ptr(account);
     let mut guard = handle.0.lock().unwrap();
     match guard.update_or_insert(account, Arc::clone(channel)) {
-        RegisterRepresentativeResult::Inserted => 0,
-        RegisterRepresentativeResult::Updated => 1,
-        RegisterRepresentativeResult::ChannelChanged(addr) => {
+        InsertResult::Inserted => 0,
+        InsertResult::Updated => 1,
+        InsertResult::ChannelChanged(addr) => {
             *old_endpoint = addr.into();
             2
         }

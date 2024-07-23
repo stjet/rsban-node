@@ -22,7 +22,7 @@ use crate::{
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
-    representatives::{RepCrawler, RepCrawlerExt, RepresentativeRegister},
+    representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
@@ -92,7 +92,7 @@ pub struct Node {
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
     pub online_weight_sampler: Arc<OnlineWeightSampler>,
-    pub representative_register: Arc<Mutex<RepresentativeRegister>>,
+    pub representative_register: Arc<Mutex<OnlineReps>>,
     pub rep_tiers: Arc<RepTiers>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
     pub history: Arc<LocalVoteHistory>,
@@ -280,8 +280,7 @@ impl Node {
         let online_weight_sampler = Arc::new(online_weight_sampler);
 
         let representative_register = Arc::new(Mutex::new(
-            RepresentativeRegister::builder()
-                .stats(stats.clone())
+            OnlineReps::builder()
                 .rep_weights(rep_weights.clone())
                 .weight_period(Duration::from_secs(network_params.node.weight_period))
                 .online_weight_minimum(config.online_weight_minimum)

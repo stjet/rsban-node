@@ -1,11 +1,10 @@
 use super::{
-    builder::RepresentativeRegisterBuilder, online_reps_container::OnlineRepsContainer,
+    builder::OnlineRepsBuilder,
+    online_container::OnlineContainer,
+    peered_container::{InsertResult, PeeredContainer},
     Representative,
 };
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::ChannelEnum,
-};
+use crate::transport::ChannelEnum;
 #[cfg(test)]
 use mock_instant::Instant;
 use primitive_types::U256;
@@ -16,44 +15,30 @@ use rsnano_core::{
 use rsnano_ledger::RepWeightCache;
 #[cfg(not(test))]
 use std::time::Instant;
-use std::{
-    cmp::max, collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc, time::Duration,
-};
-use tracing::info;
+use std::{cmp::max, mem::size_of, sync::Arc, time::Duration};
 
 const ONLINE_WEIGHT_QUORUM: u8 = 67;
 
-pub struct RepresentativeRegister {
-    by_account: HashMap<Account, Representative>,
-    by_channel_id: HashMap<usize, Vec<Account>>,
+pub struct OnlineReps {
     rep_weights: Arc<RepWeightCache>,
-    stats: Arc<Stats>,
-    reps: OnlineRepsContainer,
+    reps: OnlineContainer,
+    peered_reps: PeeredContainer,
     trended: Amount,
     online: Amount,
     weight_period: Duration,
     online_weight_minimum: Amount,
 }
 
-pub enum RegisterRepresentativeResult {
-    Inserted,
-    Updated,
-    ChannelChanged(SocketAddrV6),
-}
-
-impl RepresentativeRegister {
+impl OnlineReps {
     pub(super) fn new(
         rep_weights: Arc<RepWeightCache>,
-        stats: Arc<Stats>,
         weight_period: Duration,
         online_weight_minimum: Amount,
     ) -> Self {
         Self {
             rep_weights,
-            stats,
-            by_account: HashMap::new(),
-            by_channel_id: HashMap::new(),
-            reps: OnlineRepsContainer::new(),
+            reps: OnlineContainer::new(),
+            peered_reps: PeeredContainer::new(),
             trended: Amount::zero(),
             online: Amount::zero(),
             weight_period,
@@ -61,8 +46,8 @@ impl RepresentativeRegister {
         }
     }
 
-    pub fn builder() -> RepresentativeRegisterBuilder {
-        RepresentativeRegisterBuilder::new()
+    pub fn builder() -> OnlineRepsBuilder {
+        OnlineRepsBuilder::new()
     }
 
     pub fn online_weight_minimum(&self) -> Amount {
@@ -116,64 +101,30 @@ impl RepresentativeRegister {
         &mut self,
         account: Account,
         channel: Arc<ChannelEnum>,
-    ) -> RegisterRepresentativeResult {
-        if let Some(rep) = self.by_account.get_mut(&account) {
-            rep.last_response = Instant::now();
-
-            // Update if representative channel was changed
-            if rep.channel.remote_endpoint() != channel.remote_endpoint() {
-                let new_channel_id = channel.channel_id();
-                let old_channel = std::mem::replace(&mut rep.channel, channel);
-                if old_channel.channel_id() != new_channel_id {
-                    self.remove_channel_id(&account, old_channel.channel_id());
-                    self.by_channel_id
-                        .entry(new_channel_id)
-                        .or_default()
-                        .push(account);
-                }
-                RegisterRepresentativeResult::ChannelChanged(old_channel.remote_endpoint())
-            } else {
-                RegisterRepresentativeResult::Updated
-            }
-        } else {
-            let channel_id = channel.channel_id();
-            self.by_account
-                .insert(account, Representative::new(account, channel));
-
-            let by_id = self.by_channel_id.entry(channel_id).or_default();
-
-            by_id.push(account);
-            RegisterRepresentativeResult::Inserted
-        }
+    ) -> InsertResult {
+        self.peered_reps.update_or_insert(account, channel)
     }
 
     pub fn last_request_elapsed(&self, channel_id: usize) -> Option<Duration> {
-        self.by_channel_id.get(&channel_id).map(|i| {
-            self.by_account
-                .get(i.first().unwrap())
-                .unwrap()
-                .last_request
-                .elapsed()
-        })
+        self.peered_reps
+            .iter_by_channel(channel_id)
+            .next()
+            .map(|rep| rep.last_request.elapsed())
     }
 
     /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel_id: usize) -> bool {
-        if let Some(existing) = self.by_channel_id.get(&channel_id) {
-            let min_weight = { self.minimum_principal_weight() };
-            existing
-                .iter()
-                .any(|account| self.rep_weights.weight(account) >= min_weight)
-        } else {
-            false
-        }
+        let min_weight = self.minimum_principal_weight();
+        self.peered_reps
+            .accounts_by_channel(channel_id)
+            .any(|account| self.rep_weights.weight(account) >= min_weight)
     }
 
-    /// Get total available weight from representatives
+    /// Get total available weight from peered representatives
     pub fn total_weight(&self) -> Amount {
         let mut result = Amount::zero();
         let weights = self.rep_weights.read();
-        for (account, _) in &self.by_account {
+        for account in self.peered_reps.accounts() {
             result += weights.get(account).cloned().unwrap_or_default();
         }
         result
@@ -181,44 +132,13 @@ impl RepresentativeRegister {
 
     pub fn on_rep_request(&mut self, channel_id: usize) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
-        if let Some(rep_accounts) = self.by_channel_id.get(&channel_id) {
-            for rep in rep_accounts {
-                self.by_account.get_mut(rep).unwrap().last_request = Instant::now();
-            }
-        }
+        self.peered_reps.modify_by_channel(channel_id, |rep| {
+            rep.last_request = Instant::now();
+        });
     }
 
-    pub fn evict(&mut self, channel_ids: &[usize]) {
-        let mut to_delete = Vec::new();
-
-        for channel_id in channel_ids {
-            if let Some(accounts) = self.by_channel_id.get(&channel_id) {
-                for account in accounts {
-                    to_delete.push((*account, *channel_id));
-                }
-            }
-        }
-        for (account, channel_id) in to_delete {
-            let rep = self.by_account.remove(&account).unwrap();
-            self.remove_channel_id(&account, channel_id);
-            info!(
-                "Evicting representative {} with dead channel at {}",
-                account.encode_account(),
-                rep.channel.remote_endpoint()
-            );
-            self.stats
-                .inc_dir(StatType::RepCrawler, DetailType::ChannelDead, Direction::In);
-        }
-    }
-
-    fn remove_channel_id(&mut self, account: &Account, channel_id: usize) {
-        let accounts = self.by_channel_id.get_mut(&channel_id).unwrap();
-
-        if accounts.len() == 1 {
-            self.by_channel_id.remove(&channel_id);
-        } else {
-            accounts.retain(|acc| acc != account);
-        }
+    pub fn remove_peered(&mut self, channel_id: usize) -> Vec<Account> {
+        self.peered_reps.remove(channel_id)
     }
 
     /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
@@ -240,8 +160,8 @@ impl RepresentativeRegister {
         min_weight: Amount,
     ) -> Vec<Representative> {
         let mut reps_with_weight = Vec::new();
-        for (account, rep) in &self.by_account {
-            let weight = self.rep_weights.weight(account);
+        for rep in self.peered_reps.iter() {
+            let weight = self.rep_weights.weight(&rep.account);
             if weight > min_weight {
                 reps_with_weight.push((rep.clone(), weight));
             }
@@ -256,9 +176,9 @@ impl RepresentativeRegister {
             .collect()
     }
 
-    /// Total number of representatives
+    /// Total number of peered representatives
     pub fn representatives_count(&self) -> usize {
-        self.by_account.len()
+        self.peered_reps.len()
     }
 
     /// Returns the quorum required for confirmation
@@ -288,6 +208,19 @@ impl RepresentativeRegister {
         }
     }
 
+    pub fn count(&self) -> usize {
+        self.reps.len()
+    }
+
+    pub fn item_size() -> usize {
+        OnlineContainer::item_size()
+    }
+
+    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
+        + size_of::<Account>()
+        + size_of::<usize>()
+        + size_of::<Account>();
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -298,19 +231,6 @@ impl RepresentativeRegister {
             })],
         )
     }
-
-    pub fn count(&self) -> usize {
-        self.reps.len()
-    }
-
-    pub fn item_size() -> usize {
-        OnlineRepsContainer::item_size()
-    }
-
-    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
-        + size_of::<Account>()
-        + size_of::<usize>()
-        + size_of::<Account>();
 }
 
 pub struct ConfirmationQuorum {

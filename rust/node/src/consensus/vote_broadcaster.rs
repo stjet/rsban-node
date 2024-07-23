@@ -1,6 +1,6 @@
 use super::VoteProcessorQueue;
 use crate::{
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
 use rsnano_core::{Vote, VoteSource};
@@ -11,7 +11,7 @@ use std::{
 };
 
 pub struct VoteBroadcaster {
-    representative_register: Arc<Mutex<RepresentativeRegister>>,
+    representative_register: Arc<Mutex<OnlineReps>>,
     network: Arc<Network>,
     vote_processor_queue: Arc<VoteProcessorQueue>,
     loopback_channel: Arc<ChannelEnum>,
@@ -19,7 +19,7 @@ pub struct VoteBroadcaster {
 
 impl VoteBroadcaster {
     pub fn new(
-        representative_register: Arc<Mutex<RepresentativeRegister>>,
+        representative_register: Arc<Mutex<OnlineReps>>,
         network: Arc<Network>,
         vote_processor_queue: Arc<VoteProcessorQueue>,
         loopback_channel: Arc<ChannelEnum>,

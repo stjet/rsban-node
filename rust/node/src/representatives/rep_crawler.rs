@@ -1,4 +1,4 @@
-use super::{RegisterRepresentativeResult, RepresentativeRegister};
+use super::{InsertResult, OnlineReps};
 use crate::{
     config::NodeConfig,
     consensus::ActiveElections,
@@ -31,7 +31,7 @@ use tracing::{debug, error, info, warn};
 /// random block and observing the corresponding vote.
 pub struct RepCrawler {
     rep_crawler_impl: Mutex<RepCrawlerImpl>,
-    representative_register: Arc<Mutex<RepresentativeRegister>>,
+    representative_register: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     config: NodeConfig,
     network_params: NetworkParams,
@@ -48,7 +48,7 @@ impl RepCrawler {
     const MAX_RESPONSES: usize = 1024 * 4;
 
     pub fn new(
-        representative_register: Arc<Mutex<RepresentativeRegister>>,
+        representative_register: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         query_timeout: Duration,
         config: NodeConfig,
@@ -305,14 +305,14 @@ impl RepCrawler {
                 .update_or_insert(vote.voting_account, channel);
 
             match result {
-                RegisterRepresentativeResult::Inserted => {
+                InsertResult::Inserted => {
                     info!(
                         "Found representative: {} at: {}",
                         vote.voting_account.encode_account(),
                         endpoint
                     );
                 }
-                RegisterRepresentativeResult::ChannelChanged(previous) => {
+                InsertResult::ChannelChanged(previous) => {
                     warn!(
                         "Updated representative: {} at: {} (was at: {})",
                         vote.voting_account.encode_account(),
@@ -320,7 +320,7 @@ impl RepCrawler {
                         previous
                     )
                 }
-                RegisterRepresentativeResult::Updated => {}
+                InsertResult::Updated => {}
             }
         }
     }
@@ -430,7 +430,7 @@ impl RepCrawler {
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "reps".to_string(),
                     count: reps_count,
-                    sizeof_element: RepresentativeRegister::ELEMENT_SIZE,
+                    sizeof_element: OnlineReps::ELEMENT_SIZE,
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "queries".to_string(),
@@ -456,7 +456,7 @@ impl Drop for RepCrawler {
 
 struct RepCrawlerImpl {
     queries: OrderedQueries,
-    representative_register: Arc<Mutex<RepresentativeRegister>>,
+    representative_register: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     network: Arc<Network>,
     query_timeout: Duration,

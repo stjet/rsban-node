@@ -1,5 +1,5 @@
 use crate::{
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     stats::{DetailType, Direction, StatType, Stats},
     NetworkParams,
 };
@@ -49,7 +49,7 @@ impl RepTiers {
     pub fn new(
         ledger: Arc<Ledger>,
         network_params: NetworkParams,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
     ) -> Self {
         Self {
@@ -157,7 +157,7 @@ struct Tiers {
 
 struct RepTiersImpl {
     stats: Arc<Stats>,
-    representatives: Arc<Mutex<RepresentativeRegister>>,
+    representatives: Arc<Mutex<OnlineReps>>,
     ledger: Arc<Ledger>,
     tiers: Mutex<Tiers>,
 }
@@ -165,7 +165,7 @@ struct RepTiersImpl {
 impl RepTiersImpl {
     fn new(
         stats: Arc<Stats>,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
     ) -> Self {
         Self {

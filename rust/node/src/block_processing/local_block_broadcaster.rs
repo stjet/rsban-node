@@ -1,7 +1,7 @@
 use super::{BlockProcessor, BlockSource};
 use crate::{
     cementation::ConfirmingSet,
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
@@ -75,7 +75,7 @@ pub struct LocalBlockBroadcaster {
     condition: Condvar,
     limiter: BandwidthLimiter,
     network: Arc<Network>,
-    representatives: Arc<Mutex<RepresentativeRegister>>,
+    representatives: Arc<Mutex<OnlineReps>>,
 }
 
 impl LocalBlockBroadcaster {
@@ -84,7 +84,7 @@ impl LocalBlockBroadcaster {
         block_processor: Arc<BlockProcessor>,
         stats: Arc<Stats>,
         network: Arc<Network>,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
         enabled: bool,

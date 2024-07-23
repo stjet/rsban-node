@@ -3,7 +3,7 @@ use crate::{
     cementation::ConfirmingSet,
     config::NodeConfig,
     consensus::{ElectionState, VoteInfo},
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     stats::{DetailType, StatType, Stats},
     utils::ThreadPool,
     wallets::Wallets,
@@ -30,7 +30,7 @@ use tracing::trace;
 pub struct VoteApplier {
     ledger: Arc<Ledger>,
     network_params: NetworkParams,
-    representatives: Arc<Mutex<RepresentativeRegister>>,
+    representatives: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     vote_generators: Arc<VoteGenerators>,
     block_processor: Arc<BlockProcessor>,
@@ -47,7 +47,7 @@ impl VoteApplier {
     pub(crate) fn new(
         ledger: Arc<Ledger>,
         network_params: NetworkParams,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         vote_generators: Arc<VoteGenerators>,
         block_processor: Arc<BlockProcessor>,

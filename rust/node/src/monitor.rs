@@ -1,6 +1,6 @@
 use crate::{
     consensus::ActiveElections,
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     transport::Network,
     utils::{CancellationToken, Runnable},
 };
@@ -14,7 +14,7 @@ use tracing::info;
 pub struct Monitor {
     ledger: Arc<Ledger>,
     network: Arc<Network>,
-    representative_register: Arc<Mutex<RepresentativeRegister>>,
+    representative_register: Arc<Mutex<OnlineReps>>,
     active: Arc<ActiveElections>,
     last_time: Option<Instant>,
     last_blocks_cemented: u64,
@@ -25,7 +25,7 @@ impl Monitor {
     pub fn new(
         ledger: Arc<Ledger>,
         network: Arc<Network>,
-        representative_register: Arc<Mutex<RepresentativeRegister>>,
+        representative_register: Arc<Mutex<OnlineReps>>,
         active: Arc<ActiveElections>,
     ) -> Self {
         Self {

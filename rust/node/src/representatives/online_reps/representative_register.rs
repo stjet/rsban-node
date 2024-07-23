@@ -15,16 +15,16 @@ use rsnano_core::{
 use rsnano_ledger::RepWeightCache;
 #[cfg(not(test))]
 use std::time::Instant;
-use std::{cmp::max, mem::size_of, sync::Arc, time::Duration};
+use std::{cmp::max, sync::Arc, time::Duration};
 
 const ONLINE_WEIGHT_QUORUM: u8 = 67;
 
 pub struct OnlineReps {
     rep_weights: Arc<RepWeightCache>,
-    reps: OnlineContainer,
+    online_reps: OnlineContainer,
     peered_reps: PeeredContainer,
-    trended: Amount,
-    online: Amount,
+    trended_weight: Amount,
+    online_weight: Amount,
     weight_period: Duration,
     online_weight_minimum: Amount,
 }
@@ -37,10 +37,10 @@ impl OnlineReps {
     ) -> Self {
         Self {
             rep_weights,
-            reps: OnlineContainer::new(),
+            online_reps: OnlineContainer::new(),
             peered_reps: PeeredContainer::new(),
-            trended: Amount::zero(),
-            online: Amount::zero(),
+            trended_weight: Amount::zero(),
+            online_weight: Amount::zero(),
             weight_period,
             online_weight_minimum,
         }
@@ -55,32 +55,32 @@ impl OnlineReps {
     }
 
     pub fn set_online(&mut self, amount: Amount) {
-        self.online = amount;
+        self.online_weight = amount;
     }
 
     /** Returns the trended online stake */
     pub fn trended_weight(&self) -> Amount {
-        self.trended
+        self.trended_weight
     }
 
     pub fn set_trended(&mut self, trended: Amount) {
-        self.trended = trended;
+        self.trended_weight = trended;
     }
 
     /** Returns the current online stake */
     pub fn online_weight(&self) -> Amount {
-        self.online
+        self.online_weight
     }
 
     pub fn minimum_principal_weight(&self) -> Amount {
-        self.trended / 1000 // 0.1% of trended online weight
+        self.trended_weight / 1000 // 0.1% of trended online weight
     }
 
     /** Add voting account rep_account to the set of online representatives */
     pub fn observe(&mut self, rep_account: Account) {
         if self.rep_weights.weight(&rep_account) > Amount::zero() {
-            let new_insert = self.reps.insert(rep_account, Instant::now());
-            let trimmed = self.reps.trim(self.weight_period);
+            let new_insert = self.online_reps.insert(rep_account, Instant::now());
+            let trimmed = self.online_reps.trim(self.weight_period);
 
             if new_insert || trimmed {
                 self.calculate_online();
@@ -90,10 +90,10 @@ impl OnlineReps {
 
     fn calculate_online(&mut self) {
         let mut current = Amount::zero();
-        for account in self.reps.iter() {
+        for account in self.online_reps.iter() {
             current += self.rep_weights.weight(account);
         }
-        self.online = current;
+        self.online_weight = current;
     }
 
     /// Returns the old channel if the representative was already in the collection
@@ -105,13 +105,6 @@ impl OnlineReps {
         self.peered_reps.update_or_insert(account, channel)
     }
 
-    pub fn last_request_elapsed(&self, channel_id: usize) -> Option<Duration> {
-        self.peered_reps
-            .iter_by_channel(channel_id)
-            .next()
-            .map(|rep| rep.last_request.elapsed())
-    }
-
     /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel_id: usize) -> bool {
         let min_weight = self.minimum_principal_weight();
@@ -121,7 +114,7 @@ impl OnlineReps {
     }
 
     /// Get total available weight from peered representatives
-    pub fn total_weight(&self) -> Amount {
+    pub fn peered_weight(&self) -> Amount {
         let mut result = Amount::zero();
         let weights = self.rep_weights.read();
         for account in self.peered_reps.accounts() {
@@ -137,17 +130,24 @@ impl OnlineReps {
         });
     }
 
-    pub fn remove_peered(&mut self, channel_id: usize) -> Vec<Account> {
+    pub fn last_request_elapsed(&self, channel_id: usize) -> Option<Duration> {
+        self.peered_reps
+            .iter_by_channel(channel_id)
+            .next()
+            .map(|rep| rep.last_request.elapsed())
+    }
+
+    pub fn remove_peer(&mut self, channel_id: usize) -> Vec<Account> {
         self.peered_reps.remove(channel_id)
     }
 
     /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
-    pub fn representatives(&self) -> Vec<Representative> {
+    pub fn peered_representatives(&self) -> Vec<Representative> {
         self.representatives_filter(usize::MAX, Amount::zero())
     }
 
     /// Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
-    pub fn principal_representatives(&self) -> Vec<Representative> {
+    pub fn peered_principal_reps(&self) -> Vec<Representative> {
         self.representatives_filter(usize::MAX, self.minimum_principal_weight())
     }
 
@@ -177,14 +177,17 @@ impl OnlineReps {
     }
 
     /// Total number of peered representatives
-    pub fn representatives_count(&self) -> usize {
+    pub fn peered_reps_count(&self) -> usize {
         self.peered_reps.len()
     }
 
     /// Returns the quorum required for confirmation
     pub fn quorum_delta(&self) -> Amount {
         // Using a larger container to ensure maximum precision
-        let weight = max(max(self.online, self.trended), self.online_weight_minimum);
+        let weight = max(
+            max(self.online_weight, self.trended_weight),
+            self.online_weight_minimum,
+        );
 
         let delta =
             U256::from(weight.number()) * U256::from(ONLINE_WEIGHT_QUORUM) / U256::from(100);
@@ -192,8 +195,8 @@ impl OnlineReps {
     }
 
     /// List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period
-    pub fn list_online_reps(&self) -> Vec<Account> {
-        self.reps.iter().cloned().collect()
+    pub fn online_reps(&self) -> Vec<Account> {
+        self.online_reps.iter().cloned().collect()
     }
 
     pub fn quorum_info(&self) -> ConfirmationQuorum {
@@ -203,32 +206,26 @@ impl OnlineReps {
             online_weight_minimum: self.online_weight_minimum(),
             online_weight: self.online_weight(),
             trended_weight: self.trended_weight(),
-            peers_weight: self.total_weight(),
+            peers_weight: self.peered_weight(),
             minimum_principal_weight: self.minimum_principal_weight(),
         }
     }
 
-    pub fn count(&self) -> usize {
-        self.reps.len()
-    }
-
-    pub fn item_size() -> usize {
-        OnlineContainer::item_size()
-    }
-
-    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
-        + size_of::<Account>()
-        + size_of::<usize>()
-        + size_of::<Account>();
-
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "reps".to_string(),
-                count: self.count(),
-                sizeof_element: Self::item_size(),
-            })],
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "online".to_string(),
+                    count: self.online_reps.len(),
+                    sizeof_element: OnlineContainer::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "peered".to_string(),
+                    count: self.peered_reps.len(),
+                    sizeof_element: PeeredContainer::ELEMENT_SIZE,
+                }),
+            ],
         )
     }
 }

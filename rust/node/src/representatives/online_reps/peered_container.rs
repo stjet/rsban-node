@@ -1,7 +1,7 @@
 use super::Representative;
 use crate::transport::ChannelEnum;
 use rsnano_core::Account;
-use std::{collections::HashMap, net::SocketAddrV6, sync::Arc};
+use std::{collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc};
 
 #[cfg(test)]
 use mock_instant::Instant;
@@ -21,6 +21,11 @@ pub(super) struct PeeredContainer {
 }
 
 impl PeeredContainer {
+    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
+        + size_of::<Account>()
+        + size_of::<usize>()
+        + size_of::<Account>();
+
     pub fn new() -> Self {
         Self {
             by_account: HashMap::new(),

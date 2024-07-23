@@ -73,9 +73,8 @@ impl OnlineContainer {
         self.by_account.len()
     }
 
-    pub(crate) fn item_size() -> usize {
-        size_of::<(Instant, Vec<Account>)>() + size_of::<(Account, Instant)>()
-    }
+    pub const ELEMENT_SIZE: usize =
+        size_of::<(Instant, Vec<Account>)>() + size_of::<(Account, Instant)>();
 }
 
 #[cfg(test)]

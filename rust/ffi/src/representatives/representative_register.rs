@@ -57,7 +57,7 @@ pub unsafe extern "C" fn rsn_representative_register_total_weight(
     handle: &RepresentativeRegisterHandle,
     result: *mut u8,
 ) {
-    let weight = handle.lock().unwrap().total_weight();
+    let weight = handle.lock().unwrap().peered_weight();
     weight.copy_bytes(result);
 }
 
@@ -102,5 +102,5 @@ pub unsafe extern "C" fn rsn_representative_list_get(
 pub unsafe extern "C" fn rsn_representative_register_count(
     handle: &RepresentativeRegisterHandle,
 ) -> usize {
-    handle.0.lock().unwrap().representatives_count()
+    handle.0.lock().unwrap().peered_reps_count()
 }

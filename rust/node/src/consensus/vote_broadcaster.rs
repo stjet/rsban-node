@@ -48,7 +48,7 @@ impl VoteBroadcaster {
             .representative_register
             .lock()
             .unwrap()
-            .representatives()
+            .peered_representatives()
         {
             rep.channel.send(
                 &message,

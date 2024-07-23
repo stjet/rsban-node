@@ -531,7 +531,7 @@ pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: 
         .representative_register
         .lock()
         .unwrap()
-        .list_online_reps();
+        .online_reps();
     let data = accounts.iter().map(|a| *a.as_bytes()).collect();
     (*result).initialize(data);
 }

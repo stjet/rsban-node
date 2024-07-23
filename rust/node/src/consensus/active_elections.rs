@@ -794,7 +794,7 @@ impl ActiveElections {
                 .representative_register
                 .lock()
                 .unwrap()
-                .principal_representatives(),
+                .peered_principal_reps(),
         );
 
         /*

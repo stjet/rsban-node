@@ -75,7 +75,7 @@ impl RepCrawler {
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
-                representative_register,
+                online_reps: representative_register,
                 stats,
                 query_timeout,
                 stopped: false,
@@ -216,7 +216,7 @@ impl RepCrawler {
             let sufficient_weight;
             {
                 let reps = self.representative_register.lock().unwrap();
-                current_total_weight = reps.total_weight();
+                current_total_weight = reps.peered_weight();
                 sufficient_weight = current_total_weight > reps.quorum_delta();
             }
 
@@ -417,21 +417,10 @@ impl RepCrawler {
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        let reps_count = self
-            .representative_register
-            .lock()
-            .unwrap()
-            .representatives_count();
-
         let guard = self.rep_crawler_impl.lock().unwrap();
         ContainerInfoComponent::Composite(
             name.into(),
             vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "reps".to_string(),
-                    count: reps_count,
-                    sizeof_element: OnlineReps::ELEMENT_SIZE,
-                }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "queries".to_string(),
                     count: guard.queries.len(),
@@ -456,7 +445,7 @@ impl Drop for RepCrawler {
 
 struct RepCrawlerImpl {
     queries: OrderedQueries,
-    representative_register: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     network: Arc<Network>,
     query_timeout: Duration,
@@ -508,7 +497,7 @@ impl RepCrawlerImpl {
 
         random_peers.retain(|channel| {
             match self
-                .representative_register
+                .online_reps
                 .lock()
                 .unwrap()
                 .last_request_elapsed(channel.channel_id())
@@ -540,7 +529,7 @@ impl RepCrawlerImpl {
             replies: 0,
         });
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
-        self.representative_register
+        self.online_reps
             .lock()
             .unwrap()
             .on_rep_request(channel.channel_id());

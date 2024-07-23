@@ -165,7 +165,7 @@ impl CleanupLoop {
 
                 let mut online_reps = self.online_reps.lock().unwrap();
                 for channel_id in removed_channel_ids {
-                    let removed_reps = online_reps.remove_peered(channel_id);
+                    let removed_reps = online_reps.remove_peer(channel_id);
                     for rep in removed_reps {
                         info!(
                             "Evicting representative {} with dead channel",

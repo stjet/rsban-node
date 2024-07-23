@@ -75,7 +75,7 @@ impl OnlineReps {
     }
 
     pub fn minimum_principal_weight(&self) -> Amount {
-        self.trended_weight / 1000 // 0.1% of trended online weight
+        max(self.trended_weight, self.online_weight_minimum) / 1000 // 0.1% of trended online weight
     }
 
     /// Query if a peer manages a principle representative
@@ -253,7 +253,6 @@ mod tests {
             "quorum delta"
         );
 
-        //TODO consider min weight here?
-        assert_eq!(online_reps.minimum_principal_weight(), Amount::zero());
+        assert_eq!(online_reps.minimum_principal_weight(), Amount::nano(60_000));
     }
 }

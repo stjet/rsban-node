@@ -75,7 +75,7 @@ pub struct LocalBlockBroadcaster {
     condition: Condvar,
     limiter: BandwidthLimiter,
     network: Arc<Network>,
-    representatives: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
 }
 
 impl LocalBlockBroadcaster {
@@ -100,7 +100,7 @@ impl LocalBlockBroadcaster {
             network,
             ledger,
             confirming_set,
-            representatives,
+            online_reps: representatives,
             thread: Mutex::new(None),
             enabled,
             mutex: Mutex::new(LocalBlockBroadcasterData {
@@ -263,7 +263,7 @@ impl LocalBlockBroadcaster {
     /// Flood block to all PRs and a random selection of non-PRs
     fn flood_block_initial(&self, block: BlockEnum) {
         let message = Message::Publish(Publish::new_from_originator(block));
-        for rep in self.representatives.lock().unwrap().peered_principal_reps() {
+        for rep in self.online_reps.lock().unwrap().peered_principal_reps() {
             self.network.send(
                 rep.channel_id,
                 &message,
@@ -286,8 +286,8 @@ impl LocalBlockBroadcaster {
     fn list_no_pr(&self, count: usize) -> Vec<Arc<ChannelEnum>> {
         let mut channels = self.network.random_list(usize::MAX, 0);
         {
-            let guard = self.representatives.lock().unwrap();
-            channels.retain(|c| !guard.is_pr(c.channel_id()));
+            let reps = self.online_reps.lock().unwrap();
+            channels.retain(|c| !reps.is_pr(c.channel_id()));
         }
         channels.truncate(count);
         channels

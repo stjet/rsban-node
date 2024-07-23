@@ -1,7 +1,8 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
+use serde::Deserialize;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize)]
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,
@@ -23,7 +24,7 @@ pub enum SyncStrategy {
     NosyncUnsafeLargeMemory,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LmdbConfig {
     pub sync: SyncStrategy,
     pub max_databases: u32,

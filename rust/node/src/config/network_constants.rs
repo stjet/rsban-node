@@ -6,6 +6,7 @@ use rsnano_core::{
     Networks,
 };
 use rsnano_messages::ProtocolInfo;
+use serde::Deserialize;
 use std::{sync::Mutex, time::Duration};
 
 use crate::bootstrap::BootstrapAscendingConfig;

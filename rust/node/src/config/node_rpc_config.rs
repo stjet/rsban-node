@@ -1,9 +1,11 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
+use serde::Deserialize;
 use std::path::PathBuf;
 
 use super::get_default_rpc_filepath;
 
+#[derive(Debug, Deserialize)]
 pub struct RpcChildProcessConfig {
     pub enable: bool,
     pub rpc_path: PathBuf,
@@ -18,6 +20,7 @@ impl RpcChildProcessConfig {
     }
 }
 
+#[derive(Debug, Deserialize)]
 pub struct NodeRpcConfig {
     pub enable_sign_hash: bool,
     pub child_process: RpcChildProcessConfig,

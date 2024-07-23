@@ -1,6 +1,6 @@
 use anyhow::Result;
 use rsnano_core::utils::{TomlArrayWriter, TomlWriter};
-use std::{fs, path::Path};
+use std::path::Path;
 use toml_edit::Document;
 
 #[derive(Default)]
@@ -19,22 +19,6 @@ impl TomlConfig {
 
     pub fn write(&self, file: impl AsRef<Path>) -> Result<()> {
         std::fs::write(file, self.to_string().as_bytes())?;
-        Ok(())
-    }
-
-    pub fn read(&mut self, overrides: &str, path: Option<&Path>) -> Result<()> {
-        if let Some(path) = path {
-            if path.exists() {
-                let content = fs::read_to_string(path)?;
-                self.doc = content.parse::<Document>()?;
-            }
-        }
-
-        let overrides_doc = overrides.parse::<Document>()?;
-        for (key, item) in overrides_doc.iter() {
-            self.doc[key] = item.clone();
-        }
-
         Ok(())
     }
 }

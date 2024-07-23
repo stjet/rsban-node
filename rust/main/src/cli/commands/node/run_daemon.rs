@@ -144,8 +144,6 @@ impl RunDaemonArgs {
             get_cpu_count(),
         );
 
-        // read_node_config_toml and override node flags
-
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
 
@@ -306,7 +304,7 @@ fn read_node_config_toml(
     let mut config_overrides_stream = config_overrides.join("\n");
     config_overrides_stream.push('\n');
 
-    config.read(&config_overrides_stream, Some(&toml_config_path.as_path()))?;
+    //config.read(&config_overrides_stream, Some(&toml_config_path.as_path()))?;
 
     Ok(())
 }

@@ -20,10 +20,11 @@ use rsnano_core::{
     Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
+use serde::Deserialize;
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
+#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Deserialize)]
 pub enum FrontiersConfirmationMode {
     Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
@@ -110,7 +111,7 @@ pub struct NodeConfig {
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct Peer {
     pub address: String,
     pub port: u16,

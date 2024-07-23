@@ -15,6 +15,7 @@ use rsnano_core::{
     Account, KeyPair, Networks,
 };
 use rsnano_messages::*;
+use serde::Deserialize;
 use std::{
     net::SocketAddrV6,
     sync::{
@@ -26,7 +27,7 @@ use std::{
 use tokio::sync::Notify;
 use tracing::debug;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TcpConfig {
     pub max_inbound_connections: usize,
     pub max_outbound_connections: usize,

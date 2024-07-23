@@ -3,6 +3,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, Amount, BlockHash, Vote, VoteCode,
 };
+use serde::Deserialize;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
@@ -19,7 +20,7 @@ use std::time::Instant;
 
 use super::TallyKey;
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct VoteCacheConfig {
     pub max_size: usize,
     pub max_voters: usize,

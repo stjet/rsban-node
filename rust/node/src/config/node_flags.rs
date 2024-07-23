@@ -161,40 +161,12 @@ impl NodeFlags {
         self.allow_bootstrap_peers_duplicates = value;
     }
 
-    pub fn set_disable_max_peers_per_ip(&mut self, value: bool) {
-        self.disable_max_peers_per_ip = value;
-    }
-
-    pub fn set_disable_max_peers_per_subnetwork(&mut self, value: bool) {
-        self.disable_max_peers_per_subnetwork = value;
-    }
-
-    pub fn set_force_use_write_queue(&mut self, value: bool) {
-        self.force_use_write_queue = value;
-    }
-
-    pub fn set_disable_search_pending(&mut self, value: bool) {
-        self.disable_search_pending = value;
-    }
-
     pub fn set_enable_pruning(&mut self, value: bool) {
         self.enable_pruning = value;
     }
 
     pub fn set_fast_bootstrap(&mut self, value: bool) {
         self.fast_bootstrap = value;
-    }
-
-    pub fn set_read_only(&mut self, value: bool) {
-        self.read_only = value;
-    }
-
-    pub fn set_disable_connection_cleanup(&mut self, value: bool) {
-        self.disable_connection_cleanup = value;
-    }
-
-    pub fn set_inactive_node(&mut self, value: bool) {
-        self.inactive_node = value;
     }
 
     pub fn set_block_processor_batch_size(&mut self, value: usize) {
@@ -213,8 +185,12 @@ impl NodeFlags {
         self.vote_processor_capacity = value;
     }
 
-    pub fn set_bootstrap_interval(&mut self, value: usize) {
-        self.bootstrap_interval = value;
+    pub fn set_inactive_node(&mut self, value: bool) {
+        self.inactive_node = value;
+    }
+
+    pub fn set_read_only(&mut self, value: bool) {
+        self.read_only = value;
     }
 }
 

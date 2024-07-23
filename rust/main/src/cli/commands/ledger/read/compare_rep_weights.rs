@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::Amount;
 use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
@@ -28,16 +28,14 @@ impl CompareRepWeightsArgs {
         let ledger_cache = Arc::new(LedgerCache::new());
 
         let ledger = Ledger::new(
-            Arc::new(
-                LmdbStore::open(&path)
-                    .build()
-                    .map_err(|e| anyhow!("Failed to open store: {:?}", e))?,
-            ),
+            Arc::new(LmdbStore::open(&path).build()?),
             network_params.ledger,
             Amount::zero(),
             Arc::new(RepWeightCache::new()),
             ledger_cache,
         )?;
+
+        // compare rep weights
 
         Ok(())
     }

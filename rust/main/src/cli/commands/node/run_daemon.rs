@@ -3,13 +3,17 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks};
 use rsnano_node::{
-    config::{NodeConfig, NodeFlags},
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
+        NodeConfig, NodeFlags, RpcConfig,
+    },
     node::{Node, NodeExt},
     transport::NullSocketObserver,
-    utils::AsyncRuntime,
+    utils::{AsyncRuntime, TomlConfig},
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use std::{
+    path::Path,
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
@@ -97,15 +101,6 @@ pub(crate) struct RunDaemonArgs {
     /// Increase bootstrap processor limits to allow more blocks before hitting full state and verify/write more per database call. Also disable deletion of processed unchecked blocks.
     #[arg(long)]
     fast_bootstrap: bool,
-    // Doc
-    //#[arg(long)]
-    //read_only: bool,
-    // Doc
-    //#[arg(long)]
-    //disable_connection_cleanup: bool,
-    // Doc
-    //#[arg(long)]
-    //inactive_node: bool,
     /// Increase block processor transaction batch write size, default 0 (limited by config block_processor_batch_max_time), 256k for fast_bootstrap
     #[arg(long)]
     block_processor_batch_size: Option<usize>,
@@ -140,11 +135,15 @@ impl RunDaemonArgs {
 
         std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
+        // write_config_files(&path)?;
+
         let config = NodeConfig::new(
             Some(network_params.network.default_node_port),
             &network_params,
             get_cpu_count(),
         );
+
+        // read_node_config_toml and override node flags
 
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
@@ -189,11 +188,11 @@ impl RunDaemonArgs {
     }
 
     pub(crate) fn set_flags(&self, node_flags: &mut NodeFlags) {
-        if let Some(config_overrides) = self.config_overrides.as_deref() {
-            node_flags.set_config_overrides(config_overrides.to_owned());
+        if let Some(config_overrides) = &self.config_overrides {
+            node_flags.set_config_overrides(config_overrides.clone());
         }
-        if let Some(rpc_config_overrides) = self.rpc_config_overrides.as_deref() {
-            node_flags.set_rpc_config_overrides(rpc_config_overrides.to_owned());
+        if let Some(rpc_config_overrides) = &self.rpc_config_overrides {
+            node_flags.set_rpc_config_overrides(rpc_config_overrides.clone());
         }
         if self.disable_activate_successors {
             node_flags.set_disable_activate_successors(true);
@@ -255,15 +254,6 @@ impl RunDaemonArgs {
         if self.fast_bootstrap {
             node_flags.set_fast_bootstrap(true);
         }
-        //if self.read_only {
-        //node_flags.set_read_only(true);
-        //}
-        //if self.disable_connection_cleanup {
-        //node_flags.set_disable_connection_cleanup(true);
-        //}
-        //if self.inactive_node {
-        //node_flags.set_inactive_node(true);
-        //}
         if let Some(block_processor_batch_size) = self.block_processor_batch_size {
             node_flags.set_block_processor_batch_size(block_processor_batch_size);
         }
@@ -277,4 +267,28 @@ impl RunDaemonArgs {
             node_flags.set_vote_processor_capacity(vote_processor_capacity);
         }
     }
+}
+
+fn write_config_files(data_path: &Path) -> Result<()> {
+    let network_params = NetworkParams::new(NetworkConstants::active_network());
+    write_node_config(data_path, &network_params)?;
+    write_rpc_config(data_path, &network_params)?;
+    Ok(())
+}
+
+fn write_node_config(data_path: &Path, network_params: &NetworkParams) -> Result<()> {
+    let daemon_config = DaemonConfig::new(network_params, get_cpu_count())?;
+    let mut toml = TomlConfig::new();
+    daemon_config.serialize_toml(&mut toml)?;
+    toml.write(get_node_toml_config_path(data_path))?;
+    Ok(())
+}
+
+fn write_rpc_config(data_path: &Path, network_params: &NetworkParams) -> Result<()> {
+    let mut rpc_config = RpcConfig::new(&network_params.network, get_cpu_count());
+    //rpc_config.enable_control = true;
+    let mut toml_rpc = TomlConfig::new();
+    rpc_config.serialize_toml(&mut toml_rpc)?;
+    toml_rpc.write(get_rpc_toml_config_path(data_path))?;
+    Ok(())
 }

@@ -19,11 +19,9 @@ pub(crate) struct GenerateConfigArgs {
     /// Generates an rpc config
     #[arg(long, group = "input1")]
     rpc: bool,
-    // log?
-    /// Uses default config values
+    /// Uses the default config values
     #[arg(long)]
     use_defaults: bool,
-    // create the file?
     /// Uses the supplied path as the data directory
     #[arg(long, group = "input2")]
     data_path: Option<String>,
@@ -62,6 +60,7 @@ impl GenerateConfigArgs {
 
             println!("{}", toml.to_string());
         }
+
         Ok(())
     }
 }

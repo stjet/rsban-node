@@ -1,5 +1,4 @@
 use crate::cli::get_path;
-use anyhow::anyhow;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::Amount;
@@ -29,11 +28,7 @@ impl TrendedWeightArgs {
         let ledger_cache = Arc::new(LedgerCache::new());
 
         let ledger = Arc::new(Ledger::new(
-            Arc::new(
-                LmdbStore::open(&path)
-                    .build()
-                    .map_err(|e| anyhow!("Failed to open store: {:?}", e))?,
-            ),
+            Arc::new(LmdbStore::open(&path).build()?),
             network_params.ledger,
             Amount::zero(),
             Arc::new(RepWeightCache::new()),

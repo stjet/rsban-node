@@ -1,12 +1,11 @@
-use anyhow::{anyhow, Result};
+use crate::cli::get_path;
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::Amount;
 use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
 use rsnano_node::{config::NetworkConstants, NetworkParams};
 use rsnano_store_lmdb::LmdbStore;
 use std::sync::Arc;
-
-use crate::cli::get_path;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
@@ -29,11 +28,7 @@ impl AccountCountArgs {
         let ledger_cache = Arc::new(LedgerCache::new());
 
         let ledger = Ledger::new(
-            Arc::new(
-                LmdbStore::open(&path)
-                    .build()
-                    .map_err(|e| anyhow!("Failed to open store: {:?}", e))?,
-            ),
+            Arc::new(LmdbStore::open(&path).build()?),
             network_params.ledger,
             Amount::zero(),
             Arc::new(RepWeightCache::new()),

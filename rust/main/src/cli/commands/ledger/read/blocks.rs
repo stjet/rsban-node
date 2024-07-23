@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_store_lmdb::LmdbStore;
 
@@ -16,12 +16,10 @@ pub(crate) struct Blocks {
 }
 
 impl Blocks {
-    pub(crate) fn block_dump(&self) -> Result<()> {
+    pub(crate) fn blocks(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
-        let store = LmdbStore::open(&path)
-            .build()
-            .map_err(|e| anyhow!("Failed to open store: {:?}", e))?;
+        let store = LmdbStore::open(&path).build()?;
 
         let mut transaction = store.tx_begin_read();
 

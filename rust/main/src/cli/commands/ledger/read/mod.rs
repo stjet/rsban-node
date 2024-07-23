@@ -56,7 +56,7 @@ impl ReadCommand {
         match &self.subcommand {
             Some(ReadSubcommands::AccountCount(args)) => args.account_count()?,
             Some(ReadSubcommands::BlockCount(args)) => args.block_count()?,
-            Some(ReadSubcommands::Blocks(args)) => args.block_dump()?,
+            Some(ReadSubcommands::Blocks(args)) => args.blocks()?,
             Some(ReadSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
             Some(ReadSubcommands::Peers(args)) => args.peers()?,
             Some(ReadSubcommands::TrendedWeight(args)) => args.dump_trended_weight()?,

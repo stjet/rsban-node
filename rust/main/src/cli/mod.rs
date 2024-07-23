@@ -23,7 +23,6 @@ impl Cli {
             Some(Commands::Utils(command)) => command.run()?,
             Some(Commands::Node(command)) => command.run()?,
             Some(Commands::Ledger(command)) => command.run()?,
-            //Some(Commands::Debug(command)) => command.run()?,
             None => Cli::command().print_long_help()?,
         }
         Ok(())
@@ -32,16 +31,14 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// Utils related to keys and accounts
-    Utils(UtilsCommand),
     /// Commands to read from and write to the ledger
     Ledger(LedgerCommand),
     /// Commands related to running the node
     Node(NodeCommand),
+    /// Utils related to keys and accounts
+    Utils(UtilsCommand),
     /// Commands to manage wallets
     Wallets(WalletsCommand),
-    // Debug command
-    //Debug(DebugCommand),
 }
 
 pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) -> PathBuf {

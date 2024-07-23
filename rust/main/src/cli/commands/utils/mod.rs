@@ -1,7 +1,7 @@
 use account_to_key::AccountToKeyArgs;
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
-use key_expand::KeyExpandArgs;
+use key_expand::ExpandKeyArgs;
 use key_to_account::KeyToAccountArgs;
 use rsnano_core::{Account, KeyPair};
 
@@ -16,7 +16,7 @@ pub(crate) enum UtilsSubcommands {
     /// Get the public key for <account>
     KeyGet(AccountToKeyArgs),
     /// Derive public key and account number from <key>
-    KeyExpand(KeyExpandArgs),
+    KeyExpand(ExpandKeyArgs),
     /// Generates a adhoc random keypair and prints it to stdout
     KeyCreate,
 }
@@ -32,15 +32,15 @@ impl UtilsCommand {
         match &self.subcommand {
             Some(UtilsSubcommands::AccountGet(args)) => args.key_to_account()?,
             Some(UtilsSubcommands::KeyGet(args)) => args.account_to_key()?,
-            Some(UtilsSubcommands::KeyExpand(args)) => args.key_expand()?,
-            Some(UtilsSubcommands::KeyCreate) => UtilsCommand::key_create(),
+            Some(UtilsSubcommands::KeyExpand(args)) => args.expand_key()?,
+            Some(UtilsSubcommands::KeyCreate) => UtilsCommand::create_key(),
             None => UtilsCommand::command().print_long_help()?,
         }
 
         Ok(())
     }
 
-    fn key_create() {
+    fn create_key() {
         let keypair = KeyPair::new();
         let private_key = keypair.private_key();
         let public_key = keypair.public_key();

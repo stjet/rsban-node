@@ -4,15 +4,14 @@ use rsnano_core::Account;
 
 #[derive(Parser)]
 pub(crate) struct KeyToAccountArgs {
-    /// Get account number for the <key>
+    /// Converts the <key> into account
     #[arg(long)]
     key: String,
 }
 
 impl KeyToAccountArgs {
     pub(crate) fn key_to_account(&self) -> Result<()> {
-        let account =
-            Account::decode_hex(&self.key).map_err(|e| anyhow!("Account is invalid: {:?}", e))?;
+        let account = Account::decode_hex(&self.key)?;
 
         println!("Account: {:?}", account.encode_account());
 

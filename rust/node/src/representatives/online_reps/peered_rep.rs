@@ -1,4 +1,4 @@
-use crate::transport::ChannelEnum;
+use crate::transport::{ChannelEnum, ChannelId};
 #[cfg(test)]
 use mock_instant::Instant;
 use rsnano_core::Account;
@@ -11,6 +11,7 @@ use std::time::Instant;
 pub struct PeeredRep {
     pub account: Account,
     pub channel: Arc<ChannelEnum>,
+    pub channel_id: ChannelId,
     pub last_request: Instant,
 }
 
@@ -18,6 +19,7 @@ impl PeeredRep {
     pub fn new(account: Account, channel: Arc<ChannelEnum>) -> Self {
         Self {
             account,
+            channel_id: channel.channel_id(),
             channel,
             last_request: Instant::now(),
         }

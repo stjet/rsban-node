@@ -1,4 +1,5 @@
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/json_error_response.hpp>
@@ -2134,16 +2135,26 @@ void nano::json_handler::confirmation_quorum ()
 	response_l.put ("peers_stake_total", quorum.peers_weight.to_string_dec());
 	if (request.get<bool> ("peer_details", false))
 	{
+		auto details = rsnano::rsn_node_representative_details(node.handle);
+		auto len = rsnano::rsn_rep_details_len(details);
 		boost::property_tree::ptree peers;
-		for (auto & peer : node.representative_register.representatives ())
+		for (auto i = 0; i < len; ++i)
 		{
+			nano::account account;
+			nano::amount weight;
+			rsnano::EndpointDto endpoint;
+			rsnano::rsn_rep_details_get(details, i, account.bytes.data(), &endpoint, weight.bytes.data());
+			auto ep = rsnano::dto_to_endpoint(endpoint);
+			auto ep_str = boost::str (boost::format ("%1%") % ep);
+
 			boost::property_tree::ptree peer_node;
-			peer_node.put ("account", peer.get_account ().to_account ());
-			peer_node.put ("ip", peer.get_channel ()->to_string ());
-			peer_node.put ("weight", nano::amount{ node.ledger.weight (peer.get_account ()) }.to_string_dec ());
+			peer_node.put ("account", account.to_account ());
+			peer_node.put ("ip", ep_str);
+			peer_node.put ("weight", weight.to_string_dec ());
 			peers.push_back (std::make_pair ("", peer_node));
 		}
 		response_l.add_child ("peers", peers);
+		rsnano::rsn_rep_details_destroy(details);
 	}
 	response_errors ();
 }

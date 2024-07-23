@@ -37,16 +37,6 @@ pub unsafe extern "C" fn rsn_representative_account(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_representative_channel(
-    handle: &RepresentativeHandle,
-) -> *mut ChannelHandle {
-    ChannelHandle::new(Arc::clone(&handle.0.channel))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_representative_set_channel(
-    handle: &mut RepresentativeHandle,
-    channel: &ChannelHandle,
-) {
-    handle.0.channel = Arc::clone(channel);
+pub unsafe extern "C" fn rsn_representative_channel_id(handle: &RepresentativeHandle) -> usize {
+    handle.0.channel_id.as_usize()
 }

@@ -34,6 +34,7 @@ use rsnano_node::{
 };
 use std::{
     ffi::{c_char, c_void},
+    net::SocketAddrV6,
     sync::Arc,
 };
 
@@ -508,6 +509,45 @@ pub struct ConfirmationQuorumDto {
     pub trended_weight: [u8; 16],
     pub peers_weight: [u8; 16],
     pub minimum_principal_weight: [u8; 16],
+}
+
+pub struct RepDetailsHandle(Vec<(Account, SocketAddrV6, Amount)>);
+
+#[no_mangle]
+pub extern "C" fn rsn_node_representative_details(handle: &NodeHandle) -> *mut RepDetailsHandle {
+    let mut result = Vec::new();
+    for rep in handle.0.online_reps.lock().unwrap().peered_reps() {
+        result.push((
+            rep.account,
+            rep.channel.remote_endpoint(),
+            handle.0.ledger.weight(&rep.account),
+        ))
+    }
+    Box::into_raw(Box::new(RepDetailsHandle(result)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_rep_details_destroy(handle: *mut RepDetailsHandle) {
+    drop(Box::from_raw(handle))
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_rep_details_len(handle: &RepDetailsHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_rep_details_get(
+    handle: &RepDetailsHandle,
+    index: usize,
+    account: *mut u8,
+    endpoint: &mut EndpointDto,
+    amount: *mut u8,
+) {
+    let (acc, ep, weight) = &handle.0[index];
+    acc.copy_bytes(account);
+    *endpoint = ep.into();
+    weight.copy_bytes(amount);
 }
 
 #[no_mangle]

@@ -46,14 +46,9 @@ nano::account nano::representative::get_account () const
 	return account;
 }
 
-std::shared_ptr<nano::transport::channel> nano::representative::get_channel () const
+size_t nano::representative::channel_id () const
 {
-	return nano::transport::channel_handle_to_channel (rsnano::rsn_representative_channel (handle));
-}
-
-void nano::representative::set_channel (std::shared_ptr<nano::transport::channel> new_channel)
-{
-	rsnano::rsn_representative_set_channel (handle, new_channel->handle);
+	return rsnano::rsn_representative_channel_id (handle);
 }
 
 //------------------------------------------------------------------------------

@@ -1014,7 +1014,7 @@ impl From<Amount> for TallyKey {
 }
 
 pub struct ActiveElectionsState {
-    pub roots: OrderedRoots,
+    roots: OrderedRoots,
     pub stopped: bool,
     pub manual_count: usize,
     pub priority_count: usize,
@@ -1043,15 +1043,12 @@ impl ActiveElectionsState {
 }
 
 #[derive(Default)]
-pub struct OrderedRoots {
+pub(crate) struct OrderedRoots {
     by_root: HashMap<QualifiedRoot, Entry>,
     sequenced: Vec<QualifiedRoot>,
 }
 
 impl OrderedRoots {
-    pub fn new() -> Self {
-        Default::default()
-    }
     pub const ELEMENT_SIZE: usize = size_of::<QualifiedRoot>() * 2 + size_of::<Arc<Election>>();
 
     pub fn insert(&mut self, entry: Entry) {
@@ -1371,7 +1368,7 @@ pub(crate) struct ActiveElectionsInfo {
     pub optimistic: usize,
 }
 
-struct Entry {
+pub(crate) struct Entry {
     root: QualifiedRoot,
     election: Arc<Election>,
     erased_callback: Option<ErasedCallback>,

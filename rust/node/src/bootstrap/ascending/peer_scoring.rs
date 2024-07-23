@@ -121,6 +121,7 @@ impl Scoring {
         self.by_channel.len()
     }
 
+    #[allow(dead_code)]
     fn get(&self, channel_id: ChannelId) -> Option<&PeerScore> {
         self.by_channel.get(&channel_id)
     }

@@ -178,7 +178,6 @@ impl BlockProcessor {
                 mutex: Mutex::new(BlockProcessorImpl {
                     queue: FairQueue::new(max_size_query, priority_query),
                     last_log: None,
-                    config: config.clone(),
                     stopped: false,
                 }),
                 condition: Condvar::new(),
@@ -692,7 +691,6 @@ impl BlockProcessorLoop {
 struct BlockProcessorImpl {
     pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
     pub last_log: Option<Instant>,
-    config: BlockProcessorConfig,
     stopped: bool,
 }
 

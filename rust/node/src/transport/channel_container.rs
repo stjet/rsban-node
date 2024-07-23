@@ -1,8 +1,6 @@
-use super::{
-    ChannelDirection, ChannelEnum, ChannelId, ChannelMode, ChannelTcp, ResponseServerImpl,
-};
+use super::{ChannelDirection, ChannelEnum, ChannelId, ChannelMode, ResponseServerImpl};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
-use rsnano_core::{Account, PublicKey};
+use rsnano_core::PublicKey;
 use std::{
     collections::{BTreeMap, HashMap},
     hash::Hash,
@@ -240,13 +238,6 @@ impl ChannelEntry {
         }
     }
 
-    pub fn tcp_channel(&self) -> &Arc<ChannelTcp> {
-        match self.channel.as_ref() {
-            ChannelEnum::Tcp(tcp) => tcp,
-            _ => panic!("not a tcp channel"),
-        }
-    }
-
     pub fn endpoint(&self) -> SocketAddrV6 {
         self.channel.remote_endpoint()
     }
@@ -264,10 +255,6 @@ impl ChannelEntry {
         if let Some(server) = &self.response_server {
             server.stop();
         }
-    }
-
-    pub fn node_id(&self) -> Option<Account> {
-        self.channel.get_node_id()
     }
 
     pub fn network_version(&self) -> u8 {

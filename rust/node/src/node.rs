@@ -419,10 +419,7 @@ impl Node {
         ));
 
         let vote_router = Arc::new(VoteRouter::new(
-            vote_cache.clone(),
             recently_confirmed.clone(),
-            network_params.clone(),
-            stats.clone(),
             vote_applier.clone(),
         ));
 
@@ -501,7 +498,6 @@ impl Node {
             inbound_queue: inbound_message_queue.clone(),
             node_flags: flags.clone(),
             network_params: network_params.clone(),
-            node_config: config.clone(),
             syn_cookies: syn_cookies.clone(),
         });
 
@@ -540,7 +536,6 @@ impl Node {
         //
         let tcp_listener = Arc::new(TcpListener::new(
             network.port(),
-            config.tcp.clone(),
             config.clone(),
             network.clone(),
             network_params.clone(),
@@ -593,9 +588,7 @@ impl Node {
             config.request_aggregator.clone(),
             stats.clone(),
             vote_generators.clone(),
-            history.clone(),
             ledger.clone(),
-            vote_router.clone(),
         ));
 
         let backlog_population = Arc::new(BacklogPopulation::new(

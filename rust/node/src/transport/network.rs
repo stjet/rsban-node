@@ -135,7 +135,7 @@ impl Network {
         }
     }
 
-    pub fn channels_info(&self) -> ChannelsInfo {
+    pub(crate) fn channels_info(&self) -> ChannelsInfo {
         self.state.lock().unwrap().channels_info()
     }
 
@@ -328,45 +328,6 @@ impl Network {
 
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
         self.state.lock().unwrap().attempts.remove(&remote);
-    }
-
-    fn check(&self, endpoint: &SocketAddrV6, node_id: &Account, channels: &State) -> bool {
-        if self.stopped.load(Ordering::SeqCst) {
-            return false; // Reject
-        }
-
-        if self.not_a_peer(endpoint, self.allow_local_peers) {
-            self.stats
-                .inc(StatType::TcpChannelsRejected, DetailType::NotAPeer);
-            debug!("Rejected invalid endpoint channel from: {}", endpoint);
-
-            return false; // Reject
-        }
-
-        let has_duplicate = channels.channels.iter().any(|entry| {
-            if entry.endpoint().ip() == endpoint.ip() {
-                // Only counsider channels with the same node id as duplicates if they come from the same IP
-                if entry.node_id() == Some(*node_id) {
-                    return true;
-                }
-            }
-
-            false
-        });
-
-        if has_duplicate {
-            self.stats
-                .inc(StatType::TcpChannelsRejected, DetailType::ChannelDuplicate);
-            debug!(
-                "Duplicate channel rejected from: {} ({})",
-                endpoint,
-                node_id.to_node_id()
-            );
-
-            return false; // Reject
-        }
-
-        true // OK
     }
 
     pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {

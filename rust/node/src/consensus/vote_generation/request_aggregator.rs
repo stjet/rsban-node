@@ -1,9 +1,8 @@
 use super::{
     request_aggregator_impl::{AggregateResult, RequestAggregatorImpl},
-    LocalVoteHistory, VoteGenerators,
+    VoteGenerators,
 };
 use crate::{
-    consensus::VoteRouter,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
 };
@@ -68,9 +67,7 @@ pub struct RequestAggregator {
     config: RequestAggregatorConfig,
     stats: Arc<Stats>,
     vote_generators: Arc<VoteGenerators>,
-    local_votes: Arc<LocalVoteHistory>,
     ledger: Arc<Ledger>,
-    vote_router: Arc<VoteRouter>,
     mutex: Mutex<RequestAggregatorData>,
     condition: Condvar,
     threads: Mutex<Vec<JoinHandle<()>>>,
@@ -81,17 +78,13 @@ impl RequestAggregator {
         config: RequestAggregatorConfig,
         stats: Arc<Stats>,
         vote_generators: Arc<VoteGenerators>,
-        local_votes: Arc<LocalVoteHistory>,
         ledger: Arc<Ledger>,
-        vote_router: Arc<VoteRouter>,
     ) -> Self {
         let max_queue = config.max_queue;
         Self {
             stats,
             vote_generators,
-            local_votes,
             ledger,
-            vote_router,
             config,
             condition: Condvar::new(),
             mutex: Mutex::new(RequestAggregatorData {
@@ -203,7 +196,7 @@ impl RequestAggregator {
     }
 
     fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<ChannelEnum>) {
-        let remaining = self.aggregate(tx, request, channel);
+        let remaining = self.aggregate(tx, request);
 
         if !remaining.remaining_normal.is_empty() {
             self.stats
@@ -259,21 +252,8 @@ impl RequestAggregator {
 
     /// Aggregate requests and send cached votes to channel.
     /// Return the remaining hashes that need vote generation for each block for regular & final vote generators
-    fn aggregate(
-        &self,
-        tx: &LmdbReadTransaction,
-        requests: &RequestType,
-        channel: &Arc<ChannelEnum>,
-    ) -> AggregateResult {
-        let mut aggregator = RequestAggregatorImpl::new(
-            &self.local_votes,
-            &self.ledger,
-            &self.vote_router,
-            &self.stats,
-            tx,
-            channel,
-        );
-
+    fn aggregate(&self, tx: &LmdbReadTransaction, requests: &RequestType) -> AggregateResult {
+        let mut aggregator = RequestAggregatorImpl::new(&self.ledger, &self.stats, tx);
         aggregator.add_votes(requests);
         aggregator.get_result()
     }

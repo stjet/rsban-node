@@ -246,10 +246,6 @@ impl OrderedCandidates {
         self.sequenced.len()
     }
 
-    fn is_empty(&self) -> bool {
-        self.sequenced.is_empty()
-    }
-
     fn contains(&self, account: &Account) -> bool {
         self.by_account.contains_key(account)
     }

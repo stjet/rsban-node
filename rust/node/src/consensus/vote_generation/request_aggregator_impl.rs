@@ -1,42 +1,24 @@
-use super::LocalVoteHistory;
-use crate::{
-    consensus::VoteRouter,
-    stats::{DetailType, StatType, Stats},
-    transport::ChannelEnum,
-};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{BlockEnum, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::sync::Arc;
 
 pub(super) struct RequestAggregatorImpl<'a> {
-    local_votes: &'a LocalVoteHistory,
     ledger: &'a Ledger,
-    vote_router: &'a VoteRouter,
     stats: &'a Stats,
     tx: &'a LmdbReadTransaction,
-    channel: &'a ChannelEnum,
 
     pub to_generate: Vec<Arc<BlockEnum>>,
     pub to_generate_final: Vec<Arc<BlockEnum>>,
 }
 
 impl<'a> RequestAggregatorImpl<'a> {
-    pub fn new(
-        local_votes: &'a LocalVoteHistory,
-        ledger: &'a Ledger,
-        vote_router: &'a VoteRouter,
-        stats: &'a Stats,
-        tx: &'a LmdbReadTransaction,
-        channel: &'a ChannelEnum,
-    ) -> Self {
+    pub fn new(ledger: &'a Ledger, stats: &'a Stats, tx: &'a LmdbReadTransaction) -> Self {
         Self {
-            local_votes,
             ledger,
-            vote_router,
             stats,
             tx,
-            channel,
             to_generate: Vec::new(),
             to_generate_final: Vec::new(),
         }

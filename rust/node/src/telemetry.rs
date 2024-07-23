@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockHash, KeyPair, PublicKey, Signature, WorkVersion,
+    KeyPair, Signature, WorkVersion,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
@@ -147,7 +147,6 @@ impl Telemetry {
                 endpoint,
                 data: data.clone(),
                 last_updated: Instant::now(),
-                channel: Arc::clone(channel),
             });
 
             if guard.telemetries.len() > Self::MAX_SIZE {
@@ -376,32 +375,6 @@ struct VendorVersion {
     maker: u8,
 }
 
-fn get_mode_or_average(collection: &HashMap<u64, i32>, sum: u128, size: u128) -> u64 {
-    let Some((key, count)) = collection.iter().max_by_key(|(_k, v)| *v) else {
-        return Default::default();
-    };
-    if *count > 1 {
-        *key
-    } else {
-        (sum / size) as u64
-    }
-}
-
-fn get_mode<T>(collection: &HashMap<T, i32>, _size: u128) -> T
-where
-    T: Default + Clone,
-{
-    let Some((key, count)) = collection.iter().max_by_key(|(_k, v)| *v) else {
-        return Default::default();
-    };
-    if *count > 1 {
-        key.clone()
-    } else {
-        // Just pick the first one
-        collection.iter().next().unwrap().0.clone()
-    }
-}
-
 impl Drop for Telemetry {
     fn drop(&mut self) {
         // Thread must be stopped before destruction
@@ -445,7 +418,6 @@ struct Entry {
     endpoint: SocketAddrV6,
     data: TelemetryData,
     last_updated: Instant,
-    channel: Arc<ChannelEnum>,
 }
 
 #[derive(Default)]

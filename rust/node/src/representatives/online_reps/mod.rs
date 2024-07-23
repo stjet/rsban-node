@@ -26,6 +26,7 @@ const ONLINE_WEIGHT_QUORUM: u8 = 67;
 /// Keeps track of all representatives that are online
 /// and all representatives to which we have a direct connection
 pub struct OnlineReps {
+    relative_time: Instant,
     rep_weights: Arc<RepWeightCache>,
     online_reps: OnlineContainer,
     peered_reps: PeeredContainer,
@@ -42,6 +43,7 @@ impl OnlineReps {
         online_weight_minimum: Amount,
     ) -> Self {
         Self {
+            relative_time: Instant::now(),
             rep_weights,
             online_reps: OnlineContainer::new(),
             peered_reps: PeeredContainer::new(),
@@ -86,8 +88,15 @@ impl OnlineReps {
     /// This can happen for directly connected or indirectly connected reps
     pub fn vote_observed(&mut self, rep_account: Account) {
         if self.rep_weights.weight(&rep_account) > Amount::zero() {
-            let new_insert = self.online_reps.insert(rep_account, Instant::now());
-            let trimmed = self.online_reps.trim(self.weight_period);
+            let new_insert = self
+                .online_reps
+                .insert(rep_account, self.relative_time.elapsed());
+            let trimmed = self.online_reps.trim(
+                self.relative_time
+                    .elapsed()
+                    .checked_sub(self.weight_period)
+                    .unwrap_or_default(),
+            );
 
             if new_insert || trimmed {
                 self.calculate_online_weight();

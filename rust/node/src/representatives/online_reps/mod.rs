@@ -56,6 +56,7 @@ impl OnlineReps {
         self.online_weight_minimum
     }
 
+    // TODO remove
     pub fn set_online(&mut self, amount: Amount) {
         self.online_weight = amount;
     }
@@ -75,6 +76,7 @@ impl OnlineReps {
 
     /** Returns the current online stake */
     pub fn online_weight(&self) -> Amount {
+        // TODO calculate on the fly
         self.online_weight
     }
 
@@ -137,25 +139,25 @@ impl OnlineReps {
     }
 
     /// List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period
-    pub fn online_reps(&self) -> Vec<Account> {
-        self.online_reps.iter().cloned().collect()
+    pub fn online_reps(&self) -> impl Iterator<Item = &Account> {
+        self.online_reps.iter()
     }
 
     /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
     pub fn peered_reps(&self) -> Vec<PeeredRep> {
-        self.representatives_filter(usize::MAX, Amount::zero())
+        self.representatives_filter(Amount::zero())
     }
 
     /// Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
     pub fn peered_principal_reps(&self) -> Vec<PeeredRep> {
-        self.representatives_filter(usize::MAX, self.minimum_principal_weight())
+        self.representatives_filter(self.minimum_principal_weight())
     }
 
-    /// Request a list of the top **max_results** known representatives in descending order
-    /// of weight, with at least **weight** voting weight, and optionally with a
-    /// minimum version **min_protocol_version**
-    pub fn representatives_filter(&self, max_results: usize, min_weight: Amount) -> Vec<PeeredRep> {
+    /// Request a list of known representatives in descending order
+    /// of weight, with at least **weight** voting weight
+    pub fn representatives_filter(&self, min_weight: Amount) -> Vec<PeeredRep> {
         let mut reps_with_weight = Vec::new();
+
         for rep in self.peered_reps.iter() {
             let weight = self.rep_weights.weight(&rep.account);
             if weight > min_weight {
@@ -165,11 +167,7 @@ impl OnlineReps {
 
         reps_with_weight.sort_by(|a, b| b.1.cmp(&a.1));
 
-        reps_with_weight
-            .drain(..)
-            .take(max_results)
-            .map(|(rep, _)| rep)
-            .collect()
+        reps_with_weight.drain(..).map(|(rep, _)| rep).collect()
     }
 
     /// Add voting account rep_account to the set of online representatives
@@ -239,6 +237,7 @@ impl Default for OnlineReps {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn empty() {
@@ -292,5 +291,93 @@ mod tests {
 
         assert_eq!(online_reps.online_weight(), weight, "online");
         assert_eq!(online_reps.peered_weight(), weight, "peered");
+    }
+
+    #[test]
+    fn trended_weight() {
+        let mut online_reps = OnlineReps::default();
+        online_reps.set_trended(Amount::nano(10_000));
+        assert_eq!(online_reps.trended_weight(), Amount::nano(10_000));
+        assert_eq!(
+            online_reps.trended_weight_or_minimum_online_weight(),
+            Amount::nano(60_000_000)
+        );
+
+        online_reps.set_trended(Amount::nano(100_000_000));
+        assert_eq!(online_reps.trended_weight(), Amount::nano(100_000_000));
+        assert_eq!(
+            online_reps.trended_weight_or_minimum_online_weight(),
+            Amount::nano(100_000_000)
+        );
+    }
+
+    #[test]
+    fn minimum_principal_weight() {
+        let mut online_reps = OnlineReps::default();
+        assert_eq!(online_reps.minimum_principal_weight(), Amount::nano(60_000));
+
+        online_reps.set_trended(Amount::nano(110_000_000));
+        // 0.1% of trended weight
+        assert_eq!(
+            online_reps.minimum_principal_weight(),
+            Amount::nano(110_000)
+        );
+    }
+
+    #[test]
+    fn is_pr() {
+        let weights = Arc::new(RepWeightCache::new());
+        let mut online_reps = OnlineReps::builder().rep_weights(weights.clone()).finish();
+        let rep_account = Account::from(42);
+        let channel_id = ChannelId::from(1);
+        let now = Duration::from_secs(1);
+        weights.set(rep_account, Amount::nano(50_000));
+
+        // unknown channel
+        assert_eq!(online_reps.is_pr(channel_id), false);
+
+        // below PR limit
+        online_reps.vote_observed_directly(rep_account, channel_id, now);
+        assert_eq!(online_reps.is_pr(channel_id), false);
+
+        // above PR limit
+        weights.set(rep_account, Amount::nano(100_000));
+        assert_eq!(online_reps.is_pr(channel_id), true);
+    }
+
+    #[test]
+    fn quorum_delta() {
+        let weights = Arc::new(RepWeightCache::new());
+        let mut online_reps = OnlineReps::builder().rep_weights(weights.clone()).finish();
+
+        assert_eq!(online_reps.quorum_delta(), Amount::nano(40_200_000));
+
+        let rep_account = Account::from(42);
+        let now = Duration::from_secs(1);
+        weights.set(rep_account, Amount::nano(100_000_000));
+        online_reps.vote_observed(rep_account, now);
+
+        assert_eq!(online_reps.quorum_delta(), Amount::nano(67_000_000));
+    }
+
+    #[test]
+    fn discard_old_votes() {
+        let rep_a = Account::from(1);
+        let rep_b = Account::from(2);
+        let rep_c = Account::from(3);
+        let weights = Arc::new(RepWeightCache::new());
+        weights.set(rep_a, Amount::nano(100_000));
+        weights.set(rep_b, Amount::nano(200_000));
+        weights.set(rep_c, Amount::nano(400_000));
+        let mut online_reps = OnlineReps::builder()
+            .rep_weights(weights)
+            .weight_period(Duration::from_secs(30))
+            .finish();
+
+        online_reps.vote_observed(rep_a, Duration::from_secs(10));
+        online_reps.vote_observed(rep_b, Duration::from_secs(20));
+        online_reps.vote_observed(rep_c, Duration::from_secs(41));
+
+        assert_eq!(online_reps.online_weight(), Amount::nano(600_000));
     }
 }

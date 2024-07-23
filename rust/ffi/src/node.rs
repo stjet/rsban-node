@@ -556,8 +556,8 @@ pub unsafe extern "C" fn rsn_rep_details_get(
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: *mut U256ArrayDto) {
-    let accounts = handle.0.online_reps.lock().unwrap().online_reps();
-    let data = accounts.iter().map(|a| *a.as_bytes()).collect();
+    let reps = handle.0.online_reps.lock().unwrap();
+    let data = reps.online_reps().map(|a| *a.as_bytes()).collect();
     (*result).initialize(data);
 }
 

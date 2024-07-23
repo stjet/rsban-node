@@ -80,13 +80,13 @@ impl ChannelId {
 
 impl Display for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
+        std::fmt::Display::fmt(&self.0, f)
     }
 }
 
 impl Debug for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+        std::fmt::Debug::fmt(&self.0, f)
     }
 }
 

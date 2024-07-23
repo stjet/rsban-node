@@ -62,10 +62,8 @@ pub unsafe extern "C" fn rsn_representative_register_representatives(
 ) -> *mut RepresentativeListHandle {
     let min_weight = Amount::from_ptr(min_weight);
 
-    let resp = handle
-        .lock()
-        .unwrap()
-        .representatives_filter(max_results, min_weight);
+    let mut resp = handle.lock().unwrap().representatives_filter(min_weight);
+    resp.truncate(max_results);
 
     Box::into_raw(Box::new(RepresentativeListHandle(resp)))
 }

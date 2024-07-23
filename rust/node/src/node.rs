@@ -38,8 +38,8 @@ use crate::{
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
     work::{DistributedWorkFactory, HttpClient},
-    NetworkParams, OnlineReps, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
-    BUILD_INFO, VERSION_STRING,
+    NetworkParams, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry, BUILD_INFO,
+    VERSION_STRING,
 };
 use reqwest::Url;
 use rsnano_core::{
@@ -279,16 +279,15 @@ impl Node {
         online_weight_sampler.set_max_samples(network_params.node.max_weight_samples);
         let online_weight_sampler = Arc::new(online_weight_sampler);
 
-        let mut online_reps = OnlineReps::new(rep_weights.clone());
-        online_reps.set_weight_period(Duration::from_secs(network_params.node.weight_period));
-        online_reps.set_online_weight_minimum(config.online_weight_minimum);
-        online_reps.set_trended(online_weight_sampler.calculate_trend());
-
-        let representative_register = Arc::new(Mutex::new(RepresentativeRegister::new(
-            rep_weights.clone(),
-            online_reps,
-            stats.clone(),
-        )));
+        let representative_register = Arc::new(Mutex::new(
+            RepresentativeRegister::builder()
+                .stats(stats.clone())
+                .rep_weights(rep_weights.clone())
+                .weight_period(Duration::from_secs(network_params.node.weight_period))
+                .online_weight_minimum(config.online_weight_minimum)
+                .trended(online_weight_sampler.calculate_trend())
+                .finish(),
+        ));
 
         let rep_tiers = Arc::new(RepTiers::new(
             ledger.clone(),

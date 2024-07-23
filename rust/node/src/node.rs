@@ -279,7 +279,7 @@ impl Node {
         online_weight_sampler.set_max_samples(network_params.node.max_weight_samples);
         let online_weight_sampler = Arc::new(online_weight_sampler);
 
-        let representative_register = Arc::new(Mutex::new(
+        let online_reps = Arc::new(Mutex::new(
             OnlineReps::builder()
                 .rep_weights(rep_weights.clone())
                 .weight_period(Duration::from_secs(network_params.node.weight_period))
@@ -291,7 +291,7 @@ impl Node {
         let rep_tiers = Arc::new(RepTiers::new(
             ledger.clone(),
             network_params.clone(),
-            representative_register.clone(),
+            online_reps.clone(),
             stats.clone(),
         ));
 
@@ -352,7 +352,7 @@ impl Node {
                 network_params.clone(),
                 workers.clone(),
                 block_processor.clone(),
-                representative_register.clone(),
+                online_reps.clone(),
                 network.clone(),
                 confirming_set.clone(),
             )
@@ -382,7 +382,7 @@ impl Node {
         );
 
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
-            representative_register.clone(),
+            online_reps.clone(),
             network.clone(),
             vote_processor_queue.clone(),
             loopback_channel,
@@ -401,7 +401,7 @@ impl Node {
         let vote_applier = Arc::new(VoteApplier::new(
             ledger.clone(),
             network_params.clone(),
-            representative_register.clone(),
+            online_reps.clone(),
             stats.clone(),
             vote_generators.clone(),
             block_processor.clone(),
@@ -448,7 +448,7 @@ impl Node {
             stats.clone(),
             election_end,
             account_balance_changed,
-            representative_register.clone(),
+            online_reps.clone(),
             flags.clone(),
             recently_confirmed,
             vote_applier,
@@ -512,7 +512,7 @@ impl Node {
         ));
 
         let rep_crawler = Arc::new(RepCrawler::new(
-            representative_register.clone(),
+            online_reps.clone(),
             stats.clone(),
             config.rep_crawler_query_timeout,
             config.clone(),
@@ -551,7 +551,7 @@ impl Node {
             stats.clone(),
             vote_cache.clone(),
             confirming_set.clone(),
-            representative_register.clone(),
+            online_reps.clone(),
         ));
 
         let manual_scheduler = Arc::new(ManualScheduler::new(
@@ -612,7 +612,7 @@ impl Node {
             block_processor.clone(),
             stats.clone(),
             network.clone(),
-            representative_register.clone(),
+            online_reps.clone(),
             ledger.clone(),
             confirming_set.clone(),
             !flags.disable_block_processor_republishing,
@@ -660,7 +660,7 @@ impl Node {
             stats.clone(),
             syn_cookies.clone(),
             keepalive_factory.clone(),
-            representative_register.clone(),
+            online_reps.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(
@@ -804,7 +804,7 @@ impl Node {
         }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
-        let reps_w = Arc::downgrade(&representative_register);
+        let reps_w = Arc::downgrade(&online_reps);
         vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {
             debug_assert!(code != VoteCode::Invalid);
             let Some(rep_crawler) = rep_crawler_w.upgrade() else {
@@ -1016,7 +1016,7 @@ impl Node {
             Monitor::new(
                 ledger.clone(),
                 network.clone(),
-                representative_register.clone(),
+                online_reps.clone(),
                 active_elections.clone(),
             ),
         );
@@ -1051,7 +1051,7 @@ impl Node {
             async_rt,
             bootstrap_server,
             online_weight_sampler,
-            online_reps: representative_register,
+            online_reps,
             rep_tiers,
             vote_router,
             vote_processor_queue,

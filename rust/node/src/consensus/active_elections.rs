@@ -113,7 +113,7 @@ pub struct ActiveElections {
     activate_successors: Mutex<Box<dyn Fn(&LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
     election_end: Mutex<Vec<ElectionEndCallback>>,
     account_balance_changed: AccountBalanceChangedCallback,
-    representative_register: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     flags: NodeFlags,
     pub vote_applier: Arc<VoteApplier>,
@@ -135,7 +135,7 @@ impl ActiveElections {
         stats: Arc<Stats>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
-        representative_register: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         flags: NodeFlags,
         recently_confirmed: Arc<RecentlyConfirmedCache>,
         vote_applier: Arc<VoteApplier>,
@@ -173,7 +173,7 @@ impl ActiveElections {
             activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
             election_end: Mutex::new(vec![election_end]),
             account_balance_changed,
-            representative_register,
+            online_reps,
             thread: Mutex::new(None),
             flags,
             vote_applier,
@@ -789,13 +789,7 @@ impl ActiveElections {
         drop(guard);
 
         let mut solicitor = ConfirmationSolicitor::new(&self.network_params, &self.network);
-        solicitor.prepare(
-            &self
-                .representative_register
-                .lock()
-                .unwrap()
-                .peered_principal_reps(),
-        );
+        solicitor.prepare(&self.online_reps.lock().unwrap().peered_principal_reps());
 
         /*
          * Loop through active elections in descending order of proof-of-work difficulty, requesting confirmation
@@ -1296,7 +1290,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         } else {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
-                let representatives = self.representative_register.clone();
+                let representatives = self.online_reps.clone();
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
                     representatives.lock().unwrap().observe(rep);

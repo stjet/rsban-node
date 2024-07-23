@@ -20,7 +20,7 @@ pub struct NetworkThreads {
     reachout_thread: Option<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
-    representative_register: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     peer_connector: Arc<PeerConnector>,
     flags: NodeFlags,
     network_params: NetworkParams,
@@ -38,7 +38,7 @@ impl NetworkThreads {
         stats: Arc<Stats>,
         syn_cookies: Arc<SynCookies>,
         keepalive_factory: Arc<KeepaliveFactory>,
-        representative_register: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
     ) -> Self {
         Self {
             cleanup_thread: None,
@@ -52,7 +52,7 @@ impl NetworkThreads {
             stats,
             syn_cookies,
             keepalive_factory,
-            representative_register,
+            online_reps,
         }
     }
 
@@ -64,7 +64,7 @@ impl NetworkThreads {
             flags: self.flags.clone(),
             syn_cookies: self.syn_cookies.clone(),
             network: self.network.clone(),
-            online_reps: self.representative_register.clone(),
+            online_reps: self.online_reps.clone(),
         };
 
         self.cleanup_thread = Some(

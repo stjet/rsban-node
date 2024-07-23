@@ -25,13 +25,13 @@ impl Monitor {
     pub fn new(
         ledger: Arc<Ledger>,
         network: Arc<Network>,
-        representative_register: Arc<Mutex<OnlineReps>>,
+        online_peers: Arc<Mutex<OnlineReps>>,
         active: Arc<ActiveElections>,
     ) -> Self {
         Self {
             ledger,
             network,
-            online_reps: representative_register,
+            online_reps: online_peers,
             active,
             last_time: None,
             last_blocks_total: 0,

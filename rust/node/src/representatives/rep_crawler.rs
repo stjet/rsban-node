@@ -31,7 +31,7 @@ use tracing::{debug, error, info, warn};
 /// random block and observing the corresponding vote.
 pub struct RepCrawler {
     rep_crawler_impl: Mutex<RepCrawlerImpl>,
-    representative_register: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     config: NodeConfig,
     network_params: NetworkParams,
@@ -48,7 +48,7 @@ impl RepCrawler {
     const MAX_RESPONSES: usize = 1024 * 4;
 
     pub fn new(
-        representative_register: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         query_timeout: Duration,
         config: NodeConfig,
@@ -61,7 +61,7 @@ impl RepCrawler {
     ) -> Self {
         let is_dev_network = network_params.network.is_dev_network();
         Self {
-            representative_register: Arc::clone(&representative_register),
+            online_reps: Arc::clone(&online_reps),
             stats: Arc::clone(&stats),
             config,
             network_params,
@@ -75,7 +75,7 @@ impl RepCrawler {
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
-                online_reps: representative_register,
+                online_reps,
                 stats,
                 query_timeout,
                 stopped: false,
@@ -215,7 +215,7 @@ impl RepCrawler {
             let current_total_weight;
             let sufficient_weight;
             {
-                let reps = self.representative_register.lock().unwrap();
+                let reps = self.online_reps.lock().unwrap();
                 current_total_weight = reps.peered_weight();
                 sufficient_weight = current_total_weight > reps.quorum_delta();
             }
@@ -270,10 +270,7 @@ impl RepCrawler {
         // normally the rep_crawler only tracks principal reps but it can be made to track
         // reps with less weight by setting rep_crawler_weight_minimum to a low value
         let minimum = std::cmp::min(
-            self.representative_register
-                .lock()
-                .unwrap()
-                .minimum_principal_weight(),
+            self.online_reps.lock().unwrap().minimum_principal_weight(),
             self.config.rep_crawler_weight_minimum,
         );
 
@@ -299,7 +296,7 @@ impl RepCrawler {
 
             let endpoint = channel.remote_endpoint();
             let result = self
-                .representative_register
+                .online_reps
                 .lock()
                 .unwrap()
                 .update_or_insert(vote.voting_account, channel);

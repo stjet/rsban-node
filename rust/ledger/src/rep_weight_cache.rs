@@ -98,6 +98,10 @@ impl RepWeightCache {
         self.weights.read().unwrap().len()
     }
 
+    pub fn set(&self, account: Account, weight: Amount) {
+        self.weights.write().unwrap().insert(account, weight);
+    }
+
     pub(super) fn inner(&self) -> Arc<RwLock<HashMap<Account, Amount>>> {
         self.weights.clone()
     }

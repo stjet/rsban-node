@@ -99,7 +99,7 @@ impl OnlineReps {
         }
         result
     }
-    ///
+
     /// Total number of peered representatives
     pub fn peered_reps_count(&self) -> usize {
         self.peered_reps.len()
@@ -202,6 +202,7 @@ impl OnlineReps {
         channel_id: ChannelId,
         now: Duration,
     ) -> InsertResult {
+        self.vote_observed(rep_account, now);
         self.peered_reps
             .update_or_insert(rep_account, channel_id, now)
     }
@@ -263,5 +264,33 @@ mod tests {
         );
 
         assert_eq!(online_reps.minimum_principal_weight(), Amount::nano(60_000));
+    }
+
+    #[test]
+    fn observe_vote() {
+        let account = Account::from(1);
+        let weight = Amount::nano(100_000);
+        let weights = Arc::new(RepWeightCache::new());
+        weights.set(account, weight);
+        let mut online_reps = OnlineReps::builder().rep_weights(weights).finish();
+
+        online_reps.vote_observed(account, Duration::from_secs(1));
+
+        assert_eq!(online_reps.online_weight(), weight, "online");
+        assert_eq!(online_reps.peered_weight(), Amount::zero(), "peered");
+    }
+
+    #[test]
+    fn observe_direct_vote() {
+        let account = Account::from(1);
+        let weight = Amount::nano(100_000);
+        let weights = Arc::new(RepWeightCache::new());
+        weights.set(account, weight);
+        let mut online_reps = OnlineReps::builder().rep_weights(weights).finish();
+
+        online_reps.vote_observed_directly(account, ChannelId::from(1), Duration::from_secs(1));
+
+        assert_eq!(online_reps.online_weight(), weight, "online");
+        assert_eq!(online_reps.peered_weight(), weight, "peered");
     }
 }

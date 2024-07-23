@@ -7,7 +7,7 @@ pub use builder::{OnlineRepsBuilder, DEFAULT_ONLINE_WEIGHT_MINIMUM};
 pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 
-use crate::transport::ChannelEnum;
+use crate::transport::{ChannelEnum, ChannelId};
 #[cfg(test)]
 use mock_instant::Instant;
 use primitive_types::U256;
@@ -23,6 +23,8 @@ use {online_container::OnlineContainer, peered_container::PeeredContainer};
 
 const ONLINE_WEIGHT_QUORUM: u8 = 67;
 
+/// Keeps track of all representatives that are online
+/// and all representatives to which we have a direct connection
 pub struct OnlineReps {
     rep_weights: Arc<RepWeightCache>,
     online_reps: OnlineContainer,
@@ -110,7 +112,7 @@ impl OnlineReps {
     }
 
     /// Query if a peer manages a principle representative
-    pub fn is_pr(&self, channel_id: usize) -> bool {
+    pub fn is_pr(&self, channel_id: ChannelId) -> bool {
         let min_weight = self.minimum_principal_weight();
         self.peered_reps
             .accounts_by_channel(channel_id)
@@ -127,21 +129,21 @@ impl OnlineReps {
         result
     }
 
-    pub fn on_rep_request(&mut self, channel_id: usize) {
+    pub fn on_rep_request(&mut self, channel_id: ChannelId) {
         // Find and update the timestamp on all reps available on the endpoint (a single host may have multiple reps)
         self.peered_reps.modify_by_channel(channel_id, |rep| {
             rep.last_request = Instant::now();
         });
     }
 
-    pub fn last_request_elapsed(&self, channel_id: usize) -> Option<Duration> {
+    pub fn last_request_elapsed(&self, channel_id: ChannelId) -> Option<Duration> {
         self.peered_reps
             .iter_by_channel(channel_id)
             .next()
             .map(|rep| rep.last_request.elapsed())
     }
 
-    pub fn remove_peer(&mut self, channel_id: usize) -> Vec<Account> {
+    pub fn remove_peer(&mut self, channel_id: ChannelId) -> Vec<Account> {
         self.peered_reps.remove(channel_id)
     }
 

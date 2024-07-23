@@ -1,8 +1,9 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, InboundMessageQueue,
-    NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl,
-    Socket, SocketExtensions, SocketObserver, TcpConfig, TrafficType, TransportType,
+    ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
+    InboundMessageQueue, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
+    PeerExclusion, ResponseServerImpl, Socket, SocketExtensions, SocketObserver, TcpConfig,
+    TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -278,8 +279,8 @@ impl Network {
         self.state.lock().unwrap().close_channels();
     }
 
-    pub fn get_next_channel_id(&self) -> usize {
-        self.next_channel_id.fetch_add(1, Ordering::SeqCst)
+    pub fn get_next_channel_id(&self) -> ChannelId {
+        self.next_channel_id.fetch_add(1, Ordering::SeqCst).into()
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -307,7 +308,7 @@ impl Network {
             endpoint,
             self.network_params.network.protocol_info(),
         )));
-        fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
+        fake.set_node_id(PublicKey::from(fake.channel_id().as_usize() as u64));
         let mut channels = self.state.lock().unwrap();
         channels.channels.insert(fake, None);
     }
@@ -536,7 +537,7 @@ impl Network {
     }
 
     /// Returns channel IDs of removed channels
-    pub fn purge(&self, cutoff: SystemTime) -> Vec<usize> {
+    pub fn purge(&self, cutoff: SystemTime) -> Vec<ChannelId> {
         let mut guard = self.state.lock().unwrap();
         guard.purge(cutoff)
     }
@@ -750,7 +751,7 @@ impl State {
         self.channels.clear();
     }
 
-    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<usize> {
+    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
         self.channels.close_idle_channels(cutoff);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations

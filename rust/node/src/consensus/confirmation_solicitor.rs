@@ -1,7 +1,7 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::PeeredRep,
-    transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
+    transport::{BufferDropPolicy, ChannelEnum, ChannelId, Network, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
@@ -24,8 +24,8 @@ pub struct ConfirmationSolicitor<'a> {
     max_election_broadcasts: usize,
     representative_requests: Vec<PeeredRep>,
     representative_broadcasts: Vec<PeeredRep>,
-    requests: HashMap<usize, Vec<(BlockHash, Root)>>,
-    channels: HashMap<usize, Arc<ChannelEnum>>,
+    requests: HashMap<ChannelId, Vec<(BlockHash, Root)>>,
+    channels: HashMap<ChannelId, Arc<ChannelEnum>>,
     prepared: bool,
     rebroadcasted: usize,
 }

@@ -1,5 +1,5 @@
 use super::PeeredRep;
-use crate::transport::ChannelEnum;
+use crate::transport::{ChannelEnum, ChannelId};
 use rsnano_core::Account;
 use std::{collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc};
 
@@ -17,7 +17,7 @@ pub enum InsertResult {
 /// Collection of all representatives that we have a direct connection to
 pub(super) struct PeeredContainer {
     by_account: HashMap<Account, PeeredRep>,
-    by_channel_id: HashMap<usize, Vec<Account>>,
+    by_channel_id: HashMap<ChannelId, Vec<Account>>,
 }
 
 impl PeeredContainer {
@@ -64,7 +64,7 @@ impl PeeredContainer {
         }
     }
 
-    fn remove_channel_id(&mut self, account: &Account, channel_id: usize) {
+    fn remove_channel_id(&mut self, account: &Account, channel_id: ChannelId) {
         let accounts = self.by_channel_id.get_mut(&channel_id).unwrap();
 
         if accounts.len() == 1 {
@@ -78,12 +78,12 @@ impl PeeredContainer {
         self.by_account.values()
     }
 
-    pub fn iter_by_channel(&self, channel_id: usize) -> impl Iterator<Item = &PeeredRep> {
+    pub fn iter_by_channel(&self, channel_id: ChannelId) -> impl Iterator<Item = &PeeredRep> {
         self.accounts_by_channel(channel_id)
             .map(|account| self.by_account.get(account).unwrap())
     }
 
-    pub fn accounts_by_channel(&self, channel_id: usize) -> impl Iterator<Item = &Account> {
+    pub fn accounts_by_channel(&self, channel_id: ChannelId) -> impl Iterator<Item = &Account> {
         self.by_channel_id.get(&channel_id).into_iter().flatten()
     }
 
@@ -91,7 +91,11 @@ impl PeeredContainer {
         self.by_account.keys()
     }
 
-    pub fn modify_by_channel(&mut self, channel_id: usize, mut modify: impl FnMut(&mut PeeredRep)) {
+    pub fn modify_by_channel(
+        &mut self,
+        channel_id: ChannelId,
+        mut modify: impl FnMut(&mut PeeredRep),
+    ) {
         if let Some(rep_accounts) = self.by_channel_id.get(&channel_id) {
             for rep in rep_accounts {
                 modify(self.by_account.get_mut(rep).unwrap());
@@ -103,7 +107,7 @@ impl PeeredContainer {
         self.by_account.len()
     }
 
-    pub fn remove(&mut self, channel_id: usize) -> Vec<Account> {
+    pub fn remove(&mut self, channel_id: ChannelId) -> Vec<Account> {
         let Some(accounts) = self.by_channel_id.remove(&channel_id) else {
             return Vec::new();
         };

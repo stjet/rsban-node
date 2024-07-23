@@ -4,8 +4,8 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, Network, PeerConnector, PeerConnectorExt, TrafficType,
-        TransportType,
+        BufferDropPolicy, ChannelEnum, ChannelId, Network, PeerConnector, PeerConnectorExt,
+        TrafficType, TransportType,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime},
     NetworkParams,
@@ -580,7 +580,7 @@ struct QueryEntry {
 struct OrderedQueries {
     entries: HashMap<usize, QueryEntry>,
     sequenced: Vec<usize>,
-    by_channel: HashMap<usize, Vec<usize>>,
+    by_channel: HashMap<ChannelId, Vec<usize>>,
     by_hash: HashMap<BlockHash, Vec<usize>>,
     next_id: usize,
 }
@@ -650,7 +650,7 @@ impl OrderedQueries {
         self.by_hash.get(hash).map(|i| i.len()).unwrap_or_default()
     }
 
-    fn count_by_channel(&self, channel_id: usize) -> usize {
+    fn count_by_channel(&self, channel_id: ChannelId) -> usize {
         self.by_channel
             .get(&channel_id)
             .map(|i| i.len())
@@ -659,7 +659,7 @@ impl OrderedQueries {
 
     fn modify_for_channel(
         &mut self,
-        channel_id: usize,
+        channel_id: ChannelId,
         mut f: impl FnMut(&mut QueryEntry) -> bool,
     ) {
         if let Some(ids) = self.by_channel.get(&channel_id) {

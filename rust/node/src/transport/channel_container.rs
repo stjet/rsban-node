@@ -1,4 +1,6 @@
-use super::{ChannelDirection, ChannelEnum, ChannelMode, ChannelTcp, ResponseServerImpl};
+use super::{
+    ChannelDirection, ChannelEnum, ChannelId, ChannelMode, ChannelTcp, ResponseServerImpl,
+};
 use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
 use rsnano_core::{Account, PublicKey};
 use std::{
@@ -177,7 +179,7 @@ impl ChannelContainer {
     }
 
     /// Removes dead channels and returns their channel ids
-    pub fn remove_dead(&mut self) -> Vec<usize> {
+    pub fn remove_dead(&mut self) -> Vec<ChannelId> {
         let dead_channels: Vec<_> = self
             .by_endpoint
             .values()

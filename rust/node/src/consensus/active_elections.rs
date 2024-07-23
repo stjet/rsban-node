@@ -1290,11 +1290,11 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         } else {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
-                let representatives = self.online_reps.clone();
+                let online_reps = self.online_reps.clone();
                 let relative_time = self.relative_time;
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    representatives
+                    online_reps
                         .lock()
                         .unwrap()
                         .vote_observed(rep, relative_time.elapsed());

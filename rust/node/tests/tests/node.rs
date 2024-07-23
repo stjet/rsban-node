@@ -1,8 +1,7 @@
 use crate::tests::helpers::{assert_never, assert_timely, assert_timely_eq, System};
 use rsnano_core::{work::WorkPool, Amount, BlockEnum, KeyPair, SendBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_node::{
-    node::NodeExt,
     stats::{DetailType, Direction, StatType},
     transport::PeerConnectorExt,
 };
@@ -84,49 +83,4 @@ fn local_block_broadcast() {
         || node2.block(&send_hash).is_some(),
         "block not received",
     )
-}
-
-#[test]
-fn online_reps() {
-    let mut system = System::new();
-    let node = system.make_node();
-    // 1 sample of minimum weight
-    assert_eq!(
-        node.online_reps
-            .lock()
-            .unwrap()
-            .trended_weight_or_minimum_online_weight(),
-        node.config.online_weight_minimum
-    );
-    assert_eq!(
-        node.online_reps.lock().unwrap().online_weight(),
-        Amount::zero()
-    );
-
-    node.online_reps
-        .lock()
-        .unwrap()
-        .vote_observed(*DEV_GENESIS_ACCOUNT, node.relative_time.elapsed());
-
-    assert_eq!(
-        node.online_reps.lock().unwrap().online_weight(),
-        Amount::MAX
-    );
-    // 1 minimum, 1 maximum
-    assert_eq!(
-        node.online_reps
-            .lock()
-            .unwrap()
-            .trended_weight_or_minimum_online_weight(),
-        node.config.online_weight_minimum
-    );
-
-    node.ongoing_online_weight_calculation();
-    assert_eq!(
-        node.online_reps
-            .lock()
-            .unwrap()
-            .trended_weight_or_minimum_online_weight(),
-        Amount::MAX
-    );
 }

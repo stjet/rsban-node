@@ -92,7 +92,7 @@ pub struct Node {
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
     pub online_weight_sampler: Arc<OnlineWeightSampler>,
-    pub representative_register: Arc<Mutex<OnlineReps>>,
+    pub online_reps: Arc<Mutex<OnlineReps>>,
     pub rep_tiers: Arc<RepTiers>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
     pub history: Arc<LocalVoteHistory>,
@@ -1051,7 +1051,7 @@ impl Node {
             async_rt,
             bootstrap_server,
             online_weight_sampler,
-            representative_register,
+            online_reps: representative_register,
             rep_tiers,
             vote_router,
             vote_processor_queue,
@@ -1111,7 +1111,7 @@ impl Node {
                 self.rep_crawler.collect_container_info("rep_crawler"),
                 self.block_processor
                     .collect_container_info("block_processor"),
-                self.representative_register
+                self.online_reps
                     .lock()
                     .unwrap()
                     .collect_container_info("online_reps"),
@@ -1364,19 +1364,10 @@ impl NodeExt for Arc<Node> {
     }
 
     fn ongoing_online_weight_calculation(&self) {
-        let online = self
-            .representative_register
-            .lock()
-            .unwrap()
-            .quorum_info()
-            .online_weight;
-
+        let online = self.online_reps.lock().unwrap().online_weight();
         self.online_weight_sampler.sample(online);
         let trend = self.online_weight_sampler.calculate_trend();
-        self.representative_register
-            .lock()
-            .unwrap()
-            .set_trended(trend);
+        self.online_reps.lock().unwrap().set_trended(trend);
     }
 
     fn backup_wallet(&self) {

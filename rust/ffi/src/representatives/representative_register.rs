@@ -1,6 +1,6 @@
 use crate::transport::{ChannelHandle, EndpointDto};
 use rsnano_core::{Account, Amount};
-use rsnano_node::representatives::{InsertResult, OnlineReps, Representative};
+use rsnano_node::representatives::{InsertResult, OnlineReps, PeeredRep};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -77,7 +77,7 @@ pub unsafe extern "C" fn rsn_representative_register_representatives(
     Box::into_raw(Box::new(RepresentativeListHandle(resp)))
 }
 
-pub struct RepresentativeListHandle(Vec<Representative>);
+pub struct RepresentativeListHandle(Vec<PeeredRep>);
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_representative_list_destroy(handle: *mut RepresentativeListHandle) {

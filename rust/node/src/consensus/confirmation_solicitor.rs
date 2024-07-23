@@ -1,6 +1,6 @@
 use super::{Election, ElectionData};
 use crate::{
-    representatives::Representative,
+    representatives::PeeredRep,
     transport::{BufferDropPolicy, ChannelEnum, Network, TrafficType},
     NetworkParams,
 };
@@ -22,8 +22,8 @@ pub struct ConfirmationSolicitor<'a> {
     max_election_requests: usize,
     /// Maximum amount of directed broadcasts to be sent per election
     max_election_broadcasts: usize,
-    representative_requests: Vec<Representative>,
-    representative_broadcasts: Vec<Representative>,
+    representative_requests: Vec<PeeredRep>,
+    representative_broadcasts: Vec<PeeredRep>,
     requests: HashMap<usize, Vec<(BlockHash, Root)>>,
     channels: HashMap<usize, Arc<ChannelEnum>>,
     prepared: bool,
@@ -51,7 +51,7 @@ impl<'a> ConfirmationSolicitor<'a> {
     }
 
     /// Prepare object for batching election confirmation requests
-    pub fn prepare(&mut self, representatives: &[Representative]) {
+    pub fn prepare(&mut self, representatives: &[PeeredRep]) {
         debug_assert!(!self.prepared);
         self.requests.clear();
         self.rebroadcasted = 0;

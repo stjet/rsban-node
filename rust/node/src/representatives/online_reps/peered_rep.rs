@@ -6,21 +6,20 @@ use std::sync::Arc;
 #[cfg(not(test))]
 use std::time::Instant;
 
+/// A representative to which we have a direct connection
 #[derive(Clone)]
-pub struct Representative {
+pub struct PeeredRep {
     pub account: Account,
     pub channel: Arc<ChannelEnum>,
     pub last_request: Instant,
-    pub last_response: Instant,
 }
 
-impl Representative {
+impl PeeredRep {
     pub fn new(account: Account, channel: Arc<ChannelEnum>) -> Self {
         Self {
             account,
             channel,
             last_request: Instant::now(),
-            last_response: Instant::now(),
         }
     }
 

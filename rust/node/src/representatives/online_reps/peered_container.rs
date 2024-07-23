@@ -1,4 +1,4 @@
-use super::Representative;
+use super::PeeredRep;
 use crate::transport::ChannelEnum;
 use rsnano_core::Account;
 use std::{collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc};
@@ -16,15 +16,13 @@ pub enum InsertResult {
 
 /// Collection of all representatives that we have a direct connection to
 pub(super) struct PeeredContainer {
-    by_account: HashMap<Account, Representative>,
+    by_account: HashMap<Account, PeeredRep>,
     by_channel_id: HashMap<usize, Vec<Account>>,
 }
 
 impl PeeredContainer {
-    pub const ELEMENT_SIZE: usize = size_of::<Representative>()
-        + size_of::<Account>()
-        + size_of::<usize>()
-        + size_of::<Account>();
+    pub const ELEMENT_SIZE: usize =
+        size_of::<PeeredRep>() + size_of::<Account>() + size_of::<usize>() + size_of::<Account>();
 
     pub fn new() -> Self {
         Self {
@@ -39,8 +37,6 @@ impl PeeredContainer {
         channel: Arc<ChannelEnum>,
     ) -> InsertResult {
         if let Some(rep) = self.by_account.get_mut(&account) {
-            rep.last_response = Instant::now();
-
             // Update if representative channel was changed
             if rep.channel.remote_endpoint() != channel.remote_endpoint() {
                 let new_channel_id = channel.channel_id();
@@ -59,7 +55,7 @@ impl PeeredContainer {
         } else {
             let channel_id = channel.channel_id();
             self.by_account
-                .insert(account, Representative::new(account, channel));
+                .insert(account, PeeredRep::new(account, channel));
 
             let by_id = self.by_channel_id.entry(channel_id).or_default();
 
@@ -78,11 +74,11 @@ impl PeeredContainer {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Representative> {
+    pub fn iter(&self) -> impl Iterator<Item = &PeeredRep> {
         self.by_account.values()
     }
 
-    pub fn iter_by_channel(&self, channel_id: usize) -> impl Iterator<Item = &Representative> {
+    pub fn iter_by_channel(&self, channel_id: usize) -> impl Iterator<Item = &PeeredRep> {
         self.accounts_by_channel(channel_id)
             .map(|account| self.by_account.get(account).unwrap())
     }
@@ -95,11 +91,7 @@ impl PeeredContainer {
         self.by_account.keys()
     }
 
-    pub fn modify_by_channel(
-        &mut self,
-        channel_id: usize,
-        mut modify: impl FnMut(&mut Representative),
-    ) {
+    pub fn modify_by_channel(&mut self, channel_id: usize, mut modify: impl FnMut(&mut PeeredRep)) {
         if let Some(rep_accounts) = self.by_channel_id.get(&channel_id) {
             for rep in rep_accounts {
                 modify(self.by_account.get_mut(rep).unwrap());

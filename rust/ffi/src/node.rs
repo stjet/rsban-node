@@ -30,7 +30,6 @@ use rsnano_core::{Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    representatives::ConfirmationQuorum,
     transport::{ChannelEnum, PeerConnectorExt},
 };
 use std::{
@@ -224,7 +223,7 @@ pub extern "C" fn rsn_node_representative_register(
     handle: &NodeHandle,
 ) -> *mut RepresentativeRegisterHandle {
     Box::into_raw(Box::new(RepresentativeRegisterHandle(Arc::clone(
-        &handle.0.representative_register,
+        &handle.0.online_reps,
     ))))
 }
 
@@ -490,13 +489,14 @@ pub extern "C" fn rsn_node_confirmation_quorum(
     handle: &NodeHandle,
     result: &mut ConfirmationQuorumDto,
 ) {
-    *result = handle
-        .0
-        .representative_register
-        .lock()
-        .unwrap()
-        .quorum_info()
-        .into();
+    let reps = handle.0.online_reps.lock().unwrap();
+    result.quorum_delta = reps.quorum_delta().to_be_bytes();
+    result.online_weight_quorum_percent = reps.quorum_percent();
+    result.online_weight_minimum = reps.online_weight_minimum().to_be_bytes();
+    result.online_weight = reps.online_weight().to_be_bytes();
+    result.trended_weight = reps.trended_weight().to_be_bytes();
+    result.peers_weight = reps.peered_weight().to_be_bytes();
+    result.minimum_principal_weight = reps.minimum_principal_weight().to_be_bytes();
 }
 
 #[repr(C)]
@@ -510,28 +510,9 @@ pub struct ConfirmationQuorumDto {
     pub minimum_principal_weight: [u8; 16],
 }
 
-impl From<ConfirmationQuorum> for ConfirmationQuorumDto {
-    fn from(value: ConfirmationQuorum) -> Self {
-        Self {
-            quorum_delta: value.quorum_delta.to_be_bytes(),
-            online_weight_quorum_percent: value.online_weight_quorum_percent,
-            online_weight_minimum: value.online_weight_minimum.to_be_bytes(),
-            online_weight: value.online_weight.to_be_bytes(),
-            trended_weight: value.trended_weight.to_be_bytes(),
-            peers_weight: value.peers_weight.to_be_bytes(),
-            minimum_principal_weight: value.minimum_principal_weight.to_be_bytes(),
-        }
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: *mut U256ArrayDto) {
-    let accounts = handle
-        .0
-        .representative_register
-        .lock()
-        .unwrap()
-        .online_reps();
+    let accounts = handle.0.online_reps.lock().unwrap().online_reps();
     let data = accounts.iter().map(|a| *a.as_bytes()).collect();
     (*result).initialize(data);
 }
@@ -539,10 +520,5 @@ pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_node_set_online_weight(handle: &NodeHandle, online: *const u8) {
     let amount = Amount::from_ptr(online);
-    handle
-        .0
-        .representative_register
-        .lock()
-        .unwrap()
-        .set_online(amount);
+    handle.0.online_reps.lock().unwrap().set_online(amount);
 }

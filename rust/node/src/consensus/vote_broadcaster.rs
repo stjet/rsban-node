@@ -44,12 +44,7 @@ impl VoteBroadcaster {
 
     fn flood_vote_pr(&self, vote: Vote) {
         let message = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
-        for rep in self
-            .representative_register
-            .lock()
-            .unwrap()
-            .peered_representatives()
-        {
+        for rep in self.representative_register.lock().unwrap().peered_reps() {
             rep.channel.send(
                 &message,
                 None,

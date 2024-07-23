@@ -14,7 +14,7 @@ use tracing::info;
 pub struct Monitor {
     ledger: Arc<Ledger>,
     network: Arc<Network>,
-    representative_register: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     active: Arc<ActiveElections>,
     last_time: Option<Instant>,
     last_blocks_cemented: u64,
@@ -31,7 +31,7 @@ impl Monitor {
         Self {
             ledger,
             network,
-            representative_register,
+            online_reps: representative_register,
             active,
             last_time: None,
             last_blocks_total: 0,
@@ -61,14 +61,16 @@ impl Monitor {
         info!("Peers: {} (realtime: {} | bootstrap: {} | inbound connections: {} | outbound connections: {})",
             channels.total, channels.realtime, channels.bootstrap, channels.inbound, channels.outbound);
 
-        let quorum_info = self.representative_register.lock().unwrap().quorum_info();
+        {
+            let online_reps = self.online_reps.lock().unwrap();
 
-        info!(
-            "Quorum: {} (stake peered: {} | online stake: {})",
-            quorum_info.quorum_delta.format_balance(0),
-            quorum_info.online_weight.format_balance(0),
-            quorum_info.peers_weight.format_balance(0)
-        );
+            info!(
+                "Quorum: {} (stake peered: {} | online stake: {})",
+                online_reps.quorum_delta().format_balance(0),
+                online_reps.online_weight().format_balance(0),
+                online_reps.peered_weight().format_balance(0)
+            );
+        }
 
         let elections = self.active.info();
         info!(

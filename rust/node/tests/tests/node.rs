@@ -92,51 +92,32 @@ fn online_reps() {
     let node = system.make_node();
     // 1 sample of minimum weight
     assert_eq!(
-        node.representative_register
-            .lock()
-            .unwrap()
-            .trended_weight(),
+        node.online_reps.lock().unwrap().trended_weight(),
         node.config.online_weight_minimum
     );
     assert_eq!(
-        node.representative_register
-            .lock()
-            .unwrap()
-            .quorum_info()
-            .online_weight,
+        node.online_reps.lock().unwrap().online_weight(),
         Amount::zero()
     );
 
-    node.representative_register
+    node.online_reps
         .lock()
         .unwrap()
         .observe(*DEV_GENESIS_ACCOUNT);
 
     assert_eq!(
-        node.representative_register
-            .lock()
-            .unwrap()
-            .quorum_info()
-            .online_weight,
+        node.online_reps.lock().unwrap().online_weight(),
         Amount::MAX
     );
     // 1 minimum, 1 maximum
     assert_eq!(
-        node.representative_register
-            .lock()
-            .unwrap()
-            .quorum_info()
-            .trended_weight,
+        node.online_reps.lock().unwrap().trended_weight(),
         node.config.online_weight_minimum
     );
 
     node.ongoing_online_weight_calculation();
     assert_eq!(
-        node.representative_register
-            .lock()
-            .unwrap()
-            .quorum_info()
-            .trended_weight,
+        node.online_reps.lock().unwrap().trended_weight(),
         Amount::MAX
     );
 }

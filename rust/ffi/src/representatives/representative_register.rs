@@ -68,19 +68,13 @@ pub unsafe extern "C" fn rsn_representative_register_representatives(
     handle: &RepresentativeRegisterHandle,
     max_results: usize,
     min_weight: *const u8,
-    min_version: u8,
 ) -> *mut RepresentativeListHandle {
     let min_weight = Amount::from_ptr(min_weight);
-    let min_version = if min_version == 0 {
-        None
-    } else {
-        Some(min_version)
-    };
 
     let resp = handle
         .lock()
         .unwrap()
-        .representatives_filter(max_results, min_weight, min_version);
+        .representatives_filter(max_results, min_weight);
 
     Box::into_raw(Box::new(RepresentativeListHandle(resp)))
 }

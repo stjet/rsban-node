@@ -107,12 +107,11 @@ nano::uint128_t nano::representative_register::total_weight () const
 	return result.number ();
 }
 
-std::vector<nano::representative> nano::representative_register::representatives (std::size_t count, nano::uint128_t const minimum_weight, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version)
+std::vector<nano::representative> nano::representative_register::representatives (std::size_t count, nano::uint128_t const minimum_weight)
 {
-	uint8_t min_version = minimum_protocol_version.value_or (0);
 	nano::amount weight{ minimum_weight };
 
-	auto result_handle = rsnano::rsn_representative_register_representatives (handle, count, weight.bytes.data (), min_version);
+	auto result_handle = rsnano::rsn_representative_register_representatives (handle, count, weight.bytes.data ());
 
 	auto len = rsnano::rsn_representative_list_len (result_handle);
 	std::vector<nano::representative> result;
@@ -169,11 +168,6 @@ bool nano::rep_crawler::is_pr (std::shared_ptr<nano::transport::channel> const &
 bool nano::rep_crawler::process (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel)
 {
 	return rsnano::rsn_rep_crawler_process (handle, vote->get_handle (), channel->handle);
-}
-
-std::vector<nano::representative> nano::rep_crawler::representatives (std::size_t count, nano::uint128_t const minimum_weight, std::optional<decltype (nano::network_constants::protocol_version)> const & minimum_protocol_version)
-{
-	return node.representative_register.representatives (count, minimum_weight, minimum_protocol_version);
 }
 
 std::size_t nano::rep_crawler::representative_count ()

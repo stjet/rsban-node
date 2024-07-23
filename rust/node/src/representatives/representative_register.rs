@@ -6,7 +6,6 @@ use crate::{
 };
 use rsnano_core::{utils::ContainerInfoComponent, Account, Amount};
 use rsnano_ledger::RepWeightCache;
-use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
     mem::size_of,
@@ -21,7 +20,6 @@ pub struct RepresentativeRegister {
     by_channel_id: HashMap<usize, Vec<Account>>,
     rep_weights: Arc<RepWeightCache>,
     online_reps: OnlineReps,
-    protocol_info: ProtocolInfo,
     stats: Arc<Stats>,
 }
 
@@ -41,13 +39,11 @@ impl RepresentativeRegister {
         rep_weights: Arc<RepWeightCache>,
         online_reps: OnlineReps,
         stats: Arc<Stats>,
-        protocol_info: ProtocolInfo,
     ) -> Self {
         Self {
             rep_weights,
             online_reps,
             stats,
-            protocol_info,
             by_account: HashMap::new(),
             by_channel_id: HashMap::new(),
         }
@@ -169,16 +165,12 @@ impl RepresentativeRegister {
 
     /// Request a list of the top \p count known representatives in descending order of weight, with at least \p weight_a voting weight, and optionally with a minimum version \p minimum_protocol_version
     pub fn representatives(&self) -> Vec<Representative> {
-        self.representatives_filter(usize::MAX, Amount::zero(), None)
+        self.representatives_filter(usize::MAX, Amount::zero())
     }
 
     /// Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
     pub fn principal_representatives(&self) -> Vec<Representative> {
-        self.representatives_filter(
-            usize::MAX,
-            self.online_reps.minimum_principal_weight(),
-            None,
-        )
+        self.representatives_filter(usize::MAX, self.online_reps.minimum_principal_weight())
     }
 
     /// Request a list of the top **max_results** known representatives in descending order
@@ -188,13 +180,11 @@ impl RepresentativeRegister {
         &self,
         max_results: usize,
         min_weight: Amount,
-        min_protocol_version: Option<u8>,
     ) -> Vec<Representative> {
-        let min_protocol_version = min_protocol_version.unwrap_or(self.protocol_info.version_min);
         let mut reps_with_weight = Vec::new();
         for (account, rep) in &self.by_account {
             let weight = self.rep_weights.weight(account);
-            if weight > min_weight && rep.channel.network_version() >= min_protocol_version {
+            if weight > min_weight {
                 reps_with_weight.push((rep.clone(), weight));
             }
         }

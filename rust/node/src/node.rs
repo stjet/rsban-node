@@ -288,7 +288,6 @@ impl Node {
             rep_weights.clone(),
             online_reps,
             stats.clone(),
-            network_params.network.protocol_info(),
         )));
 
         let rep_tiers = Arc::new(RepTiers::new(

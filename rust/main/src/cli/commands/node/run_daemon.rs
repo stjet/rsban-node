@@ -13,6 +13,7 @@ use rsnano_node::{
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use std::{
+    fs,
     path::Path,
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
@@ -290,5 +291,22 @@ fn write_rpc_config(data_path: &Path, network_params: &NetworkParams) -> Result<
     let mut toml_rpc = TomlConfig::new();
     rpc_config.serialize_toml(&mut toml_rpc)?;
     toml_rpc.write(get_rpc_toml_config_path(data_path))?;
+    Ok(())
+}
+
+fn read_node_config_toml(
+    data_path: &Path,
+    config: &mut DaemonConfig,
+    config_overrides: &[String],
+) -> Result<()> {
+    let mut config = TomlConfig::new();
+    let toml_config_path = data_path.join("node_config.toml");
+
+    // Parse and deserialize
+    let mut config_overrides_stream = config_overrides.join("\n");
+    config_overrides_stream.push('\n');
+
+    config.read(&config_overrides_stream, Some(&toml_config_path.as_path()))?;
+
     Ok(())
 }

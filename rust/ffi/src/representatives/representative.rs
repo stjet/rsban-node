@@ -12,7 +12,7 @@ pub unsafe extern "C" fn rsn_representative_create(
 ) -> *mut RepresentativeHandle {
     Box::into_raw(Box::new(RepresentativeHandle(PeeredRep::new(
         Account::from_ptr(account),
-        Arc::clone(channel),
+        channel.channel_id(),
     ))))
 }
 

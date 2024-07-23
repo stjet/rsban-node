@@ -1,7 +1,7 @@
 use super::PeeredRep;
-use crate::transport::{ChannelEnum, ChannelId};
+use crate::transport::ChannelId;
 use rsnano_core::Account;
-use std::{collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc};
+use std::{collections::HashMap, mem::size_of};
 
 #[cfg(test)]
 use mock_instant::Instant;
@@ -11,7 +11,8 @@ use std::time::Instant;
 pub enum InsertResult {
     Inserted,
     Updated,
-    ChannelChanged(SocketAddrV6),
+    /// Returns the old channel id
+    ChannelChanged(ChannelId),
 }
 
 /// Collection of all representatives that we have a direct connection to
@@ -31,34 +32,27 @@ impl PeeredContainer {
         }
     }
 
-    pub fn update_or_insert(
-        &mut self,
-        account: Account,
-        channel: Arc<ChannelEnum>,
-    ) -> InsertResult {
+    pub fn update_or_insert(&mut self, account: Account, channel_id: ChannelId) -> InsertResult {
         if let Some(rep) = self.by_account.get_mut(&account) {
             // Update if representative channel was changed
-            if rep.channel.remote_endpoint() != channel.remote_endpoint() {
-                let new_channel_id = channel.channel_id();
-                let old_channel = std::mem::replace(&mut rep.channel, channel);
-                if old_channel.channel_id() != new_channel_id {
-                    self.remove_channel_id(&account, old_channel.channel_id());
-                    self.by_channel_id
-                        .entry(new_channel_id)
-                        .or_default()
-                        .push(account);
-                }
-                InsertResult::ChannelChanged(old_channel.remote_endpoint())
+            if rep.channel_id != channel_id {
+                let old_channel_id = rep.channel_id;
+                let new_channel_id = channel_id;
+                rep.channel_id = new_channel_id;
+                self.remove_channel_id(&account, old_channel_id);
+                self.by_channel_id
+                    .entry(new_channel_id)
+                    .or_default()
+                    .push(account);
+                InsertResult::ChannelChanged(old_channel_id)
             } else {
                 InsertResult::Updated
             }
         } else {
-            let channel_id = channel.channel_id();
             self.by_account
-                .insert(account, PeeredRep::new(account, channel));
+                .insert(account, PeeredRep::new(account, channel_id));
 
             let by_id = self.by_channel_id.entry(channel_id).or_default();
-
             by_id.push(account);
             InsertResult::Inserted
         }

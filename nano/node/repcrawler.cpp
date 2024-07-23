@@ -65,29 +65,9 @@ nano::representative_register::~representative_register ()
 	rsnano::rsn_representative_register_destroy (handle);
 }
 
-nano::representative_register::insert_result nano::representative_register::update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+void nano::representative_register::update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a)
 {
-	rsnano::EndpointDto endpoint_dto;
-	auto result_code = rsnano::rsn_representative_register_update_or_insert (handle, account_a.bytes.data (), channel_a->handle, &endpoint_dto);
-	nano::representative_register::insert_result result{};
-	if (result_code == 0)
-	{
-		result.inserted = true;
-	}
-	else if (result_code == 1)
-	{
-		// updated
-	}
-	else if (result_code == 2)
-	{
-		result.updated = true;
-		result.prev_endpoint = rsnano::dto_to_endpoint (endpoint_dto);
-	}
-	else
-	{
-		throw std::runtime_error ("unknown result code");
-	}
-	return result;
+	rsnano::rsn_representative_register_update_or_insert (handle, account_a.bytes.data (), channel_a->handle);
 }
 
 bool nano::representative_register::is_pr (std::shared_ptr<nano::transport::channel> const & target_channel) const

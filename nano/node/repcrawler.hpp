@@ -60,7 +60,7 @@ public:
 	representative_register (representative_register const &) = delete;
 	~representative_register ();
 
-	insert_result update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
+	void update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	/** Query if a peer manages a principle representative */
 	bool is_pr (std::shared_ptr<nano::transport::channel> const & target_channel) const;
 	/** Get total available weight from representatives */

@@ -7,7 +7,7 @@ pub use builder::{OnlineRepsBuilder, DEFAULT_ONLINE_WEIGHT_MINIMUM};
 pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 
-use crate::transport::{ChannelEnum, ChannelId};
+use crate::transport::ChannelId;
 #[cfg(test)]
 use mock_instant::Instant;
 use primitive_types::U256;
@@ -83,6 +83,7 @@ impl OnlineReps {
     }
 
     /// Add voting account rep_account to the set of online representatives
+    /// This can happen for directly connected or indirectly connected reps
     pub fn vote_observed(&mut self, rep_account: Account) {
         if self.rep_weights.weight(&rep_account) > Amount::zero() {
             let new_insert = self.online_reps.insert(rep_account, Instant::now());
@@ -95,12 +96,12 @@ impl OnlineReps {
     }
 
     /// Add rep_account to the set of peered representatives
-    pub fn peer_observed(
+    pub fn vote_observed_directly(
         &mut self,
         rep_account: Account,
-        channel: Arc<ChannelEnum>,
+        channel_id: ChannelId,
     ) -> InsertResult {
-        self.peered_reps.update_or_insert(rep_account, channel)
+        self.peered_reps.update_or_insert(rep_account, channel_id)
     }
 
     fn calculate_online_weight(&mut self) {

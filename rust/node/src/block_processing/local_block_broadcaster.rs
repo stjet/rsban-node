@@ -264,7 +264,8 @@ impl LocalBlockBroadcaster {
     fn flood_block_initial(&self, block: BlockEnum) {
         let message = Message::Publish(Publish::new_from_originator(block));
         for rep in self.representatives.lock().unwrap().peered_principal_reps() {
-            rep.channel.send(
+            self.network.send(
+                rep.channel_id,
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,

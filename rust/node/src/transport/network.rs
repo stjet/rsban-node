@@ -3,7 +3,7 @@ use super::{
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
     InboundMessageQueue, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
     PeerExclusion, ResponseServerImpl, Socket, SocketExtensions, SocketObserver, TcpConfig,
-    TrafficType, TransportType,
+    TrafficType, TransportType, WriteCallback,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -283,6 +283,15 @@ impl Network {
         self.next_channel_id.fetch_add(1, Ordering::SeqCst).into()
     }
 
+    pub fn endpoint_for(&self, channel_id: ChannelId) -> Option<SocketAddrV6> {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .map(|e| e.endpoint())
+    }
+
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
         endpoint.ip().is_unspecified()
             || reserved_address(endpoint, allow_local_peers)
@@ -396,6 +405,31 @@ impl Network {
             .lock()
             .unwrap()
             .random_realtime_channels(count, min_version)
+    }
+
+    pub fn max(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .map(|c| c.channel.max(traffic_type))
+            .unwrap_or(true)
+    }
+
+    pub fn send(
+        &self,
+        channel_id: ChannelId,
+        message: &Message,
+        callback: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
+            channel
+                .channel
+                .send(message, callback, drop_policy, traffic_type);
+        }
     }
 
     pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {

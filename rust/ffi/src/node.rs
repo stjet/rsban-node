@@ -26,7 +26,9 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle, U256ArrayDto,
     VoidPointerCallback,
 };
-use rsnano_core::{Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource};
+use rsnano_core::{
+    utils::NULL_ENDPOINT, Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource,
+};
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
@@ -517,11 +519,13 @@ pub struct RepDetailsHandle(Vec<(Account, SocketAddrV6, Amount)>);
 pub extern "C" fn rsn_node_representative_details(handle: &NodeHandle) -> *mut RepDetailsHandle {
     let mut result = Vec::new();
     for rep in handle.0.online_reps.lock().unwrap().peered_reps() {
-        result.push((
-            rep.account,
-            rep.channel.remote_endpoint(),
-            handle.0.ledger.weight(&rep.account),
-        ))
+        let endpoint = handle
+            .0
+            .network
+            .endpoint_for(rep.channel_id)
+            .unwrap_or(NULL_ENDPOINT);
+
+        result.push((rep.account, endpoint, handle.0.ledger.weight(&rep.account)))
     }
     Box::into_raw(Box::new(RepDetailsHandle(result)))
 }

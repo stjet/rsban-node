@@ -299,7 +299,7 @@ impl RepCrawler {
                 .online_reps
                 .lock()
                 .unwrap()
-                .peer_observed(vote.voting_account, channel);
+                .vote_observed_directly(vote.voting_account, channel.channel_id());
 
             match result {
                 InsertResult::Inserted => {

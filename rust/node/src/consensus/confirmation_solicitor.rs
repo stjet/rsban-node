@@ -1,16 +1,16 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::PeeredRep,
-    transport::{BufferDropPolicy, ChannelEnum, ChannelId, Network, TrafficType},
+    transport::{BufferDropPolicy, ChannelId, Network, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
 use rsnano_messages::{ConfirmReq, Message, Publish};
 use std::{
     cmp::max,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     ops::Deref,
-    sync::{atomic::Ordering, Arc, MutexGuard},
+    sync::{atomic::Ordering, MutexGuard},
 };
 
 /// This struct accepts elections that need further votes before they can be confirmed and bundles them in to single confirm_req packets
@@ -25,7 +25,7 @@ pub struct ConfirmationSolicitor<'a> {
     representative_requests: Vec<PeeredRep>,
     representative_broadcasts: Vec<PeeredRep>,
     requests: HashMap<ChannelId, Vec<(BlockHash, Root)>>,
-    channels: HashMap<ChannelId, Arc<ChannelEnum>>,
+    channels: HashSet<ChannelId>,
     prepared: bool,
     rebroadcasted: usize,
 }
@@ -45,7 +45,7 @@ impl<'a> ConfirmationSolicitor<'a> {
             representative_requests: Vec::new(),
             representative_broadcasts: Vec::new(),
             requests: HashMap::new(),
-            channels: HashMap::new(),
+            channels: HashSet::new(),
             rebroadcasted: 0,
         }
     }
@@ -84,7 +84,8 @@ impl<'a> ConfirmationSolicitor<'a> {
                 true
             };
             if should_broadcast {
-                i.channel.send(
+                self.network.send(
+                    i.channel_id,
                     &winner,
                     None,
                     BufferDropPolicy::Limiter,
@@ -124,12 +125,9 @@ impl<'a> ConfirmationSolicitor<'a> {
                 false
             };
             if !exists || !is_final || different {
-                let request_queue = self.requests.entry(rep.channel.channel_id()).or_default();
-                if !self.channels.contains_key(&rep.channel.channel_id()) {
-                    self.channels
-                        .insert(rep.channel.channel_id(), Arc::clone(&rep.channel));
-                }
-                if !rep.channel.max(TrafficType::Generic) {
+                let request_queue = self.requests.entry(rep.channel_id).or_default();
+                self.channels.insert(rep.channel_id);
+                if !self.network.max(rep.channel_id, TrafficType::Generic) {
                     request_queue.push((winner.hash(), winner.root()));
                     if !different {
                         count += 1;
@@ -155,21 +153,33 @@ impl<'a> ConfirmationSolicitor<'a> {
     /// Dispatch bundled requests to each channel
     pub fn flush(&mut self) {
         debug_assert!(self.prepared);
-        for channel in self.channels.values() {
+        for channel_id in &self.channels {
             let mut roots_hashes = Vec::new();
-            if let Some(requests) = self.requests.get(&channel.channel_id()) {
+            if let Some(requests) = self.requests.get(channel_id) {
                 for root_hash in requests {
                     roots_hashes.push(root_hash.clone());
                     if roots_hashes.len() == ConfirmReq::HASHES_MAX {
                         let req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
-                        channel.send(&req, None, BufferDropPolicy::Limiter, TrafficType::Generic);
+                        self.network.send(
+                            *channel_id,
+                            &req,
+                            None,
+                            BufferDropPolicy::Limiter,
+                            TrafficType::Generic,
+                        );
                         roots_hashes = Vec::new();
                     }
                 }
             }
             if !roots_hashes.is_empty() {
                 let req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
-                channel.send(&req, None, BufferDropPolicy::Limiter, TrafficType::Generic);
+                self.network.send(
+                    *channel_id,
+                    &req,
+                    None,
+                    BufferDropPolicy::Limiter,
+                    TrafficType::Generic,
+                );
             }
         }
         self.prepared = false;

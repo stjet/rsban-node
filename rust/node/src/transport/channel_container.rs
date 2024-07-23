@@ -21,6 +21,7 @@ pub struct ChannelContainer {
     by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
     by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
     by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
+    by_id: HashMap<ChannelId, SocketAddrV6>,
 }
 
 impl ChannelContainer {
@@ -54,6 +55,7 @@ impl ChannelContainer {
             .entry(entry.subnetwork())
             .or_default()
             .push(endpoint);
+        self.by_id.insert(entry.channel.channel_id(), endpoint);
         self.by_endpoint.insert(entry.endpoint(), entry);
         true
     }
@@ -95,6 +97,7 @@ impl ChannelContainer {
             );
             remove_endpoint_map(&mut self.by_ip_address, &entry.ip_address(), endpoint);
             remove_endpoint_map(&mut self.by_subnet, &entry.subnetwork(), endpoint);
+            self.by_id.remove(&entry.channel.channel_id());
             Some(entry.channel.clone())
         } else {
             None
@@ -108,8 +111,11 @@ impl ChannelContainer {
     pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelEntry>> {
         self.by_random_access
             .get(index)
-            .map(|ep| self.by_endpoint.get(ep))
-            .flatten()
+            .and_then(|ep| self.by_endpoint.get(ep))
+    }
+
+    pub fn get_by_id(&self, id: ChannelId) -> Option<&Arc<ChannelEntry>> {
+        self.by_id.get(&id).and_then(|ep| self.by_endpoint.get(ep))
     }
 
     pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelEntry>> {
@@ -167,6 +173,7 @@ impl ChannelContainer {
         self.by_network_version.clear();
         self.by_ip_address.clear();
         self.by_subnet.clear();
+        self.by_id.clear();
     }
 
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {

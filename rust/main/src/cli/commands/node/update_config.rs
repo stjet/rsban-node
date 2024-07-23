@@ -8,14 +8,18 @@ use rsnano_node::{
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
-    .args(&["node", "rpc"]))]
+    .args(&["node", "rpc"])
+    .required(true))]
 pub(crate) struct UpdateConfigArgs {
+    /// Updates the node config
     #[arg(long, group = "input")]
     node: bool,
+    /// Updates the rpc config
     #[arg(long, group = "input")]
     rpc: bool,
     //#[arg(long, group = "input")]
     //log: bool,
+    /// Uses default config values
     #[arg(long)]
     use_defaults: bool,
     // network

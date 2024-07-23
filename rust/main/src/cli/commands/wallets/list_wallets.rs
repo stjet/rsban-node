@@ -2,7 +2,7 @@ use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::Account;
-use rsnano_node::wallets::{Wallets, WalletsExt};
+use rsnano_node::wallets::Wallets;
 use rsnano_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
@@ -10,10 +10,10 @@ use std::sync::Arc;
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct ListWalletsArgs {
-    #[arg(long)]
-    password: Option<String>,
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
 }
@@ -28,12 +28,9 @@ impl ListWalletsArgs {
 
         let mut txn = env.tx_begin_read();
 
-        let password = self.password.clone().unwrap_or_default();
-
         let wallet_ids = wallets.get_wallet_ids(&mut txn);
 
         for wallet_id in wallet_ids {
-            wallets.ensure_wallet_is_unlocked(wallet_id, &password);
             println!("{:?}", wallet_id);
             let accounts = wallets
                 .get_accounts_of_wallet(&wallet_id)

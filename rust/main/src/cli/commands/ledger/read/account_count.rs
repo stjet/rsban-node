@@ -12,8 +12,10 @@ use crate::cli::get_path;
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct AccountCountArgs {
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
 }

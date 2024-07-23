@@ -49,7 +49,7 @@ pub(crate) enum WalletSubcommands {
     SetWalletRepresentative(SetWalletRepresentativeArgs),
     /// Remove <account> from <wallet>.
     RemoveAccount(RemoveAccountArgs),
-    /// Decrypts <wallet> using <password>, !!THIS WILL PRINT YOUR PRIVATE KEY TO STDOUT!
+    /// Decrypts <wallet> using <password>, THIS WILL PRINT YOUR PRIVATE KEY TO STDOUT!
     DecryptWallet(DecryptWalletArgs),
     /// Dumps wallet IDs and public keys.
     ListWallets(ListWalletsArgs),

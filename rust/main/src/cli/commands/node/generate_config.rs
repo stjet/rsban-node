@@ -7,19 +7,29 @@ use rsnano_node::{
 };
 
 #[derive(Parser)]
-#[command(group = ArgGroup::new("input")
-    .args(&["node", "rpc"]))]
+#[command(group = ArgGroup::new("input1")
+    .args(&["node", "rpc"])
+    .required(true))]
+#[command(group = ArgGroup::new("input2")
+    .args(&["data_path", "network"]))]
 pub(crate) struct GenerateConfigArgs {
-    #[arg(long, group = "input")]
+    /// Generates a node config
+    #[arg(long, group = "input1")]
     node: bool,
-    #[arg(long, group = "input")]
+    /// Generates an rpc config
+    #[arg(long, group = "input1")]
     rpc: bool,
-    //#[arg(long, group = "input")]
-    //log: bool,
+    // log?
+    /// Uses default config values
     #[arg(long)]
     use_defaults: bool,
     // create the file?
-    // network
+    /// Uses the supplied path as the data directory
+    #[arg(long, group = "input2")]
+    data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
+    #[arg(long, group = "input2")]
+    network: Option<String>,
 }
 
 impl GenerateConfigArgs {
@@ -33,14 +43,11 @@ impl GenerateConfigArgs {
             let mut config = DaemonConfig::new(&network_params, 0)?;
             config.node.peering_port = Some(network_params.network.default_node_port);
             config.serialize_toml(&mut toml)?
-        } else if self.rpc {
+        } else {
             config_type = "rpc";
             let network_constants = NetworkConstants::new(WorkThresholds::new(0, 0, 0), network);
             let config = RpcConfig::new(&network_constants, 0);
             config.serialize_toml(&mut toml)?
-        } else {
-            println!("Configuration type must be either node or rpc");
-            return Ok(());
         }
 
         if !self.use_defaults {

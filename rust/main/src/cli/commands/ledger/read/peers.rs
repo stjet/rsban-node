@@ -11,8 +11,10 @@ use std::sync::Arc;
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct PeersArgs {
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
     #[arg(long)]
@@ -47,40 +49,6 @@ impl PeersArgs {
         Ok(())
     }
 }
-
-/*pub const TEST_PEER_A: SocketAddrV6 =
-    SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 1000, 0, 0);
-
-pub const TEST_PEER_B: SocketAddrV6 =
-    SocketAddrV6::new(Ipv6Addr::new(3, 3, 3, 3, 3, 3, 3, 3), 2000, 0, 0);
-
-pub struct Fixture {
-    env: Arc<LmdbEnv>,
-    store: LmdbPeerStore,
-}
-
-impl Fixture {
-    pub fn with_stored_data(entries: Vec<SocketAddrV6>) -> Self {
-        let mut env = LmdbEnv::new_null_with().database("peers", LmdbDatabase::new_null(42));
-
-        for entry in entries {
-            env = env.entry(
-                &EndpointBytes::from(entry),
-                &TimeBytes::from(SystemTime::UNIX_EPOCH),
-            );
-        }
-
-        Self::with_env(env.build().build())
-    }
-
-    fn with_env(env: LmdbEnv) -> Self {
-        let env = Arc::new(env);
-        Self {
-            env: env.clone(),
-            store: LmdbPeerStore::new(env).unwrap(),
-        }
-    }
-    }*/
 
 #[cfg(test)]
 mod tests {

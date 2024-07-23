@@ -4,6 +4,7 @@ use rsnano_core::{Account, PublicKey, RawKey};
 
 #[derive(Parser)]
 pub(crate) struct KeyExpandArgs {
+    /// Derive public key and account number from <key>
     #[arg(long)]
     key: String,
 }

@@ -32,7 +32,7 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// Commands related to the protocol, such as keys and accounts
+    /// Utils related to keys and accounts
     Utils(UtilsCommand),
     /// Commands to read from and write to the ledger
     Ledger(LedgerCommand),

@@ -12,13 +12,17 @@ use std::sync::Arc;
 #[command(group = ArgGroup::new("input2")
     .args(&["data_path", "network"]))]
 pub(crate) struct FinalVoteArgs {
+    /// Clears the supplied final vote
     #[arg(long, group = "input1")]
     root: Option<String>,
+    /// Clears all final votes
     #[arg(long, group = "input1")]
     all: bool,
-    #[arg(long, group = "input2")]
+    /// Uses the supplied path as the data directory
+    #[arg(long, group = "input")]
     data_path: Option<String>,
-    #[arg(long, group = "input2")]
+    /// Uses the supplied network (live, test, beta or dev)
+    #[arg(long, group = "input")]
     network: Option<String>,
 }
 

@@ -22,27 +22,27 @@ pub(crate) mod validate_blocks;
 
 #[derive(Subcommand)]
 pub(crate) enum ReadSubcommands {
-    /// Display the number of accounts
+    /// Displays the number of accounts
     AccountCount(AccountCountArgs),
-    /// Display the number of blocks
+    /// Displays the number of blocks
     BlockCount(BlockCountArgs),
-    /// RDisplay all the blocks in the ledger in text format
+    /// Displays all the blocks in the ledger in text format
     Blocks(Blocks),
-    /// Display peer IPv6:port connections
+    /// Displays peer IPv6:port connections
     Peers(PeersArgs),
     /// Displays the number of cemented (confirmed) blocks
     CementedBlockCount(CementedBlockCountArgs),
     //DumpFrontierUncheckedDependents(DumpFrontierUncheckedDependentsArgs),
-    /// List representatives and weights
+    /// Lists representatives and weights
     Representatives(RepresentativesArgs),
-    /// Dump trended weights table
+    /// Dumps trended weights table
     TrendedWeight(TrendedWeightArgs),
-    /// Display a summarized comparison between the hardcoded bootstrap weights and representative weights from the ledger
+    /// Displays a summarized comparison between the hardcoded bootstrap weights and representative weights from the ledger
     ///
     /// Full comparison is output to logs
     CompareRepWeights(CompareRepWeightsArgs),
-    /// Check all blocks for correct hash, signature, work value
-    ValidateBlocks(ValidateBlocksArgs),
+    /// Checks all blocks for correct hash, signature, work value
+    ValidateBlocks(ValidateBlocksArgs), // is this needed?
 }
 
 #[derive(Parser)]

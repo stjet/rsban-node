@@ -14,20 +14,20 @@ pub(crate) mod vacuum;
 
 #[derive(Subcommand)]
 pub(crate) enum WriteSubcommands {
-    /// Compact database. If data_path is missing, the database in the data directory is compacted.
+    /// Compacts the database. If data_path is missing, the database in the data directory is compacted.
     ///
     /// Optional: --unchecked_clear, --clear_send_ids, --online_weight_clear, --peer_clear, --confirmation_height_clear, --rebuild_database.
     /// Requires approximately data.ldb size * 2 free space on disk.
     Vacuum(VacuumArgs),
-    /// Rebuild LMDB database with --vacuum for best compaction.
+    /// Rebuilds the database with vacuum for best compaction.
     ///
     /// Requires approximately data.ldb size * 2 free space on disk.
     Rebuild(RebuildArgs),
-    /// Compact database and create snapshot, functions similar to vacuum but does not replace the existing database.
+    /// Compacts the database and creates a snapshot, functions similar to vacuum but does not replace the existing database.
     Snapshot(SnapshotArgs),
-    /// Commands that clear some part of the ledger
+    /// Commands that clear some component of the ledger
     Clear(ClearCommand),
-    /// Commands that clear some part of the ledger
+    /// Prune accounts up to last confirmed blocks (EXPERIMENTAL)
     Prune(PruneArgs),
 }
 

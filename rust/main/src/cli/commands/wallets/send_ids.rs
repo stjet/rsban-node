@@ -1,17 +1,18 @@
-use std::sync::Arc;
-
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_node::wallets::Wallets;
 use rsnano_store_lmdb::LmdbEnv;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct SendIdsArgs {
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
 }

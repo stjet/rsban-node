@@ -20,17 +20,23 @@ use tracing_subscriber::EnvFilter;
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct RunDaemonArgs {
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
-    /// Pass node configuration values. This takes precedence over any values in the configuration file. This option can be repeated multiple times.
-    #[arg(long)]
+    /// Pass node configuration values
+    /// This takes precedence over any values in the configuration file
+    /// This option can be repeated multiple times
+    #[arg(long, verbatim_doc_comment)]
     config_overrides: Option<Vec<String>>,
-    /// Pass RPC configuration values. This takes precedence over any values in the configuration file. This option can be repeated multiple times.
-    #[arg(long)]
+    /// Pass RPC configuration values
+    /// This takes precedence over any values in the configuration file
+    /// This option can be repeated multiple times.
+    #[arg(long, verbatim_doc_comment)]
     rpc_config_overrides: Option<Vec<String>>,
-    /// Doc
+    /// Disables activate_successors in active_elections
     #[arg(long)]
     disable_activate_successors: bool,
     /// Turn off automatic wallet backup process
@@ -45,20 +51,20 @@ pub(crate) struct RunDaemonArgs {
     /// Turn off use of wallet-based bootstrap
     #[arg(long)]
     disable_wallet_bootstrap: bool,
-    /// Turn off listener on the bootstrap network so incoming TCP (bootstrap) connections are rejected.
+    /// Turn off listener on the bootstrap network so incoming TCP (bootstrap) connections are rejected
     /// Note: this does not impact TCP traffic for the live network.
-    #[arg(long)]
+    #[arg(long, verbatim_doc_comment)]
     disable_bootstrap_listener: bool,
-    /// Doc
+    /// Disables the legacy bulk pull server for bootstrap operations
     #[arg(long)]
     disable_bootstrap_bulk_pull_server: bool,
-    /// Doc
+    /// Disables the legacy bulk push client for bootstrap operations
     #[arg(long)]
     disable_bootstrap_bulk_push_client: bool,
     /// Turn off the ability for ongoing bootstraps to occur
     #[arg(long)]
     disable_ongoing_bootstrap: bool,
-    /// Doc
+    /// Disable ascending bootstrap
     #[arg(long)]
     disable_ascending_bootstrap: bool,
     /// Turn off the request loop
@@ -73,33 +79,33 @@ pub(crate) struct RunDaemonArgs {
     /// Do not provide any telemetry data to nodes requesting it. Responses are still made to requests, but they will have an empty payload.
     #[arg(long)]
     disable_providing_telemetry_metrics: bool,
-    /// Doc
+    /// Disables ongoing telemetry requests to peers
     #[arg(long)]
     disable_ongoing_telemetry_requests: bool,
     /// Disable deletion of unchecked blocks after processing.
     #[arg(long)]
     disable_block_processor_unchecked_deletion: bool,
-    /// Doc
+    /// Disables block republishing by disabling the local_block_broadcaster component
     #[arg(long)]
     disable_block_processor_republishing: bool,
     /// Allow multiple connections to the same peer in bootstrap attempts
     #[arg(long)]
     allow_bootstrap_peers_duplicates: bool,
-    /// Doc
+    /// Enable experimental ledger pruning
     #[arg(long)]
     enable_pruning: bool,
     /// Increase bootstrap processor limits to allow more blocks before hitting full state and verify/write more per database call. Also disable deletion of processed unchecked blocks.
     #[arg(long)]
     fast_bootstrap: bool,
-    /// Doc
-    #[arg(long)]
-    read_only: bool,
-    /// Doc
-    #[arg(long)]
-    disable_connection_cleanup: bool,
-    /// Doc
-    #[arg(long)]
-    inactive_node: bool,
+    // Doc
+    //#[arg(long)]
+    //read_only: bool,
+    // Doc
+    //#[arg(long)]
+    //disable_connection_cleanup: bool,
+    // Doc
+    //#[arg(long)]
+    //inactive_node: bool,
     /// Increase block processor transaction batch write size, default 0 (limited by config block_processor_batch_max_time), 256k for fast_bootstrap
     #[arg(long)]
     block_processor_batch_size: Option<usize>,
@@ -249,15 +255,15 @@ impl RunDaemonArgs {
         if self.fast_bootstrap {
             node_flags.set_fast_bootstrap(true);
         }
-        if self.read_only {
-            node_flags.set_read_only(true);
-        }
-        if self.disable_connection_cleanup {
-            node_flags.set_disable_connection_cleanup(true);
-        }
-        if self.inactive_node {
-            node_flags.set_inactive_node(true);
-        }
+        //if self.read_only {
+        //node_flags.set_read_only(true);
+        //}
+        //if self.disable_connection_cleanup {
+        //node_flags.set_disable_connection_cleanup(true);
+        //}
+        //if self.inactive_node {
+        //node_flags.set_inactive_node(true);
+        //}
         if let Some(block_processor_batch_size) = self.block_processor_batch_size {
             node_flags.set_block_processor_batch_size(block_processor_batch_size);
         }

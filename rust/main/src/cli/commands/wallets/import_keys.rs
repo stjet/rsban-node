@@ -11,16 +11,22 @@ use std::{fs::File, io::Read, path::PathBuf, sync::Arc};
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
 pub(crate) struct ImportKeysArgs {
+    /// The path of the file that contains the keys
     #[arg(long)]
     file: String,
     #[arg(long)]
+    /// Optional <password> to unlock the wallet
     password: Option<String>,
     #[arg(long)]
+    /// Forces the command if the wallet is locked
     force: bool,
+    /// The <wallet> to import the keys
     #[arg(long)]
     wallet: String,
+    /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
+    /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
 }

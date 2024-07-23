@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use generate_config::GenerateConfigArgs;
 use initialize::InitializeArgs;
@@ -27,7 +27,7 @@ pub(crate) enum NodeSubcommands {
     Diagnostics,
     /// Prints out version.
     Version,
-    /// Write configuration to stdout, populated with defaults suitable for this system.
+    /// Writes node or rpc configuration to stdout, populated with defaults suitable for this system.
     ///
     /// Pass the configuration type node or rpc.
     /// See also use_defaults.

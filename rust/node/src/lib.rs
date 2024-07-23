@@ -29,6 +29,6 @@ pub mod websocket;
 pub mod work;
 
 pub use ipc::*;
-pub use representatives::{OnlineReps, OnlineWeightSampler, ONLINE_WEIGHT_QUORUM};
+pub use representatives::OnlineWeightSampler;
 pub use secure::*;
 pub use telemetry::*;

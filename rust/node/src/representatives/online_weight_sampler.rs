@@ -1,9 +1,10 @@
-use super::online_reps::DEFAULT_ONLINE_WEIGHT_MINIMUM;
 use rsnano_core::utils::nano_seconds_since_epoch;
 use rsnano_core::Amount;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::sync::Arc;
+
+use super::DEFAULT_ONLINE_WEIGHT_MINIMUM;
 
 pub struct OnlineWeightSampler {
     ledger: Arc<Ledger>,

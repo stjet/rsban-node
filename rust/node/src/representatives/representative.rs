@@ -1,6 +1,10 @@
 use crate::transport::ChannelEnum;
+#[cfg(test)]
+use mock_instant::Instant;
 use rsnano_core::Account;
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
+#[cfg(not(test))]
+use std::time::Instant;
 
 #[derive(Clone)]
 pub struct Representative {
@@ -20,7 +24,7 @@ impl Representative {
         }
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn new_test_instance() -> Self {
         Self::new(Account::from(42), Arc::new(ChannelEnum::new_null()))
     }

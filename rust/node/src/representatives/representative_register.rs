@@ -1,26 +1,36 @@
-use super::{online_reps::DEFAULT_ONLINE_WEIGHT_MINIMUM, Representative};
+use super::{online_reps_container::OnlineRepsContainer, Representative};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::ChannelEnum,
-    OnlineReps, ONLINE_WEIGHT_QUORUM,
 };
-use rsnano_core::{utils::ContainerInfoComponent, Account, Amount};
+#[cfg(test)]
+use mock_instant::Instant;
+use primitive_types::U256;
+use rsnano_core::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Account, Amount,
+};
 use rsnano_ledger::RepWeightCache;
+#[cfg(not(test))]
+use std::time::Instant;
 use std::{
-    collections::HashMap,
-    mem::size_of,
-    net::SocketAddrV6,
-    sync::Arc,
-    time::{Duration, Instant},
+    cmp::max, collections::HashMap, mem::size_of, net::SocketAddrV6, sync::Arc, time::Duration,
 };
 use tracing::info;
+
+const ONLINE_WEIGHT_QUORUM: u8 = 67;
+pub const DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);
 
 pub struct RepresentativeRegister {
     by_account: HashMap<Account, Representative>,
     by_channel_id: HashMap<usize, Vec<Account>>,
     rep_weights: Arc<RepWeightCache>,
-    online_reps: OnlineReps,
     stats: Arc<Stats>,
+    reps: OnlineRepsContainer,
+    trended: Amount,
+    online: Amount,
+    weight_period: Duration,
+    online_weight_minimum: Amount,
 }
 
 pub enum RegisterRepresentativeResult {
@@ -30,17 +40,17 @@ pub enum RegisterRepresentativeResult {
 }
 
 impl RepresentativeRegister {
-    pub fn new(
-        rep_weights: Arc<RepWeightCache>,
-        online_reps: OnlineReps,
-        stats: Arc<Stats>,
-    ) -> Self {
+    pub fn new(rep_weights: Arc<RepWeightCache>, stats: Arc<Stats>) -> Self {
         Self {
             rep_weights,
-            online_reps,
             stats,
             by_account: HashMap::new(),
             by_channel_id: HashMap::new(),
+            reps: OnlineRepsContainer::new(),
+            trended: Amount::zero(),
+            online: Amount::zero(),
+            weight_period: Duration::from_secs(5 * 60),
+            online_weight_minimum: DEFAULT_ONLINE_WEIGHT_MINIMUM,
         }
     }
 
@@ -54,8 +64,58 @@ impl RepresentativeRegister {
         }
     }
 
+    pub fn set_weight_period(&mut self, period: Duration) {
+        self.weight_period = period;
+    }
+
+    pub fn set_online_weight_minimum(&mut self, minimum: Amount) {
+        self.online_weight_minimum = minimum;
+    }
+
+    pub fn online_weight_minimum(&self) -> Amount {
+        self.online_weight_minimum
+    }
+
+    pub fn set_online(&mut self, amount: Amount) {
+        self.online = amount;
+    }
+
+    /** Returns the trended online stake */
+    pub fn trended_weight(&self) -> Amount {
+        self.trended
+    }
+
+    pub fn set_trended(&mut self, trended: Amount) {
+        self.trended = trended;
+    }
+
+    /** Returns the current online stake */
+    pub fn online_weight(&self) -> Amount {
+        self.online
+    }
+
+    pub fn minimum_principal_weight(&self) -> Amount {
+        self.trended / 1000 // 0.1% of trended online weight
+    }
+
+    /** Add voting account rep_account to the set of online representatives */
     pub fn observe(&mut self, rep_account: Account) {
-        self.online_reps.observe(rep_account);
+        if self.rep_weights.weight(&rep_account) > Amount::zero() {
+            let new_insert = self.reps.insert(rep_account, Instant::now());
+            let trimmed = self.reps.trim(self.weight_period);
+
+            if new_insert || trimmed {
+                self.calculate_online();
+            }
+        }
+    }
+
+    fn calculate_online(&mut self) {
+        let mut current = Amount::zero();
+        for account in self.reps.iter() {
+            current += self.rep_weights.weight(account);
+        }
+        self.online = current;
     }
 
     /// Returns the old channel if the representative was already in the collection
@@ -107,7 +167,7 @@ impl RepresentativeRegister {
     /// Query if a peer manages a principle representative
     pub fn is_pr(&self, channel_id: usize) -> bool {
         if let Some(existing) = self.by_channel_id.get(&channel_id) {
-            let min_weight = { self.online_reps.minimum_principal_weight() };
+            let min_weight = { self.minimum_principal_weight() };
             existing
                 .iter()
                 .any(|account| self.rep_weights.weight(account) >= min_weight)
@@ -175,7 +235,7 @@ impl RepresentativeRegister {
 
     /// Request a list of the top \p count known principal representatives in descending order of weight, optionally with a minimum version \p minimum_protocol_version
     pub fn principal_representatives(&self) -> Vec<Representative> {
-        self.representatives_filter(usize::MAX, self.online_reps.minimum_principal_weight())
+        self.representatives_filter(usize::MAX, self.minimum_principal_weight())
     }
 
     /// Request a list of the top **max_results** known representatives in descending order
@@ -208,44 +268,50 @@ impl RepresentativeRegister {
         self.by_account.len()
     }
 
-    pub fn trended_weight(&self) -> Amount {
-        self.online_reps.trended()
-    }
-
+    /// Returns the quorum required for confirmation
     pub fn quorum_delta(&self) -> Amount {
-        self.online_reps.delta()
+        // Using a larger container to ensure maximum precision
+        let weight = max(max(self.online, self.trended), self.online_weight_minimum);
+
+        let delta =
+            U256::from(weight.number()) * U256::from(ONLINE_WEIGHT_QUORUM) / U256::from(100);
+        Amount::raw(delta.as_u128())
     }
 
-    pub fn minimum_principal_weight(&self) -> Amount {
-        self.online_reps.minimum_principal_weight()
-    }
-
-    pub fn set_online(&mut self, amount: Amount) {
-        self.online_reps.set_online(amount)
-    }
-
+    /// List of online representatives, both the currently sampling ones and the ones observed in the previous sampling period
     pub fn list_online_reps(&self) -> Vec<Account> {
-        self.online_reps.list()
-    }
-
-    pub fn set_trended(&mut self, trended: Amount) {
-        self.online_reps.set_trended(trended);
+        self.reps.iter().cloned().collect()
     }
 
     pub fn quorum_info(&self) -> ConfirmationQuorum {
         ConfirmationQuorum {
-            quorum_delta: self.online_reps.delta(),
+            quorum_delta: self.quorum_delta(),
             online_weight_quorum_percent: ONLINE_WEIGHT_QUORUM,
-            online_weight_minimum: self.online_reps.online_weight_minimum(),
-            online_weight: self.online_reps.online(),
-            trended_weight: self.online_reps.trended(),
+            online_weight_minimum: self.online_weight_minimum(),
+            online_weight: self.online_weight(),
+            trended_weight: self.trended_weight(),
             peers_weight: self.total_weight(),
-            minimum_principal_weight: self.online_reps.minimum_principal_weight(),
+            minimum_principal_weight: self.minimum_principal_weight(),
         }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        self.online_reps.collect_container_info(name)
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![ContainerInfoComponent::Leaf(ContainerInfo {
+                name: "reps".to_string(),
+                count: self.count(),
+                sizeof_element: Self::item_size(),
+            })],
+        )
+    }
+
+    pub fn count(&self) -> usize {
+        self.reps.len()
+    }
+
+    pub fn item_size() -> usize {
+        OnlineRepsContainer::item_size()
     }
 
     pub const ELEMENT_SIZE: usize = size_of::<Representative>()
@@ -304,10 +370,9 @@ impl RepresentativeRegisterBuilder {
             .rep_weights
             .unwrap_or_else(|| Arc::new(RepWeightCache::new()));
 
-        let mut online_reps = OnlineReps::new(rep_weights.clone());
-        online_reps.set_weight_period(self.weight_period);
-        online_reps.set_online_weight_minimum(self.online_weight_minimum);
-        let mut register = RepresentativeRegister::new(rep_weights, online_reps, stats);
+        let mut register = RepresentativeRegister::new(rep_weights, stats);
+        register.set_weight_period(self.weight_period);
+        register.set_online_weight_minimum(self.online_weight_minimum);
         if let Some(trended) = self.trended {
             register.set_trended(trended);
         }

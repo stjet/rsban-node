@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use rsnano_core::Account;
 

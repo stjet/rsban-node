@@ -1,7 +1,7 @@
 use super::{BlockProcessor, BlockSource};
 use crate::{
     cementation::ConfirmingSet,
-    representatives::RepresentativeRegister,
+    representatives::OnlineReps,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
@@ -76,7 +76,7 @@ pub struct LocalBlockBroadcaster {
     condition: Condvar,
     limiter: BandwidthLimiter,
     network: Arc<Network>,
-    representatives: Arc<Mutex<RepresentativeRegister>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
 }
 
 impl LocalBlockBroadcaster {
@@ -85,7 +85,7 @@ impl LocalBlockBroadcaster {
         block_processor: Arc<BlockProcessor>,
         stats: Arc<Stats>,
         network: Arc<Network>,
-        representatives: Arc<Mutex<RepresentativeRegister>>,
+        representatives: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
         enabled: bool,
@@ -101,7 +101,7 @@ impl LocalBlockBroadcaster {
             network,
             ledger,
             confirming_set,
-            representatives,
+            online_reps: representatives,
             thread: Mutex::new(None),
             enabled,
             mutex: Mutex::new(LocalBlockBroadcasterData {
@@ -263,14 +263,10 @@ impl LocalBlockBroadcaster {
 
     /// Flood block to all PRs and a random selection of non-PRs
     fn flood_block_initial(&self, block: BlockEnum) {
-        let message = Message::Publish(Publish::new(block));
-        for i in self
-            .representatives
-            .lock()
-            .unwrap()
-            .principal_representatives()
-        {
-            i.channel.send(
+        let message = Message::Publish(Publish::new_from_originator(block));
+        for rep in self.online_reps.lock().unwrap().peered_principal_reps() {
+            self.network.send(
+                rep.channel_id,
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,
@@ -278,8 +274,8 @@ impl LocalBlockBroadcaster {
             )
         }
 
-        for i in self.list_no_pr(self.network.fanout(1.0)) {
-            i.send(
+        for peer in self.list_no_pr(self.network.fanout(1.0)) {
+            peer.send(
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,
@@ -291,8 +287,8 @@ impl LocalBlockBroadcaster {
     fn list_no_pr(&self, count: usize) -> Vec<Arc<ChannelEnum>> {
         let mut channels = self.network.random_list(usize::MAX, 0);
         {
-            let guard = self.representatives.lock().unwrap();
-            channels.retain(|c| !guard.is_pr(c.channel_id()));
+            let reps = self.online_reps.lock().unwrap();
+            channels.retain(|c| !reps.is_pr(c.channel_id()));
         }
         channels.truncate(count);
         channels

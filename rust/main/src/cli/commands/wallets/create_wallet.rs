@@ -33,7 +33,7 @@ impl CreateWalletArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let wallets = Arc::new(Wallets::new_with_env(env)?);
+        let wallets = Arc::new(Wallets::new_null_with_env(env)?);
 
         wallets.create(wallet_id);
 

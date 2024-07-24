@@ -3,7 +3,6 @@ use crate::{
     WorkVersion,
 };
 use once_cell::sync::Lazy;
-use serde::Deserialize;
 use std::cmp::{max, min};
 
 pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| {

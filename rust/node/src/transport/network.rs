@@ -1,8 +1,9 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelDirection, ChannelEnum, ChannelFake, ChannelMode, ChannelTcp, InboundMessageQueue,
-    NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter, PeerExclusion, ResponseServerImpl,
-    Socket, SocketExtensions, SocketObserver, TcpConfig, TrafficType, TransportType,
+    ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
+    InboundMessageQueue, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
+    PeerExclusion, ResponseServerImpl, Socket, SocketExtensions, SocketObserver, TcpConfig,
+    TrafficType, TransportType, WriteCallback,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -132,6 +133,10 @@ impl Network {
                 i.channel.mode()
             )
         }
+    }
+
+    pub(crate) fn channels_info(&self) -> ChannelsInfo {
+        self.state.lock().unwrap().channels_info()
     }
 
     pub async fn wait_for_available_inbound_slot(&self) {
@@ -274,8 +279,17 @@ impl Network {
         self.state.lock().unwrap().close_channels();
     }
 
-    pub fn get_next_channel_id(&self) -> usize {
-        self.next_channel_id.fetch_add(1, Ordering::SeqCst)
+    pub fn get_next_channel_id(&self) -> ChannelId {
+        self.next_channel_id.fetch_add(1, Ordering::SeqCst).into()
+    }
+
+    pub fn endpoint_for(&self, channel_id: ChannelId) -> Option<SocketAddrV6> {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .map(|e| e.endpoint())
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -303,7 +317,7 @@ impl Network {
             endpoint,
             self.network_params.network.protocol_info(),
         )));
-        fake.set_node_id(PublicKey::from(fake.channel_id() as u64));
+        fake.set_node_id(PublicKey::from(fake.channel_id().as_usize() as u64));
         let mut channels = self.state.lock().unwrap();
         channels.channels.insert(fake, None);
     }
@@ -314,45 +328,6 @@ impl Network {
 
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
         self.state.lock().unwrap().attempts.remove(&remote);
-    }
-
-    fn check(&self, endpoint: &SocketAddrV6, node_id: &Account, channels: &State) -> bool {
-        if self.stopped.load(Ordering::SeqCst) {
-            return false; // Reject
-        }
-
-        if self.not_a_peer(endpoint, self.allow_local_peers) {
-            self.stats
-                .inc(StatType::TcpChannelsRejected, DetailType::NotAPeer);
-            debug!("Rejected invalid endpoint channel from: {}", endpoint);
-
-            return false; // Reject
-        }
-
-        let has_duplicate = channels.channels.iter().any(|entry| {
-            if entry.endpoint().ip() == endpoint.ip() {
-                // Only counsider channels with the same node id as duplicates if they come from the same IP
-                if entry.node_id() == Some(*node_id) {
-                    return true;
-                }
-            }
-
-            false
-        });
-
-        if has_duplicate {
-            self.stats
-                .inc(StatType::TcpChannelsRejected, DetailType::ChannelDuplicate);
-            debug!(
-                "Duplicate channel rejected from: {} ({})",
-                endpoint,
-                node_id.to_node_id()
-            );
-
-            return false; // Reject
-        }
-
-        true // OK
     }
 
     pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
@@ -391,6 +366,31 @@ impl Network {
             .lock()
             .unwrap()
             .random_realtime_channels(count, min_version)
+    }
+
+    pub fn max(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .map(|c| c.channel.max(traffic_type))
+            .unwrap_or(true)
+    }
+
+    pub fn send(
+        &self,
+        channel_id: ChannelId,
+        message: &Message,
+        callback: Option<WriteCallback>,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
+            channel
+                .channel
+                .send(message, callback, drop_policy, traffic_type);
+        }
     }
 
     pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {
@@ -532,7 +532,7 @@ impl Network {
     }
 
     /// Returns channel IDs of removed channels
-    pub fn purge(&self, cutoff: SystemTime) -> Vec<usize> {
+    pub fn purge(&self, cutoff: SystemTime) -> Vec<ChannelId> {
         let mut guard = self.state.lock().unwrap();
         guard.purge(cutoff)
     }
@@ -746,7 +746,7 @@ impl State {
         self.channels.clear();
     }
 
-    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<usize> {
+    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
         self.channels.close_idle_channels(cutoff);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
@@ -944,6 +944,23 @@ impl State {
         AcceptResult::Accepted
     }
 
+    pub fn channels_info(&self) -> ChannelsInfo {
+        let mut info = ChannelsInfo::default();
+        for entry in self.channels.iter() {
+            info.total += 1;
+            match entry.channel.mode() {
+                ChannelMode::Bootstrap => info.bootstrap += 1,
+                ChannelMode::Realtime => info.realtime += 1,
+                _ => {}
+            }
+            match entry.channel.direction() {
+                ChannelDirection::Inbound => info.inbound += 1,
+                ChannelDirection::Outbound => info.outbound += 1,
+            }
+        }
+        info
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -974,6 +991,15 @@ pub enum AcceptResult {
     Accepted,
     Rejected,
     Error,
+}
+
+#[derive(Default)]
+pub(crate) struct ChannelsInfo {
+    pub total: usize,
+    pub realtime: usize,
+    pub bootstrap: usize,
+    pub inbound: usize,
+    pub outbound: usize,
 }
 
 #[cfg(test)]

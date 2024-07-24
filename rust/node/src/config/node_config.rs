@@ -5,8 +5,10 @@ use super::{
 use crate::{
     block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
     bootstrap::{BootstrapInitiatorConfig, BootstrapServerConfig},
+    cementation::ConfirmingSetConfig,
     consensus::{
-        ActiveElectionsConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
+        ActiveElectionsConfig, PriorityBucketConfig, RequestAggregatorConfig, VoteCacheConfig,
+        VoteProcessorConfig,
     },
     stats::StatsConfig,
     transport::{MessageProcessorConfig, TcpConfig},
@@ -37,6 +39,7 @@ pub struct NodeConfig {
     pub peering_port: Option<u16>,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
     pub hinted_scheduler: HintedSchedulerConfig,
+    pub priority_bucket: PriorityBucketConfig,
     pub bootstrap_fraction_numerator: u32,
     pub receive_minimum: Amount,
     pub online_weight_minimum: Amount,
@@ -109,6 +112,8 @@ pub struct NodeConfig {
     pub message_processor: MessageProcessorConfig,
     pub priority_scheduler_enabled: bool,
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
+    pub confirming_set: ConfirmingSetConfig,
+    pub monitor: MonitorConfig,
 }
 
 #[derive(Clone, Deserialize)]
@@ -244,7 +249,7 @@ impl NodeConfig {
             bootstrap_connections_max: BootstrapInitiatorConfig::default()
                 .bootstrap_connections_max,
             bootstrap_initiator_threads: 1,
-            bootstrap_serving_threads: max(parallelism / 2, 2) as u32,
+            bootstrap_serving_threads: 1,
             bootstrap_frontier_request_count: BootstrapInitiatorConfig::default()
                 .frontier_request_count,
             block_processor_batch_max_time_ms: BlockProcessorConfig::default()
@@ -312,6 +317,7 @@ impl NodeConfig {
             } else {
                 HintedSchedulerConfig::default()
             },
+            priority_bucket: Default::default(),
             vote_cache: Default::default(),
             active_elections: Default::default(),
             rep_crawler_query_timeout: if network_params.network.is_dev_network() {
@@ -332,6 +338,8 @@ impl NodeConfig {
             local_block_broadcaster: LocalBlockBroadcasterConfig::new(
                 network_params.network.current_network,
             ),
+            confirming_set: Default::default(),
+            monitor: Default::default(),
         }
     }
 
@@ -498,6 +506,10 @@ impl NodeConfig {
             self.optimistic_scheduler.serialize_toml(opt)
         })?;
 
+        toml.put_child("priority_bucket", &mut |opt| {
+            self.priority_bucket.serialize_toml(opt)
+        })?;
+
         toml.put_child("bootstrap_ascending", &mut |writer| {
             self.bootstrap_ascending.serialize_toml(writer)
         })?;
@@ -538,6 +550,8 @@ impl NodeConfig {
             self.message_processor.serialize_toml(writer)
         })?;
 
+        toml.put_child("monitor", &mut |writer| self.monitor.serialize_toml(writer))?;
+
         Ok(())
     }
 
@@ -553,5 +567,36 @@ fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static
         FrontiersConfirmationMode::Automatic => "auto",
         FrontiersConfirmationMode::Disabled => "disabled",
         FrontiersConfirmationMode::Invalid => "auto",
+    }
+}
+
+#[derive(Clone)]
+pub struct MonitorConfig {
+    pub enabled: bool,
+    pub interval: Duration,
+}
+
+impl Default for MonitorConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval: Duration::from_secs(60),
+        }
+    }
+}
+
+impl MonitorConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_bool(
+            "enable",
+            self.enabled,
+            "Enable or disable periodic node status logging\ntype:bool",
+        )?;
+
+        toml.put_u64(
+            "interval",
+            self.interval.as_secs(),
+            "Interval between status logs\ntype:seconds",
+        )
     }
 }

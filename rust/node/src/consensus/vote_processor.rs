@@ -177,7 +177,7 @@ impl VoteProcessor {
         }
 
         self.stats.inc(StatType::Vote, DetailType::VoteProcessed);
-        trace!(?vote, ?result, "vote processed");
+        trace!(?vote, ?result, ?source, "vote processed");
 
         result
     }

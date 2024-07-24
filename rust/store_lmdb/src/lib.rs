@@ -37,7 +37,7 @@ pub use peer_store::*;
 pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
 pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 pub use rep_weight_store::*;
-pub use store::{create_backup_file, LmdbStore};
+pub use store::{create_backup_file, LedgerCache, LmdbStore};
 pub use version_store::LmdbVersionStore;
 pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
 

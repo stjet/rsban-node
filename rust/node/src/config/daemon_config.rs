@@ -2,10 +2,7 @@ use super::{NodeConfig, NodeRpcConfig, OpenclConfig};
 use crate::NetworkParams;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
-use serde::Deserialize;
-use toml::Value;
 
-//#[derive(Deserialize)]
 pub struct DaemonConfig {
     pub rpc_enable: bool,
     pub rpc: NodeRpcConfig,
@@ -47,30 +44,6 @@ impl DaemonConfig {
             )?;
             Ok(())
         })?;
-
-        Ok(())
-    }
-
-    pub fn deserialize_toml(&mut self, toml_str: &str) -> Result<()> {
-        let toml_value: Value = toml::from_str(toml_str)?;
-
-        if let Some(rpc) = toml_value.get("rpc") {
-            if let Some(enable) = rpc.get("enable").and_then(|v| v.as_bool()) {
-                self.rpc_enable = enable;
-            }
-            //self.rpc.deserialize_toml(rpc)?;
-        }
-
-        if let Some(node) = toml_value.get("node") {
-            //self.node.deserialize_toml(node)?;
-        }
-
-        if let Some(opencl) = toml_value.get("opencl") {
-            if let Some(enable) = opencl.get("enable").and_then(|v| v.as_bool()) {
-                self.opencl_enable = enable;
-            }
-            //self.opencl.deserialize_toml(opencl)?;
-        }
 
         Ok(())
     }

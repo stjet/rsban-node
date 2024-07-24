@@ -2,7 +2,7 @@ use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::Amount;
-use rsnano_ledger::{Ledger, LedgerCache, RepWeightCache};
+use rsnano_ledger::{Ledger, RepWeightCache};
 use rsnano_node::{config::NetworkConstants, NetworkParams, OnlineWeightSampler};
 use rsnano_store_lmdb::LmdbStore;
 use std::sync::Arc;
@@ -25,17 +25,17 @@ impl TrendedWeightArgs {
 
         let network_params = NetworkParams::new(NetworkConstants::active_network());
 
-        let ledger_cache = Arc::new(LedgerCache::new());
-
         let ledger = Arc::new(Ledger::new(
             Arc::new(LmdbStore::open(&path).build()?),
             network_params.ledger,
             Amount::zero(),
             Arc::new(RepWeightCache::new()),
-            ledger_cache,
         )?);
 
-        let sampler = OnlineWeightSampler::new(ledger.clone());
+        let sampler = OnlineWeightSampler::new(
+            ledger.clone(),
+            network_params.node.max_weight_samples as usize,
+        );
 
         let current = sampler.calculate_trend().number();
 

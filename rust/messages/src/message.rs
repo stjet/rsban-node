@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn exact_publish() {
         let block = BlockBuilder::legacy_send().build();
-        let message = Message::Publish(Publish { block, digest: 8 });
+        let message = Message::Publish(Publish::new_from_originator(block));
         assert_deserializable(&message);
     }
 

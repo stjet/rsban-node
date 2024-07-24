@@ -33,7 +33,7 @@ impl RemoveAccountArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let wallets = Arc::new(Wallets::new_with_env(env)?);
+        let wallets = Arc::new(Wallets::new_null_with_env(env)?);
 
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 

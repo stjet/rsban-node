@@ -23,7 +23,7 @@ impl SendIdsArgs {
 
         let env = Arc::new(LmdbEnv::new(&path)?);
 
-        let wallets = Wallets::new_with_env(env)?;
+        let wallets = Wallets::new_null_with_env(env)?;
 
         wallets.clear_send_ids();
 

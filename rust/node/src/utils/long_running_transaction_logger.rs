@@ -55,7 +55,6 @@ impl LongRunningTransactionLogger {
         stats.insert(
             txn_id,
             TxnStats {
-                txn_id,
                 is_write,
                 start: Instant::now(),
                 thread_name: std::thread::current().name().map(|s| s.to_owned()),
@@ -110,7 +109,6 @@ impl LongRunningTransactionLogger {
 
 #[derive(Clone)]
 struct TxnStats {
-    txn_id: u64,
     is_write: bool,
     thread_name: Option<String>,
     start: Instant,

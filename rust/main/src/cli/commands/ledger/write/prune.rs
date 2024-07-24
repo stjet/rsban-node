@@ -4,12 +4,15 @@ use clap::Parser;
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    node::Node,
+    node::{Node, NodeExt},
     transport::NullSocketObserver,
     utils::AsyncRuntime,
     NetworkParams,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
 
 #[derive(Parser)]
 pub(crate) struct PruneArgs {
@@ -33,7 +36,8 @@ impl PruneArgs {
             get_cpu_count(),
         );
 
-        let node_flags = NodeFlags::new();
+        let mut node_flags = NodeFlags::new();
+        node_flags.enable_pruning = true;
 
         let async_rt = Arc::new(AsyncRuntime::default());
 
@@ -62,7 +66,20 @@ impl PruneArgs {
             Box::new(|_, _, _, _| {}),
         ));
 
+        node.start();
+
         node.ledger_pruning(batch_size, true);
+
+        let finished = Arc::new((Mutex::new(false), Condvar::new()));
+        let finished_clone = finished.clone();
+
+        *finished_clone.0.lock().unwrap() = true;
+        finished_clone.1.notify_all();
+
+        let guard = finished.0.lock().unwrap();
+        drop(finished.1.wait_while(guard, |g| !*g).unwrap());
+
+        node.stop();
 
         Ok(())
     }

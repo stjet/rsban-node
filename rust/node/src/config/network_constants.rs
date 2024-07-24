@@ -10,10 +10,10 @@ use rsnano_messages::ProtocolInfo;
 use std::{sync::Mutex, time::Duration};
 
 //todo: make configurable in builld script again!
-static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoDevNetwork));
+static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoBetaNetwork));
 
 pub static STUB_NETWORK_CONSTANTS: Lazy<NetworkConstants> =
-    Lazy::new(|| NetworkConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
+    Lazy::new(|| NetworkConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoBetaNetwork));
 
 #[derive(Clone)]
 pub struct NetworkConstants {

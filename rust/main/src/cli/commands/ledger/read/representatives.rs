@@ -38,9 +38,9 @@ impl RepresentativesArgs {
         for (account, amount) in rep_amounts {
             total += amount;
             println!(
-                "{} {} {}",
-                account,
+                "{} {:?} {}",
                 account.encode_account(),
+                amount.number(),
                 total.number()
             );
         }

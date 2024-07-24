@@ -27,7 +27,7 @@ impl PeersArgs {
         let mut txn = env.tx_begin_read();
 
         for peer in peer_store.iter(&mut txn) {
-            println!("{:?}", peer);
+            println!("{:?}", peer.0);
         }
 
         Ok(())

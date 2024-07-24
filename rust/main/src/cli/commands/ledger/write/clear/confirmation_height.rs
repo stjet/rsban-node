@@ -37,7 +37,7 @@ impl ConfirmationHeightArgs {
             Networks::NanoBetaNetwork => LedgerConstants::beta().genesis,
             Networks::NanoLiveNetwork => LedgerConstants::live().genesis,
             Networks::NanoTestNetwork => LedgerConstants::test().genesis,
-            Networks::Invalid => panic!("This should not happen!"),
+            Networks::Invalid => unreachable!(),
         };
 
         let genesis_account = genesis_block.account();
@@ -50,27 +50,23 @@ impl ConfirmationHeightArgs {
         let mut txn = env.tx_begin_write();
 
         if let Some(account_hex) = &self.account {
-            match Account::decode_hex(account_hex) {
-                Ok(account) => {
-                    let mut conf_height_reset_num = 0;
-                    let mut info = confirmation_height_store.get(&txn, &account).unwrap();
-                    if account == genesis_account {
-                        conf_height_reset_num += 1;
-                        info.height = conf_height_reset_num;
-                        info.frontier = genesis_hash;
-                        confirmation_height_store.put(&mut txn, &account, &info);
-                    } else {
-                        confirmation_height_store.del(&mut txn, &account);
-                    }
-                    println!(
-                        "Confirmation height of account {:?} is set to {:?}",
-                        account_hex, conf_height_reset_num
-                    );
-                }
-                Err(_) => {
-                    println!("Invalid account");
-                }
+            let account = Account::decode_account(account_hex)?;
+            let mut conf_height_reset_num = 0;
+            let mut info = confirmation_height_store
+                .get(&txn, &account)
+                .expect("Could not find account");
+            if account == genesis_account {
+                conf_height_reset_num += 1;
+                info.height = conf_height_reset_num;
+                info.frontier = genesis_hash;
+                confirmation_height_store.put(&mut txn, &account, &info);
+            } else {
+                confirmation_height_store.del(&mut txn, &account);
             }
+            println!(
+                "Confirmation height of account {:?} is set to {:?}",
+                account_hex, conf_height_reset_num
+            );
         } else {
             confirmation_height_store.clear(&mut txn);
             confirmation_height_store.put(

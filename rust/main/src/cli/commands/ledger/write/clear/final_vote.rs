@@ -36,17 +36,13 @@ impl FinalVoteArgs {
 
         let mut txn = env.tx_begin_write();
 
+        println!("{}", final_vote_store.count(&mut env.tx_begin_read()));
+
         if let Some(root) = &self.root {
-            match Root::decode_hex(root) {
-                Ok(root_decoded) => {
-                    final_vote_store.del(&mut txn, &root_decoded);
-                    println!("Successfully cleared final vote");
-                }
-                Err(_) => {
-                    println!("Invalid root");
-                }
-            }
-        } else if self.all {
+            let root_decoded = Root::decode_hex(root)?;
+            final_vote_store.del(&mut txn, &root_decoded);
+            println!("Successfully cleared final vote");
+        } else {
             final_vote_store.clear(&mut txn);
             println!("All final votes were cleared from the database");
         }

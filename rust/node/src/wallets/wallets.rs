@@ -222,10 +222,6 @@ impl Wallets {
         ))
     }
 
-    pub fn wallet_exists(&self, wallet: &WalletId) -> bool {
-        self.mutex.lock().unwrap().contains_key(wallet)
-    }
-
     pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();
@@ -1931,7 +1927,6 @@ impl WalletsExt for Arc<Wallets> {
                 self.node_config.random_representative(),
                 &PathBuf::from(wallet_id.to_string()),
             ) else {
-                println!("ERROR");
                 return;
             };
             Arc::new(wallet)

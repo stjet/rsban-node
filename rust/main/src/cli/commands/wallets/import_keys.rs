@@ -20,7 +20,7 @@ pub(crate) struct ImportKeysArgs {
     #[arg(long)]
     /// Forces the command if the wallet is locked
     force: bool,
-    /// The <wallet> to import the keys
+    /// The <wallet> importing the keys
     #[arg(long)]
     wallet: String,
     /// Uses the supplied path as the data directory
@@ -51,7 +51,7 @@ impl ImportKeysArgs {
 
         wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
-        if wallets.wallet_exists(&wallet_id) {
+        if wallets.mutex.lock().unwrap().contains_key(&wallet_id) {
             let valid = wallets.ensure_wallet_is_unlocked(wallet_id, &password);
             if valid {
                 wallets.import_replace(wallet_id, &contents, &password)?

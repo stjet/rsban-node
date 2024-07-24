@@ -23,7 +23,6 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
-use serde::Deserialize;
 use std::{
     cmp::max,
     collections::{BTreeMap, HashMap},
@@ -43,7 +42,7 @@ pub type ElectionEndCallback = Box<
 
 pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Sync>;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct ActiveElectionsConfig {
     // Maximum number of simultaneous active elections (AEC size)
     pub size: usize,

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::work::WorkThresholds;
 use rsnano_node::{
@@ -31,7 +32,7 @@ pub(crate) struct GenerateConfigArgs {
 }
 
 impl GenerateConfigArgs {
-    pub(crate) fn generate_config(&self) -> anyhow::Result<()> {
+    pub(crate) fn generate_config(&self) -> Result<()> {
         let mut toml = TomlConfig::new();
         let network = NetworkConstants::active_network();
         let mut config_type = "node";

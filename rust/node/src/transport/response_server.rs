@@ -23,7 +23,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 use tokio::sync::Notify;
-use tracing::debug;
+use tracing::{debug, info};
 
 #[derive(Clone, Debug)]
 pub struct TcpConfig {
@@ -361,7 +361,7 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
 
             let result = tokio::select! {
                 i = self.message_deserializer.read() => i,
-                _ = self.notify_stop.notified() => Err(ParseMessageError::Other)
+                _ = self.notify_stop.notified() => Err(ParseMessageError::Stopped)
             };
 
             let result = match result {
@@ -387,8 +387,8 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
                 Err(e) => {
                     // IO error or critical error when deserializing message
                     self.stats
-                        .inc_dir(StatType::Error, DetailType::from(e), Direction::In);
-                    debug!(
+                        .inc_dir(StatType::Error, DetailType::from(&e), Direction::In);
+                    info!(
                         "Error reading message: {:?} ({})",
                         e,
                         self.remote_endpoint()

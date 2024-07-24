@@ -9,7 +9,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds},
+    utils::{system_time_as_nanoseconds, system_time_from_nanoseconds, NULL_ENDPOINT},
     Account,
 };
 use rsnano_messages::DeserializedMessage;
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn rsn_channel_peering_endpoint(
     handle: &ChannelHandle,
     result: *mut EndpointDto,
 ) {
-    (*result) = handle.peering_endpoint().into()
+    (*result) = handle.peering_endpoint().unwrap_or(NULL_ENDPOINT).into()
 }
 
 pub type FfiInboundCallback =

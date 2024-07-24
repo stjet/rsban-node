@@ -330,8 +330,21 @@ impl Network {
         self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        self.state.lock().unwrap().find_channel(endpoint)
+    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
+        self.state
+            .lock()
+            .unwrap()
+            .find_channel_by_remote_addr(endpoint)
+    }
+
+    pub fn find_channel_by_peering_addr(
+        &self,
+        peering_addr: &SocketAddrV6,
+    ) -> Option<Arc<ChannelEnum>> {
+        self.state
+            .lock()
+            .unwrap()
+            .find_channel_by_peering_addr(peering_addr)
     }
 
     pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelEnum>> {
@@ -478,7 +491,10 @@ impl Network {
         }
 
         // Don't connect to nodes that already sent us something
-        if state.find_channel(endpoint).is_some() {
+        if state.find_channel_by_remote_addr(endpoint).is_some() {
+            return false;
+        }
+        if state.find_channel_by_peering_addr(endpoint).is_some() {
             return false;
         }
 
@@ -626,7 +642,7 @@ pub trait NetworkExt {
 }
 
 impl NetworkExt for Arc<Network> {
-    fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account) {
+    fn upgrade_to_realtime_connection(&self, remote_addr: &SocketAddrV6, node_id: Account) {
         let (observers, channel) = {
             let mut state = self.state.lock().unwrap();
 
@@ -634,7 +650,7 @@ impl NetworkExt for Arc<Network> {
                 return;
             }
 
-            let Some(entry) = state.channels.get(remote_endpoint) else {
+            let Some(entry) = state.channels.get_by_remote_addr(remote_addr) else {
                 return;
             };
 
@@ -666,7 +682,7 @@ impl NetworkExt for Arc<Network> {
             .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
         debug!(
             "Accepted new channel from: {} ({})",
-            remote_endpoint,
+            remote_addr,
             node_id.to_node_id()
         );
 
@@ -717,9 +733,9 @@ impl State {
             if channel.channel.mode() == ChannelMode::Realtime
                 && channel.network_version() >= self.network_constants.protocol_version_min
             {
-                if let ChannelEnum::Tcp(tcp) = channel.channel.as_ref() {
+                if let Some(peering) = channel.channel.peering_endpoint() {
                     channel_endpoint = Some(channel.endpoint());
-                    peering_endpoint = Some(tcp.peering_endpoint());
+                    peering_endpoint = Some(peering);
                     break;
                 }
             }
@@ -797,8 +813,19 @@ impl State {
         result
     }
 
-    pub fn find_channel(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        self.channels.get(endpoint).map(|c| c.channel.clone())
+    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
+        self.channels
+            .get_by_remote_addr(endpoint)
+            .map(|c| c.channel.clone())
+    }
+
+    pub fn find_channel_by_peering_addr(
+        &self,
+        peering_addr: &SocketAddrV6,
+    ) -> Option<Arc<ChannelEnum>> {
+        self.channels
+            .get_by_peering_addr(peering_addr)
+            .map(|c| c.channel.clone())
     }
 
     pub fn get_realtime_peers(&self) -> Vec<SocketAddrV6> {
@@ -822,15 +849,18 @@ impl State {
     }
 
     pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
+        let mut peers = self.list_realtime(0);
         // Don't include channels with ephemeral remote ports
-        let peers = self.random_realtime_channels(endpoints.len(), 0);
+        peers.retain(|c| c.peering_endpoint().is_some());
+        let mut rng = thread_rng();
+        peers.shuffle(&mut rng);
+        peers.truncate(endpoints.len());
+
         let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
+
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
-                let ChannelEnum::Tcp(tcp) = peers[i].as_ref() else {
-                    panic!("not a tcp channel")
-                };
-                tcp.peering_endpoint()
+                peers[i].peering_endpoint().unwrap_or(null_endpoint)
             } else {
                 null_endpoint
             };

@@ -102,8 +102,15 @@ impl ChannelContainer {
         }
     }
 
-    pub fn get(&self, endpoint: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
-        self.by_endpoint.get(endpoint)
+    pub fn get_by_remote_addr(&self, remote_addr: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
+        self.by_endpoint.get(remote_addr)
+    }
+
+    pub fn get_by_peering_addr(&self, peering_addr: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
+        // TODO use a hashmap?
+        self.by_endpoint
+            .values()
+            .find(|i| i.channel.peering_endpoint().as_ref() == Some(peering_addr))
     }
 
     pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelEntry>> {

@@ -277,4 +277,24 @@ mod tests {
         assert_eq!(container.iter_by_channel(channel_a).count(), 0);
         assert_eq!(container.iter_by_channel(channel_b).count(), 1);
     }
+
+    #[test]
+    fn two_reps_in_same_channel() {
+        let mut container = PeeredContainer::new();
+
+        let account_a = Account::from(1);
+        let account_b = Account::from(2);
+        let channel = ChannelId::from(100);
+        assert_eq!(
+            container.update_or_insert(account_a, channel, Duration::from_secs(1)),
+            InsertResult::Inserted,
+        );
+        assert_eq!(
+            container.update_or_insert(account_b, channel, Duration::from_secs(1)),
+            InsertResult::Inserted,
+        );
+
+        assert_eq!(container.len(), 2);
+        assert_eq!(container.iter_by_channel(channel).count(), 2);
+    }
 }

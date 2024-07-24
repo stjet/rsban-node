@@ -49,6 +49,10 @@ impl ChannelTcp {
         channel_id: ChannelId,
         protocol: ProtocolInfo,
     ) -> Self {
+        let peering_endpoint = match socket.direction() {
+            ChannelDirection::Inbound => None,
+            ChannelDirection::Outbound => socket.get_remote(),
+        };
         Self {
             channel_id,
             channel_mutex: Mutex::new(TcpChannelData {
@@ -57,7 +61,7 @@ impl ChannelTcp {
                 last_packet_sent: now,
                 node_id: None,
                 remote_endpoint: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
-                peering_endpoint: None,
+                peering_endpoint,
             }),
             socket,
             network_version: AtomicU8::new(protocol.version_using),
@@ -236,12 +240,8 @@ impl Channel for Arc<ChannelTcp> {
         self.channel_mutex.lock().unwrap().remote_endpoint
     }
 
-    fn peering_endpoint(&self) -> SocketAddrV6 {
-        let lock = self.channel_mutex.lock().unwrap();
-        match lock.peering_endpoint {
-            Some(addr) => addr,
-            None => lock.remote_endpoint,
-        }
+    fn peering_endpoint(&self) -> Option<SocketAddrV6> {
+        self.channel_mutex.lock().unwrap().peering_endpoint
     }
 
     fn network_version(&self) -> u8 {

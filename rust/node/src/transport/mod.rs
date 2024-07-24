@@ -118,7 +118,7 @@ pub trait Channel {
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
     fn remote_endpoint(&self) -> SocketAddrV6;
-    fn peering_endpoint(&self) -> SocketAddrV6;
+    fn peering_endpoint(&self) -> Option<SocketAddrV6>;
     fn network_version(&self) -> u8;
     fn direction(&self) -> ChannelDirection;
     fn mode(&self) -> ChannelMode;

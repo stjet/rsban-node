@@ -268,8 +268,8 @@ impl Channel for ChannelInProc {
         self.remote_endpoint
     }
 
-    fn peering_endpoint(&self) -> SocketAddrV6 {
-        self.remote_endpoint
+    fn peering_endpoint(&self) -> Option<SocketAddrV6> {
+        Some(self.remote_endpoint)
     }
 
     fn network_version(&self) -> u8 {

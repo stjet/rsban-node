@@ -395,7 +395,7 @@ impl RepCrawler {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match network.find_channel(&endpoint) {
+                        match network.find_channel_by_peering_addr(&endpoint) {
                             Some(channel) => {
                                 let keepalive = network.create_keepalive_message();
                                 channel.send(

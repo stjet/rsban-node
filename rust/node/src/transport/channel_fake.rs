@@ -132,8 +132,8 @@ impl Channel for ChannelFake {
         self.endpoint
     }
 
-    fn peering_endpoint(&self) -> SocketAddrV6 {
-        self.endpoint
+    fn peering_endpoint(&self) -> Option<SocketAddrV6> {
+        Some(self.endpoint)
     }
 
     fn network_version(&self) -> u8 {

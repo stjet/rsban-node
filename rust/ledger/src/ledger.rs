@@ -243,7 +243,8 @@ impl Ledger {
                     block_count += info.block_count;
                     account_count += 1;
                     if !info.balance.is_zero() {
-                        rep_weights.insert(info.representative, info.balance);
+                        let total = rep_weights.entry(info.representative).or_default();
+                        *total += info.balance;
                     }
                     i.next();
                 }

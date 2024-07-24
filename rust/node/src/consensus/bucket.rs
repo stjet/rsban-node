@@ -265,7 +265,9 @@ impl OrderedElections {
         let root = entry.root.clone();
         let priority = entry.priority;
         let old = self.by_root.insert(root.clone(), entry);
-        assert!(old.is_none());
+        if let Some(old) = old {
+            self.erase_indices(old);
+        }
         self.sequenced.push(root.clone());
         self.by_priority.entry(priority).or_default().push(root);
     }
@@ -289,13 +291,17 @@ impl OrderedElections {
 
     fn erase(&mut self, root: &QualifiedRoot) {
         if let Some(entry) = self.by_root.remove(root) {
-            let keys = self.by_priority.get_mut(&entry.priority).unwrap();
-            if keys.len() == 1 {
-                self.by_priority.remove(&entry.priority);
-            } else {
-                keys.retain(|i| i != root);
-            }
-            self.sequenced.retain(|i| i != root);
+            self.erase_indices(entry)
         }
+    }
+
+    fn erase_indices(&mut self, entry: ElectionEntry) {
+        let keys = self.by_priority.get_mut(&entry.priority).unwrap();
+        if keys.len() == 1 {
+            self.by_priority.remove(&entry.priority);
+        } else {
+            keys.retain(|i| *i != entry.root);
+        }
+        self.sequenced.retain(|i| *i != entry.root);
     }
 }

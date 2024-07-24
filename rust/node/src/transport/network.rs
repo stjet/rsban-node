@@ -955,7 +955,7 @@ impl State {
             }
             match entry.channel.direction() {
                 ChannelDirection::Inbound => info.inbound += 1,
-                ChannelDirection::Outbound => info.outbound += 2,
+                ChannelDirection::Outbound => info.outbound += 1,
             }
         }
         info

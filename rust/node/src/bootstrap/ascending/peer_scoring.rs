@@ -1,10 +1,9 @@
+use super::BootstrapAscendingConfig;
 use crate::transport::{ChannelEnum, ChannelId, TrafficType};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Weak},
 };
-
-use super::BootstrapAscendingConfig;
 
 /// Container for tracking and scoring peers with respect to bootstrapping
 pub(crate) struct PeerScoring {
@@ -167,7 +166,7 @@ impl Scoring {
         let to_delete = self
             .by_channel
             .values()
-            .filter(|i| f(i))
+            .filter(|i| !f(i))
             .map(|i| i.channel_id)
             .collect::<Vec<_>>();
 

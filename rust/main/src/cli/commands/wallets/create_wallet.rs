@@ -45,6 +45,8 @@ impl CreateWalletArgs {
             .rekey(&wallet_id, &password)
             .map_err(|e| anyhow!("Failed to set wallet password: {:?}", e))?;
 
+        wallets.ensure_wallet_is_unlocked(wallet_id, &password);
+
         if let Some(seed) = &self.seed {
             let key = RawKey::decode_hex(seed)?;
 

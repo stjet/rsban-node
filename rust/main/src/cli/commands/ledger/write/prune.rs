@@ -1,4 +1,4 @@
-use crate::cli::get_path;
+use crate::cli::{get_path, init_tracing};
 use anyhow::Result;
 use clap::Parser;
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
 pub(crate) struct PruneArgs {
@@ -47,12 +48,6 @@ impl PruneArgs {
             Duration::from_nanos(config.pow_sleep_interval_ns as u64),
         ));
 
-        let batch_size = if node_flags.block_processor_batch_size != 0 {
-            node_flags.block_processor_batch_size as u64
-        } else {
-            16 * 1024
-        };
-
         let node = Arc::new(Node::new(
             async_rt,
             path,
@@ -67,8 +62,6 @@ impl PruneArgs {
         ));
 
         node.start();
-
-        node.ledger_pruning(batch_size, true);
 
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let finished_clone = finished.clone();

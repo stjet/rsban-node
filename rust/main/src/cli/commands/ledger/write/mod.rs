@@ -27,7 +27,7 @@ pub(crate) enum WriteSubcommands {
     Snapshot(SnapshotArgs),
     /// Commands that clear some component of the ledger
     Clear(ClearCommand),
-    /// Prune accounts up to last confirmed blocks (EXPERIMENTAL)
+    /// Prunes accounts up to last confirmed blocks (EXPERIMENTAL)
     Prune(PruneArgs),
 }
 

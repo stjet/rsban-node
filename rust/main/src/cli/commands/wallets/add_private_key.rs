@@ -9,13 +9,13 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct AddKeyArgs {
+pub(crate) struct AddPrivateKeyArgs {
     /// Adds the key to the supplied <wallet>
     #[arg(long)]
     wallet: String,
-    /// Adds the supplied <key> to the wallet
+    /// Adds the supplied <private_key> to the wallet
     #[arg(long)]
-    key: String,
+    private_key: String,
     /// Optional <password> to unlock the wallet
     #[arg(long)]
     password: Option<String>,
@@ -27,11 +27,11 @@ pub(crate) struct AddKeyArgs {
     network: Option<String>,
 }
 
-impl AddKeyArgs {
+impl AddPrivateKeyArgs {
     pub(crate) fn add_key(&self) -> Result<()> {
         let wallet_id = WalletId::decode_hex(&self.wallet)?;
 
-        let key = RawKey::decode_hex(&self.key)?;
+        let public_key = RawKey::decode_hex(&self.private_key)?;
 
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
@@ -44,7 +44,7 @@ impl AddKeyArgs {
         wallets.ensure_wallet_is_unlocked(wallet_id, &password);
 
         wallets
-            .insert_adhoc2(&wallet_id, &key, false)
+            .insert_adhoc2(&wallet_id, &public_key, false)
             .map_err(|e| anyhow!("Failed to insert key: {:?}", e))?;
 
         Ok(())

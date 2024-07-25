@@ -100,6 +100,7 @@ impl LedgerPruning {
             }
         }
 
+        println!("Pruned");
         debug!("Total recently pruned block count: {}", pruned_count);
     }
 

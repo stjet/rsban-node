@@ -11,8 +11,6 @@ use rsnano_node::{
 #[command(group = ArgGroup::new("input1")
     .args(&["node", "rpc"])
     .required(true))]
-#[command(group = ArgGroup::new("input2")
-    .args(&["data_path", "network"]))]
 pub(crate) struct GenerateConfigArgs {
     /// Generates the node config
     #[arg(long, group = "input1")]

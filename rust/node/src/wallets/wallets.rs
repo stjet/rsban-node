@@ -193,6 +193,11 @@ impl Wallets {
         ))
     }
 
+    pub fn wallet_ids(&self) -> Vec<WalletId> {
+        let tx = self.env.tx_begin_read();
+        self.get_wallet_ids(&tx)
+    }
+
     pub fn get_wallet_ids(&self, txn: &dyn Transaction) -> Vec<WalletId> {
         let mut wallet_ids = Vec::new();
         let beginning = RawKey::from(0).encode_hex();

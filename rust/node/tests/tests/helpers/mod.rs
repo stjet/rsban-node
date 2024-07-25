@@ -2,7 +2,7 @@ use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
-    transport::NullSocketObserver,
+    transport::{NullSocketObserver, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -78,14 +78,10 @@ impl System {
         self.nodes.push(node.clone());
 
         if self.nodes.len() > 1 {
-            // TODO: connect to other nodes
-        } else {
-            // Ensure no bootstrap initiators are in progress
-            while node.bootstrap_initiator.in_progress() {
-                sleep(Duration::from_millis(10));
-            }
+            self.nodes[0]
+                .peer_connector
+                .connect_to(node.tcp_listener.local_address());
         }
-
         node
     }
 

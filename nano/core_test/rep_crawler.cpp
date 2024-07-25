@@ -279,31 +279,6 @@ TEST (rep_crawler, ignore_local)
 	ASSERT_ALWAYS_EQ (0.5s, node.rep_crawler.representative_count (), 0);
 }
 
-// Test that nodes can track PRs when multiple PRs are inside one node
-TEST (rep_crawler, two_reps_one_node)
-{
-	nano::test::system system;
-	auto & node1 = *system.add_node ();
-	auto & node2 = *system.add_node ();
-	auto wallet_id1 = node1.wallets.first_wallet_id ();
-
-	// create a second PR account
-	nano::keypair second_rep = nano::test::setup_rep (system, node1, node1.balance (nano::dev::genesis_key.pub) / 10);
-	ASSERT_EQ (0, node2.rep_crawler.representative_count ());
-
-	// enable the two PRs in node1
-	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	(void)node1.wallets.insert_adhoc (wallet_id1, second_rep.prv);
-
-	ASSERT_TIMELY_EQ (5s, node2.rep_crawler.representative_count (), 2);
-	auto reps = node2.representative_register.representatives ();
-	ASSERT_EQ (2, reps.size ());
-
-	// check that the reps are correct
-	ASSERT_TRUE (nano::dev::genesis_key.pub == reps[0].get_account () || nano::dev::genesis_key.pub == reps[1].get_account ());
-	ASSERT_TRUE (second_rep.pub == reps[0].get_account () || second_rep.pub == reps[1].get_account ());
-}
-
 TEST (rep_crawler, ignore_rebroadcasted)
 {
 	nano::test::system system;

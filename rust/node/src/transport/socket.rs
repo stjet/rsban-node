@@ -485,7 +485,7 @@ impl SocketExtensions for Arc<Socket> {
                     match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
                         Ok(0) => {
                             self.observer.read_error();
-                            return Err(anyhow!("read count was 0"));
+                            return Err(anyhow!("remote side closed the channel"));
                         }
                         Ok(n) => {
                             drop(buf);

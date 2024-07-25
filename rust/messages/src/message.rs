@@ -26,9 +26,9 @@ pub trait MessageVariant: Display + Serialize {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ParseMessageError {
-    Other,
+    Other(String),
     InsufficientWork,
     InvalidHeader,
     InvalidMessageType,
@@ -37,6 +37,7 @@ pub enum ParseMessageError {
     OutdatedVersion,
     DuplicatePublishMessage,
     MessageSizeTooBig,
+    Stopped,
 }
 
 #[derive(Clone, PartialEq, Eq)]

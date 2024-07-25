@@ -8,7 +8,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct SendIdsArgs {
+pub(crate) struct ClearSendIdsArgs {
     /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
@@ -17,8 +17,8 @@ pub(crate) struct SendIdsArgs {
     network: Option<String>,
 }
 
-impl SendIdsArgs {
-    pub(crate) fn send_ids(&self) -> Result<()> {
+impl ClearSendIdsArgs {
+    pub(crate) fn clear_send_ids(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("wallets.ldb");
 
         let env = Arc::new(LmdbEnv::new(&path)?);

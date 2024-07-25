@@ -79,7 +79,7 @@ impl Wallets {
             env,
             Arc::new(Ledger::new_null()),
             &NodeConfig::new_test_instance(),
-            0,
+            8,
             WorkThresholds::new(0, 0, 0),
             Arc::new(DistributedWorkFactory::new(
                 Arc::new(WorkPoolImpl::disabled()),

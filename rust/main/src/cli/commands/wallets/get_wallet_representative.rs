@@ -43,7 +43,7 @@ impl GetWalletRepresentativeArgs {
             .get_representative(wallet_id)
             .map_err(|e| anyhow!("Failed to get wallet representative: {:?}", e))?;
 
-        println!("Representative: {:?}", representative);
+        println!("Representative: {:?}", &representative.encode_account());
 
         Ok(())
     }

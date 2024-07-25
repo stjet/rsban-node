@@ -6,7 +6,7 @@ use cemented_block_count::CementedBlockCountArgs;
 use clap::{CommandFactory, Parser, Subcommand};
 use peers::PeersArgs;
 use representatives::RepresentativesArgs;
-use trended_weight::TrendedWeightArgs;
+use trended_online_weight::TrendedOnlineWeightArgs;
 
 pub(crate) mod account_count;
 pub(crate) mod block_count;
@@ -14,10 +14,10 @@ pub(crate) mod blocks;
 pub(crate) mod cemented_block_count;
 pub(crate) mod peers;
 pub(crate) mod representatives;
-pub(crate) mod trended_weight;
+pub(crate) mod trended_online_weight;
 
 #[derive(Subcommand)]
-pub(crate) enum ReadSubcommands {
+pub(crate) enum InfoSubcommands {
     /// Displays the number of accounts
     AccountCount(AccountCountArgs),
     /// Displays the number of blocks
@@ -28,30 +28,29 @@ pub(crate) enum ReadSubcommands {
     Peers(PeersArgs),
     /// Displays the number of cemented (confirmed) blocks
     CementedBlockCount(CementedBlockCountArgs),
-    //DumpFrontierUncheckedDependents(DumpFrontierUncheckedDependentsArgs),
-    /// Lists representatives and weights
+    /// Displays representatives and their weights
     Representatives(RepresentativesArgs),
-    /// Dumps trended weights table
-    TrendedWeight(TrendedWeightArgs),
+    /// Displays trended online weight over time
+    TrendedOnlineWeight(TrendedOnlineWeightArgs),
 }
 
 #[derive(Parser)]
-pub(crate) struct ReadCommand {
+pub(crate) struct InfoCommand {
     #[command(subcommand)]
-    pub subcommand: Option<ReadSubcommands>,
+    pub subcommand: Option<InfoSubcommands>,
 }
 
-impl ReadCommand {
+impl InfoCommand {
     pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
-            Some(ReadSubcommands::AccountCount(args)) => args.account_count()?,
-            Some(ReadSubcommands::BlockCount(args)) => args.block_count()?,
-            Some(ReadSubcommands::Blocks(args)) => args.blocks()?,
-            Some(ReadSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
-            Some(ReadSubcommands::Peers(args)) => args.peers()?,
-            Some(ReadSubcommands::TrendedWeight(args)) => args.dump_trended_weight()?,
-            Some(ReadSubcommands::Representatives(args)) => args.dump_representatives()?,
-            None => ReadCommand::command().print_long_help()?,
+            Some(InfoSubcommands::AccountCount(args)) => args.account_count()?,
+            Some(InfoSubcommands::BlockCount(args)) => args.block_count()?,
+            Some(InfoSubcommands::Blocks(args)) => args.blocks()?,
+            Some(InfoSubcommands::CementedBlockCount(args)) => args.cemented_block_count()?,
+            Some(InfoSubcommands::Peers(args)) => args.peers()?,
+            Some(InfoSubcommands::TrendedOnlineWeight(args)) => args.trended_online_weight()?,
+            Some(InfoSubcommands::Representatives(args)) => args.dump_representatives()?,
+            None => InfoCommand::command().print_long_help()?,
         }
 
         Ok(())

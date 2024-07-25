@@ -411,6 +411,7 @@ impl SharedState {
             return false;
         };
         debug_assert!(block.root() == *root);
+        println!("final vote");
         self.ledger.dependents_confirmed(txn, &block)
             && self
                 .ledger

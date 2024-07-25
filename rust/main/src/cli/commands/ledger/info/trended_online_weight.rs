@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
     .args(&["data_path", "network"]))]
-pub(crate) struct TrendedWeightArgs {
+pub(crate) struct TrendedOnlineWeightArgs {
     /// Uses the supplied path as the data directory
     #[arg(long, group = "input")]
     data_path: Option<String>,
@@ -19,8 +19,8 @@ pub(crate) struct TrendedWeightArgs {
     network: Option<String>,
 }
 
-impl TrendedWeightArgs {
-    pub(crate) fn dump_trended_weight(&self) -> Result<()> {
+impl TrendedOnlineWeightArgs {
+    pub(crate) fn trended_online_weight(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network).join("data.ldb");
 
         let network_params = NetworkParams::new(NetworkConstants::active_network());

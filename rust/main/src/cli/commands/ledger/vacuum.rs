@@ -31,9 +31,9 @@ impl VacuumArgs {
 
         println!("Finalizing");
 
-        fs::remove_file(&backup_path).context("Failed to remove backup file")?;
         fs::rename(&source_path, &backup_path).context("Failed to rename source to backup")?;
         fs::rename(&vacuum_path, &source_path).context("Failed to rename vacuum to source")?;
+        fs::remove_file(&backup_path).context("Failed to remove backup file")?;
 
         println!("Vacuum completed");
 

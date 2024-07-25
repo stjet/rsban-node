@@ -9,7 +9,10 @@ use rsnano_node::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")
@@ -60,7 +63,16 @@ impl InitializeArgs {
         ));
 
         node.start();
+
+        let finished = Arc::new((Mutex::new(false), Condvar::new()));
+        let finished_clone = finished.clone();
+
         node.stop();
+        *finished_clone.0.lock().unwrap() = true;
+        finished_clone.1.notify_all();
+
+        let guard = finished.0.lock().unwrap();
+        drop(finished.1.wait_while(guard, |g| !*g).unwrap());
 
         Ok(())
     }

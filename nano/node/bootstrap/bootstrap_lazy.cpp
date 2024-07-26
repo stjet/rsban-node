@@ -75,11 +75,6 @@ nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (std::shared_ptr<nano::
 {
 }
 
-void nano::bootstrap_attempt_wallet::run ()
-{
-	rsnano::rsn_bootstrap_attempt_wallet_run (handle);
-}
-
 std::size_t nano::bootstrap_attempt_wallet::wallet_size ()
 {
 	return rsnano::rsn_bootstrap_attempt_wallet_size (handle);

@@ -28,7 +28,6 @@ class bootstrap_attempt_wallet final : public bootstrap_attempt
 public:
 	explicit bootstrap_attempt_wallet (rsnano::BootstrapAttemptHandle * handle);
 	explicit bootstrap_attempt_wallet (std::shared_ptr<nano::node> const & node_a, uint64_t incremental_id_a, std::string id_a = "");
-	void run () override;
 	std::size_t wallet_size ();
 	void get_information (boost::property_tree::ptree &) override;
 };

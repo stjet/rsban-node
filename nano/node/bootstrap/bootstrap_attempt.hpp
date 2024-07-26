@@ -20,7 +20,6 @@ public:
 	explicit bootstrap_attempt (std::shared_ptr<nano::node> const & node_a, nano::bootstrap_mode mode_a, uint64_t incremental_id_a, std::string id_a);
 	explicit bootstrap_attempt (rsnano::BootstrapAttemptHandle * handle);
 	virtual ~bootstrap_attempt ();
-	virtual void run ();
 	virtual void stop ();
 	virtual void get_information (boost::property_tree::ptree &) = 0;
 	uint64_t total_blocks () const;

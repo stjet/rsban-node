@@ -17,6 +17,13 @@ use std::{
 };
 use tracing::debug;
 
+pub trait BootstrapAttemptTrait {
+    fn incremental_id(&self) -> u64;
+    fn id(&self) -> &str;
+    fn started(&self) -> bool;
+    fn stopped(&self) -> bool;
+}
+
 pub struct BootstrapAttempt {
     pub incremental_id: u64,
     pub id: String,
@@ -84,9 +91,11 @@ impl BootstrapAttempt {
     }
 
     fn start(&self) -> Result<()> {
-        let mode = self.mode_text();
         let id = &self.id;
-        debug!("Starting bootstrap attempt with ID: {id} (mode: {mode}) ");
+        debug!(
+            "Starting bootstrap attempt with ID: {id} (mode: {}) ",
+            self.mode.as_str()
+        );
         if let Some(websocket) = &self.websocket_server {
             websocket.broadcast(&self.bootstrap_started());
         }
@@ -99,7 +108,7 @@ impl BootstrapAttempt {
             BootstrapStarted {
                 reason: "started",
                 id: &self.id,
-                mode: self.mode_text(),
+                mode: self.mode.as_str(),
             },
         )
     }
@@ -110,7 +119,7 @@ impl BootstrapAttempt {
             BootstrapExited {
                 reason: "exited",
                 id: &self.id,
-                mode: self.mode_text(),
+                mode: self.mode.as_str(),
                 total_blocks: self.total_blocks.load(Ordering::SeqCst).to_string(),
                 duration: self.duration().as_secs().to_string(),
             },
@@ -135,15 +144,6 @@ impl BootstrapAttempt {
             true
         } else {
             false
-        }
-    }
-
-    pub fn mode_text(&self) -> &'static str {
-        match self.mode {
-            BootstrapMode::Legacy => "legacy",
-            BootstrapMode::Lazy => "lazy",
-            BootstrapMode::WalletLazy => "wallet_lazy",
-            BootstrapMode::Ascending => "ascending",
         }
     }
 
@@ -226,9 +226,11 @@ impl BootstrapAttempt {
 
 impl Drop for BootstrapAttempt {
     fn drop(&mut self) {
-        let mode = self.mode_text();
         let id = &self.id;
-        debug!("Exiting bootstrap attempt with ID: {id} (mode: {mode})");
+        debug!(
+            "Exiting bootstrap attempt with ID: {id} (mode: {})",
+            self.mode.as_str()
+        );
 
         if let Some(websocket) = &self.websocket_server {
             websocket.broadcast(&self.bootstrap_exited());

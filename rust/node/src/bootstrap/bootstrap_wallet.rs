@@ -1,6 +1,6 @@
 use super::{
-    BootstrapAttempt, BootstrapConnections, BootstrapConnectionsExt, BootstrapInitiator,
-    BootstrapMode, BulkPullAccountClient, BulkPullAccountClientExt,
+    BootstrapAttempt, BootstrapAttemptTrait, BootstrapConnections, BootstrapConnectionsExt,
+    BootstrapInitiator, BootstrapMode, BulkPullAccountClient, BulkPullAccountClientExt,
 };
 use crate::{
     block_processing::BlockProcessor, stats::Stats, utils::ThreadPool, websocket::WebsocketListener,
@@ -174,5 +174,22 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
             }));
         }
         guard
+    }
+}
+impl BootstrapAttemptTrait for BootstrapAttemptWallet {
+    fn incremental_id(&self) -> u64 {
+        self.attempt.incremental_id
+    }
+
+    fn id(&self) -> &str {
+        &self.attempt.id
+    }
+
+    fn started(&self) -> bool {
+        self.attempt.started.load(Ordering::SeqCst)
+    }
+
+    fn stopped(&self) -> bool {
+        self.attempt.stopped()
     }
 }

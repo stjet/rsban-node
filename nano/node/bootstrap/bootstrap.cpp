@@ -52,10 +52,6 @@ bool nano::bootstrap_initiator::has_lazy_attempt(){
 	return rsnano::rsn_bootstrap_initiator_has_lazy_attempt(handle);
 }
 
-bool nano::bootstrap_initiator::has_running_legacy_attempt(){
-	return rsnano::rsn_bootstrap_initiator_has_running_legacy_attempt(handle);
-}
-
 rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () const
 {
 	return handle;

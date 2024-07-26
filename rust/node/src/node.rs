@@ -47,8 +47,9 @@ use rsnano_core::{
         as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree,
         SystemTimeFactory,
     },
-    work::WorkPoolImpl,
-    BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Vote, VoteCode, VoteSource,
+    work::{WorkPool, WorkPoolImpl},
+    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, Vote, VoteCode,
+    VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
@@ -1193,6 +1194,25 @@ impl Node {
 
     pub fn get_node_id(&self) -> PublicKey {
         self.node_id.public_key()
+    }
+
+    pub fn work_generate_dev(&self, root: Root) -> u64 {
+        self.work.generate_dev2(root).unwrap()
+    }
+
+    pub fn blocks_exist(&self, hashes: &[BlockHash]) -> bool {
+        let tx = self.ledger.read_txn();
+        hashes
+            .iter()
+            .all(|h| self.ledger.any().block_exists(&tx, h))
+    }
+
+    pub fn balance(&self, account: &Account) -> Amount {
+        let tx = self.ledger.read_txn();
+        self.ledger
+            .any()
+            .account_balance(&tx, account)
+            .unwrap_or_default()
     }
 }
 

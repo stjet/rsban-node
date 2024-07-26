@@ -55,6 +55,7 @@ impl System {
         NodeBuilder {
             system: self,
             config: None,
+            flags: None,
         }
     }
 
@@ -70,8 +71,8 @@ impl System {
         self.build_node().finish()
     }
 
-    fn make_connected_node(&mut self, config: NodeConfig) -> Arc<Node> {
-        let node = self.new_node(config, NodeFlags::default());
+    fn make_connected_node(&mut self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
+        let node = self.new_node(config, flags);
         let wallet_id = WalletId::random();
         node.wallets.create(wallet_id);
         node.start();
@@ -121,6 +122,7 @@ impl Drop for System {
 pub(crate) struct NodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
+    flags: Option<NodeFlags>,
 }
 
 impl<'a> NodeBuilder<'a> {
@@ -129,9 +131,15 @@ impl<'a> NodeBuilder<'a> {
         self
     }
 
+    pub(crate) fn flags(mut self, flags: NodeFlags) -> Self {
+        self.flags = Some(flags);
+        self
+    }
+
     pub(crate) fn finish(self) -> Arc<Node> {
         let config = self.config.unwrap_or_else(|| System::default_config());
-        self.system.make_connected_node(config)
+        let flags = self.flags.unwrap_or_default();
+        self.system.make_connected_node(config, flags)
     }
 }
 
@@ -202,4 +210,19 @@ fn init_tracing() {
             .with_ansi(true)
             .init();
     });
+}
+
+pub(crate) fn establish_tcp(node: &Node, peer: &Node) {
+    node.peer_connector
+        .connect_to(peer.tcp_listener.local_address());
+
+    assert_timely(
+        Duration::from_secs(2),
+        || {
+            node.network
+                .find_node_id(&peer.node_id.public_key())
+                .is_some()
+        },
+        "node did not connect",
+    )
 }

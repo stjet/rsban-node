@@ -221,7 +221,7 @@ impl BootstrapInitiator {
         self.condition.notify_all();
     }
 
-    pub fn current_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
+    pub fn current_legacy_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
         let guard = self.mutex.lock().unwrap();
         guard.find_attempt(BootstrapMode::Legacy)
     }

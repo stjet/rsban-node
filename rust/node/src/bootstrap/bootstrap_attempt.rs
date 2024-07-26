@@ -1,10 +1,11 @@
+use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, Account, BlockEnum};
+use rsnano_core::{encode_hex, BlockEnum};
 use rsnano_ledger::Ledger;
 use serde::Serialize;
 use std::{
@@ -15,8 +16,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::debug;
-
-use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 
 pub struct BootstrapAttempt {
     pub incremental_id: u64,
@@ -148,15 +147,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub fn process_block(
-        &self,
-        block: Arc<BlockEnum>,
-        _known_account: &Account,
-        pull_blocks_processed: u64,
-        _max_blocks: u32,
-        _block_expected: bool,
-        _retry_limit: u32,
-    ) -> bool {
+    pub fn process_block(&self, block: Arc<BlockEnum>, pull_blocks_processed: u64) -> bool {
         let mut stop_pull = false;
         let hash = block.hash();
         // If block already exists in the ledger, then we can avoid next part of long account chain

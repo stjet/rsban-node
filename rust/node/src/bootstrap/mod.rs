@@ -133,22 +133,8 @@ impl BootstrapStrategy {
         retry_limit: u32,
     ) -> bool {
         match self {
-            BootstrapStrategy::Other(i) => i.process_block(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                block_expected,
-                retry_limit,
-            ),
-            BootstrapStrategy::Legacy(i) => i.attempt.process_block(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                block_expected,
-                retry_limit,
-            ),
+            BootstrapStrategy::Other(i) => i.process_block(block, pull_blocks_processed),
+            BootstrapStrategy::Legacy(i) => i.process_block(block, pull_blocks_processed),
             BootstrapStrategy::Lazy(i) => i.process_block(
                 block,
                 known_account,
@@ -157,14 +143,7 @@ impl BootstrapStrategy {
                 block_expected,
                 retry_limit,
             ),
-            BootstrapStrategy::Wallet(i) => i.attempt.process_block(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                block_expected,
-                retry_limit,
-            ),
+            BootstrapStrategy::Wallet(i) => i.process_block(block, pull_blocks_processed),
         }
     }
 }

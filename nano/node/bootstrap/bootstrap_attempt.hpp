@@ -2,9 +2,6 @@
 
 #include <nano/node/bootstrap/bootstrap.hpp>
 
-#include <atomic>
-#include <future>
-
 namespace nano::store
 {
 class transaction;
@@ -26,7 +23,6 @@ public:
 	virtual void run ();
 	virtual void stop ();
 	virtual void get_information (boost::property_tree::ptree &) = 0;
-	virtual void block_processed (nano::store::transaction const & tx, nano::block_status const & result, nano::block const & block);
 	uint64_t total_blocks () const;
 	void total_blocks_inc ();
 	unsigned get_pulling () const;

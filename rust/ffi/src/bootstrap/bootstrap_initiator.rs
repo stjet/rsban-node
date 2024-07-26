@@ -69,10 +69,30 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_in_progress(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_bootstrap_initiator_has_legacy_attempt(
+    handle: &BootstrapInitiatorHandle,
+) -> bool {
+    handle.current_legacy_attempt().is_some()
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_bootstrap_initiator_has_running_legacy_attempt(
+    handle: &BootstrapInitiatorHandle,
+) -> bool {
+    match handle.current_legacy_attempt() {
+        Some(attempt) => attempt
+            .attempt()
+            .started
+            .load(std::sync::atomic::Ordering::SeqCst),
+        None => false,
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_initiator_current_attempt(
     handle: &BootstrapInitiatorHandle,
 ) -> *mut BootstrapAttemptHandle {
-    match handle.current_attempt() {
+    match handle.current_legacy_attempt() {
         Some(attempt) => BootstrapAttemptHandle::new(attempt),
         None => std::ptr::null_mut(),
     }

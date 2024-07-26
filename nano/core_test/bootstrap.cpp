@@ -526,50 +526,6 @@ TEST (bootstrap_processor, pull_diamond)
 	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
 }
 
-TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
-{
-	// Bootstrap attempt stopped before requeue & then cannot be found in attempts list
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	auto node1 (system.add_node (config, node_flags));
-	config.peering_port = system.get_available_port ();
-	auto node2 (system.add_node (config, node_flags));
-	nano::keypair key1;
-
-	nano::state_block_builder builder;
-
-	auto send1 = builder
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-
-	node1->connect (node2->network->endpoint ());
-	node1->bootstrap_initiator.bootstrap (node2->network->endpoint ());
-	auto attempt (node1->bootstrap_initiator.current_attempt ());
-	ASSERT_NE (nullptr, attempt);
-	ASSERT_TIMELY (2s, attempt->get_frontiers_received ());
-	// Add non-existing pull & stop remote peer
-	{
-		// todo:
-		// nano::unique_lock<nano::mutex> lock{ node1->bootstrap_initiator.connections->mutex };
-		// ASSERT_FALSE (attempt->get_stopped ());
-		// attempt->inc_pulling ();
-		// node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->get_incremental_id ());
-		// node1->bootstrap_initiator.connections->request_pull (lock);
-		// node2->stop ();
-	}
-	ASSERT_TIMELY (5s, attempt == nullptr || attempt->get_requeued_pulls () == 1);
-	ASSERT_EQ (0, node1->stats->count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
-}
-
 TEST (bootstrap_processor, push_diamond)
 {
 	nano::test::system system;
@@ -1715,8 +1671,7 @@ TEST (bootstrap_processor, multiple_attempts)
 	node2->bootstrap_initiator.bootstrap_lazy (receive2->hash (), true);
 	node2->bootstrap_initiator.bootstrap ();
 	auto lazy_attempt (node2->bootstrap_initiator.current_lazy_attempt ());
-	auto legacy_attempt (node2->bootstrap_initiator.current_attempt ());
-	ASSERT_TIMELY (5s, lazy_attempt->get_started () && legacy_attempt->get_started ());
+	ASSERT_TIMELY (5s, node2->bootstrap_initiator.has_running_legacy_attempt());
 	// Check processed blocks
 	ASSERT_TIMELY (10s, node2->balance (key2.pub) != 0);
 	// Check attempts finish

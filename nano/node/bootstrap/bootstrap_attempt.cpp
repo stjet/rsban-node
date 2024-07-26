@@ -93,6 +93,3 @@ void nano::bootstrap_attempt::stop ()
 	rsnano::rsn_bootstrap_attempt_stop (handle);
 }
 
-void nano::bootstrap_attempt::block_processed (store::transaction const & tx, nano::block_status const & result, nano::block const & block)
-{
-}

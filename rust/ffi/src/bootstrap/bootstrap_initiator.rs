@@ -69,6 +69,13 @@ pub unsafe extern "C" fn rsn_bootstrap_initiator_in_progress(
 }
 
 #[no_mangle]
+pub extern "C" fn rsn_bootstrap_initiator_has_lazy_attempt(
+    handle: &BootstrapInitiatorHandle,
+) -> bool {
+    handle.current_legacy_attempt().is_some()
+}
+
+#[no_mangle]
 pub extern "C" fn rsn_bootstrap_initiator_has_legacy_attempt(
     handle: &BootstrapInitiatorHandle,
 ) -> bool {

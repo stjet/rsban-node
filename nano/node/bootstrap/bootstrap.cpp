@@ -74,14 +74,12 @@ bool nano::bootstrap_initiator::in_progress ()
 	return rsnano::rsn_bootstrap_initiator_in_progress (handle);
 }
 
-std::shared_ptr<nano::bootstrap_attempt> nano::bootstrap_initiator::current_attempt ()
-{
-	auto attempt_handle = rsnano::rsn_bootstrap_initiator_current_attempt (handle);
-	return attempt_from_handle (attempt_handle);
-}
-
 bool nano::bootstrap_initiator::has_legacy_attempt(){
 	return rsnano::rsn_bootstrap_initiator_has_legacy_attempt(handle);
+}
+
+bool nano::bootstrap_initiator::has_lazy_attempt(){
+	return rsnano::rsn_bootstrap_initiator_has_lazy_attempt(handle);
 }
 
 bool nano::bootstrap_initiator::has_running_legacy_attempt(){

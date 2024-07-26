@@ -85,13 +85,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_id(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_bootstrap_mode(
-    handle: *const BootstrapAttemptHandle,
-) -> u8 {
-    (*handle).0.attempt().mode as u8
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks(
     handle: *const BootstrapAttemptHandle,
 ) -> u64 {
@@ -107,11 +100,6 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_total_blocks_inc(
         .attempt()
         .total_blocks
         .fetch_add(1, Ordering::SeqCst);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_run(handle: &BootstrapAttemptHandle) {
-    handle.0.run()
 }
 
 #[no_mangle]
@@ -145,15 +133,4 @@ pub unsafe extern "C" fn rsn_bootstrap_attempt_requeued_pulls(
     handle: *const BootstrapAttemptHandle,
 ) -> u32 {
     (*handle).0.attempt().requeued_pulls.load(Ordering::SeqCst)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_bootstrap_attempt_frontiers_received(
-    handle: *const BootstrapAttemptHandle,
-) -> bool {
-    (*handle)
-        .0
-        .attempt()
-        .frontiers_received
-        .load(Ordering::SeqCst)
 }

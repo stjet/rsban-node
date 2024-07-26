@@ -1220,6 +1220,11 @@ impl Node {
         self.work.generate_dev2(root).unwrap()
     }
 
+    pub fn block_exists(&self, hash: &BlockHash) -> bool {
+        let tx = self.ledger.read_txn();
+        self.ledger.any().block_exists(&tx, hash)
+    }
+
     pub fn blocks_exist(&self, hashes: &[BlockEnum]) -> bool {
         self.block_hashes_exist(hashes.iter().map(|b| b.hash()))
     }

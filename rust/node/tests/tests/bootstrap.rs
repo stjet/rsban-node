@@ -1,12 +1,15 @@
 use std::{sync::atomic::Ordering, thread::sleep, time::Duration};
 
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, DEV_GENESIS_KEY,
+    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
     bootstrap::{BootstrapInitiatorExt, BootstrapStrategy},
     config::{FrontiersConfirmationMode, NodeFlags},
+    node::NodeExt,
+    wallets::WalletsExt,
 };
 
 use crate::tests::helpers::get_available_port;
@@ -479,4 +482,94 @@ fn bootstrap_processor_multiple_attempts() {
         || node1.bootstrap_initiator.attempts.lock().unwrap().size(),
         0,
     );
+}
+
+#[test]
+fn bootstrap_processor_wallet_lazy_frontier() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut flags = NodeFlags::new();
+    flags.disable_bootstrap_bulk_push_client = true;
+    flags.disable_legacy_bootstrap = true;
+    flags.disable_ascending_bootstrap = true;
+    flags.disable_ongoing_bootstrap = true;
+    let node0 = system.build_node().config(config).flags(flags).finish();
+
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    // Generating test chain
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key1.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let receive1 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        BlockHash::zero(),
+        key1.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &key1,
+        node0.work_generate_dev(key1.public_key().into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        receive1.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        key2.public_key().into(),
+        &key1,
+        node0.work_generate_dev(receive1.hash().into()),
+    ));
+
+    let receive2 = BlockEnum::State(StateBlock::new(
+        key2.public_key(),
+        BlockHash::zero(),
+        key2.public_key(),
+        Amount::nano(1000),
+        send2.hash().into(),
+        &key2,
+        node0.work_generate_dev(key2.public_key().into()),
+    ));
+
+    // Processing test chain
+    let blocks = [send1, receive1, send2, receive2.clone()];
+    node0.process_multi(&blocks);
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node0.blocks_exist(&blocks),
+        "blocks not processed",
+    );
+
+    // Start wallet lazy bootstrap
+    let node1 = system.make_disconnected_node();
+    establish_tcp(&node1, &node0);
+    let wallet_id = WalletId::random();
+    node1.wallets.create(wallet_id);
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+    node1.bootstrap_wallet();
+    {
+        node1
+            .bootstrap_initiator
+            .current_wallet_attempt()
+            .expect("no wallet attempt found");
+    }
+    // Check processed blocks
+    assert_timely(
+        Duration::from_secs(10),
+        || node1.block_exists(&receive2.hash()),
+        "receive 2 not  found",
+    )
 }

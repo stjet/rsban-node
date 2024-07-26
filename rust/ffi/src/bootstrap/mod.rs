@@ -1,9 +1,7 @@
-mod bootstrap_attempt;
 mod bootstrap_attempts;
 mod bootstrap_client;
 mod bootstrap_connections;
 mod bootstrap_initiator;
-mod bootstrap_legacy;
 mod bootstrap_server;
 mod bulk_pull_account_server;
 mod bulk_pull_server;

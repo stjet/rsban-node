@@ -1,7 +1,7 @@
 use std::{sync::atomic::Ordering, thread::sleep, time::Duration};
 
 use rsnano_core::{
-    Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, DEV_GENESIS_KEY,
+    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
@@ -377,5 +377,106 @@ fn bootstrap_processor_lazy_cancel() {
         Duration::from_secs(10),
         || !node1.bootstrap_initiator.in_progress(),
         "attempt not cancelled",
+    );
+}
+
+#[test]
+fn bootstrap_processor_multiple_attempts() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut flags = NodeFlags::new();
+    flags.disable_bootstrap_bulk_push_client = true;
+    let node0 = system.build_node().config(config).flags(flags).finish();
+
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    // Generating test chain
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key1.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let receive1 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        BlockHash::zero(),
+        key1.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &key1,
+        node0.work_generate_dev(key1.public_key().into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        receive1.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        key2.public_key().into(),
+        &key1,
+        node0.work_generate_dev(receive1.hash().into()),
+    ));
+
+    let receive2 = BlockEnum::State(StateBlock::new(
+        key2.public_key(),
+        BlockHash::zero(),
+        key2.public_key(),
+        Amount::nano(1000),
+        send2.hash().into(),
+        &key2,
+        node0.work_generate_dev(key2.public_key().into()),
+    ));
+
+    // Processing test chain
+    let blocks = [send1, receive1, send2, receive2.clone()];
+    node0.process_multi(&blocks);
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node0.blocks_exist(&blocks),
+        "blocks not processed",
+    );
+
+    // Start 2 concurrent bootstrap attempts
+    let mut node_config = System::default_config();
+    node_config.bootstrap_initiator_threads = 3;
+
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .disconnected()
+        .finish();
+    establish_tcp(&node1, &node0);
+    node1
+        .bootstrap_initiator
+        .bootstrap_lazy(receive2.hash().into(), true, "".to_owned());
+    node1
+        .bootstrap_initiator
+        .bootstrap(false, "".to_owned(), u32::MAX, Account::zero());
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node1.bootstrap_initiator.current_legacy_attempt().is_some(),
+        "no legacy attempt found",
+    );
+
+    // Check processed blocks
+    assert_timely(
+        Duration::from_secs(10),
+        || node1.balance(&key2.public_key()) > Amount::zero(),
+        "balance not updated",
+    );
+
+    // Check attempts finish
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.bootstrap_initiator.attempts.lock().unwrap().size(),
+        0,
     );
 }

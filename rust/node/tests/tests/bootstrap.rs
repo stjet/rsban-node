@@ -27,8 +27,7 @@ fn bootstrap_processor_lazy_hash() {
         *DEV_GENESIS_ACCOUNT,
         Amount::MAX - Amount::nano(1000),
         key1.public_key().into(),
-        &DEV_GENESIS_KEY.private_key(),
-        &DEV_GENESIS_KEY.public_key(),
+        &DEV_GENESIS_KEY,
         node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
@@ -38,8 +37,7 @@ fn bootstrap_processor_lazy_hash() {
         key1.public_key(),
         Amount::nano(1000),
         send1.hash().into(),
-        &key1.private_key(),
-        &key1.public_key(),
+        &key1,
         node0.work_generate_dev(key1.public_key().into()),
     ));
 
@@ -49,8 +47,7 @@ fn bootstrap_processor_lazy_hash() {
         key1.public_key(),
         Amount::zero(),
         key2.public_key().into(),
-        &key1.private_key(),
-        &key1.public_key(),
+        &key1,
         node0.work_generate_dev(receive1.hash().into()),
     ));
 
@@ -60,8 +57,7 @@ fn bootstrap_processor_lazy_hash() {
         key2.public_key(),
         Amount::nano(1000),
         send2.hash().into(),
-        &key2.private_key(),
-        &key2.public_key(),
+        &key2,
         node0.work_generate_dev(key2.public_key().into()),
     ));
 

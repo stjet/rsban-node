@@ -9,8 +9,6 @@ add_library(
   bandwidth_limiter.cpp
   blockprocessor.hpp
   blockprocessor.cpp
-  bootstrap/bootstrap_attempt.hpp
-  bootstrap/bootstrap_attempt.cpp
   bootstrap/bootstrap_bulk_pull.hpp
   bootstrap/bootstrap_bulk_pull.cpp
   bootstrap/bootstrap_config.hpp

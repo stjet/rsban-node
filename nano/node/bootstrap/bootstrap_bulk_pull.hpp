@@ -7,7 +7,6 @@
 
 namespace nano
 {
-class bootstrap_attempt;
 class logger;
 namespace transport
 {

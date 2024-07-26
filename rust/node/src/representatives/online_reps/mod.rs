@@ -32,7 +32,7 @@ pub struct OnlineReps {
 }
 
 impl OnlineReps {
-    pub(super) fn new(
+    pub(crate) fn new(
         rep_weights: Arc<RepWeightCache>,
         weight_period: Duration,
         online_weight_minimum: Amount,

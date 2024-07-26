@@ -1,8 +1,7 @@
+use super::{NodeConfig, NodeRpcConfig, OpenclConfig};
 use crate::NetworkParams;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
-
-use super::{NodeConfig, NodeRpcConfig, OpenclConfig};
 
 pub struct DaemonConfig {
     pub rpc_enable: bool,

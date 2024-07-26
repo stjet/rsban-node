@@ -1,11 +1,12 @@
 use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
-    cementation::ConfirmingSet,
-    config::NodeConfig,
+    cementation::{ConfirmingSet, ConfirmingSetConfig},
+    config::{NetworkConstants, NodeConfig},
     representatives::OnlineReps,
+    stats::Stats,
     transport::{BufferDropPolicy, Network},
-    utils::ThreadPool,
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     work::DistributedWorkFactory,
     NetworkParams,
 };
@@ -13,12 +14,12 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
-    work::WorkThresholds,
+    work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
     KeyDerivationFunction, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
     WalletId, WorkVersion,
 };
-use rsnano_ledger::{BlockStatus, Ledger};
+use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
@@ -66,13 +67,41 @@ pub struct Wallets {
     block_processor: Arc<BlockProcessor>,
     pub representative_wallets: Mutex<WalletRepresentatives>,
     representatives: Arc<Mutex<OnlineReps>>,
-    kdf: KeyDerivationFunction,
+    pub kdf: KeyDerivationFunction,
     network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
 }
 
 impl Wallets {
+    pub fn new_null_with_env(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        Wallets::new(
+            env,
+            Arc::new(Ledger::new_null()),
+            &NodeConfig::new_test_instance(),
+            8,
+            WorkThresholds::new(0, 0, 0),
+            Arc::new(DistributedWorkFactory::new(
+                Arc::new(WorkPoolImpl::disabled()),
+                Arc::new(AsyncRuntime::default()),
+            )),
+            NetworkParams::new(NetworkConstants::active_network()),
+            Arc::new(ThreadPoolImpl::new_null()),
+            Arc::new(BlockProcessor::new_null()),
+            Arc::new(Mutex::new(OnlineReps::new(
+                Arc::new(RepWeightCache::new()),
+                Duration::default(),
+                Amount::zero(),
+            ))),
+            Arc::new(Network::new_null()),
+            Arc::new(ConfirmingSet::new(
+                ConfirmingSetConfig::default(),
+                Arc::new(Ledger::new_null()),
+                Arc::new(Stats::default()),
+            )),
+        )
+    }
+
     pub fn new(
         env: Arc<LmdbEnv>,
         ledger: Arc<Ledger>,

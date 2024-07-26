@@ -1,6 +1,5 @@
 #include "nano/lib/rsnano.hpp"
 
-#include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/bootstrap/bootstrap_legacy.hpp>
 #include <nano/node/node.hpp>

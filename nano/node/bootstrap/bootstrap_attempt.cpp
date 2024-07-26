@@ -4,7 +4,6 @@
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_attempt.hpp>
-#include <nano/node/bootstrap/bootstrap_bulk_push.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/secure/ledger.hpp>
@@ -71,11 +70,6 @@ bool nano::bootstrap_attempt::get_started () const
 unsigned nano::bootstrap_attempt::get_requeued_pulls () const
 {
 	return rsnano::rsn_bootstrap_attempt_requeued_pulls (handle);
-}
-
-bool nano::bootstrap_attempt::get_frontiers_received () const
-{
-	return rsnano::rsn_bootstrap_attempt_frontiers_received (handle);
 }
 
 bool nano::bootstrap_attempt::get_stopped () const

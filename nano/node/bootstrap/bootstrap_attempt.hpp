@@ -27,7 +27,6 @@ public:
 	bool get_stopped () const;
 	bool get_started () const;
 	unsigned get_requeued_pulls () const;
-	bool get_frontiers_received () const;
 
 	std::string id () const;
 	rsnano::BootstrapAttemptHandle * handle;

@@ -60,11 +60,6 @@ nano::bootstrap_attempt_lazy::bootstrap_attempt_lazy (rsnano::BootstrapAttemptHa
 {
 }
 
-void nano::bootstrap_attempt_lazy::get_information (boost::property_tree::ptree & tree_a)
-{
-	rsnano::rsn_bootstrap_attempt_lazy_get_information (handle, &tree_a);
-}
-
 nano::bootstrap_attempt_wallet::bootstrap_attempt_wallet (rsnano::BootstrapAttemptHandle * handle) :
 	nano::bootstrap_attempt{ handle }
 {
@@ -80,7 +75,3 @@ std::size_t nano::bootstrap_attempt_wallet::wallet_size ()
 	return rsnano::rsn_bootstrap_attempt_wallet_size (handle);
 }
 
-void nano::bootstrap_attempt_wallet::get_information (boost::property_tree::ptree & tree_a)
-{
-	tree_a.put ("wallet_accounts", std::to_string (wallet_size ()));
-}

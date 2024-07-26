@@ -13,6 +13,5 @@ class bootstrap_attempt_legacy : public bootstrap_attempt
 {
 public:
 	explicit bootstrap_attempt_legacy (rsnano::BootstrapAttemptHandle * handle);
-	void get_information (boost::property_tree::ptree &) override;
 };
 }

@@ -83,8 +83,3 @@ bool nano::bootstrap_attempt::get_stopped () const
 	return rsnano::rsn_bootstrap_attempt_stopped (handle);
 }
 
-void nano::bootstrap_attempt::stop ()
-{
-	rsnano::rsn_bootstrap_attempt_stop (handle);
-}
-

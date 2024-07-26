@@ -12,7 +12,3 @@ nano::bootstrap_attempt_legacy::bootstrap_attempt_legacy (rsnano::BootstrapAttem
 {
 }
 
-void nano::bootstrap_attempt_legacy::get_information (boost::property_tree::ptree & tree_a)
-{
-	rsnano::rsn_bootstrap_attempt_legacy_get_information (handle, (void *)&tree_a);
-}

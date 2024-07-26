@@ -19,10 +19,6 @@ add_library(
   bootstrap/bootstrap_connections.cpp
   bootstrap/bootstrap_frontier.hpp
   bootstrap/bootstrap_frontier.cpp
-  bootstrap/bootstrap_lazy.hpp
-  bootstrap/bootstrap_lazy.cpp
-  bootstrap/bootstrap_legacy.hpp
-  bootstrap/bootstrap_legacy.cpp
   bootstrap/bootstrap.hpp
   bootstrap/bootstrap.cpp
   bootstrap/bootstrap_server.hpp

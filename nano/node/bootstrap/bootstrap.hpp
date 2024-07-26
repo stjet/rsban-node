@@ -74,7 +74,6 @@ public:
 	rsnano::BootstrapAttemptsHandle * handle;
 };
 
-class bootstrap_attempt_wallet;
 /**
  * Client side portion to initiate bootstrap sessions. Prevents multiple legacy-type bootstrap sessions from being started at the same time. Does permit
  * lazy/wallet bootstrap sessions to overlap with legacy sessions.
@@ -96,7 +95,6 @@ public:
 	bool has_legacy_attempt();
 	bool has_lazy_attempt();
 	bool has_running_legacy_attempt();
-	std::shared_ptr<nano::bootstrap_attempt_wallet> current_wallet_attempt ();
 	rsnano::BootstrapInitiatorHandle * get_handle () const;
 	nano::pulls_cache cache;
 	void stop ();

@@ -35,8 +35,6 @@ public:
 class bootstrap_client;
 class bootstrap_connections;
 
-class bootstrap_attempt_wallet;
-
 class bulk_pull;
 
 /**

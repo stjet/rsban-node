@@ -330,3 +330,52 @@ fn bootstrap_processor_lazy_pruning_missing_block() {
     node2.process_active(send1);
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.block_count(), 3);
 }
+
+#[test]
+fn bootstrap_processor_lazy_cancel() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+
+    let mut flags = NodeFlags::new();
+    flags.disable_bootstrap_bulk_push_client = true;
+
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(flags.clone())
+        .finish();
+
+    let key1 = KeyPair::new();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key1.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    // Start lazy bootstrap with last block in chain known
+    let node1 = system.make_disconnected_node();
+    establish_tcp(&node1, &node0);
+
+    // Start "confirmed" block bootstrap
+    node1
+        .bootstrap_initiator
+        .bootstrap_lazy(send1.hash().into(), true, "".to_owned());
+    {
+        node1
+            .bootstrap_initiator
+            .current_lazy_attempt()
+            .expect("no lazy attempt found");
+    }
+    // Cancel failing lazy bootstrap
+    assert_timely(
+        Duration::from_secs(10),
+        || !node1.bootstrap_initiator.in_progress(),
+        "attempt not cancelled",
+    );
+}

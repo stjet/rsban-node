@@ -106,14 +106,14 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
         guard: MutexGuard<'a, WalletData>,
     ) -> MutexGuard<'a, WalletData> {
         drop(guard);
-        let (connection_l, should_stop) = self.connections.connection(false);
+        let (connection, should_stop) = self.connections.connection(false);
         if should_stop {
             debug!("Bootstrap attempt stopped because there are no peers");
             self.attempt.stop();
         }
 
         let mut guard = self.mutex.lock().unwrap();
-        if connection_l.is_some() && !self.attempt.stopped() {
+        if connection.is_some() && !self.attempt.stopped() {
             let account = guard.wallet_accounts.pop_front().unwrap();
             self.attempt.pulling.fetch_add(1, Ordering::SeqCst);
             let self_l = Arc::clone(self);
@@ -123,7 +123,7 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
             self.workers.push_task(Box::new(move || {
                 if let Some(bootstrap_initiator) = self_l.bootstrap_initiator.upgrade() {
                     let client = Arc::new(BulkPullAccountClient::new(
-                        connection_l.unwrap(),
+                        connection.unwrap(),
                         Arc::clone(&self_l),
                         account,
                         self_l.receive_minimum,
@@ -237,11 +237,11 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptWallet> {
     fn process_block(
         &self,
         block: Arc<BlockEnum>,
-        known_account: &Account,
+        _known_account: &Account,
         pull_blocks_processed: u64,
-        max_blocks: u32,
-        block_expected: bool,
-        retry_limit: u32,
+        _max_blocks: u32,
+        _block_expected: bool,
+        _retry_limit: u32,
     ) -> bool {
         self.attempt.process_block(block, pull_blocks_processed)
     }

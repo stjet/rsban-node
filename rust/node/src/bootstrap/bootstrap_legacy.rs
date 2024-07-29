@@ -87,10 +87,6 @@ impl BootstrapAttemptLegacy {
         })
     }
 
-    pub(crate) fn incremental_id(&self) -> u64 {
-        self.attempt.incremental_id
-    }
-
     pub fn request_bulk_push_target(&self) -> Option<(BlockHash, BlockHash)> {
         let mut guard = self.mutex.lock().unwrap();
         guard.bulk_push_targets.pop()

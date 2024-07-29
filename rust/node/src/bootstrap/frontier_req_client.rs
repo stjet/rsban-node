@@ -183,6 +183,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                     this_l.receive_frontier();
                 } else {
                     debug!("Error while sending bootstrap request: {:?}", ec);
+                    {
+                        let mut guard = this_l.data.lock().unwrap();
+                        guard.result = Some(true); // Failed
+                        this_l.condition.notify_all();
+                    }
                 }
             })),
             BufferDropPolicy::NoLimiterDrop,
@@ -204,6 +209,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                     }));
                 } else {
                     debug!("Invalid size: expected {}, got {}", SIZE_FRONTIER, size);
+                    {
+                        let mut guard = this_l.data.lock().unwrap();
+                        guard.result = Some(true); // Failed
+                        this_l.condition.notify_all();
+                    }
                 }
             }),
         );

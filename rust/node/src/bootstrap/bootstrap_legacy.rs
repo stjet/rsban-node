@@ -196,7 +196,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
         mut lock_a: MutexGuard<'a, LegacyData>,
         first_attempt: bool,
     ) -> (MutexGuard<'a, LegacyData>, bool) {
-        let mut result = true;
+        let mut failure = true;
         drop(lock_a);
         let (connection_l, should_stop) = self.connections.connection(first_attempt);
         if should_stop {
@@ -225,10 +225,10 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
                     );
                     lock_a.frontiers = Some(Arc::downgrade(&client));
                     drop(lock_a);
-                    result = client.get_result();
+                    failure = client.get_result();
                 }
                 lock_a = self.mutex.lock().unwrap();
-                if result {
+                if failure {
                     lock_a.frontier_pulls.clear();
                 } else {
                     self.account_count
@@ -252,7 +252,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
                         lock_a.frontier_pulls.pop_front();
                     }
                 }
-                if !result {
+                if !failure {
                     debug!(
                         "Completed frontier request, {} out of sync accounts according to {}",
                         self.account_count.load(Ordering::SeqCst),
@@ -264,7 +264,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
                 }
             }
         }
-        (lock_a, result)
+        (lock_a, failure)
     }
 }
 

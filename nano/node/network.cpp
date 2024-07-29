@@ -27,15 +27,6 @@ nano::network::~network ()
 {
 }
 
-void nano::network::send_keepalive (std::shared_ptr<nano::transport::channel> const & channel_a)
-{
-	nano::keepalive message{ node.network_params.network };
-	std::array<nano::endpoint, 8> peers;
-	tcp_channels->random_fill (peers);
-	message.set_peers (peers);
-	channel_a->send (message);
-}
-
 void nano::network::flood_message (nano::message & message_a, nano::transport::buffer_drop_policy const drop_policy_a, float const scale_a)
 {
 	for (auto & i : tcp_channels->random_fanout (scale_a))

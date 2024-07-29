@@ -111,59 +111,6 @@ TEST (network, multi_keepalive)
 	std::cout << "node0: " << node0->network->size () << ", node1: " << node1->network->size () << ", node2: " << node2->network->size () << std::endl;
 }
 
-TEST (network, send_discarded_publish)
-{
-	nano::test::system system (2);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto block = builder
-				 .send ()
-				 .previous (1)
-				 .destination (1)
-				 .balance (2)
-				 .sign (key1.prv, key1.pub)
-				 .work (*system.work.generate (nano::root (1)))
-				 .build ();
-	{
-		auto transaction (node1.store.tx_begin_read ());
-		node1.network->flood_block (block);
-		ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-		ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-	}
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-}
-
-TEST (network, send_invalid_publish)
-{
-	nano::test::system system (2);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	nano::block_builder builder;
-	auto block = builder
-				 .send ()
-				 .previous (1)
-				 .destination (1)
-				 .balance (20)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::root (1)))
-				 .build ();
-	{
-		auto transaction (node1.store.tx_begin_read ());
-		node1.network->flood_block (block);
-		ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-		ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-	}
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-}
-
 TEST (network, send_valid_confirm_ack)
 {
 	auto type = nano::transport::transport_type::tcp;

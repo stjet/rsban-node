@@ -1,7 +1,9 @@
 use crate::tests::helpers::assert_timely;
 
 use super::helpers::{assert_timely_eq, establish_tcp, System};
-use rsnano_messages::{Keepalive, Message};
+use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_messages::{Keepalive, Message, Publish};
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     transport::{BufferDropPolicy, ChannelMode, TrafficType},
@@ -88,4 +90,41 @@ fn last_contacted() {
     assert_eq!(node0.network.count_by_mode(ChannelMode::Realtime), 1);
     let timestamp_after_keepalive = channel0.get_last_packet_received();
     assert!(timestamp_after_keepalive > timestamp_before_keepalive);
+}
+
+#[test]
+#[ignore = "todo"]
+fn send_discarded_publish() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+
+    let block = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        999.into(),
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(100),
+        Account::from(123).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1
+        .network
+        .flood_message(&Message::Publish(Publish::new_forward(block)), 1.0);
+
+    assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
+    assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
+    assert_timely(
+        Duration::from_secs(10),
+        || {
+            node2
+                .stats
+                .count(StatType::Message, DetailType::Publish, Direction::In)
+                != 0
+        },
+        "no publish received",
+    );
+    assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
+    assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
 }

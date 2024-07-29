@@ -1,3 +1,4 @@
+mod active_elections;
 mod bootstrap;
 mod election_scheduler;
 pub(crate) mod helpers;

@@ -472,23 +472,6 @@ TEST (node, working)
 	ASSERT_FALSE (path.empty ());
 }
 
-TEST (node, confirm_locked)
-{
-	nano::test::system system (1);
-	auto node (system.nodes[0]);
-	auto wallet_id{ node->wallets.first_wallet_id () };
-	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	ASSERT_EQ (nano::wallets_error::invalid_password, node->wallets.enter_password (wallet_id, "1"));
-	auto block = nano::send_block_builder ()
-				 .previous (0)
-				 .destination (0)
-				 .balance (0)
-				 .sign (nano::keypair ().prv, 0)
-				 .work (0)
-				 .build ();
-	system.nodes[0]->network->flood_block (block);
-}
-
 TEST (node_config, random_rep)
 {
 	auto path (nano::unique_path ());

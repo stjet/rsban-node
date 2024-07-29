@@ -83,7 +83,7 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
             "requesting pending"
         );
 
-        if self.attempt.attempt.should_log() {
+        if self.attempt.should_log() {
             debug!("Accounts in pull queue: {}", self.attempt.wallet_size());
         }
 

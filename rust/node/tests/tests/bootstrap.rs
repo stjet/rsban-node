@@ -6,7 +6,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
-    bootstrap::{BootstrapInitiatorExt, BootstrapStrategy},
+    bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
     config::{FrontiersConfirmationMode, NodeFlags},
     node::NodeExt,
     wallets::WalletsExt,
@@ -94,7 +94,7 @@ fn bootstrap_processor_lazy_hash() {
         let BootstrapStrategy::Lazy(lazy) = lazy_attempt.as_ref() else {
             panic!("not lazy")
         };
-        assert_eq!(lazy.attempt.id, receive2.hash().to_string());
+        assert_eq!(lazy.id(), receive2.hash().to_string());
     }
 
     // Check processed blocks
@@ -184,7 +184,7 @@ fn bootstrap_processor_lazy_hash_bootstrap_id() {
         let BootstrapStrategy::Lazy(lazy) = lazy_attempt.as_ref() else {
             panic!("not lazy")
         };
-        assert_eq!(lazy.attempt.id, "123456".to_string());
+        assert_eq!(lazy.id(), "123456".to_string());
     }
 
     // Check processed blocks

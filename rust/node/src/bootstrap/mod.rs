@@ -43,7 +43,6 @@ pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
 pub use ongoing_bootstrap::*;
 pub use pulls_cache::{PullInfo, PullsCache};
-use rsnano_core::{Account, BlockEnum};
 use std::{ops::Deref, sync::Arc};
 
 pub mod bootstrap_limits {

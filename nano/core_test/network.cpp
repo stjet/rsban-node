@@ -661,42 +661,14 @@ TEST (network, loopback_channel)
 // Disabled, because there is currently no way to send messages with a given network id
 TEST (DISABLED_network, filter_invalid_network_bytes)
 {
-	nano::test::system system{ 2 };
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-
-	// find the comms channel that goes from node2 to node1
-	auto channel = node2.network->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// send a keepalive, from node2 to node1, with the wrong network bytes
-	auto network{ nano::dev::network_params.network };
-	network.current_network = nano::networks::invalid;
-	nano::keepalive keepalive{ network };
-	channel->send (keepalive);
-
-	ASSERT_TIMELY_EQ (5s, 1, node1.stats->count (nano::stat::type::error, nano::stat::detail::invalid_network));
+	// TODO reimplement in Rust
 }
 
 // Ensure the network filters messages with the incorrect minimum version
 // Disabled, because there is currently no way to send messages with a given version
 TEST (DISABLED_network, filter_invalid_version_using)
 {
-	nano::test::system system{ 2 };
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-
-	// find the comms channel that goes from node2 to node1
-	auto channel = node2.network->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// send a keepalive, from node2 to node1, with the wrong version_using
-	auto network{ nano::dev::network_params.network };
-	network.protocol_version = network.protocol_version_min - 1;
-	nano::keepalive keepalive{ network };
-	channel->send (keepalive);
-
-	ASSERT_TIMELY_EQ (5s, 1, node1.stats->count (nano::stat::type::error, nano::stat::detail::outdated_version));
+	// TODO reimplement in Rust
 }
 
 /*

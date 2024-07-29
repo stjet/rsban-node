@@ -991,63 +991,6 @@ TEST (node, coherent_observer)
 	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 1);
 }
 
-TEST (node, fork_no_vote_quorum)
-{
-	nano::test::system system (3);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	auto & node3 (*system.nodes[2]);
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	auto wallet_id3 = node3.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	nano::public_key key4;
-	(void)node1.wallets.deterministic_insert (wallet_id, true, key4);
-	node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key4, nano::dev::constants.genesis_amount / 4);
-	nano::public_key key1;
-	(void)node2.wallets.deterministic_insert (wallet_id2, true, key1);
-	(void)node2.wallets.set_representative (wallet_id2, key1);
-	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1, node1.config->receive_minimum.number ()));
-	ASSERT_NE (nullptr, block);
-	ASSERT_TIMELY (30s, node3.balance (key1) == node1.config->receive_minimum.number () && node2.balance (key1) == node1.config->receive_minimum.number () && node1.balance (key1) == node1.config->receive_minimum.number ());
-	ASSERT_EQ (node1.config->receive_minimum.number (), node1.weight (key1));
-	ASSERT_EQ (node1.config->receive_minimum.number (), node2.weight (key1));
-	ASSERT_EQ (node1.config->receive_minimum.number (), node3.weight (key1));
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (block->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance ((nano::dev::constants.genesis_amount / 4) - (node1.config->receive_minimum.number () * 2))
-				 .link (key1)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (block->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node1.process (send1));
-	ASSERT_EQ (nano::block_status::progress, node2.process (send1));
-	ASSERT_EQ (nano::block_status::progress, node3.process (send1));
-	nano::public_key key2;
-	(void)node3.wallets.deterministic_insert (wallet_id3, true, key2);
-	auto send2 = nano::send_block_builder ()
-				 .previous (block->hash ())
-				 .destination (key2)
-				 .balance ((nano::dev::constants.genesis_amount / 4) - (node1.config->receive_minimum.number () * 2))
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (block->hash ()))
-				 .build ();
-	nano::raw_key key3;
-	auto vote = std::make_shared<nano::vote> (key1, key3, 0, 0, std::vector<nano::block_hash>{ send2->hash () });
-	nano::confirm_ack confirm{ nano::dev::network_params.network, vote };
-	auto channel = node2.network->find_node_id (node3.node_id.pub);
-	ASSERT_NE (nullptr, channel);
-	channel->send (confirm);
-	ASSERT_TIMELY (10s, node3.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in) >= 3);
-	ASSERT_EQ (node1.latest (nano::dev::genesis_key.pub), send1->hash ());
-	ASSERT_EQ (node2.latest (nano::dev::genesis_key.pub), send1->hash ());
-	ASSERT_EQ (node3.latest (nano::dev::genesis_key.pub), send1->hash ());
-}
-
 // Disabled because it sometimes takes way too long (but still eventually finishes)
 TEST (node, DISABLED_fork_pre_confirm)
 {

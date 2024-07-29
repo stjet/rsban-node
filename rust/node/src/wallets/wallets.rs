@@ -960,6 +960,17 @@ pub trait WalletsExt {
         id: Option<String>,
     ) -> Option<BlockEnum>;
 
+    fn send_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<BlockEnum, WalletsError>;
+
     fn change_action(
         &self,
         wallet: &Arc<Wallet>,
@@ -1333,6 +1344,22 @@ impl WalletsExt for Arc<Wallets> {
         let first_account = self.change_seed_wallet(wallet, &mut tx, prv_key, count);
         let restored_count = wallet.store.deterministic_index_get(&tx);
         Ok((restored_count, first_account))
+    }
+
+    fn send_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<BlockEnum, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        self.send_action(wallet, source, account, amount, work, generate_work, id)
+            .ok_or(WalletsError::Generic)
     }
 
     fn send_action(

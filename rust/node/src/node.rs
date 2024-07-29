@@ -1187,6 +1187,11 @@ impl Node {
             .add_blocking(Arc::new(block), BlockSource::Local)
     }
 
+    pub fn process(&self, mut block: BlockEnum) -> Result<(), BlockStatus> {
+        let mut tx = self.ledger.rw_txn();
+        self.ledger.process(&mut tx, &mut block)
+    }
+
     pub fn process_multi(&self, blocks: &[BlockEnum]) {
         let mut tx = self.ledger.rw_txn();
         for block in blocks {
@@ -1210,6 +1215,14 @@ impl Node {
     pub fn block(&self, hash: &BlockHash) -> Option<BlockEnum> {
         let tx = self.ledger.read_txn();
         self.ledger.any().get_block(&tx, hash)
+    }
+
+    pub fn latest(&self, account: &Account) -> BlockHash {
+        let tx = self.ledger.read_txn();
+        self.ledger
+            .any()
+            .account_head(&tx, account)
+            .unwrap_or_default()
     }
 
     pub fn get_node_id(&self) -> PublicKey {

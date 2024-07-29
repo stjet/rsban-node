@@ -1,13 +1,7 @@
-use rsnano_core::utils::PropertyTree;
-
-use crate::utils::create_property_tree;
-
 use super::BootstrapStrategy;
-use std::{
-    collections::HashMap,
-    sync::{atomic::Ordering, Arc},
-    usize,
-};
+use crate::utils::create_property_tree;
+use rsnano_core::utils::PropertyTree;
+use std::{collections::HashMap, sync::Arc, usize};
 
 /// WARNING: BootstrapAttempts is not connected to the C++ version yet!
 /// Container for bootstrap sessions that are active. Owned by `BootstrapInitiator`.
@@ -64,34 +58,17 @@ impl BootstrapAttempts {
                 .put_string("started", if attempt.started() { "true" } else { "false" })
                 .unwrap();
             entry
-                .put_string(
-                    "pulling",
-                    &attempt.attempt().pulling.load(Ordering::SeqCst).to_string(),
-                )
+                .put_string("pulling", &attempt.pulling().to_string())
                 .unwrap();
             entry
-                .put_string(
-                    "total_blocks",
-                    &attempt
-                        .attempt()
-                        .total_blocks
-                        .load(Ordering::SeqCst)
-                        .to_string(),
-                )
+                .put_string("total_blocks", &attempt.total_blocks().to_string())
                 .unwrap();
             entry
-                .put_string(
-                    "requeued_pulls",
-                    &attempt
-                        .attempt()
-                        .requeued_pulls
-                        .load(Ordering::SeqCst)
-                        .to_string(),
-                )
+                .put_string("requeued_pulls", &attempt.requeued_pulls().to_string())
                 .unwrap();
-            attempt.get_information(&mut *entry);
+            attempt.get_information(&mut *entry).unwrap();
             entry
-                .put_u64("duration", attempt.attempt().duration().as_secs() as u64)
+                .put_u64("duration", attempt.duration().as_secs() as u64)
                 .unwrap();
             attempts.push_back("", &*entry);
         }

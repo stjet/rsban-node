@@ -83,19 +83,13 @@ impl BootstrapAttemptWallet {
     fn wallet_finished(&self, data: &WalletData) -> bool {
         let running = !self.attempt.stopped.load(Ordering::SeqCst);
         let more_accounts = !data.wallet_accounts.is_empty();
-        let still_pulling = self.attempt.pulling.load(Ordering::SeqCst) > 0;
+        let still_pulling = self.pulling() > 0;
         return running && (more_accounts || still_pulling);
     }
 
     pub fn wallet_size(&self) -> usize {
         let guard = self.mutex.lock().unwrap();
         guard.wallet_accounts.len()
-    }
-
-    pub fn get_information(&self, result: &mut dyn PropertyTree) {
-        result
-            .put_u64("wallet_accounts", self.wallet_size() as u64)
-            .unwrap();
     }
 }
 
@@ -113,7 +107,7 @@ pub trait BootstrapAttemptWalletExt {
 
 impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
     fn run(&self) {
-        debug_assert!(self.attempt.started.load(Ordering::SeqCst));
+        debug_assert!(self.started());
         self.connections.populate_connections(false);
         let start_time = Instant::now();
         let max_time = Duration::from_secs(60 * 10);
@@ -191,5 +185,57 @@ impl BootstrapAttemptTrait for BootstrapAttemptWallet {
 
     fn stopped(&self) -> bool {
         self.attempt.stopped()
+    }
+
+    fn stop(&self) {
+        self.attempt.stop()
+    }
+
+    fn pull_finished(&self) {
+        self.attempt.pull_finished();
+    }
+
+    fn pulling(&self) -> u32 {
+        self.attempt.pulling.load(Ordering::SeqCst)
+    }
+
+    fn total_blocks(&self) -> u64 {
+        self.attempt.total_blocks.load(Ordering::SeqCst)
+    }
+
+    fn inc_total_blocks(&self) {
+        self.attempt.total_blocks.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn requeued_pulls(&self) -> u32 {
+        self.attempt.requeued_pulls.load(Ordering::SeqCst)
+    }
+
+    fn inc_requeued_pulls(&self) {
+        self.attempt.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn pull_started(&self) {
+        self.attempt.pull_started();
+    }
+
+    fn duration(&self) -> Duration {
+        self.attempt.duration()
+    }
+
+    fn set_started(&self) -> bool {
+        !self.attempt.started.swap(true, Ordering::SeqCst)
+    }
+
+    fn should_log(&self) -> bool {
+        self.attempt.should_log()
+    }
+
+    fn notify(&self) {
+        self.attempt.condition.notify_all();
+    }
+
+    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
+        tree.put_u64("wallet_accounts", self.wallet_size() as u64)
     }
 }

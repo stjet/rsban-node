@@ -1,6 +1,6 @@
 use super::{BootstrapAttemptLegacy, BootstrapClient, BootstrapConnections};
 use crate::{
-    bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
+    bootstrap::{bootstrap_limits, BootstrapAttemptTrait, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };

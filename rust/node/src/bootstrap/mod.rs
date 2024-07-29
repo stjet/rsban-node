@@ -43,7 +43,7 @@ pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
 pub use ongoing_bootstrap::*;
 pub use pulls_cache::{PullInfo, PullsCache};
-use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
+use rsnano_core::{Account, BlockEnum};
 use std::{ops::Deref, sync::Arc};
 
 pub mod bootstrap_limits {
@@ -108,35 +108,11 @@ impl BootstrapStrategy {
         }
     }
 
-    pub fn attempt(&self) -> &BootstrapAttempt {
-        match self {
-            BootstrapStrategy::Lazy(i) => &i.attempt,
-            BootstrapStrategy::Legacy(i) => &i.attempt,
-            BootstrapStrategy::Wallet(i) => &i.attempt,
-        }
-    }
-
     pub fn run(&self) {
         match self {
             BootstrapStrategy::Lazy(i) => i.run(),
             BootstrapStrategy::Legacy(i) => i.run(),
             BootstrapStrategy::Wallet(i) => i.run(),
-        }
-    }
-
-    pub fn stop(&self) {
-        match self {
-            BootstrapStrategy::Legacy(i) => i.stop(),
-            BootstrapStrategy::Lazy(i) => i.attempt.stop(),
-            BootstrapStrategy::Wallet(i) => i.attempt.stop(),
-        }
-    }
-
-    pub fn get_information(&self, tree: &mut dyn PropertyTree) {
-        match self {
-            BootstrapStrategy::Lazy(i) => i.get_information(tree).unwrap(),
-            BootstrapStrategy::Legacy(i) => i.get_information(tree),
-            BootstrapStrategy::Wallet(i) => i.get_information(tree),
         }
     }
 

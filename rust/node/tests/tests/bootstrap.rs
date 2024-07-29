@@ -313,10 +313,7 @@ fn bootstrap_processor_lazy_pruning_missing_block() {
 
     assert_timely(
         Duration::from_secs(5),
-        || {
-            lazy_attempt.attempt().stopped()
-                || lazy_attempt.attempt().requeued_pulls.load(Ordering::SeqCst) >= 4
-        },
+        || lazy_attempt.stopped() || lazy_attempt.requeued_pulls() >= 4,
         "did not stop",
     );
 

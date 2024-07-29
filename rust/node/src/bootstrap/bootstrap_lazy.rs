@@ -261,7 +261,7 @@ impl BootstrapAttemptLazy {
     }
 
     pub fn run(&self) {
-        debug_assert!(self.attempt.started.load(Ordering::SeqCst));
+        debug_assert!(self.started());
         debug_assert!(!self.flags.disable_lazy_bootstrap);
         self.connections.populate_connections(false);
         let mut lock = self.attempt.mutex.lock().unwrap();
@@ -273,8 +273,8 @@ impl BootstrapAttemptLazy {
             let mut iterations = 0u32;
             while self.attempt.still_pulling() && !data.lazy_has_expired() {
                 while !(self.attempt.stopped()
-                    || self.attempt.pulling.load(Ordering::SeqCst) == 0
-                    || (self.attempt.pulling.load(Ordering::SeqCst)
+                    || self.pulling() == 0
+                    || (self.pulling()
                         < bootstrap_limits::BOOTSTRAP_CONNECTION_SCALE_TARGET_BLOCKS
                         && !data.lazy_pulls.is_empty())
                     || data.lazy_has_expired())
@@ -294,7 +294,7 @@ impl BootstrapAttemptLazy {
             // Flushing lazy pulls
             (lock, data) = self.lazy_pull_flush(lock, data);
             // Check if some blocks required for backlog were processed. Start destinations check
-            if self.attempt.pulling.load(Ordering::SeqCst) == 0 {
+            if self.pulling() == 0 {
                 data.lazy_backlog_cleanup(&self.attempt, &self.ledger);
                 (lock, data) = self.lazy_pull_flush(lock, data);
             }
@@ -446,7 +446,7 @@ impl BootstrapAttemptLazy {
         mut data: MutexGuard<'a, LazyData>,
     ) -> (MutexGuard<'a, u8>, MutexGuard<'a, LazyData>) {
         const MAX_PULLS: u32 = bootstrap_limits::BOOTSTRAP_CONNECTION_SCALE_TARGET_BLOCKS * 3;
-        if self.attempt.pulling.load(Ordering::SeqCst) < MAX_PULLS {
+        if self.pulling() < MAX_PULLS {
             debug_assert!(self.network_params.bootstrap.lazy_max_pull_blocks <= u32::MAX);
             let batch_count = self.lazy_batch_size_locked(&data);
             let mut read_count = 0;
@@ -521,7 +521,7 @@ impl BootstrapAttemptLazy {
 
     fn lazy_batch_size_locked(&self, data: &LazyData) -> u32 {
         let mut result = self.network_params.bootstrap.lazy_max_pull_blocks;
-        let total_blocks = self.attempt.total_blocks.load(Ordering::SeqCst);
+        let total_blocks = self.total_blocks();
         if total_blocks > bootstrap_limits::LAZY_BATCH_PULL_COUNT_RESIZE_BLOCKS_LIMIT
             && data.lazy_blocks_count != 0
         {
@@ -606,26 +606,6 @@ impl BootstrapAttemptLazy {
             );
         }
     }
-
-    pub fn get_information(&self, ptree: &mut dyn PropertyTree) -> anyhow::Result<()> {
-        let data = self.data.lock().unwrap();
-        ptree.put_u64("lazy_blocks", data.lazy_blocks.len() as u64)?;
-        ptree.put_u64("lazy_state_backlog", data.lazy_state_backlog.len() as u64)?;
-        ptree.put_u64("lazy_balances", data.lazy_balances.len() as u64)?;
-        ptree.put_u64(
-            "lazy_undefined_links",
-            data.lazy_undefined_links.len() as u64,
-        )?;
-        ptree.put_u64("lazy_pulls", data.lazy_pulls.len() as u64)?;
-        ptree.put_u64("lazy_keys", data.lazy_keys.len() as u64)?;
-        if !data.lazy_keys.is_empty() {
-            ptree.put_string(
-                "lazy_key_1",
-                &data.lazy_keys.iter().next().unwrap().to_string(),
-            )?;
-        }
-        Ok(())
-    }
 }
 
 impl Drop for BootstrapAttemptLazy {
@@ -650,5 +630,73 @@ impl BootstrapAttemptTrait for BootstrapAttemptLazy {
 
     fn stopped(&self) -> bool {
         self.attempt.stopped()
+    }
+
+    fn stop(&self) {
+        self.attempt.stop()
+    }
+
+    fn pull_finished(&self) {
+        self.attempt.pull_finished();
+    }
+
+    fn pulling(&self) -> u32 {
+        self.attempt.pulling.load(Ordering::SeqCst)
+    }
+
+    fn total_blocks(&self) -> u64 {
+        self.attempt.total_blocks.load(Ordering::SeqCst)
+    }
+
+    fn inc_total_blocks(&self) {
+        self.attempt.total_blocks.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn requeued_pulls(&self) -> u32 {
+        self.attempt.requeued_pulls.load(Ordering::SeqCst)
+    }
+
+    fn inc_requeued_pulls(&self) {
+        self.attempt.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn pull_started(&self) {
+        self.attempt.pull_started();
+    }
+
+    fn duration(&self) -> Duration {
+        self.attempt.duration()
+    }
+
+    fn set_started(&self) -> bool {
+        !self.attempt.started.swap(true, Ordering::SeqCst)
+    }
+
+    fn should_log(&self) -> bool {
+        self.attempt.should_log()
+    }
+
+    fn notify(&self) {
+        self.attempt.condition.notify_all();
+    }
+
+    fn get_information(&self, ptree: &mut dyn PropertyTree) -> anyhow::Result<()> {
+        let data = self.data.lock().unwrap();
+        ptree.put_u64("lazy_blocks", data.lazy_blocks.len() as u64)?;
+        ptree.put_u64("lazy_state_backlog", data.lazy_state_backlog.len() as u64)?;
+        ptree.put_u64("lazy_balances", data.lazy_balances.len() as u64)?;
+        ptree.put_u64(
+            "lazy_undefined_links",
+            data.lazy_undefined_links.len() as u64,
+        )?;
+        ptree.put_u64("lazy_pulls", data.lazy_pulls.len() as u64)?;
+        ptree.put_u64("lazy_keys", data.lazy_keys.len() as u64)?;
+        if !data.lazy_keys.is_empty() {
+            ptree.put_string(
+                "lazy_key_1",
+                &data.lazy_keys.iter().next().unwrap().to_string(),
+            )?;
+        }
+        Ok(())
     }
 }

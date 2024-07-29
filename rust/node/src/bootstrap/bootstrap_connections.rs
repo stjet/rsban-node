@@ -263,10 +263,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             .find(pull.bootstrap_id as usize)
             .cloned();
         if let Some(attempt_l) = attempt_l {
-            attempt_l
-                .attempt()
-                .requeued_pulls
-                .fetch_add(1, Ordering::SeqCst);
+            attempt_l.inc_requeued_pulls();
             let mut is_lazy = false;
             if let BootstrapStrategy::Lazy(lazy) = &*attempt_l {
                 is_lazy = true;
@@ -283,7 +280,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     let mut guard = self.mutex.lock().unwrap();
                     guard.pulls.push_front(pull);
                 }
-                attempt_l.attempt().pull_started();
+                attempt_l.pull_started();
                 self.condition.notify_all();
             } else if is_lazy
                 && (pull.attempts
@@ -300,7 +297,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         let mut guard = self.mutex.lock().unwrap();
                         guard.pulls.push_back(pull);
                     }
-                    attempt_l.attempt().pull_started();
+                    attempt_l.pull_started();
                     self.condition.notify_all();
                 }
             } else {
@@ -605,7 +602,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     if let Some(attempt) = &attempt_l {
                         if let BootstrapStrategy::Lazy(lazy) = &**attempt {
                             if !pull.head.is_zero() && lazy.lazy_processed_or_exists(&pull.head) {
-                                attempt.attempt().pull_finished();
+                                attempt.pull_finished();
                                 attempt_l = None;
                             }
                         }

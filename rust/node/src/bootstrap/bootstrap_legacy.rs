@@ -87,10 +87,6 @@ impl BootstrapAttemptLegacy {
         })
     }
 
-    pub(crate) fn should_log(&self) -> bool {
-        self.attempt.should_log()
-    }
-
     pub(crate) fn incremental_id(&self) -> u64 {
         self.attempt.incremental_id
     }
@@ -123,29 +119,6 @@ impl BootstrapAttemptLegacy {
         guard.bulk_push_targets.push((head, end));
     }
 
-    pub fn stop(&self) {
-        let guard = self.mutex.lock().unwrap();
-        self.attempt.set_stopped();
-        drop(guard);
-        self.attempt.condition.notify_all();
-        let guard = self.mutex.lock().unwrap();
-        if let Some(frontiers) = &guard.frontiers {
-            if let Some(frontiers) = frontiers.upgrade() {
-                frontiers.set_result(true);
-            }
-        }
-
-        if let Some(push) = &guard.push {
-            if let Some(push) = push.upgrade() {
-                push.set_result(true);
-            }
-        }
-        drop(guard);
-        if let Some(init) = self.attempt.bootstrap_initiator.upgrade() {
-            init.clear_pulls(self.attempt.incremental_id);
-        }
-    }
-
     fn wait_until_block_processor_empty<'a>(
         &'a self,
         mut guard: MutexGuard<'a, LegacyData>,
@@ -170,25 +143,6 @@ impl BootstrapAttemptLegacy {
         }
         guard
     }
-
-    pub fn get_information(&self, tree: &mut dyn PropertyTree) {
-        let guard = self.mutex.lock().unwrap();
-        tree.put_string("frontier_pulls", &guard.frontier_pulls.len().to_string())
-            .unwrap();
-        tree.put_string(
-            "frontiers_received",
-            if self.attempt.frontiers_received.load(Ordering::SeqCst) {
-                "true"
-            } else {
-                "false"
-            },
-        )
-        .unwrap();
-        tree.put_string("frontiers_age", &guard.frontiers_age.to_string())
-            .unwrap();
-        tree.put_string("last_account", &guard.start_account.encode_account())
-            .unwrap();
-    }
 }
 
 pub trait BootstrapAttemptLegacyExt {
@@ -206,14 +160,13 @@ pub trait BootstrapAttemptLegacyExt {
 
 impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
     fn run(&self) {
-        debug_assert!(self.attempt.started.load(Ordering::SeqCst));
+        debug_assert!(self.started());
         self.connections.populate_connections(false);
         let mut guard = self.mutex.lock().unwrap();
         guard = self.run_start(guard);
         while self.attempt.still_pulling() {
             while self.attempt.still_pulling() {
-                while !(self.attempt.stopped() || self.attempt.pulling.load(Ordering::SeqCst) == 0)
-                {
+                while !(self.attempt.stopped() || self.pulling() == 0) {
                     guard = self.attempt.condition.wait(guard).unwrap();
                 }
             }
@@ -385,5 +338,87 @@ impl BootstrapAttemptTrait for BootstrapAttemptLegacy {
 
     fn stopped(&self) -> bool {
         self.attempt.stopped()
+    }
+
+    fn stop(&self) {
+        let guard = self.mutex.lock().unwrap();
+        self.attempt.set_stopped();
+        drop(guard);
+        self.attempt.condition.notify_all();
+        let guard = self.mutex.lock().unwrap();
+        if let Some(frontiers) = &guard.frontiers {
+            if let Some(frontiers) = frontiers.upgrade() {
+                frontiers.set_result(true);
+            }
+        }
+
+        if let Some(push) = &guard.push {
+            if let Some(push) = push.upgrade() {
+                push.set_result(true);
+            }
+        }
+        drop(guard);
+        if let Some(init) = self.attempt.bootstrap_initiator.upgrade() {
+            init.clear_pulls(self.attempt.incremental_id);
+        }
+    }
+
+    fn pull_finished(&self) {
+        self.attempt.pull_finished();
+    }
+
+    fn pulling(&self) -> u32 {
+        self.attempt.pulling.load(Ordering::SeqCst)
+    }
+
+    fn total_blocks(&self) -> u64 {
+        self.attempt.total_blocks.load(Ordering::SeqCst)
+    }
+
+    fn inc_total_blocks(&self) {
+        self.attempt.total_blocks.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn requeued_pulls(&self) -> u32 {
+        self.attempt.requeued_pulls.load(Ordering::SeqCst)
+    }
+
+    fn inc_requeued_pulls(&self) {
+        self.attempt.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn pull_started(&self) {
+        self.attempt.pull_started();
+    }
+
+    fn duration(&self) -> Duration {
+        self.attempt.duration()
+    }
+
+    fn set_started(&self) -> bool {
+        !self.attempt.started.swap(true, Ordering::SeqCst)
+    }
+
+    fn should_log(&self) -> bool {
+        self.attempt.should_log()
+    }
+
+    fn notify(&self) {
+        self.attempt.condition.notify_all();
+    }
+
+    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
+        let guard = self.mutex.lock().unwrap();
+        tree.put_string("frontier_pulls", &guard.frontier_pulls.len().to_string())?;
+        tree.put_string(
+            "frontiers_received",
+            if self.attempt.frontiers_received.load(Ordering::SeqCst) {
+                "true"
+            } else {
+                "false"
+            },
+        )?;
+        tree.put_string("frontiers_age", &guard.frontiers_age.to_string())?;
+        tree.put_string("last_account", &guard.start_account.encode_account())
     }
 }

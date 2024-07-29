@@ -526,7 +526,7 @@ impl Data {
 
     fn new_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
         for i in self.attempts_list.values() {
-            if !i.attempt().started.swap(true, Ordering::SeqCst) {
+            if i.set_started() {
                 return Some(Arc::clone(i));
             }
         }

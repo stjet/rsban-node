@@ -35,6 +35,7 @@ pub trait BootstrapAttemptTrait {
     fn should_log(&self) -> bool;
     fn notify(&self);
     fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()>;
+    fn run(&self);
 }
 
 pub struct BootstrapAttempt {

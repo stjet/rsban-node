@@ -93,8 +93,8 @@ impl Deref for BootstrapStrategy {
     fn deref(&self) -> &Self::Target {
         match self {
             BootstrapStrategy::Lazy(i) => i,
-            BootstrapStrategy::Legacy(i) => i.as_ref(),
-            BootstrapStrategy::Wallet(i) => i.as_ref(),
+            BootstrapStrategy::Legacy(i) => i,
+            BootstrapStrategy::Wallet(i) => i,
         }
     }
 }
@@ -105,14 +105,6 @@ impl BootstrapStrategy {
             BootstrapStrategy::Lazy(_) => BootstrapMode::Lazy,
             BootstrapStrategy::Legacy(_) => BootstrapMode::Legacy,
             BootstrapStrategy::Wallet(_) => BootstrapMode::WalletLazy,
-        }
-    }
-
-    pub fn run(&self) {
-        match self {
-            BootstrapStrategy::Lazy(i) => i.run(),
-            BootstrapStrategy::Legacy(i) => i.run(),
-            BootstrapStrategy::Wallet(i) => i.run(),
         }
     }
 

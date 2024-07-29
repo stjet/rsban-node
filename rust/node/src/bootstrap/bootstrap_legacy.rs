@@ -146,7 +146,6 @@ impl BootstrapAttemptLegacy {
 }
 
 pub trait BootstrapAttemptLegacyExt {
-    fn run(&self);
     fn run_start<'a>(&'a self, guard: MutexGuard<'a, LegacyData>) -> MutexGuard<'a, LegacyData>;
 
     fn request_push<'a>(&'a self, guard: MutexGuard<'a, LegacyData>) -> MutexGuard<'a, LegacyData>;
@@ -159,43 +158,6 @@ pub trait BootstrapAttemptLegacyExt {
 }
 
 impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
-    fn run(&self) {
-        debug_assert!(self.started());
-        self.connections.populate_connections(false);
-        let mut guard = self.mutex.lock().unwrap();
-        guard = self.run_start(guard);
-        while self.attempt.still_pulling() {
-            while self.attempt.still_pulling() {
-                while !(self.attempt.stopped() || self.pulling() == 0) {
-                    guard = self.attempt.condition.wait(guard).unwrap();
-                }
-            }
-
-            // TODO: This check / wait is a heuristic and should be improved.
-            guard = self.wait_until_block_processor_empty(guard, BlockSource::BootstrapLegacy);
-
-            if guard.start_account != Account::MAX {
-                debug!(
-                    "Requesting new frontiers after: {}",
-                    guard.start_account.encode_account()
-                );
-                //
-                // Requesting new frontiers
-                guard = self.run_start(guard);
-            }
-        }
-        if !self.attempt.stopped() {
-            debug!("Completed legacy pulls");
-
-            if !self.config.disable_bulk_push_client {
-                guard = self.request_push(guard);
-            }
-        }
-        drop(guard);
-        self.attempt.stop();
-        self.attempt.condition.notify_all();
-    }
-
     fn run_start<'a>(
         &'a self,
         mut guard: MutexGuard<'a, LegacyData>,
@@ -323,7 +285,7 @@ pub struct LegacyData {
     frontiers: Option<Weak<FrontierReqClient>>,
     bulk_push_targets: Vec<(BlockHash, BlockHash)>,
 }
-impl BootstrapAttemptTrait for BootstrapAttemptLegacy {
+impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
     fn incremental_id(&self) -> u64 {
         self.attempt.incremental_id
     }
@@ -420,5 +382,42 @@ impl BootstrapAttemptTrait for BootstrapAttemptLegacy {
         )?;
         tree.put_string("frontiers_age", &guard.frontiers_age.to_string())?;
         tree.put_string("last_account", &guard.start_account.encode_account())
+    }
+
+    fn run(&self) {
+        debug_assert!(self.started());
+        self.connections.populate_connections(false);
+        let mut guard = self.mutex.lock().unwrap();
+        guard = self.run_start(guard);
+        while self.attempt.still_pulling() {
+            while self.attempt.still_pulling() {
+                while !(self.attempt.stopped() || self.pulling() == 0) {
+                    guard = self.attempt.condition.wait(guard).unwrap();
+                }
+            }
+
+            // TODO: This check / wait is a heuristic and should be improved.
+            guard = self.wait_until_block_processor_empty(guard, BlockSource::BootstrapLegacy);
+
+            if guard.start_account != Account::MAX {
+                debug!(
+                    "Requesting new frontiers after: {}",
+                    guard.start_account.encode_account()
+                );
+                //
+                // Requesting new frontiers
+                guard = self.run_start(guard);
+            }
+        }
+        if !self.attempt.stopped() {
+            debug!("Completed legacy pulls");
+
+            if !self.config.disable_bulk_push_client {
+                guard = self.request_push(guard);
+            }
+        }
+        drop(guard);
+        self.attempt.stop();
+        self.attempt.condition.notify_all();
     }
 }

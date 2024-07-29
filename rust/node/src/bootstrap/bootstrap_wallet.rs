@@ -83,7 +83,7 @@ impl BootstrapAttemptWallet {
     fn wallet_finished(&self, data: &WalletData) -> bool {
         let running = !self.attempt.stopped.load(Ordering::SeqCst);
         let more_accounts = !data.wallet_accounts.is_empty();
-        let still_pulling = self.pulling() > 0;
+        let still_pulling = self.attempt.pulling.load(Ordering::SeqCst) > 0;
         return running && (more_accounts || still_pulling);
     }
 
@@ -98,7 +98,6 @@ pub struct WalletData {
 }
 
 pub trait BootstrapAttemptWalletExt {
-    fn run(&self);
     fn request_pending<'a>(
         &'a self,
         guard: MutexGuard<'a, WalletData>,
@@ -106,32 +105,6 @@ pub trait BootstrapAttemptWalletExt {
 }
 
 impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
-    fn run(&self) {
-        debug_assert!(self.started());
-        self.connections.populate_connections(false);
-        let start_time = Instant::now();
-        let max_time = Duration::from_secs(60 * 10);
-        let mut guard = self.mutex.lock().unwrap();
-        while self.wallet_finished(&guard) && start_time.elapsed() < max_time {
-            if !guard.wallet_accounts.is_empty() {
-                guard = self.request_pending(guard);
-            } else {
-                guard = self
-                    .attempt
-                    .condition
-                    .wait_timeout(guard, Duration::from_millis(1000))
-                    .unwrap()
-                    .0;
-            }
-        }
-        if !self.attempt.stopped() {
-            info!("Completed wallet lazy pulls");
-        }
-        drop(guard);
-        self.attempt.stop();
-        self.attempt.condition.notify_all();
-    }
-
     fn request_pending<'a>(
         &'a self,
         guard: MutexGuard<'a, WalletData>,
@@ -170,7 +143,7 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
         guard
     }
 }
-impl BootstrapAttemptTrait for BootstrapAttemptWallet {
+impl BootstrapAttemptTrait for Arc<BootstrapAttemptWallet> {
     fn incremental_id(&self) -> u64 {
         self.attempt.incremental_id
     }
@@ -237,5 +210,31 @@ impl BootstrapAttemptTrait for BootstrapAttemptWallet {
 
     fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
         tree.put_u64("wallet_accounts", self.wallet_size() as u64)
+    }
+
+    fn run(&self) {
+        debug_assert!(self.started());
+        self.connections.populate_connections(false);
+        let start_time = Instant::now();
+        let max_time = Duration::from_secs(60 * 10);
+        let mut guard = self.mutex.lock().unwrap();
+        while self.wallet_finished(&guard) && start_time.elapsed() < max_time {
+            if !guard.wallet_accounts.is_empty() {
+                guard = self.request_pending(guard);
+            } else {
+                guard = self
+                    .attempt
+                    .condition
+                    .wait_timeout(guard, Duration::from_millis(1000))
+                    .unwrap()
+                    .0;
+            }
+        }
+        if !self.attempt.stopped() {
+            info!("Completed wallet lazy pulls");
+        }
+        drop(guard);
+        self.attempt.stop();
+        self.attempt.condition.notify_all();
     }
 }

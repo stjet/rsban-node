@@ -260,57 +260,6 @@ impl BootstrapAttemptLazy {
         })
     }
 
-    pub fn run(&self) {
-        debug_assert!(self.started());
-        debug_assert!(!self.flags.disable_lazy_bootstrap);
-        self.connections.populate_connections(false);
-        let mut lock = self.attempt.mutex.lock().unwrap();
-        let mut data = self.data.lock().unwrap();
-        data.lazy_start_time = Instant::now();
-        while (self.attempt.still_pulling() || !data.lazy_finished(&self.attempt, &self.ledger))
-            && !data.lazy_has_expired()
-        {
-            let mut iterations = 0u32;
-            while self.attempt.still_pulling() && !data.lazy_has_expired() {
-                while !(self.attempt.stopped()
-                    || self.pulling() == 0
-                    || (self.pulling()
-                        < bootstrap_limits::BOOTSTRAP_CONNECTION_SCALE_TARGET_BLOCKS
-                        && !data.lazy_pulls.is_empty())
-                    || data.lazy_has_expired())
-                {
-                    drop(data);
-                    lock = self.attempt.condition.wait(lock).unwrap();
-                    data = self.data.lock().unwrap();
-                }
-                iterations += 1;
-                // Flushing lazy pulls
-                (lock, data) = self.lazy_pull_flush(lock, data);
-                // Start backlog cleanup
-                if iterations % 100 == 0 {
-                    data.lazy_backlog_cleanup(&self.attempt, &self.ledger);
-                }
-            }
-            // Flushing lazy pulls
-            (lock, data) = self.lazy_pull_flush(lock, data);
-            // Check if some blocks required for backlog were processed. Start destinations check
-            if self.pulling() == 0 {
-                data.lazy_backlog_cleanup(&self.attempt, &self.ledger);
-                (lock, data) = self.lazy_pull_flush(lock, data);
-            }
-        }
-        if !self.attempt.stopped() {
-            debug!("Completed lazy pulls");
-        }
-        if data.lazy_has_expired() {
-            debug!("Lazy bootstrap attempt ID {} expired", self.attempt.id);
-        }
-        drop(data);
-        drop(lock);
-        self.attempt.stop();
-        self.attempt.condition.notify_all();
-    }
-
     pub fn process_block(
         &self,
         block: Arc<BlockEnum>,
@@ -698,5 +647,56 @@ impl BootstrapAttemptTrait for BootstrapAttemptLazy {
             )?;
         }
         Ok(())
+    }
+
+    fn run(&self) {
+        debug_assert!(self.started());
+        debug_assert!(!self.flags.disable_lazy_bootstrap);
+        self.connections.populate_connections(false);
+        let mut lock = self.attempt.mutex.lock().unwrap();
+        let mut data = self.data.lock().unwrap();
+        data.lazy_start_time = Instant::now();
+        while (self.attempt.still_pulling() || !data.lazy_finished(&self.attempt, &self.ledger))
+            && !data.lazy_has_expired()
+        {
+            let mut iterations = 0u32;
+            while self.attempt.still_pulling() && !data.lazy_has_expired() {
+                while !(self.attempt.stopped()
+                    || self.pulling() == 0
+                    || (self.pulling()
+                        < bootstrap_limits::BOOTSTRAP_CONNECTION_SCALE_TARGET_BLOCKS
+                        && !data.lazy_pulls.is_empty())
+                    || data.lazy_has_expired())
+                {
+                    drop(data);
+                    lock = self.attempt.condition.wait(lock).unwrap();
+                    data = self.data.lock().unwrap();
+                }
+                iterations += 1;
+                // Flushing lazy pulls
+                (lock, data) = self.lazy_pull_flush(lock, data);
+                // Start backlog cleanup
+                if iterations % 100 == 0 {
+                    data.lazy_backlog_cleanup(&self.attempt, &self.ledger);
+                }
+            }
+            // Flushing lazy pulls
+            (lock, data) = self.lazy_pull_flush(lock, data);
+            // Check if some blocks required for backlog were processed. Start destinations check
+            if self.pulling() == 0 {
+                data.lazy_backlog_cleanup(&self.attempt, &self.ledger);
+                (lock, data) = self.lazy_pull_flush(lock, data);
+            }
+        }
+        if !self.attempt.stopped() {
+            debug!("Completed lazy pulls");
+        }
+        if data.lazy_has_expired() {
+            debug!("Lazy bootstrap attempt ID {} expired", self.attempt.id);
+        }
+        drop(data);
+        drop(lock);
+        self.attempt.stop();
+        self.attempt.condition.notify_all();
     }
 }

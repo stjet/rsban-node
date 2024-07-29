@@ -91,10 +91,6 @@ impl BootstrapAttemptLegacy {
         self.attempt.incremental_id
     }
 
-    pub(crate) fn process_block(&self, block: Arc<BlockEnum>, pull_blocks_processed: u64) -> bool {
-        self.attempt.process_block(block, pull_blocks_processed)
-    }
-
     pub fn request_bulk_push_target(&self) -> Option<(BlockHash, BlockHash)> {
         let mut guard = self.mutex.lock().unwrap();
         guard.bulk_push_targets.pop()
@@ -419,5 +415,17 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
         drop(guard);
         self.attempt.stop();
         self.attempt.condition.notify_all();
+    }
+
+    fn process_block(
+        &self,
+        block: Arc<BlockEnum>,
+        known_account: &Account,
+        pull_blocks_processed: u64,
+        max_blocks: u32,
+        block_expected: bool,
+        retry_limit: u32,
+    ) -> bool {
+        self.attempt.process_block(block, pull_blocks_processed)
     }
 }

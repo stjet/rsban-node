@@ -5,7 +5,7 @@ use crate::{
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, utils::PropertyTree, BlockEnum};
+use rsnano_core::{encode_hex, utils::PropertyTree, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use serde::Serialize;
 use std::{
@@ -36,6 +36,15 @@ pub trait BootstrapAttemptTrait {
     fn notify(&self);
     fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn run(&self);
+    fn process_block(
+        &self,
+        block: Arc<BlockEnum>,
+        known_account: &Account,
+        pull_blocks_processed: u64,
+        max_blocks: u32,
+        block_expected: bool,
+        retry_limit: u32,
+    ) -> bool;
 }
 
 pub struct BootstrapAttempt {

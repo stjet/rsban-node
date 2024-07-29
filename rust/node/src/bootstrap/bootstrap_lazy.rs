@@ -260,31 +260,6 @@ impl BootstrapAttemptLazy {
         })
     }
 
-    pub fn process_block(
-        &self,
-        block: Arc<BlockEnum>,
-        known_account: &Account,
-        pull_blocks_processed: u64,
-        max_blocks: u32,
-        block_expected: bool,
-        retry_limit: u32,
-    ) -> bool {
-        let stop_pull;
-        if block_expected {
-            stop_pull = self.process_block_lazy(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                retry_limit,
-            );
-        } else {
-            // Drop connection with unexpected block for lazy bootstrap
-            stop_pull = true;
-        }
-        stop_pull
-    }
-
     fn process_block_lazy(
         &self,
         block: Arc<BlockEnum>,
@@ -698,5 +673,30 @@ impl BootstrapAttemptTrait for BootstrapAttemptLazy {
         drop(lock);
         self.attempt.stop();
         self.attempt.condition.notify_all();
+    }
+
+    fn process_block(
+        &self,
+        block: Arc<BlockEnum>,
+        known_account: &Account,
+        pull_blocks_processed: u64,
+        max_blocks: u32,
+        block_expected: bool,
+        retry_limit: u32,
+    ) -> bool {
+        let stop_pull;
+        if block_expected {
+            stop_pull = self.process_block_lazy(
+                block,
+                known_account,
+                pull_blocks_processed,
+                max_blocks,
+                retry_limit,
+            );
+        } else {
+            // Drop connection with unexpected block for lazy bootstrap
+            stop_pull = true;
+        }
+        stop_pull
     }
 }

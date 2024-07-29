@@ -107,27 +107,4 @@ impl BootstrapStrategy {
             BootstrapStrategy::Wallet(_) => BootstrapMode::WalletLazy,
         }
     }
-
-    pub fn process_block(
-        &self,
-        block: Arc<BlockEnum>,
-        known_account: &Account,
-        pull_blocks_processed: u64,
-        max_blocks: u32,
-        block_expected: bool,
-        retry_limit: u32,
-    ) -> bool {
-        match self {
-            BootstrapStrategy::Legacy(i) => i.process_block(block, pull_blocks_processed),
-            BootstrapStrategy::Lazy(i) => i.process_block(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                block_expected,
-                retry_limit,
-            ),
-            BootstrapStrategy::Wallet(i) => i.process_block(block, pull_blocks_processed),
-        }
-    }
 }

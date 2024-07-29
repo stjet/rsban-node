@@ -2788,7 +2788,7 @@ TEST (node, node_sequence)
  * It also checks that the vote aggregrator replies with the election winner at the time.
  */
 // Gustav: Temporarily disabled because it fails
-TEST (node, DISABLED_rollback_vote_self)
+TEST (node, rollback_vote_self)
 {
 	nano::test::system system;
 	nano::node_flags flags;

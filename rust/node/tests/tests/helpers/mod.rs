@@ -81,9 +81,29 @@ impl System {
         self.nodes.push(node.clone());
 
         if self.nodes.len() > 1 && !disconnected {
-            self.nodes[0]
+            let other = &self.nodes[0];
+            other
                 .peer_connector
                 .connect_to(node.tcp_listener.local_address());
+
+            let start = Instant::now();
+            loop {
+                if node
+                    .network
+                    .find_node_id(&other.node_id.public_key())
+                    .is_some()
+                    && other
+                        .network
+                        .find_node_id(&node.node_id.public_key())
+                        .is_some()
+                {
+                    break;
+                }
+
+                if start.elapsed() > Duration::from_secs(5) {
+                    panic!("connection not successfull");
+                }
+            }
         }
         node
     }
@@ -204,6 +224,18 @@ where
         sleep(Duration::from_millis(50));
     }
     panic!("timeout");
+}
+
+pub(crate) fn assert_always_eq<T, F>(time: Duration, mut condition: F, expected: T)
+where
+    T: PartialEq + std::fmt::Debug,
+    F: FnMut() -> T,
+{
+    let start = Instant::now();
+    while start.elapsed() < time {
+        assert_eq!(condition(), expected);
+        sleep(Duration::from_millis(50));
+    }
 }
 
 static TRACING_INITIALIZED: OnceLock<()> = OnceLock::new();

@@ -52,7 +52,7 @@ use rsnano_core::{
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
+use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -1284,6 +1284,12 @@ pub trait NodeExt {
     fn backup_wallet(&self);
     fn search_receivable_all(&self);
     fn bootstrap_wallet(&self);
+    fn flood_block_many(
+        &self,
+        blocks: VecDeque<BlockEnum>,
+        callback: Box<dyn FnOnce() + Send + Sync>,
+        delay: Duration,
+    );
 }
 
 impl NodeExt for Arc<Node> {
@@ -1491,6 +1497,31 @@ impl NodeExt for Arc<Node> {
         let accounts: VecDeque<_> = self.wallets.get_accounts(128).drain(..).collect();
         if !accounts.is_empty() {
             self.bootstrap_initiator.bootstrap_wallet(accounts)
+        }
+    }
+
+    fn flood_block_many(
+        &self,
+        mut blocks: VecDeque<BlockEnum>,
+        callback: Box<dyn FnOnce() + Send + Sync>,
+        delay: Duration,
+    ) {
+        if let Some(block) = blocks.pop_front() {
+            let publish = Message::Publish(Publish::new_forward(block));
+            self.network.flood_message(&publish, 1.0);
+            if blocks.is_empty() {
+                callback()
+            } else {
+                let self_w = Arc::downgrade(self);
+                self.workers.add_delayed_task(
+                    delay,
+                    Box::new(move || {
+                        if let Some(node) = self_w.upgrade() {
+                            node.flood_block_many(blocks, callback, delay);
+                        }
+                    }),
+                );
+            }
         }
     }
 }

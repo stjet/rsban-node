@@ -27,42 +27,25 @@ nano::network::~network ()
 {
 }
 
-void nano::network::flood_message (nano::message & message_a, nano::transport::buffer_drop_policy const drop_policy_a, float const scale_a)
+namespace
 {
-	for (auto & i : tcp_channels->random_fanout (scale_a))
-	{
-		i->send (message_a, nullptr, drop_policy_a);
-	}
+void callback_wrapper(void * context)
+{
+	auto callback = static_cast<std::function<void ()>*>(context);
+	(*callback)();
 }
 
-void nano::network::flood_block (std::shared_ptr<nano::block> const & block_a, nano::transport::buffer_drop_policy const drop_policy_a)
-{
-	nano::publish message (node.network_params.network, block_a);
-	flood_message (message, drop_policy_a);
+void drop_context(void * context){
+	auto callback = static_cast<std::function<void ()>*>(context);
+	delete callback;
+} 
 }
 
 void nano::network::flood_block_many (std::deque<std::shared_ptr<nano::block>> blocks_a, std::function<void ()> callback_a, unsigned delay_a)
 {
-	if (!blocks_a.empty ())
-	{
-		auto block_l (blocks_a.front ());
-		blocks_a.pop_front ();
-		flood_block (block_l);
-		if (!blocks_a.empty ())
-		{
-			std::weak_ptr<nano::node> node_w (node.shared ());
-			node.workers->add_timed_task (std::chrono::steady_clock::now () + std::chrono::milliseconds (delay_a + std::rand () % delay_a), [node_w, blocks (std::move (blocks_a)), callback_a, delay_a] () {
-				if (auto node_l = node_w.lock ())
-				{
-					node_l->network->flood_block_many (std::move (blocks), callback_a, delay_a);
-				}
-			});
-		}
-		else if (callback_a)
-		{
-			callback_a ();
-		}
-	}
+	rsnano::block_vec block_vec{blocks_a};
+	auto context = new std::function<void ()>(callback_a);
+	rsnano::rsn_node_flood_block_many(node.handle, block_vec.handle, delay_a, callback_wrapper, context, drop_context);
 }
 
 void nano::network::inbound (const nano::message & message, const std::shared_ptr<nano::transport::channel> & channel)

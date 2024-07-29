@@ -42,7 +42,8 @@ impl NodeIdKeyFile {
             .read_to_string(&file_path)
             .context(format!("Could not read node id file {:?}", file_path))?;
 
-        KeyPair::from_priv_key_hex(&content).context(format!(
+        let first_line = content.lines().next().unwrap_or("");
+        KeyPair::from_priv_key_hex(first_line).context(format!(
             "Could not decode node id key from file {:?}",
             file_path
         ))
@@ -58,7 +59,10 @@ impl NodeIdKeyFile {
         let keypair = self.key_factory.create_key_pair();
 
         self.fs
-            .write(file_path, keypair.private_key().encode_hex().as_bytes())
+            .write(
+                file_path,
+                format!("{}\n", keypair.private_key().encode_hex()).as_bytes(),
+            )
             .context(format!("Could not write node id key file: {:?}", file_path))?;
 
         Ok(keypair)
@@ -148,7 +152,10 @@ mod tests {
             assert_eq!(fs_events[0], FsEvent::create_dir_all(test_app_path()));
             assert_eq!(
                 fs_events[1],
-                FsEvent::write(test_key_file_path(), EXPECTED_KEY.encode_hex())
+                FsEvent::write(
+                    test_key_file_path(),
+                    format!("{}\n", EXPECTED_KEY.encode_hex())
+                )
             );
         }
 
@@ -205,7 +212,7 @@ mod tests {
     }
 
     fn initialize_node_id_with_valid_existing_file() -> (anyhow::Result<KeyPair>, Vec<FsEvent>) {
-        let fs = fs_with_key_file(EXPECTED_KEY.encode_hex());
+        let fs = fs_with_key_file(format!("{}\n", EXPECTED_KEY.encode_hex()));
         initialize_node_id(fs, KeyPairFactory::new_null())
     }
 

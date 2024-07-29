@@ -417,7 +417,7 @@ impl BlockProcessorLoop {
             source,
             channel
                 .as_ref()
-                .map(|c| c.remote_endpoint().to_string())
+                .map(|c| c.remote_addr().to_string())
                 .unwrap_or_else(|| "<unknown>".to_string())
         );
 

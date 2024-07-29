@@ -128,7 +128,7 @@ impl Channel for ChannelFake {
         super::TransportType::Fake
     }
 
-    fn remote_endpoint(&self) -> SocketAddrV6 {
+    fn remote_addr(&self) -> SocketAddrV6 {
         self.endpoint
     }
 
@@ -187,5 +187,9 @@ impl Channel for ChannelFake {
 
     fn close(&self) {
         self.closed.store(true, Ordering::SeqCst);
+    }
+
+    fn local_addr(&self) -> SocketAddrV6 {
+        self.endpoint
     }
 }

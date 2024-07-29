@@ -192,6 +192,10 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
 }
 
 impl Channel for Arc<ChannelTcp> {
+    fn channel_id(&self) -> ChannelId {
+        self.channel_id
+    }
+
     fn get_last_bootstrap_attempt(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt
     }
@@ -228,15 +232,11 @@ impl Channel for Arc<ChannelTcp> {
         self.socket().map(|s| s.is_alive()).unwrap_or(false)
     }
 
-    fn channel_id(&self) -> ChannelId {
-        self.channel_id
-    }
-
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Tcp
     }
 
-    fn remote_endpoint(&self) -> SocketAddrV6 {
+    fn remote_addr(&self) -> SocketAddrV6 {
         self.channel_mutex.lock().unwrap().remote_endpoint
     }
 
@@ -297,6 +297,10 @@ impl Channel for Arc<ChannelTcp> {
 
     fn close(&self) {
         self.socket.close();
+    }
+
+    fn local_addr(&self) -> SocketAddrV6 {
+        self.socket.local_endpoint_v6()
     }
 }
 

@@ -2,7 +2,7 @@ use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
-    transport::{NullSocketObserver, PeerConnectorExt},
+    transport::{ChannelEnum, NullSocketObserver, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -252,7 +252,7 @@ fn init_tracing() {
     });
 }
 
-pub(crate) fn establish_tcp(node: &Node, peer: &Node) {
+pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelEnum> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
@@ -264,5 +264,9 @@ pub(crate) fn establish_tcp(node: &Node, peer: &Node) {
                 .is_some()
         },
         "node did not connect",
-    )
+    );
+
+    node.network
+        .find_node_id(&peer.node_id.public_key())
+        .unwrap()
 }

@@ -190,7 +190,7 @@ impl BootstrapClient {
     }
 
     pub fn tcp_endpoint(&self) -> SocketAddrV6 {
-        self.tcp_channel().remote_endpoint()
+        self.tcp_channel().remote_addr()
     }
 }
 

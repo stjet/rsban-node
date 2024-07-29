@@ -184,7 +184,7 @@ impl ChannelContainer {
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
             if entry.channel.get_last_packet_sent() < cutoff {
-                debug!("Closing idle channel: {}", entry.channel.remote_endpoint());
+                debug!("Closing idle channel: {}", entry.channel.remote_addr());
                 entry.close();
             }
         }
@@ -246,7 +246,7 @@ impl ChannelEntry {
     }
 
     pub fn endpoint(&self) -> SocketAddrV6 {
-        self.channel.remote_endpoint()
+        self.channel.remote_addr()
     }
 
     pub fn last_packet_sent(&self) -> SystemTime {

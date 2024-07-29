@@ -220,6 +220,10 @@ impl AsyncBufferReader for VecBufferReader {
 }
 
 impl Channel for ChannelInProc {
+    fn channel_id(&self) -> ChannelId {
+        self.channel_id
+    }
+
     fn get_last_bootstrap_attempt(&self) -> SystemTime {
         self.channel_mutex.lock().unwrap().last_bootstrap_attempt
     }
@@ -256,15 +260,11 @@ impl Channel for ChannelInProc {
         true
     }
 
-    fn channel_id(&self) -> ChannelId {
-        self.channel_id
-    }
-
     fn get_type(&self) -> super::TransportType {
         super::TransportType::Loopback
     }
 
-    fn remote_endpoint(&self) -> SocketAddrV6 {
+    fn remote_addr(&self) -> SocketAddrV6 {
         self.remote_endpoint
     }
 
@@ -323,6 +323,10 @@ impl Channel for ChannelInProc {
 
     fn close(&self) {
         // Can't be closed
+    }
+
+    fn local_addr(&self) -> SocketAddrV6 {
+        self.local_endpoint
     }
 }
 

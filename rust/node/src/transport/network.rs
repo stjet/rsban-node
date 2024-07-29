@@ -128,7 +128,7 @@ impl Network {
         for i in state.channels.iter() {
             println!(
                 "    remote: {}, direction: {:?}, mode: {:?}",
-                i.channel.remote_endpoint(),
+                i.channel.remote_addr(),
                 i.channel.direction(),
                 i.channel.mode()
             )
@@ -579,7 +579,7 @@ impl Network {
 
     pub fn list_channels(&self, min_version: u8) -> Vec<Arc<ChannelEnum>> {
         let mut result = self.state.lock().unwrap().list_realtime(min_version);
-        result.sort_by_key(|i| i.remote_endpoint());
+        result.sort_by_key(|i| i.remote_addr());
         result
     }
 
@@ -627,11 +627,11 @@ impl Network {
         self.state
             .lock()
             .unwrap()
-            .peer_misbehaved(&channel.remote_endpoint());
+            .peer_misbehaved(&channel.remote_addr());
 
         // Disconnect
         if channel.get_type() == TransportType::Tcp {
-            self.erase_channel_by_endpoint(&channel.remote_endpoint())
+            self.erase_channel_by_endpoint(&channel.remote_addr())
         }
     }
 }

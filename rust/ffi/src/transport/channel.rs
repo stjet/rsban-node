@@ -233,7 +233,7 @@ pub unsafe extern "C" fn rsn_channel_fake_endpoint(
     handle: *mut ChannelHandle,
     result: *mut EndpointDto,
 ) {
-    *result = as_fake_channel(handle).remote_endpoint().into();
+    *result = as_fake_channel(handle).remote_addr().into();
 }
 
 #[no_mangle]

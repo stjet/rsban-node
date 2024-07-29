@@ -43,7 +43,6 @@ pub use frontier_req_client::*;
 pub use frontier_req_server::FrontierReqServer;
 pub use ongoing_bootstrap::*;
 pub use pulls_cache::{PullInfo, PullsCache};
-use rsnano_core::{utils::PropertyTree, Account, BlockEnum};
 use std::{ops::Deref, sync::Arc};
 
 pub mod bootstrap_limits {
@@ -93,8 +92,8 @@ impl Deref for BootstrapStrategy {
     fn deref(&self) -> &Self::Target {
         match self {
             BootstrapStrategy::Lazy(i) => i,
-            BootstrapStrategy::Legacy(i) => i.as_ref(),
-            BootstrapStrategy::Wallet(i) => i.as_ref(),
+            BootstrapStrategy::Legacy(i) => i,
+            BootstrapStrategy::Wallet(i) => i,
         }
     }
 }
@@ -105,61 +104,6 @@ impl BootstrapStrategy {
             BootstrapStrategy::Lazy(_) => BootstrapMode::Lazy,
             BootstrapStrategy::Legacy(_) => BootstrapMode::Legacy,
             BootstrapStrategy::Wallet(_) => BootstrapMode::WalletLazy,
-        }
-    }
-
-    pub fn attempt(&self) -> &BootstrapAttempt {
-        match self {
-            BootstrapStrategy::Lazy(i) => &i.attempt,
-            BootstrapStrategy::Legacy(i) => &i.attempt,
-            BootstrapStrategy::Wallet(i) => &i.attempt,
-        }
-    }
-
-    pub fn run(&self) {
-        match self {
-            BootstrapStrategy::Lazy(i) => i.run(),
-            BootstrapStrategy::Legacy(i) => i.run(),
-            BootstrapStrategy::Wallet(i) => i.run(),
-        }
-    }
-
-    pub fn stop(&self) {
-        match self {
-            BootstrapStrategy::Legacy(i) => i.stop(),
-            BootstrapStrategy::Lazy(i) => i.attempt.stop(),
-            BootstrapStrategy::Wallet(i) => i.attempt.stop(),
-        }
-    }
-
-    pub fn get_information(&self, tree: &mut dyn PropertyTree) {
-        match self {
-            BootstrapStrategy::Lazy(i) => i.get_information(tree).unwrap(),
-            BootstrapStrategy::Legacy(i) => i.get_information(tree),
-            BootstrapStrategy::Wallet(i) => i.get_information(tree),
-        }
-    }
-
-    pub fn process_block(
-        &self,
-        block: Arc<BlockEnum>,
-        known_account: &Account,
-        pull_blocks_processed: u64,
-        max_blocks: u32,
-        block_expected: bool,
-        retry_limit: u32,
-    ) -> bool {
-        match self {
-            BootstrapStrategy::Legacy(i) => i.process_block(block, pull_blocks_processed),
-            BootstrapStrategy::Lazy(i) => i.process_block(
-                block,
-                known_account,
-                pull_blocks_processed,
-                max_blocks,
-                block_expected,
-                retry_limit,
-            ),
-            BootstrapStrategy::Wallet(i) => i.process_block(block, pull_blocks_processed),
         }
     }
 }

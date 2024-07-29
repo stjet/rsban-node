@@ -1,4 +1,5 @@
 use crate::{
+    bootstrap::BootstrapAttemptTrait,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{BufferDropPolicy, TrafficType},
 };
@@ -42,7 +43,7 @@ impl BulkPullAccountClient {
         ledger: Arc<Ledger>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
     ) -> Self {
-        attempt.attempt.condition.notify_all();
+        attempt.notify();
         Self {
             connection,
             attempt,
@@ -59,7 +60,7 @@ impl BulkPullAccountClient {
 
 impl Drop for BulkPullAccountClient {
     fn drop(&mut self) {
-        self.attempt.attempt.pull_finished();
+        self.attempt.pull_finished();
     }
 }
 
@@ -82,7 +83,7 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
             "requesting pending"
         );
 
-        if self.attempt.attempt.should_log() {
+        if self.attempt.should_log() {
             debug!("Accounts in pull queue: {}", self.attempt.wallet_size());
         }
 

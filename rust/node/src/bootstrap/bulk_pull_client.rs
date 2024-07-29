@@ -83,7 +83,7 @@ impl BulkPullClient {
             known_account: Mutex::new(Account::zero()),
             bootstrap_initiator,
         };
-        result.attempt.attempt().condition.notify_all();
+        result.attempt.notify();
         result
     }
 }
@@ -112,7 +112,7 @@ impl Drop for BulkPullClient {
         } else {
             self.bootstrap_initiator.remove_from_cache(&self.pull);
         }
-        self.attempt.attempt().pull_finished();
+        self.attempt.pull_finished();
     }
 }
 
@@ -147,11 +147,8 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             "Requesting account or head"
         );
 
-        if self.attempt.attempt().should_log() {
-            debug!(
-                "Accounts in pull queue: {}",
-                self.attempt.attempt().pulling.load(Ordering::Relaxed)
-            );
+        if self.attempt.should_log() {
+            debug!("Accounts in pull queue: {}", self.attempt.pulling());
         }
 
         let self_clone = Arc::clone(self);
@@ -258,10 +255,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             self.connection.set_start_time();
         }
 
-        self.attempt
-            .attempt()
-            .total_blocks
-            .fetch_add(1, Ordering::SeqCst);
+        self.attempt.inc_total_blocks();
 
         self.pull_blocks.fetch_add(1, Ordering::SeqCst);
         let block = Arc::new(block);

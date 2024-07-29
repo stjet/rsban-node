@@ -5,13 +5,13 @@ use crate::{
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, BlockEnum};
+use rsnano_core::{encode_hex, utils::PropertyTree, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use serde::Serialize;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
-        Arc, Condvar, Mutex, MutexGuard, Weak,
+        Arc, Condvar, Mutex, Weak,
     },
     time::{Duration, Instant},
 };
@@ -22,9 +22,32 @@ pub trait BootstrapAttemptTrait {
     fn id(&self) -> &str;
     fn started(&self) -> bool;
     fn stopped(&self) -> bool;
+    fn stop(&self);
+    fn pull_finished(&self);
+    fn pulling(&self) -> u32;
+    fn total_blocks(&self) -> u64;
+    fn inc_total_blocks(&self);
+    fn requeued_pulls(&self) -> u32;
+    fn inc_requeued_pulls(&self);
+    fn pull_started(&self);
+    fn duration(&self) -> Duration;
+    fn set_started(&self) -> bool;
+    fn should_log(&self) -> bool;
+    fn notify(&self);
+    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()>;
+    fn run(&self);
+    fn process_block(
+        &self,
+        block: Arc<BlockEnum>,
+        known_account: &Account,
+        pull_blocks_processed: u64,
+        max_blocks: u32,
+        block_expected: bool,
+        retry_limit: u32,
+    ) -> bool;
 }
 
-pub struct BootstrapAttempt {
+pub(crate) struct BootstrapAttempt {
     pub incremental_id: u64,
     pub id: String,
     pub mode: BootstrapMode,
@@ -197,30 +220,6 @@ impl BootstrapAttempt {
 
     pub fn duration(&self) -> Duration {
         self.attempt_start.elapsed()
-    }
-
-    pub fn wait_until_block_processor_empty(
-        &self,
-        mut guard: MutexGuard<'static, u8>,
-        source: BlockSource,
-    ) -> MutexGuard<'static, u8> {
-        let Some(processor) = self.block_processor.upgrade() else {
-            return guard;
-        };
-        let wait_start = Instant::now();
-        while !self.stopped()
-            && processor.queue_len(source) > 0
-            && wait_start.elapsed() < Duration::from_secs(10)
-        {
-            guard = self
-                .condition
-                .wait_timeout_while(guard, Duration::from_millis(100), |_| {
-                    self.stopped() || processor.queue_len(source) == 0
-                })
-                .unwrap()
-                .0
-        }
-        guard
     }
 }
 

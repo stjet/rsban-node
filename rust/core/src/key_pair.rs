@@ -1,3 +1,5 @@
+use anyhow::Context;
+
 use super::{PublicKey, RawKey, Signature};
 use crate::{utils::NullableRng, Block, StateBlock};
 
@@ -72,8 +74,10 @@ impl KeyPair {
     }
 
     pub fn from_priv_key_hex(s: impl AsRef<str>) -> anyhow::Result<Self> {
+        let input = s.as_ref();
         let mut bytes = [0u8; 32];
-        hex::decode_to_slice(s.as_ref(), &mut bytes)?;
+        hex::decode_to_slice(input, &mut bytes)
+            .with_context(|| format!("input string: '{}'", input))?;
         Self::from_priv_key_bytes(&bytes)
     }
 

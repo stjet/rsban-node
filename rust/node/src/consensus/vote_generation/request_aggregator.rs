@@ -4,14 +4,13 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
+    transport::{ChannelEnum, FairQueue, Origin, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
-    BlockHash, NoValue, Root, Vote,
+    BlockHash, NoValue, Root,
 };
 use rsnano_ledger::Ledger;
-use rsnano_messages::{ConfirmAck, Message};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::{max, min},
@@ -163,16 +162,6 @@ impl RequestAggregator {
         self.len() == 0
     }
 
-    fn reply_action(&self, vote: &Arc<Vote>, channel: &ChannelEnum) {
-        let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote((**vote).clone()));
-        channel.send(
-            &confirm,
-            None,
-            BufferDropPolicy::Limiter,
-            TrafficType::Generic,
-        );
-    }
-
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.state.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -202,14 +191,6 @@ pub trait RequestAggregatorExt {
 
 impl RequestAggregatorExt for Arc<RequestAggregator> {
     fn start(&self) {
-        let self_w = Arc::downgrade(self);
-        self.vote_generators
-            .set_reply_action(Arc::new(move |vote, channel| {
-                if let Some(self_l) = self_w.upgrade() {
-                    self_l.reply_action(vote, channel);
-                }
-            }));
-
         let mut guard = self.threads.lock().unwrap();
         for _ in 0..self.config.threads {
             let aggregator_loop = RequestAggregatorLoop {

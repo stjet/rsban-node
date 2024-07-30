@@ -122,6 +122,13 @@ mod tests {
     }
 
     #[test]
+    fn difficulty_for_root() {
+        let difficulty = DifficultyV1::default();
+        let result = difficulty.get_difficulty(&Root::from(123), 456);
+        assert_eq!(result, 10978371542656683347);
+    }
+
+    #[test]
     fn multipliers_1() {
         let base = 0xff000000_00000000_u64;
         let difficulty = 0xfff27e7a_57c285cd_u64;

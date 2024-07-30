@@ -5,14 +5,7 @@ use crate::{
 use once_cell::sync::Lazy;
 use std::cmp::{max, min};
 
-pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| {
-    WorkThresholds::with_difficulty(
-        Box::new(StubDifficulty::new()),
-        0xfe00000000000000, // Very low for tests
-        0xffc0000000000000, // 8x higher than epoch_1
-        0xf000000000000000, // 8x lower than epoch_1
-    )
-});
+pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| WorkThresholds::new_stub());
 
 pub struct WorkThresholds {
     pub epoch_1: u64,
@@ -85,17 +78,6 @@ fn parse_hex_u64(value: impl AsRef<str>) -> Result<u64, std::num::ParseIntError>
     u64::from_str_radix(s, 16)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_parse_threshold() {
-        assert_eq!(parse_hex_u64("0xffffffc000000000"), Ok(0xffffffc000000000));
-        assert_eq!(parse_hex_u64("0xFFFFFFC000000000"), Ok(0xffffffc000000000));
-        assert_eq!(parse_hex_u64("FFFFFFC000000000"), Ok(0xffffffc000000000));
-    }
-}
-
 impl WorkThresholds {
     pub fn publish_full() -> &'static WorkThresholds {
         &PUBLISH_FULL
@@ -121,6 +103,15 @@ impl WorkThresholds {
             epoch_1,
             epoch_2,
             epoch_2_receive,
+        )
+    }
+
+    pub fn new_stub() -> Self {
+        WorkThresholds::with_difficulty(
+            Box::new(StubDifficulty::new()),
+            0xfe00000000000000, // Very low for tests
+            0xffc0000000000000, // 8x higher than epoch_1
+            0xf000000000000000, // 8x lower than epoch_1
         )
     }
 
@@ -269,5 +260,122 @@ impl WorkThresholds {
 impl Default for WorkThresholds {
     fn default() -> Self {
         PUBLISH_FULL.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_threshold() {
+        assert_eq!(parse_hex_u64("0xffffffc000000000"), Ok(0xffffffc000000000));
+        assert_eq!(parse_hex_u64("0xFFFFFFC000000000"), Ok(0xffffffc000000000));
+        assert_eq!(parse_hex_u64("FFFFFFC000000000"), Ok(0xffffffc000000000));
+    }
+
+    #[test]
+    fn difficulty_block() {
+        let block = BlockEnum::new_test_instance();
+        assert_eq!(
+            WorkThresholds::default().difficulty_block(&block),
+            9665579333895977632
+        );
+    }
+
+    #[test]
+    fn threshold_epoch0_send() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch0,
+                    is_send: true,
+                    is_receive: false,
+                    is_epoch: false
+                }
+            ),
+            0xffffffc000000000
+        );
+    }
+
+    #[test]
+    fn threshold_epoch0_receive() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch0,
+                    is_send: false,
+                    is_receive: true,
+                    is_epoch: false
+                }
+            ),
+            0xffffffc000000000
+        );
+    }
+
+    #[test]
+    fn threshold_epoch1_send() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch1,
+                    is_send: true,
+                    is_receive: false,
+                    is_epoch: false
+                }
+            ),
+            0xffffffc000000000
+        );
+    }
+
+    #[test]
+    fn threshold_epoch1_receive() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch1,
+                    is_send: false,
+                    is_receive: true,
+                    is_epoch: false
+                }
+            ),
+            0xffffffc000000000
+        );
+    }
+
+    #[test]
+    fn threshold_epoch2_send() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch2,
+                    is_send: true,
+                    is_receive: false,
+                    is_epoch: false
+                }
+            ),
+            0xfffffff800000000
+        );
+    }
+
+    #[test]
+    fn threshold_epoch2_receive() {
+        assert_eq!(
+            WorkThresholds::default().threshold2(
+                WorkVersion::Work1,
+                &BlockDetails {
+                    epoch: Epoch::Epoch2,
+                    is_send: false,
+                    is_receive: true,
+                    is_epoch: false
+                }
+            ),
+            0xfffffe0000000000
+        );
     }
 }

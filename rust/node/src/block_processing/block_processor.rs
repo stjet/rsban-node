@@ -717,3 +717,38 @@ impl BlockProcessorImpl {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::stats::Direction;
+
+    use super::*;
+
+    #[test]
+    fn insufficient_work() {
+        let config = BlockProcessorConfig {
+            work_thresholds: WorkThresholds::new_stub(),
+            ..Default::default()
+        };
+        let ledger = Arc::new(Ledger::new_null());
+        let unchecked = Arc::new(UncheckedMap::default());
+        let stats = Arc::new(Stats::default());
+        let block_processor = BlockProcessor::new(config, ledger, unchecked, stats.clone());
+
+        let mut block = BlockEnum::new_test_instance();
+        block.set_work(3);
+
+        block_processor.add(Arc::new(block), BlockSource::Live, None);
+
+        assert_eq!(
+            stats.count(
+                StatType::Blockprocessor,
+                DetailType::InsufficientWork,
+                Direction::In
+            ),
+            1
+        );
+
+        assert_eq!(block_processor.total_queue_len(), 0);
+    }
+}

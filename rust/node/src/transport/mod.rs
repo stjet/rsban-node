@@ -34,7 +34,7 @@ pub use bandwidth_limiter::{
 };
 pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
-pub use channel_inproc::{ChannelInProc, InboundCallback};
+pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
 pub use fair_queue::*;
 pub(crate) use handshake_process::*;

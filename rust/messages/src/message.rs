@@ -40,7 +40,7 @@ pub enum ParseMessageError {
     Stopped,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DeserializedMessage {
     pub message: Message,
     pub protocol: ProtocolInfo,

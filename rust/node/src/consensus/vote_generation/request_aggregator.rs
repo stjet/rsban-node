@@ -93,6 +93,27 @@ impl RequestAggregator {
         }
     }
 
+    pub fn start(&self) {
+        let mut guard = self.threads.lock().unwrap();
+        for _ in 0..self.config.threads {
+            let aggregator_loop = RequestAggregatorLoop {
+                mutex: self.state.clone(),
+                condition: self.condition.clone(),
+                stats: self.stats.clone(),
+                config: self.config.clone(),
+                ledger: self.ledger.clone(),
+                vote_generators: self.vote_generators.clone(),
+            };
+
+            guard.push(
+                std::thread::Builder::new()
+                    .name("Req aggregator".to_string())
+                    .spawn(move || aggregator_loop.run())
+                    .unwrap(),
+            );
+        }
+    }
+
     pub fn request(&self, request: RequestType, channel: Arc<ChannelEnum>) -> bool {
         if request.is_empty() {
             return false;
@@ -183,33 +204,6 @@ type ValueType = (RequestType, Arc<ChannelEnum>);
 struct RequestAggregatorState {
     queue: FairQueue<ValueType, NoValue>,
     stopped: bool,
-}
-
-pub trait RequestAggregatorExt {
-    fn start(&self);
-}
-
-impl RequestAggregatorExt for Arc<RequestAggregator> {
-    fn start(&self) {
-        let mut guard = self.threads.lock().unwrap();
-        for _ in 0..self.config.threads {
-            let aggregator_loop = RequestAggregatorLoop {
-                mutex: self.state.clone(),
-                condition: self.condition.clone(),
-                stats: self.stats.clone(),
-                config: self.config.clone(),
-                ledger: self.ledger.clone(),
-                vote_generators: self.vote_generators.clone(),
-            };
-
-            guard.push(
-                std::thread::Builder::new()
-                    .name("Req aggregator".to_string())
-                    .spawn(move || aggregator_loop.run())
-                    .unwrap(),
-            );
-        }
-    }
 }
 
 struct RequestAggregatorLoop {

@@ -29,6 +29,7 @@ impl LmdbFinalVoteStore {
         self.database
     }
 
+    /// Returns *true* if root + hash was inserted or the same root/hash pair was already in the database
     pub fn put(
         &self,
         txn: &mut LmdbWriteTransaction,

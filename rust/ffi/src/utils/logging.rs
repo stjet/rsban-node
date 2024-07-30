@@ -30,7 +30,8 @@ impl From<CppLogLevel> for tracing::Level {
 
 #[no_mangle]
 pub extern "C" fn rsn_log_init() {
-    let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("info"));
+    let dirs = std::env::var(EnvFilter::DEFAULT_ENV)
+        .unwrap_or(String::from("info,rsnano_node::transport=debug"));
     init_tracing(dirs);
 }
 

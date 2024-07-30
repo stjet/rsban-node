@@ -63,7 +63,6 @@ public:
 	static unsigned const broadcast_interval_ms = 10;
 
 	static std::size_t const confirm_req_hashes_max = 7;
-	static std::size_t const confirm_ack_hashes_max = 12;
 };
 
 class network_threads

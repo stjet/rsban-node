@@ -3,13 +3,13 @@ use std::{sync::Arc, time::Duration};
 use super::helpers::{assert_timely, assert_timely_eq, System};
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_messages::ConfirmAck;
 use rsnano_node::{
     config::FrontiersConfirmationMode,
     stats::{DetailType, Direction, StatType},
     transport::ChannelEnum,
     wallets::WalletsExt,
 };
-use rsnano_store_lmdb::KeyType;
 
 #[test]
 fn one() {
@@ -447,4 +447,98 @@ fn two() {
     assert_eq!(vote1.len(), 1);
     assert_eq!(vote2.len(), 1);
     assert!(Arc::ptr_eq(&vote1[0], &vote2[0]));
+}
+
+#[test]
+fn split() {
+    const MAX_VBH: usize = ConfirmAck::HASHES_MAX;
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+    node.wallets
+        .insert_adhoc2(
+            &node.wallets.wallet_ids()[0],
+            &DEV_GENESIS_KEY.private_key(),
+            true,
+        )
+        .unwrap();
+
+    let mut request = Vec::new();
+    let mut blocks = Vec::new();
+    let mut previous = *DEV_GENESIS_HASH;
+
+    for i in 0..=MAX_VBH {
+        let block = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::raw(i as u128 + 1),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev(previous.into()),
+        ));
+        previous = block.hash();
+        node.process(block.clone()).unwrap();
+        request.push((block.hash(), block.root()));
+        blocks.push(block);
+    }
+    // Confirm all blocks
+    node.confirm(blocks.last().unwrap().hash());
+    assert_eq!(node.ledger.cemented_count(), MAX_VBH as u64 + 2);
+    assert_eq!(MAX_VBH + 1, request.len());
+    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    node.request_aggregator.request(request, dummy_channel);
+    // In the ledger but no vote generated yet
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsGeneratedVotes,
+                Direction::In,
+            )
+        },
+        2,
+    );
+    assert!(node.request_aggregator.is_empty());
+    // Two votes were sent, the first one for 12 hashes and the second one for 1 hash
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorAccepted,
+            Direction::In,
+        ),
+        1
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorDropped,
+            Direction::In,
+        ),
+        0
+    );
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsGeneratedHashes,
+                Direction::In,
+            )
+        },
+        255 + 1,
+    );
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsGeneratedVotes,
+                Direction::In,
+            )
+        },
+        2,
+    );
 }

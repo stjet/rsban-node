@@ -145,12 +145,6 @@ nano::tcp_endpoint nano::transport::inproc::channel::get_tcp_remote_endpoint () 
 	return rsnano::dto_to_endpoint (dto);
 }
 
-void nano::transport::inproc::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
-{
-	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
-	rsnano::rsn_channel_inproc_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
-}
-
 std::string nano::transport::inproc::channel::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());

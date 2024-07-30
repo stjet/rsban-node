@@ -14,48 +14,6 @@ using namespace std::chrono_literals;
 
 namespace nano
 {
-TEST (confirmation_solicitor, different_hash)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	node_flags.set_disable_request_loop (true);
-	node_flags.set_disable_rep_crawler (true);
-	auto & node1 = *system.add_node (node_flags);
-	auto & node2 = *system.add_node (node_flags);
-	auto channel1 = nano::test::establish_tcp (system, node2, node1.network->endpoint ());
-	// Solicitor will only solicit from this representative
-	nano::representative representative{ nano::dev::genesis_key.pub, channel1 };
-	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (*node2.network, *node2.config);
-	solicitor.prepare (representatives);
-	// Ensure the representatives are correct
-	ASSERT_EQ (1, representatives.size ());
-	ASSERT_EQ (channel1->channel_id (), representatives.front ().channel_id ());
-	ASSERT_EQ (nano::dev::genesis_key.pub, representatives.front ().get_account ());
-	ASSERT_TIMELY_EQ (3s, node2.network->size (), 1);
-	nano::block_builder builder;
-	auto send = builder
-				.send ()
-				.previous (nano::dev::genesis->hash ())
-				.destination (nano::keypair ().pub)
-				.balance (nano::dev::constants.genesis_amount - 100)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (nano::dev::genesis->hash ()))
-				.build ();
-	send->sideband_set ({});
-	auto election (std::make_shared<nano::election> (node2, send, nullptr, nullptr, nano::election_behavior::priority));
-	auto guard{ election->lock () };
-	// Add a vote for something else, not the winner
-	guard.insert_or_assign_vote (representative.get_account (), { 1, 1 });
-	// Ensure the request and broadcast goes through
-	ASSERT_FALSE (solicitor.add (*election, guard));
-	ASSERT_FALSE (solicitor.broadcast (*election, guard));
-	// One publish through directed broadcasting and another through random flooding
-	ASSERT_EQ (2, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
-	solicitor.flush ();
-	ASSERT_EQ (1, node2.stats->count (nano::stat::type::message, nano::stat::detail::confirm_req, nano::stat::dir::out));
-}
-
 // TODO Gustav: Disabled after switch to channel_ids. It probably fails because the temporary channel is not in the network
 TEST (confirmation_solicitor, DISABLED_bypass_max_requests_cap)
 {

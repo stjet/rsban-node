@@ -542,3 +542,45 @@ fn split() {
         2,
     );
 }
+
+#[test]
+fn channel_max_queue() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    config.request_aggregator.max_queue = 0;
+    let node = system.build_node().config(config).finish();
+    node.wallets
+        .insert_adhoc2(
+            &node.wallets.wallet_ids()[0],
+            &DEV_GENESIS_KEY.private_key(),
+            true,
+        )
+        .unwrap();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    node.process(send1.clone()).unwrap();
+
+    let request = vec![(send1.hash(), send1.root())];
+    let channel = Arc::new(ChannelEnum::new_null());
+    node.request_aggregator
+        .request(request.clone(), channel.clone());
+    node.request_aggregator
+        .request(request.clone(), channel.clone());
+
+    assert!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorDropped,
+            Direction::In
+        ) > 0
+    );
+}

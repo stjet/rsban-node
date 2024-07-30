@@ -26,35 +26,6 @@ std::shared_ptr<nano::transport::channel> create_dummy_channel (nano::node & nod
 	1);
 }
 
-TEST (request_aggregator, channel_max_queue)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	node_config.request_aggregator.max_queue = 0;
-	auto & node (*system.add_node (node_config));
-	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	std::vector<std::pair<nano::block_hash, nano::root>> request;
-	request.emplace_back (send1->hash (), send1->root ());
-	auto client = nano::transport::create_client_socket (node);
-	std::shared_ptr<nano::transport::channel> dummy_channel = create_dummy_channel (node, client);
-	node.aggregator.request (request, dummy_channel);
-	node.aggregator.request (request, dummy_channel);
-	ASSERT_LT (0, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_dropped));
-}
-
 TEST (request_aggregator, cannot_vote)
 {
 	nano::test::system system;

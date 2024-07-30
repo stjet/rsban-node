@@ -5,7 +5,7 @@ use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::ConfirmAck;
 use rsnano_node::{
-    config::FrontiersConfirmationMode,
+    config::{FrontiersConfirmationMode, NodeFlags},
     stats::{DetailType, Direction, StatType},
     transport::ChannelEnum,
     wallets::WalletsExt,
@@ -582,5 +582,200 @@ fn channel_max_queue() {
             DetailType::AggregatorDropped,
             Direction::In
         ) > 0
+    );
+}
+
+#[test]
+fn cannot_vote() {
+    let mut system = System::new();
+    let mut flags = NodeFlags::default();
+    flags.disable_request_loop = true;
+    let node = system.build_node().flags(flags).finish();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(2),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send1.hash().into()),
+    ));
+    node.process(send1.clone()).unwrap();
+    node.process(send2.clone()).unwrap();
+
+    node.wallets
+        .insert_adhoc2(
+            &node.wallets.wallet_ids()[0],
+            &DEV_GENESIS_KEY.private_key(),
+            true,
+        )
+        .unwrap();
+
+    assert_eq!(
+        node.ledger
+            .dependents_confirmed(&node.ledger.read_txn(), &send2),
+        false
+    );
+
+    // correct + incorrect
+    let request = vec![(send2.hash(), send2.root()), (1.into(), send2.root())];
+    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    node.request_aggregator
+        .request(request.clone(), dummy_channel.clone());
+
+    assert_timely(
+        Duration::from_secs(3),
+        || node.request_aggregator.is_empty(),
+        "aggregator empty",
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorAccepted,
+            Direction::In,
+        ),
+        1
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorDropped,
+            Direction::In,
+        ),
+        0
+    );
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsNonFinal,
+                Direction::In,
+            )
+        },
+        2,
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Requests,
+            DetailType::RequestsGeneratedVotes,
+            Direction::In,
+        ),
+        0
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Requests,
+            DetailType::RequestsUnknown,
+            Direction::In,
+        ),
+        0
+    );
+
+    // With an ongoing election
+    node.manual_scheduler.push(Arc::new(send2.clone()), None);
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&send2.qualified_root()).is_some(),
+        "no election",
+    );
+
+    node.request_aggregator
+        .request(request.clone(), dummy_channel.clone());
+
+    assert_timely(
+        Duration::from_secs(3),
+        || node.request_aggregator.is_empty(),
+        "aggregator empty",
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorAccepted,
+            Direction::In,
+        ),
+        2
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Aggregator,
+            DetailType::AggregatorDropped,
+            Direction::In,
+        ),
+        0
+    );
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsNonFinal,
+                Direction::In,
+            )
+        },
+        4,
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Requests,
+            DetailType::RequestsGeneratedVotes,
+            Direction::In,
+        ),
+        0
+    );
+    assert_eq!(
+        node.stats.count(
+            StatType::Requests,
+            DetailType::RequestsUnknown,
+            Direction::In,
+        ),
+        0
+    );
+
+    // Confirm send1 and send2
+    node.confirm(send1.hash());
+    node.confirm(send2.hash());
+
+    node.request_aggregator
+        .request(request.clone(), dummy_channel.clone());
+
+    assert_timely(
+        Duration::from_secs(3),
+        || node.request_aggregator.is_empty(),
+        "aggregator empty",
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsGeneratedHashes,
+                Direction::In,
+            )
+        },
+        1,
+    );
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node.stats.count(
+                StatType::Requests,
+                DetailType::RequestsGeneratedVotes,
+                Direction::In,
+            )
+        },
+        1,
     );
 }

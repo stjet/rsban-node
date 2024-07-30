@@ -91,25 +91,6 @@ public:
 	socket (nano::transport::socket &&) = delete;
 	virtual ~socket ();
 
-	void async_connect (
-	boost::asio::ip::tcp::endpoint const &,
-	std::function<void (boost::system::error_code const &)>);
-
-	void async_write (
-	nano::shared_const_buffer const &,
-	std::function<void (boost::system::error_code const &, std::size_t)> = {},
-	nano::transport::traffic_type = nano::transport::traffic_type::generic);
-
-private:
-	/** The other end of the connection */
-	boost::asio::ip::tcp::endpoint & get_remote ();
-
-	/** The other end of the connection */
-	boost::asio::ip::tcp::endpoint remote;
-
-	void close_internal ();
-	void checkup ();
-
 public:
 	rsnano::SocketHandle * handle;
 };

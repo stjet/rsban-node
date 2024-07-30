@@ -5,10 +5,7 @@ use crate::{
 use num::FromPrimitive;
 use rsnano_node::{
     stats::SocketStats,
-    transport::{
-        alive_sockets, CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions,
-        SocketObserver, WriteCallback,
-    },
+    transport::{alive_sockets, CompositeSocketObserver, Socket, SocketBuilder, SocketObserver},
     utils::ErrorCode,
 };
 use std::{
@@ -79,137 +76,6 @@ pub unsafe extern "C" fn rsn_socket_create(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
     drop(Box::from_raw(handle))
-}
-
-type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
-pub type SocketDestroyContext = unsafe extern "C" fn(*mut c_void);
-
-struct ConnectCallbackWrapper {
-    callback: SocketConnectCallback,
-    destory_context: SocketDestroyContext,
-    context: *mut c_void,
-}
-
-unsafe impl Send for ConnectCallbackWrapper {}
-
-impl ConnectCallbackWrapper {
-    fn new(
-        callback: SocketConnectCallback,
-        destory_context: SocketDestroyContext,
-        context: *mut c_void,
-    ) -> Self {
-        Self {
-            callback,
-            destory_context,
-            context,
-        }
-    }
-    fn execute(&self, ec: ErrorCode) {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        unsafe { (self.callback)(self.context, &ec_dto) };
-    }
-}
-
-impl Drop for ConnectCallbackWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.destory_context)(self.context) };
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_connect(
-    handle: *mut SocketHandle,
-    endpoint: *const EndpointDto,
-    callback: SocketConnectCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-) {
-    let cb_wrapper = ConnectCallbackWrapper::new(callback, destroy_context, context);
-    let cb = Box::new(move |ec| {
-        cb_wrapper.execute(ec);
-    });
-    (*handle).async_connect((&*endpoint).into(), cb);
-}
-
-pub struct ReadCallbackWrapper {
-    callback: SocketReadCallback,
-    destory_context: SocketDestroyContext,
-    context: *mut c_void,
-}
-
-impl ReadCallbackWrapper {
-    pub fn new(
-        callback: SocketReadCallback,
-        destory_context: SocketDestroyContext,
-        context: *mut c_void,
-    ) -> Self {
-        Self {
-            callback,
-            destory_context,
-            context,
-        }
-    }
-
-    pub fn execute(&self, ec: ErrorCode, size: usize) {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        unsafe { (self.callback)(self.context, &ec_dto, size) };
-    }
-}
-
-impl Drop for ReadCallbackWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.destory_context)(self.context) };
-    }
-}
-
-unsafe impl Send for ReadCallbackWrapper {}
-unsafe impl Sync for ReadCallbackWrapper {}
-
-pub type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_write(
-    handle: *mut SocketHandle,
-    buffer: *const u8,
-    buffer_len: usize,
-    callback: SocketReadCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-    traffic_type: u8,
-) {
-    let cb: Option<WriteCallback> = if !context.is_null() {
-        let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
-        Some(Box::new(move |ec, size| {
-            cb_wrapper.execute(ec, size);
-        }))
-    } else {
-        None
-    };
-    let buffer = if buffer.is_null() {
-        &[]
-    } else {
-        std::slice::from_raw_parts(buffer, buffer_len)
-    };
-    (*handle).async_write(
-        &Arc::new(buffer.to_vec()),
-        cb,
-        FromPrimitive::from_u8(traffic_type).unwrap(),
-    );
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_close(handle: *mut SocketHandle) {
-    (*handle).close()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_close_internal(handle: *mut SocketHandle) {
-    (*handle).close_internal();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
-    (*handle).ongoing_checkup();
 }
 
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);

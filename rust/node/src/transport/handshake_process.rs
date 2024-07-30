@@ -67,6 +67,13 @@ impl HandshakeProcess {
     pub(crate) async fn initiate_handshake(&self, socket: &Socket) -> Result<(), ()> {
         let endpoint = self.remote_endpoint;
         let query = self.prepare_query(&endpoint);
+        if query.is_none() {
+            warn!(
+                "Could not create cookie for {:?}. Closing channel.",
+                endpoint
+            );
+            return Err(());
+        }
         let message = Message::NodeIdHandshake(NodeIdHandshake {
             query,
             response: None,

@@ -27,8 +27,6 @@ add_library(
   common.cpp
   confirming_set.hpp
   confirming_set.cpp
-  confirmation_solicitor.hpp
-  confirmation_solicitor.cpp
   daemonconfig.hpp
   daemonconfig.cpp
   distributed_work_factory.hpp

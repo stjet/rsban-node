@@ -26,73 +26,6 @@ std::shared_ptr<nano::transport::channel> create_dummy_channel (nano::node & nod
 	1);
 }
 
-TEST (request_aggregator, one_update)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node (*system.add_node (node_config));
-	auto wallet_id = node.wallets.first_wallet_id ();
-	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	nano::keypair key1;
-	auto send1 = nano::state_block_builder ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	nano::test::confirm (node.ledger, send1);
-	auto send2 = nano::state_block_builder ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (send1->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 2 * nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node.work_generate_blocking (send1->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send2));
-	nano::test::confirm (node.ledger, send2);
-	auto receive1 = nano::state_block_builder ()
-					.account (key1.pub)
-					.previous (0)
-					.representative (nano::dev::genesis_key.pub)
-					.balance (nano::Gxrb_ratio)
-					.link (send1->hash ())
-					.sign (key1.prv, key1.pub)
-					.work (*node.work_generate_blocking (key1.pub))
-					.build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), receive1));
-	nano::test::confirm (node.ledger, receive1);
-
-	auto dummy_channel = nano::test::fake_channel (node);
-
-	std::vector<std::pair<nano::block_hash, nano::root>> request1{ { send2->hash (), send2->root () } };
-	node.aggregator.request (request1, dummy_channel);
-
-	// Update the pool of requests with another hash
-	std::vector<std::pair<nano::block_hash, nano::root>> request2{ { receive1->hash (), receive1->root () } };
-	node.aggregator.request (request2, dummy_channel);
-
-	// In the ledger but no vote generated yet
-	ASSERT_TIMELY (3s, 0 < node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes))
-	ASSERT_TIMELY (3s, node.aggregator.empty ());
-	ASSERT_TIMELY_EQ (3s, 2, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_accepted));
-	ASSERT_TIMELY_EQ (3s, 2, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_hashes));
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_dropped));
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_unknown));
-
-	ASSERT_TIMELY (3s, 0 < node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes));
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_cached_hashes));
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_cached_votes));
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_cannot_vote));
-}
-
 TEST (request_aggregator, two)
 {
 	nano::test::system system;
@@ -299,38 +232,6 @@ TEST (request_aggregator, channel_max_queue)
 	node.aggregator.request (request, dummy_channel);
 	node.aggregator.request (request, dummy_channel);
 	ASSERT_LT (0, node.stats->count (nano::stat::type::aggregator, nano::stat::detail::aggregator_dropped));
-}
-
-// TODO: Deduplication is a concern for the requesting node, not the aggregator which should be stateless and fairly service all peers
-TEST (request_aggregator, DISABLED_unique)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node (*system.add_node (node_config));
-	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node.work_generate_blocking (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.store.tx_begin_write (), send1));
-	std::vector<std::pair<nano::block_hash, nano::root>> request;
-	request.emplace_back (send1->hash (), send1->root ());
-	auto client = nano::transport::create_client_socket (node);
-	std::shared_ptr<nano::transport::channel> dummy_channel = create_dummy_channel (node, client);
-	node.aggregator.request (request, dummy_channel);
-	node.aggregator.request (request, dummy_channel);
-	node.aggregator.request (request, dummy_channel);
-	node.aggregator.request (request, dummy_channel);
-	ASSERT_TIMELY_EQ (3s, 1, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_hashes));
-	ASSERT_TIMELY_EQ (3s, 1, node.stats->count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes));
 }
 
 TEST (request_aggregator, cannot_vote)

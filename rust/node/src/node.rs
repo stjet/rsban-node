@@ -28,8 +28,8 @@ use crate::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
         MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
         OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SocketObserver, SynCookies, TcpListener,
-        TcpListenerExt, TrafficType,
+        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -140,7 +140,6 @@ impl Node {
         network_params: NetworkParams,
         flags: NodeFlags,
         work: Arc<WorkPoolImpl>,
-        socket_observer: Arc<dyn SocketObserver>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
         on_vote: Box<
@@ -245,7 +244,6 @@ impl Node {
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
-            observer: socket_observer.clone(),
         }));
 
         let telemetry_config = TelementryConfig {
@@ -477,7 +475,6 @@ impl Node {
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
-            socket_observer.clone(),
             stats.clone(),
             outbound_limiter.clone(),
             block_processor.clone(),
@@ -508,7 +505,6 @@ impl Node {
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            socket_observer.clone(),
             workers.clone(),
             network_params.clone(),
             response_server_factory.clone(),
@@ -541,7 +537,6 @@ impl Node {
             network.clone(),
             network_params.clone(),
             async_rt.clone(),
-            socket_observer,
             stats.clone(),
             workers.clone(),
             response_server_factory.clone(),
@@ -1576,7 +1571,7 @@ struct RpcCallbackMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{transport::NullSocketObserver, utils::TimerStartEvent};
+    use crate::utils::TimerStartEvent;
     use rsnano_core::Networks;
     use std::ops::Deref;
     use uuid::Uuid;
@@ -1660,7 +1655,6 @@ mod tests {
                 network_params,
                 flags,
                 work,
-                Arc::new(NullSocketObserver::new()),
                 Box::new(|_, _, _, _, _, _| {}),
                 Box::new(|_, _| {}),
                 Box::new(|_, _, _, _| {}),

@@ -2,8 +2,7 @@ use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use super::{
-    InboundMessageQueue, Network, NullSocketObserver, OutboundBandwidthLimiter, ResponseServerImpl,
-    Socket, SynCookies,
+    InboundMessageQueue, Network, OutboundBandwidthLimiter, ResponseServerImpl, Socket, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -55,7 +54,6 @@ impl ResponseServerFactory {
                 runtime,
                 workers,
                 network_params.clone(),
-                Arc::new(NullSocketObserver::new()),
                 stats,
                 Arc::new(OutboundBandwidthLimiter::default()),
                 block_processor,

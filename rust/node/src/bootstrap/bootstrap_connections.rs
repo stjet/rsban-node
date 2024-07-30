@@ -7,8 +7,8 @@ use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelDirection, ChannelEnum, ChannelTcp, Network, NullSocketObserver,
-        OutboundBandwidthLimiter, SocketBuilder, SocketExtensions, SocketObserver,
+        ChannelDirection, ChannelEnum, ChannelTcp, Network, OutboundBandwidthLimiter,
+        SocketBuilder, SocketExtensions,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
@@ -41,7 +41,6 @@ pub struct BootstrapConnections {
     network: Arc<Network>,
     workers: Arc<dyn ThreadPool>,
     async_rt: Arc<AsyncRuntime>,
-    socket_observer: Arc<dyn SocketObserver>,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
     outbound_limiter: Arc<OutboundBandwidthLimiter>,
@@ -56,7 +55,6 @@ impl BootstrapConnections {
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
-        socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
@@ -78,7 +76,6 @@ impl BootstrapConnections {
             network,
             workers,
             async_rt,
-            socket_observer,
             stats,
             outbound_limiter,
             block_processor,
@@ -100,7 +97,6 @@ impl BootstrapConnections {
             network: Arc::new(Network::new_null()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
             async_rt: Arc::new(AsyncRuntime::default()),
-            socket_observer: Arc::new(NullSocketObserver::new()),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             outbound_limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -534,7 +530,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         .default_timeout(self.config.tcp_io_timeout)
         .silent_connection_tolerance_time(self.config.silent_connection_tolerance_time)
         .idle_timeout(self.config.idle_timeout)
-        .observer(Arc::clone(&self.socket_observer))
         .finish();
 
         let self_l = Arc::clone(self);

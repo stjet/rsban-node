@@ -5,7 +5,6 @@ use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
     node::{Node, NodeExt},
-    transport::NullSocketObserver,
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -56,7 +55,6 @@ impl InitializeArgs {
             network_params,
             flags,
             work,
-            Arc::new(NullSocketObserver::new()),
             Box::new(|_, _, _, _, _, _| {}),
             Box::new(|_, _| {}),
             Box::new(|_, _, _, _| {}),

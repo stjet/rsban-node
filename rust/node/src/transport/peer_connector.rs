@@ -1,7 +1,4 @@
-use super::{
-    ChannelDirection, CompositeSocketObserver, Network, NullSocketObserver, ResponseServerFactory,
-    SocketBuilder, SocketObserver, TcpConfig,
-};
+use super::{ChannelDirection, Network, ResponseServerFactory, SocketBuilder, TcpConfig};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -21,7 +18,6 @@ pub struct PeerConnector {
     network: Arc<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
-    socket_observer: Arc<dyn SocketObserver>,
     workers: Arc<dyn ThreadPool>,
     network_params: NetworkParams,
     cancel_token: CancellationToken,
@@ -36,7 +32,6 @@ impl PeerConnector {
         network: Arc<Network>,
         stats: Arc<Stats>,
         runtime: Arc<AsyncRuntime>,
-        socket_observer: Arc<dyn SocketObserver>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
         response_server_factory: Arc<ResponseServerFactory>,
@@ -47,7 +42,6 @@ impl PeerConnector {
             network,
             stats,
             runtime,
-            socket_observer,
             workers,
             network_params,
             cancel_token: CancellationToken::new(),
@@ -64,7 +58,6 @@ impl PeerConnector {
             network: Arc::new(Network::new_null()),
             stats: Arc::new(Default::default()),
             runtime: Arc::new(Default::default()),
-            socket_observer: Arc::new(NullSocketObserver::new()),
             workers: Arc::new(ThreadPoolImpl::new_test_instance()),
             network_params: NetworkParams::new(rsnano_core::Networks::NanoDevNetwork),
             cancel_token: CancellationToken::new(),
@@ -103,10 +96,7 @@ impl PeerConnector {
                 .silent_connection_tolerance_time_s as u64,
         ))
         .idle_timeout(self.network_params.network.idle_timeout)
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            Arc::clone(&self.socket_observer),
-        ])))
+        .observer(socket_stats)
         .use_existing_socket(raw_stream, remote_endpoint)
         .finish();
 

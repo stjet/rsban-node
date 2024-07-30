@@ -84,7 +84,6 @@ public:
 	std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 	std::chrono::seconds idle_timeout_a,
-	std::shared_ptr<nano::node_observers>,
 	std::size_t max_queue_size = default_max_queue_size);
 	socket (rsnano::SocketHandle * handle_a);
 	socket (nano::transport::socket const &) = delete;

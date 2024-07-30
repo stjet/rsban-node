@@ -2,7 +2,7 @@ use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
-    transport::{ChannelEnum, NullSocketObserver, PeerConnectorExt},
+    transport::{ChannelEnum, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -118,7 +118,6 @@ impl System {
             self.network_params.clone(),
             flags,
             self.work.clone(),
-            Arc::new(NullSocketObserver::new()),
             Box::new(|_, _, _, _, _, _| {}),
             Box::new(|_, _| {}),
             Box::new(|_, _, _, _| {}),

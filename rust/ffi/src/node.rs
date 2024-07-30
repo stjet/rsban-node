@@ -18,7 +18,7 @@ use crate::{
     to_rust_string,
     transport::{
         ChannelHandle, EndpointDto, NetworkFilterHandle, NetworkThreadsHandle,
-        OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
+        OutboundBandwidthLimiterHandle, SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -53,7 +53,6 @@ pub unsafe extern "C" fn rsn_node_create(
     params: &NetworkParamsDto,
     flags: &NodeFlagsHandle,
     work: &WorkPoolHandle,
-    socket_observer: *mut c_void,
     observers_context: *mut c_void,
     delete_observers_context: VoidPointerCallback,
     election_ended: ElectionEndedCallback,
@@ -61,7 +60,6 @@ pub unsafe extern "C" fn rsn_node_create(
     vote_processed: VoteProcessorVoteProcessedCallback,
 ) -> *mut NodeHandle {
     let path = to_rust_string(path);
-    let socket_observer = Arc::new(SocketFfiObserver::new(socket_observer));
 
     let ctx_wrapper = Arc::new(ContextWrapper::new(
         observers_context,
@@ -119,7 +117,6 @@ pub unsafe extern "C" fn rsn_node_create(
         params.try_into().unwrap(),
         flags.lock().unwrap().clone(),
         Arc::clone(work),
-        socket_observer,
         election_ended_wrapper,
         account_balance_changed_wrapper,
         vote_processed,

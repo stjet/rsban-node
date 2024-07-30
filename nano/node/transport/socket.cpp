@@ -21,7 +21,6 @@ nano::transport::socket::socket (rsnano::async_runtime & async_rt_a, nano::trans
 std::shared_ptr<nano::thread_pool> const & workers_a,
 std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 std::chrono::seconds idle_timeout_a,
-std::shared_ptr<nano::node_observers> observers_a,
 std::size_t max_queue_size_a)
 {
 	handle = rsnano::rsn_socket_create (
@@ -31,7 +30,6 @@ std::size_t max_queue_size_a)
 	default_timeout_a.count (),
 	silent_connection_tolerance_time_a.count (),
 	idle_timeout_a.count (),
-	new std::weak_ptr<nano::node_observers> (observers_a),
 	max_queue_size_a,
 	async_rt_a.handle);
 }
@@ -57,6 +55,5 @@ std::shared_ptr<nano::transport::socket> nano::transport::create_client_socket (
 	node_a.config->tcp_io_timeout,
 	node_a.network_params.network.silent_connection_tolerance_time,
 	node_a.network_params.network.idle_timeout,
-	node_a.observers,
 	write_queue_size);
 }

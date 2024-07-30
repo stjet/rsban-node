@@ -16,8 +16,8 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	auto socket{ std::make_shared<nano::transport::socket> (node->async_rt, nano::transport::socket_endpoint::server,
 	*node->stats, node->workers, node->config->tcp_io_timeout,
 	node->network_params.network.silent_connection_tolerance_time,
-	node->network_params.network.idle_timeout,
-	node->observers) };
+	node->network_params.network.idle_timeout
+	) };
 
 	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
 
@@ -319,22 +319,6 @@ TEST (bulk_pull, count_limit)
 
 	block = request->get_next ();
 	ASSERT_EQ (nullptr, block);
-}
-
-TEST (bootstrap_processor, process_none)
-{
-	nano::test::system system (1);
-	auto node0 = system.nodes[0];
-	auto node1 = system.make_disconnected_node ();
-
-	std::atomic<bool> done = false;
-	node0->observers->socket_connected.add ([&] (nano::transport::socket & socket) {
-		done = true;
-	});
-
-	node1->connect (system.nodes[0]->network->endpoint ());
-	node1->bootstrap_initiator.bootstrap (system.nodes[0]->network->endpoint ());
-	ASSERT_TIMELY (5s, done);
 }
 
 // Bootstrap can pull one basic block

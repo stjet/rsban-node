@@ -1,9 +1,9 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
-    InboundMessageQueue, NetworkFilter, NullSocketObserver, OutboundBandwidthLimiter,
-    PeerExclusion, ResponseServerImpl, Socket, SocketExtensions, SocketObserver, TcpConfig,
-    TrafficType, TransportType, WriteCallback,
+    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion,
+    ResponseServerImpl, Socket, SocketExtensions, TcpConfig, TrafficType, TransportType,
+    WriteCallback,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -42,7 +42,6 @@ pub struct NetworkOptions {
     pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
-    pub observer: Arc<dyn SocketObserver>,
 }
 
 impl NetworkOptions {
@@ -58,7 +57,6 @@ impl NetworkOptions {
             port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
-            observer: Arc::new(NullSocketObserver::new()),
         }
     }
 }
@@ -78,7 +76,6 @@ pub struct Network {
     async_rt: Arc<AsyncRuntime>,
     tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
-    observer: Arc<dyn SocketObserver>,
 }
 
 impl Drop for Network {
@@ -113,7 +110,6 @@ impl Network {
             network_params: network,
             limiter: options.limiter,
             publish_filter: options.publish_filter,
-            observer: options.observer,
             async_rt: options.async_rt,
         }
     }
@@ -249,8 +245,6 @@ impl Network {
         self.async_rt
             .tokio
             .spawn(async move { response_server_l.run().await });
-
-        self.observer.socket_connected(Arc::clone(&socket));
 
         if direction == ChannelDirection::Outbound {
             self.stats.inc_dir(

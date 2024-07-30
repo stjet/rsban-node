@@ -3,11 +3,9 @@ use rsnano_core::Amount;
 use rsnano_node::consensus::{Bucket, PriorityBucketConfig};
 
 mod bucket {
-    use std::sync::Arc;
-
-    use rsnano_core::{BlockEnum, StateBlock};
-
     use super::*;
+    use rsnano_core::BlockEnum;
+    use std::sync::Arc;
 
     #[test]
     fn construction() {

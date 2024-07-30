@@ -1,5 +1,5 @@
-use std::{sync::atomic::Ordering, thread::sleep, time::Duration};
-
+use super::helpers::{assert_timely, assert_timely_eq, establish_tcp, System};
+use crate::tests::helpers::get_available_port;
 use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
@@ -11,10 +11,7 @@ use rsnano_node::{
     node::NodeExt,
     wallets::WalletsExt,
 };
-
-use crate::tests::helpers::get_available_port;
-
-use super::helpers::{assert_timely, assert_timely_eq, establish_tcp, System};
+use std::time::Duration;
 
 #[test]
 fn bootstrap_processor_lazy_hash() {

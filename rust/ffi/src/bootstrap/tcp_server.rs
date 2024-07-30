@@ -7,7 +7,7 @@ use crate::{
     NetworkParamsDto, NodeConfigDto, StatHandle,
 };
 use rsnano_core::KeyPair;
-use rsnano_node::{config::NodeConfig, transport::ResponseServerImpl, NetworkParams};
+use rsnano_node::{transport::ResponseServerImpl, NetworkParams};
 use std::{ops::Deref, sync::Arc};
 
 pub struct TcpServerHandle(pub Arc<ResponseServerImpl>);
@@ -51,7 +51,6 @@ pub unsafe extern "C" fn rsn_tcp_server_create(
     params: &CreateTcpServerParams,
 ) -> *mut TcpServerHandle {
     let socket = Arc::clone(&(*params.socket));
-    let config = Arc::new(NodeConfig::try_from(&*params.config).unwrap());
     let publish_filter = Arc::clone(&*params.publish_filter);
     let network_params = Arc::new(NetworkParams::try_from(&*params.network).unwrap());
     let stats = Arc::clone(&(*params.stats));

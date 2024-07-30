@@ -1,13 +1,9 @@
-use super::{
-    bandwidth_limiter::OutboundBandwidthLimiterHandle, ChannelTcpSendBufferCallback, EndpointDto,
-    NetworkFilterHandle, SendBufferCallbackWrapper,
-};
+use super::{bandwidth_limiter::OutboundBandwidthLimiterHandle, EndpointDto, NetworkFilterHandle};
 use crate::{
     messages::MessageHandle,
     utils::{AsyncRuntimeHandle, ContextWrapper},
     NetworkConstantsDto, StatHandle, VoidPointerCallback,
 };
-use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds, NULL_ENDPOINT},
     Account,
@@ -15,7 +11,7 @@ use rsnano_core::{
 use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
     config::NetworkConstants,
-    transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp, TrafficType},
+    transport::{Channel, ChannelEnum, ChannelFake, ChannelInProc, ChannelTcp},
 };
 use std::{ffi::c_void, net::SocketAddrV6, ops::Deref, sync::Arc, time::SystemTime};
 
@@ -234,44 +230,4 @@ pub unsafe extern "C" fn rsn_channel_fake_endpoint(
     result: *mut EndpointDto,
 ) {
     *result = as_fake_channel(handle).remote_addr().into();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_inproc_send(
-    handle: *mut ChannelHandle,
-    message: &MessageHandle,
-    callback: ChannelTcpSendBufferCallback,
-    delete_callback: VoidPointerCallback,
-    callback_context: *mut c_void,
-    policy: u8,
-    traffic_type: u8,
-) {
-    let callback_wrapper =
-        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
-    let cb = Box::new(move |ec, size| {
-        callback_wrapper.call(ec, size);
-    });
-    let policy = FromPrimitive::from_u8(policy).unwrap();
-    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_inproc_channel(handle).send(&message.message, Some(cb), policy, traffic_type);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_fake_send(
-    handle: *mut ChannelHandle,
-    message: &MessageHandle,
-    callback: ChannelTcpSendBufferCallback,
-    delete_callback: VoidPointerCallback,
-    callback_context: *mut c_void,
-    policy: u8,
-    traffic_type: u8,
-) {
-    let callback_wrapper =
-        SendBufferCallbackWrapper::new(callback, callback_context, delete_callback);
-    let cb = Box::new(move |ec, size| {
-        callback_wrapper.call(ec, size);
-    });
-    let policy = FromPrimitive::from_u8(policy).unwrap();
-    let traffic_type = TrafficType::from_u8(traffic_type).unwrap();
-    as_fake_channel(handle).send(&message.message, Some(cb), policy, traffic_type);
 }

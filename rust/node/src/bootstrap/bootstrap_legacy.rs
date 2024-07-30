@@ -416,11 +416,11 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
     fn process_block(
         &self,
         block: Arc<BlockEnum>,
-        known_account: &Account,
+        _known_account: &Account,
         pull_blocks_processed: u64,
-        max_blocks: u32,
-        block_expected: bool,
-        retry_limit: u32,
+        _max_blocks: u32,
+        _block_expected: bool,
+        _retry_limit: u32,
     ) -> bool {
         self.attempt.process_block(block, pull_blocks_processed)
     }

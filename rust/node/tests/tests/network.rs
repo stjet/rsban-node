@@ -1,7 +1,7 @@
 use crate::tests::helpers::assert_timely;
 
 use super::helpers::{assert_timely_eq, establish_tcp, System};
-use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{Keepalive, Message, Publish};
 use rsnano_node::{

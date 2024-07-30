@@ -6,7 +6,6 @@ use crate::{
     utils::{AsyncRuntimeHandle, ThreadPoolHandle},
     NetworkParamsDto, NodeConfigDto, NodeFlagsHandle, StatHandle,
 };
-use rsnano_core::KeyPair;
 use rsnano_node::{bootstrap::BootstrapMessageVisitorFactory, NetworkParams};
 use std::sync::Arc;
 
@@ -39,8 +38,6 @@ pub unsafe extern "C" fn rsn_request_response_visitor_factory_create(
     let block_processor = Arc::clone(&(*params.block_processor));
     let bootstrap_initiator = Arc::clone(&(*params.bootstrap_initiator));
     let node_flags = (*params.flags).0.lock().unwrap().clone();
-    let node_id =
-        KeyPair::from_priv_key_bytes(std::slice::from_raw_parts(params.node_id_prv, 32)).unwrap();
 
     let visitor_factory = BootstrapMessageVisitorFactory::new(
         async_rt,

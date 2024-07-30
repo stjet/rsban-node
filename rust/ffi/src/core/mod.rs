@@ -7,7 +7,6 @@ mod unchecked_info;
 pub use account_info::AccountInfoHandle;
 pub use blocks::*;
 pub use epoch::EpochsHandle;
-use rand::{thread_rng, Rng};
 use rsnano_core::{
     deterministic_key, sign_message, validate_message, Account, BlockHash, DifficultyV1, KeyPair,
     PublicKey, RawKey, Signature, WalletId,

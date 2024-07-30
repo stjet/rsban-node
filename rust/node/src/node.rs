@@ -295,7 +295,7 @@ impl Node {
         ));
 
         let rep_tiers = Arc::new(RepTiers::new(
-            ledger.clone(),
+            rep_weights.clone(),
             network_params.clone(),
             online_reps.clone(),
             stats.clone(),

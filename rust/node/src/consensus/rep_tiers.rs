@@ -7,7 +7,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account,
 };
-use rsnano_ledger::Ledger;
+use rsnano_ledger::RepWeightCache;
 use std::{
     collections::HashSet,
     mem::size_of,
@@ -47,7 +47,7 @@ pub struct RepTiers {
 
 impl RepTiers {
     pub fn new(
-        ledger: Arc<Ledger>,
+        rep_weights: Arc<RepWeightCache>,
         network_params: NetworkParams,
         online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
@@ -57,7 +57,7 @@ impl RepTiers {
             thread: Mutex::new(None),
             stopped: Arc::new(Mutex::new(false)),
             condition: Arc::new(Condvar::new()),
-            rep_tiers_impl: Arc::new(RepTiersImpl::new(stats, online_reps, ledger)),
+            rep_tiers_impl: Arc::new(RepTiersImpl::new(stats, online_reps, rep_weights)),
         }
     }
 
@@ -158,23 +158,27 @@ struct Tiers {
 struct RepTiersImpl {
     stats: Arc<Stats>,
     online_reps: Arc<Mutex<OnlineReps>>,
-    ledger: Arc<Ledger>,
+    rep_weights: Arc<RepWeightCache>,
     tiers: Mutex<Tiers>,
 }
 
 impl RepTiersImpl {
-    fn new(stats: Arc<Stats>, online_reps: Arc<Mutex<OnlineReps>>, ledger: Arc<Ledger>) -> Self {
+    fn new(
+        stats: Arc<Stats>,
+        online_reps: Arc<Mutex<OnlineReps>>,
+        rep_weights: Arc<RepWeightCache>,
+    ) -> Self {
         Self {
             stats,
             online_reps,
-            ledger,
+            rep_weights,
             tiers: Mutex::new(Tiers::default()),
         }
     }
 
     fn calculate_tiers(&self) {
         self.stats.inc(StatType::RepTiers, DetailType::Loop);
-        let stake = self
+        let trended = self
             .online_reps
             .lock()
             .unwrap()
@@ -185,16 +189,16 @@ impl RepTiersImpl {
         let mut ignored = 0;
         let reps_count;
         {
-            let rep_weights = self.ledger.rep_weights.read();
+            let rep_weights = self.rep_weights.read();
             reps_count = rep_weights.len();
             for (&representative, &weight) in rep_weights.iter() {
-                if weight > stake / 1000 {
+                if weight > trended / 1000 {
                     // 0.1% or above (level 1)
                     representatives_1_l.insert(representative);
-                    if weight > stake / 100 {
+                    if weight > trended / 100 {
                         // 1% or above (level 2)
                         representatives_2_l.insert(representative);
-                        if weight > stake / 20 {
+                        if weight > trended / 20 {
                             // 5% or above (level 3)
                             representatives_3_l.insert(representative);
                         }

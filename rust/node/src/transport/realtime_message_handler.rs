@@ -108,10 +108,8 @@ impl RealtimeMessageHandler {
                 // Don't load nodes with disabled voting
                 // TODO: This check should be cached somewhere
                 if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
-                    if !req.roots_hashes.is_empty() {
-                        self.request_aggregator
-                            .request(req.roots_hashes, Arc::clone(channel));
-                    }
+                    self.request_aggregator
+                        .request(req.roots_hashes, Arc::clone(channel));
                 }
             }
             Message::ConfirmAck(ack) => {

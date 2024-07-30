@@ -18,7 +18,6 @@ use std::{
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
 };
-use tracing::trace;
 
 #[derive(Debug, Clone)]
 pub struct RequestAggregatorConfig {
@@ -68,8 +67,8 @@ pub struct RequestAggregator {
     stats: Arc<Stats>,
     vote_generators: Arc<VoteGenerators>,
     ledger: Arc<Ledger>,
-    mutex: Mutex<RequestAggregatorData>,
-    condition: Condvar,
+    state: Arc<Mutex<RequestAggregatorState>>,
+    condition: Arc<Condvar>,
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
 
@@ -86,22 +85,24 @@ impl RequestAggregator {
             vote_generators,
             ledger,
             config,
-            condition: Condvar::new(),
-            mutex: Mutex::new(RequestAggregatorData {
+            condition: Arc::new(Condvar::new()),
+            state: Arc::new(Mutex::new(RequestAggregatorState {
                 queue: FairQueue::new(Box::new(move |_| max_queue), Box::new(|_| 1)),
                 stopped: false,
-            }),
+            })),
             threads: Mutex::new(Vec::new()),
         }
     }
 
     pub fn request(&self, request: RequestType, channel: Arc<ChannelEnum>) -> bool {
-        // This should be checked before calling request
-        debug_assert!(!request.is_empty());
+        if request.is_empty() {
+            return false;
+        }
+
         let request_len = request.len();
 
         let added = {
-            self.mutex
+            self.state
                 .lock()
                 .unwrap()
                 .queue
@@ -140,24 +141,8 @@ impl RequestAggregator {
         added
     }
 
-    pub fn run(&self) {
-        let mut guard = self.mutex.lock().unwrap();
-        while !guard.stopped {
-            trace!("loop");
-
-            if !guard.queue.is_empty() {
-                guard = self.run_batch(guard);
-            } else {
-                guard = self
-                    .condition
-                    .wait_while(guard, |g| !g.stopped && g.queue.is_empty())
-                    .unwrap();
-            }
-        }
-    }
-
     pub fn stop(&self) {
-        self.mutex.lock().unwrap().stopped = true;
+        self.state.lock().unwrap().stopped = true;
         self.condition.notify_all();
         let mut threads = Vec::new();
         {
@@ -169,10 +154,111 @@ impl RequestAggregator {
         }
     }
 
+    /// Returns the number of currently queued request pools
+    pub fn len(&self) -> usize {
+        self.state.lock().unwrap().queue.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn reply_action(&self, vote: &Arc<Vote>, channel: &ChannelEnum) {
+        let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote((**vote).clone()));
+        channel.send(
+            &confirm,
+            None,
+            BufferDropPolicy::Limiter,
+            TrafficType::Generic,
+        );
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let guard = self.state.lock().unwrap();
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![guard.queue.collect_container_info("queue")],
+        )
+    }
+}
+
+impl Drop for RequestAggregator {
+    fn drop(&mut self) {
+        debug_assert!(self.threads.lock().unwrap().is_empty())
+    }
+}
+
+type RequestType = Vec<(BlockHash, Root)>;
+type ValueType = (RequestType, Arc<ChannelEnum>);
+
+struct RequestAggregatorState {
+    queue: FairQueue<ValueType, NoValue>,
+    stopped: bool,
+}
+
+pub trait RequestAggregatorExt {
+    fn start(&self);
+}
+
+impl RequestAggregatorExt for Arc<RequestAggregator> {
+    fn start(&self) {
+        let self_w = Arc::downgrade(self);
+        self.vote_generators
+            .set_reply_action(Arc::new(move |vote, channel| {
+                if let Some(self_l) = self_w.upgrade() {
+                    self_l.reply_action(vote, channel);
+                }
+            }));
+
+        let mut guard = self.threads.lock().unwrap();
+        for _ in 0..self.config.threads {
+            let aggregator_loop = RequestAggregatorLoop {
+                mutex: self.state.clone(),
+                condition: self.condition.clone(),
+                stats: self.stats.clone(),
+                config: self.config.clone(),
+                ledger: self.ledger.clone(),
+                vote_generators: self.vote_generators.clone(),
+            };
+
+            guard.push(
+                std::thread::Builder::new()
+                    .name("Req aggregator".to_string())
+                    .spawn(move || aggregator_loop.run())
+                    .unwrap(),
+            );
+        }
+    }
+}
+
+struct RequestAggregatorLoop {
+    mutex: Arc<Mutex<RequestAggregatorState>>,
+    condition: Arc<Condvar>,
+    stats: Arc<Stats>,
+    config: RequestAggregatorConfig,
+    ledger: Arc<Ledger>,
+    vote_generators: Arc<VoteGenerators>,
+}
+
+impl RequestAggregatorLoop {
+    fn run(&self) {
+        let mut guard = self.mutex.lock().unwrap();
+        while !guard.stopped {
+            if !guard.queue.is_empty() {
+                guard = self.run_batch(guard);
+            } else {
+                guard = self
+                    .condition
+                    .wait_while(guard, |g| !g.stopped && g.queue.is_empty())
+                    .unwrap();
+            }
+        }
+    }
+
     fn run_batch<'a>(
         &'a self,
-        mut state: MutexGuard<'a, RequestAggregatorData>,
-    ) -> MutexGuard<'a, RequestAggregatorData> {
+        mut state: MutexGuard<'a, RequestAggregatorState>,
+    ) -> MutexGuard<'a, RequestAggregatorState> {
         let batch = state.queue.next_batch(self.config.batch_size);
         drop(state);
 
@@ -231,79 +317,11 @@ impl RequestAggregator {
         }
     }
 
-    /// Returns the number of currently queued request pools
-    pub fn len(&self) -> usize {
-        self.mutex.lock().unwrap().queue.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    fn reply_action(&self, vote: &Arc<Vote>, channel: &ChannelEnum) {
-        let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote((**vote).clone()));
-        channel.send(
-            &confirm,
-            None,
-            BufferDropPolicy::Limiter,
-            TrafficType::Generic,
-        );
-    }
-
     /// Aggregate requests and send cached votes to channel.
     /// Return the remaining hashes that need vote generation for each block for regular & final vote generators
     fn aggregate(&self, tx: &LmdbReadTransaction, requests: &RequestType) -> AggregateResult {
         let mut aggregator = RequestAggregatorImpl::new(&self.ledger, &self.stats, tx);
         aggregator.add_votes(requests);
         aggregator.get_result()
-    }
-
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![guard.queue.collect_container_info("queue")],
-        )
-    }
-}
-
-impl Drop for RequestAggregator {
-    fn drop(&mut self) {
-        debug_assert!(self.threads.lock().unwrap().is_empty())
-    }
-}
-
-type RequestType = Vec<(BlockHash, Root)>;
-type ValueType = (RequestType, Arc<ChannelEnum>);
-
-struct RequestAggregatorData {
-    queue: FairQueue<ValueType, NoValue>,
-    stopped: bool,
-}
-
-pub trait RequestAggregatorExt {
-    fn start(&self);
-}
-
-impl RequestAggregatorExt for Arc<RequestAggregator> {
-    fn start(&self) {
-        let self_w = Arc::downgrade(self);
-        self.vote_generators
-            .set_reply_action(Arc::new(move |vote, channel| {
-                if let Some(self_l) = self_w.upgrade() {
-                    self_l.reply_action(vote, channel);
-                }
-            }));
-
-        let mut guard = self.threads.lock().unwrap();
-        for _ in 0..self.config.threads {
-            let self_l = Arc::clone(self);
-            guard.push(
-                std::thread::Builder::new()
-                    .name("Req aggregator".to_string())
-                    .spawn(move || self_l.run())
-                    .unwrap(),
-            );
-        }
     }
 }

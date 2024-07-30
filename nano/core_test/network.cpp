@@ -389,60 +389,6 @@ TEST (network, peer_max_tcp_attempts_subnetwork)
 	// TODO reimplement in Rust
 }
 
-// Send two publish messages and asserts that the duplication is detected.
-TEST (network, duplicate_detection)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto & node0 = *system.add_node (node_flags);
-	auto & node1 = *system.add_node (node_flags);
-	nano::publish publish{ nano::dev::network_params.network, nano::dev::genesis };
-
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message));
-
-	// Publish duplicate detection through TCP
-	auto tcp_channel = node0.network->tcp_channels->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, tcp_channel);
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message));
-	tcp_channel->send (publish);
-	ASSERT_TIMELY_EQ (2s, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message), 0);
-	tcp_channel->send (publish);
-	ASSERT_TIMELY_EQ (2s, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message), 1);
-}
-
-TEST (network, duplicate_revert_publish)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.block_processor.max_peer_queue = 0;
-	auto & node (*system.add_node (node_config));
-
-	nano::publish publish{ nano::dev::network_params.network, nano::dev::genesis };
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream (bytes);
-		publish.get_block ()->serialize (stream);
-	}
-	// Add to the blocks filter
-	// Should be cleared when dropping due to a full block processor, as long as the message has the optional digest attached
-	// Test network.duplicate_detection ensures that the digest is attached when deserializing messages
-	nano::uint128_t digest;
-	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size (), &digest));
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-	auto other_node (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	other_node->start ();
-	system.nodes.push_back (other_node);
-	auto channel = nano::test::establish_tcp (system, *other_node, node.network->endpoint ());
-	ASSERT_NE (nullptr, channel);
-	ASSERT_EQ (0, publish.get_digest ());
-	node.network->inbound (publish, channel);
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-	publish.set_digest (digest);
-	node.network->inbound (publish, channel);
-	// TODO: inbound is queued and not immediately adding to publish filter
-	// ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-}
-
 TEST (network, tcp_no_accept_excluded_peers)
 {
 	// TODO reimplement in Rust

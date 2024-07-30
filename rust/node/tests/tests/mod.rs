@@ -5,3 +5,4 @@ pub(crate) mod helpers;
 mod network;
 mod node;
 mod rep_crawler;
+mod request_aggregator;

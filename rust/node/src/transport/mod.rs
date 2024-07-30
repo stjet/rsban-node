@@ -150,7 +150,7 @@ pub enum ChannelEnum {
 
 impl ChannelEnum {
     #[allow(dead_code)]
-    pub(crate) fn new_null() -> Self {
+    pub fn new_null() -> Self {
         Self::new_null_with_channel_id(42)
     }
 

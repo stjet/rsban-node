@@ -66,7 +66,7 @@ pub struct Wallets {
     pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
     pub representative_wallets: Mutex<WalletRepresentatives>,
-    representatives: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     pub kdf: KeyDerivationFunction,
     network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
@@ -112,7 +112,7 @@ impl Wallets {
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         network: Arc<Network>,
         confirming_set: Arc<ConfirmingSet>,
     ) -> anyhow::Result<Self> {
@@ -136,7 +136,7 @@ impl Wallets {
                 node_config.vote_minimum,
                 Arc::clone(&ledger),
             )),
-            representatives,
+            online_reps,
             kdf: kdf.clone(),
             network,
             start_election: Mutex::new(None),
@@ -434,12 +434,7 @@ impl Wallets {
         let wallets_guard = self.mutex.lock().unwrap();
         let mut reps_guard = self.representative_wallets.lock().unwrap();
         reps_guard.clear();
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         let tx = self.env.tx_begin_read();
         for (_, wallet) in wallets_guard.iter() {
             let mut representatives = HashSet::new();
@@ -1129,12 +1124,7 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, key.into());
         }
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         let mut reps = self.representative_wallets.lock().unwrap();
         if reps.check_rep(key, half_principal_weight) {
             wallet.representatives.lock().unwrap().insert(key);
@@ -1185,12 +1175,7 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, self.ledger.latest_root(&block_tx, &key));
         }
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         // Makes sure that the representatives container will
         // be in sync with any added keys.
         tx.commit();

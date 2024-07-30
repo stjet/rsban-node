@@ -49,7 +49,7 @@ impl RepTiers {
     pub fn new(
         ledger: Arc<Ledger>,
         network_params: NetworkParams,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
     ) -> Self {
         Self {
@@ -57,7 +57,7 @@ impl RepTiers {
             thread: Mutex::new(None),
             stopped: Arc::new(Mutex::new(false)),
             condition: Arc::new(Condvar::new()),
-            rep_tiers_impl: Arc::new(RepTiersImpl::new(stats, representatives, ledger)),
+            rep_tiers_impl: Arc::new(RepTiersImpl::new(stats, online_reps, ledger)),
         }
     }
 
@@ -157,20 +157,16 @@ struct Tiers {
 
 struct RepTiersImpl {
     stats: Arc<Stats>,
-    representatives: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     ledger: Arc<Ledger>,
     tiers: Mutex<Tiers>,
 }
 
 impl RepTiersImpl {
-    fn new(
-        stats: Arc<Stats>,
-        representatives: Arc<Mutex<OnlineReps>>,
-        ledger: Arc<Ledger>,
-    ) -> Self {
+    fn new(stats: Arc<Stats>, online_reps: Arc<Mutex<OnlineReps>>, ledger: Arc<Ledger>) -> Self {
         Self {
             stats,
-            representatives,
+            online_reps,
             ledger,
             tiers: Mutex::new(Tiers::default()),
         }
@@ -179,7 +175,7 @@ impl RepTiersImpl {
     fn calculate_tiers(&self) {
         self.stats.inc(StatType::RepTiers, DetailType::Loop);
         let stake = self
-            .representatives
+            .online_reps
             .lock()
             .unwrap()
             .trended_weight_or_minimum_online_weight();

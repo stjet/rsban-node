@@ -62,13 +62,19 @@ impl Monitor {
             channels.total, channels.realtime, channels.bootstrap, channels.inbound, channels.outbound);
 
         {
-            let online_reps = self.online_reps.lock().unwrap();
-
+            let (delta, online, peered) = {
+                let online_reps = self.online_reps.lock().unwrap();
+                (
+                    online_reps.quorum_delta(),
+                    online_reps.online_weight(),
+                    online_reps.peered_weight(),
+                )
+            };
             info!(
                 "Quorum: {} (stake peered: {} | online stake: {})",
-                online_reps.quorum_delta().format_balance(0),
-                online_reps.online_weight().format_balance(0),
-                online_reps.peered_weight().format_balance(0)
+                delta.format_balance(0),
+                online.format_balance(0),
+                peered.format_balance(0)
             );
         }
 

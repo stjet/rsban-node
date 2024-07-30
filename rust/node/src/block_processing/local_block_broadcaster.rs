@@ -84,7 +84,7 @@ impl LocalBlockBroadcaster {
         block_processor: Arc<BlockProcessor>,
         stats: Arc<Stats>,
         network: Arc<Network>,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         ledger: Arc<Ledger>,
         confirming_set: Arc<ConfirmingSet>,
         enabled: bool,
@@ -100,7 +100,7 @@ impl LocalBlockBroadcaster {
             network,
             ledger,
             confirming_set,
-            online_reps: representatives,
+            online_reps,
             thread: Mutex::new(None),
             enabled,
             mutex: Mutex::new(LocalBlockBroadcasterData {

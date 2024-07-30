@@ -44,12 +44,14 @@ bool nano::bootstrap_initiator::in_progress ()
 	return rsnano::rsn_bootstrap_initiator_in_progress (handle);
 }
 
-bool nano::bootstrap_initiator::has_legacy_attempt(){
-	return rsnano::rsn_bootstrap_initiator_has_legacy_attempt(handle);
+bool nano::bootstrap_initiator::has_legacy_attempt ()
+{
+	return rsnano::rsn_bootstrap_initiator_has_legacy_attempt (handle);
 }
 
-bool nano::bootstrap_initiator::has_lazy_attempt(){
-	return rsnano::rsn_bootstrap_initiator_has_lazy_attempt(handle);
+bool nano::bootstrap_initiator::has_lazy_attempt ()
+{
+	return rsnano::rsn_bootstrap_initiator_has_lazy_attempt (handle);
 }
 
 rsnano::BootstrapInitiatorHandle * nano::bootstrap_initiator::get_handle () const

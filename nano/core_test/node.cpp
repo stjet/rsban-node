@@ -25,8 +25,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/optional.hpp>
 
-#include <thread>
 #include <future>
+#include <thread>
 
 using namespace std::chrono_literals;
 

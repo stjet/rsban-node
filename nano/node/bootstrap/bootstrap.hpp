@@ -92,8 +92,8 @@ public:
 	bool in_progress ();
 	nano::bootstrap_attempts attempts;
 	std::shared_ptr<nano::bootstrap_connections> connections;
-	bool has_legacy_attempt();
-	bool has_lazy_attempt();
+	bool has_legacy_attempt ();
+	bool has_lazy_attempt ();
 	rsnano::BootstrapInitiatorHandle * get_handle () const;
 	nano::pulls_cache cache;
 	void stop ();

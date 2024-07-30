@@ -14,11 +14,11 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
-#include <future>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -869,7 +869,7 @@ TEST (websocket, bootstrap)
 
 	// Start bootstrap attempt
 	node1->bootstrap_initiator.bootstrap (true, "123abc");
-	ASSERT_TIMELY_EQ (5s, false, node1->bootstrap_initiator.has_legacy_attempt());
+	ASSERT_TIMELY_EQ (5s, false, node1->bootstrap_initiator.has_legacy_attempt ());
 
 	// Wait for the bootstrap notification
 	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
@@ -892,7 +892,7 @@ TEST (websocket, bootstrap)
 	ASSERT_TIMELY (5s, !node1->bootstrap_initiator.in_progress ());
 }
 
-// Disabled, so that bootstrapping can be refactored. Rewrite in a simpler way! 
+// Disabled, so that bootstrapping can be refactored. Rewrite in a simpler way!
 TEST (websocket, DISABLED_bootstrap_exited)
 {
 	nano::test::system system;
@@ -910,7 +910,7 @@ TEST (websocket, DISABLED_bootstrap_exited)
 		{
 			std::this_thread::sleep_for (50ms);
 			node1->bootstrap_initiator.bootstrap (true, "123abc");
-			has_legacy = node1->bootstrap_initiator.has_legacy_attempt();
+			has_legacy = node1->bootstrap_initiator.has_legacy_attempt ();
 		}
 		// TODO: bootstrap attempt gets dropped. That's why the test fails
 		bootstrap_started = true;

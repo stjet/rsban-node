@@ -278,4 +278,3 @@ TEST (rep_crawler, ignore_local)
 	node.rep_crawler.force_process (vote, loopback);
 	ASSERT_ALWAYS_EQ (0.5s, node.rep_crawler.representative_count (), 0);
 }
-

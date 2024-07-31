@@ -1,7 +1,4 @@
-use rsnano_node::{
-    bootstrap::BootstrapAscendingConfig,
-    config::{AccountSetsToml, BootstrapAscendingToml},
-};
+use rsnano_node::bootstrap::{AccountSetsConfig, BootstrapAscendingConfig};
 use std::time::Duration;
 
 #[repr(C)]
@@ -24,8 +21,8 @@ pub struct AccountSetsConfigDto {
     pub cooldown_ms: u64,
 }
 
-impl From<&BootstrapAscendingToml> for BootstrapAscendingConfigDto {
-    fn from(value: &BootstrapAscendingToml) -> Self {
+impl From<&BootstrapAscendingConfig> for BootstrapAscendingConfigDto {
+    fn from(value: &BootstrapAscendingConfig) -> Self {
         Self {
             requests_limit: value.requests_limit,
             database_requests_limit: value.database_requests_limit,
@@ -56,8 +53,8 @@ impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingConfig {
     }
 }
 
-impl From<&AccountSetsToml> for AccountSetsConfigDto {
-    fn from(value: &AccountSetsToml) -> Self {
+impl From<&AccountSetsConfig> for AccountSetsConfigDto {
+    fn from(value: &AccountSetsConfig) -> Self {
         Self {
             consideration_count: value.consideration_count,
             priorities_max: value.priorities_max,
@@ -67,7 +64,7 @@ impl From<&AccountSetsToml> for AccountSetsConfigDto {
     }
 }
 
-impl From<&AccountSetsConfigDto> for AccountSetsToml {
+impl From<&AccountSetsConfigDto> for AccountSetsConfig {
     fn from(value: &AccountSetsConfigDto) -> Self {
         Self {
             consideration_count: value.consideration_count,
@@ -80,10 +77,10 @@ impl From<&AccountSetsConfigDto> for AccountSetsToml {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_account_sets_config_create(result: *mut AccountSetsConfigDto) {
-    (*result) = (&AccountSetsToml::default()).into()
+    (*result) = (&AccountSetsConfig::default()).into()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_bootstrap_config_create(result: *mut BootstrapAscendingConfigDto) {
-    (*result) = (&BootstrapAscendingToml::default()).into()
+    (*result) = (&BootstrapAscendingConfig::default()).into()
 }

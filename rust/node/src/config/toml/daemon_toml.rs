@@ -1,5 +1,5 @@
 use super::{NodeRpcToml, NodeToml, OpenclToml};
-use crate::{config::DaemonConfig, NetworkParams};
+use crate::config::DaemonConfig;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -42,14 +42,6 @@ impl From<&DaemonConfig> for OpenclToml {
 }
 
 impl DaemonToml {
-    pub fn new(network_params: &NetworkParams, parallelism: usize) -> Result<Self> {
-        Ok(Self {
-            node: Some(NodeToml::default()),
-            opencl: Some(OpenclToml::default()),
-            rpc: Some(NodeRpcToml::new()?),
-        })
-    }
-
     pub fn default() -> Result<Self> {
         Ok(Self {
             node: Some(NodeToml::default()),
@@ -62,14 +54,14 @@ impl DaemonToml {
 #[cfg(test)]
 mod tests {
     use crate::{
-        config::{DaemonToml, NetworkConstants},
+        config::{DaemonConfig, DaemonToml, NetworkConstants},
         NetworkParams,
     };
 
     #[test]
     fn test_toml_serialization() {
         let network_params = NetworkParams::new(NetworkConstants::active_network());
-        let config: DaemonToml = DaemonToml::new(&network_params, 0).unwrap().into();
+        let config: DaemonToml = DaemonConfig::new(&network_params, 0).unwrap().into();
         let toml_str = toml::to_string(&config).unwrap();
 
         let deserialized_config: DaemonToml = toml::from_str(&toml_str).unwrap();

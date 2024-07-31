@@ -8,7 +8,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{get_cpu_count, ContainerInfoComponent, TomlWriter},
-    BlockHash, NoValue, Root, Vote,
+    BlockHash, NoValue, Root,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};

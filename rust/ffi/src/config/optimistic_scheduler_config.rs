@@ -1,4 +1,4 @@
-use rsnano_node::config::{HintedSchedulerConfig, OptimisticSchedulerConfig};
+use rsnano_node::consensus::{HintedSchedulerConfig, OptimisticSchedulerConfig};
 use std::time::Duration;
 
 #[repr(C)]

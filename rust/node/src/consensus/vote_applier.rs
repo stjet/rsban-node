@@ -30,7 +30,7 @@ use tracing::trace;
 pub struct VoteApplier {
     ledger: Arc<Ledger>,
     network_params: NetworkParams,
-    representatives: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
     vote_generators: Arc<VoteGenerators>,
     block_processor: Arc<BlockProcessor>,
@@ -47,7 +47,7 @@ impl VoteApplier {
     pub(crate) fn new(
         ledger: Arc<Ledger>,
         network_params: NetworkParams,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         vote_generators: Arc<VoteGenerators>,
         block_processor: Arc<BlockProcessor>,
@@ -61,7 +61,7 @@ impl VoteApplier {
         Self {
             ledger,
             network_params,
-            representatives,
+            online_reps,
             stats,
             vote_generators,
             block_processor,
@@ -78,7 +78,7 @@ impl VoteApplier {
     /// Calculates minimum time delay between subsequent votes when processing non-final votes
     pub fn cooldown_time(&self, weight: Amount) -> Duration {
         let online_stake = {
-            self.representatives
+            self.online_reps
                 .lock()
                 .unwrap()
                 .trended_weight_or_minimum_online_weight()
@@ -149,7 +149,7 @@ impl VoteApplier {
         let mut it = tally.keys();
         let first = it.next().map(|i| i.amount()).unwrap_or_default();
         let second = it.next().map(|i| i.amount()).unwrap_or_default();
-        let delta = self.representatives.lock().unwrap().quorum_delta();
+        let delta = self.online_reps.lock().unwrap().quorum_delta();
         first - second >= delta
     }
 
@@ -206,12 +206,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
     ) -> VoteCode {
         let weight = self.ledger.weight(rep);
         if !self.network_params.network.is_dev_network()
-            && weight
-                <= self
-                    .representatives
-                    .lock()
-                    .unwrap()
-                    .minimum_principal_weight()
+            && weight <= self.online_reps.lock().unwrap().minimum_principal_weight()
         {
             return VoteCode::Indeterminate;
         }
@@ -279,7 +274,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
         for k in tally.keys() {
             sum += k.amount();
         }
-        if sum >= self.representatives.lock().unwrap().quorum_delta()
+        if sum >= self.online_reps.lock().unwrap().quorum_delta()
             && winner_hash != status_winner_hash
         {
             election_lock.status.winner = Some(Arc::clone(block));
@@ -295,7 +290,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 self.vote_generators
                     .generate_final_vote(&election.root, &status_winner_hash);
             }
-            if election_lock.final_weight >= self.representatives.lock().unwrap().quorum_delta() {
+            if election_lock.final_weight >= self.online_reps.lock().unwrap().quorum_delta() {
                 self.confirm_once(election_lock, election);
             }
         }

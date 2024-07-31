@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct StatsConfig {

@@ -120,7 +120,7 @@ impl RepCrawler {
                 debug!(
                     "Processing response for block: {} from: {}",
                     target_hash,
-                    channel.remote_endpoint()
+                    channel.remote_addr()
                 );
                 self.stats
                     .inc_dir(StatType::RepCrawler, DetailType::Response, Direction::In);
@@ -169,7 +169,7 @@ impl RepCrawler {
             debug!(
                 "Sending query for block: {} to: {}",
                 hash_root.0,
-                channel.remote_endpoint()
+                channel.remote_addr()
             );
             self.stats
                 .inc_dir(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
@@ -302,7 +302,7 @@ impl RepCrawler {
                 continue;
             }
 
-            let endpoint = channel.remote_endpoint();
+            let endpoint = channel.remote_addr();
             let result = self.online_reps.lock().unwrap().vote_observed_directly(
                 vote.voting_account,
                 channel.channel_id(),
@@ -560,7 +560,7 @@ impl RepCrawlerImpl {
                 debug!(
                     "Aborting unresponsive query for block: {} from: {}",
                     query.hash,
-                    query.channel.remote_endpoint()
+                    query.channel.remote_addr()
                 );
                 self.stats.inc_dir(
                     StatType::RepCrawler,
@@ -572,7 +572,7 @@ impl RepCrawlerImpl {
                     "Completion of query with: {} replies for block: {} from: {}",
                     query.replies,
                     query.hash,
-                    query.channel.remote_endpoint()
+                    query.channel.remote_addr()
                 );
                 self.stats.inc_dir(
                     StatType::RepCrawler,

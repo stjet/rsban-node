@@ -32,7 +32,6 @@ add_executable(
   optimistic_scheduler.cpp
   rep_crawler.cpp
   peer_container.cpp
-  request_aggregator.cpp
   signal_manager.cpp
   socket.cpp
   system.cpp

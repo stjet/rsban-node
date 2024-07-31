@@ -1,11 +1,11 @@
 use super::{
-    BootstrapAttempt, BootstrapConnections, BootstrapConnectionsExt, BootstrapInitiator,
-    BootstrapMode, BulkPullAccountClient, BulkPullAccountClientExt,
+    BootstrapAttempt, BootstrapAttemptTrait, BootstrapConnections, BootstrapConnectionsExt,
+    BootstrapInitiator, BootstrapMode, BulkPullAccountClient, BulkPullAccountClientExt,
 };
 use crate::{
     block_processing::BlockProcessor, stats::Stats, utils::ThreadPool, websocket::WebsocketListener,
 };
-use rsnano_core::{utils::PropertyTree, Account, Amount};
+use rsnano_core::{utils::PropertyTree, Account, Amount, BlockEnum};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -15,7 +15,7 @@ use std::{
 use tracing::{debug, info};
 
 pub struct BootstrapAttemptWallet {
-    pub attempt: BootstrapAttempt,
+    attempt: BootstrapAttempt,
     mutex: Mutex<WalletData>,
     connections: Arc<BootstrapConnections>,
     workers: Arc<dyn ThreadPool>,
@@ -87,12 +87,6 @@ impl BootstrapAttemptWallet {
         let guard = self.mutex.lock().unwrap();
         guard.wallet_accounts.len()
     }
-
-    pub fn get_information(&self, result: &mut dyn PropertyTree) {
-        result
-            .put_u64("wallet_accounts", self.wallet_size() as u64)
-            .unwrap();
-    }
 }
 
 pub struct WalletData {
@@ -100,7 +94,6 @@ pub struct WalletData {
 }
 
 pub trait BootstrapAttemptWalletExt {
-    fn run(&self);
     fn request_pending<'a>(
         &'a self,
         guard: MutexGuard<'a, WalletData>,
@@ -108,8 +101,115 @@ pub trait BootstrapAttemptWalletExt {
 }
 
 impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
+    fn request_pending<'a>(
+        &'a self,
+        guard: MutexGuard<'a, WalletData>,
+    ) -> MutexGuard<'a, WalletData> {
+        drop(guard);
+        let (connection, should_stop) = self.connections.connection(false);
+        if should_stop {
+            debug!("Bootstrap attempt stopped because there are no peers");
+            self.attempt.stop();
+        }
+
+        let mut guard = self.mutex.lock().unwrap();
+        if connection.is_some() && !self.attempt.stopped() {
+            let account = guard.wallet_accounts.pop_front().unwrap();
+            self.attempt.pulling.fetch_add(1, Ordering::SeqCst);
+            let self_l = Arc::clone(self);
+            // The bulk_pull_account_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
+            // Dispatch request in an external thread in case it needs to be destroyed
+
+            self.workers.push_task(Box::new(move || {
+                if let Some(bootstrap_initiator) = self_l.bootstrap_initiator.upgrade() {
+                    let client = Arc::new(BulkPullAccountClient::new(
+                        connection.unwrap(),
+                        Arc::clone(&self_l),
+                        account,
+                        self_l.receive_minimum,
+                        Arc::clone(&self_l.stats),
+                        Arc::clone(&self_l.connections),
+                        Arc::clone(&self_l.ledger),
+                        bootstrap_initiator,
+                    ));
+                    client.request();
+                }
+            }));
+        }
+        guard
+    }
+}
+impl BootstrapAttemptTrait for Arc<BootstrapAttemptWallet> {
+    fn incremental_id(&self) -> u64 {
+        self.attempt.incremental_id
+    }
+
+    fn id(&self) -> &str {
+        &self.attempt.id
+    }
+
+    fn started(&self) -> bool {
+        self.attempt.started.load(Ordering::SeqCst)
+    }
+
+    fn stopped(&self) -> bool {
+        self.attempt.stopped()
+    }
+
+    fn stop(&self) {
+        self.attempt.stop()
+    }
+
+    fn pull_finished(&self) {
+        self.attempt.pull_finished();
+    }
+
+    fn pulling(&self) -> u32 {
+        self.attempt.pulling.load(Ordering::SeqCst)
+    }
+
+    fn total_blocks(&self) -> u64 {
+        self.attempt.total_blocks.load(Ordering::SeqCst)
+    }
+
+    fn inc_total_blocks(&self) {
+        self.attempt.total_blocks.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn requeued_pulls(&self) -> u32 {
+        self.attempt.requeued_pulls.load(Ordering::SeqCst)
+    }
+
+    fn inc_requeued_pulls(&self) {
+        self.attempt.requeued_pulls.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn pull_started(&self) {
+        self.attempt.pull_started();
+    }
+
+    fn duration(&self) -> Duration {
+        self.attempt.duration()
+    }
+
+    fn set_started(&self) -> bool {
+        !self.attempt.started.swap(true, Ordering::SeqCst)
+    }
+
+    fn should_log(&self) -> bool {
+        self.attempt.should_log()
+    }
+
+    fn notify(&self) {
+        self.attempt.condition.notify_all();
+    }
+
+    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
+        tree.put_u64("wallet_accounts", self.wallet_size() as u64)
+    }
+
     fn run(&self) {
-        debug_assert!(self.attempt.started.load(Ordering::SeqCst));
+        debug_assert!(self.started());
         self.connections.populate_connections(false);
         let start_time = Instant::now();
         let max_time = Duration::from_secs(60 * 10);
@@ -134,41 +234,15 @@ impl BootstrapAttemptWalletExt for Arc<BootstrapAttemptWallet> {
         self.attempt.condition.notify_all();
     }
 
-    fn request_pending<'a>(
-        &'a self,
-        guard: MutexGuard<'a, WalletData>,
-    ) -> MutexGuard<'a, WalletData> {
-        drop(guard);
-        let (connection_l, should_stop) = self.connections.connection(false);
-        if should_stop {
-            debug!("Bootstrap attempt stopped because there are no peers");
-            self.attempt.stop();
-        }
-
-        let mut guard = self.mutex.lock().unwrap();
-        if connection_l.is_some() && !self.attempt.stopped() {
-            let account = guard.wallet_accounts.pop_front().unwrap();
-            self.attempt.pulling.fetch_add(1, Ordering::SeqCst);
-            let self_l = Arc::clone(self);
-            // The bulk_pull_account_client destructor attempt to requeue_pull which can cause a deadlock if this is the last reference
-            // Dispatch request in an external thread in case it needs to be destroyed
-
-            self.workers.push_task(Box::new(move || {
-                if let Some(bootstrap_initiator) = self_l.bootstrap_initiator.upgrade() {
-                    let client = Arc::new(BulkPullAccountClient::new(
-                        connection_l.unwrap(),
-                        Arc::clone(&self_l),
-                        account,
-                        self_l.receive_minimum,
-                        Arc::clone(&self_l.stats),
-                        Arc::clone(&self_l.connections),
-                        Arc::clone(&self_l.ledger),
-                        bootstrap_initiator,
-                    ));
-                    client.request();
-                }
-            }));
-        }
-        guard
+    fn process_block(
+        &self,
+        block: Arc<BlockEnum>,
+        _known_account: &Account,
+        pull_blocks_processed: u64,
+        _max_blocks: u32,
+        _block_expected: bool,
+        _retry_limit: u32,
+    ) -> bool {
+        self.attempt.process_block(block, pull_blocks_processed)
     }
 }

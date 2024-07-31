@@ -1,7 +1,4 @@
-use super::{
-    ChannelDirection, ChannelMode, CompositeSocketObserver, Network, ResponseServerFactory,
-    SocketBuilder, SocketObserver,
-};
+use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory, SocketBuilder};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -28,7 +25,6 @@ pub struct TcpListener {
     network: Arc<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
-    socket_observer: Arc<dyn SocketObserver>,
     workers: Arc<dyn ThreadPool>,
     network_params: NetworkParams,
     data: Mutex<TcpListenerData>,
@@ -55,7 +51,6 @@ impl TcpListener {
         network: Arc<Network>,
         network_params: NetworkParams,
         runtime: Arc<AsyncRuntime>,
-        socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         workers: Arc<dyn ThreadPool>,
         response_server_factory: Arc<ResponseServerFactory>,
@@ -70,7 +65,6 @@ impl TcpListener {
             }),
             network_params,
             runtime: Arc::clone(&runtime),
-            socket_observer,
             stats,
             workers,
             condition: Condvar::new(),
@@ -174,10 +168,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                         .silent_connection_tolerance_time_s as u64,
                 ))
                 .idle_timeout(self.network_params.network.idle_timeout)
-                .observer(Arc::new(CompositeSocketObserver::new(vec![
-                    socket_stats,
-                    Arc::clone(&self.socket_observer),
-                ])))
+                .observer(socket_stats)
                 .use_existing_socket(raw_stream, remote_endpoint)
                 .finish();
 

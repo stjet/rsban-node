@@ -70,8 +70,8 @@ mod kdf;
 pub use kdf::KeyDerivationFunction;
 use utils::{BufferWriter, Deserialize, Serialize, Stream};
 
-use std::fmt::Write;
 use std::num::ParseIntError;
+use std::{fmt::Write, str::FromStr};
 
 pub fn encode_hex(i: u128) -> String {
     let mut result = String::with_capacity(32);
@@ -319,6 +319,20 @@ impl Networks {
             Networks::NanoBetaNetwork => "beta",
             Networks::NanoLiveNetwork => "live",
             Networks::NanoTestNetwork => "test",
+        }
+    }
+}
+
+impl FromStr for Networks {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Networks, Self::Err> {
+        match s {
+            "dev" => Ok(Networks::NanoDevNetwork),
+            "beta" => Ok(Networks::NanoBetaNetwork),
+            "live" => Ok(Networks::NanoLiveNetwork),
+            "test" => Ok(Networks::NanoTestNetwork),
+            _ => Err("Invalid network"),
         }
     }
 }

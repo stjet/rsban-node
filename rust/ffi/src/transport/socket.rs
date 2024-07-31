@@ -1,18 +1,14 @@
 use crate::{
     utils::{AsyncRuntimeHandle, ThreadPoolHandle},
-    ErrorCodeDto, StatHandle, VoidPointerCallback,
+    ErrorCodeDto, StatHandle,
 };
 use num::FromPrimitive;
 use rsnano_node::{
     stats::SocketStats,
-    transport::{
-        alive_sockets, CompositeSocketObserver, Socket, SocketBuilder, SocketExtensions,
-        SocketObserver, WriteCallback,
-    },
+    transport::{alive_sockets, Socket, SocketBuilder},
     utils::ErrorCode,
 };
 use std::{
-    ffi::c_void,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
     ops::Deref,
     sync::Arc,
@@ -49,7 +45,6 @@ pub unsafe extern "C" fn rsn_socket_create(
     default_timeout_s: u64,
     silent_connection_tolerance_time_s: u64,
     idle_timeout_s: u64,
-    callback_handler: *mut c_void,
     max_write_queue_len: usize,
     async_rt: &AsyncRuntimeHandle,
 ) -> *mut SocketHandle {
@@ -58,17 +53,13 @@ pub unsafe extern "C" fn rsn_socket_create(
     let stats = (*stats_handle).deref().clone();
 
     let socket_stats = Arc::new(SocketStats::new(stats));
-    let ffi_observer = Arc::new(SocketFfiObserver::new(callback_handler));
 
     let runtime = Arc::downgrade(&async_rt.0);
     let socket = SocketBuilder::new(endpoint_type, thread_pool, runtime)
         .default_timeout(Duration::from_secs(default_timeout_s))
         .silent_connection_tolerance_time(Duration::from_secs(silent_connection_tolerance_time_s))
         .idle_timeout(Duration::from_secs(idle_timeout_s))
-        .observer(Arc::new(CompositeSocketObserver::new(vec![
-            socket_stats,
-            ffi_observer,
-        ])))
+        .observer(socket_stats)
         .max_write_queue_len(max_write_queue_len)
         .finish();
     debug!(socket_id = socket.socket_id, "Socket created from FFI");
@@ -81,152 +72,7 @@ pub unsafe extern "C" fn rsn_socket_destroy(handle: *mut SocketHandle) {
     drop(Box::from_raw(handle))
 }
 
-type SocketConnectCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto);
-pub type SocketDestroyContext = unsafe extern "C" fn(*mut c_void);
-
-struct ConnectCallbackWrapper {
-    callback: SocketConnectCallback,
-    destory_context: SocketDestroyContext,
-    context: *mut c_void,
-}
-
-unsafe impl Send for ConnectCallbackWrapper {}
-
-impl ConnectCallbackWrapper {
-    fn new(
-        callback: SocketConnectCallback,
-        destory_context: SocketDestroyContext,
-        context: *mut c_void,
-    ) -> Self {
-        Self {
-            callback,
-            destory_context,
-            context,
-        }
-    }
-    fn execute(&self, ec: ErrorCode) {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        unsafe { (self.callback)(self.context, &ec_dto) };
-    }
-}
-
-impl Drop for ConnectCallbackWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.destory_context)(self.context) };
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_connect(
-    handle: *mut SocketHandle,
-    endpoint: *const EndpointDto,
-    callback: SocketConnectCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-) {
-    let cb_wrapper = ConnectCallbackWrapper::new(callback, destroy_context, context);
-    let cb = Box::new(move |ec| {
-        cb_wrapper.execute(ec);
-    });
-    (*handle).async_connect((&*endpoint).into(), cb);
-}
-
-pub struct ReadCallbackWrapper {
-    callback: SocketReadCallback,
-    destory_context: SocketDestroyContext,
-    context: *mut c_void,
-}
-
-impl ReadCallbackWrapper {
-    pub fn new(
-        callback: SocketReadCallback,
-        destory_context: SocketDestroyContext,
-        context: *mut c_void,
-    ) -> Self {
-        Self {
-            callback,
-            destory_context,
-            context,
-        }
-    }
-
-    pub fn execute(&self, ec: ErrorCode, size: usize) {
-        let ec_dto = ErrorCodeDto::from(&ec);
-        unsafe { (self.callback)(self.context, &ec_dto, size) };
-    }
-}
-
-impl Drop for ReadCallbackWrapper {
-    fn drop(&mut self) {
-        unsafe { (self.destory_context)(self.context) };
-    }
-}
-
-unsafe impl Send for ReadCallbackWrapper {}
-unsafe impl Sync for ReadCallbackWrapper {}
-
-pub type SocketReadCallback = unsafe extern "C" fn(*mut c_void, *const ErrorCodeDto, usize);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_async_write(
-    handle: *mut SocketHandle,
-    buffer: *const u8,
-    buffer_len: usize,
-    callback: SocketReadCallback,
-    destroy_context: SocketDestroyContext,
-    context: *mut c_void,
-    traffic_type: u8,
-) {
-    let cb: Option<WriteCallback> = if !context.is_null() {
-        let cb_wrapper = ReadCallbackWrapper::new(callback, destroy_context, context);
-        Some(Box::new(move |ec, size| {
-            cb_wrapper.execute(ec, size);
-        }))
-    } else {
-        None
-    };
-    let buffer = if buffer.is_null() {
-        &[]
-    } else {
-        std::slice::from_raw_parts(buffer, buffer_len)
-    };
-    (*handle).async_write(
-        &Arc::new(buffer.to_vec()),
-        cb,
-        FromPrimitive::from_u8(traffic_type).unwrap(),
-    );
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_close(handle: *mut SocketHandle) {
-    (*handle).close()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_close_internal(handle: *mut SocketHandle) {
-    (*handle).close_internal();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_socket_checkup(handle: *mut SocketHandle) {
-    (*handle).ongoing_checkup();
-}
-
 pub struct AsyncWriteCallbackHandle(Option<Box<dyn FnOnce(ErrorCode, usize)>>);
-
-type SocketConnectedCallback = unsafe extern "C" fn(*mut c_void, *mut SocketHandle);
-static mut SOCKET_CONNECTED_CALLBACK: Option<SocketConnectedCallback> = None;
-static mut DELETE_TCP_SOCKET_CALLBACK: Option<VoidPointerCallback> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_tcp_socket_connected(f: SocketConnectedCallback) {
-    SOCKET_CONNECTED_CALLBACK = Some(f);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_callback_delete_tcp_socket_callback(f: VoidPointerCallback) {
-    DELETE_TCP_SOCKET_CALLBACK = Some(f);
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_write_callback_execute(
@@ -243,38 +89,6 @@ pub unsafe extern "C" fn rsn_async_write_callback_execute(
 #[no_mangle]
 pub unsafe extern "C" fn rsn_async_write_callback_destroy(callback: *mut AsyncWriteCallbackHandle) {
     drop(Box::from_raw(callback))
-}
-
-pub struct SocketFfiObserver {
-    handle: *mut c_void,
-}
-
-impl SocketFfiObserver {
-    pub fn new(handle: *mut c_void) -> Self {
-        Self { handle }
-    }
-}
-
-unsafe impl Send for SocketFfiObserver {}
-unsafe impl Sync for SocketFfiObserver {}
-
-impl SocketObserver for SocketFfiObserver {
-    fn socket_connected(&self, socket: Arc<Socket>) {
-        unsafe {
-            SOCKET_CONNECTED_CALLBACK.expect("SOCKET_CONNECTED_CALLBACK missing")(
-                self.handle,
-                SocketHandle::new(socket),
-            )
-        }
-    }
-}
-
-impl Drop for SocketFfiObserver {
-    fn drop(&mut self) {
-        unsafe {
-            DELETE_TCP_SOCKET_CALLBACK.expect("DELETE_TCP_SOCKET_CALLBACK missing")(self.handle)
-        }
-    }
 }
 
 #[derive(Clone)]

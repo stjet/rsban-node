@@ -22,11 +22,6 @@ namespace transport
 
 			std::string to_string () const override;
 
-			void send (nano::message & message_a,
-			std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,
-			nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter,
-			nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
-
 			uint8_t get_network_version () const override
 			{
 				return rsnano::rsn_channel_fake_network_version (handle);

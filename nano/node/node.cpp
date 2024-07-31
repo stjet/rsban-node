@@ -136,10 +136,9 @@ std::shared_ptr<nano::node_observers> & observers)
 {
 	auto config_dto{ config_a.to_dto () };
 	auto params_dto{ config_a.network_params.to_dto () };
-	auto socket_observer = new std::weak_ptr<nano::node_observers> (observers);
 	auto observers_context = new std::weak_ptr<nano::node_observers> (observers);
 	return rsnano::rsn_node_create (application_path_a.c_str (), async_rt_a.handle, &config_dto, &params_dto,
-	flags_a.handle, work_a.handle, socket_observer, observers_context, delete_observers_context,
+	flags_a.handle, work_a.handle, observers_context, delete_observers_context,
 	call_election_ended, call_account_balance_changed, on_vote_processed);
 }
 }

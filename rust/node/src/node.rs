@@ -15,9 +15,9 @@ use crate::{
         ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
         ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
         PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorExt, VoteApplier,
-        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
-        VoteProcessorExt, VoteProcessorQueue, VoteRouter,
+        RecentlyConfirmedCache, RepTiers, RequestAggregator, VoteApplier, VoteBroadcaster,
+        VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt,
+        VoteProcessorQueue, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -28,8 +28,8 @@ use crate::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
         MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
         OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SocketObserver, SynCookies, TcpListener,
-        TcpListenerExt, TrafficType,
+        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -47,11 +47,12 @@ use rsnano_core::{
         as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree,
         SystemTimeFactory,
     },
-    work::WorkPoolImpl,
-    BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Vote, VoteCode, VoteSource,
+    work::{WorkPool, WorkPoolImpl},
+    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, Vote, VoteCode,
+    VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Message};
+use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -139,7 +140,6 @@ impl Node {
         network_params: NetworkParams,
         flags: NodeFlags,
         work: Arc<WorkPoolImpl>,
-        socket_observer: Arc<dyn SocketObserver>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
         on_vote: Box<
@@ -244,7 +244,6 @@ impl Node {
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
-            observer: socket_observer.clone(),
         }));
 
         let telemetry_config = TelementryConfig {
@@ -294,7 +293,7 @@ impl Node {
         ));
 
         let rep_tiers = Arc::new(RepTiers::new(
-            ledger.clone(),
+            rep_weights.clone(),
             network_params.clone(),
             online_reps.clone(),
             stats.clone(),
@@ -476,7 +475,6 @@ impl Node {
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
-            socket_observer.clone(),
             stats.clone(),
             outbound_limiter.clone(),
             block_processor.clone(),
@@ -507,7 +505,6 @@ impl Node {
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            socket_observer.clone(),
             workers.clone(),
             network_params.clone(),
             response_server_factory.clone(),
@@ -540,7 +537,6 @@ impl Node {
             network.clone(),
             network_params.clone(),
             async_rt.clone(),
-            socket_observer,
             stats.clone(),
             workers.clone(),
             response_server_factory.clone(),
@@ -1186,13 +1182,92 @@ impl Node {
             .add_blocking(Arc::new(block), BlockSource::Local)
     }
 
+    pub fn process(&self, mut block: BlockEnum) -> Result<(), BlockStatus> {
+        let mut tx = self.ledger.rw_txn();
+        self.ledger.process(&mut tx, &mut block)
+    }
+
+    pub fn process_multi(&self, blocks: &[BlockEnum]) {
+        let mut tx = self.ledger.rw_txn();
+        for block in blocks {
+            self.ledger.process(&mut tx, &mut block.clone()).unwrap();
+        }
+    }
+
+    pub fn process_active(&self, block: BlockEnum) {
+        self.block_processor.process_active(Arc::new(block));
+    }
+
+    pub fn process_local_multi(&self, blocks: &[BlockEnum]) {
+        for block in blocks {
+            let status = self.process_local(block.clone()).unwrap();
+            if !matches!(status, BlockStatus::Progress | BlockStatus::Old) {
+                panic!("could not process block!");
+            }
+        }
+    }
+
     pub fn block(&self, hash: &BlockHash) -> Option<BlockEnum> {
         let tx = self.ledger.read_txn();
         self.ledger.any().get_block(&tx, hash)
     }
 
+    pub fn latest(&self, account: &Account) -> BlockHash {
+        let tx = self.ledger.read_txn();
+        self.ledger
+            .any()
+            .account_head(&tx, account)
+            .unwrap_or_default()
+    }
+
     pub fn get_node_id(&self) -> PublicKey {
         self.node_id.public_key()
+    }
+
+    pub fn work_generate_dev(&self, root: Root) -> u64 {
+        self.work.generate_dev2(root).unwrap()
+    }
+
+    pub fn block_exists(&self, hash: &BlockHash) -> bool {
+        let tx = self.ledger.read_txn();
+        self.ledger.any().block_exists(&tx, hash)
+    }
+
+    pub fn blocks_exist(&self, hashes: &[BlockEnum]) -> bool {
+        self.block_hashes_exist(hashes.iter().map(|b| b.hash()))
+    }
+
+    pub fn block_hashes_exist(&self, hashes: impl IntoIterator<Item = BlockHash>) -> bool {
+        let tx = self.ledger.read_txn();
+        hashes
+            .into_iter()
+            .all(|h| self.ledger.any().block_exists(&tx, &h))
+    }
+
+    pub fn balance(&self, account: &Account) -> Amount {
+        let tx = self.ledger.read_txn();
+        self.ledger
+            .any()
+            .account_balance(&tx, account)
+            .unwrap_or_default()
+    }
+
+    pub fn confirm_multi(&self, blocks: &[BlockEnum]) {
+        for block in blocks {
+            self.confirm(block.hash());
+        }
+    }
+
+    pub fn confirm(&self, hash: BlockHash) {
+        let mut tx = self.ledger.rw_txn();
+        self.ledger.confirm(&mut tx, hash);
+    }
+
+    pub fn blocks_confirmed(&self, blocks: &[BlockEnum]) -> bool {
+        let tx = self.ledger.read_txn();
+        blocks
+            .iter()
+            .all(|b| self.ledger.confirmed().block_exists(&tx, &b.hash()))
     }
 }
 
@@ -1204,6 +1279,12 @@ pub trait NodeExt {
     fn backup_wallet(&self);
     fn search_receivable_all(&self);
     fn bootstrap_wallet(&self);
+    fn flood_block_many(
+        &self,
+        blocks: VecDeque<BlockEnum>,
+        callback: Box<dyn FnOnce() + Send + Sync>,
+        delay: Duration,
+    );
 }
 
 impl NodeExt for Arc<Node> {
@@ -1413,6 +1494,31 @@ impl NodeExt for Arc<Node> {
             self.bootstrap_initiator.bootstrap_wallet(accounts)
         }
     }
+
+    fn flood_block_many(
+        &self,
+        mut blocks: VecDeque<BlockEnum>,
+        callback: Box<dyn FnOnce() + Send + Sync>,
+        delay: Duration,
+    ) {
+        if let Some(block) = blocks.pop_front() {
+            let publish = Message::Publish(Publish::new_forward(block));
+            self.network.flood_message(&publish, 1.0);
+            if blocks.is_empty() {
+                callback()
+            } else {
+                let self_w = Arc::downgrade(self);
+                self.workers.add_delayed_task(
+                    delay,
+                    Box::new(move || {
+                        if let Some(node) = self_w.upgrade() {
+                            node.flood_block_many(blocks, callback, delay);
+                        }
+                    }),
+                );
+            }
+        }
+    }
 }
 
 fn make_store(
@@ -1465,7 +1571,7 @@ struct RpcCallbackMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{transport::NullSocketObserver, utils::TimerStartEvent};
+    use crate::utils::TimerStartEvent;
     use rsnano_core::Networks;
     use std::ops::Deref;
     use uuid::Uuid;
@@ -1549,7 +1655,6 @@ mod tests {
                 network_params,
                 flags,
                 work,
-                Arc::new(NullSocketObserver::new()),
                 Box::new(|_, _, _, _, _, _| {}),
                 Box::new(|_, _| {}),
                 Box::new(|_, _, _, _| {}),

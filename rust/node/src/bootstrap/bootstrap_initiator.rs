@@ -8,7 +8,7 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Network, OutboundBandwidthLimiter, SocketObserver},
+    transport::{Network, OutboundBandwidthLimiter},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
@@ -112,7 +112,6 @@ impl BootstrapInitiator {
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
-        socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
@@ -145,7 +144,6 @@ impl BootstrapInitiator {
                 network,
                 async_rt,
                 workers,
-                socket_observer,
                 stats,
                 outbound_limiter,
                 block_processor,
@@ -204,7 +202,7 @@ impl BootstrapInitiator {
 
     fn remove_attempt(&self, attempt_a: Arc<BootstrapStrategy>) {
         let mut guard = self.mutex.lock().unwrap();
-        let incremental_id = attempt_a.attempt().incremental_id as usize;
+        let incremental_id = attempt_a.incremental_id() as usize;
         let attempt = guard.attempts_list.get(&incremental_id).cloned();
         if let Some(attempt) = attempt {
             self.attempts.lock().unwrap().remove(incremental_id);
@@ -221,7 +219,7 @@ impl BootstrapInitiator {
         self.condition.notify_all();
     }
 
-    pub fn current_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
+    pub fn current_legacy_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
         let guard = self.mutex.lock().unwrap();
         guard.find_attempt(BootstrapMode::Legacy)
     }
@@ -526,7 +524,7 @@ impl Data {
 
     fn new_attempt(&self) -> Option<Arc<BootstrapStrategy>> {
         for i in self.attempts_list.values() {
-            if !i.attempt().started.swap(true, Ordering::SeqCst) {
+            if i.set_started() {
                 return Some(Arc::clone(i));
             }
         }
@@ -535,7 +533,7 @@ impl Data {
 
     fn has_new_attempts(&self) -> bool {
         for i in self.attempts_list.values() {
-            if !i.attempt().started.load(Ordering::SeqCst) {
+            if !i.started() {
                 return true;
             }
         }

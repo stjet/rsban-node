@@ -326,6 +326,8 @@ impl Display for TelemetryData {
 
 #[cfg(test)]
 mod tests {
+    use crate::{assert_deserializable, Message};
+
     use super::*;
 
     // original test: telemetry.signatures
@@ -353,6 +355,19 @@ mod tests {
         data.sign(&keys)?;
         assert_eq!(data.validate_signature(), true);
         Ok(())
+    }
+
+    #[test]
+    fn max_possible_size() {
+        let keys = KeyPair::new();
+        let mut data = test_data(&keys);
+        data.unknown_data = vec![
+            1;
+            TelemetryData::SIZE_MASK as usize
+                - TelemetryData::serialized_size_of_known_data()
+        ];
+
+        assert_deserializable(&Message::TelemetryAck(TelemetryAck(Some(data))));
     }
 
     fn test_data(keys: &KeyPair) -> TelemetryData {

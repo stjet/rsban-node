@@ -9,6 +9,7 @@ use crate::{
         VoteHandle, VoteProcessorHandle, VoteProcessorQueueHandle,
         VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
     },
+    core::BlockVecHandle,
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
     messages::MessageHandle,
@@ -17,7 +18,7 @@ use crate::{
     to_rust_string,
     transport::{
         ChannelHandle, EndpointDto, NetworkFilterHandle, NetworkThreadsHandle,
-        OutboundBandwidthLimiterHandle, SocketFfiObserver, SynCookiesHandle, TcpChannelsHandle,
+        OutboundBandwidthLimiterHandle, SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -27,7 +28,7 @@ use crate::{
     VoidPointerCallback,
 };
 use rsnano_core::{
-    utils::NULL_ENDPOINT, Account, Amount, BlockHash, Root, Vote, VoteCode, VoteSource,
+    utils::NULL_ENDPOINT, Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
 };
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
@@ -35,9 +36,11 @@ use rsnano_node::{
     transport::{ChannelEnum, PeerConnectorExt},
 };
 use std::{
+    collections::VecDeque,
     ffi::{c_char, c_void},
     net::SocketAddrV6,
     sync::Arc,
+    time::Duration,
 };
 
 pub struct NodeHandle(Arc<Node>);
@@ -50,7 +53,6 @@ pub unsafe extern "C" fn rsn_node_create(
     params: &NetworkParamsDto,
     flags: &NodeFlagsHandle,
     work: &WorkPoolHandle,
-    socket_observer: *mut c_void,
     observers_context: *mut c_void,
     delete_observers_context: VoidPointerCallback,
     election_ended: ElectionEndedCallback,
@@ -58,7 +60,6 @@ pub unsafe extern "C" fn rsn_node_create(
     vote_processed: VoteProcessorVoteProcessedCallback,
 ) -> *mut NodeHandle {
     let path = to_rust_string(path);
-    let socket_observer = Arc::new(SocketFfiObserver::new(socket_observer));
 
     let ctx_wrapper = Arc::new(ContextWrapper::new(
         observers_context,
@@ -116,7 +117,6 @@ pub unsafe extern "C" fn rsn_node_create(
         params.try_into().unwrap(),
         flags.lock().unwrap().clone(),
         Arc::clone(work),
-        socket_observer,
         election_ended_wrapper,
         account_balance_changed_wrapper,
         vote_processed,
@@ -565,4 +565,22 @@ pub unsafe extern "C" fn rsn_node_list_online_reps(handle: &NodeHandle, result: 
 pub unsafe extern "C" fn rsn_node_set_online_weight(handle: &NodeHandle, online: *const u8) {
     let amount = Amount::from_ptr(online);
     handle.0.online_reps.lock().unwrap().set_online(amount);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_flood_block_many(
+    handle: &NodeHandle,
+    blocks: &BlockVecHandle,
+    delay_ms: u64,
+    callback: VoidPointerCallback,
+    context: *mut c_void,
+    drop_context: VoidPointerCallback,
+) {
+    let ctx_wrapper = ContextWrapper::new(context, drop_context);
+    let blocks: VecDeque<BlockEnum> = blocks.0.iter().map(|b| b.as_ref().clone()).collect();
+    handle.0.flood_block_many(
+        blocks,
+        Box::new(move || callback(ctx_wrapper.get_context())),
+        Duration::from_millis(delay_ms),
+    )
 }

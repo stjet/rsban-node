@@ -155,6 +155,14 @@ public:
 			push_back (*block);
 		}
 	}
+	block_vec (std::deque<std::shared_ptr<nano::block>> const & blocks_a) :
+		handle{ rsnano::rsn_block_vec_create () }
+	{
+		for (const auto & block : blocks_a)
+		{
+			push_back (*block);
+		}
+	}
 
 	block_vec (block_vec const &) = delete;
 

@@ -9,7 +9,7 @@ edition = "2021"
 output_tracking = []
 
 [dev-dependencies]
-rsnano_store_lmdb = {path = ".", features=["output_tracking"]}
+rsnano_store_lmdb = { path = ".", features = ["output_tracking"] }
 
 [dependencies]
 rsnano_core = { path = "../core" }
@@ -19,7 +19,7 @@ primitive-types = "0"
 anyhow = "1"
 uuid = { version = "0", features = ["v4"] }
 num-traits = "0"
-rand = {version="0" }
+rand = { version = "0" }
 num-derive = "0"
 serde_json = "1"
 tracing = "0.1"

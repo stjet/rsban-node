@@ -1,58 +1,7 @@
-use super::{create_message_handle2, message_handle_clone, MessageHandle};
-use crate::{NetworkConstantsDto, StringDto};
-use rsnano_core::{Account, BlockHash, PublicKey, Signature};
-use rsnano_messages::{
-    Message, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse, V2Payload,
-};
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_message_node_id_handshake_create(
-    constants: *mut NetworkConstantsDto,
-    query: *const u8,
-    resp_node_id: *const u8,
-    resp_signature: *const u8,
-    resp_salt: *const u8,
-    resp_genesis: *const u8,
-) -> *mut MessageHandle {
-    let mut is_v2 = false;
-    let query = if !query.is_null() {
-        let cookie = std::slice::from_raw_parts(query, 32).try_into().unwrap();
-        is_v2 = true;
-        Some(NodeIdHandshakeQuery { cookie })
-    } else {
-        None
-    };
-
-    let response = if !resp_node_id.is_null() && !resp_signature.is_null() {
-        let node_id = Account::from_ptr(resp_node_id);
-        let signature = Signature::from_ptr(resp_signature);
-        let v2 = if resp_salt.is_null() {
-            None
-        } else {
-            is_v2 = true;
-            Some(V2Payload {
-                salt: std::slice::from_raw_parts(resp_salt, 32)
-                    .try_into()
-                    .unwrap(),
-                genesis: BlockHash::from_ptr(resp_genesis),
-            })
-        };
-        Some(NodeIdHandshakeResponse {
-            node_id,
-            signature,
-            v2,
-        })
-    } else {
-        None
-    };
-    create_message_handle2(constants, move || {
-        Message::NodeIdHandshake(NodeIdHandshake {
-            query,
-            response,
-            is_v2,
-        })
-    })
-}
+use super::{message_handle_clone, MessageHandle};
+use crate::StringDto;
+use rsnano_core::{BlockHash, PublicKey, Signature};
+use rsnano_messages::{Message, NodeIdHandshake, NodeIdHandshakeResponse, V2Payload};
 
 #[no_mangle]
 pub extern "C" fn rsn_message_node_id_handshake_clone(

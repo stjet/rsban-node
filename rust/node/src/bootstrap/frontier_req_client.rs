@@ -1,6 +1,6 @@
 use super::{BootstrapAttemptLegacy, BootstrapClient, BootstrapConnections};
 use crate::{
-    bootstrap::{bootstrap_limits, BootstrapConnectionsExt, PullInfo},
+    bootstrap::{bootstrap_limits, BootstrapAttemptTrait, BootstrapConnectionsExt, PullInfo},
     transport::{BufferDropPolicy, TrafficType},
     utils::{ErrorCode, ThreadPool},
 };
@@ -183,6 +183,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                     this_l.receive_frontier();
                 } else {
                     debug!("Error while sending bootstrap request: {:?}", ec);
+                    {
+                        let mut guard = this_l.data.lock().unwrap();
+                        guard.result = Some(true); // Failed
+                        this_l.condition.notify_all();
+                    }
                 }
             })),
             BufferDropPolicy::NoLimiterDrop,
@@ -204,6 +209,11 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                     }));
                 } else {
                     debug!("Invalid size: expected {}, got {}", SIZE_FRONTIER, size);
+                    {
+                        let mut guard = this_l.data.lock().unwrap();
+                        guard.result = Some(true); // Failed
+                        this_l.condition.notify_all();
+                    }
                 }
             }),
         );
@@ -250,7 +260,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                 return;
             }
 
-            if attempt.attempt.should_log() {
+            if attempt.should_log() {
                 debug!(
                     "Received {} frontiers from {}",
                     guard.count,
@@ -289,7 +299,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                                     attempts: 0,
                                     processed: 0,
                                     retry_limit: self.retry_limit,
-                                    bootstrap_id: attempt.attempt.incremental_id,
+                                    bootstrap_id: attempt.incremental_id(),
                                 };
                                 attempt.add_frontier(pull);
                                 // Either we're behind or there's a fork we differ on
@@ -309,7 +319,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                             attempts: 0,
                             processed: 0,
                             retry_limit: self.retry_limit,
-                            bootstrap_id: attempt.attempt.incremental_id,
+                            bootstrap_id: attempt.incremental_id(),
                         };
                         attempt.add_frontier(pull);
                     }
@@ -323,7 +333,7 @@ impl FrontierReqClientExt for Arc<FrontierReqClient> {
                         attempts: 0,
                         processed: 0,
                         retry_limit: self.retry_limit,
-                        bootstrap_id: attempt.attempt.incremental_id,
+                        bootstrap_id: attempt.incremental_id(),
                     };
 
                     attempt.add_frontier(pull);

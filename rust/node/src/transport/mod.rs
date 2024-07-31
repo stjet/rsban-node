@@ -34,7 +34,7 @@ pub use bandwidth_limiter::{
 };
 pub use block_deserializer::BlockDeserializer;
 pub use channel_fake::ChannelFake;
-pub use channel_inproc::{ChannelInProc, InboundCallback};
+pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
 pub use fair_queue::*;
 pub(crate) use handshake_process::*;
@@ -117,7 +117,8 @@ pub trait Channel {
     fn set_node_id(&self, id: Account);
     fn is_alive(&self) -> bool;
     fn get_type(&self) -> TransportType;
-    fn remote_endpoint(&self) -> SocketAddrV6;
+    fn local_addr(&self) -> SocketAddrV6;
+    fn remote_addr(&self) -> SocketAddrV6;
     fn peering_endpoint(&self) -> Option<SocketAddrV6>;
     fn network_version(&self) -> u8;
     fn direction(&self) -> ChannelDirection;
@@ -149,7 +150,7 @@ pub enum ChannelEnum {
 
 impl ChannelEnum {
     #[allow(dead_code)]
-    pub(crate) fn new_null() -> Self {
+    pub fn new_null() -> Self {
         Self::new_null_with_channel_id(42)
     }
 

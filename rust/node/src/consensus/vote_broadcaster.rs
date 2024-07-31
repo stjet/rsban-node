@@ -10,6 +10,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+/// Broadcast a vote to PRs and some non-PRs
 pub struct VoteBroadcaster {
     online_reps: Arc<Mutex<OnlineReps>>,
     network: Arc<Network>,
@@ -32,6 +33,7 @@ impl VoteBroadcaster {
         }
     }
 
+    /// Broadcast vote to PRs and some non-PRs
     pub fn broadcast(&self, vote: Arc<Vote>) {
         self.flood_vote_pr(vote.deref().clone());
 

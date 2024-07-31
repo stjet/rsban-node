@@ -1130,44 +1130,8 @@ std::size_t nano::telemetry_data::size ()
  * node_id_handshake
  */
 
-namespace
-{
-rsnano::MessageHandle * create_node_id_handshake_handle (nano::network_constants const & constants, std::optional<nano::node_id_handshake::query_payload> query, std::optional<nano::node_id_handshake::response_payload> response)
-{
-	auto constants_dto{ constants.to_dto () };
-	const uint8_t * query_bytes = nullptr;
-	if (query)
-	{
-		query_bytes = query->cookie.bytes.data ();
-	}
-
-	const uint8_t * acc_bytes = nullptr;
-	const uint8_t * sig_bytes = nullptr;
-	const uint8_t * salt_bytes = nullptr;
-	const uint8_t * genesis_bytes = nullptr;
-	if (response)
-	{
-		acc_bytes = response->node_id.bytes.data ();
-		sig_bytes = response->signature.bytes.data ();
-		if (response->v2)
-		{
-			salt_bytes = response->v2->salt.bytes.data ();
-			genesis_bytes = response->v2->genesis.bytes.data ();
-		}
-	}
-
-	return rsnano::rsn_message_node_id_handshake_create (&constants_dto, query_bytes, acc_bytes, sig_bytes, salt_bytes, genesis_bytes);
-}
-
-}
-
 nano::node_id_handshake::node_id_handshake (node_id_handshake const & other_a) :
 	message{ rsnano::rsn_message_node_id_handshake_clone (other_a.handle) }
-{
-}
-
-nano::node_id_handshake::node_id_handshake (nano::network_constants const & constants, std::optional<query_payload> query_a, std::optional<response_payload> response_a) :
-	message (create_node_id_handshake_handle (constants, query_a, response_a))
 {
 }
 

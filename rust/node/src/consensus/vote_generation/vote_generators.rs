@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{vote_generator::VoteGenerator, LocalVoteHistory};
-use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, PublicKey, Root, Vote};
+use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, PublicKey, Root};
 use rsnano_ledger::Ledger;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -120,16 +120,6 @@ impl VoteGenerators {
         channel: Arc<ChannelEnum>,
     ) -> usize {
         self.non_final_vote_generator.generate(blocks, channel)
-    }
-
-    pub fn set_reply_action(
-        &self,
-        action: Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
-    ) {
-        self.non_final_vote_generator
-            .set_reply_action(action.clone());
-
-        self.final_vote_generator.set_reply_action(action.clone());
     }
 
     pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

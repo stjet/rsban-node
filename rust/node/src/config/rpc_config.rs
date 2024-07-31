@@ -1,11 +1,10 @@
+use super::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 use std::{
     net::Ipv6Addr,
     path::{Path, PathBuf},
 };
-
-use super::NetworkConstants;
 
 pub fn get_default_rpc_filepath() -> Result<PathBuf> {
     Ok(get_default_rpc_filepath_from(

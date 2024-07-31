@@ -83,7 +83,7 @@ impl BulkPullClient {
             known_account: Mutex::new(Account::zero()),
             bootstrap_initiator,
         };
-        result.attempt.attempt().condition.notify_all();
+        result.attempt.notify();
         result
     }
 }
@@ -95,7 +95,7 @@ impl Drop for BulkPullClient {
         let expected = self.expected.lock().unwrap();
         if *expected != self.pull.end && !expected.is_zero() {
             self.pull.head = *expected;
-            if self.attempt.attempt().mode != BootstrapMode::Legacy {
+            if self.attempt.mode() != BootstrapMode::Legacy {
                 self.pull.account_or_head = expected.clone().into();
             }
             self.pull.processed += self.pull_blocks.load(Ordering::SeqCst)
@@ -112,7 +112,7 @@ impl Drop for BulkPullClient {
         } else {
             self.bootstrap_initiator.remove_from_cache(&self.pull);
         }
-        self.attempt.attempt().pull_finished();
+        self.attempt.pull_finished();
     }
 }
 
@@ -147,11 +147,8 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             "Requesting account or head"
         );
 
-        if self.attempt.attempt().should_log() {
-            debug!(
-                "Accounts in pull queue: {}",
-                self.attempt.attempt().pulling.load(Ordering::Relaxed)
-            );
+        if self.attempt.should_log() {
+            debug!("Accounts in pull queue: {}", self.attempt.pulling());
         }
 
         let self_clone = Arc::clone(self);
@@ -187,9 +184,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             self.workers.add_delayed_task(
                 Duration::from_secs(1),
                 Box::new(move || {
-                    if !self_clone.connection.pending_stop()
-                        && !self_clone.attempt.attempt().stopped.load(Ordering::SeqCst)
-                    {
+                    if !self_clone.connection.pending_stop() && !self_clone.attempt.stopped() {
                         self_clone.throttled_receive_block();
                     }
                 }),
@@ -260,10 +255,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             self.connection.set_start_time();
         }
 
-        self.attempt
-            .attempt()
-            .total_blocks
-            .fetch_add(1, Ordering::SeqCst);
+        self.attempt.inc_total_blocks();
 
         self.pull_blocks.fetch_add(1, Ordering::SeqCst);
         let block = Arc::new(block);
@@ -281,7 +273,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             /* Process block in lazy pull if not stopped
             Stop usual pull request with unexpected block & more than 16k blocks processed
             to prevent spam */
-            if self.attempt.attempt().mode != BootstrapMode::Legacy
+            if self.attempt.mode() != BootstrapMode::Legacy
                 || self.unexpected_count.load(Ordering::SeqCst) < 16384
             {
                 self.throttled_receive_block();

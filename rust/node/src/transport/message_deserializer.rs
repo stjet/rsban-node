@@ -100,6 +100,8 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
         };
 
         if let Some(block) = block {
+            // work is checked multiple times - here and in the block processor and maybe
+            // even more... TODO eliminate duplicate work checks
             if self.work_thresholds.validate_entry_block(block) {
                 return Err(ParseMessageError::InsufficientWork);
             }
@@ -124,5 +126,56 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
         } else {
             Ok(0)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::transport::VecBufferReader;
+
+    #[tokio::test]
+    async fn insufficient_work() {
+        let protocol = ProtocolInfo::default();
+        let mut publish = Publish::new_test_instance();
+        publish.block.set_work(0);
+        let message = Message::Publish(publish);
+        let mut serializer = MessageSerializer::new(protocol);
+        let buffer = serializer.serialize(&message).to_vec();
+        let reader = VecBufferReader::new(buffer);
+
+        let deserializer = MessageDeserializer::new(
+            protocol,
+            WorkThresholds::publish_full().clone(),
+            Arc::new(NetworkFilter::default()),
+            reader,
+        );
+
+        let error = deserializer.read().await.unwrap_err();
+
+        assert_eq!(error, ParseMessageError::InsufficientWork);
+    }
+
+    // Send two publish messages and asserts that the duplication is detected.
+    #[tokio::test]
+    async fn duplicate_detection() {
+        let protocol = ProtocolInfo::default();
+        let message = Message::Publish(Publish::new_test_instance());
+        let mut serializer = MessageSerializer::new(protocol);
+        let mut buffer = serializer.serialize(&message).to_vec();
+        buffer.extend_from_slice(serializer.serialize(&message));
+        let reader = VecBufferReader::new(buffer);
+
+        let deserializer = MessageDeserializer::new(
+            protocol,
+            WorkThresholds::new(0, 0, 0),
+            Arc::new(NetworkFilter::default()),
+            reader,
+        );
+
+        deserializer.read().await.unwrap();
+        let error = deserializer.read().await.unwrap_err();
+
+        assert_eq!(error, ParseMessageError::DuplicatePublishMessage);
     }
 }

@@ -35,12 +35,6 @@ public:
 	channel (nano::transport::channel const &) = delete;
 	virtual ~channel ();
 
-	virtual void send (nano::message & message_a,
-	std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,
-	nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter,
-	nano::transport::traffic_type = nano::transport::traffic_type::generic)
-	= 0;
-
 	void close ();
 
 	virtual std::string to_string () const = 0;

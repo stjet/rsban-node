@@ -36,9 +36,6 @@ namespace transport
 		rsnano::RequestResponseVisitorFactoryHandle * handle;
 	};
 
-	void channel_tcp_send_callback (void * context_a, const rsnano::ErrorCodeDto * ec_a, std::size_t size_a);
-	void delete_send_buffer_callback (void * context_a);
-
 	class channel_tcp : public nano::transport::channel
 	{
 		friend class nano::transport::tcp_channels;
@@ -57,7 +54,6 @@ namespace transport
 			channel{ handle_a } {};
 
 		uint8_t get_network_version () const override;
-		void send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr, nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter, nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
 		size_t socket_id () const;
 
 		std::string to_string () const override;

@@ -10,7 +10,7 @@
 
 using namespace std::chrono_literals;
 
-std::shared_ptr<nano::transport::channel_tcp> nano::test::establish_tcp (nano::test::system & system, nano::node & node, nano::endpoint const & endpoint)
+void nano::test::establish_tcp (nano::test::system & system, nano::node & node, nano::endpoint const & endpoint)
 {
 	debug_assert (node.network->endpoint () != endpoint && "Establishing TCP to self is not allowed");
 
@@ -21,7 +21,7 @@ std::shared_ptr<nano::transport::channel_tcp> nano::test::establish_tcp (nano::t
 		result = node.network->tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (endpoint));
 		return result != nullptr;
 	});
-	return result;
+	ASSERT_NE (nullptr, result);
 }
 
 // TODO: merge with make_disconnected_node

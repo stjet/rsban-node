@@ -85,12 +85,6 @@ pub unsafe extern "C" fn rsn_message_builder_work_generation(
 
 pub struct WebsocketListenerHandle(pub Arc<WebsocketListener>);
 
-impl WebsocketListenerHandle {
-    pub fn new(listener: Arc<WebsocketListener>) -> *mut Self {
-        Box::into_raw(Box::new(Self(listener)))
-    }
-}
-
 impl Deref for WebsocketListenerHandle {
     type Target = Arc<WebsocketListener>;
 

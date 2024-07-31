@@ -52,10 +52,10 @@ impl BulkPushClient {
         guard.result.unwrap()
     }
 
-    pub fn set_result(&self, result: bool) {
+    pub fn set_result(&self, failed: bool) {
         {
             let mut guard = self.data.lock().unwrap();
-            guard.result = Some(result);
+            guard.result = Some(failed);
         }
         self.condition.notify_all();
     }
@@ -83,6 +83,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
                     this_l.push();
                 } else {
                     debug!("Unable to send bulk push request: {:?}", ec);
+                    this_l.set_result(true);
                 }
             })),
             BufferDropPolicy::NoLimiterDrop,

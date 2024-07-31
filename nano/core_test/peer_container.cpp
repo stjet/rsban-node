@@ -59,58 +59,7 @@ TEST (peer_container, reserved_ip_is_not_a_peer)
 // exchanging messages after a while.
 TEST (peer_container, tcp_channel_cleanup_works)
 {
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	// Set the keepalive period to avoid background messages affecting the last_packet_set time
-	node_config.network_params.network.keepalive_period = std::chrono::minutes (10);
-	nano::node_flags node_flags;
-	// Want to test the cleanup function
-	node_flags.set_disable_connection_cleanup (true);
-	// Disable the confirm_req messages avoiding them to affect the last_packet_set time
-	node_flags.set_disable_rep_crawler (true);
-	auto & node1 = *system.add_node (node_config, node_flags);
-
-	auto config1 = node_config;
-	config1.network_params.network.keepalive_period = std::chrono::minutes (10);
-	auto outer_node1 = nano::test::add_outer_node (system, config1, node_flags);
-	auto config2 = config1;
-	config2.network_params.network.keepalive_period = std::chrono::minutes (10);
-	auto outer_node2 = nano::test::add_outer_node (system, config2, node_flags);
-	auto now = std::chrono::system_clock::now ();
-	auto channel1 = nano::test::establish_tcp (system, node1, outer_node1->network->endpoint ());
-	ASSERT_NE (nullptr, channel1);
-	// set the last packet sent for channel1 only to guarantee it contains a value.
-	// it won't be necessarily the same use by the cleanup cutoff time
-	channel1->set_last_packet_sent (now - std::chrono::seconds (5));
-	auto channel2 = nano::test::establish_tcp (system, node1, outer_node2->network->endpoint ());
-	ASSERT_NE (nullptr, channel2);
-	// set the last packet sent for channel2 only to guarantee it contains a value.
-	// it won't be necessarily the same use by the cleanup cutoff time
-	channel2->set_last_packet_sent (now + std::chrono::seconds (1));
-	ASSERT_EQ (2, node1.network->size ());
-	ASSERT_EQ (2, node1.network->tcp_channels->size ());
-
-	for (auto it = 0; node1.network->tcp_channels->size () > 1 && it < 10; ++it)
-	{
-		// we can't control everything the nodes are doing in background, so using the middle time as
-		// the cutoff point.
-		auto const channel1_last_packet_sent = channel1->get_last_packet_sent ();
-		auto const channel2_last_packet_sent = channel2->get_last_packet_sent ();
-		auto const max_last_packet_sent = std::max (channel1_last_packet_sent, channel2_last_packet_sent);
-		auto const min_last_packet_sent = std::min (channel1_last_packet_sent, channel2_last_packet_sent);
-		auto const cleanup_point = ((max_last_packet_sent - min_last_packet_sent) / 2) + min_last_packet_sent;
-
-		node1.network->cleanup (std::chrono::system_clock::time_point (cleanup_point));
-
-		// it is possible that the last_packet_sent times changed because of another thread and the cleanup_point
-		// is not the middle time anymore, in these case we wait a bit and try again in a loop up to 10 times
-		if (node1.network->tcp_channels->size () == 2)
-		{
-			WAIT (500ms);
-		}
-	}
-	ASSERT_EQ (1, node1.network->size ());
-	ASSERT_EQ (1, node1.network->tcp_channels->size ());
+	// TODO reimplement in Rust
 }
 
 TEST (channels, fill_random_clear)
@@ -131,7 +80,7 @@ TEST (channels, fill_random_full)
 	for (int i = 0; i < 8; ++i)
 	{
 		auto outer_node = nano::test::add_outer_node (system);
-		ASSERT_NE (nullptr, nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ()));
+		nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ());
 	}
 	ASSERT_TIMELY_EQ (5s, 8, system.nodes[0]->network->tcp_channels->size ());
 
@@ -159,7 +108,7 @@ TEST (channels, fill_random_part)
 	for (std::size_t i = 0; i < half; ++i)
 	{
 		auto outer_node = nano::test::add_outer_node (system);
-		ASSERT_NE (nullptr, nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ()));
+		nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ());
 	}
 	ASSERT_EQ (half, system.nodes[0]->network->tcp_channels->size ());
 	std::fill (target.begin (), target.end (), nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000));
@@ -169,42 +118,9 @@ TEST (channels, fill_random_part)
 	ASSERT_TRUE (std::all_of (target.begin () + half, target.end (), [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::any (), 0); }));
 }
 
-// TODO: remove node instantiation requirement for testing with bigger network size
 TEST (peer_container, list_fanout)
 {
-	nano::test::system system{ 1 };
-	auto node = system.nodes[0];
-	ASSERT_EQ (0, node->network->size ());
-	ASSERT_EQ (0.0, node->network->tcp_channels->size_sqrt ());
-	ASSERT_EQ (0, node->network->tcp_channels->fanout ());
-	ASSERT_TRUE (node->network->tcp_channels->random_fanout ().empty ());
-	auto add_peer = [&node, &system] () {
-		auto outer_node = nano::test::add_outer_node (system);
-		auto channel = nano::test::establish_tcp (system, *node, outer_node->network->endpoint ());
-	};
-
-	add_peer ();
-	ASSERT_TIMELY_EQ (5s, 1, node->network->size ());
-	ASSERT_EQ (1.f, node->network->tcp_channels->size_sqrt ());
-	ASSERT_EQ (1, node->network->tcp_channels->fanout ());
-	ASSERT_EQ (1, node->network->tcp_channels->random_fanout ().size ());
-
-	add_peer ();
-	ASSERT_TIMELY_EQ (5s, 2, node->network->size ());
-	ASSERT_EQ (std::sqrt (2.f), node->network->tcp_channels->size_sqrt ());
-	ASSERT_EQ (2, node->network->tcp_channels->fanout ());
-	ASSERT_EQ (2, node->network->tcp_channels->random_fanout ().size ());
-
-	unsigned number_of_peers = 10;
-	for (unsigned i = 2; i < number_of_peers; ++i)
-	{
-		add_peer ();
-	}
-
-	ASSERT_TIMELY_EQ (5s, number_of_peers, node->network->size ());
-	ASSERT_EQ (std::sqrt (float (number_of_peers)), node->network->tcp_channels->size_sqrt ());
-	ASSERT_EQ (4, node->network->tcp_channels->fanout ());
-	ASSERT_EQ (4, node->network->tcp_channels->random_fanout ().size ());
+	// TODO reimplement in Rust
 }
 
 // This test is similar to network.filter_invalid_version_using with the difference that

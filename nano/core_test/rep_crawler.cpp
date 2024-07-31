@@ -278,32 +278,3 @@ TEST (rep_crawler, ignore_local)
 	node.rep_crawler.force_process (vote, loopback);
 	ASSERT_ALWAYS_EQ (0.5s, node.rep_crawler.representative_count (), 0);
 }
-
-TEST (rep_crawler, ignore_rebroadcasted)
-{
-	nano::test::system system;
-	auto & node1 = *system.add_node ();
-	auto & node2 = *system.add_node ();
-
-	auto channel1to2 = node1.network->find_node_id (node2.node_id.pub);
-	ASSERT_NE (nullptr, channel1to2);
-
-	node1.rep_crawler.force_query (nano::dev::genesis->hash (), channel1to2);
-	ASSERT_ALWAYS_EQ (100ms, node1.rep_crawler.representative_count (), 0);
-
-	// Now we spam the vote for genesis, so it appears as a rebroadcasted vote
-	auto vote = nano::test::make_vote (nano::dev::genesis_key, { nano::dev::genesis->hash () }, 0);
-
-	auto channel2to1 = node2.network->find_node_id (node1.node_id.pub);
-	ASSERT_NE (nullptr, channel2to1);
-
-	node1.rep_crawler.force_query (nano::dev::genesis->hash (), channel1to2);
-
-	auto tick = [&] () {
-		nano::confirm_ack msg{ nano::dev::network_params.network, vote, /* rebroadcasted */ true };
-		channel2to1->send (msg, nullptr, nano::transport::buffer_drop_policy::no_socket_drop);
-		return false;
-	};
-
-	ASSERT_NEVER (1s, tick () || node1.rep_crawler.representative_count () > 0);
-}

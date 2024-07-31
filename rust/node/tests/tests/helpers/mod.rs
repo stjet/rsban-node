@@ -2,7 +2,7 @@ use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
-    transport::{NullSocketObserver, PeerConnectorExt},
+    transport::{ChannelEnum, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -55,32 +55,55 @@ impl System {
         NodeBuilder {
             system: self,
             config: None,
+            flags: None,
+            disconnected: false,
         }
     }
 
     pub(crate) fn make_disconnected_node(&mut self) -> Arc<Node> {
-        let config = Self::default_config();
-        let node = self.new_node(config, NodeFlags::default());
-        node.start();
-        self.nodes.push(node.clone());
-        node
+        self.build_node().disconnected().finish()
     }
 
     pub(crate) fn make_node(&mut self) -> Arc<Node> {
         self.build_node().finish()
     }
 
-    fn make_connected_node(&mut self, config: NodeConfig) -> Arc<Node> {
-        let node = self.new_node(config, NodeFlags::default());
+    fn make_node_with(
+        &mut self,
+        config: NodeConfig,
+        flags: NodeFlags,
+        disconnected: bool,
+    ) -> Arc<Node> {
+        let node = self.new_node(config, flags);
         let wallet_id = WalletId::random();
         node.wallets.create(wallet_id);
         node.start();
         self.nodes.push(node.clone());
 
-        if self.nodes.len() > 1 {
-            self.nodes[0]
+        if self.nodes.len() > 1 && !disconnected {
+            let other = &self.nodes[0];
+            other
                 .peer_connector
                 .connect_to(node.tcp_listener.local_address());
+
+            let start = Instant::now();
+            loop {
+                if node
+                    .network
+                    .find_node_id(&other.node_id.public_key())
+                    .is_some()
+                    && other
+                        .network
+                        .find_node_id(&node.node_id.public_key())
+                        .is_some()
+                {
+                    break;
+                }
+
+                if start.elapsed() > Duration::from_secs(5) {
+                    panic!("connection not successfull");
+                }
+            }
         }
         node
     }
@@ -95,7 +118,6 @@ impl System {
             self.network_params.clone(),
             flags,
             self.work.clone(),
-            Arc::new(NullSocketObserver::new()),
             Box::new(|_, _, _, _, _, _| {}),
             Box::new(|_, _| {}),
             Box::new(|_, _, _, _| {}),
@@ -121,6 +143,8 @@ impl Drop for System {
 pub(crate) struct NodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
+    flags: Option<NodeFlags>,
+    disconnected: bool,
 }
 
 impl<'a> NodeBuilder<'a> {
@@ -129,15 +153,26 @@ impl<'a> NodeBuilder<'a> {
         self
     }
 
+    pub(crate) fn flags(mut self, flags: NodeFlags) -> Self {
+        self.flags = Some(flags);
+        self
+    }
+
+    pub(crate) fn disconnected(mut self) -> Self {
+        self.disconnected = true;
+        self
+    }
+
     pub(crate) fn finish(self) -> Arc<Node> {
         let config = self.config.unwrap_or_else(|| System::default_config());
-        self.system.make_connected_node(config)
+        let flags = self.flags.unwrap_or_default();
+        self.system.make_node_with(config, flags, self.disconnected)
     }
 }
 
 static START_PORT: AtomicU16 = AtomicU16::new(1025);
 
-fn get_available_port() -> u16 {
+pub(crate) fn get_available_port() -> u16 {
     let start = START_PORT.fetch_add(1, Ordering::SeqCst);
     (start..65535)
         .find(|port| is_port_available(*port))
@@ -190,6 +225,18 @@ where
     panic!("timeout");
 }
 
+pub(crate) fn assert_always_eq<T, F>(time: Duration, mut condition: F, expected: T)
+where
+    T: PartialEq + std::fmt::Debug,
+    F: FnMut() -> T,
+{
+    let start = Instant::now();
+    while start.elapsed() < time {
+        assert_eq!(condition(), expected);
+        sleep(Duration::from_millis(50));
+    }
+}
+
 static TRACING_INITIALIZED: OnceLock<()> = OnceLock::new();
 
 fn init_tracing() {
@@ -202,4 +249,23 @@ fn init_tracing() {
             .with_ansi(true)
             .init();
     });
+}
+
+pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelEnum> {
+    node.peer_connector
+        .connect_to(peer.tcp_listener.local_address());
+
+    assert_timely(
+        Duration::from_secs(2),
+        || {
+            node.network
+                .find_node_id(&peer.node_id.public_key())
+                .is_some()
+        },
+        "node did not connect",
+    );
+
+    node.network
+        .find_node_id(&peer.node_id.public_key())
+        .unwrap()
 }

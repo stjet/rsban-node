@@ -63,7 +63,7 @@ pub struct HintedScheduler {
     confirming_set: Arc<ConfirmingSet>,
     stats: Arc<Stats>,
     vote_cache: Arc<Mutex<VoteCache>>,
-    representatives: Arc<Mutex<OnlineReps>>,
+    online_reps: Arc<Mutex<OnlineReps>>,
     stopped: AtomicBool,
     stopped_mutex: Mutex<()>,
     cooldowns: Mutex<OrderedCooldowns>,
@@ -77,7 +77,7 @@ impl HintedScheduler {
         stats: Arc<Stats>,
         vote_cache: Arc<Mutex<VoteCache>>,
         confirming_set: Arc<ConfirmingSet>,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
     ) -> Self {
         Self {
             thread: Mutex::new(None),
@@ -88,7 +88,7 @@ impl HintedScheduler {
             stats,
             vote_cache,
             confirming_set,
-            representatives,
+            online_reps,
             stopped: AtomicBool::new(false),
             stopped_mutex: Mutex::new(()),
             cooldowns: Mutex::new(OrderedCooldowns::new()),
@@ -254,7 +254,7 @@ impl HintedScheduler {
 
     fn tally_threshold(&self) -> Amount {
         (self
-            .representatives
+            .online_reps
             .lock()
             .unwrap()
             .trended_weight_or_minimum_online_weight()
@@ -263,7 +263,7 @@ impl HintedScheduler {
     }
 
     fn final_tally_threshold(&self) -> Amount {
-        self.representatives.lock().unwrap().quorum_delta()
+        self.online_reps.lock().unwrap().quorum_delta()
     }
 
     fn cooldown(&self, hash: BlockHash) -> bool {

@@ -71,7 +71,6 @@ impl Bucket {
             data: Mutex::new(BucketData {
                 queue: BTreeSet::new(),
                 elections: OrderedElections::default(),
-                stats,
             }),
         }
     }
@@ -81,23 +80,26 @@ impl Bucket {
     }
 
     pub fn available(&self) -> bool {
-        let guard = self.data.lock().unwrap();
-        if let Some(first) = guard.queue.first() {
-            self.election_vacancy(first.time, &guard)
-        } else {
-            false
-        }
-    }
+        let candidate: u64;
+        let election_count: usize;
+        let lowest: u64;
 
-    fn election_vacancy(&self, candidate: Priority, data: &BucketData) -> bool {
-        let election_count = data.elections.len();
+        {
+            let guard = self.data.lock().unwrap();
+            let Some(first) = guard.queue.first() else {
+                return false;
+            };
+
+            candidate = first.time;
+            election_count = guard.elections.len();
+            lowest = guard.elections.lowest_priority();
+        }
+
         if election_count < self.config.reserved_elections {
             true
         } else if election_count < self.config.max_elections {
             self.active.vacancy(ElectionBehavior::Priority) > 0
         } else if election_count > 0 {
-            let lowest = data.elections.lowest_priority();
-
             // Compare to equal to drain duplicates
             if candidate <= lowest {
                 // Bound number of reprioritizations
@@ -124,6 +126,9 @@ impl Bucket {
         let guard = self.data.lock().unwrap();
         if self.election_overfill(&guard) {
             guard.cancel_lowest_election();
+            drop(guard);
+            self.stats
+                .inc(StatType::ElectionBucket, DetailType::CancelLowest);
         }
     }
 
@@ -162,14 +167,19 @@ pub(crate) trait BucketExt {
 
 impl BucketExt for Arc<Bucket> {
     fn activate(&self) -> bool {
-        let mut guard = self.data.lock().unwrap();
+        let block: Arc<BlockEnum>;
+        let priority: u64;
 
-        let Some(top) = guard.queue.pop_first() else {
-            return false; // Not activated;
-        };
+        {
+            let mut guard = self.data.lock().unwrap();
 
-        let block = top.block;
-        let priority = top.time;
+            let Some(top) = guard.queue.pop_first() else {
+                return false; // Not activated;
+            };
+
+            block = top.block;
+            priority = top.time;
+        }
 
         let self_w = Arc::downgrade(self);
         let erase_callback = Box::new(move |election: &Arc<Election>| {
@@ -186,7 +196,7 @@ impl BucketExt for Arc<Bucket> {
 
         if inserted {
             let election = election.unwrap();
-            guard.elections.insert(ElectionEntry {
+            self.data.lock().unwrap().elections.insert(ElectionEntry {
                 root: election.qualified_root.clone(),
                 election,
                 priority,
@@ -205,15 +215,12 @@ impl BucketExt for Arc<Bucket> {
 struct BucketData {
     queue: BTreeSet<BlockEntry>,
     elections: OrderedElections,
-    stats: Arc<Stats>,
 }
 
 impl BucketData {
     fn cancel_lowest_election(&self) {
         if let Some(entry) = self.elections.entry_with_lowest_priority() {
             entry.election.cancel();
-            self.stats
-                .inc(StatType::ElectionBucket, DetailType::CancelLowest);
         }
     }
 }

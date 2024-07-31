@@ -7,8 +7,8 @@ use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelDirection, ChannelEnum, ChannelTcp, Network, NullSocketObserver,
-        OutboundBandwidthLimiter, SocketBuilder, SocketExtensions, SocketObserver,
+        ChannelDirection, ChannelEnum, ChannelTcp, Network, OutboundBandwidthLimiter,
+        SocketBuilder, SocketExtensions,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
@@ -41,7 +41,6 @@ pub struct BootstrapConnections {
     network: Arc<Network>,
     workers: Arc<dyn ThreadPool>,
     async_rt: Arc<AsyncRuntime>,
-    socket_observer: Arc<dyn SocketObserver>,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
     outbound_limiter: Arc<OutboundBandwidthLimiter>,
@@ -56,7 +55,6 @@ impl BootstrapConnections {
         network: Arc<Network>,
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
-        socket_observer: Arc<dyn SocketObserver>,
         stats: Arc<Stats>,
         outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
@@ -78,7 +76,6 @@ impl BootstrapConnections {
             network,
             workers,
             async_rt,
-            socket_observer,
             stats,
             outbound_limiter,
             block_processor,
@@ -100,7 +97,6 @@ impl BootstrapConnections {
             network: Arc::new(Network::new_null()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
             async_rt: Arc::new(AsyncRuntime::default()),
-            socket_observer: Arc::new(NullSocketObserver::new()),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             outbound_limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -263,16 +259,13 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             .find(pull.bootstrap_id as usize)
             .cloned();
         if let Some(attempt_l) = attempt_l {
-            attempt_l
-                .attempt()
-                .requeued_pulls
-                .fetch_add(1, Ordering::SeqCst);
+            attempt_l.inc_requeued_pulls();
             let mut is_lazy = false;
             if let BootstrapStrategy::Lazy(lazy) = &*attempt_l {
                 is_lazy = true;
                 pull.count = lazy.lazy_batch_size();
             }
-            if attempt_l.attempt().mode == BootstrapMode::Legacy
+            if attempt_l.mode() == BootstrapMode::Legacy
                 && (pull.attempts
                     < pull.retry_limit
                         + (pull.processed
@@ -283,7 +276,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     let mut guard = self.mutex.lock().unwrap();
                     guard.pulls.push_front(pull);
                 }
-                attempt_l.attempt().pull_started();
+                attempt_l.pull_started();
                 self.condition.notify_all();
             } else if is_lazy
                 && (pull.attempts
@@ -300,7 +293,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         let mut guard = self.mutex.lock().unwrap();
                         guard.pulls.push_back(pull);
                     }
-                    attempt_l.attempt().pull_started();
+                    attempt_l.pull_started();
                     self.condition.notify_all();
                 }
             } else {
@@ -321,7 +314,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         unreachable!()
                     };
                     lazy.lazy_add(&pull);
-                } else if attempt_l.attempt().mode == BootstrapMode::Legacy {
+                } else if attempt_l.mode() == BootstrapMode::Legacy {
                     self.pulls_cache.lock().unwrap().add(&pull);
                 }
             }
@@ -537,7 +530,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         .default_timeout(self.config.tcp_io_timeout)
         .silent_connection_tolerance_time(self.config.silent_connection_tolerance_time)
         .idle_timeout(self.config.idle_timeout)
-        .observer(Arc::clone(&self.socket_observer))
         .finish();
 
         let self_l = Arc::clone(self);
@@ -605,7 +597,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     if let Some(attempt) = &attempt_l {
                         if let BootstrapStrategy::Lazy(lazy) = &**attempt {
                             if !pull.head.is_zero() && lazy.lazy_processed_or_exists(&pull.head) {
-                                attempt.attempt().pull_finished();
+                                attempt.pull_finished();
                                 attempt_l = None;
                             }
                         }

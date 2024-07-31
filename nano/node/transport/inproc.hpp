@@ -42,13 +42,6 @@ namespace transport
 
 			uint8_t get_network_version () const override;
 
-			// TODO: investigate clang-tidy warning about default parameters on virtual/override functions
-			//
-			void send (nano::message & message_a,
-			std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a = nullptr,
-			nano::transport::buffer_drop_policy policy_a = nano::transport::buffer_drop_policy::limiter,
-			nano::transport::traffic_type = nano::transport::traffic_type::generic) override;
-
 			std::string to_string () const override;
 
 			nano::tcp_endpoint get_local_endpoint () const override

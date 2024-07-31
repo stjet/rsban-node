@@ -12,7 +12,7 @@ use std::{
         Arc,
     },
 };
-use tracing::debug;
+use tracing::{debug, warn};
 
 pub enum HandshakeStatus {
     Abort,
@@ -67,6 +67,13 @@ impl HandshakeProcess {
     pub(crate) async fn initiate_handshake(&self, socket: &Socket) -> Result<(), ()> {
         let endpoint = self.remote_endpoint;
         let query = self.prepare_query(&endpoint);
+        if query.is_none() {
+            warn!(
+                "Could not create cookie for {:?}. Closing channel.",
+                endpoint
+            );
+            return Err(());
+        }
         let message = Message::NodeIdHandshake(NodeIdHandshake {
             query,
             response: None,
@@ -125,7 +132,7 @@ impl HandshakeProcess {
                 DetailType::HandshakeError,
                 Direction::In,
             );
-            debug!(
+            warn!(
                 "Detected multiple handshake queries ({})",
                 self.remote_endpoint
             );
@@ -164,19 +171,33 @@ impl HandshakeProcess {
             // Fall through and continue handshake
         }
         if let Some(response) = &message.response {
-            if self.verify_response(response, &self.remote_endpoint) {
-                return HandshakeStatus::Realtime(response.node_id); // Switch to realtime
-            } else {
-                self.stats.inc_dir(
-                    StatType::TcpServer,
-                    DetailType::HandshakeResponseInvalid,
-                    Direction::In,
-                );
-                debug!(
-                    "Invalid handshake response received ({})",
-                    self.remote_endpoint
-                );
-                return HandshakeStatus::Abort;
+            match self.verify_response(response, &self.remote_endpoint) {
+                Ok(()) => {
+                    self.stats
+                        .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
+                    return HandshakeStatus::Realtime(response.node_id); // Switch to realtime
+                }
+                Err(HandshakeResponseError::OwnNodeId) => {
+                    warn!(
+                        "This node tried to connect to itself. Closing channel ({})",
+                        self.remote_endpoint
+                    );
+                    return HandshakeStatus::Abort;
+                }
+                Err(e) => {
+                    self.stats
+                        .inc_dir(StatType::Handshake, e.into(), Direction::In);
+                    self.stats.inc_dir(
+                        StatType::TcpServer,
+                        DetailType::HandshakeResponseInvalid,
+                        Direction::In,
+                    );
+                    warn!(
+                        "Invalid handshake response received ({}, {:?})",
+                        self.remote_endpoint, e
+                    );
+                    return HandshakeStatus::Abort;
+                }
             }
         }
         HandshakeStatus::Handshake // Handshake is in progress
@@ -218,7 +239,7 @@ impl HandshakeProcess {
                     DetailType::HandshakeNetworkError,
                     Direction::In,
                 );
-                debug!(
+                warn!(
                     "Error sending handshake response: {} ({:?})",
                     self.remote_endpoint, e
                 );
@@ -227,54 +248,32 @@ impl HandshakeProcess {
         }
     }
 
-    pub(crate) fn verify_response(
+    fn verify_response(
         &self,
         response: &NodeIdHandshakeResponse,
         remote_endpoint: &SocketAddrV6,
-    ) -> bool {
+    ) -> Result<(), HandshakeResponseError> {
         // Prevent connection with ourselves
         if response.node_id == self.node_id.public_key() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidNodeId,
-                Direction::In,
-            );
-            return false; // Fail
+            return Err(HandshakeResponseError::OwnNodeId);
         }
 
         // Prevent mismatched genesis
         if let Some(v2) = &response.v2 {
             if v2.genesis != self.genesis_hash {
-                self.stats.inc_dir(
-                    StatType::Handshake,
-                    DetailType::InvalidGenesis,
-                    Direction::In,
-                );
-                return false; // Fail
+                return Err(HandshakeResponseError::InvalidGenesis);
             }
         }
 
         let Some(cookie) = self.syn_cookies.cookie(remote_endpoint) else {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::MissingCookie,
-                Direction::In,
-            );
-            return false; // Fail
+            return Err(HandshakeResponseError::MissingCookie);
         };
 
         if response.validate(&cookie).is_err() {
-            self.stats.inc_dir(
-                StatType::Handshake,
-                DetailType::InvalidSignature,
-                Direction::In,
-            );
-            return false; // Fail
+            return Err(HandshakeResponseError::InvalidSignature);
         }
 
-        self.stats
-            .inc_dir(StatType::Handshake, DetailType::Ok, Direction::In);
-        true // OK
+        Ok(())
     }
 
     pub(crate) fn prepare_response(
@@ -296,5 +295,25 @@ impl HandshakeProcess {
         self.syn_cookies
             .assign(remote_endpoint)
             .map(|cookie| NodeIdHandshakeQuery { cookie })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum HandshakeResponseError {
+    /// The node tried to connect to itself
+    OwnNodeId,
+    InvalidGenesis,
+    MissingCookie,
+    InvalidSignature,
+}
+
+impl From<HandshakeResponseError> for DetailType {
+    fn from(value: HandshakeResponseError) -> Self {
+        match value {
+            HandshakeResponseError::OwnNodeId => Self::InvalidNodeId,
+            HandshakeResponseError::InvalidGenesis => Self::InvalidGenesis,
+            HandshakeResponseError::MissingCookie => Self::MissingCookie,
+            HandshakeResponseError::InvalidSignature => Self::InvalidSignature,
+        }
     }
 }

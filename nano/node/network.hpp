@@ -36,13 +36,10 @@ public:
 	network (nano::node &, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::NetworkFilterHandle * filter_handle);
 	~network ();
 
-	void flood_message (nano::message &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter, float const = 1.0f);
 	// Flood block to a random selection of peers
-	void flood_block (std::shared_ptr<nano::block> const &, nano::transport::buffer_drop_policy const = nano::transport::buffer_drop_policy::limiter);
 	void flood_block_many (std::deque<std::shared_ptr<nano::block>>, std::function<void ()> = nullptr, unsigned = broadcast_interval_ms);
 	void merge_peers (std::array<nano::endpoint, 8> const &);
 	void merge_peer (nano::endpoint const &);
-	void send_keepalive (std::shared_ptr<nano::transport::channel> const &);
 	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
 	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count_a, uint8_t min_version_a = 0) const;
 	nano::endpoint endpoint () const;
@@ -66,7 +63,6 @@ public:
 	static unsigned const broadcast_interval_ms = 10;
 
 	static std::size_t const confirm_req_hashes_max = 7;
-	static std::size_t const confirm_ack_hashes_max = 12;
 };
 
 class network_threads

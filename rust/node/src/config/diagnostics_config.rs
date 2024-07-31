@@ -1,7 +1,6 @@
+use crate::utils::TxnTrackingConfig;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
-
-use crate::utils::TxnTrackingConfig;
 
 #[derive(Clone)]
 pub struct DiagnosticsConfig {

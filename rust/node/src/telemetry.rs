@@ -135,7 +135,7 @@ impl Telemetry {
         let data = telemetry.0.as_ref().unwrap();
 
         let mut guard = self.mutex.lock().unwrap();
-        let endpoint = channel.remote_endpoint();
+        let endpoint = channel.remote_addr();
 
         if let Some(entry) = guard.telemetries.get_mut(&endpoint) {
             self.stats.inc(StatType::Telemetry, DetailType::Update);

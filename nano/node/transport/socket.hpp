@@ -84,31 +84,11 @@ public:
 	std::shared_ptr<nano::thread_pool> const & workers_a,
 	std::chrono::seconds default_timeout_a, std::chrono::seconds silent_connection_tolerance_time_a,
 	std::chrono::seconds idle_timeout_a,
-	std::shared_ptr<nano::node_observers>,
 	std::size_t max_queue_size = default_max_queue_size);
 	socket (rsnano::SocketHandle * handle_a);
 	socket (nano::transport::socket const &) = delete;
 	socket (nano::transport::socket &&) = delete;
 	virtual ~socket ();
-
-	void async_connect (
-	boost::asio::ip::tcp::endpoint const &,
-	std::function<void (boost::system::error_code const &)>);
-
-	void async_write (
-	nano::shared_const_buffer const &,
-	std::function<void (boost::system::error_code const &, std::size_t)> = {},
-	nano::transport::traffic_type = nano::transport::traffic_type::generic);
-
-private:
-	/** The other end of the connection */
-	boost::asio::ip::tcp::endpoint & get_remote ();
-
-	/** The other end of the connection */
-	boost::asio::ip::tcp::endpoint remote;
-
-	void close_internal ();
-	void checkup ();
 
 public:
 	rsnano::SocketHandle * handle;

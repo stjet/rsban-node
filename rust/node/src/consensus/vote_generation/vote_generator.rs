@@ -2,7 +2,7 @@ use super::{LocalVoteHistory, VoteSpacing};
 use crate::{
     consensus::VoteBroadcaster,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::ChannelEnum,
+    transport::{BufferDropPolicy, ChannelEnum, TrafficType},
     utils::ProcessingQueue,
     wallets::Wallets,
 };
@@ -11,11 +11,11 @@ use rsnano_core::{
     BlockEnum, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
+use rsnano_messages::{ConfirmAck, Message};
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
 use std::{
     collections::VecDeque,
     mem::size_of,
-    ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
@@ -60,7 +60,6 @@ impl VoteGenerator {
             spacing: Mutex::new(VoteSpacing::new(voting_delay)),
             vote_generator_delay,
             vote_generator_threshold,
-            reply_action: Mutex::new(None),
         });
 
         let shared_state_clone = Arc::clone(&shared_state);
@@ -81,14 +80,6 @@ impl VoteGenerator {
             ),
             stats,
         }
-    }
-
-    pub(crate) fn set_reply_action(
-        &self,
-        action: Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>,
-    ) {
-        let mut guard = self.shared_state.reply_action.lock().unwrap();
-        *guard = Some(action);
     }
 
     pub(crate) fn start(&self) {
@@ -193,7 +184,6 @@ struct SharedState {
     spacing: Mutex<VoteSpacing>,
     vote_generator_delay: Duration,
     vote_generator_threshold: usize,
-    reply_action: Mutex<Option<Arc<dyn Fn(&Arc<Vote>, &Arc<ChannelEnum>) + Send + Sync>>>,
 }
 
 impl SharedState {
@@ -336,10 +326,15 @@ impl SharedState {
                     hashes.len() as u64,
                 );
                 self.vote(&hashes, &roots, |vote| {
-                    let action = self.reply_action.lock().unwrap();
-                    if let Some(action) = action.deref() {
-                        (action)(&vote, &request.1);
-                    }
+                    let channel = &request.1;
+                    let confirm =
+                        Message::ConfirmAck(ConfirmAck::new_with_own_vote((*vote).clone()));
+                    channel.send(
+                        &confirm,
+                        None,
+                        BufferDropPolicy::Limiter,
+                        TrafficType::Generic,
+                    );
                     self.stats.inc_dir(
                         StatType::Requests,
                         DetailType::RequestsGeneratedVotes,

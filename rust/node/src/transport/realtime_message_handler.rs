@@ -78,7 +78,7 @@ impl RealtimeMessageHandler {
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
                     // TODO: Remove this as we do not need to establish a second connection to the same peer
                     let new_endpoint =
-                        SocketAddrV6::new(*channel.remote_endpoint().ip(), peer0.port(), 0, 0);
+                        SocketAddrV6::new(*channel.remote_addr().ip(), peer0.port(), 0, 0);
                     self.peer_connector.connect_to(new_endpoint);
 
                     // Remember this for future forwarding to other peers
@@ -108,10 +108,8 @@ impl RealtimeMessageHandler {
                 // Don't load nodes with disabled voting
                 // TODO: This check should be cached somewhere
                 if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
-                    if !req.roots_hashes.is_empty() {
-                        self.request_aggregator
-                            .request(req.roots_hashes, Arc::clone(channel));
-                    }
+                    self.request_aggregator
+                        .request(req.roots_hashes, Arc::clone(channel));
                 }
             }
             Message::ConfirmAck(ack) => {

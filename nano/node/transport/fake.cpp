@@ -35,12 +35,6 @@ nano::transport::fake::channel::channel (rsnano::ChannelHandle * handle) :
 {
 }
 
-void nano::transport::fake::channel::send (nano::message & message_a, std::function<void (boost::system::error_code const &, std::size_t)> const & callback_a, nano::transport::buffer_drop_policy drop_policy_a, nano::transport::traffic_type traffic_type)
-{
-	auto callback_pointer = new std::function<void (boost::system::error_code const &, std::size_t)> (callback_a);
-	rsnano::rsn_channel_fake_send (handle, message_a.handle, nano::transport::channel_tcp_send_callback, nano::transport::delete_send_buffer_callback, callback_pointer, static_cast<uint8_t> (drop_policy_a), static_cast<uint8_t> (traffic_type));
-}
-
 std::string nano::transport::fake::channel::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_remote_endpoint ());

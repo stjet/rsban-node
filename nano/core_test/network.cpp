@@ -88,52 +88,6 @@ TEST (DISABLED_network, send_node_id_handshake_tcp)
 	// TODO reimplement in Rust
 }
 
-TEST (network, last_contacted)
-{
-	nano::test::system system (1);
-
-	auto node0 = system.nodes[0];
-	ASSERT_EQ (0, node0->network->size ());
-
-	nano::node_config node1_config = system.default_config ();
-	node1_config.tcp_incoming_connections_max = 0; // Prevent ephemeral node1->node0 channel repacement with incoming connection
-	auto node1 (std::make_shared<nano::node> (system.async_rt, nano::unique_path (), node1_config, system.work));
-	node1->start ();
-	system.nodes.push_back (node1);
-
-	auto channel1 = nano::test::establish_tcp (system, *node1, node0->network->endpoint ());
-	ASSERT_NE (nullptr, channel1);
-	ASSERT_TIMELY_EQ (3s, node0->network->size (), 1);
-
-	// channel0 is the other side of channel1, same connection different endpoint
-	auto channel0 = node0->network->tcp_channels->find_node_id (node1->node_id.pub);
-	ASSERT_NE (nullptr, channel0);
-
-	{
-		// check that the endpoints are part of the same connection
-		ASSERT_EQ (channel0->get_local_endpoint (), channel1->get_tcp_remote_endpoint ());
-		ASSERT_EQ (channel1->get_local_endpoint (), channel0->get_tcp_remote_endpoint ());
-	}
-
-	// capture the state before and ensure the clock ticks at least once
-	auto timestamp_before_keepalive = channel0->get_last_packet_received ();
-	auto keepalive_count = node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in);
-	ASSERT_TIMELY (3s, std::chrono::system_clock::now () > timestamp_before_keepalive);
-
-	// send 3 keepalives
-	// we need an extra keepalive to handle the race condition between the timestamp set and the counter increment
-	// and we need one more keepalive to handle the possibility that there is a keepalive already in flight when we start the crucial part of the test
-	// it is possible that there could be multiple keepalives in flight but we assume here that there will be no more than one in flight for the purposes of this test
-	node1->network->send_keepalive (channel1);
-	node1->network->send_keepalive (channel1);
-	node1->network->send_keepalive (channel1);
-
-	ASSERT_TIMELY (3s, node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive, nano::stat::dir::in) >= keepalive_count + 3);
-	ASSERT_EQ (node0->network->size (), 1);
-	auto timestamp_after_keepalive = channel0->get_last_packet_received ();
-	ASSERT_GT (timestamp_after_keepalive, timestamp_before_keepalive);
-}
-
 TEST (network, multi_keepalive)
 {
 	nano::test::system system (1);
@@ -155,59 +109,6 @@ TEST (network, multi_keepalive)
 	// ASSERT_TIMELY (10s, node1->network->size () == 2 && node0->network->size () == 2 && node2->network->size () == 2 && node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive) >= 2);
 	std::this_thread::sleep_for (10s);
 	std::cout << "node0: " << node0->network->size () << ", node1: " << node1->network->size () << ", node2: " << node2->network->size () << std::endl;
-}
-
-TEST (network, send_discarded_publish)
-{
-	nano::test::system system (2);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto block = builder
-				 .send ()
-				 .previous (1)
-				 .destination (1)
-				 .balance (2)
-				 .sign (key1.prv, key1.pub)
-				 .work (*system.work.generate (nano::root (1)))
-				 .build ();
-	{
-		auto transaction (node1.store.tx_begin_read ());
-		node1.network->flood_block (block);
-		ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-		ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-	}
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-}
-
-TEST (network, send_invalid_publish)
-{
-	nano::test::system system (2);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	nano::block_builder builder;
-	auto block = builder
-				 .send ()
-				 .previous (1)
-				 .destination (1)
-				 .balance (20)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::root (1)))
-				 .build ();
-	{
-		auto transaction (node1.store.tx_begin_read ());
-		node1.network->flood_block (block);
-		ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-		ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
-	}
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	auto transaction (node1.store.tx_begin_read ());
-	ASSERT_EQ (nano::dev::genesis->hash (), node1.ledger.any ().account_head (*transaction, nano::dev::genesis_key.pub));
-	ASSERT_EQ (nano::dev::genesis->hash (), node2.latest (nano::dev::genesis_key.pub));
 }
 
 TEST (network, send_valid_confirm_ack)
@@ -271,73 +172,6 @@ TEST (network, send_valid_publish)
 	ASSERT_NE (hash2, latest2);
 	ASSERT_TIMELY (10s, node2.latest (nano::dev::genesis_key.pub) != latest2);
 	ASSERT_EQ (50, node2.balance (nano::dev::genesis_key.pub));
-}
-
-TEST (network, send_insufficient_work)
-{
-	nano::test::system system (2);
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-	// Block zero work
-	nano::block_builder builder;
-	auto block1 = builder
-				  .send ()
-				  .previous (0)
-				  .destination (1)
-				  .balance (20)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (0)
-				  .build ();
-	nano::publish publish1{ nano::dev::network_params.network, block1 };
-	auto tcp_channel (node1.network->tcp_channels->find_node_id (node2.get_node_id ()));
-	ASSERT_NE (nullptr, tcp_channel);
-	tcp_channel->send (publish1, [] (boost::system::error_code const & ec, size_t size) {});
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work));
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work) != 0);
-	ASSERT_EQ (1, node2.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work));
-	// Legacy block work between epoch_2_recieve & epoch_1
-	auto block2 = builder
-				  .send ()
-				  .previous (block1->hash ())
-				  .destination (1)
-				  .balance (20)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (system.work_generate_limited (block1->hash (), node1.network_params.work.get_epoch_2_receive (), node1.network_params.work.get_epoch_1 () - 1))
-				  .build ();
-	nano::publish publish2{ nano::dev::network_params.network, block2 };
-	tcp_channel->send (publish2, [] (boost::system::error_code const & ec, size_t size) {});
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work) != 1);
-	ASSERT_EQ (2, node2.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work));
-	// Legacy block work epoch_1
-	auto block3 = builder
-				  .send ()
-				  .previous (block2->hash ())
-				  .destination (1)
-				  .balance (20)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (block2->hash (), node1.network_params.work.get_epoch_2 ()))
-				  .build ();
-	nano::publish publish3{ nano::dev::network_params.network, block3 };
-	tcp_channel->send (publish3, [] (boost::system::error_code const & ec, size_t size) {});
-	ASSERT_EQ (0, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in));
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	ASSERT_EQ (1, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in));
-	// State block work epoch_2_recieve
-	auto block4 = builder
-				  .state ()
-				  .account (nano::dev::genesis_key.pub)
-				  .previous (block1->hash ())
-				  .representative (nano::dev::genesis_key.pub)
-				  .balance (20)
-				  .link (1)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (system.work_generate_limited (block1->hash (), node1.network_params.work.get_epoch_2_receive (), node1.network_params.work.get_epoch_1 () - 1))
-				  .build ();
-	nano::publish publish4{ nano::dev::network_params.network, block4 };
-	tcp_channel->send (publish4, [] (boost::system::error_code const & ec, size_t size) {});
-	ASSERT_TIMELY (10s, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	ASSERT_EQ (1, node2.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in));
-	ASSERT_EQ (2, node2.stats->count (nano::stat::type::error, nano::stat::detail::insufficient_work));
 }
 
 TEST (receivable_processor, confirm_insufficient_pos)
@@ -555,60 +389,6 @@ TEST (network, peer_max_tcp_attempts_subnetwork)
 	// TODO reimplement in Rust
 }
 
-// Send two publish messages and asserts that the duplication is detected.
-TEST (network, duplicate_detection)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto & node0 = *system.add_node (node_flags);
-	auto & node1 = *system.add_node (node_flags);
-	nano::publish publish{ nano::dev::network_params.network, nano::dev::genesis };
-
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message));
-
-	// Publish duplicate detection through TCP
-	auto tcp_channel = node0.network->tcp_channels->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, tcp_channel);
-	ASSERT_EQ (0, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message));
-	tcp_channel->send (publish);
-	ASSERT_TIMELY_EQ (2s, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message), 0);
-	tcp_channel->send (publish);
-	ASSERT_TIMELY_EQ (2s, node1.stats->count (nano::stat::type::filter, nano::stat::detail::duplicate_publish_message), 1);
-}
-
-TEST (network, duplicate_revert_publish)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.block_processor.max_peer_queue = 0;
-	auto & node (*system.add_node (node_config));
-
-	nano::publish publish{ nano::dev::network_params.network, nano::dev::genesis };
-	std::vector<uint8_t> bytes;
-	{
-		nano::vectorstream stream (bytes);
-		publish.get_block ()->serialize (stream);
-	}
-	// Add to the blocks filter
-	// Should be cleared when dropping due to a full block processor, as long as the message has the optional digest attached
-	// Test network.duplicate_detection ensures that the digest is attached when deserializing messages
-	nano::uint128_t digest;
-	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size (), &digest));
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-	auto other_node (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	other_node->start ();
-	system.nodes.push_back (other_node);
-	auto channel = nano::test::establish_tcp (system, *other_node, node.network->endpoint ());
-	ASSERT_NE (nullptr, channel);
-	ASSERT_EQ (0, publish.get_digest ());
-	node.network->inbound (publish, channel);
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-	publish.set_digest (digest);
-	node.network->inbound (publish, channel);
-	// TODO: inbound is queued and not immediately adding to publish filter
-	// ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (bytes.data (), bytes.size ()));
-}
-
 TEST (network, tcp_no_accept_excluded_peers)
 {
 	// TODO reimplement in Rust
@@ -661,42 +441,14 @@ TEST (network, loopback_channel)
 // Disabled, because there is currently no way to send messages with a given network id
 TEST (DISABLED_network, filter_invalid_network_bytes)
 {
-	nano::test::system system{ 2 };
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-
-	// find the comms channel that goes from node2 to node1
-	auto channel = node2.network->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// send a keepalive, from node2 to node1, with the wrong network bytes
-	auto network{ nano::dev::network_params.network };
-	network.current_network = nano::networks::invalid;
-	nano::keepalive keepalive{ network };
-	channel->send (keepalive);
-
-	ASSERT_TIMELY_EQ (5s, 1, node1.stats->count (nano::stat::type::error, nano::stat::detail::invalid_network));
+	// TODO reimplement in Rust
 }
 
 // Ensure the network filters messages with the incorrect minimum version
 // Disabled, because there is currently no way to send messages with a given version
 TEST (DISABLED_network, filter_invalid_version_using)
 {
-	nano::test::system system{ 2 };
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-
-	// find the comms channel that goes from node2 to node1
-	auto channel = node2.network->find_node_id (node1.get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// send a keepalive, from node2 to node1, with the wrong version_using
-	auto network{ nano::dev::network_params.network };
-	network.protocol_version = network.protocol_version_min - 1;
-	nano::keepalive keepalive{ network };
-	channel->send (keepalive);
-
-	ASSERT_TIMELY_EQ (5s, 1, node1.stats->count (nano::stat::type::error, nano::stat::detail::outdated_version));
+	// TODO reimplement in Rust
 }
 
 /*

@@ -333,7 +333,6 @@ public: // Payload definitions
 	};
 
 public:
-	explicit node_id_handshake (nano::network_constants const &, std::optional<query_payload> query = std::nullopt, std::optional<response_payload> response = std::nullopt);
 	node_id_handshake (node_id_handshake const &);
 	node_id_handshake (rsnano::MessageHandle * handle_a);
 

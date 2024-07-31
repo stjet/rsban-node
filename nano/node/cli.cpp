@@ -628,6 +628,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		auto type = vm["generate_config"].as<std::string> ();
 		nano::tomlconfig toml;
+		std::string toml_str;
 		bool valid_type = false;
 		if (type == "node")
 		{
@@ -636,7 +637,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::daemon_config config{ data_path, network_params };
 			// set the peering port to the default value so that it is printed in the example toml file
 			config.node.peering_port = network_params.network.default_node_port;
-			config.serialize_toml (toml);
+			toml_str = config.serialize_toml (toml);
 		}
 		else if (type == "rpc")
 		{
@@ -658,14 +659,16 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					  << "# It is not recommended to uncomment every field, as the default value for important fields may change in the future. Only change what you need.\n"
 					  << "# Additional information for notable configuration options is available in https://docs.nano.org/running-a-node/configuration/#notable-configuration-options\n";
 
-			if (vm.count ("use_defaults"))
+			std::cout << toml_str << std::endl;
+
+			/*if (vm.count ("use_defaults"))
 			{
 				std::cout << toml.to_string (false) << std::endl;
 			}
 			else
 			{
 				std::cout << toml.to_string (true) << std::endl;
-			}
+				}*/
 		}
 	}
 	else if (vm.count ("diagnostics"))

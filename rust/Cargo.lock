@@ -1882,6 +1882,7 @@ dependencies = [
  "rsnano_node",
  "rsnano_store_lmdb",
  "tokio",
+ "toml 0.8.17",
  "tracing",
  "tracing-subscriber",
 ]

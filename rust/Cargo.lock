@@ -1981,6 +1981,7 @@ dependencies = [
  "rsnano_messages",
  "rsnano_node",
  "rsnano_store_lmdb",
+ "toml 0.8.17",
  "tracing",
  "tracing-subscriber",
 ]

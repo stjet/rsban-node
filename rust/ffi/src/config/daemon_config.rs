@@ -76,7 +76,6 @@ pub extern "C" fn rsn_daemon_config_serialize_toml(
     unsafe {
         copy_nonoverlapping(c_string.as_ptr(), buffer, toml_len);
     }
-
     0
 }
 

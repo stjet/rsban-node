@@ -58,7 +58,7 @@ nano::error nano::daemon_config::deserialize_toml (nano::tomlconfig & toml)
 	auto node_l (toml.get_optional_child ("node"));
 	if (!toml.get_error () && node_l)
 	{
-		node.deserialize_toml (*node_l);
+		// node.deserialize_toml (*node_l);
 	}
 
 	auto opencl_l (toml.get_optional_child ("opencl"));

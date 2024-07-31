@@ -1,4 +1,3 @@
-TOML LEN: 4024
 # This is an example configuration file for Nano. Visit https://docs.nano.org/running-a-node/configuration/ for more information.
 #
 # Fields may need to be defined in the context of a [category] above them.

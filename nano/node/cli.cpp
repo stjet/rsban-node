@@ -643,7 +643,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		{
 			valid_type = true;
 			nano::rpc_config config{ nano::dev::network_params.network };
-			config.serialize_toml (toml);
+			toml_str = config.serialize_toml (toml);
 		}
 		else
 		{
@@ -660,15 +660,6 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					  << "# Additional information for notable configuration options is available in https://docs.nano.org/running-a-node/configuration/#notable-configuration-options\n";
 
 			std::cout << toml_str << std::endl;
-
-			/*if (vm.count ("use_defaults"))
-			{
-				std::cout << toml.to_string (false) << std::endl;
-			}
-			else
-			{
-				std::cout << toml.to_string (true) << std::endl;
-				}*/
 		}
 	}
 	else if (vm.count ("diagnostics"))

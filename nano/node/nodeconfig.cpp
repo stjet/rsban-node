@@ -254,6 +254,399 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	monitor = nano::monitor_config{ dto.monitor };
 }
 
+nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
+{
+	try
+	{
+		if (toml.has_key ("httpcallback"))
+		{
+			auto callback_l (toml.get_required_child ("httpcallback"));
+			callback_l.get<std::string> ("address", callback_address);
+			callback_l.get<uint16_t> ("port", callback_port);
+			callback_l.get<std::string> ("target", callback_target);
+		}
+
+		if (toml.has_key ("websocket"))
+		{
+			auto websocket_config_l (toml.get_required_child ("websocket"));
+			websocket_config.deserialize_toml (websocket_config_l);
+		}
+
+		if (toml.has_key ("ipc"))
+		{
+			auto ipc_config_l (toml.get_required_child ("ipc"));
+			ipc_config.deserialize_toml (ipc_config_l);
+		}
+
+		if (toml.has_key ("diagnostics"))
+		{
+			auto diagnostics_config_l (toml.get_required_child ("diagnostics"));
+			diagnostics_config.deserialize_toml (diagnostics_config_l);
+		}
+
+		if (toml.has_key ("statistics"))
+		{
+			auto stats_config_l (toml.get_required_child ("statistics"));
+			stats_config.deserialize_toml (stats_config_l);
+		}
+
+		if (toml.has_key ("optimistic_scheduler"))
+		{
+			auto config_l = toml.get_required_child ("optimistic_scheduler");
+			optimistic_scheduler.deserialize (config_l);
+		}
+
+		if (toml.has_key ("priority_bucket"))
+		{
+			auto config_l = toml.get_required_child ("priority_bucket");
+			priority_bucket.deserialize (config_l);
+		}
+
+		if (toml.has_key ("hinted_scheduler"))
+		{
+			auto config_l = toml.get_required_child ("hinted_scheduler");
+			hinted_scheduler.deserialize (config_l);
+		}
+
+		if (toml.has_key ("bootstrap_ascending"))
+		{
+			auto config_l = toml.get_required_child ("bootstrap_ascending");
+			bootstrap_ascending.deserialize (config_l);
+		}
+
+		if (toml.has_key ("bootstrap_server"))
+		{
+			auto config_l = toml.get_required_child ("bootstrap_server");
+			bootstrap_server.deserialize (config_l);
+		}
+
+		if (toml.has_key ("vote_cache"))
+		{
+			auto config_l = toml.get_required_child ("vote_cache");
+			vote_cache.deserialize (config_l);
+		}
+
+		if (toml.has_key ("rep_crawler"))
+		{
+			auto config_l = toml.get_required_child ("rep_crawler");
+			rep_crawler.deserialize (config_l);
+		}
+
+		if (toml.has_key ("active_elections"))
+		{
+			auto config_l = toml.get_required_child ("active_elections");
+			active_elections.deserialize (config_l);
+		}
+
+		if (toml.has_key ("block_processor"))
+		{
+			auto config_l = toml.get_required_child ("block_processor");
+			block_processor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("vote_processor"))
+		{
+			auto config_l = toml.get_required_child ("vote_processor");
+			vote_processor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("request_aggregator"))
+		{
+			auto config_l = toml.get_required_child ("request_aggregator");
+			request_aggregator.deserialize (config_l);
+		}
+
+		if (toml.has_key ("message_processor"))
+		{
+			auto config_l = toml.get_required_child ("message_processor");
+			message_processor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("monitor"))
+		{
+			auto config_l = toml.get_required_child ("monitor");
+			monitor.deserialize (config_l);
+		}
+
+		if (toml.has_key ("work_peers"))
+		{
+			work_peers.clear ();
+			toml.array_entries_required<std::string> ("work_peers", [this] (std::string const & entry_a) {
+				this->deserialize_address (entry_a, this->work_peers);
+			});
+		}
+
+		if (toml.has_key (preconfigured_peers_key))
+		{
+			preconfigured_peers.clear ();
+			toml.array_entries_required<std::string> (preconfigured_peers_key, [this] (std::string entry) {
+				preconfigured_peers.push_back (entry);
+			});
+		}
+
+		if (toml.has_key ("preconfigured_representatives"))
+		{
+			preconfigured_representatives.clear ();
+			toml.array_entries_required<std::string> ("preconfigured_representatives", [this, &toml] (std::string entry) {
+				nano::account representative{};
+				if (representative.decode_account (entry))
+				{
+					toml.get_error ().set ("Invalid representative account: " + entry);
+				}
+				preconfigured_representatives.push_back (representative);
+			});
+		}
+
+		if (preconfigured_representatives.empty ())
+		{
+			toml.get_error ().set ("At least one representative account must be set");
+		}
+
+		auto receive_minimum_l (receive_minimum.to_string_dec ());
+		if (toml.has_key ("receive_minimum"))
+		{
+			receive_minimum_l = toml.get<std::string> ("receive_minimum");
+		}
+		if (receive_minimum.decode_dec (receive_minimum_l))
+		{
+			toml.get_error ().set ("receive_minimum contains an invalid decimal amount");
+		}
+
+		auto online_weight_minimum_l (online_weight_minimum.to_string_dec ());
+		if (toml.has_key ("online_weight_minimum"))
+		{
+			online_weight_minimum_l = toml.get<std::string> ("online_weight_minimum");
+		}
+		if (online_weight_minimum.decode_dec (online_weight_minimum_l))
+		{
+			toml.get_error ().set ("online_weight_minimum contains an invalid decimal amount");
+		}
+
+		auto representative_vote_weight_minimum_l{ representative_vote_weight_minimum.to_string_dec () };
+		if (toml.has_key ("representative_vote_weight_minimum"))
+		{
+			representative_vote_weight_minimum_l = toml.get<std::string> ("representative_vote_weight_minimum");
+		}
+		if (representative_vote_weight_minimum.decode_dec (representative_vote_weight_minimum_l))
+		{
+			toml.get_error ().set ("representative_vote_weight_minimum contains an invalid decimal amount");
+		}
+
+		auto vote_minimum_l (vote_minimum.to_string_dec ());
+		if (toml.has_key ("vote_minimum"))
+		{
+			vote_minimum_l = toml.get<std::string> ("vote_minimum");
+		}
+		if (vote_minimum.decode_dec (vote_minimum_l))
+		{
+			toml.get_error ().set ("vote_minimum contains an invalid decimal amount");
+		}
+
+		auto delay_l = vote_generator_delay.count ();
+		toml.get ("vote_generator_delay", delay_l);
+		vote_generator_delay = std::chrono::milliseconds (delay_l);
+
+		toml.get<unsigned> ("vote_generator_threshold", vote_generator_threshold);
+
+		auto block_processor_batch_max_time_l = block_processor_batch_max_time.count ();
+		toml.get ("block_processor_batch_max_time", block_processor_batch_max_time_l);
+		block_processor_batch_max_time = std::chrono::milliseconds (block_processor_batch_max_time_l);
+
+		auto unchecked_cutoff_time_l = static_cast<unsigned long> (unchecked_cutoff_time.count ());
+		toml.get ("unchecked_cutoff_time", unchecked_cutoff_time_l);
+		unchecked_cutoff_time = std::chrono::seconds (unchecked_cutoff_time_l);
+
+		auto tcp_io_timeout_l = static_cast<unsigned long> (tcp_io_timeout.count ());
+		toml.get ("tcp_io_timeout", tcp_io_timeout_l);
+		tcp_io_timeout = std::chrono::seconds (tcp_io_timeout_l);
+
+		if (toml.has_key ("peering_port"))
+		{
+			std::uint16_t peering_port_l{};
+			toml.get_required<uint16_t> ("peering_port", peering_port_l);
+			peering_port = peering_port_l;
+		}
+
+		toml.get<unsigned> ("bootstrap_fraction_numerator", bootstrap_fraction_numerator);
+		toml.get<unsigned> ("password_fanout", password_fanout);
+		toml.get<unsigned> ("io_threads", io_threads);
+		toml.get<unsigned> ("work_threads", work_threads);
+		toml.get<unsigned> ("network_threads", network_threads);
+		toml.get<unsigned> ("background_threads", background_threads);
+		toml.get<unsigned> ("bootstrap_connections", bootstrap_connections);
+		toml.get<unsigned> ("bootstrap_connections_max", bootstrap_connections_max);
+		toml.get<unsigned> ("bootstrap_initiator_threads", bootstrap_initiator_threads);
+		toml.get<unsigned> ("bootstrap_serving_threads", bootstrap_serving_threads);
+		toml.get<uint32_t> ("bootstrap_frontier_request_count", bootstrap_frontier_request_count);
+		toml.get<bool> ("enable_voting", enable_voting);
+		toml.get<bool> ("allow_local_peers", allow_local_peers);
+		toml.get<unsigned> (signature_checker_threads_key, signature_checker_threads);
+
+		if (toml.has_key ("lmdb"))
+		{
+			auto lmdb_config_l (toml.get_required_child ("lmdb"));
+			lmdb_config.deserialize_toml (lmdb_config_l);
+		}
+
+		boost::asio::ip::address_v6 external_address_l;
+		toml.get<boost::asio::ip::address_v6> ("external_address", external_address_l);
+		external_address = external_address_l.to_string ();
+		toml.get<uint16_t> ("external_port", external_port);
+		toml.get<unsigned> ("tcp_incoming_connections_max", tcp_incoming_connections_max);
+
+		auto pow_sleep_interval_l (pow_sleep_interval.count ());
+		toml.get (pow_sleep_interval_key, pow_sleep_interval_l);
+		pow_sleep_interval = std::chrono::nanoseconds (pow_sleep_interval_l);
+		toml.get<bool> ("use_memory_pools", use_memory_pools);
+
+		toml.get<std::size_t> ("bandwidth_limit", bandwidth_limit);
+		toml.get<double> ("bandwidth_limit_burst_ratio", bandwidth_limit_burst_ratio);
+
+		toml.get<std::size_t> ("bootstrap_bandwidth_limit", bootstrap_bandwidth_limit);
+		toml.get<double> ("bootstrap_bandwidth_burst_ratio", bootstrap_bandwidth_burst_ratio);
+
+		toml.get<bool> ("backup_before_upgrade", backup_before_upgrade);
+
+		auto confirming_set_batch_time_l (confirming_set_batch_time.count ());
+		toml.get ("confirming_set_batch_time", confirming_set_batch_time_l);
+		confirming_set_batch_time = std::chrono::milliseconds (confirming_set_batch_time_l);
+
+		toml.get<double> ("max_work_generate_multiplier", max_work_generate_multiplier);
+
+		toml.get<uint32_t> ("max_queued_requests", max_queued_requests);
+		toml.get<uint32_t> ("request_aggregator_threads", request_aggregator_threads);
+
+		toml.get<unsigned> ("max_unchecked_blocks", max_unchecked_blocks);
+
+		auto rep_crawler_weight_minimum_l (rep_crawler_weight_minimum.to_string_dec ());
+		if (toml.has_key ("rep_crawler_weight_minimum"))
+		{
+			rep_crawler_weight_minimum_l = toml.get<std::string> ("rep_crawler_weight_minimum");
+		}
+		if (rep_crawler_weight_minimum.decode_dec (rep_crawler_weight_minimum_l))
+		{
+			toml.get_error ().set ("rep_crawler_weight_minimum contains an invalid decimal amount");
+		}
+
+		if (toml.has_key ("frontiers_confirmation"))
+		{
+			auto frontiers_confirmation_l (toml.get<std::string> ("frontiers_confirmation"));
+			frontiers_confirmation = deserialize_frontiers_confirmation (frontiers_confirmation_l);
+		}
+
+		toml.get<unsigned> ("backlog_scan_batch_size", backlog_scan_batch_size);
+		toml.get<unsigned> ("backlog_scan_frequency", backlog_scan_frequency);
+
+		if (toml.has_key ("experimental"))
+		{
+			auto experimental_config_l (toml.get_required_child ("experimental"));
+			if (experimental_config_l.has_key ("secondary_work_peers"))
+			{
+				secondary_work_peers.clear ();
+				experimental_config_l.array_entries_required<std::string> ("secondary_work_peers", [this] (std::string const & entry_a) {
+					this->deserialize_address (entry_a, this->secondary_work_peers);
+				});
+			}
+			auto max_pruning_age_l (max_pruning_age.count ());
+			experimental_config_l.get ("max_pruning_age", max_pruning_age_l);
+			max_pruning_age = std::chrono::seconds (max_pruning_age_l);
+			experimental_config_l.get<uint64_t> ("max_pruning_depth", max_pruning_depth);
+		}
+
+		if (password_fanout < 16 || password_fanout > 1024 * 1024)
+		{
+			toml.get_error ().set ("password_fanout must be a number between 16 and 1048576");
+		}
+		if (io_threads == 0)
+		{
+			toml.get_error ().set ("io_threads must be non-zero");
+		}
+		if (active_elections.size <= 250 && !network_params.network.is_dev_network ())
+		{
+			toml.get_error ().set ("active_elections.size must be greater than 250");
+		}
+		if (bandwidth_limit > std::numeric_limits<std::size_t>::max ())
+		{
+			toml.get_error ().set ("bandwidth_limit unbounded = 0, default = 10485760, max = 18446744073709551615");
+		}
+		if (vote_generator_threshold < 1 || vote_generator_threshold > 11)
+		{
+			toml.get_error ().set ("vote_generator_threshold must be a number between 1 and 11");
+		}
+		if (max_work_generate_multiplier < 1)
+		{
+			toml.get_error ().set ("max_work_generate_multiplier must be greater than or equal to 1");
+		}
+		if (frontiers_confirmation == nano::frontiers_confirmation_mode::invalid)
+		{
+			toml.get_error ().set ("frontiers_confirmation value is invalid (available: always, auto, disabled)");
+		}
+		if (block_processor_batch_max_time < network_params.node.process_confirmed_interval)
+		{
+			toml.get_error ().set ((boost::format ("block_processor_batch_max_time value must be equal or larger than %1%ms") % network_params.node.process_confirmed_interval.count ()).str ());
+		}
+		if (max_pruning_age < std::chrono::seconds (5 * 60) && !network_params.network.is_dev_network ())
+		{
+			toml.get_error ().set ("max_pruning_age must be greater than or equal to 5 minutes");
+		}
+		if (bootstrap_frontier_request_count < 1024)
+		{
+			toml.get_error ().set ("bootstrap_frontier_request_count must be greater than or equal to 1024");
+		}
+	}
+	catch (std::runtime_error const & ex)
+	{
+		toml.get_error ().set (ex.what ());
+	}
+
+	return toml.get_error ();
+}
+
+nano::frontiers_confirmation_mode nano::node_config::deserialize_frontiers_confirmation (std::string const & string_a)
+{
+	if (string_a == "always")
+	{
+		return nano::frontiers_confirmation_mode::always;
+	}
+	else if (string_a == "auto")
+	{
+		return nano::frontiers_confirmation_mode::automatic;
+	}
+	else if (string_a == "disabled")
+	{
+		return nano::frontiers_confirmation_mode::disabled;
+	}
+	else
+	{
+		return nano::frontiers_confirmation_mode::invalid;
+	}
+}
+
+void nano::node_config::deserialize_address (std::string const & entry_a, std::vector<std::pair<std::string, uint16_t>> & container_a) const
+{
+	auto port_position (entry_a.rfind (':'));
+	bool result = (port_position == -1);
+	if (!result)
+	{
+		auto port_str (entry_a.substr (port_position + 1));
+		uint16_t port;
+		result |= parse_port (port_str, port);
+		if (!result)
+		{
+			auto address (entry_a.substr (0, port_position));
+			container_a.emplace_back (address, port);
+		}
+	}
+}
+
+nano::account nano::node_config::random_representative () const
+{
+	debug_assert (!preconfigured_representatives.empty ());
+	std::size_t index (nano::random_pool::generate_word32 (0, static_cast<uint32_t> (preconfigured_representatives.size () - 1)));
+	auto result (preconfigured_representatives[index]);
+	return result;
+}
+
 nano::node_flags::node_flags () :
 	handle{ rsnano::rsn_node_flags_create () }
 {

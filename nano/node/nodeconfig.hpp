@@ -126,6 +126,8 @@ public:
 	void load_dto (rsnano::NodeConfigDto & dto);
 	rsnano::NodeConfigDto to_dto () const;
 
+	nano::error deserialize_toml (nano::tomlconfig &);
+	nano::account random_representative () const;
 	nano::network_params network_params;
 	std::optional<uint16_t> peering_port{};
 	nano::scheduler::optimistic_config optimistic_scheduler;

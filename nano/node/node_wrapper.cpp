@@ -19,19 +19,7 @@ nano::node_wrapper::node_wrapper (std::filesystem::path const & path_a, std::fil
 
 	nano::daemon_config daemon_config{ path_a, network_params };
 	auto tmp_overrides{ node_flags_a.config_overrides () };
-	auto error = nano::read_node_config_toml (config_path_a, daemon_config, tmp_overrides);
 	node_flags_a.set_config_overrides (tmp_overrides);
-	if (error)
-	{
-		std::cerr << "Error deserializing config file";
-		if (!node_flags_a.config_overrides ().empty ())
-		{
-			std::cerr << " or --config option";
-		}
-		std::cerr << "\n"
-				  << error.get_message () << std::endl;
-		std::exit (1);
-	}
 
 	auto & node_config = daemon_config.node;
 	node_config.peering_port = 24000;

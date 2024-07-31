@@ -11,14 +11,13 @@ use std::{
     time::Instant,
 };
 pub use stream::FfiStream;
-mod toml;
-pub use toml::FfiToml;
 mod atomics;
 mod container_info;
 mod latch;
 mod logging;
 mod thread_pool;
 mod timer;
+mod toml;
 
 use crate::{transport::EndpointDto, VoidPointerCallback};
 pub use container_info::*;

@@ -70,11 +70,6 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 	nano::network_params network_params{ nano::network_constants::active_network () };
 	nano::daemon_config config{ data_path, network_params };
 	auto tmp_overrides{ flags.config_overrides () };
-	if (auto error = nano::read_node_config_toml (data_path, config, tmp_overrides))
-	{
-		logger.critical (nano::log::type::daemon, "Error deserializing node config: {}", error.get_message ());
-		std::exit (1);
-	}
 	flags.set_config_overrides (tmp_overrides);
 
 	if (auto error = nano::flags_config_conflicts (flags, config.node))
@@ -144,11 +139,6 @@ void nano::daemon::run (std::filesystem::path const & data_path, nano::node_flag
 					// Launch rpc in-process
 					nano::rpc_config rpc_config{ config.node.network_params.network };
 					auto tmp_overrides{ flags.rpc_config_overrides () };
-					if (auto error = nano::read_rpc_config_toml (data_path, rpc_config, tmp_overrides))
-					{
-						logger.critical (nano::log::type::daemon, "Error deserializing RPC config: {}", error.get_message ());
-						std::exit (1);
-					}
 					flags.set_rpc_overrides (tmp_overrides);
 
 					rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, *ipc_server, config.rpc, stop_callback);

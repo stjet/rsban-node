@@ -1,11 +1,12 @@
 use super::{Wallet, WalletActionThread, WalletRepresentatives};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
-    cementation::ConfirmingSet,
-    config::NodeConfig,
+    cementation::{ConfirmingSet, ConfirmingSetConfig},
+    config::{NetworkConstants, NodeConfig},
     representatives::OnlineReps,
+    stats::Stats,
     transport::{BufferDropPolicy, Network},
-    utils::ThreadPool,
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     work::DistributedWorkFactory,
     NetworkParams,
 };
@@ -13,12 +14,12 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
-    work::WorkThresholds,
+    work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
-    KeyDerivationFunction, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
+    KeyDerivationFunction, KeyPair, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
     WalletId, WorkVersion,
 };
-use rsnano_ledger::{BlockStatus, Ledger};
+use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
 use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
@@ -65,14 +66,42 @@ pub struct Wallets {
     pub wallet_actions: WalletActionThread,
     block_processor: Arc<BlockProcessor>,
     pub representative_wallets: Mutex<WalletRepresentatives>,
-    representatives: Arc<Mutex<OnlineReps>>,
-    kdf: KeyDerivationFunction,
+    online_reps: Arc<Mutex<OnlineReps>>,
+    pub kdf: KeyDerivationFunction,
     network: Arc<Network>,
     start_election: Mutex<Option<Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
 }
 
 impl Wallets {
+    pub fn new_null_with_env(env: Arc<LmdbEnv>) -> anyhow::Result<Self> {
+        Wallets::new(
+            env,
+            Arc::new(Ledger::new_null()),
+            &NodeConfig::new_test_instance(),
+            8,
+            WorkThresholds::new(0, 0, 0),
+            Arc::new(DistributedWorkFactory::new(
+                Arc::new(WorkPoolImpl::disabled()),
+                Arc::new(AsyncRuntime::default()),
+            )),
+            NetworkParams::new(NetworkConstants::active_network()),
+            Arc::new(ThreadPoolImpl::new_null()),
+            Arc::new(BlockProcessor::new_null()),
+            Arc::new(Mutex::new(OnlineReps::new(
+                Arc::new(RepWeightCache::new()),
+                Duration::default(),
+                Amount::zero(),
+            ))),
+            Arc::new(Network::new_null()),
+            Arc::new(ConfirmingSet::new(
+                ConfirmingSetConfig::default(),
+                Arc::new(Ledger::new_null()),
+                Arc::new(Stats::default()),
+            )),
+        )
+    }
+
     pub fn new(
         env: Arc<LmdbEnv>,
         ledger: Arc<Ledger>,
@@ -83,7 +112,7 @@ impl Wallets {
         network_params: NetworkParams,
         workers: Arc<dyn ThreadPool>,
         block_processor: Arc<BlockProcessor>,
-        representatives: Arc<Mutex<OnlineReps>>,
+        online_reps: Arc<Mutex<OnlineReps>>,
         network: Arc<Network>,
         confirming_set: Arc<ConfirmingSet>,
     ) -> anyhow::Result<Self> {
@@ -107,7 +136,7 @@ impl Wallets {
                 node_config.vote_minimum,
                 Arc::clone(&ledger),
             )),
-            representatives,
+            online_reps,
             kdf: kdf.clone(),
             network,
             start_election: Mutex::new(None),
@@ -405,12 +434,7 @@ impl Wallets {
         let wallets_guard = self.mutex.lock().unwrap();
         let mut reps_guard = self.representative_wallets.lock().unwrap();
         reps_guard.clear();
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         let tx = self.env.tx_begin_read();
         for (_, wallet) in wallets_guard.iter() {
             let mut representatives = HashSet::new();
@@ -574,14 +598,14 @@ impl Wallets {
                 if work == 0 {
                     work = wallet.store.work_get(tx, &source).unwrap_or_default();
                 }
+                let keys = KeyPair::from(prv_key);
                 let state_block = BlockEnum::State(StateBlock::new(
                     source,
                     info.head,
                     info.representative,
                     balance - amount,
                     account.into(),
-                    &prv_key,
-                    &source,
+                    &keys,
                     work,
                 ));
                 block = Some(state_block);
@@ -637,14 +661,14 @@ impl Wallets {
                     if work == 0 {
                         work = wallet.store.work_get(tx, &source).unwrap_or_default();
                     }
+                    let keys = KeyPair::from(prv_key);
                     let state_block = BlockEnum::State(StateBlock::new(
                         source,
                         info.head,
                         info.representative,
                         balance - amount,
                         account.into(),
-                        &prv_key,
-                        &source,
+                        &keys,
                         work,
                     ));
                     details = BlockDetails::new(info.epoch, true, false, false);
@@ -931,6 +955,17 @@ pub trait WalletsExt {
         id: Option<String>,
     ) -> Option<BlockEnum>;
 
+    fn send_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<BlockEnum, WalletsError>;
+
     fn change_action(
         &self,
         wallet: &Arc<Wallet>,
@@ -1089,12 +1124,7 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, key.into());
         }
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         let mut reps = self.representative_wallets.lock().unwrap();
         if reps.check_rep(key, half_principal_weight) {
             wallet.representatives.lock().unwrap().insert(key);
@@ -1145,12 +1175,7 @@ impl WalletsExt for Arc<Wallets> {
         if generate_work {
             self.work_ensure(wallet, key, self.ledger.latest_root(&block_tx, &key));
         }
-        let half_principal_weight = self
-            .representatives
-            .lock()
-            .unwrap()
-            .minimum_principal_weight()
-            / 2;
+        let half_principal_weight = self.online_reps.lock().unwrap().minimum_principal_weight() / 2;
         // Makes sure that the representatives container will
         // be in sync with any added keys.
         tx.commit();
@@ -1306,6 +1331,22 @@ impl WalletsExt for Arc<Wallets> {
         Ok((restored_count, first_account))
     }
 
+    fn send_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        account: Account,
+        amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
+    ) -> Result<BlockEnum, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
+        self.send_action(wallet, source, account, amount, work, generate_work, id)
+            .ok_or(WalletsError::Generic)
+    }
+
     fn send_action(
         &self,
         wallet: &Arc<Wallet>,
@@ -1379,14 +1420,14 @@ impl WalletsExt for Arc<Wallets> {
                         .work_get(&wallet_tx, &source)
                         .unwrap_or_default();
                 }
+                let keys = KeyPair::from(prv);
                 let state_block = BlockEnum::State(StateBlock::new(
                     source,
                     info.head,
                     representative,
                     info.balance,
                     Link::zero(),
-                    &prv,
-                    &source,
+                    &keys,
                     work,
                 ));
                 block = Some(state_block);
@@ -1456,6 +1497,7 @@ impl WalletsExt for Arc<Wallets> {
                             .work_get(&wallet_tx, &account)
                             .unwrap_or_default();
                     }
+                    let keys = KeyPair::from(prv);
                     if let Some(info) = self.ledger.account_info(&block_tx, &account) {
                         block = Some(BlockEnum::State(StateBlock::new(
                             account,
@@ -1463,8 +1505,7 @@ impl WalletsExt for Arc<Wallets> {
                             info.representative,
                             info.balance + pending_info.amount,
                             send_hash.into(),
-                            &prv,
-                            &account,
+                            &keys,
                             work,
                         )));
                         epoch = std::cmp::max(info.epoch, pending_info.epoch);
@@ -1475,8 +1516,7 @@ impl WalletsExt for Arc<Wallets> {
                             representative,
                             pending_info.amount,
                             send_hash.into(),
-                            &prv,
-                            &account,
+                            &keys,
                             work,
                         )));
                         epoch = pending_info.epoch;

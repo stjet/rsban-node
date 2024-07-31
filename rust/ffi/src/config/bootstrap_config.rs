@@ -1,4 +1,7 @@
-use rsnano_node::config::{AccountSetsToml, BootstrapAscendingToml};
+use rsnano_node::{
+    bootstrap::BootstrapAscendingConfig,
+    config::{AccountSetsToml, BootstrapAscendingToml},
+};
 use std::time::Duration;
 
 #[repr(C)]
@@ -36,18 +39,20 @@ impl From<&BootstrapAscendingToml> for BootstrapAscendingConfigDto {
     }
 }
 
-impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingToml {
+impl From<&BootstrapAscendingConfigDto> for BootstrapAscendingConfig {
     fn from(value: &BootstrapAscendingConfigDto) -> Self {
-        Self {
-            requests_limit: value.requests_limit,
-            database_requests_limit: value.database_requests_limit,
-            pull_count: value.pull_count,
-            timeout: Duration::from_millis(value.timeout_ms),
-            throttle_coefficient: value.throttle_coefficient,
-            throttle_wait: Duration::from_millis(value.throttle_wait_ms),
-            account_sets: (&value.account_sets).into(),
-            block_wait_count: value.block_wait_count,
-        }
+        let mut config = BootstrapAscendingConfig::default();
+
+        config.requests_limit = value.requests_limit;
+        config.database_requests_limit = value.database_requests_limit;
+        config.pull_count = value.pull_count;
+        config.timeout = Duration::from_millis(value.timeout_ms);
+        config.throttle_coefficient = value.throttle_coefficient;
+        config.throttle_wait = Duration::from_millis(value.throttle_wait_ms);
+        config.account_sets = (&value.account_sets).into();
+        config.block_wait_count = value.block_wait_count;
+
+        config
     }
 }
 

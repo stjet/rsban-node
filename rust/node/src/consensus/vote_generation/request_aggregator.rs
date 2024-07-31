@@ -7,7 +7,7 @@ use crate::{
     transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
 };
 use rsnano_core::{
-    utils::{ContainerInfoComponent, TomlWriter},
+    utils::{get_cpu_count, ContainerInfoComponent, TomlWriter},
     BlockHash, NoValue, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -52,6 +52,12 @@ impl RequestAggregatorConfig {
             self.batch_size,
             "Number of requests to process in a single batch. \ntype:uint64",
         )
+    }
+}
+
+impl Default for RequestAggregatorConfig {
+    fn default() -> Self {
+        Self::new(get_cpu_count())
     }
 }
 

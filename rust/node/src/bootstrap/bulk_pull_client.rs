@@ -181,7 +181,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             let self_clone = Arc::clone(self);
 
             self.runtime.tokio.spawn(async move {
-                let Ok(block) = read_block(&self_clone.connection.get_socket()).await else {
+                let Ok(block) = read_block(&**self_clone.connection.get_channel()).await else {
                     self_clone.network_error.store(true, Ordering::SeqCst);
                     return;
                 };

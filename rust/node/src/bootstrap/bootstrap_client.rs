@@ -84,11 +84,7 @@ impl BootstrapClient {
         &self.channel
     }
 
-    pub fn get_socket(&self) -> &Arc<Socket> {
-        &self.socket
-    }
-
-    //TODO delete and use async read() directly
+    //TODO delete
     pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
         let socket = Arc::clone(&self.socket);
         let global_buf = self.receive_buffer.clone();
@@ -104,13 +100,6 @@ impl BootstrapClient {
                 Err(_) => callback(ErrorCode::fault(), 0),
             }));
         });
-    }
-
-    pub async fn read(&self, size: usize) -> anyhow::Result<()> {
-        let mut buffer = [0; BUFFER_SIZE];
-        self.socket.read_raw(&mut buffer, size).await?;
-        self.receive_buffer.lock().unwrap().copy_from_slice(&buffer);
-        Ok(())
     }
 
     pub fn receive_buffer(&self) -> Vec<u8> {
@@ -177,7 +166,7 @@ impl BootstrapClient {
         }
     }
 
-    pub fn close_socket(&self) {
+    pub fn close(&self) {
         self.socket.close();
     }
 

@@ -198,7 +198,7 @@ impl BootstrapConnections {
         let mut lock = self.mutex.lock().unwrap();
         for i in &lock.clients {
             if let Some(client) = i.upgrade() {
-                client.close_socket();
+                client.close();
             }
         }
         lock.clients.clear();
@@ -241,7 +241,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 guard.clients.push_back(Arc::downgrade(&client_a));
             }
         } else {
-            client_a.close_socket();
+            client_a.close();
         }
         drop(guard);
         self.condition.notify_all();

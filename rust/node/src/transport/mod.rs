@@ -29,6 +29,7 @@ mod token_bucket;
 mod tokio_socket_facade;
 mod write_queue;
 
+use async_trait::async_trait;
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
@@ -198,5 +199,12 @@ impl Deref for ChannelEnum {
             ChannelEnum::InProc(inproc) => inproc,
             ChannelEnum::Fake(fake) => fake,
         }
+    }
+}
+
+#[async_trait]
+impl AsyncBufferReader for ChannelEnum {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        self.deref().read(buffer, count).await
     }
 }

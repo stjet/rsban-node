@@ -256,6 +256,62 @@ impl Socket {
         *self.stream.lock().unwrap() = Some(Arc::new(stream));
     }
 
+    pub async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
+        let buffer_len = { buffer.lock().unwrap().len() };
+        if size > buffer_len {
+            return Err(anyhow!("buffer is too small for read count"));
+        }
+
+        if self.is_closed() {
+            return Err(anyhow!("Tried to read from a closed TcpStream"));
+        }
+
+        self.set_default_timeout();
+        let stream = {
+            let guard = self.stream.lock().unwrap();
+            let Some(stream) = guard.deref() else {
+                return Err(anyhow!("no tcp stream open"));
+            };
+            Arc::clone(stream)
+        };
+
+        let mut read = 0;
+        loop {
+            match stream.readable().await {
+                Ok(_) => {
+                    let mut buf = buffer.lock().unwrap();
+                    match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
+                        Ok(0) => {
+                            self.observer.read_error();
+                            return Err(anyhow!("remote side closed the channel"));
+                        }
+                        Ok(n) => {
+                            drop(buf);
+                            read += n;
+                            if read >= size {
+                                self.observer.read_successful(size);
+                                self.set_last_completion();
+                                self.set_last_receive_time();
+                                return Ok(());
+                            }
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(e) => {
+                            self.observer.read_error();
+                            return Err(e.into());
+                        }
+                    };
+                }
+                Err(e) => {
+                    self.observer.read_error();
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+
     pub(crate) async fn write_raw(&self, data: &[u8]) -> anyhow::Result<()> {
         let stream = {
             let guard = self.stream.lock().unwrap();
@@ -298,7 +354,6 @@ impl Drop for Socket {
 pub trait SocketExtensions {
     fn start(&self);
     fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>);
-    async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()>;
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -390,62 +445,6 @@ impl SocketExtensions for Arc<Socket> {
                 }
             });
         });
-    }
-
-    async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
-        let buffer_len = { buffer.lock().unwrap().len() };
-        if size > buffer_len {
-            return Err(anyhow!("buffer is too small for read count"));
-        }
-
-        if self.is_closed() {
-            return Err(anyhow!("Tried to read from a closed TcpStream"));
-        }
-
-        self.set_default_timeout();
-        let stream = {
-            let guard = self.stream.lock().unwrap();
-            let Some(stream) = guard.deref() else {
-                return Err(anyhow!("no tcp stream open"));
-            };
-            Arc::clone(stream)
-        };
-
-        let mut read = 0;
-        loop {
-            match stream.readable().await {
-                Ok(_) => {
-                    let mut buf = buffer.lock().unwrap();
-                    match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
-                        Ok(0) => {
-                            self.observer.read_error();
-                            return Err(anyhow!("remote side closed the channel"));
-                        }
-                        Ok(n) => {
-                            drop(buf);
-                            read += n;
-                            if read >= size {
-                                self.observer.read_successful(size);
-                                self.set_last_completion();
-                                self.set_last_receive_time();
-                                return Ok(());
-                            }
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        Err(e) => {
-                            self.observer.read_error();
-                            return Err(e.into());
-                        }
-                    };
-                }
-                Err(e) => {
-                    self.observer.read_error();
-                    return Err(e.into());
-                }
-            }
-        }
     }
 
     fn async_write(

@@ -5,6 +5,10 @@ use rsnano_core::{serialized_block_size, utils::BufferReader, BlockEnum, BlockTy
 use std::sync::{Arc, Mutex};
 use tokio::task::spawn_blocking;
 
+//pub(crate) async fn read_block(socket: &Socket) -> anyhow::Result<BlockEnum> {
+//    socket.read_raw(buffer, size)
+//}
+
 pub struct BlockDeserializer {
     async_rt: Arc<AsyncRuntime>,
     buffer: Arc<Mutex<Vec<u8>>>,

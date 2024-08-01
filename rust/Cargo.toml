@@ -7,7 +7,8 @@ members = [
 	"node",
 	"ffi",
 	"main",
+	"rpc",
 	"tools/load_test",
-	"tools/xtask",
+	"tools/xtask", "rpc",
 ]
 resolver = "2"

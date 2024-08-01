@@ -1,4 +1,3 @@
-use super::Miliseconds;
 use crate::bootstrap::{AccountSetsConfig, BootstrapAscendingConfig};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -8,9 +7,9 @@ pub struct BootstrapAscendingToml {
     pub requests_limit: Option<usize>,
     pub database_requests_limit: Option<usize>,
     pub pull_count: Option<usize>,
-    pub timeout: Option<Miliseconds>,
+    pub timeout: Option<u64>,
     pub throttle_coefficient: Option<usize>,
-    pub throttle_wait: Option<Miliseconds>,
+    pub throttle_wait: Option<u64>,
     pub account_sets: Option<AccountSetsToml>,
     pub block_wait_count: Option<usize>,
 }
@@ -22,9 +21,9 @@ impl Default for BootstrapAscendingToml {
             requests_limit: Some(config.requests_limit),
             database_requests_limit: Some(config.database_requests_limit),
             pull_count: Some(config.pull_count),
-            timeout: Some(Miliseconds(config.timeout.as_millis())),
+            timeout: Some(config.timeout.as_millis() as u64),
             throttle_coefficient: Some(config.throttle_coefficient),
-            throttle_wait: Some(Miliseconds(config.throttle_wait.as_millis())),
+            throttle_wait: Some(config.throttle_wait.as_millis() as u64),
             account_sets: Some(AccountSetsToml::default()),
             block_wait_count: Some(config.block_wait_count),
         }
@@ -37,9 +36,9 @@ impl From<&BootstrapAscendingConfig> for BootstrapAscendingToml {
             requests_limit: Some(config.requests_limit),
             database_requests_limit: Some(config.database_requests_limit),
             pull_count: Some(config.pull_count),
-            timeout: Some(Miliseconds(config.timeout.as_millis())),
+            timeout: Some(config.timeout.as_millis() as u64),
             throttle_coefficient: Some(config.throttle_coefficient),
-            throttle_wait: Some(Miliseconds(config.throttle_wait.as_millis())),
+            throttle_wait: Some(config.throttle_wait.as_millis() as u64),
             account_sets: Some((&config.account_sets).into()),
             block_wait_count: Some(config.block_wait_count),
         }
@@ -66,10 +65,10 @@ impl From<&BootstrapAscendingToml> for BootstrapAscendingConfig {
             config.requests_limit = requests_limit;
         }
         if let Some(timeout) = &toml.timeout {
-            config.timeout = Duration::from_millis(timeout.0 as u64);
+            config.timeout = Duration::from_millis(*timeout);
         }
         if let Some(throttle_wait) = &toml.throttle_wait {
-            config.throttle_wait = Duration::from_millis(throttle_wait.0 as u64);
+            config.throttle_wait = Duration::from_millis(*throttle_wait);
         }
         if let Some(throttle_coefficient) = toml.throttle_coefficient {
             config.throttle_coefficient = throttle_coefficient;
@@ -83,7 +82,7 @@ pub struct AccountSetsToml {
     pub consideration_count: Option<usize>,
     pub priorities_max: Option<usize>,
     pub blocking_max: Option<usize>,
-    pub cooldown: Option<Miliseconds>,
+    pub cooldown: Option<u64>,
 }
 
 impl Default for AccountSetsToml {
@@ -93,7 +92,7 @@ impl Default for AccountSetsToml {
             consideration_count: Some(config.consideration_count),
             priorities_max: Some(config.priorities_max),
             blocking_max: Some(config.blocking_max),
-            cooldown: Some(Miliseconds(config.cooldown.as_millis())),
+            cooldown: Some(config.cooldown.as_millis() as u64),
         }
     }
 }
@@ -112,7 +111,7 @@ impl From<&AccountSetsToml> for AccountSetsConfig {
             config.priorities_max = priorities_max;
         }
         if let Some(cooldown) = &toml.cooldown {
-            config.cooldown = Duration::from_millis(cooldown.0 as u64);
+            config.cooldown = Duration::from_millis(*cooldown);
         }
         config
     }
@@ -124,7 +123,7 @@ impl From<&AccountSetsConfig> for AccountSetsToml {
             consideration_count: Some(value.consideration_count),
             priorities_max: Some(value.priorities_max),
             blocking_max: Some(value.blocking_max),
-            cooldown: Some(Miliseconds(value.cooldown.as_millis())),
+            cooldown: Some(value.cooldown.as_millis() as u64),
         }
     }
 }

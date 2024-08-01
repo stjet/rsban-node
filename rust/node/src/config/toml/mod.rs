@@ -35,31 +35,7 @@ pub use opencl_toml::*;
 pub use optimistic_scheduler_toml::*;
 pub use priority_bucket_toml::*;
 pub use request_aggregator_toml::*;
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 pub use stats_toml::*;
 pub use vote_cache_toml::*;
 pub use vote_processor_toml::*;
 pub use websocket_toml::*;
-
-#[derive(Clone, Default)]
-pub struct Miliseconds(pub u128);
-
-impl Serialize for Miliseconds {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Miliseconds {
-    fn deserialize<D>(deserializer: D) -> Result<Miliseconds, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let miliseconds = s.parse::<u128>().map_err(Error::custom)?;
-        Ok(Miliseconds(miliseconds))
-    }
-}

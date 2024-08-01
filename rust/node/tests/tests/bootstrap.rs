@@ -769,6 +769,116 @@ mod bulk_pull {
         assert!(pull_server.get_next().is_none());
     }
 
+    // Tests that the `end' value is respected in the bulk_pull message when the ascending flag is used.
+    #[test]
+    fn ascending_end() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let block1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::raw(100),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(block1.clone()).unwrap();
+
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_ACCOUNT).into(),
+            end: block1.hash(),
+            count: 0,
+            ascending: true,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block_out1 = pull_server.get_next().unwrap();
+        assert_eq!(block_out1.hash(), *DEV_GENESIS_HASH);
+        assert!(pull_server.get_next().is_none());
+    }
+
+    #[test]
+    fn by_block() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_HASH).into(),
+            end: 0.into(),
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block_out1 = pull_server.get_next().unwrap();
+        assert_eq!(block_out1.hash(), *DEV_GENESIS_HASH);
+        assert!(pull_server.get_next().is_none());
+    }
+
+    #[test]
+    fn by_block_single() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_HASH).into(),
+            end: *DEV_GENESIS_HASH,
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block_out1 = pull_server.get_next().unwrap();
+        assert_eq!(block_out1.hash(), *DEV_GENESIS_HASH);
+        assert!(pull_server.get_next().is_none());
+    }
+
+    #[test]
+    fn count_limit() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::raw(1),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(send1.clone()).unwrap();
+
+        let receive1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            send1.hash(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX,
+            send1.hash().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((send1.hash()).into()),
+        ));
+        node.process(receive1.clone()).unwrap();
+
+        let bulk_pull = BulkPull {
+            start: receive1.hash().into(),
+            end: 0.into(),
+            count: 2,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        assert_eq!(pull_server.max_count(), 2);
+        assert_eq!(pull_server.sent_count(), 0);
+
+        let block = pull_server.get_next().unwrap();
+        assert_eq!(receive1.hash(), block.hash());
+
+        let block = pull_server.get_next().unwrap();
+        assert_eq!(send1.hash(), block.hash());
+
+        let block = pull_server.get_next();
+        assert!(block.is_none());
+    }
+
     fn create_bulk_pull_server(node: &Node, request: BulkPull) -> BulkPullServer {
         let response_server = create_response_server(&node);
         BulkPullServer::new(

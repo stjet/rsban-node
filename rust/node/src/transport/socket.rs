@@ -653,15 +653,8 @@ impl SocketExtensions for Arc<Socket> {
 
 #[async_trait]
 impl AsyncBufferReader for Arc<Socket> {
-    async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()> {
-        let mut buf = vec![0; buffer.lock().unwrap().len()];
-        // Increase timeout to receive TCP header (idle server socket)
-        let prev_timeout = self.default_timeout_value();
-        self.set_default_timeout_value(self.idle_timeout.as_secs());
-        let result = self.read_raw(&mut buf, count).await;
-        self.set_default_timeout_value(prev_timeout);
-        buffer.lock().unwrap().copy_from_slice(&buf);
-        result
+    async fn read(&mut self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        self.read_raw(buffer, count).await
     }
 }
 

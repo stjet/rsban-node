@@ -1,5 +1,4 @@
 use crate::config::RpcChildProcessConfig;
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -10,12 +9,12 @@ pub struct RpcChildProcessToml {
 }
 
 impl RpcChildProcessToml {
-    pub fn new() -> Result<Self> {
-        let config = RpcChildProcessConfig::new()?;
-        Ok(Self {
+    pub fn new() -> Self {
+        let config = RpcChildProcessConfig::new();
+        Self {
             enable: Some(config.enable),
             rpc_path: Some(config.rpc_path),
-        })
+        }
     }
 }
 
@@ -36,11 +35,11 @@ pub struct NodeRpcToml {
 }
 
 impl NodeRpcToml {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             enable: Some(false),
             enable_sign_hash: Some(false),
-            child_process: Some(RpcChildProcessToml::new()?),
-        })
+            child_process: Some(RpcChildProcessToml::new()),
+        }
     }
 }

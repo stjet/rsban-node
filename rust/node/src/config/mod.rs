@@ -9,7 +9,6 @@ mod opencl_config;
 mod toml;
 
 use crate::NetworkParams;
-use anyhow::Result;
 pub use daemon_config::*;
 pub use diagnostics_config::*;
 pub use network_constants::*;
@@ -21,10 +20,8 @@ pub use rsnano_core::Networks;
 use std::path::{Path, PathBuf};
 pub use toml::*;
 
-pub fn get_default_rpc_filepath() -> Result<PathBuf> {
-    Ok(get_default_rpc_filepath_from(
-        std::env::current_exe()?.as_path(),
-    ))
+pub fn get_default_rpc_filepath() -> PathBuf {
+    get_default_rpc_filepath_from(std::env::current_exe().unwrap_or_default().as_path())
 }
 
 pub fn get_default_rpc_filepath_from(node_exe_path: &Path) -> PathBuf {

@@ -1,6 +1,6 @@
 use super::{NodeConfig, NodeRpcConfig, OpenclConfig};
 use crate::NetworkParams;
-use anyhow::Result;
+use rsnano_core::utils::get_cpu_count;
 
 pub struct DaemonConfig {
     pub rpc_enable: bool,
@@ -11,13 +11,19 @@ pub struct DaemonConfig {
 }
 
 impl DaemonConfig {
-    pub fn new(network_params: &NetworkParams, parallelism: usize) -> Result<Self> {
-        Ok(Self {
+    pub fn new(network_params: &NetworkParams, parallelism: usize) -> Self {
+        Self {
             rpc_enable: false,
             node: NodeConfig::new(None, network_params, parallelism),
             opencl: OpenclConfig::new(),
             opencl_enable: false,
-            rpc: NodeRpcConfig::new()?,
-        })
+            rpc: NodeRpcConfig::new(),
+        }
+    }
+}
+
+impl Default for DaemonConfig {
+    fn default() -> Self {
+        Self::new(&NetworkParams::default(), get_cpu_count())
     }
 }

@@ -1,6 +1,5 @@
 use super::{NodeRpcToml, NodeToml, OpenclToml};
 use crate::config::DaemonConfig;
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -8,6 +7,16 @@ pub struct DaemonToml {
     pub node: Option<NodeToml>,
     pub rpc: Option<NodeRpcToml>,
     pub opencl: Option<OpenclToml>,
+}
+
+impl From<&DaemonToml> for DaemonConfig {
+    fn from(toml: &DaemonToml) -> Self {
+        let mut config = DaemonConfig::default();
+        if let Some(node_toml) = &toml.node {
+            config.node = node_toml.into();
+        }
+        config
+    }
 }
 
 impl From<&DaemonConfig> for DaemonToml {
@@ -41,13 +50,13 @@ impl From<&DaemonConfig> for OpenclToml {
     }
 }
 
-impl DaemonToml {
-    pub fn default() -> Result<Self> {
-        Ok(Self {
+impl Default for DaemonToml {
+    fn default() -> Self {
+        Self {
             node: Some(NodeToml::default()),
             opencl: Some(OpenclToml::default()),
-            rpc: Some(NodeRpcToml::new()?),
-        })
+            rpc: Some(NodeRpcToml::new()),
+        }
     }
 }
 
@@ -62,9 +71,9 @@ mod tests {
     };
 
     #[test]
-    fn test_toml_serialization() {
+    fn toml_serialize() {
         let network_params = NetworkParams::new(NetworkConstants::active_network());
-        let config: DaemonToml = (&DaemonConfig::new(&network_params, 0).unwrap()).into();
+        let config: DaemonToml = (&DaemonConfig::new(&network_params, 0)).into();
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized_config: DaemonToml = toml::from_str(&toml_str).unwrap();
 
@@ -75,14 +84,14 @@ mod tests {
     }
 
     #[test]
-    fn test_toml_deserialization() {
+    fn toml_deserialize() {
         let path: PathBuf = "/tmp/".into();
 
         let fs = NullableFilesystem::new_null();
 
         fs.create_dir_all(&path).unwrap();
 
-        let toml_write = r#"
+        let toml_str = r#"
             [node]
            	# allow_local_peers = true
            	background_threads = 10
@@ -265,16 +274,64 @@ mod tests {
 
         let file_path: PathBuf = path.join("config-node.toml");
 
-        fs.write(&file_path, toml_write).unwrap();
+        fs.write(&file_path, toml_str).unwrap();
 
         let path: PathBuf = "/tmp/config-node.toml".into();
-        std::fs::write(&path, toml_write).unwrap();
+        std::fs::write(&path, toml_str).unwrap();
 
         let toml_read = NullableFilesystem::new().read_to_string(&path).unwrap();
 
-        let toml_config: DaemonToml =
+        let daemon_toml: DaemonToml =
             toml::from_str(&toml_read).expect("Failed to deserialize TOML");
 
-        assert_eq!(toml_config.node.unwrap().background_threads.unwrap(), 10);
+        assert_eq!(daemon_toml.node.unwrap().background_threads.unwrap(), 10);
+    }
+
+    #[test]
+    fn deserialize_defaults() {
+        let path: PathBuf = "/tmp/".into();
+
+        let fs = NullableFilesystem::new_null();
+
+        fs.create_dir_all(&path).unwrap();
+
+        let toml_str = r#"
+            [node]
+            [node.block_processor]
+            [node.diagnostics.txn_tracking]
+            [node.httpcallback]
+            [node.ipc.local]
+            [node.ipc.tcp]
+            [node.statistics.log]
+            [node.statistics.sampling]
+            [node.vote_processsor]
+            [node.websocket]
+            [node.lmdb]
+            [node.bootstrap_server]
+            [opencl]
+            [rpc]
+            [rpc.child_process]
+        "#;
+
+        let file_path: PathBuf = path.join("config-node.toml");
+
+        fs.write(&file_path, toml_str).unwrap();
+
+        let path: PathBuf = "/tmp/config-node.toml".into();
+        std::fs::write(&path, toml_str).unwrap();
+
+        let toml_read = NullableFilesystem::new().read_to_string(&path).unwrap();
+
+        let daemon_toml: DaemonToml =
+            toml::from_str(&toml_read).expect("Failed to deserialize TOML");
+
+        let daemon_config: DaemonConfig = (&daemon_toml).into();
+
+        let default_daemon_config = DaemonConfig::default();
+
+        assert_eq!(
+            daemon_config.node.background_threads,
+            default_daemon_config.node.background_threads
+        );
     }
 }

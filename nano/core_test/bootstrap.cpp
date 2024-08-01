@@ -39,34 +39,6 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	node->node_id);
 }
 
-TEST (bulk_pull, none)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = nano::dev::genesis_key.pub;
-	payload.end = nano::dev::genesis->hash ();
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	auto block (request->get_next ());
-	ASSERT_EQ (nullptr, block);
-}
-
-TEST (bulk_pull, get_next_on_open)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = nano::dev::genesis_key.pub;
-	payload.end = 0;
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	auto block (request->get_next ());
-	ASSERT_NE (nullptr, block);
-	ASSERT_TRUE (block->previous ().is_zero ());
-	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
-}
-
 /**
 	Tests that the ascending flag is respected in the bulk_pull message when given a known block hash
  */

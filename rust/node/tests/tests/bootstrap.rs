@@ -679,6 +679,36 @@ mod bulk_pull {
         assert_eq!(pull_server.current(), pull_server.request().end);
     }
 
+    #[test]
+    fn none() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_ACCOUNT).into(),
+            end: *DEV_GENESIS_HASH,
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        assert_eq!(pull_server.get_next(), None);
+    }
+
+    #[test]
+    fn get_next_on_open() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_ACCOUNT).into(),
+            end: 0.into(),
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block = pull_server.get_next().unwrap();
+        assert!(block.previous().is_zero());
+        assert_eq!(pull_server.current(), pull_server.request().end);
+    }
+
     fn create_bulk_pull_server(node: &Node, request: BulkPull) -> BulkPullServer {
         let response_server = create_response_server(&node);
         BulkPullServer::new(

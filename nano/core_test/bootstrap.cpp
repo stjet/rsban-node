@@ -1,6 +1,5 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/node/active_elections.hpp>
-#include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/test_common/chains.hpp>
 #include <nano/test_common/network.hpp>

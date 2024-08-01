@@ -15,8 +15,6 @@ add_library(
   bootstrap/bootstrap_config.cpp
   bootstrap/bootstrap_connections.hpp
   bootstrap/bootstrap_connections.cpp
-  bootstrap/bootstrap_frontier.hpp
-  bootstrap/bootstrap_frontier.cpp
   bootstrap/bootstrap.hpp
   bootstrap/bootstrap.cpp
   bootstrap/bootstrap_server.hpp

@@ -1,7 +1,6 @@
 #include <nano/lib/rsnano.hpp>
 #include <nano/lib/rsnanoutils.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
-#include <nano/node/bootstrap/bootstrap_frontier.hpp>
 #include <nano/node/messages.hpp>
 #include <nano/node/node.hpp>
 #include <nano/node/transport/tcp.hpp>

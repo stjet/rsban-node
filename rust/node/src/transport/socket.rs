@@ -9,7 +9,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
-use rsnano_core::utils::{seconds_since_epoch, TEST_ENDPOINT_1};
+use rsnano_core::utils::{seconds_since_epoch, NULL_ENDPOINT};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
@@ -94,7 +94,7 @@ impl SocketObserver for NullSocketObserver {}
 pub struct Socket {
     pub socket_id: usize,
     /// The other end of the connection
-    remote: Mutex<Option<SocketAddrV6>>,
+    remote: SocketAddrV6,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     /// activity is any successful connect, send or receive event
@@ -142,7 +142,7 @@ impl Socket {
     pub fn new_null() -> Arc<Socket> {
         let thread_pool = Arc::new(ThreadPoolImpl::new_null());
         SocketBuilder::new(ChannelDirection::Outbound, thread_pool, Weak::new())
-            .finish(TcpStream::new_null(), TEST_ENDPOINT_1)
+            .finish(TcpStream::new_null())
     }
 
     pub fn is_closed(&self) -> bool {
@@ -527,7 +527,7 @@ impl SocketExtensions for Arc<Socket> {
     }
 
     fn get_remote(&self) -> Option<SocketAddrV6> {
-        *self.remote.lock().unwrap()
+        Some(self.remote)
     }
 
     fn has_timed_out(&self) -> bool {
@@ -603,10 +603,15 @@ impl SocketBuilder {
         self
     }
 
-    pub fn finish(self, stream: TcpStream, remote: SocketAddrV6) -> Arc<Socket> {
+    pub fn finish(self, stream: TcpStream) -> Arc<Socket> {
         let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
         let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
         debug!(socket_id, alive, "Creating socket");
+
+        let remote = stream
+            .peer_addr()
+            .map(into_ipv6_socket_address)
+            .unwrap_or(NULL_ENDPOINT);
 
         let observer = self
             .observer
@@ -614,7 +619,7 @@ impl SocketBuilder {
         Arc::new({
             Socket {
                 socket_id,
-                remote: Mutex::new(Some(remote)),
+                remote,
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),

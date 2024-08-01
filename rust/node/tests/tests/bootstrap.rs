@@ -1,8 +1,8 @@
 use super::helpers::{assert_timely, assert_timely_eq, establish_tcp, System};
 use crate::tests::helpers::get_available_port;
 use rsnano_core::{
-    utils::TEST_ENDPOINT_1, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock,
-    UncheckedKey, WalletId, DEV_GENESIS_KEY,
+    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
@@ -1179,11 +1179,9 @@ mod frontier_req {
 }
 
 mod bulk_pull_account {
+    use super::*;
     use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags};
     use rsnano_node::bootstrap::BulkPullAccountServer;
-    use tracing::Instrument;
-
-    use super::*;
 
     #[test]
     fn basic() {
@@ -1199,7 +1197,7 @@ mod bulk_pull_account {
         node.wallets
             .insert_adhoc2(&wallet_id, &key1.private_key(), true)
             .unwrap();
-        let send1 = node
+        let _send1 = node
             .wallets
             .send_action2(
                 &wallet_id,
@@ -1223,7 +1221,7 @@ mod bulk_pull_account {
                 None,
             )
             .unwrap();
-        let send3 = node
+        let _send3 = node
             .wallets
             .send_action2(
                 &wallet_id,
@@ -1302,7 +1300,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
         Arc::downgrade(&node.async_rt),
     )
     .observer(socket_stats)
-    .finish(TcpStream::new_null(), TEST_ENDPOINT_1);
+    .finish(TcpStream::new_null());
 
     let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
         node.async_rt.clone(),

@@ -9,11 +9,11 @@ pub struct RpcChildProcessConfig {
 }
 
 impl RpcChildProcessConfig {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             enable: false,
-            rpc_path: get_default_rpc_filepath()?,
-        })
+            rpc_path: get_default_rpc_filepath(),
+        }
     }
 }
 
@@ -23,11 +23,11 @@ pub struct NodeRpcConfig {
 }
 
 impl NodeRpcConfig {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             enable_sign_hash: false,
-            child_process: RpcChildProcessConfig::new()?,
-        })
+            child_process: RpcChildProcessConfig::new(),
+        }
     }
 
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {

@@ -1,4 +1,4 @@
-use super::{DiagnosticsConfig, Miliseconds, NodeToml};
+use super::DiagnosticsConfig;
 use crate::block_processing::BlockProcessorConfig;
 use crate::bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig};
 use crate::consensus::{
@@ -30,7 +30,8 @@ use std::time::Duration;
 use std::{cmp::max, net::Ipv6Addr};
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum FrontiersConfirmationMode {
     Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
@@ -123,15 +124,11 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
     fn default() -> Self {
         let network_params = &NetworkParams::default();
-        Self::new(
-            Some(network_params.network.default_node_port),
-            network_params,
-            get_cpu_count(),
-        )
+        Self::new(None, network_params, get_cpu_count())
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Peer {
     pub address: String,
     pub port: u16,
@@ -502,33 +499,33 @@ impl NodeConfig {
         )?;
 
         toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.\nThe contents of the NANO_DEFAULT_PEER environment variable are added to preconfigured_peers.",
-        &mut |peers| {
-            for peer in &self.preconfigured_peers {
-                peers.push_back_str(peer)?;
-            }
-            Ok(())
-        })?;
+            &mut |peers| {
+                for peer in &self.preconfigured_peers {
+                    peers.push_back_str(peer)?;
+                }
+                Ok(())
+            })?;
 
         toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets.",
-        &mut |reps|{
-            for rep in &self.preconfigured_representatives {
-                reps.push_back_str(&rep.encode_account())?;
-            }
-            Ok(())
-        })?;
+            &mut |reps|{
+                for rep in &self.preconfigured_representatives {
+                    reps.push_back_str(&rep.encode_account())?;
+                }
+                Ok(())
+            })?;
 
         toml.put_child("experimental", &mut|child|{
-            child.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation.",
-        &mut |peers|{
-            for p in &self.secondary_work_peers{
-                peers.push_back_str(&format!("{}:{}", p.address, p.port))?;
-            }
-            Ok(())
-        })?;
-            child.put_i64("max_pruning_age", self.max_pruning_age_s, "Time limit for blocks age after pruning.\ntype:seconds")?;
-            child.put_u64("max_pruning_depth", self.max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64")?;
-            Ok(())
-        })?;
+                child.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation.",
+            &mut |peers|{
+                for p in &self.secondary_work_peers{
+                    peers.push_back_str(&format!("{}:{}", p.address, p.port))?;
+                }
+                Ok(())
+            })?;
+                child.put_i64("max_pruning_age", self.max_pruning_age_s, "Time limit for blocks age after pruning.\ntype:seconds")?;
+                child.put_u64("max_pruning_depth", self.max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64")?;
+                Ok(())
+            })?;
 
         toml.put_child("httpcallback", &mut |callback| {
             callback.put_str(
@@ -625,84 +622,5 @@ fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static
         FrontiersConfirmationMode::Automatic => "auto",
         FrontiersConfirmationMode::Disabled => "disabled",
         FrontiersConfirmationMode::Invalid => "auto",
-    }
-}
-
-impl From<&NodeConfig> for NodeToml {
-    fn from(node_config: &NodeConfig) -> Self {
-        Self {
-            allow_local_peers: Some(node_config.allow_local_peers),
-            background_threads: Some(node_config.background_threads),
-            backlog_scan_batch_size: Some(node_config.backlog_scan_batch_size),
-            backlog_scan_frequency: Some(node_config.backlog_scan_frequency),
-            backup_before_upgrade: Some(node_config.backup_before_upgrade),
-            bandwidth_limit: Some(node_config.bandwidth_limit),
-            bandwidth_limit_burst_ratio: Some(node_config.bandwidth_limit_burst_ratio),
-            block_processor_batch_max_time_ms: Some(node_config.block_processor_batch_max_time_ms),
-            bootstrap_bandwidth_burst_ratio: Some(node_config.bootstrap_bandwidth_burst_ratio),
-            bootstrap_bandwidth_limit: Some(node_config.bootstrap_bandwidth_limit),
-            bootstrap_connections: Some(node_config.bootstrap_connections),
-            bootstrap_connections_max: Some(node_config.bootstrap_connections_max),
-            bootstrap_fraction_numerator: Some(node_config.bootstrap_fraction_numerator),
-            bootstrap_frontier_request_count: Some(node_config.bootstrap_frontier_request_count),
-            bootstrap_initiator_threads: Some(node_config.bootstrap_initiator_threads),
-            bootstrap_serving_threads: Some(node_config.bootstrap_serving_threads),
-            confirming_set_batch_time: Some(Miliseconds(
-                node_config.confirming_set_batch_time.as_millis(),
-            )),
-            enable_voting: Some(node_config.enable_voting),
-            external_address: Some(node_config.external_address.clone()),
-            external_port: Some(node_config.external_port),
-            frontiers_confirmation: Some(node_config.frontiers_confirmation),
-            io_threads: Some(node_config.io_threads),
-            max_queued_requests: Some(node_config.max_queued_requests),
-            max_unchecked_blocks: Some(node_config.max_unchecked_blocks),
-            max_work_generate_multiplier: Some(node_config.max_work_generate_multiplier),
-            network_threads: Some(node_config.network_threads),
-            online_weight_minimum: Some(node_config.online_weight_minimum),
-            password_fanout: Some(node_config.password_fanout),
-            peering_port: node_config.peering_port,
-            pow_sleep_interval_ns: Some(node_config.pow_sleep_interval_ns),
-            preconfigured_peers: Some(node_config.preconfigured_peers.clone()),
-            preconfigured_representatives: Some(node_config.preconfigured_representatives.clone()),
-            receive_minimum: Some(node_config.receive_minimum),
-            rep_crawler_weight_minimum: Some(node_config.rep_crawler_weight_minimum),
-            representative_vote_weight_minimum: Some(
-                node_config.representative_vote_weight_minimum,
-            ),
-            request_aggregator_threads: Some(node_config.request_aggregator_threads),
-            signature_checker_threads: Some(node_config.signature_checker_threads),
-            tcp_incoming_connections_max: Some(node_config.tcp_incoming_connections_max),
-            tcp_io_timeout_s: Some(node_config.tcp_io_timeout_s),
-            unchecked_cutoff_time_s: Some(node_config.unchecked_cutoff_time_s),
-            use_memory_pools: Some(node_config.use_memory_pools),
-            vote_generator_delay_ms: Some(node_config.vote_generator_delay_ms),
-            vote_generator_threshold: Some(node_config.vote_generator_threshold),
-            vote_minimum: Some(node_config.vote_minimum),
-            work_peers: Some(node_config.work_peers.clone()),
-            work_threads: Some(node_config.work_threads),
-            optimistic_scheduler: Some((&node_config.optimistic_scheduler).into()),
-            priority_bucket: Some((&node_config.priority_bucket).into()),
-            bootstrap_ascending: Some((&node_config.bootstrap_ascending).into()),
-            bootstrap_server: Some((&node_config.bootstrap_server).into()),
-            secondary_work_peers: Some(node_config.secondary_work_peers.clone()),
-            max_pruning_age_s: Some(node_config.max_pruning_age_s),
-            max_pruning_depth: Some(node_config.max_pruning_depth),
-            websocket_config: Some((&node_config.websocket_config).into()),
-            ipc_config: Some((&node_config.ipc_config).into()),
-            diagnostics_config: Some((&node_config.diagnostics_config).into()),
-            stat_config: Some((&node_config.stat_config).into()),
-            lmdb_config: Some((&node_config.lmdb_config).into()),
-            vote_cache: Some((&node_config.vote_cache).into()),
-            block_processor: Some((&node_config.block_processor).into()),
-            active_elections: Some((&node_config.active_elections).into()),
-            vote_processor: Some((&node_config.vote_processor).into()),
-            request_aggregator: Some((&node_config.request_aggregator).into()),
-            message_processor: Some((&node_config.message_processor).into()),
-            monitor: Some((&node_config.monitor).into()),
-            callback_address: Some(node_config.callback_address.clone()),
-            callback_port: Some(node_config.callback_port),
-            callback_target: Some(node_config.callback_target.clone()),
-        }
     }
 }

@@ -210,7 +210,7 @@ impl BootstrapAttemptLegacyExt for Arc<BootstrapAttemptLegacy> {
         lock_a = self.mutex.lock().unwrap();
         if let Some(connection_l) = connection_l {
             if !self.attempt.stopped() {
-                lock_a.endpoint_frontier_request = connection_l.tcp_endpoint();
+                lock_a.endpoint_frontier_request = connection_l.remote_addr();
                 {
                     let mut client = FrontierReqClient::new(
                         connection_l.clone(),

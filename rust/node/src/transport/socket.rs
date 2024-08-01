@@ -171,7 +171,7 @@ impl Socket {
             .store(timeout.as_secs(), Ordering::SeqCst);
     }
 
-    fn set_default_timeout(&self) {
+    pub fn set_default_timeout(&self) {
         self.set_default_timeout_value(self.default_timeout.load(Ordering::SeqCst));
     }
 
@@ -350,7 +350,6 @@ impl Drop for Socket {
 #[async_trait]
 pub trait SocketExtensions {
     fn start(&self);
-    fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>);
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -370,78 +369,6 @@ pub trait SocketExtensions {
 impl SocketExtensions for Arc<Socket> {
     fn start(&self) {
         self.ongoing_checkup();
-    }
-
-    fn async_connect(&self, endpoint: SocketAddrV6, callback: Box<dyn FnOnce(ErrorCode) + Send>) {
-        let self_clone = self.clone();
-        debug_assert!(self.direction == ChannelDirection::Outbound);
-
-        self.start();
-        self.set_default_timeout();
-
-        let callback: Box<dyn FnOnce(ErrorCode) + Send> = Box::new(move |ec| {
-            if !ec.is_err() {
-                self_clone.set_last_completion()
-            }
-            {
-                let mut lk = self_clone.remote.lock().unwrap();
-                *lk = Some(endpoint);
-            }
-
-            if ec.is_err() {
-                self_clone.observer.connect_error();
-                self_clone.close();
-            }
-            self_clone
-                .observer
-                .socket_connected(Arc::clone(&self_clone));
-            callback(ec);
-        });
-
-        let callback = Arc::new(Mutex::new(Some(callback)));
-        let callback_clone = Arc::clone(&callback);
-        *self.current_action.lock().unwrap() = Some(Box::new(move || {
-            let f = { callback_clone.lock().unwrap().take() };
-            if let Some(f) = f {
-                f(ErrorCode::fault());
-            }
-        }));
-
-        let stream_clone = Arc::clone(&self.stream);
-        self.is_connecting.store(true, Ordering::SeqCst);
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        let tcp_stream_factory = Arc::clone(&self.tcp_stream_factory);
-        runtime.tokio.spawn(async move {
-            let Ok(stream) = tcp_stream_factory.connect(endpoint).await else {
-                let f = { callback.lock().unwrap().take() };
-                if let Some(cb) = f {
-                    let Some(runtime) = runtime_w.upgrade() else {
-                        return;
-                    };
-                    runtime.tokio.spawn_blocking(move || {
-                        cb(ErrorCode::fault());
-                    });
-                }
-                return;
-            };
-            {
-                let mut guard = stream_clone.lock().unwrap();
-                debug_assert!(guard.is_none());
-                *guard = Some(Arc::new(stream));
-            }
-            let Some(runtime) = runtime_w.upgrade() else {
-                return;
-            };
-            runtime.tokio.spawn_blocking(move || {
-                let f = { callback.lock().unwrap().take() };
-                if let Some(cb) = f {
-                    cb(ErrorCode::new())
-                }
-            });
-        });
     }
 
     fn async_write(

@@ -1,11 +1,10 @@
 use super::{bootstrap_limits, BootstrapConnections};
 use crate::transport::{
-    BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket, SocketExtensions,
-    TrafficType, WriteCallback,
+    BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, TrafficType, WriteCallback,
 };
 use rsnano_messages::Message;
 use std::{
-    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, Weak,
@@ -16,7 +15,6 @@ use std::{
 pub struct BootstrapClient {
     observer: Weak<BootstrapConnections>,
     channel: Arc<ChannelEnum>,
-    socket: Arc<Socket>,
     receive_buffer: Arc<Mutex<Vec<u8>>>,
     block_count: AtomicU64,
     block_rate: AtomicU64,
@@ -28,18 +26,13 @@ pub struct BootstrapClient {
 const BUFFER_SIZE: usize = 256;
 
 impl BootstrapClient {
-    pub fn new(
-        observer: &Arc<BootstrapConnections>,
-        channel: Arc<ChannelEnum>,
-        socket: Arc<Socket>,
-    ) -> Self {
+    pub fn new(observer: &Arc<BootstrapConnections>, channel: Arc<ChannelEnum>) -> Self {
         if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
             tcp.update_remote_endpoint();
         }
         Self {
             observer: Arc::downgrade(observer),
             channel,
-            socket,
             receive_buffer: Arc::new(Mutex::new(vec![0; BUFFER_SIZE])),
             block_count: AtomicU64::new(0),
             block_rate: AtomicU64::new(0f64.to_bits()),
@@ -142,27 +135,19 @@ impl BootstrapClient {
     }
 
     pub fn close(&self) {
-        self.socket.close();
+        self.channel.close();
     }
 
     pub fn set_timeout(&self, timeout: Duration) {
-        self.socket.set_timeout(timeout);
+        self.channel.set_timeout(timeout);
     }
 
-    pub fn remote_endpoint(&self) -> SocketAddr {
-        SocketAddr::V6(
-            self.socket
-                .get_remote()
-                .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
-        )
+    pub fn remote_addr(&self) -> SocketAddrV6 {
+        self.channel.remote_addr()
     }
 
     pub fn channel_string(&self) -> String {
         self.tcp_channel().to_string()
-    }
-
-    pub fn tcp_endpoint(&self) -> SocketAddrV6 {
-        self.tcp_channel().remote_addr()
     }
 }
 

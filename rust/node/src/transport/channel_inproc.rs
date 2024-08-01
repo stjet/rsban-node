@@ -4,7 +4,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex, Weak,
     },
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use async_trait::async_trait;
@@ -327,6 +327,8 @@ impl Channel for ChannelInProc {
     fn local_addr(&self) -> SocketAddrV6 {
         self.local_endpoint
     }
+
+    fn set_timeout(&self, _timeout: Duration) {}
 }
 
 #[async_trait]

@@ -16,7 +16,7 @@ use std::{
         atomic::{AtomicU8, Ordering},
         Arc, Mutex, Weak,
     },
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tracing::trace;
 
@@ -266,6 +266,10 @@ impl Channel for Arc<ChannelTcp> {
 
     fn local_addr(&self) -> SocketAddrV6 {
         self.socket.local_endpoint_v6()
+    }
+
+    fn set_timeout(&self, timeout: Duration) {
+        self.socket.set_timeout(timeout);
     }
 }
 

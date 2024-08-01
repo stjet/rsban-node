@@ -60,7 +60,7 @@ use std::{
     net::SocketAddrV6,
     ops::Deref,
     sync::Arc,
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
@@ -125,6 +125,7 @@ pub trait Channel: AsyncBufferReader {
     fn direction(&self) -> ChannelDirection;
     fn mode(&self) -> ChannelMode;
     fn set_mode(&self, mode: ChannelMode);
+    fn set_timeout(&self, timeout: Duration);
 
     fn send(
         &self,

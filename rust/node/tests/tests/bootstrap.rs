@@ -889,6 +889,8 @@ mod bulk_pull {
 }
 
 mod frontier_req {
+    use std::thread::sleep;
+
     use rsnano_messages::FrontierReq;
     use rsnano_node::bootstrap::FrontierReqServer;
 
@@ -967,6 +969,47 @@ mod frontier_req {
         let frontier_req_server = create_frontier_req_server(&node, request);
         assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server.current());
         assert_eq!(send1.hash(), frontier_req_server.frontier());
+    }
+
+    #[test]
+    fn time_bound() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let request = FrontierReq {
+            start: Account::zero(),
+            age: 1,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server = create_frontier_req_server(&node, request.clone());
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server.current());
+        // Wait 2 seconds until age of account will be > 1 seconds
+        sleep(Duration::from_millis(2100));
+
+        let frontier_req_server2 = create_frontier_req_server(&node, request.clone());
+        assert_eq!(Account::zero(), frontier_req_server2.current());
+    }
+
+    #[test]
+    fn time_cutoff() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let request = FrontierReq {
+            start: Account::zero(),
+            age: 3,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server = create_frontier_req_server(&node, request.clone());
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server.current());
+        assert_eq!(*DEV_GENESIS_HASH, frontier_req_server.frontier());
+        // Wait 4 seconds until age of account will be > 3 seconds
+        sleep(Duration::from_millis(4100));
+
+        let frontier_req_server2 = create_frontier_req_server(&node, request.clone());
+        assert_eq!(BlockHash::zero(), frontier_req_server2.frontier());
     }
 
     fn create_frontier_req_server(node: &Node, request: FrontierReq) -> FrontierReqServer {

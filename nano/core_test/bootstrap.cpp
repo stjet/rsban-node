@@ -931,53 +931,6 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 	ASSERT_TIMELY (10s, node1->block_or_pruned_exists (send2->hash ()));
 }
 
-TEST (frontier_req, time_bound)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::frontier_req::frontier_req_payload payload{};
-	payload.start = 0;
-	payload.age = 1;
-	payload.count = std::numeric_limits<uint32_t>::max ();
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
-	// Wait 2 seconds until age of account will be > 1 seconds
-	std::this_thread::sleep_for (std::chrono::milliseconds (2100));
-	nano::frontier_req::frontier_req_payload payload2{};
-	payload2.start = 0;
-	payload2.age = 1;
-	payload2.count = std::numeric_limits<uint32_t>::max ();
-	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload2));
-	auto connection2 (create_bootstrap_server (system.nodes[0]));
-	auto request2 (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req2)));
-	ASSERT_TRUE (request2->current ().is_zero ());
-}
-
-TEST (frontier_req, time_cutoff)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::frontier_req::frontier_req_payload payload{};
-	payload.start = 0;
-	payload.age = 3;
-	payload.count = std::numeric_limits<uint32_t>::max ();
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
-	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier ());
-	// Wait 4 seconds until age of account will be > 3 seconds
-	std::this_thread::sleep_for (std::chrono::milliseconds (4100));
-	nano::frontier_req::frontier_req_payload payload2{};
-	payload2.start = 0;
-	payload2.age = 3;
-	payload2.count = std::numeric_limits<uint32_t>::max ();
-	auto req2 (std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload2));
-	auto connection2 (create_bootstrap_server (system.nodes[0]));
-	auto request2 (std::make_shared<nano::frontier_req_server> (system.nodes[0], connection, std::move (req2)));
-	ASSERT_TRUE (request2->frontier ().is_zero ());
-}
-
 TEST (frontier_req, confirmed_frontier)
 {
 	nano::test::system system (1);

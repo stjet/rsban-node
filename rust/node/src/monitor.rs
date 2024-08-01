@@ -11,7 +11,7 @@ use std::{
 };
 use tracing::info;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MonitorConfig {
     pub enabled: bool,
     pub interval: Duration,

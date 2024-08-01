@@ -8,7 +8,7 @@ use std::{sync::Mutex, time::Duration};
 //todo: make configurable in builld script again!
 static ACTIVE_NETWORK: Lazy<Mutex<Networks>> = Lazy::new(|| Mutex::new(Networks::NanoBetaNetwork));
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NetworkConstants {
     pub work: WorkThresholds,
     pub default_node_port: u16,

@@ -25,7 +25,7 @@ use std::{
 use tokio::sync::Notify;
 use tracing::{debug, info};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TcpConfig {
     pub max_inbound_connections: usize,
     pub max_outbound_connections: usize,

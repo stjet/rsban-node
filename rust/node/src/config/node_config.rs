@@ -1,3 +1,4 @@
+use super::DiagnosticsConfig;
 use crate::block_processing::BlockProcessorConfig;
 use crate::bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig};
 use crate::consensus::{
@@ -27,7 +28,7 @@ use std::time::Duration;
 use std::{cmp::max, net::Ipv6Addr};
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
 pub enum FrontiersConfirmationMode {
     Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
@@ -35,7 +36,7 @@ pub enum FrontiersConfirmationMode {
     Invalid,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
@@ -120,15 +121,11 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
     fn default() -> Self {
         let network_params = &NetworkParams::default();
-        Self::new(
-            Some(network_params.network.default_node_port),
-            network_params,
-            get_cpu_count(),
-        )
+        Self::new(None, network_params, get_cpu_count())
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Peer {
     pub address: String,
     pub port: u16,

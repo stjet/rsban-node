@@ -23,7 +23,7 @@ pub(crate) struct GenerateConfigArgs {
 impl GenerateConfigArgs {
     pub(crate) fn generate_config(&self) -> Result<()> {
         let (toml_str, config_type) = if self.node {
-            let daemon_toml = DaemonToml::default()?;
+            let daemon_toml = DaemonToml::default();
             (toml::to_string(&daemon_toml)?, "node")
         } else {
             let rpc_toml = RpcToml::default();

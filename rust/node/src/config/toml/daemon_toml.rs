@@ -329,9 +329,10 @@ mod tests {
 
         let default_daemon_config = DaemonConfig::default();
 
-        assert_eq!(
-            daemon_config.node.background_threads,
-            default_daemon_config.node.background_threads
-        );
+        let node_config = daemon_config.node;
+
+        let default_node_config = default_daemon_config.node;
+
+        assert_eq!(node_config, default_node_config);
     }
 }

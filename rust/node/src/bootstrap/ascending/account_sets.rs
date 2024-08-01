@@ -21,7 +21,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AccountSetsConfig {
     pub consideration_count: usize,
     pub priorities_max: usize,

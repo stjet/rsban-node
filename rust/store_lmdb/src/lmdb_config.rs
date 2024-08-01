@@ -22,7 +22,7 @@ pub enum SyncStrategy {
     NosyncUnsafeLargeMemory,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LmdbConfig {
     pub sync: SyncStrategy,
     pub max_databases: u32,

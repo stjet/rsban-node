@@ -7,6 +7,7 @@ use std::cmp::{max, min};
 
 pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| WorkThresholds::new_stub());
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct WorkThresholds {
     pub epoch_1: u64,
     pub epoch_2: u64,
@@ -17,10 +18,10 @@ pub struct WorkThresholds {
 
     // Automatically calculated. The entry threshold is the minimum of all thresholds and defines the required work to enter the node, but does not guarantee a block is processed
     pub entry: u64,
-    pub difficulty: Box<dyn Difficulty>,
+    pub difficulty: DifficultyV1,
 }
 
-impl Clone for WorkThresholds {
+/*impl Clone for WorkThresholds {
     fn clone(&self) -> Self {
         Self {
             epoch_1: self.epoch_1,
@@ -31,7 +32,7 @@ impl Clone for WorkThresholds {
             difficulty: self.difficulty.clone(),
         }
     }
-}
+}*/
 
 static PUBLISH_FULL: Lazy<WorkThresholds> = Lazy::new(|| {
     WorkThresholds::new(
@@ -127,7 +128,7 @@ impl WorkThresholds {
             epoch_2_receive,
             base: max(max(epoch_1, epoch_2), epoch_2_receive),
             entry: min(min(epoch_1, epoch_2), epoch_2_receive),
-            difficulty,
+            difficulty: DifficultyV1 {},
         }
     }
 

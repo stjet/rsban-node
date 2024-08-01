@@ -1,7 +1,7 @@
 use crate::config::NetworkConstants;
 use std::net::Ipv6Addr;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct WebsocketConfig {
     pub enabled: bool,
     pub port: u16,

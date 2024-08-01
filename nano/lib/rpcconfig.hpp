@@ -38,6 +38,7 @@ public:
 	void load_dto (rsnano::RpcConfigDto & dto);
 	rsnano::RpcConfigDto to_dto () const;
 	std::string serialize_toml () const;
+	nano::error deserialize_toml (nano::tomlconfig &);
 
 	nano::rpc_process_config rpc_process;
 	std::string address;
@@ -48,4 +49,5 @@ public:
 	nano::rpc_logging_config rpc_logging;
 };
 
+nano::error read_rpc_config_toml (std::filesystem::path const & data_path_a, nano::rpc_config & config_a, std::vector<std::string> const & config_overrides = std::vector<std::string> ());
 }

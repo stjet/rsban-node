@@ -40,11 +40,6 @@ nano::transport::tcp_listener::~tcp_listener ()
 	rsnano::rsn_tcp_listener_destroy (handle);
 }
 
-std::size_t nano::transport::tcp_listener::get_realtime_count ()
-{
-	return rsnano::rsn_tcp_listener_realtime_count (handle);
-}
-
 boost::asio::ip::tcp::endpoint nano::transport::tcp_listener::endpoint ()
 {
 	rsnano::EndpointDto endpoint_dto{};

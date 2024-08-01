@@ -41,20 +41,10 @@ namespace transport
 		friend class nano::transport::tcp_channels;
 
 	public:
-		channel_tcp (
-		rsnano::async_runtime & async_rt_a,
-		nano::outbound_bandwidth_limiter & limiter_a,
-		nano::network_constants const & network_a,
-		std::shared_ptr<nano::transport::socket> const & socket_a,
-		nano::stats const & stats_a,
-		nano::transport::tcp_channels const & tcp_channels_a,
-		size_t channel_id);
-
 		channel_tcp (rsnano::ChannelHandle * handle_a) :
 			channel{ handle_a } {};
 
 		uint8_t get_network_version () const override;
-		size_t socket_id () const;
 
 		std::string to_string () const override;
 

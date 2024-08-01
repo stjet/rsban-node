@@ -29,28 +29,7 @@
  * channel_tcp
  */
 
-namespace
-{
-rsnano::ChannelHandle * create_tcp_channel_handle (
-rsnano::async_runtime & async_rt_a,
-nano::outbound_bandwidth_limiter & limiter_a,
-nano::network_constants const & network_a,
-std::shared_ptr<nano::transport::socket> const & socket_a,
-nano::stats const & stats_a,
-nano::transport::tcp_channels const & tcp_channels_a,
-size_t channel_id)
-{
-	auto network_dto{ network_a.to_dto () };
-	return rsnano::rsn_channel_tcp_create (
-	socket_a->handle,
-	stats_a.handle,
-	tcp_channels_a.handle,
-	limiter_a.handle,
-	async_rt_a.handle,
-	channel_id,
-	&network_dto);
-}
-
+namespace{
 std::vector<std::shared_ptr<nano::transport::channel>> into_channel_vector (rsnano::ChannelListHandle * list_handle)
 {
 	auto len = rsnano::rsn_channel_list_len (list_handle);
@@ -64,25 +43,6 @@ std::vector<std::shared_ptr<nano::transport::channel>> into_channel_vector (rsna
 	rsnano::rsn_channel_list_destroy (list_handle);
 	return result;
 }
-}
-
-nano::transport::channel_tcp::channel_tcp (
-rsnano::async_runtime & async_rt_a,
-nano::outbound_bandwidth_limiter & limiter_a,
-nano::network_constants const & network_a,
-std::shared_ptr<nano::transport::socket> const & socket_a,
-nano::stats const & stats_a,
-nano::transport::tcp_channels const & tcp_channels_a,
-size_t channel_id) :
-	channel (create_tcp_channel_handle (
-	async_rt_a,
-	limiter_a,
-	network_a,
-	socket_a,
-	stats_a,
-	tcp_channels_a,
-	channel_id))
-{
 }
 
 uint8_t nano::transport::channel_tcp::get_network_version () const
@@ -102,11 +62,6 @@ nano::tcp_endpoint nano::transport::channel_tcp::get_local_endpoint () const
 	rsnano::EndpointDto ep_dto{};
 	rsnano::rsn_channel_tcp_local_endpoint (handle, &ep_dto);
 	return rsnano::dto_to_endpoint (ep_dto);
-}
-
-size_t nano::transport::channel_tcp::socket_id () const
-{
-	return rsnano::rsn_channel_tcp_socket_id (handle);
 }
 
 std::string nano::transport::channel_tcp::to_string () const

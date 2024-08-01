@@ -567,3 +567,18 @@ fn bootstrap_processor_wallet_lazy_frontier() {
         "receive 2 not  found",
     )
 }
+
+mod bulk_pull {
+    use rsnano_node::node::Node;
+
+    use super::*;
+
+    #[test]
+    fn no_address() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let server = create_response_server(&node);
+    }
+
+    fn create_response_server(node: &Node) {}
+}

@@ -256,9 +256,8 @@ impl Socket {
         *self.stream.lock().unwrap() = Some(Arc::new(stream));
     }
 
-    pub async fn read_raw(&self, buffer: Arc<Mutex<Vec<u8>>>, size: usize) -> anyhow::Result<()> {
-        let buffer_len = { buffer.lock().unwrap().len() };
-        if size > buffer_len {
+    pub async fn read_raw(&self, buffer: &mut [u8], size: usize) -> anyhow::Result<()> {
+        if size > buffer.len() {
             return Err(anyhow!("buffer is too small for read count"));
         }
 
@@ -279,14 +278,12 @@ impl Socket {
         loop {
             match stream.readable().await {
                 Ok(_) => {
-                    let mut buf = buffer.lock().unwrap();
-                    match stream.try_read(&mut buf.as_mut_slice()[read..size]) {
+                    match stream.try_read(&mut buffer[read..size]) {
                         Ok(0) => {
                             self.observer.read_error();
                             return Err(anyhow!("remote side closed the channel"));
                         }
                         Ok(n) => {
-                            drop(buf);
                             read += n;
                             if read >= size {
                                 self.observer.read_successful(size);
@@ -657,11 +654,13 @@ impl SocketExtensions for Arc<Socket> {
 #[async_trait]
 impl AsyncBufferReader for Arc<Socket> {
     async fn read(&self, buffer: Arc<Mutex<Vec<u8>>>, count: usize) -> anyhow::Result<()> {
+        let mut buf = vec![0; buffer.lock().unwrap().len()];
         // Increase timeout to receive TCP header (idle server socket)
         let prev_timeout = self.default_timeout_value();
         self.set_default_timeout_value(self.idle_timeout.as_secs());
-        let result = self.read_raw(buffer, count).await;
+        let result = self.read_raw(&mut buf, count).await;
         self.set_default_timeout_value(prev_timeout);
+        buffer.lock().unwrap().copy_from_slice(&buf);
         result
     }
 }

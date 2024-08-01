@@ -30,6 +30,8 @@ pub struct BootstrapClient {
     start_time: Mutex<Instant>,
 }
 
+const BUFFER_SIZE: usize = 256;
+
 impl BootstrapClient {
     pub fn new(
         async_rt: Arc<AsyncRuntime>,
@@ -45,7 +47,7 @@ impl BootstrapClient {
             observer: Arc::downgrade(observer),
             channel,
             socket,
-            receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
+            receive_buffer: Arc::new(Mutex::new(vec![0; BUFFER_SIZE])),
             block_count: AtomicU64::new(0),
             block_rate: AtomicU64::new(0f64.to_bits()),
             pending_stop: AtomicBool::new(false),
@@ -89,9 +91,14 @@ impl BootstrapClient {
     //TODO delete and use async read() directly
     pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
         let socket = Arc::clone(&self.socket);
-        let buffer = Arc::clone(&self.receive_buffer);
+        let global_buf = self.receive_buffer.clone();
         self.async_rt.tokio.spawn(async move {
-            let result = socket.read_raw(buffer, size).await;
+            let result;
+            {
+                let mut buffer = [0; BUFFER_SIZE];
+                result = socket.read_raw(&mut buffer, size).await;
+                global_buf.lock().unwrap().copy_from_slice(&buffer);
+            }
             spawn_blocking(Box::new(move || match result {
                 Ok(()) => callback(ErrorCode::new(), size),
                 Err(_) => callback(ErrorCode::fault(), 0),
@@ -100,9 +107,10 @@ impl BootstrapClient {
     }
 
     pub async fn read(&self, size: usize) -> anyhow::Result<()> {
-        self.socket
-            .read_raw(Arc::clone(&self.receive_buffer), size)
-            .await
+        let mut buffer = [0; BUFFER_SIZE];
+        self.socket.read_raw(&mut buffer, size).await?;
+        self.receive_buffer.lock().unwrap().copy_from_slice(&buffer);
+        Ok(())
     }
 
     pub fn receive_buffer(&self) -> Vec<u8> {

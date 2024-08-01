@@ -1,4 +1,4 @@
-use super::{Socket, SocketExtensions};
+use super::Socket;
 use crate::utils::{AsyncRuntime, ErrorCode};
 use num_traits::FromPrimitive;
 use rsnano_core::{serialized_block_size, utils::BufferReader, BlockEnum, BlockType};
@@ -30,7 +30,9 @@ impl BlockDeserializer {
         let buffer_clone = Arc::clone(&self.buffer);
         let socket_clone = Arc::clone(socket);
         self.async_rt.tokio.spawn(async move {
-            let result = socket_clone.read_raw(Arc::clone(&buffer_clone), 1).await;
+            let mut buf = [0; 256];
+            let result = socket_clone.read_raw(&mut buf, 1).await;
+            buffer_clone.lock().unwrap().copy_from_slice(&buf);
 
             match result {
                 Ok(()) => {
@@ -66,7 +68,9 @@ async fn received_type(
         }
         Some(block_type) => {
             let block_size = serialized_block_size(block_type);
-            let result = socket.read_raw(buffer, block_size).await;
+            let mut buf = [0; 256];
+            let result = socket.read_raw(&mut buf, block_size).await;
+            buffer_clone.lock().unwrap().copy_from_slice(&buf);
             match result {
                 Ok(()) => {
                     let result = {

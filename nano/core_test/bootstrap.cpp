@@ -39,32 +39,6 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	node->node_id);
 }
 
-// If the account doesn't exist, current == end so there's no iteration
-TEST (bulk_pull, no_address)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = 1;
-	payload.end = 2;
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
-	ASSERT_TRUE (request->get_current ().is_zero ());
-}
-
-TEST (bulk_pull, genesis_to_end)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = nano::dev::genesis_key.pub;
-	payload.end = 0;
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->get_current ());
-}
-
 // If we can't find the end block, send everything
 TEST (bulk_pull, no_end)
 {

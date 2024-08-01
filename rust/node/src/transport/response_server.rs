@@ -58,8 +58,6 @@ impl Default for TcpConfig {
     }
 }
 
-pub trait ResponseServer {}
-
 pub struct ResponseServerImpl {
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,

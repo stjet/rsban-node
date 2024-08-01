@@ -260,15 +260,463 @@ mod tests {
         let default_daemon_toml = DaemonToml::default();
         let deserialized_toml: DaemonToml = toml::from_str(&toml_str).unwrap();
 
-        /*assert_eq!(
-        default_daemon_toml
-            .node
-            .unwrap()
-            .preconfigured_representatives,
-        deserialized_toml
-            .node
-            .unwrap()
-            .preconfigured_representatives
+        let default_node = default_daemon_toml.node.unwrap();
+        let deserialized_node = deserialized_toml.node.unwrap();
+
+        assert_eq!(
+            default_node.allow_local_peers,
+            deserialized_node.allow_local_peers
+        );
+        assert_eq!(
+            default_node.background_threads,
+            deserialized_node.background_threads
+        );
+        assert_eq!(
+            default_node.backlog_scan_batch_size,
+            deserialized_node.backlog_scan_batch_size
+        );
+        assert_eq!(
+            default_node.backlog_scan_frequency,
+            deserialized_node.backlog_scan_frequency
+        );
+        assert_eq!(
+            default_node.backup_before_upgrade,
+            deserialized_node.backup_before_upgrade
+        );
+        assert_eq!(
+            default_node.bandwidth_limit,
+            deserialized_node.bandwidth_limit
+        );
+        assert_eq!(
+            default_node.bandwidth_limit_burst_ratio,
+            deserialized_node.bandwidth_limit_burst_ratio
+        );
+        assert_eq!(
+            default_node.block_processor_batch_max_time,
+            deserialized_node.block_processor_batch_max_time
+        );
+        assert_eq!(
+            default_node.bootstrap_bandwidth_burst_ratio,
+            deserialized_node.bootstrap_bandwidth_burst_ratio
+        );
+        assert_eq!(
+            default_node.bootstrap_bandwidth_limit,
+            deserialized_node.bootstrap_bandwidth_limit
+        );
+        assert_eq!(
+            default_node.bootstrap_connections,
+            deserialized_node.bootstrap_connections
+        );
+        assert_eq!(
+            default_node.bootstrap_connections_max,
+            deserialized_node.bootstrap_connections_max
+        );
+        assert_eq!(
+            default_node.bootstrap_fraction_numerator,
+            deserialized_node.bootstrap_fraction_numerator
+        );
+        assert_eq!(
+            default_node.bootstrap_frontier_request_count,
+            deserialized_node.bootstrap_frontier_request_count
+        );
+        assert_eq!(
+            default_node.bootstrap_initiator_threads,
+            deserialized_node.bootstrap_initiator_threads
+        );
+        assert_eq!(
+            default_node.bootstrap_serving_threads,
+            deserialized_node.bootstrap_serving_threads
+        );
+        assert_eq!(
+            default_node.confirming_set_batch_time,
+            deserialized_node.confirming_set_batch_time
+        );
+        assert_eq!(default_node.enable_voting, deserialized_node.enable_voting);
+        assert_eq!(
+            default_node.external_address,
+            deserialized_node.external_address
+        );
+        assert_eq!(default_node.external_port, deserialized_node.external_port);
+        //assert_eq!(
+        //default_node.frontiers_confirmation,
+        //deserialized_node.frontiers_confirmation
+        //);
+        assert_eq!(default_node.io_threads, deserialized_node.io_threads);
+        assert_eq!(
+            default_node.max_queued_requests,
+            deserialized_node.max_queued_requests
+        );
+        assert_eq!(
+            default_node.max_work_generate_multiplier,
+            deserialized_node.max_work_generate_multiplier
+        );
+        assert_eq!(
+            default_node.network_threads,
+            deserialized_node.network_threads
+        );
+        assert_eq!(
+            default_node.online_weight_minimum,
+            deserialized_node.online_weight_minimum
+        );
+        assert_eq!(
+            default_node.password_fanout,
+            deserialized_node.password_fanout
+        );
+        assert_eq!(default_node.peering_port, deserialized_node.peering_port);
+        assert_eq!(
+            default_node.pow_sleep_interval,
+            deserialized_node.pow_sleep_interval
+        );
+        assert_eq!(
+            default_node.preconfigured_peers,
+            deserialized_node.preconfigured_peers
+        );
+        assert_eq!(
+            default_node.preconfigured_representatives,
+            deserialized_node.preconfigured_representatives
+        );
+        assert_eq!(
+            default_node.receive_minimum,
+            deserialized_node.receive_minimum
+        );
+        assert_eq!(
+            default_node.rep_crawler_weight_minimum,
+            deserialized_node.rep_crawler_weight_minimum
+        );
+        assert_eq!(
+            default_node.representative_vote_weight_minimum,
+            deserialized_node.representative_vote_weight_minimum
+        );
+        assert_eq!(
+            default_node.request_aggregator_threads,
+            deserialized_node.request_aggregator_threads
+        );
+        assert_eq!(
+            default_node.signature_checker_threads,
+            deserialized_node.signature_checker_threads
+        );
+        assert_eq!(
+            default_node.tcp_incoming_connections_max,
+            deserialized_node.tcp_incoming_connections_max
+        );
+        assert_eq!(
+            default_node.tcp_io_timeout,
+            deserialized_node.tcp_io_timeout
+        );
+        assert_eq!(
+            default_node.unchecked_cutoff_time,
+            deserialized_node.unchecked_cutoff_time
+        );
+        assert_eq!(
+            default_node.use_memory_pools,
+            deserialized_node.use_memory_pools
+        );
+        assert_eq!(
+            default_node.vote_generator_delay,
+            deserialized_node.vote_generator_delay
+        );
+        assert_eq!(
+            default_node.vote_generator_threshold,
+            deserialized_node.vote_generator_threshold
+        );
+        assert_eq!(default_node.vote_minimum, deserialized_node.vote_minimum);
+        assert_eq!(default_node.work_threads, deserialized_node.work_threads);
+
+        let default_active_elections = default_node.active_elections.unwrap();
+        let deserialized_active_elections = deserialized_node.active_elections.unwrap();
+
+        assert_eq!(
+            default_active_elections.confirmation_cache,
+            deserialized_active_elections.confirmation_cache
+        );
+        assert_eq!(
+            default_active_elections.confirmation_history_size,
+            deserialized_active_elections.confirmation_history_size
+        );
+        assert_eq!(
+            default_active_elections.hinted_limit_percentage,
+            deserialized_active_elections.hinted_limit_percentage
+        );
+        assert_eq!(
+            default_active_elections.optimistic_limit_percentage,
+            deserialized_active_elections.optimistic_limit_percentage
+        );
+        assert_eq!(
+            default_active_elections.size,
+            deserialized_active_elections.size
+        );
+
+        let default_block_processor = default_node.block_processor.unwrap();
+        let deserialized_block_processor = deserialized_node.block_processor.unwrap();
+
+        assert_eq!(
+            default_block_processor.max_peer_queue,
+            deserialized_block_processor.max_peer_queue
+        );
+        assert_eq!(
+            default_block_processor.max_system_queue,
+            deserialized_block_processor.max_system_queue
+        );
+        assert_eq!(
+            default_block_processor.priority_bootstrap,
+            deserialized_block_processor.priority_bootstrap
+        );
+        assert_eq!(
+            default_block_processor.priority_live,
+            deserialized_block_processor.priority_live
+        );
+        assert_eq!(
+            default_block_processor.priority_local,
+            deserialized_block_processor.priority_local
+        );
+
+        let default_bootstrap_ascending = default_node.bootstrap_ascending.unwrap();
+        let deserialized_bootstrap_ascending = deserialized_node.bootstrap_ascending.unwrap();
+
+        assert_eq!(
+            default_bootstrap_ascending.block_wait_count,
+            deserialized_bootstrap_ascending.block_wait_count
+        );
+        assert_eq!(
+            default_bootstrap_ascending.database_requests_limit,
+            deserialized_bootstrap_ascending.database_requests_limit
+        );
+        assert_eq!(
+            default_bootstrap_ascending.pull_count,
+            deserialized_bootstrap_ascending.pull_count
+        );
+        assert_eq!(
+            default_bootstrap_ascending.requests_limit,
+            deserialized_bootstrap_ascending.requests_limit
+        );
+        assert_eq!(
+            default_bootstrap_ascending.throttle_coefficient,
+            deserialized_bootstrap_ascending.throttle_coefficient
+        );
+        assert_eq!(
+            default_bootstrap_ascending.throttle_wait,
+            deserialized_bootstrap_ascending.throttle_wait
+        );
+        assert_eq!(
+            default_bootstrap_ascending.timeout,
+            deserialized_bootstrap_ascending.timeout
+        );
+
+        let default_account_sets = default_bootstrap_ascending.account_sets.unwrap();
+        let deserialized_account_sets = deserialized_bootstrap_ascending.account_sets.unwrap();
+
+        assert_eq!(
+            default_account_sets.blocking_max,
+            deserialized_account_sets.blocking_max
+        );
+        assert_eq!(
+            default_account_sets.consideration_count,
+            deserialized_account_sets.consideration_count
+        );
+        assert_eq!(
+            default_account_sets.cooldown,
+            deserialized_account_sets.cooldown
+        );
+        assert_eq!(
+            default_account_sets.priorities_max,
+            deserialized_account_sets.priorities_max
+        );
+
+        let default_bootstrap_server = default_node.bootstrap_server.unwrap();
+        let deserialized_bootstrap_server = deserialized_node.bootstrap_server.unwrap();
+
+        assert_eq!(
+            default_bootstrap_server.batch_size,
+            deserialized_bootstrap_server.batch_size
+        );
+        assert_eq!(
+            default_bootstrap_server.max_queue,
+            deserialized_bootstrap_server.max_queue
+        );
+        assert_eq!(
+            default_bootstrap_server.threads,
+            deserialized_bootstrap_server.threads
+        );
+
+        let default_diagnostics_txn_tracking =
+            default_node.diagnostics.unwrap().txn_tracking.unwrap();
+        let deserialized_diagnostics_txn_tracking =
+            deserialized_node.diagnostics.unwrap().txn_tracking.unwrap();
+
+        assert_eq!(
+            default_diagnostics_txn_tracking.enable,
+            deserialized_diagnostics_txn_tracking.enable
+        );
+        assert_eq!(
+            default_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time,
+            deserialized_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time
+        );
+        assert_eq!(
+            default_diagnostics_txn_tracking.min_read_txn_time,
+            deserialized_diagnostics_txn_tracking.min_read_txn_time
+        );
+        assert_eq!(
+            default_diagnostics_txn_tracking.min_write_txn_time,
+            deserialized_diagnostics_txn_tracking.min_write_txn_time
+        );
+
+        /*let default_experimental = default_node.experimental.unwrap();
+        let deserialized_experimental = deserialized_node.experimental.unwrap();
+
+        assert_eq!(
+            default_experimental.max_pruning_age,
+            deserialized_experimental.max_pruning_age
+        );
+        assert_eq!(
+            default_experimental.max_pruning_depth,
+            deserialized_experimental.max_pruning_depth
+        );
+        assert_eq!(
+            default_experimental.secondary_work_peers,
+            deserialized_experimental.secondary_work_peers
+        );
+
+        let default_httpcallback = default_node.httpcallback.unwrap();
+        let deserialized_httpcallback = deserialized_node.httpcallback.unwrap();
+
+        assert_eq!(
+            default_httpcallback.address,
+            deserialized_httpcallback.address
+        );
+        assert_eq!(default_httpcallback.port, deserialized_httpcallback.port);
+        assert_eq!(
+            default_httpcallback.target,
+            deserialized_httpcallback.target
+        );
+
+        let default_ipc_flatbuffers = default_node.ipc.unwrap().flatbuffers.unwrap();
+        let deserialized_ipc_flatbuffers = deserialized_node.ipc.unwrap().flatbuffers.unwrap();
+
+        assert_eq!(
+            default_ipc_flatbuffers.skip_unexpected_fields_in_json,
+            deserialized_ipc_flatbuffers.skip_unexpected_fields_in_json
+        );
+        assert_eq!(
+            default_ipc_flatbuffers.verify_buffers,
+            deserialized_ipc_flatbuffers.verify_buffers
+        );
+
+        let default_ipc_local = default_node.ipc.unwrap().local.unwrap();
+        let deserialized_ipc_local = deserialized_node.ipc.unwrap().local.unwrap();
+
+        assert_eq!(
+            default_ipc_local.allow_unsafe,
+            deserialized_ipc_local.allow_unsafe
+        );
+        assert_eq!(default_ipc_local.enable, deserialized_ipc_local.enable);
+        assert_eq!(
+            default_ipc_local.io_timeout,
+            deserialized_ipc_local.io_timeout
+        );
+        assert_eq!(default_ipc_local.path, deserialized_ipc_local.path);
+
+        let default_ipc_tcp = default_node.ipc.unwrap().tcp.unwrap();
+        let deserialized_ipc_tcp = deserialized_node.ipc.unwrap().tcp.unwrap();
+
+        assert_eq!(default_ipc_tcp.enable, deserialized_ipc_tcp.enable);
+        assert_eq!(default_ipc_tcp.io_timeout, deserialized_ipc_tcp.io_timeout);
+        assert_eq!(default_ipc_tcp.port, deserialized_ipc_tcp.port);*/
+
+        let default_lmdb = default_node.lmdb.unwrap();
+        let deserialized_lmdb = deserialized_node.lmdb.unwrap();
+
+        assert_eq!(default_lmdb.map_size, deserialized_lmdb.map_size);
+        assert_eq!(default_lmdb.max_databases, deserialized_lmdb.max_databases);
+        assert_eq!(default_lmdb.sync, deserialized_lmdb.sync);
+
+        let default_message_processor = default_node.message_processor.unwrap();
+        let deserialized_message_processor = deserialized_node.message_processor.unwrap();
+
+        assert_eq!(
+            default_message_processor.max_queue,
+            deserialized_message_processor.max_queue
+        );
+        assert_eq!(
+            default_message_processor.threads,
+            deserialized_message_processor.threads
+        );
+
+        let default_monitor = default_node.monitor.unwrap();
+        let deserialized_monitor = deserialized_node.monitor.unwrap();
+
+        assert_eq!(default_monitor.enable, deserialized_monitor.enable);
+        assert_eq!(default_monitor.interval, deserialized_monitor.interval);
+
+        let default_optimistic_scheduler = default_node.optimistic_scheduler.unwrap();
+        let deserialized_optimistic_scheduler = deserialized_node.optimistic_scheduler.unwrap();
+
+        assert_eq!(
+            default_optimistic_scheduler.enable,
+            deserialized_optimistic_scheduler.enable
+        );
+        assert_eq!(
+            default_optimistic_scheduler.gap_threshold,
+            deserialized_optimistic_scheduler.gap_threshold
+        );
+        assert_eq!(
+            default_optimistic_scheduler.max_size,
+            deserialized_optimistic_scheduler.max_size
+        );
+
+        let default_priority_bucket = default_node.priority_bucket.unwrap();
+        let deserialized_priority_bucket = deserialized_node.priority_bucket.unwrap();
+
+        assert_eq!(
+            default_priority_bucket.max_blocks,
+            deserialized_priority_bucket.max_blocks
+        );
+        assert_eq!(
+            default_priority_bucket.max_elections,
+            deserialized_priority_bucket.max_elections
+        );
+        assert_eq!(
+            default_priority_bucket.reserved_elections,
+            deserialized_priority_bucket.reserved_elections
+        );
+
+        /*let default_rep_crawler = default_node.rep_crawler.unwrap();
+        let deserialized_rep_crawler = deserialized_node.rep_crawler.unwrap();
+
+        assert_eq!(
+            default_rep_crawler.query_timeout,
+            deserialized_rep_crawler.query_timeout
+            );*/
+
+        let default_request_aggregator = default_node.request_aggregator.unwrap();
+        let deserialized_request_aggregator = deserialized_node.request_aggregator.unwrap();
+
+        assert_eq!(
+            default_request_aggregator.batch_size,
+            deserialized_request_aggregator.batch_size
+        );
+        assert_eq!(
+            default_request_aggregator.max_queue,
+            deserialized_request_aggregator.max_queue
+        );
+        assert_eq!(
+            default_request_aggregator.threads,
+            deserialized_request_aggregator.threads
+        );
+
+        /*let default_statistics = default_node.statistics.unwrap();
+        let deserialized_statistics = deserialized_node.statistics.unwrap();
+
+        assert_eq!(
+            default_statistics.max_samples,
+            deserialized_statistics.max_samples
+        );
+
+        let default_statistics_log = default_statistics.log.unwrap();
+        let deserialized_statistics_log = deserialized_statistics.log.unwrap();
+
+        assert_eq!(
+            default_statistics_log.filename_counters,
+            deserialized_statistics_log.filename_counters
             );*/
     }
 

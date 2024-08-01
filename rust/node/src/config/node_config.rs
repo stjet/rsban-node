@@ -33,7 +33,8 @@ use std::{cmp::max, net::Ipv6Addr};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FrontiersConfirmationMode {
-    Always,    // Always confirm frontiers
+    Always, // Always confirm frontiers
+    //#[serde(rename = "auto")]
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
     Disabled,  // Do not confirm frontiers
     Invalid,
@@ -124,7 +125,11 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
     fn default() -> Self {
         let network_params = &NetworkParams::default();
-        Self::new(None, network_params, get_cpu_count())
+        Self::new(
+            Some(network_params.network.default_node_port),
+            network_params,
+            get_cpu_count(),
+        )
     }
 }
 

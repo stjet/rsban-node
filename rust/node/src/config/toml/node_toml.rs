@@ -18,7 +18,7 @@ pub struct NodeToml {
     pub backup_before_upgrade: Option<bool>,
     pub bandwidth_limit: Option<usize>,
     pub bandwidth_limit_burst_ratio: Option<f64>,
-    pub block_processor_batch_max_time_ms: Option<i64>,
+    pub block_processor_batch_max_time: Option<i64>,
     pub bootstrap_bandwidth_burst_ratio: Option<f64>,
     pub bootstrap_bandwidth_limit: Option<usize>,
     pub bootstrap_connections: Option<u32>,
@@ -40,7 +40,7 @@ pub struct NodeToml {
     pub online_weight_minimum: Option<String>,
     pub password_fanout: Option<u32>,
     pub peering_port: Option<u16>,
-    pub pow_sleep_interval_ns: Option<i64>,
+    pub pow_sleep_interval: Option<i64>,
     pub preconfigured_peers: Option<Vec<String>>,
     pub preconfigured_representatives: Option<Vec<Account>>,
     pub receive_minimum: Option<String>,
@@ -49,10 +49,10 @@ pub struct NodeToml {
     pub request_aggregator_threads: Option<u32>,
     pub signature_checker_threads: Option<u32>,
     pub tcp_incoming_connections_max: Option<u32>,
-    pub tcp_io_timeout_s: Option<i64>,
-    pub unchecked_cutoff_time_s: Option<i64>,
+    pub tcp_io_timeout: Option<i64>,
+    pub unchecked_cutoff_time: Option<i64>,
     pub use_memory_pools: Option<bool>,
-    pub vote_generator_delay_ms: Option<i64>,
+    pub vote_generator_delay: Option<i64>,
     pub vote_generator_threshold: Option<u32>,
     pub vote_minimum: Option<String>,
     pub work_peers: Option<Vec<Peer>>,
@@ -66,9 +66,9 @@ pub struct NodeToml {
     pub max_pruning_depth: Option<u64>,
     pub websocket_config: Option<WebsocketToml>,
     pub ipc_config: Option<IpcToml>,
-    pub diagnostics_config: Option<DiagnosticsToml>,
+    pub diagnostics: Option<DiagnosticsToml>,
     pub stat_config: Option<StatsToml>,
-    pub lmdb_config: Option<LmdbToml>,
+    pub lmdb: Option<LmdbToml>,
     pub vote_cache: Option<VoteCacheToml>,
     pub block_processor: Option<BlockProcessorToml>,
     pub active_elections: Option<ActiveElectionsToml>,
@@ -93,7 +93,7 @@ impl Default for NodeToml {
             backup_before_upgrade: Some(node_config.backup_before_upgrade),
             bandwidth_limit: Some(node_config.bandwidth_limit),
             bandwidth_limit_burst_ratio: Some(node_config.bandwidth_limit_burst_ratio),
-            block_processor_batch_max_time_ms: Some(node_config.block_processor_batch_max_time_ms),
+            block_processor_batch_max_time: Some(node_config.block_processor_batch_max_time_ms),
             bootstrap_bandwidth_burst_ratio: Some(node_config.bootstrap_bandwidth_burst_ratio),
             bootstrap_bandwidth_limit: Some(node_config.bootstrap_bandwidth_limit),
             bootstrap_connections: Some(node_config.bootstrap_connections),
@@ -117,26 +117,30 @@ impl Default for NodeToml {
             max_unchecked_blocks: Some(node_config.max_unchecked_blocks),
             max_work_generate_multiplier: Some(node_config.max_work_generate_multiplier),
             network_threads: Some(node_config.network_threads),
-            online_weight_minimum: Some(node_config.online_weight_minimum.encode_hex()),
+            online_weight_minimum: Some(node_config.online_weight_minimum.to_string_dec()),
             password_fanout: Some(node_config.password_fanout),
             peering_port: node_config.peering_port,
-            pow_sleep_interval_ns: Some(node_config.pow_sleep_interval_ns),
+            pow_sleep_interval: Some(node_config.pow_sleep_interval_ns),
             preconfigured_peers: Some(node_config.preconfigured_peers.clone()),
             preconfigured_representatives: Some(node_config.preconfigured_representatives.clone()),
-            receive_minimum: Some(node_config.receive_minimum.encode_hex()),
-            rep_crawler_weight_minimum: Some(node_config.rep_crawler_weight_minimum.encode_hex()),
+            receive_minimum: Some(node_config.receive_minimum.to_string_dec()),
+            rep_crawler_weight_minimum: Some(
+                node_config.rep_crawler_weight_minimum.to_string_dec(),
+            ),
             representative_vote_weight_minimum: Some(
-                node_config.representative_vote_weight_minimum.encode_hex(),
+                node_config
+                    .representative_vote_weight_minimum
+                    .to_string_dec(),
             ),
             request_aggregator_threads: Some(node_config.request_aggregator_threads),
             signature_checker_threads: Some(node_config.signature_checker_threads),
             tcp_incoming_connections_max: Some(node_config.tcp_incoming_connections_max),
-            tcp_io_timeout_s: Some(node_config.tcp_io_timeout_s),
-            unchecked_cutoff_time_s: Some(node_config.unchecked_cutoff_time_s),
+            tcp_io_timeout: Some(node_config.tcp_io_timeout_s),
+            unchecked_cutoff_time: Some(node_config.unchecked_cutoff_time_s),
             use_memory_pools: Some(node_config.use_memory_pools),
-            vote_generator_delay_ms: Some(node_config.vote_generator_delay_ms),
+            vote_generator_delay: Some(node_config.vote_generator_delay_ms),
             vote_generator_threshold: Some(node_config.vote_generator_threshold),
-            vote_minimum: Some(node_config.vote_minimum.encode_hex()),
+            vote_minimum: Some(node_config.vote_minimum.to_string_dec()),
             work_peers: Some(node_config.work_peers),
             work_threads: Some(node_config.work_threads),
             optimistic_scheduler: Some(OptimisticSchedulerToml::default()),
@@ -148,9 +152,9 @@ impl Default for NodeToml {
             max_pruning_depth: Some(node_config.max_pruning_depth),
             websocket_config: Some(WebsocketToml::default()),
             ipc_config: Some((&node_config.ipc_config).into()),
-            diagnostics_config: Some(DiagnosticsToml::default()),
+            diagnostics: Some(DiagnosticsToml::default()),
             stat_config: Some(StatsToml::default()),
-            lmdb_config: Some(LmdbToml::default()),
+            lmdb: Some(LmdbToml::default()),
             vote_cache: Some(VoteCacheToml::default()),
             block_processor: Some(BlockProcessorToml::default()),
             active_elections: Some(ActiveElectionsToml::default()),
@@ -190,7 +194,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(bandwidth_limit_burst_ratio) = toml.bandwidth_limit_burst_ratio {
             config.bandwidth_limit_burst_ratio = bandwidth_limit_burst_ratio;
         }
-        if let Some(block_processor_batch_max_time_ms) = toml.block_processor_batch_max_time_ms {
+        if let Some(block_processor_batch_max_time_ms) = toml.block_processor_batch_max_time {
             config.block_processor_batch_max_time_ms = block_processor_batch_max_time_ms;
         }
         if let Some(bootstrap_bandwidth_burst_ratio) = toml.bootstrap_bandwidth_burst_ratio {
@@ -262,7 +266,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(peering_port) = toml.peering_port {
             config.peering_port = Some(peering_port);
         }
-        if let Some(pow_sleep_interval_ns) = toml.pow_sleep_interval_ns {
+        if let Some(pow_sleep_interval_ns) = toml.pow_sleep_interval {
             config.pow_sleep_interval_ns = pow_sleep_interval_ns;
         }
         if let Some(preconfigured_peers) = &toml.preconfigured_peers {
@@ -293,16 +297,16 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(tcp_incoming_connections_max) = toml.tcp_incoming_connections_max {
             config.tcp_incoming_connections_max = tcp_incoming_connections_max;
         }
-        if let Some(tcp_io_timeout_s) = toml.tcp_io_timeout_s {
+        if let Some(tcp_io_timeout_s) = toml.tcp_io_timeout {
             config.tcp_io_timeout_s = tcp_io_timeout_s;
         }
-        if let Some(unchecked_cutoff_time_s) = toml.unchecked_cutoff_time_s {
+        if let Some(unchecked_cutoff_time_s) = toml.unchecked_cutoff_time {
             config.unchecked_cutoff_time_s = unchecked_cutoff_time_s;
         }
         if let Some(use_memory_pools) = toml.use_memory_pools {
             config.use_memory_pools = use_memory_pools;
         }
-        if let Some(vote_generator_delay_ms) = toml.vote_generator_delay_ms {
+        if let Some(vote_generator_delay_ms) = toml.vote_generator_delay {
             config.vote_generator_delay_ms = vote_generator_delay_ms;
         }
         if let Some(vote_generator_threshold) = toml.vote_generator_threshold {
@@ -344,13 +348,13 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(ipc_config_toml) = &toml.ipc_config {
             config.ipc_config = ipc_config_toml.into();
         }
-        if let Some(diagnostics_config_toml) = &toml.diagnostics_config {
+        if let Some(diagnostics_config_toml) = &toml.diagnostics {
             config.diagnostics_config = diagnostics_config_toml.into();
         }
         if let Some(stat_config_toml) = &toml.stat_config {
             config.stat_config = stat_config_toml.into();
         }
-        if let Some(lmdb_config_toml) = &toml.lmdb_config {
+        if let Some(lmdb_config_toml) = &toml.lmdb {
             config.lmdb_config = lmdb_config_toml.into();
         }
         if let Some(backlog_scan_batch_size) = toml.backlog_scan_batch_size {
@@ -398,7 +402,7 @@ impl From<&NodeConfig> for NodeToml {
             backup_before_upgrade: Some(config.backup_before_upgrade),
             bandwidth_limit: Some(config.bandwidth_limit),
             bandwidth_limit_burst_ratio: Some(config.bandwidth_limit_burst_ratio),
-            block_processor_batch_max_time_ms: Some(config.block_processor_batch_max_time_ms),
+            block_processor_batch_max_time: Some(config.block_processor_batch_max_time_ms),
             bootstrap_bandwidth_burst_ratio: Some(config.bootstrap_bandwidth_burst_ratio),
             bootstrap_bandwidth_limit: Some(config.bootstrap_bandwidth_limit),
             bootstrap_connections: Some(config.bootstrap_connections),
@@ -423,7 +427,7 @@ impl From<&NodeConfig> for NodeToml {
             online_weight_minimum: Some(config.online_weight_minimum.encode_hex()),
             password_fanout: Some(config.password_fanout),
             peering_port: config.peering_port,
-            pow_sleep_interval_ns: Some(config.pow_sleep_interval_ns),
+            pow_sleep_interval: Some(config.pow_sleep_interval_ns),
             preconfigured_peers: Some(config.preconfigured_peers.clone()),
             preconfigured_representatives: Some(config.preconfigured_representatives.clone()),
             receive_minimum: Some(config.receive_minimum.encode_hex()),
@@ -434,10 +438,10 @@ impl From<&NodeConfig> for NodeToml {
             request_aggregator_threads: Some(config.request_aggregator_threads),
             signature_checker_threads: Some(config.signature_checker_threads),
             tcp_incoming_connections_max: Some(config.tcp_incoming_connections_max),
-            tcp_io_timeout_s: Some(config.tcp_io_timeout_s),
-            unchecked_cutoff_time_s: Some(config.unchecked_cutoff_time_s),
+            tcp_io_timeout: Some(config.tcp_io_timeout_s),
+            unchecked_cutoff_time: Some(config.unchecked_cutoff_time_s),
             use_memory_pools: Some(config.use_memory_pools),
-            vote_generator_delay_ms: Some(config.vote_generator_delay_ms),
+            vote_generator_delay: Some(config.vote_generator_delay_ms),
             vote_generator_threshold: Some(config.vote_generator_threshold),
             vote_minimum: Some(config.vote_minimum.encode_hex()),
             work_peers: Some(config.work_peers.clone()),
@@ -451,9 +455,9 @@ impl From<&NodeConfig> for NodeToml {
             max_pruning_depth: Some(config.max_pruning_depth),
             websocket_config: Some((&config.websocket_config).into()),
             ipc_config: Some((&config.ipc_config).into()),
-            diagnostics_config: Some((&config.diagnostics_config).into()),
+            diagnostics: Some((&config.diagnostics_config).into()),
             stat_config: Some((&config.stat_config).into()),
-            lmdb_config: Some((&config.lmdb_config).into()),
+            lmdb: Some((&config.lmdb_config).into()),
             vote_cache: Some((&config.vote_cache).into()),
             block_processor: Some((&config.block_processor).into()),
             active_elections: Some((&config.active_elections).into()),

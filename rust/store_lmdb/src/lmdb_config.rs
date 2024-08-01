@@ -3,6 +3,7 @@ use rsnano_core::utils::TomlWriter;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,

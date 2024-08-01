@@ -1997,6 +1997,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_node",
  "serde",
+ "toml 0.8.17",
 ]
 
 [[package]]

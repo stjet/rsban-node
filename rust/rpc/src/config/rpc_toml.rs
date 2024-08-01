@@ -1,4 +1,5 @@
 use super::rpc_config::{RpcConfig, RpcLoggingConfig, RpcProcessConfig};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -10,6 +11,61 @@ pub struct RpcToml {
     pub max_request_size: Option<u64>,
     pub rpc_logging: Option<RpcLoggingToml>,
     pub rpc_process: Option<RpcProcessToml>,
+}
+
+impl RpcToml {
+    pub fn merge_defaults(&self, default_config: &RpcToml) -> Result<String> {
+        let defaults_str = toml::to_string(default_config)?;
+        let current_str = toml::to_string(self)?;
+
+        let mut result = String::new();
+        let mut stream_defaults = defaults_str.lines().peekable();
+        let mut stream_current = current_str.lines().peekable();
+
+        while stream_current.peek().is_some() || stream_defaults.peek().is_some() {
+            match (stream_defaults.peek(), stream_current.peek()) {
+                (Some(&line_defaults), Some(&line_current)) => {
+                    if line_defaults == line_current {
+                        result.push_str(line_defaults);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    } else if line_current.starts_with('#') {
+                        result.push_str("# ");
+                        result.push_str(line_defaults);
+                        result.push('\n');
+
+                        result.push_str(line_current);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    } else {
+                        result.push_str("# ");
+                        result.push_str(line_defaults);
+                        result.push('\n');
+                        result.push_str(line_current);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    }
+                }
+                (Some(&line_defaults), None) => {
+                    result.push_str("# ");
+                    result.push_str(line_defaults);
+                    result.push('\n');
+                    stream_defaults.next();
+                }
+                (None, Some(&line_current)) => {
+                    result.push_str(line_current);
+                    result.push('\n');
+                    stream_current.next();
+                }
+                _ => {}
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 impl Default for RpcToml {

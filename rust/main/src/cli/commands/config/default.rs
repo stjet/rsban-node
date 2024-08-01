@@ -8,11 +8,11 @@ use std::io::BufRead;
 #[command(group = ArgGroup::new("input1")
     .args(&["node", "rpc"])
     .required(true))]
-pub(crate) struct GenerateConfigArgs {
-    /// Generates the node config
+pub(crate) struct DefaultArgs {
+    /// Prints the default node config
     #[arg(long, group = "input1")]
     node: bool,
-    /// Generates the rpc config
+    /// Prints the default rpc config
     #[arg(long, group = "input1")]
     rpc: bool,
     /// Uncomments the entries of the config
@@ -20,8 +20,8 @@ pub(crate) struct GenerateConfigArgs {
     use_defaults: bool,
 }
 
-impl GenerateConfigArgs {
-    pub(crate) fn generate_config(&self) -> Result<()> {
+impl DefaultArgs {
+    pub(crate) fn default(&self) -> Result<()> {
         let (toml_str, config_type) = if self.node {
             let daemon_toml = DaemonToml::default();
             (toml::to_string(&daemon_toml)?, "node")

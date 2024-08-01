@@ -1,5 +1,6 @@
 use super::{NodeRpcToml, NodeToml, OpenclToml};
 use crate::config::DaemonConfig;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -57,6 +58,61 @@ impl Default for DaemonToml {
             opencl: Some(OpenclToml::default()),
             rpc: Some(NodeRpcToml::new()),
         }
+    }
+}
+
+impl DaemonToml {
+    pub fn merge_defaults(&self, default_config: &DaemonToml) -> Result<String> {
+        let defaults_str = toml::to_string(default_config)?;
+        let current_str = toml::to_string(self)?;
+
+        let mut result = String::new();
+        let mut stream_defaults = defaults_str.lines().peekable();
+        let mut stream_current = current_str.lines().peekable();
+
+        while stream_current.peek().is_some() || stream_defaults.peek().is_some() {
+            match (stream_defaults.peek(), stream_current.peek()) {
+                (Some(&line_defaults), Some(&line_current)) => {
+                    if line_defaults == line_current {
+                        result.push_str(line_defaults);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    } else if line_current.starts_with('#') {
+                        result.push_str("# ");
+                        result.push_str(line_defaults);
+                        result.push('\n');
+
+                        result.push_str(line_current);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    } else {
+                        result.push_str("# ");
+                        result.push_str(line_defaults);
+                        result.push('\n');
+                        result.push_str(line_current);
+                        result.push('\n');
+                        stream_defaults.next();
+                        stream_current.next();
+                    }
+                }
+                (Some(&line_defaults), None) => {
+                    result.push_str("# ");
+                    result.push_str(line_defaults);
+                    result.push('\n');
+                    stream_defaults.next();
+                }
+                (None, Some(&line_current)) => {
+                    result.push_str(line_current);
+                    result.push('\n');
+                    stream_current.next();
+                }
+                _ => {}
+            }
+        }
+
+        Ok(result)
     }
 }
 

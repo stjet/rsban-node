@@ -583,9 +583,6 @@ mod bootstrap_processor {
 }
 
 mod bulk_pull {
-
-    use rsnano_core::Link;
-
     use super::*;
 
     // If the account doesn't exist, current == end so there's no iteration
@@ -889,39 +886,88 @@ mod bulk_pull {
             node.async_rt.clone(),
         )
     }
+}
 
-    fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
-        let socket_stats = Arc::new(SocketStats::new(node.stats.clone()));
-        let socket = SocketBuilder::new(
-            ChannelDirection::Inbound,
-            node.workers.clone(),
-            Arc::downgrade(&node.async_rt),
-        )
-        .observer(socket_stats)
-        .finish();
+mod frontier_req {
+    use rsnano_messages::FrontierReq;
+    use rsnano_node::bootstrap::FrontierReqServer;
 
-        let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
-            node.async_rt.clone(),
-            node.stats.clone(),
-            node.network_params.network.clone(),
-            node.ledger.clone(),
-            node.workers.clone(),
-            node.block_processor.clone(),
-            node.bootstrap_initiator.clone(),
-            node.flags.clone(),
-        ));
+    use super::*;
 
-        Arc::new(ResponseServerImpl::new(
-            &node.network,
-            node.network.inbound_queue.clone(),
-            socket,
-            node.network.publish_filter.clone(),
-            Arc::new(node.network_params.clone()),
-            node.stats.clone(),
-            visitor_factory,
-            true,
-            node.syn_cookies.clone(),
-            node.node_id.clone(),
-        ))
+    #[test]
+    fn begin() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let request = FrontierReq {
+            start: Account::zero(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server = create_frontier_req_server(&node, request);
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server.current());
+        assert_eq!(*DEV_GENESIS_HASH, frontier_req_server.frontier());
     }
+
+    #[test]
+    fn end() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let request = FrontierReq {
+            start: DEV_GENESIS_ACCOUNT.inc().unwrap(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server = create_frontier_req_server(&node, request);
+        assert!(frontier_req_server.current().is_zero());
+    }
+
+    fn create_frontier_req_server(node: &Node, request: FrontierReq) -> FrontierReqServer {
+        let response_server = create_response_server(&node);
+        FrontierReqServer::new(
+            response_server,
+            request,
+            node.workers.clone(),
+            node.ledger.clone(),
+            node.async_rt.clone(),
+        )
+    }
+}
+
+fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
+    let socket_stats = Arc::new(SocketStats::new(node.stats.clone()));
+    let socket = SocketBuilder::new(
+        ChannelDirection::Inbound,
+        node.workers.clone(),
+        Arc::downgrade(&node.async_rt),
+    )
+    .observer(socket_stats)
+    .finish();
+
+    let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
+        node.async_rt.clone(),
+        node.stats.clone(),
+        node.network_params.network.clone(),
+        node.ledger.clone(),
+        node.workers.clone(),
+        node.block_processor.clone(),
+        node.bootstrap_initiator.clone(),
+        node.flags.clone(),
+    ));
+
+    Arc::new(ResponseServerImpl::new(
+        &node.network,
+        node.network.inbound_queue.clone(),
+        socket,
+        node.network.publish_filter.clone(),
+        Arc::new(node.network_params.clone()),
+        node.stats.clone(),
+        visitor_factory,
+        true,
+        node.syn_cookies.clone(),
+        node.node_id.clone(),
+    ))
 }

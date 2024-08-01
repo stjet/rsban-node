@@ -1013,17 +1013,6 @@ mod frontier_req {
         assert_eq!(BlockHash::zero(), frontier_req_server2.frontier());
     }
 
-    fn create_frontier_req_server(node: &Node, request: FrontierReq) -> FrontierReqServer {
-        let response_server = create_response_server(&node);
-        FrontierReqServer::new(
-            response_server,
-            request,
-            node.workers.clone(),
-            node.ledger.clone(),
-            node.async_rt.clone(),
-        )
-    }
-
     #[test]
     fn confirmed_frontier() {
         let mut system = System::new();
@@ -1174,6 +1163,133 @@ mod frontier_req {
             frontier_req_server7.current()
         );
         assert_eq!(receive2.hash(), frontier_req_server7.frontier());
+    }
+
+    fn create_frontier_req_server(node: &Node, request: FrontierReq) -> FrontierReqServer {
+        let response_server = create_response_server(&node);
+        FrontierReqServer::new(
+            response_server,
+            request,
+            node.workers.clone(),
+            node.ledger.clone(),
+            node.async_rt.clone(),
+        )
+    }
+}
+
+mod bulk_pull_account {
+    use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags};
+    use rsnano_node::bootstrap::BulkPullAccountServer;
+    use tracing::Instrument;
+
+    use super::*;
+
+    #[test]
+    fn basic() {
+        let mut system = System::new();
+        let mut config = System::default_config();
+        config.receive_minimum = Amount::raw(20);
+        let node = system.build_node().config(config).finish();
+        let key1 = KeyPair::new();
+        let wallet_id = node.wallets.wallet_ids()[0];
+        node.wallets
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .unwrap();
+        node.wallets
+            .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+            .unwrap();
+        let send1 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key1.public_key(),
+                Amount::raw(25),
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+        let send2 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key1.public_key(),
+                Amount::raw(10),
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+        let send3 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key1.public_key(),
+                Amount::raw(2),
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+        assert_timely_eq(
+            Duration::from_secs(5),
+            || node.balance(&key1.public_key()),
+            Amount::raw(25),
+        );
+        let response_server = create_response_server(&node);
+        {
+            let payload = BulkPullAccount {
+                account: key1.public_key(),
+                minimum_amount: Amount::raw(5),
+                flags: BulkPullAccountFlags::PendingHashAndAmount,
+            };
+
+            let pull_server = BulkPullAccountServer::new(
+                response_server.clone(),
+                payload,
+                node.workers.clone(),
+                node.ledger.clone(),
+                node.async_rt.clone(),
+            );
+
+            assert_eq!(pull_server.invalid_request(), false);
+            assert_eq!(pull_server.pending_include_address(), false);
+            assert_eq!(pull_server.pending_address_only(), false);
+            assert_eq!(
+                pull_server.current_key().receiving_account,
+                key1.public_key()
+            );
+            assert_eq!(pull_server.current_key().send_block_hash, BlockHash::zero());
+            let (key, info) = pull_server.get_next().unwrap();
+            assert_eq!(key.send_block_hash, send2.hash());
+            assert_eq!(info.amount, Amount::raw(10));
+            assert_eq!(info.source, *DEV_GENESIS_ACCOUNT);
+            assert!(pull_server.get_next().is_none())
+        }
+
+        {
+            let payload = BulkPullAccount {
+                account: key1.public_key(),
+                minimum_amount: Amount::zero(),
+                flags: BulkPullAccountFlags::PendingAddressOnly,
+            };
+
+            let pull_server = BulkPullAccountServer::new(
+                response_server,
+                payload,
+                node.workers.clone(),
+                node.ledger.clone(),
+                node.async_rt.clone(),
+            );
+
+            assert_eq!(pull_server.pending_address_only(), true);
+            let (_key, info) = pull_server.get_next().unwrap();
+            assert_eq!(info.source, *DEV_GENESIS_ACCOUNT);
+            assert!(pull_server.get_next().is_none());
+        }
     }
 }
 

@@ -15,8 +15,7 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	auto socket{ std::make_shared<nano::transport::socket> (node->async_rt, nano::transport::socket_endpoint::server,
 	*node->stats, node->workers, node->config->tcp_io_timeout,
 	node->network_params.network.silent_connection_tolerance_time,
-	node->network_params.network.idle_timeout
-	) };
+	node->network_params.network.idle_timeout) };
 
 	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
 
@@ -1063,55 +1062,3 @@ TEST (bulk, genesis_pruning)
 	node2->stop ();
 }
 
-TEST (bulk_pull_account, basics)
-{
-	nano::test::system system;
-	auto config{ system.default_config () };
-	config.receive_minimum = 20;
-	auto node = system.add_node (config);
-	nano::keypair key1;
-	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	(void)node->wallets.insert_adhoc (wallet_id, key1.prv);
-	auto send1 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 25));
-	auto send2 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 10));
-	auto send3 (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 2));
-	ASSERT_TIMELY_EQ (5s, system.nodes[0]->balance (key1.pub), 25);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-
-	{
-		nano::bulk_pull_account::payload payload{};
-		payload.account = key1.pub;
-		payload.minimum_amount = 5;
-		payload.flags = nano::bulk_pull_account_flags ();
-		auto req = std::make_unique<nano::bulk_pull_account> (nano::dev::network_params.network, payload);
-		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
-		ASSERT_FALSE (request->invalid_request ());
-		ASSERT_FALSE (request->pending_include_address ());
-		ASSERT_FALSE (request->pending_address_only ());
-		ASSERT_EQ (request->current_key ().account, key1.pub);
-		ASSERT_EQ (request->current_key ().hash, 0);
-		auto block_data (request->get_next ());
-		ASSERT_EQ (send2->hash (), block_data.first.get ()->hash);
-		ASSERT_EQ (nano::uint128_union (10), block_data.second.get ()->amount);
-		ASSERT_EQ (nano::dev::genesis_key.pub, block_data.second.get ()->source);
-		ASSERT_EQ (nullptr, request->get_next ().first.get ());
-	}
-
-	{
-		nano::bulk_pull_account::payload payload{};
-		payload.account = key1.pub;
-		payload.minimum_amount = 0;
-		payload.flags = nano::bulk_pull_account_flags::pending_address_only;
-		auto req = std::make_unique<nano::bulk_pull_account> (nano::dev::network_params.network, payload);
-		auto request (std::make_shared<nano::bulk_pull_account_server> (system.nodes[0], connection, std::move (req)));
-		ASSERT_TRUE (request->pending_address_only ());
-		auto block_data (request->get_next ());
-		ASSERT_NE (nullptr, block_data.first.get ());
-		ASSERT_NE (nullptr, block_data.second.get ());
-		ASSERT_EQ (nano::dev::genesis_key.pub, block_data.second.get ()->source);
-		block_data = request->get_next ();
-		ASSERT_EQ (nullptr, block_data.first.get ());
-		ASSERT_EQ (nullptr, block_data.second.get ());
-	}
-}

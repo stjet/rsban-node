@@ -653,7 +653,7 @@ impl SocketExtensions for Arc<Socket> {
 
 #[async_trait]
 impl AsyncBufferReader for Arc<Socket> {
-    async fn read(&mut self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
         self.read_raw(buffer, count).await
     }
 }

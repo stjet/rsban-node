@@ -193,26 +193,27 @@ impl ChannelInProc {
 
 pub struct VecBufferReader {
     buffer: Vec<u8>,
-    position: usize,
+    position: AtomicUsize,
 }
 
 impl VecBufferReader {
     pub fn new(buffer: Vec<u8>) -> Self {
         Self {
             buffer,
-            position: 0,
+            position: AtomicUsize::new(0),
         }
     }
 }
 
 #[async_trait]
 impl AsyncBufferReader for VecBufferReader {
-    async fn read(&mut self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
-        if count > self.buffer.len() - self.position {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        let pos = self.position.load(Ordering::SeqCst);
+        if count > self.buffer.len() - pos {
             bail!("no more data to read");
         }
-        buffer[..count].copy_from_slice(&self.buffer[self.position..self.position + count]);
-        self.position += count;
+        buffer[..count].copy_from_slice(&self.buffer[pos..pos + count]);
+        self.position.store(pos + count, Ordering::SeqCst);
         Ok(())
     }
 }
@@ -325,6 +326,15 @@ impl Channel for ChannelInProc {
 
     fn local_addr(&self) -> SocketAddrV6 {
         self.local_endpoint
+    }
+}
+
+#[async_trait]
+impl AsyncBufferReader for ChannelInProc {
+    async fn read(&self, _buffer: &mut [u8], _count: usize) -> anyhow::Result<()> {
+        Err(anyhow!(
+            "AsyncBufferReader not implemented for ChannelInProc "
+        ))
     }
 }
 

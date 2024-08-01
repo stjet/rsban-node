@@ -15,7 +15,7 @@ use crate::{
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{read_block, BufferDropPolicy, TrafficType},
-    utils::{AsyncRuntime, ErrorCode, ThreadPool},
+    utils::{AsyncRuntime, ThreadPool},
 };
 use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
 use rsnano_messages::{BulkPull, Message};
@@ -120,8 +120,7 @@ impl Drop for BulkPullClient {
 pub trait BulkPullClientExt {
     fn request(&self);
     fn throttled_receive_block(&self);
-    fn receive_block(&self);
-    fn received_block(&self, ec: ErrorCode, block: Option<BlockEnum>);
+    fn received_block(&self, block: Option<BlockEnum>);
 }
 
 impl BulkPullClientExt for Arc<BulkPullClient> {
@@ -179,7 +178,15 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
     fn throttled_receive_block(&self) {
         debug_assert!(!self.network_error.load(Ordering::Relaxed));
         if self.block_processor.queue_len(BlockSource::BootstrapLegacy) < 1024 {
-            self.receive_block();
+            let self_clone = Arc::clone(self);
+
+            self.runtime.tokio.spawn(async move {
+                let Ok(block) = read_block(&self_clone.connection.get_socket()).await else {
+                    self_clone.network_error.store(true, Ordering::SeqCst);
+                    return;
+                };
+                spawn_blocking(Box::new(move || self_clone.received_block(block)));
+            });
         } else {
             let self_clone = Arc::clone(self);
             self.workers.add_delayed_task(
@@ -193,30 +200,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         }
     }
 
-    fn receive_block(&self) {
-        let socket = self.connection.get_socket().clone();
-        let self_clone = Arc::clone(self);
-        self.runtime.tokio.spawn(async move {
-            match read_block(&socket).await {
-                Ok(block) => {
-                    spawn_blocking(Box::new(move || {
-                        self_clone.received_block(ErrorCode::new(), block)
-                    }));
-                }
-                Err(_) => {
-                    spawn_blocking(Box::new(move || {
-                        self_clone.received_block(ErrorCode::fault(), None);
-                    }));
-                }
-            }
-        });
-    }
-
-    fn received_block(&self, ec: ErrorCode, block: Option<BlockEnum>) {
-        if ec.is_err() {
-            self.network_error.store(true, Ordering::SeqCst);
-            return;
-        }
+    fn received_block(&self, block: Option<BlockEnum>) {
         let Some(block) = block else {
             // Avoid re-using slow peers, or peers that sent the wrong blocks.
             if !self.connection.pending_stop()

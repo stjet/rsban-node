@@ -1,19 +1,20 @@
 use super::{
-    write_queue::WriteCallback, BufferDropPolicy, Channel, ChannelDirection, ChannelId,
-    ChannelMode, OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
+    write_queue::WriteCallback, AsyncBufferReader, BufferDropPolicy, Channel, ChannelDirection,
+    ChannelId, ChannelMode, OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
+use async_trait::async_trait;
 use rsnano_core::Account;
 use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
 use std::{
     fmt::Display,
-    net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicU8, Ordering},
-        Arc, Mutex, MutexGuard, Weak,
+        Arc, Mutex, Weak,
     },
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -282,5 +283,12 @@ impl PartialEq for ChannelTcp {
         }
 
         true
+    }
+}
+
+#[async_trait]
+impl AsyncBufferReader for Arc<ChannelTcp> {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        self.socket.read(buffer, count).await
     }
 }

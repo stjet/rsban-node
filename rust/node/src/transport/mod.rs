@@ -105,7 +105,7 @@ pub enum TransportType {
     Fake = 3,
 }
 
-pub trait Channel {
+pub trait Channel: AsyncBufferReader {
     fn channel_id(&self) -> ChannelId;
     fn get_last_bootstrap_attempt(&self) -> SystemTime; //todo switch back to Instant
     fn set_last_bootstrap_attempt(&self, time: SystemTime); //todo switch back to Instant

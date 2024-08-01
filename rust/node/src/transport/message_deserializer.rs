@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 #[async_trait]
 pub trait AsyncBufferReader {
-    async fn read(&mut self, buffer: &mut [u8], count: usize) -> anyhow::Result<()>;
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()>;
 }
 
 pub struct MessageDeserializer<T: AsyncBufferReader + Send> {

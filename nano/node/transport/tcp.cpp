@@ -56,13 +56,6 @@ nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_remote_endpoint () cons
 	return rsnano::dto_to_endpoint (ep_dto);
 }
 
-nano::tcp_endpoint nano::transport::channel_tcp::get_local_endpoint () const
-{
-	rsnano::EndpointDto ep_dto{};
-	rsnano::rsn_channel_tcp_local_endpoint (handle, &ep_dto);
-	return rsnano::dto_to_endpoint (ep_dto);
-}
-
 std::string nano::transport::channel_tcp::to_string () const
 {
 	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());

@@ -43,7 +43,6 @@ namespace transport
 		}
 
 		nano::tcp_endpoint get_tcp_remote_endpoint () const override;
-		nano::tcp_endpoint get_local_endpoint () const override;
 		nano::transport::transport_type get_type () const override
 		{
 			return nano::transport::transport_type::tcp;

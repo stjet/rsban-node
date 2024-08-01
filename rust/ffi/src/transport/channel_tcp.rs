@@ -5,14 +5,6 @@ use super::{
 use rsnano_node::transport::Channel;
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_channel_tcp_local_endpoint(
-    handle: *mut ChannelHandle,
-    endpoint: *mut EndpointDto,
-) {
-    (*endpoint) = EndpointDto::from(as_tcp_channel(handle).local_endpoint());
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_channel_tcp_remote_endpoint(
     handle: *mut ChannelHandle,
     endpoint: *mut EndpointDto,

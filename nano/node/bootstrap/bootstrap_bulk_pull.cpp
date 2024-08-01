@@ -44,4 +44,3 @@ void nano::pull_info::load_dto (rsnano::PullInfoDto const & dto)
 	retry_limit = dto.retry_limit;
 	bootstrap_id = dto.bootstrap_id;
 }
-

@@ -1034,4 +1034,3 @@ TEST (bulk, genesis_pruning)
 	ASSERT_TIMELY_EQ (5s, node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
 	node2->stop ();
 }
-

@@ -2,7 +2,6 @@
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/node/transport/channel.hpp"
-#include "nano/node/transport/tcp_listener.hpp"
 #include "nano/secure/network_filter.hpp"
 
 #include <nano/crypto_lib/random_pool_shuffle.hpp>
@@ -28,7 +27,8 @@
  * channel_tcp
  */
 
-namespace{
+namespace
+{
 std::vector<std::shared_ptr<nano::transport::channel>> into_channel_vector (rsnano::ChannelListHandle * list_handle)
 {
 	auto len = rsnano::rsn_channel_list_len (list_handle);
@@ -182,42 +182,6 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();
 	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
-}
-
-namespace
-{
-void message_received_callback (void * context, const rsnano::ErrorCodeDto * ec_dto, rsnano::MessageHandle * msg_handle)
-{
-	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
-	auto ec = rsnano::dto_to_error_code (*ec_dto);
-	std::unique_ptr<nano::message> message;
-	if (msg_handle != nullptr)
-	{
-		message = rsnano::message_handle_to_message (rsnano::rsn_message_clone (msg_handle));
-	}
-	(*callback) (ec, std::move (message));
-}
-
-void delete_callback_context (void * context)
-{
-	auto callback = static_cast<std::function<void (boost::system::error_code, std::unique_ptr<nano::message>)> *> (context);
-	delete callback;
-}
-}
-namespace
-{
-void delete_new_channel_callback (void * context)
-{
-	auto callback = static_cast<std::function<void (std::shared_ptr<nano::transport::channel>)> *> (context);
-	delete callback;
-}
-
-void call_new_channel_callback (void * context, rsnano::ChannelHandle * channel_handle)
-{
-	auto callback = static_cast<std::function<void (std::shared_ptr<nano::transport::channel>)> *> (context);
-	auto channel = std::make_shared<nano::transport::channel_tcp> (channel_handle);
-	(*callback) (channel);
-}
 }
 
 std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_channel (rsnano::ChannelHandle * handle)

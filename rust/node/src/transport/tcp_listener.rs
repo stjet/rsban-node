@@ -169,8 +169,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 ))
                 .idle_timeout(self.network_params.network.idle_timeout)
                 .observer(socket_stats)
-                .use_existing_socket(raw_stream, remote_endpoint)
-                .finish();
+                .finish(raw_stream, remote_endpoint);
 
                 let response_server = self
                     .response_server_factory

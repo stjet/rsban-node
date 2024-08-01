@@ -557,9 +557,8 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             .default_timeout(self_l.config.tcp_io_timeout)
             .silent_connection_tolerance_time(self_l.config.silent_connection_tolerance_time)
             .idle_timeout(self_l.config.idle_timeout)
-            .use_existing_socket(stream, endpoint)
             .observer(Arc::new(SocketStats::new(self_l.stats.clone())))
-            .finish();
+            .finish(stream, endpoint);
             socket.start();
             socket.set_default_timeout();
 

@@ -1,8 +1,8 @@
 use super::helpers::{assert_timely, assert_timely_eq, establish_tcp, System};
 use crate::tests::helpers::get_available_port;
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
-    DEV_GENESIS_KEY,
+    utils::TEST_ENDPOINT_1, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock,
+    UncheckedKey, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
@@ -10,6 +10,7 @@ use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
     config::{FrontiersConfirmationMode, NodeFlags},
     node::NodeExt,
+    transport::TcpStream,
     wallets::WalletsExt,
 };
 use rsnano_node::{
@@ -1301,7 +1302,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
         Arc::downgrade(&node.async_rt),
     )
     .observer(socket_stats)
-    .finish();
+    .finish(TcpStream::new_null(), TEST_ENDPOINT_1);
 
     let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
         node.async_rt.clone(),

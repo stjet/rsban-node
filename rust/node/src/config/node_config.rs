@@ -29,6 +29,7 @@ use std::{cmp::max, net::Ipv6Addr};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum FrontiersConfirmationMode {
     Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not

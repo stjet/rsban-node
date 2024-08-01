@@ -1,6 +1,7 @@
 use super::get_default_rpc_filepath;
 use std::path::PathBuf;
 
+#[derive(Debug, PartialEq)]
 pub struct RpcChildProcessConfig {
     pub enable: bool,
     pub rpc_path: PathBuf,
@@ -15,6 +16,7 @@ impl RpcChildProcessConfig {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct NodeRpcConfig {
     pub enable_sign_hash: bool,
     pub child_process: RpcChildProcessConfig,

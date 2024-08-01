@@ -8,7 +8,6 @@ pub struct VoteProcessorToml {
     pub pr_priority: Option<usize>,
     pub threads: Option<usize>,
     pub batch_size: Option<usize>,
-    pub max_triggered: Option<usize>,
 }
 
 impl Default for VoteProcessorToml {
@@ -20,7 +19,6 @@ impl Default for VoteProcessorToml {
             pr_priority: Some(config.pr_priority),
             threads: Some(config.threads),
             batch_size: Some(config.batch_size),
-            max_triggered: Some(config.max_triggered),
         }
     }
 }
@@ -44,9 +42,7 @@ impl From<&VoteProcessorToml> for VoteProcessorConfig {
         if let Some(batch_size) = toml.batch_size {
             config.batch_size = batch_size;
         }
-        if let Some(max_triggered) = toml.max_triggered {
-            config.max_triggered = max_triggered;
-        }
+
         config
     }
 }
@@ -59,7 +55,6 @@ impl From<&VoteProcessorConfig> for VoteProcessorToml {
             pr_priority: Some(config.pr_priority),
             threads: Some(config.threads),
             batch_size: Some(config.batch_size),
-            max_triggered: Some(config.max_triggered),
         }
     }
 }

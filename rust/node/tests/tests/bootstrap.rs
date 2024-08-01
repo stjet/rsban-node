@@ -925,6 +925,50 @@ mod frontier_req {
         assert!(frontier_req_server.current().is_zero());
     }
 
+    #[test]
+    fn count() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        // Public key FB93... after genesis in accounts table
+        let key1 = KeyPair::from_priv_key_hex(
+            "ED5AE0A6505B14B67435C29FD9FEEBC26F597D147BC92F6D795FFAD7AFD3D967",
+        )
+        .unwrap();
+
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::nano(1000),
+            key1.public_key().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(send1.clone()).unwrap();
+
+        let receive1 = BlockEnum::State(StateBlock::new(
+            key1.public_key(),
+            BlockHash::zero(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::nano(1000),
+            send1.hash().into(),
+            &key1,
+            node.work_generate_dev(key1.public_key().into()),
+        ));
+        node.process(receive1.clone()).unwrap();
+
+        let request = FrontierReq {
+            start: Account::zero(),
+            age: u32::MAX,
+            count: 1,
+            only_confirmed: false,
+        };
+        let frontier_req_server = create_frontier_req_server(&node, request);
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server.current());
+        assert_eq!(send1.hash(), frontier_req_server.frontier());
+    }
+
     fn create_frontier_req_server(node: &Node, request: FrontierReq) -> FrontierReqServer {
         let response_server = create_response_server(&node);
         FrontierReqServer::new(

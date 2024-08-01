@@ -931,49 +931,6 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 	ASSERT_TIMELY (10s, node1->block_or_pruned_exists (send2->hash ()));
 }
 
-TEST (frontier_req, count)
-{
-	nano::test::system system (1);
-	auto node1 = system.nodes[0];
-	// Public key FB93... after genesis in accounts table
-	nano::keypair key1 ("ED5AE0A6505B14B67435C29FD9FEEBC26F597D147BC92F6D795FFAD7AFD3D967");
-	nano::state_block_builder builder;
-
-	auto send1 = builder
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1->work_generate_blocking (*send1);
-	ASSERT_EQ (nano::block_status::progress, node1->process (send1));
-	auto receive1 = builder
-					.make_block ()
-					.account (key1.pub)
-					.previous (0)
-					.representative (nano::dev::genesis_key.pub)
-					.balance (nano::Gxrb_ratio)
-					.link (send1->hash ())
-					.sign (key1.prv, key1.pub)
-					.work (0)
-					.build ();
-	node1->work_generate_blocking (*receive1);
-	ASSERT_EQ (nano::block_status::progress, node1->process (receive1));
-
-	auto connection (create_bootstrap_server (node1));
-	nano::frontier_req::frontier_req_payload payload{};
-	payload.start = 0;
-	payload.age = std::numeric_limits<uint32_t>::max ();
-	payload.count = 1;
-	auto req = std::make_unique<nano::frontier_req> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::frontier_req_server> (node1, connection, std::move (req)));
-	ASSERT_EQ (nano::dev::genesis_key.pub, request->current ());
-	ASSERT_EQ (send1->hash (), request->frontier ());
-}
-
 TEST (frontier_req, time_bound)
 {
 	nano::test::system system (1);

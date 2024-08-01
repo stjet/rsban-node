@@ -1,10 +1,7 @@
 use super::{bootstrap_limits, BootstrapConnections};
-use crate::{
-    transport::{
-        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket,
-        SocketExtensions, TrafficType, WriteCallback,
-    },
-    utils::{AsyncRuntime, ErrorCode},
+use crate::transport::{
+    BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket, SocketExtensions,
+    TrafficType, WriteCallback,
 };
 use rsnano_messages::Message;
 use std::{
@@ -15,10 +12,8 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::task::spawn_blocking;
 
 pub struct BootstrapClient {
-    async_rt: Arc<AsyncRuntime>,
     observer: Weak<BootstrapConnections>,
     channel: Arc<ChannelEnum>,
     socket: Arc<Socket>,
@@ -34,7 +29,6 @@ const BUFFER_SIZE: usize = 256;
 
 impl BootstrapClient {
     pub fn new(
-        async_rt: Arc<AsyncRuntime>,
         observer: &Arc<BootstrapConnections>,
         channel: Arc<ChannelEnum>,
         socket: Arc<Socket>,
@@ -43,7 +37,6 @@ impl BootstrapClient {
             tcp.update_remote_endpoint();
         }
         Self {
-            async_rt,
             observer: Arc::downgrade(observer),
             channel,
             socket,
@@ -82,24 +75,6 @@ impl BootstrapClient {
 
     pub fn get_channel(&self) -> &Arc<ChannelEnum> {
         &self.channel
-    }
-
-    //TODO delete
-    pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
-        let socket = Arc::clone(&self.socket);
-        let global_buf = self.receive_buffer.clone();
-        self.async_rt.tokio.spawn(async move {
-            let result;
-            {
-                let mut buffer = [0; BUFFER_SIZE];
-                result = socket.read_raw(&mut buffer, size).await;
-                global_buf.lock().unwrap().copy_from_slice(&buffer);
-            }
-            spawn_blocking(Box::new(move || match result {
-                Ok(()) => callback(ErrorCode::new(), size),
-                Err(_) => callback(ErrorCode::fault(), 0),
-            }));
-        });
     }
 
     pub fn receive_buffer(&self) -> Vec<u8> {

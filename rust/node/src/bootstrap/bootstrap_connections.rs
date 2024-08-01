@@ -40,7 +40,7 @@ pub struct BootstrapConnections {
     stopped: AtomicBool,
     network: Arc<Network>,
     workers: Arc<dyn ThreadPool>,
-    async_rt: Arc<AsyncRuntime>,
+    runtime: Arc<AsyncRuntime>,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
     outbound_limiter: Arc<OutboundBandwidthLimiter>,
@@ -75,7 +75,7 @@ impl BootstrapConnections {
             stopped: AtomicBool::new(false),
             network,
             workers,
-            async_rt,
+            runtime: async_rt,
             stats,
             outbound_limiter,
             block_processor,
@@ -96,7 +96,7 @@ impl BootstrapConnections {
             stopped: AtomicBool::new(false),
             network: Arc::new(Network::new_null()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
-            async_rt: Arc::new(AsyncRuntime::default()),
+            runtime: Arc::new(AsyncRuntime::default()),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             outbound_limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -525,7 +525,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         let socket = SocketBuilder::new(
             ChannelDirection::Outbound,
             Arc::clone(&self.workers),
-            Arc::downgrade(&self.async_rt),
+            Arc::downgrade(&self.runtime),
         )
         .default_timeout(self.config.tcp_io_timeout)
         .silent_connection_tolerance_time(self.config.silent_connection_tolerance_time)
@@ -548,18 +548,12 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         SystemTime::now(),
                         Arc::clone(&self_l.stats),
                         Arc::clone(&self_l.outbound_limiter),
-                        &self_l.async_rt,
+                        &self_l.runtime,
                         channel_id,
                         protocol,
                     ))));
 
-                    let client = Arc::new(BootstrapClient::new(
-                        Arc::clone(&self_l.async_rt),
-                        &self_l,
-                        tcp_channel,
-                        socket_l,
-                    ));
-
+                    let client = Arc::new(BootstrapClient::new(&self_l, tcp_channel, socket_l));
                     self_l.connections_count.fetch_add(1, Ordering::SeqCst);
                     self_l.pool_connection(client, true, push_front);
                 } else {
@@ -632,7 +626,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                                 connection_l,
                                 attempt_l,
                                 Arc::clone(&self_l.workers),
-                                Arc::clone(&self_l.async_rt),
+                                Arc::clone(&self_l.runtime),
                                 self_l,
                                 initiator,
                                 pull,

@@ -39,55 +39,6 @@ std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std:
 	node->node_id);
 }
 
-// If we can't find the end block, send everything
-TEST (bulk_pull, no_end)
-{
-	nano::test::system system (1);
-	auto connection (create_bootstrap_server (system.nodes[0]));
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = nano::dev::genesis_key.pub;
-	payload.end = 1;
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (system.nodes[0], connection, std::move (req)));
-	ASSERT_EQ (system.nodes[0]->latest (nano::dev::genesis_key.pub), request->get_current ());
-	ASSERT_TRUE (request->get_request ().get_end ().is_zero ());
-}
-
-TEST (bulk_pull, end_not_owned)
-{
-	nano::test::system system (1);
-	auto node = system.nodes[0];
-	nano::keypair key2;
-	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	ASSERT_NE (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
-	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
-	nano::keypair key3;
-	nano::block_builder builder;
-	auto open = builder
-				.open ()
-				.source (0)
-				.representative (1)
-				.account (2)
-				.sign (key3.prv, key3.pub)
-				.work (5)
-				.build ();
-	open->account_set (key2.pub);
-	open->representative_set (key2.pub);
-	open->source_set (latest);
-	open->refresh ();
-	open->signature_set (nano::sign_message (key2.prv, key2.pub, open->hash ()));
-	node->work_generate_blocking (*open);
-	ASSERT_EQ (nano::block_status::progress, node->process (open));
-	auto connection{ create_bootstrap_server (node) };
-	nano::bulk_pull::bulk_pull_payload payload{};
-	payload.start = key2.pub;
-	payload.end = nano::dev::genesis->hash ();
-	auto req = std::make_unique<nano::bulk_pull> (nano::dev::network_params.network, payload);
-	auto request (std::make_shared<nano::bulk_pull_server> (node, connection, std::move (req)));
-	ASSERT_EQ (request->get_current (), request->get_request ().get_end ());
-}
-
 TEST (bulk_pull, none)
 {
 	nano::test::system system (1);

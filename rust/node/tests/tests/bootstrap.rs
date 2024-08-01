@@ -584,6 +584,8 @@ mod bootstrap_processor {
 
 mod bulk_pull {
 
+    use rsnano_core::Link;
+
     use super::*;
 
     // If the account doesn't exist, current == end so there's no iteration
@@ -618,6 +620,63 @@ mod bulk_pull {
         let pull_server = create_bulk_pull_server(&node, bulk_pull);
 
         assert_eq!(node.latest(&DEV_GENESIS_ACCOUNT), pull_server.current());
+    }
+
+    // If we can't find the end block, send everything
+    #[test]
+    fn no_end() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_ACCOUNT).into(),
+            end: 1.into(),
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        assert_eq!(node.latest(&DEV_GENESIS_ACCOUNT), pull_server.current());
+        assert_eq!(pull_server.request().end, BlockHash::zero());
+    }
+
+    #[test]
+    fn end_not_owned() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let key2 = KeyPair::new();
+        let wallet_id = node.wallets.wallet_ids()[0];
+        node.wallets
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .unwrap();
+        node.wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key2.public_key(),
+                Amount::raw(100),
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+        let latest = node.latest(&DEV_GENESIS_ACCOUNT);
+        let open = BlockEnum::State(StateBlock::new(
+            key2.public_key(),
+            BlockHash::zero(),
+            key2.public_key(),
+            Amount::raw(100),
+            latest.into(),
+            &key2,
+            node.work_generate_dev(key2.public_key().into()),
+        ));
+        node.process(open).unwrap();
+        let bulk_pull = BulkPull {
+            start: key2.public_key().into(),
+            end: *DEV_GENESIS_HASH,
+            count: 0,
+            ascending: false,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        assert_eq!(pull_server.current(), pull_server.request().end);
     }
 
     fn create_bulk_pull_server(node: &Node, request: BulkPull) -> BulkPullServer {

@@ -109,10 +109,6 @@ impl ChannelTcp {
     pub fn max(&self, traffic_type: TrafficType) -> bool {
         self.socket.max(traffic_type)
     }
-
-    pub fn socket_id(&self) -> usize {
-        self.socket.socket_id
-    }
 }
 
 pub trait ChannelTcpExt {

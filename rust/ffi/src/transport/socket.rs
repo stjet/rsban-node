@@ -1,25 +1,4 @@
-use rsnano_node::transport::Socket;
-use std::{
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6},
-    ops::Deref,
-    sync::Arc,
-};
-
-pub struct SocketHandle(pub Arc<Socket>);
-
-impl SocketHandle {
-    pub fn new(socket: Arc<Socket>) -> *mut SocketHandle {
-        Box::into_raw(Box::new(SocketHandle(socket)))
-    }
-}
-
-impl Deref for SocketHandle {
-    type Target = Arc<Socket>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
 
 #[derive(Clone)]
 #[repr(C)]

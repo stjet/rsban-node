@@ -891,6 +891,7 @@ mod bulk_pull {
 mod frontier_req {
     use std::thread::sleep;
 
+    use rsnano_core::PublicKey;
     use rsnano_messages::FrontierReq;
     use rsnano_node::bootstrap::FrontierReqServer;
 
@@ -1021,6 +1022,158 @@ mod frontier_req {
             node.ledger.clone(),
             node.async_rt.clone(),
         )
+    }
+
+    #[test]
+    fn confirmed_frontier() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let mut key_before_genesis = KeyPair::new();
+        // Public key before genesis in accounts table
+        while key_before_genesis.public_key().number() >= DEV_GENESIS_ACCOUNT.number() {
+            key_before_genesis = KeyPair::new();
+        }
+        let mut key_after_genesis = KeyPair::new();
+        // Public key after genesis in accounts table
+        while key_after_genesis.public_key().number() <= DEV_GENESIS_ACCOUNT.number() {
+            key_after_genesis = KeyPair::new();
+        }
+
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::nano(1000),
+            key_before_genesis.public_key().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(send1.clone()).unwrap();
+
+        let send2 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            send1.hash(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::nano(2000),
+            key_after_genesis.public_key().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev(send1.hash().into()),
+        ));
+        node.process(send2.clone()).unwrap();
+
+        let receive1 = BlockEnum::State(StateBlock::new(
+            key_before_genesis.public_key(),
+            BlockHash::zero(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::nano(1000),
+            send1.hash().into(),
+            &key_before_genesis,
+            node.work_generate_dev(key_before_genesis.public_key().into()),
+        ));
+        node.process(receive1.clone()).unwrap();
+
+        let receive2 = BlockEnum::State(StateBlock::new(
+            key_after_genesis.public_key(),
+            BlockHash::zero(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::nano(1000),
+            send2.hash().into(),
+            &key_after_genesis,
+            node.work_generate_dev(key_after_genesis.public_key().into()),
+        ));
+        node.process(receive2.clone()).unwrap();
+
+        // Request for all accounts (confirmed only)
+        let request = FrontierReq {
+            start: Account::zero(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: true,
+        };
+        let frontier_req_server1 = create_frontier_req_server(&node, request.clone());
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server1.current());
+        assert_eq!(*DEV_GENESIS_HASH, frontier_req_server1.frontier());
+
+        // Request starting with account before genesis (confirmed only)
+        let request2 = FrontierReq {
+            start: key_before_genesis.public_key(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: true,
+        };
+        let frontier_req_server2 = create_frontier_req_server(&node, request2.clone());
+        assert_eq!(*DEV_GENESIS_ACCOUNT, frontier_req_server2.current());
+        assert_eq!(*DEV_GENESIS_HASH, frontier_req_server2.frontier());
+
+        // Request starting with account after genesis (confirmed only)
+        let request3 = FrontierReq {
+            start: key_after_genesis.public_key(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: true,
+        };
+        let frontier_req_server3 = create_frontier_req_server(&node, request3.clone());
+        assert_eq!(Account::zero(), frontier_req_server3.current());
+        assert_eq!(BlockHash::zero(), frontier_req_server3.frontier());
+
+        // Request for all accounts (unconfirmed blocks)
+        let request4 = FrontierReq {
+            start: PublicKey::zero(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server4 = create_frontier_req_server(&node, request4.clone());
+        assert_eq!(
+            key_before_genesis.public_key(),
+            frontier_req_server4.current()
+        );
+        assert_eq!(receive1.hash(), frontier_req_server4.frontier());
+
+        // Request starting with account after genesis (unconfirmed blocks)
+        let request5 = FrontierReq {
+            start: key_after_genesis.public_key(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: false,
+        };
+        let frontier_req_server5 = create_frontier_req_server(&node, request5.clone());
+        assert_eq!(
+            key_after_genesis.public_key(),
+            frontier_req_server5.current()
+        );
+        assert_eq!(receive2.hash(), frontier_req_server5.frontier());
+
+        // Confirm account before genesis (confirmed only)
+        node.confirm(receive1.hash());
+        let request6 = FrontierReq {
+            start: key_before_genesis.public_key(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: true,
+        };
+        let frontier_req_server6 = create_frontier_req_server(&node, request6.clone());
+        assert_eq!(
+            key_before_genesis.public_key(),
+            frontier_req_server6.current()
+        );
+        assert_eq!(receive1.hash(), frontier_req_server6.frontier());
+
+        // Confirm account after genesis (confirmed only)
+        node.confirm(receive2.hash());
+        let request7 = FrontierReq {
+            start: key_after_genesis.public_key(),
+            age: u32::MAX,
+            count: u32::MAX,
+            only_confirmed: true,
+        };
+        let frontier_req_server7 = create_frontier_req_server(&node, request7.clone());
+        assert_eq!(
+            key_after_genesis.public_key(),
+            frontier_req_server7.current()
+        );
+        assert_eq!(receive2.hash(), frontier_req_server7.frontier());
     }
 }
 

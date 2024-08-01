@@ -14,11 +14,12 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BlockDeserializer, BufferDropPolicy, TrafficType},
+    transport::{read_block, BufferDropPolicy, TrafficType},
     utils::{AsyncRuntime, ErrorCode, ThreadPool},
 };
 use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
 use rsnano_messages::{BulkPull, Message};
+use tokio::task::spawn_blocking;
 use tracing::{debug, trace};
 
 pub struct BulkPullClient {
@@ -29,10 +30,10 @@ pub struct BulkPullClient {
     connection: Arc<BootstrapClient>,
     attempt: Arc<BootstrapStrategy>,
     stats: Arc<Stats>,
+    runtime: Arc<AsyncRuntime>,
     network_error: AtomicBool,
     block_processor: Arc<BlockProcessor>,
     workers: Arc<dyn ThreadPool>,
-    block_deserializer: BlockDeserializer,
     /// Tracks the number of blocks successfully deserialized
     pull_blocks: AtomicU64,
     connections: Arc<BootstrapConnections>,
@@ -61,7 +62,7 @@ impl BulkPullClient {
         connection: Arc<BootstrapClient>,
         attempt: Arc<BootstrapStrategy>,
         workers: Arc<dyn ThreadPool>,
-        async_rt: Arc<AsyncRuntime>,
+        runtime: Arc<AsyncRuntime>,
         connections: Arc<BootstrapConnections>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
         pull: PullInfo,
@@ -74,8 +75,8 @@ impl BulkPullClient {
             stats,
             network_error: AtomicBool::new(false),
             block_processor,
+            runtime,
             workers,
-            block_deserializer: BlockDeserializer::new(async_rt),
             pull_blocks: AtomicU64::new(0),
             connections,
             config,
@@ -193,14 +194,22 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
     }
 
     fn receive_block(&self) {
-        let socket = self.connection.get_socket();
+        let socket = self.connection.get_socket().clone();
         let self_clone = Arc::clone(self);
-        self.block_deserializer.read(
-            socket,
-            Box::new(move |ec, block| {
-                self_clone.received_block(ec, block);
-            }),
-        );
+        self.runtime.tokio.spawn(async move {
+            match read_block(&socket).await {
+                Ok(block) => {
+                    spawn_blocking(Box::new(move || {
+                        self_clone.received_block(ErrorCode::new(), block)
+                    }));
+                }
+                Err(_) => {
+                    spawn_blocking(Box::new(move || {
+                        self_clone.received_block(ErrorCode::fault(), None);
+                    }));
+                }
+            }
+        });
     }
 
     fn received_block(&self, ec: ErrorCode, block: Option<BlockEnum>) {

@@ -32,7 +32,7 @@ mod write_queue;
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
-pub use block_deserializer::BlockDeserializer;
+pub use block_deserializer::read_block;
 pub use channel_fake::ChannelFake;
 pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;

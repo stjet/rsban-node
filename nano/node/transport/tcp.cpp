@@ -2,7 +2,6 @@
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
 #include "nano/node/transport/channel.hpp"
-#include "nano/node/transport/socket.hpp"
 #include "nano/node/transport/tcp_listener.hpp"
 #include "nano/secure/network_filter.hpp"
 

@@ -10,33 +10,6 @@
 
 using namespace std::chrono_literals;
 
-std::shared_ptr<nano::transport::tcp_server> create_bootstrap_server (const std::shared_ptr<nano::node> & node)
-{
-	auto socket{ std::make_shared<nano::transport::socket> (node->async_rt, nano::transport::socket_endpoint::server,
-	*node->stats, node->workers, node->config->tcp_io_timeout,
-	node->network_params.network.silent_connection_tolerance_time,
-	node->network_params.network.idle_timeout) };
-
-	auto req_resp_visitor_factory = std::make_shared<nano::transport::request_response_visitor_factory> (*node);
-
-	return std::make_shared<nano::transport::tcp_server> (
-	node->async_rt,
-	*node->network->tcp_channels,
-	socket,
-	*node->stats,
-	node->flags,
-	*node->config,
-	node->tcp_listener,
-	req_resp_visitor_factory,
-	node->bootstrap_workers,
-	*node->network->tcp_channels->publish_filter,
-	*node->network->syn_cookies,
-	node->ledger,
-	node->block_processor,
-	node->bootstrap_initiator,
-	node->node_id);
-}
-
 // Bootstrap can pull one basic block
 TEST (bootstrap_processor, process_one)
 {

@@ -2,6 +2,7 @@
 
 #include "nano/lib/config.hpp"
 #include "nano/lib/rsnano.hpp"
+#include "nano/lib/rsnanoutils.hpp"
 
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>

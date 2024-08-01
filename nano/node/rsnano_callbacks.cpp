@@ -12,7 +12,6 @@
 #include <nano/node/node_observers.hpp>
 #include <nano/node/rsnano_callbacks.hpp>
 #include <nano/node/transport/tcp.hpp>
-#include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/store/lmdb/transaction_impl.hpp>
 

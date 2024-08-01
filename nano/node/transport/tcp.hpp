@@ -23,18 +23,7 @@ class logger;
 
 namespace transport
 {
-	class tcp_server;
 	class tcp_channels;
-	class tcp_listener;
-
-	class request_response_visitor_factory
-	{
-	public:
-		explicit request_response_visitor_factory (nano::node & node_a);
-		request_response_visitor_factory (request_response_visitor_factory const &) = delete;
-		~request_response_visitor_factory ();
-		rsnano::RequestResponseVisitorFactoryHandle * handle;
-	};
 
 	class channel_tcp : public nano::transport::channel
 	{

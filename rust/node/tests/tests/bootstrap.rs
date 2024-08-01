@@ -709,6 +709,66 @@ mod bulk_pull {
         assert_eq!(pull_server.current(), pull_server.request().end);
     }
 
+    // Tests that the ascending flag is respected in the bulk_pull message when given a known block hash
+    #[test]
+    fn ascending_one_hash() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let block1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::raw(100),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(block1.clone()).unwrap();
+
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_HASH).into(),
+            end: 0.into(),
+            count: 0,
+            ascending: true,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block_out1 = pull_server.get_next().unwrap();
+        assert_eq!(block_out1.hash(), block1.hash());
+        assert!(pull_server.get_next().is_none());
+    }
+
+    // Tests that the ascending flag is respected in the bulk_pull message when given an account number
+    #[test]
+    fn ascending_two_account() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let block1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::raw(100),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node.process(block1.clone()).unwrap();
+
+        let bulk_pull = BulkPull {
+            start: (*DEV_GENESIS_ACCOUNT).into(),
+            end: 0.into(),
+            count: 0,
+            ascending: true,
+        };
+        let pull_server = create_bulk_pull_server(&node, bulk_pull);
+        let block_out1 = pull_server.get_next().unwrap();
+        assert_eq!(block_out1.hash(), *DEV_GENESIS_HASH);
+        let block_out2 = pull_server.get_next().unwrap();
+        assert_eq!(block_out2.hash(), block1.hash());
+        assert!(pull_server.get_next().is_none());
+    }
+
     fn create_bulk_pull_server(node: &Node, request: BulkPull) -> BulkPullServer {
         let response_server = create_response_server(&node);
         BulkPullServer::new(

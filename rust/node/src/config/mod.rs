@@ -14,7 +14,6 @@ mod toml;
 mod websocket_config;
 
 use crate::NetworkParams;
-pub use block_processor::*;
 pub use bootstrap_ascending::*;
 pub use daemon_config::*;
 pub use diagnostics_config::*;

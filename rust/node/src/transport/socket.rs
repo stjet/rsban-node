@@ -132,7 +132,7 @@ pub struct Socket {
 
     observer: Arc<dyn SocketObserver>,
 
-    send_queue: WriteQueue,
+    write_queue: WriteQueue,
     runtime: Weak<AsyncRuntime>,
     current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
     stream: Arc<TcpStream>,
@@ -141,8 +141,12 @@ pub struct Socket {
 impl Socket {
     pub fn new_null() -> Arc<Socket> {
         let thread_pool = Arc::new(ThreadPoolImpl::new_null());
-        SocketBuilder::new(ChannelDirection::Outbound, thread_pool, Weak::new())
-            .finish(TcpStream::new_null())
+        SocketBuilder::new(
+            ChannelDirection::Outbound,
+            thread_pool,
+            Arc::downgrade(&Arc::new(AsyncRuntime::default())),
+        )
+        .finish(TcpStream::new_null())
     }
 
     pub fn is_closed(&self) -> bool {
@@ -179,7 +183,7 @@ impl Socket {
 
     pub fn close_internal(&self) {
         if !self.closed.swap(true, Ordering::SeqCst) {
-            self.send_queue.clear();
+            self.write_queue.clear();
             self.set_default_timeout_value(0);
 
             if let Some(cb) = self.current_action.lock().unwrap().take() {
@@ -214,11 +218,11 @@ impl Socket {
     const MAX_QUEUE_SIZE: usize = 128;
 
     pub fn max(&self, traffic_type: TrafficType) -> bool {
-        self.send_queue.size(traffic_type) >= Self::MAX_QUEUE_SIZE
+        self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
     }
 
     pub fn full(&self, traffic_type: TrafficType) -> bool {
-        self.send_queue.size(traffic_type) >= Self::MAX_QUEUE_SIZE * 2
+        self.write_queue.capacity(traffic_type) == 0
     }
 
     pub fn is_bootstrap_connection(&self) -> bool {
@@ -313,6 +317,9 @@ impl Drop for Socket {
 #[async_trait]
 pub trait SocketExtensions {
     fn start(&self);
+
+    async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()>;
+
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -334,6 +341,16 @@ impl SocketExtensions for Arc<Socket> {
         self.ongoing_checkup();
     }
 
+    async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
+        if self.is_closed() {
+            bail!("socket closed");
+        }
+
+        todo!()
+
+        //Ok(())
+    }
+
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -347,9 +364,9 @@ impl SocketExtensions for Arc<Socket> {
             return;
         }
 
-        let (queued, callback) = self
-            .send_queue
-            .insert(Arc::clone(buffer), callback, traffic_type);
+        let (queued, callback) =
+            self.write_queue
+                .insert(Arc::clone(buffer), callback, traffic_type);
         if !queued {
             if let Some(cb) = callback {
                 cb(ErrorCode::not_supported(), 0);
@@ -373,7 +390,7 @@ impl SocketExtensions for Arc<Socket> {
             return;
         }
 
-        let Some(mut next) = self.send_queue.pop() else {
+        let Some(mut next) = self.write_queue.pop() else {
             return;
         };
         self.set_default_timeout();
@@ -550,7 +567,7 @@ pub struct SocketBuilder {
     idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
-    async_runtime: Weak<AsyncRuntime>,
+    runtime: Weak<AsyncRuntime>,
 }
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
@@ -564,7 +581,7 @@ impl SocketBuilder {
     pub fn new(
         direction: ChannelDirection,
         thread_pool: Arc<dyn ThreadPool>,
-        async_runtime: Weak<AsyncRuntime>,
+        runtime: Weak<AsyncRuntime>,
     ) -> Self {
         Self {
             direction,
@@ -574,7 +591,7 @@ impl SocketBuilder {
             idle_timeout: Duration::from_secs(120),
             observer: None,
             max_write_queue_len: Socket::MAX_QUEUE_SIZE,
-            async_runtime,
+            runtime,
         }
     }
 
@@ -616,6 +633,9 @@ impl SocketBuilder {
         let observer = self
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
+
+        let (write_queue, receiver) = WriteQueue::new(self.max_write_queue_len);
+
         Arc::new({
             Socket {
                 socket_id,
@@ -635,8 +655,8 @@ impl SocketBuilder {
                 socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
                 observer,
                 write_in_progress: AtomicBool::new(false),
-                send_queue: WriteQueue::new(self.max_write_queue_len),
-                runtime: self.async_runtime,
+                write_queue,
+                runtime: self.runtime,
                 current_action: Mutex::new(None),
                 stream: Arc::new(stream),
             }

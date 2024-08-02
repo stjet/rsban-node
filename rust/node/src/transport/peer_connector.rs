@@ -82,7 +82,7 @@ impl PeerConnector {
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(
             ChannelDirection::Outbound,
-            Arc::clone(&self.workers),
+            self.workers.clone(),
             Arc::downgrade(&self.runtime),
         )
         .default_timeout(Duration::from_secs(

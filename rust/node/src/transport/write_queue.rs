@@ -4,49 +4,32 @@ use std::{
     collections::VecDeque,
     sync::{Arc, Mutex},
 };
-
-pub type WriteCallback = Box<dyn FnOnce(ErrorCode, usize) + Send>;
-
-pub(crate) struct Entry {
-    pub buffer: Arc<Vec<u8>>,
-    pub callback: Option<WriteCallback>,
-}
-
-struct Queues {
-    generic_queue: VecDeque<Entry>,
-    bootstrap_queue: VecDeque<Entry>,
-}
-
-impl Queues {
-    fn get(&self, traffic_type: TrafficType) -> &VecDeque<Entry> {
-        match traffic_type {
-            TrafficType::Generic => &self.generic_queue,
-            TrafficType::Bootstrap => &self.bootstrap_queue,
-        }
-    }
-
-    fn get_mut(&mut self, traffic_type: TrafficType) -> &mut VecDeque<Entry> {
-        match traffic_type {
-            TrafficType::Generic => &mut self.generic_queue,
-            TrafficType::Bootstrap => &mut self.bootstrap_queue,
-        }
-    }
-}
+use tokio::sync::mpsc::{self};
 
 pub(crate) struct WriteQueue {
     max_size: usize,
     queues: Mutex<Queues>,
+    generic_queue: mpsc::Sender<Entry>,
+    bootstrap_queue: mpsc::Sender<Entry>,
 }
 
 impl WriteQueue {
-    pub fn new(max_size: usize) -> Self {
-        Self {
-            max_size,
-            queues: Mutex::new(Queues {
-                generic_queue: VecDeque::new(),
-                bootstrap_queue: VecDeque::new(),
-            }),
-        }
+    pub fn new(max_size: usize) -> (Self, WriteQueueReceiver) {
+        let (generic_tx, generic_rx) = mpsc::channel(max_size * 2);
+        let (bootstrap_tx, bootstrap_rx) = mpsc::channel(max_size * 2);
+        let receiver = WriteQueueReceiver::new(generic_rx, bootstrap_rx);
+        (
+            Self {
+                max_size,
+                queues: Mutex::new(Queues {
+                    generic_queue: VecDeque::new(),
+                    bootstrap_queue: VecDeque::new(),
+                }),
+                generic_queue: generic_tx,
+                bootstrap_queue: bootstrap_tx,
+            },
+            receiver,
+        )
     }
 
     pub fn insert(
@@ -83,8 +66,55 @@ impl WriteQueue {
         queues.bootstrap_queue.clear();
     }
 
-    pub fn size(&self, traffic_type: TrafficType) -> usize {
+    pub fn capacity(&self, traffic_type: TrafficType) -> usize {
         let queues = self.queues.lock().unwrap();
-        queues.get(traffic_type).len()
+        self.max_size * 2 - queues.get(traffic_type).len()
+    }
+}
+
+pub(crate) struct WriteQueueReceiver {
+    generic: mpsc::Receiver<Entry>,
+    bootstrap: mpsc::Receiver<Entry>,
+}
+
+impl WriteQueueReceiver {
+    fn new(generic: mpsc::Receiver<Entry>, bootstrap: mpsc::Receiver<Entry>) -> Self {
+        Self { generic, bootstrap }
+    }
+
+    pub(crate) fn try_pop(&mut self) -> Result<Entry, mpsc::error::TryRecvError> {
+        let mut result = self.generic.try_recv();
+        if matches!(result, Err(mpsc::error::TryRecvError::Empty)) {
+            result = self.bootstrap.try_recv();
+        }
+        result
+    }
+}
+
+pub type WriteCallback = Box<dyn FnOnce(ErrorCode, usize) + Send>;
+
+pub(crate) struct Entry {
+    pub buffer: Arc<Vec<u8>>,
+    pub callback: Option<WriteCallback>,
+}
+
+struct Queues {
+    generic_queue: VecDeque<Entry>,
+    bootstrap_queue: VecDeque<Entry>,
+}
+
+impl Queues {
+    fn get(&self, traffic_type: TrafficType) -> &VecDeque<Entry> {
+        match traffic_type {
+            TrafficType::Generic => &self.generic_queue,
+            TrafficType::Bootstrap => &self.bootstrap_queue,
+        }
+    }
+
+    fn get_mut(&mut self, traffic_type: TrafficType) -> &mut VecDeque<Entry> {
+        match traffic_type {
+            TrafficType::Generic => &mut self.generic_queue,
+            TrafficType::Bootstrap => &mut self.bootstrap_queue,
+        }
     }
 }

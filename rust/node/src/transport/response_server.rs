@@ -4,7 +4,10 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessor,
-    bootstrap::{BootstrapInitiator, BootstrapMessageVisitorImpl},
+    bootstrap::{
+        BootstrapInitiator, BulkPullAccountServer, BulkPullServer, BulkPushServer,
+        FrontierReqServer,
+    },
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelMode, NetworkExt, Socket},
@@ -544,24 +547,85 @@ impl ResponseServerExt for Arc<ResponseServer> {
     }
 
     fn process_bootstrap(&self, message: DeserializedMessage) -> ProcessResult {
-        let mut bootstrap_visitor = BootstrapMessageVisitorImpl {
-            async_rt: self.runtime.clone(),
-            ledger: self.ledger.clone(),
-            connection: Arc::clone(self),
-            thread_pool: Arc::downgrade(&self.workers),
-            block_processor: Arc::downgrade(&self.block_processor),
-            bootstrap_initiator: Arc::downgrade(&self.bootstrap_initiator),
-            stats: self.stats.clone(),
-            work_thresholds: self.network_params.network.work.clone(),
-            flags: self.flags.clone(),
-        };
-        let processed = bootstrap_visitor.received(&message.message);
+        match &message.message {
+            Message::BulkPull(payload) => {
+                if self.flags.disable_bootstrap_bulk_pull_server {
+                    return ProcessResult::Progress;
+                }
 
-        // Pause receiving new messages if bootstrap serving started
-        if processed {
-            ProcessResult::Pause
-        } else {
-            ProcessResult::Progress
+                let payload = payload.clone();
+                let connection = Arc::clone(self);
+                let ledger = Arc::clone(&self.ledger);
+                let thread_pool2 = self.workers.clone();
+                let runtime = self.runtime.clone();
+                self.workers.push_task(Box::new(move || {
+                    // TODO from original code: Add completion callback to bulk pull server
+                    // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                    let mut bulk_pull_server =
+                        BulkPullServer::new(payload, connection, ledger, thread_pool2, runtime);
+                    bulk_pull_server.send_next();
+                }));
+
+                ProcessResult::Pause
+            }
+            Message::BulkPullAccount(payload) => {
+                if self.flags.disable_bootstrap_bulk_pull_server {
+                    return ProcessResult::Progress;
+                }
+                let payload = payload.clone();
+                let connection = Arc::clone(self);
+                let ledger = self.ledger.clone();
+                let thread_pool2 = self.workers.clone();
+                let runtime = self.runtime.clone();
+                self.workers.push_task(Box::new(move || {
+                    // original code TODO: Add completion callback to bulk pull server
+                    // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                    let bulk_pull_account_server = BulkPullAccountServer::new(
+                        connection,
+                        payload,
+                        thread_pool2,
+                        ledger,
+                        runtime,
+                    );
+                    bulk_pull_account_server.send_frontier();
+                }));
+
+                ProcessResult::Pause
+            }
+            Message::BulkPush => {
+                // original code TODO: Add completion callback to bulk pull server
+                let bulk_push_server = BulkPushServer::new(
+                    self.runtime.clone(),
+                    Arc::clone(self),
+                    self.workers.clone(),
+                    self.block_processor.clone(),
+                    self.bootstrap_initiator.clone(),
+                    self.stats.clone(),
+                    self.network_params.network.work.clone(),
+                );
+
+                self.workers.push_task(Box::new(move || {
+                    bulk_push_server.throttled_receive();
+                }));
+
+                ProcessResult::Pause
+            }
+            Message::FrontierReq(payload) => {
+                // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                let response = FrontierReqServer::new(
+                    Arc::clone(self),
+                    payload.clone(),
+                    self.workers.clone(),
+                    self.ledger.clone(),
+                    self.runtime.clone(),
+                );
+                self.workers.push_task(Box::new(move || {
+                    response.send_next();
+                }));
+
+                ProcessResult::Pause
+            }
+            _ => ProcessResult::Progress,
         }
     }
 }

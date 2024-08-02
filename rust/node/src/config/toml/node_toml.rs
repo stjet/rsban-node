@@ -1,8 +1,8 @@
 use super::{
     ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
-    DiagnosticsToml, IpcToml, LmdbToml, MessageProcessorToml, MonitorToml, OptimisticSchedulerToml,
-    PriorityBucketToml, RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml,
-    WebsocketToml,
+    DiagnosticsToml, HttpcallbackToml, IpcToml, LmdbToml, MessageProcessorToml, MonitorToml,
+    OptimisticSchedulerToml, PriorityBucketToml, RequestAggregatorToml, StatsToml, VoteCacheToml,
+    VoteProcessorToml, WebsocketToml,
 };
 use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
 use rsnano_core::{Account, Amount};
@@ -76,9 +76,7 @@ pub struct NodeToml {
     pub request_aggregator: Option<RequestAggregatorToml>,
     pub message_processor: Option<MessageProcessorToml>,
     pub monitor: Option<MonitorToml>,
-    pub callback_address: Option<String>,
-    pub callback_port: Option<u16>,
-    pub callback_target: Option<String>,
+    pub httpcallback: Option<HttpcallbackToml>,
 }
 
 impl Default for NodeToml {
@@ -162,9 +160,7 @@ impl Default for NodeToml {
             request_aggregator: Some(RequestAggregatorToml::default()),
             message_processor: Some(MessageProcessorToml::default()),
             monitor: Some(MonitorToml::default()),
-            callback_address: Some(node_config.callback_address),
-            callback_port: Some(node_config.callback_port),
-            callback_target: Some(node_config.callback_target),
+            httpcallback: Some(HttpcallbackToml::default()),
         }
     }
 }
@@ -384,8 +380,16 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(monitor_toml) = &toml.monitor {
             config.monitor = monitor_toml.into();
         }
-        if let Some(callback_address) = &toml.callback_address {
-            config.callback_address = callback_address.clone();
+        if let Some(httpcallback) = &toml.httpcallback {
+            if let Some(address) = &httpcallback.address {
+                config.callback_address = address.clone();
+            }
+            if let Some(port) = &httpcallback.port {
+                config.callback_port = port.clone();
+            }
+            if let Some(target) = &httpcallback.target {
+                config.callback_target = target.clone();
+            }
         }
 
         config
@@ -465,9 +469,7 @@ impl From<&NodeConfig> for NodeToml {
             request_aggregator: Some((&config.request_aggregator).into()),
             message_processor: Some((&config.message_processor).into()),
             monitor: Some((&config.monitor).into()),
-            callback_address: Some(config.callback_address.clone()),
-            callback_port: Some(config.callback_port),
-            callback_target: Some(config.callback_target.clone()),
+            httpcallback: Some(config.into()),
         }
     }
 }

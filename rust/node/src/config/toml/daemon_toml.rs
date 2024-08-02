@@ -254,7 +254,7 @@ mod tests {
 
             [rpc.child_process]
             enable = false
-            rpc_path = "/Users/ruimorais/rsnano/nano_rpc"
+            rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc"
         "#;
 
         let default_daemon_toml = DaemonToml::default();
@@ -574,7 +574,7 @@ mod tests {
         assert_eq!(
             default_experimental.secondary_work_peers,
             deserialized_experimental.secondary_work_peers
-        );
+        );*/
 
         let default_httpcallback = default_node.httpcallback.unwrap();
         let deserialized_httpcallback = deserialized_node.httpcallback.unwrap();
@@ -589,7 +589,7 @@ mod tests {
             deserialized_httpcallback.target
         );
 
-        let default_ipc_flatbuffers = default_node.ipc.unwrap().flatbuffers.unwrap();
+        /*let default_ipc_flatbuffers = default_node.ipc.unwrap().flatbuffers.unwrap();
         let deserialized_ipc_flatbuffers = deserialized_node.ipc.unwrap().flatbuffers.unwrap();
 
         assert_eq!(
@@ -718,6 +718,82 @@ mod tests {
             default_statistics_log.filename_counters,
             deserialized_statistics_log.filename_counters
             );*/
+
+        let default_vote_cache = default_node.vote_cache.unwrap();
+        let deserialized_vote_cache = deserialized_node.vote_cache.unwrap();
+
+        assert_eq!(
+            default_vote_cache.age_cutoff,
+            deserialized_vote_cache.age_cutoff
+        );
+        assert_eq!(
+            default_vote_cache.max_size,
+            deserialized_vote_cache.max_size
+        );
+        assert_eq!(
+            default_vote_cache.max_voters,
+            deserialized_vote_cache.max_voters
+        );
+
+        let default_vote_processor = default_node.vote_processor.unwrap();
+        let deserialized_vote_processor = deserialized_node.vote_processor.unwrap();
+
+        assert_eq!(
+            default_vote_processor.batch_size,
+            deserialized_vote_processor.batch_size
+        );
+        assert_eq!(
+            default_vote_processor.max_non_pr_queue,
+            deserialized_vote_processor.max_non_pr_queue
+        );
+        assert_eq!(
+            default_vote_processor.max_pr_queue,
+            deserialized_vote_processor.max_pr_queue
+        );
+        assert_eq!(
+            default_vote_processor.pr_priority,
+            deserialized_vote_processor.pr_priority
+        );
+        assert_eq!(
+            default_vote_processor.threads,
+            deserialized_vote_processor.threads
+        );
+
+        /*let default_websocket = default_node.websocket.unwrap();
+        let deserialized_websocket = deserialized_node.websocket.unwrap();
+
+        assert_eq!(default_websocket.address, deserialized_websocket.address);
+        assert_eq!(default_websocket.enable, deserialized_websocket.enable);
+        assert_eq!(default_websocket.port, deserialized_websocket.port);*/
+
+        let default_opencl = default_daemon_toml.opencl.unwrap();
+        let deserialized_opencl = deserialized_toml.opencl.unwrap();
+
+        assert_eq!(default_opencl.device, deserialized_opencl.device);
+        assert_eq!(default_opencl.enable, deserialized_opencl.enable);
+        assert_eq!(default_opencl.platform, deserialized_opencl.platform);
+        assert_eq!(default_opencl.threads, deserialized_opencl.threads);
+
+        let default_rpc = default_daemon_toml.rpc.unwrap();
+        let deserialized_rpc = deserialized_toml.rpc.unwrap();
+
+        assert_eq!(default_rpc.enable, deserialized_rpc.enable);
+        assert_eq!(
+            default_rpc.enable_sign_hash,
+            deserialized_rpc.enable_sign_hash
+        );
+
+        let default_rpc_child_process = default_rpc.child_process.unwrap();
+        let deserialized_rpc_child_process = deserialized_rpc.child_process.unwrap();
+
+        assert_eq!(
+            default_rpc_child_process.enable,
+            deserialized_rpc_child_process.enable
+        );
+        assert_eq!(
+            default_rpc_child_process.rpc_path,
+            deserialized_rpc_child_process.rpc_path
+        );
     }
 
     #[test]

@@ -15,7 +15,7 @@ impl Default for VoteProcessorToml {
     fn default() -> Self {
         let config = VoteProcessorConfig::default();
         Self {
-            max_pr_queue: Some(config.max_non_pr_queue),
+            max_pr_queue: Some(config.max_pr_queue),
             max_non_pr_queue: Some(config.max_non_pr_queue),
             pr_priority: Some(config.pr_priority),
             threads: Some(config.threads),

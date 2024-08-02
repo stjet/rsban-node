@@ -1,5 +1,5 @@
 use crate::{
-    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
+    transport::{ResponseServerExt, ResponseServerImpl, TrafficType},
     utils::{AsyncRuntime, ThreadPool},
 };
 use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType};

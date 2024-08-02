@@ -1,11 +1,8 @@
 use super::{
-    write_queue::WriteCallback, AsyncBufferReader, BufferDropPolicy, Channel, ChannelDirection,
-    ChannelId, ChannelMode, OutboundBandwidthLimiter, Socket, SocketExtensions, TrafficType,
+    AsyncBufferReader, BufferDropPolicy, Channel, ChannelDirection, ChannelId, ChannelMode,
+    OutboundBandwidthLimiter, Socket, TrafficType,
 };
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::ErrorCode,
-};
+use crate::stats::{Direction, StatType, Stats};
 use async_trait::async_trait;
 use rsnano_core::Account;
 use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
@@ -90,67 +87,9 @@ impl ChannelTcp {
     }
 }
 
-pub trait ChannelTcpExt {
-    fn send_buffer_obsolete(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Option<WriteCallback>,
-        policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    );
-}
-
 impl Display for ChannelTcp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.channel_mutex.lock().unwrap().remote_endpoint.fmt(f)
-    }
-}
-
-impl ChannelTcpExt for Arc<ChannelTcp> {
-    fn send_buffer_obsolete(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Option<WriteCallback>,
-        policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        if !self.socket.max(traffic_type)
-            || (policy == BufferDropPolicy::NoSocketDrop && !self.socket.full(traffic_type))
-        {
-            let stats = Arc::clone(&self.stats);
-            let this_w = Arc::downgrade(self);
-            self.socket.async_write(
-                buffer,
-                Some(Box::new(move |ec, size| {
-                    if ec.is_ok() {
-                        if let Some(channel) = this_w.upgrade() {
-                            channel.set_last_packet_sent(SystemTime::now());
-                        }
-                    }
-                    if ec == ErrorCode::host_unreachable() {
-                        stats.inc_dir(StatType::Error, DetailType::UnreachableHost, Direction::Out);
-                    }
-                    if let Some(callback) = callback {
-                        callback(ec, size);
-                    }
-                })),
-                traffic_type,
-            );
-        } else {
-            if policy == BufferDropPolicy::NoSocketDrop {
-                self.stats.inc_dir(
-                    StatType::Tcp,
-                    DetailType::TcpWriteNoSocketDrop,
-                    Direction::Out,
-                )
-            } else {
-                self.stats
-                    .inc_dir(StatType::Tcp, DetailType::TcpWriteDrop, Direction::Out);
-            }
-            if let Some(callback_a) = callback {
-                callback_a(ErrorCode::no_buffer_space(), 0);
-            }
-        }
     }
 }
 
@@ -247,7 +186,7 @@ impl Channel for Arc<ChannelTcp> {
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer_obsolete(&buffer, None, drop_policy, traffic_type);
+            self.socket.try_write(&buffer, traffic_type);
             self.stats
                 .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = %self.channel_id, message = ?message, "Message sent");

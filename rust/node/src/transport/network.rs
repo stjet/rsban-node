@@ -2,7 +2,7 @@ use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
     InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion,
-    ResponseServerImpl, Socket, SocketExtensions, TcpConfig, TrafficType, TransportType,
+    ResponseServerImpl, Socket, TcpConfig, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},

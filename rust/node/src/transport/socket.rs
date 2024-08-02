@@ -175,7 +175,7 @@ impl Socket {
         self.timeout_seconds.store(seconds, Ordering::SeqCst);
     }
 
-    pub fn close_internal(&self) {
+    pub fn close(&self) {
         if !self.closed.swap(true, Ordering::SeqCst) {
             self.set_default_timeout_value(0);
 
@@ -230,6 +230,14 @@ impl Socket {
         !self.is_closed()
     }
 
+    pub fn has_timed_out(&self) -> bool {
+        self.timed_out.load(Ordering::SeqCst)
+    }
+
+    pub fn get_remote(&self) -> Option<SocketAddrV6> {
+        Some(self.remote)
+    }
+
     pub async fn read_raw(&self, buffer: &mut [u8], size: usize) -> anyhow::Result<()> {
         if size > buffer.len() {
             return Err(anyhow!("buffer is too small for read count"));
@@ -276,6 +284,50 @@ impl Socket {
         }
     }
 
+    pub async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
+        if self.is_closed() {
+            bail!("socket closed");
+        }
+
+        let buf_size = buffer.len();
+
+        let result = self
+            .write_queue
+            .insert(Arc::new(buffer.to_vec()), traffic_type)
+            .await;
+
+        if result.is_ok() {
+            self.observer.write_successful(buf_size);
+            self.set_last_completion();
+        } else {
+            self.observer.write_error();
+            self.close();
+        }
+
+        result
+    }
+
+    pub fn try_write(&self, buffer: &[u8], traffic_type: TrafficType) {
+        if self.is_closed() {
+            return;
+        }
+
+        let buf_size = buffer.len();
+
+        let (inserted, write_error, _) =
+            self.write_queue
+                .try_insert(Arc::new(buffer.to_vec()), None, traffic_type);
+
+        if inserted {
+            self.observer.write_successful(buf_size);
+            self.set_last_completion();
+        } else if write_error {
+            self.observer.write_error();
+            self.close();
+        }
+    }
+
+    /// Writes directly to the stream and does not use the queues
     pub(crate) async fn write_raw(&self, data: &[u8]) -> anyhow::Result<()> {
         let mut written = 0;
         loop {
@@ -303,7 +355,7 @@ impl Socket {
             sleep(Duration::from_secs(2)).await;
             // If the socket is already dead, close just in case, and stop doing checkups
             if !self.is_alive() {
-                self.close_internal();
+                self.close();
                 return;
             }
 
@@ -330,7 +382,7 @@ impl Socket {
             if condition_to_disconnect {
                 self.observer.disconnect_due_to_timeout(self.remote);
                 self.timed_out.store(true, Ordering::SeqCst);
-                self.close_internal();
+                self.close();
             }
         }
     }
@@ -338,7 +390,7 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        self.close_internal();
+        self.close();
         let alive = LIVE_SOCKETS.fetch_sub(1, Ordering::Relaxed) - 1;
         debug!(socket_id = self.socket_id, alive, "Socket dropped");
     }
@@ -346,45 +398,16 @@ impl Drop for Socket {
 
 #[async_trait]
 pub trait SocketExtensions {
-    async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()>;
-
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
         traffic_type: TrafficType,
     );
-    fn close(&self);
-
-    fn get_remote(&self) -> Option<SocketAddrV6>;
-    fn has_timed_out(&self) -> bool;
 }
 
 #[async_trait]
 impl SocketExtensions for Arc<Socket> {
-    async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
-        if self.is_closed() {
-            bail!("socket closed");
-        }
-
-        let buf_size = buffer.len();
-
-        let result = self
-            .write_queue
-            .insert(Arc::new(buffer.to_vec()), traffic_type)
-            .await;
-
-        if result.is_ok() {
-            self.observer.write_successful(buf_size);
-            self.set_last_completion();
-        } else {
-            self.observer.write_error();
-            self.close();
-        }
-
-        result
-    }
-
     fn async_write(
         &self,
         buffer: &Arc<Vec<u8>>,
@@ -415,18 +438,6 @@ impl SocketExtensions for Arc<Socket> {
                 cb(ErrorCode::not_supported(), 0);
             }
         }
-    }
-
-    fn close(&self) {
-        self.close_internal();
-    }
-
-    fn get_remote(&self) -> Option<SocketAddrV6> {
-        Some(self.remote)
-    }
-
-    fn has_timed_out(&self) -> bool {
-        self.timed_out.load(Ordering::SeqCst)
     }
 }
 

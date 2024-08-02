@@ -5,7 +5,7 @@ use super::{
 use crate::{
     bootstrap::BootstrapMessageVisitorFactory,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelMode, NetworkExt, Socket, SocketExtensions},
+    transport::{ChannelMode, NetworkExt, Socket},
     NetworkParams,
 };
 use async_trait::async_trait;

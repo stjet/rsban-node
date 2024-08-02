@@ -9,7 +9,7 @@ use rsnano_messages::FrontierReq;
 use tracing::{debug, trace};
 
 use crate::{
-    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
+    transport::{ResponseServerExt, ResponseServerImpl, TrafficType},
     utils::{AsyncRuntime, ThreadPool},
 };
 

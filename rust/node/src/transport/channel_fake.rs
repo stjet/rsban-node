@@ -150,7 +150,15 @@ impl Channel for ChannelFake {
 
     fn set_mode(&self, _mode: ChannelMode) {}
 
-    fn send(
+    fn try_send(
+        &self,
+        _message: &Message,
+        _drop_policy: BufferDropPolicy,
+        _traffic_type: TrafficType,
+    ) {
+    }
+
+    fn send_obsolete(
         &self,
         message: &Message,
         callback: Option<WriteCallback>,

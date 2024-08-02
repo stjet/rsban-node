@@ -187,7 +187,7 @@ fn fork_no_vote_quorum() {
         .network
         .find_node_id(&node3.node_id.public_key())
         .unwrap();
-    channel.send(
+    channel.send_obsolete(
         &confirm,
         None,
         BufferDropPolicy::NoLimiterDrop,

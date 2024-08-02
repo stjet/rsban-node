@@ -429,7 +429,7 @@ impl BootstrapServerImpl {
 
         let msg = Message::AscPullAck(response);
         let stats = Arc::clone(&self.stats);
-        channel.send(
+        channel.send_obsolete(
             &msg,
             Some(Box::new(move |ec, _len| {
                 if ec.is_err() {

@@ -46,7 +46,7 @@ fn ignore_rebroadcast() {
 
     let tick = || {
         let msg = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(vote.clone()));
-        channel2to1.send(
+        channel2to1.send_obsolete(
             &msg,
             None,
             BufferDropPolicy::NoSocketDrop,

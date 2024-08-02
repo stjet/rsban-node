@@ -794,7 +794,7 @@ impl Node {
             };
             let keepalive = factory.create_keepalive_self();
             let msg = Message::Keepalive(keepalive);
-            channel.send(&msg, None, BufferDropPolicy::Limiter, TrafficType::Generic);
+            channel.send_obsolete(&msg, None, BufferDropPolicy::Limiter, TrafficType::Generic);
         }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);

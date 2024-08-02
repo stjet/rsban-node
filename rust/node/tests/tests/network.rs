@@ -58,19 +58,19 @@ fn last_contacted() {
     // and we need one more keepalive to handle the possibility that there is a keepalive already in flight when we start the crucial part of the test
     // it is possible that there could be multiple keepalives in flight but we assume here that there will be no more than one in flight for the purposes of this test
     let keepalive = Message::Keepalive(Keepalive::default());
-    channel1.send(
+    channel1.send_obsolete(
         &keepalive,
         None,
         BufferDropPolicy::NoLimiterDrop,
         TrafficType::Generic,
     );
-    channel1.send(
+    channel1.send_obsolete(
         &keepalive,
         None,
         BufferDropPolicy::NoLimiterDrop,
         TrafficType::Generic,
     );
-    channel1.send(
+    channel1.send_obsolete(
         &keepalive,
         None,
         BufferDropPolicy::NoLimiterDrop,

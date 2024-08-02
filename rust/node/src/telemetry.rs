@@ -260,7 +260,7 @@ impl Telemetry {
 
     fn broadcast(&self, channel: &ChannelEnum, message: &Message) {
         self.stats.inc(StatType::Telemetry, DetailType::Broadcast);
-        channel.send(
+        channel.send_obsolete(
             message,
             None,
             BufferDropPolicy::Limiter,
@@ -323,7 +323,7 @@ impl Telemetry {
     fn request(&self, channel: &ChannelEnum) {
         self.stats.inc(StatType::Telemetry, DetailType::Request);
         let message = Message::TelemetryReq;
-        channel.send(
+        channel.send_obsolete(
             &message,
             None,
             BufferDropPolicy::Limiter,

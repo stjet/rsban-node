@@ -329,7 +329,7 @@ impl SharedState {
                     let channel = &request.1;
                     let confirm =
                         Message::ConfirmAck(ConfirmAck::new_with_own_vote((*vote).clone()));
-                    channel.send(
+                    channel.send_obsolete(
                         &confirm,
                         None,
                         BufferDropPolicy::Limiter,

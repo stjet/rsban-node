@@ -127,7 +127,9 @@ pub trait Channel: AsyncBufferReader {
     fn set_mode(&self, mode: ChannelMode);
     fn set_timeout(&self, timeout: Duration);
 
-    fn send(
+    fn try_send(&self, message: &Message, drop_policy: BufferDropPolicy, traffic_type: TrafficType);
+
+    fn send_obsolete(
         &self,
         message: &Message,
         callback: Option<WriteCallback>,

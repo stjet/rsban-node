@@ -274,7 +274,7 @@ impl LocalBlockBroadcaster {
         }
 
         for peer in self.list_no_pr(self.network.fanout(1.0)) {
-            peer.send(
+            peer.send_obsolete(
                 &message,
                 None,
                 BufferDropPolicy::NoLimiterDrop,

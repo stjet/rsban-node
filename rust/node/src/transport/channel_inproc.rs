@@ -285,7 +285,21 @@ impl Channel for ChannelInProc {
 
     fn set_mode(&self, _mode: ChannelMode) {}
 
-    fn send(
+    fn try_send(
+        &self,
+        message: &Message,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy buffer
+        };
+        self.send_buffer_2(&buffer, None, drop_policy, traffic_type);
+    }
+
+    fn send_obsolete(
         &self,
         message: &Message,
         callback: Option<WriteCallback>,

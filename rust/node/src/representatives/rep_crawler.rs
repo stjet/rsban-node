@@ -177,7 +177,7 @@ impl RepCrawler {
             let req = Message::ConfirmReq(ConfirmReq::new(vec![hash_root]));
 
             let stats = Arc::clone(&self.stats);
-            channel.send(
+            channel.send_obsolete(
                 &req,
                 Some(Box::new(move |ec, _len| {
                     if ec.is_err() {
@@ -398,7 +398,7 @@ impl RepCrawler {
                         match network.find_channel_by_peering_addr(&endpoint) {
                             Some(channel) => {
                                 let keepalive = network.create_keepalive_message();
-                                channel.send(
+                                channel.send_obsolete(
                                     &keepalive,
                                     None,
                                     BufferDropPolicy::Limiter,

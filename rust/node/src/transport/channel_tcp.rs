@@ -201,6 +201,10 @@ impl Channel for Arc<ChannelTcp> {
         super::TransportType::Tcp
     }
 
+    fn local_addr(&self) -> SocketAddrV6 {
+        self.socket.local_endpoint_v6()
+    }
+
     fn remote_addr(&self) -> SocketAddrV6 {
         self.channel_mutex.lock().unwrap().remote_endpoint
     }
@@ -225,7 +229,39 @@ impl Channel for Arc<ChannelTcp> {
         self.socket.set_mode(mode)
     }
 
-    fn send(
+    fn set_timeout(&self, timeout: Duration) {
+        self.socket.set_timeout(timeout);
+    }
+
+    fn try_send(
+        &self,
+        message: &Message,
+        drop_policy: BufferDropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
+        };
+
+        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
+        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
+        if !is_droppable_by_limiter || should_pass {
+            self.send_buffer(&buffer, None, drop_policy, traffic_type);
+            self.stats
+                .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
+            trace!(channel_id = %self.channel_id, message = ?message, "Message sent");
+        } else {
+            let detail_type = message.into();
+            self.stats
+                .inc_dir_aggregate(StatType::Drop, detail_type, Direction::Out);
+            trace!(channel_id = %self.channel_id, message = ?message, "Message dropped");
+        }
+    }
+
+    // TODO delete:
+    fn send_obsolete(
         &self,
         message: &Message,
         callback: Option<WriteCallback>,
@@ -262,14 +298,6 @@ impl Channel for Arc<ChannelTcp> {
 
     fn close(&self) {
         self.socket.close();
-    }
-
-    fn local_addr(&self) -> SocketAddrV6 {
-        self.socket.local_endpoint_v6()
-    }
-
-    fn set_timeout(&self, timeout: Duration) {
-        self.socket.set_timeout(timeout);
     }
 }
 

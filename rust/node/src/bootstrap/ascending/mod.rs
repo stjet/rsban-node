@@ -127,7 +127,7 @@ impl BootstrapAscending {
         );
 
         // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        channel.send(
+        channel.send_obsolete(
             &request,
             None,
             BufferDropPolicy::Limiter,

@@ -140,7 +140,7 @@ impl RealtimeMessageHandler {
                 };
 
                 let msg = Message::TelemetryAck(TelemetryAck(data));
-                channel.send(
+                channel.send_obsolete(
                     &msg,
                     None,
                     BufferDropPolicy::NoSocketDrop,

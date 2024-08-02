@@ -83,7 +83,7 @@ impl PeerConnector {
         let socket = SocketBuilder::new(
             ChannelDirection::Outbound,
             self.workers.clone(),
-            Arc::downgrade(&self.runtime),
+            self.runtime.clone(),
         )
         .default_timeout(Duration::from_secs(
             self.node_config.tcp_io_timeout_s as u64,

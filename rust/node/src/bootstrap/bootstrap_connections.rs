@@ -551,7 +551,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             let socket = SocketBuilder::new(
                 ChannelDirection::Outbound,
                 self_l.workers.clone(),
-                Arc::downgrade(&self_l.runtime),
+                self_l.runtime.clone(),
             )
             .default_timeout(self_l.config.tcp_io_timeout)
             .silent_connection_tolerance_time(self_l.config.silent_connection_tolerance_time)

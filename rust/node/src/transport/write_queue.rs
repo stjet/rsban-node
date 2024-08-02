@@ -1,14 +1,10 @@
 use super::TrafficType;
 use crate::utils::ErrorCode;
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
+use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::mpsc::{self};
 
 pub(crate) struct WriteQueue {
     max_size: usize,
-    queues: Mutex<Queues>,
     generic_queue: mpsc::Sender<Entry>,
     bootstrap_queue: mpsc::Sender<Entry>,
 }
@@ -21,10 +17,6 @@ impl WriteQueue {
         (
             Self {
                 max_size,
-                queues: Mutex::new(Queues {
-                    generic_queue: VecDeque::new(),
-                    bootstrap_queue: VecDeque::new(),
-                }),
                 generic_queue: generic_tx,
                 bootstrap_queue: bootstrap_tx,
             },
@@ -32,43 +24,34 @@ impl WriteQueue {
         )
     }
 
+    /// returns: inserted | write_error | callback
     pub fn insert(
         &self,
         buffer: Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
         traffic_type: TrafficType,
-    ) -> (bool, Option<WriteCallback>) {
-        let mut queues = self.queues.lock().unwrap();
-        let queue = queues.get_mut(traffic_type);
-        if queue.len() < 2 * self.max_size {
-            queue.push_back(Entry { buffer, callback });
-            (true, None) // Queued
-        } else {
-            (false, callback) // Not queued
+    ) -> (bool, bool, Option<WriteCallback>) {
+        let entry = Entry { buffer, callback };
+        match self.queue_for(traffic_type).try_send(entry) {
+            Ok(()) => (true, false, None),
+            Err(mpsc::error::TrySendError::Full(e)) => (false, false, e.callback),
+            Err(mpsc::error::TrySendError::Closed(e)) => (false, true, e.callback),
         }
     }
 
-    pub fn pop(&self) -> Option<Entry> {
-        let mut queues = self.queues.lock().unwrap();
-
-        // TODO: This is a very basic prioritization, implement something more advanced and configurable
-        let item = queues.generic_queue.pop_front();
-        if item.is_some() {
-            item
-        } else {
-            queues.bootstrap_queue.pop_front()
-        }
-    }
-
-    pub fn clear(&self) {
-        let mut queues = self.queues.lock().unwrap();
-        queues.generic_queue.clear();
-        queues.bootstrap_queue.clear();
+    pub fn is_closed(&self) -> bool {
+        self.generic_queue.is_closed() || self.bootstrap_queue.is_closed()
     }
 
     pub fn capacity(&self, traffic_type: TrafficType) -> usize {
-        let queues = self.queues.lock().unwrap();
-        self.max_size * 2 - queues.get(traffic_type).len()
+        self.queue_for(traffic_type).capacity()
+    }
+
+    fn queue_for(&self, traffic_type: TrafficType) -> &mpsc::Sender<Entry> {
+        match traffic_type {
+            TrafficType::Generic => &self.generic_queue,
+            TrafficType::Bootstrap => &self.bootstrap_queue,
+        }
     }
 }
 
@@ -88,6 +71,18 @@ impl WriteQueueReceiver {
             result = self.bootstrap.try_recv();
         }
         result
+    }
+
+    pub(crate) async fn pop(&mut self) -> Option<Entry> {
+        // always prefer generic queue!
+        if let Ok(result) = self.generic.try_recv() {
+            return Some(result);
+        }
+
+        tokio::select! {
+            v = self.generic.recv() => v,
+            v = self.bootstrap.recv() => v,
+        }
     }
 }
 

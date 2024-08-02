@@ -1297,7 +1297,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
     let socket = SocketBuilder::new(
         ChannelDirection::Inbound,
         node.workers.clone(),
-        Arc::downgrade(&node.async_rt),
+        node.async_rt.clone(),
     )
     .observer(socket_stats)
     .finish(TcpStream::new_null());

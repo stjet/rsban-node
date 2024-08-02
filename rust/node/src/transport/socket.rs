@@ -18,6 +18,7 @@ use std::{
     },
     time::Duration,
 };
+use tokio::task::spawn_blocking;
 use tracing::debug;
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -125,9 +126,6 @@ pub struct Socket {
     /// error codes as the OS may have already completed the async operation.
     closed: AtomicBool,
 
-    /// Updated only from strand, but stored as atomic so it can be read from outside
-    write_in_progress: AtomicBool,
-
     socket_type: AtomicU8,
 
     observer: Arc<dyn SocketObserver>,
@@ -144,13 +142,13 @@ impl Socket {
         SocketBuilder::new(
             ChannelDirection::Outbound,
             thread_pool,
-            Arc::downgrade(&Arc::new(AsyncRuntime::default())),
+            Arc::new(AsyncRuntime::default()),
         )
         .finish(TcpStream::new_null())
     }
 
     pub fn is_closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
+        self.closed.load(Ordering::SeqCst) || self.write_queue.is_closed()
     }
 
     fn set_last_completion(&self) {
@@ -183,7 +181,6 @@ impl Socket {
 
     pub fn close_internal(&self) {
         if !self.closed.swap(true, Ordering::SeqCst) {
-            self.write_queue.clear();
             self.set_default_timeout_value(0);
 
             if let Some(cb) = self.current_action.lock().unwrap().take() {
@@ -331,8 +328,6 @@ pub trait SocketExtensions {
 
     fn get_remote(&self) -> Option<SocketAddrV6>;
     fn has_timed_out(&self) -> bool;
-
-    fn write_queued_messages(&self);
 }
 
 #[async_trait]
@@ -364,129 +359,23 @@ impl SocketExtensions for Arc<Socket> {
             return;
         }
 
-        let (queued, callback) =
+        let buf_size = buffer.len();
+
+        let (queued, write_error, callback) =
             self.write_queue
                 .insert(Arc::clone(buffer), callback, traffic_type);
-        if !queued {
+        if write_error {
+            self.observer.write_error();
+            self.close();
+        }
+        if queued {
+            self.observer.write_successful(buf_size);
+            self.set_last_completion();
+        } else {
             if let Some(cb) = callback {
                 cb(ErrorCode::not_supported(), 0);
             }
-            return;
         }
-
-        let self_clone = self.clone();
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        runtime.tokio.spawn_blocking(move || {
-            if !self_clone.write_in_progress.load(Ordering::SeqCst) {
-                self_clone.write_queued_messages();
-            }
-        });
-    }
-
-    fn write_queued_messages(&self) {
-        if self.is_closed() {
-            return;
-        }
-
-        let Some(mut next) = self.write_queue.pop() else {
-            return;
-        };
-        self.set_default_timeout();
-        self.write_in_progress.store(true, Ordering::SeqCst);
-        let self_w = Arc::downgrade(self);
-
-        let callback: Arc<Mutex<Option<Box<dyn FnOnce(ErrorCode, usize) + Send>>>> =
-            Arc::new(Mutex::new(Some(Box::new(move |ec, size| {
-                if let Some(self_clone) = self_w.upgrade() {
-                    self_clone.write_in_progress.store(false, Ordering::SeqCst);
-
-                    if ec.is_err() {
-                        self_clone.observer.write_error();
-                        self_clone.close();
-                    } else {
-                        self_clone.observer.write_successful(size);
-                        self_clone.set_last_completion();
-                    }
-
-                    if let Some(cbk) = next.callback.take() {
-                        cbk(ec, size);
-                    }
-
-                    if ec.is_ok() {
-                        self_clone.write_queued_messages();
-                    }
-                }
-            }))));
-
-        let callback_clone = Arc::clone(&callback);
-        {
-            *self.current_action.lock().unwrap() = Some(Box::new(move || {
-                let f = { callback_clone.lock().unwrap().take() };
-                if let Some(f) = f {
-                    f(ErrorCode::fault(), 0);
-                }
-            }));
-        }
-
-        let Some(runtime) = self.runtime.upgrade() else {
-            return;
-        };
-        let runtime_w = Weak::clone(&self.runtime);
-        let buffer = Arc::clone(&next.buffer);
-        let stream = self.stream.clone();
-        runtime.tokio.spawn(async move {
-            let mut written = 0;
-            loop {
-                match stream.writable().await {
-                    Ok(()) => match stream.try_write(&buffer[written..]) {
-                        Ok(n) => {
-                            written += n;
-                            if written >= buffer.len() {
-                                let Some(runtime) = runtime_w.upgrade() else {
-                                    break;
-                                };
-                                runtime.tokio.spawn_blocking(move || {
-                                    let f = { callback.lock().unwrap().take() };
-                                    if let Some(cb) = f {
-                                        cb(ErrorCode::new(), written);
-                                    }
-                                });
-                                break;
-                            }
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            continue;
-                        }
-                        Err(_) => {
-                            let Some(runtime) = runtime_w.upgrade() else {
-                                break;
-                            };
-                            runtime.tokio.spawn_blocking(move || {
-                                let f = { callback.lock().unwrap().take() };
-                                if let Some(cb) = f {
-                                    cb(ErrorCode::fault(), 0);
-                                }
-                            });
-                            break;
-                        }
-                    },
-                    Err(_) => {
-                        let Some(runtime) = runtime_w.upgrade() else {
-                            break;
-                        };
-                        runtime.tokio.spawn_blocking(move || {
-                            let f = { callback.lock().unwrap().take() };
-                            if let Some(cb) = f {
-                                cb(ErrorCode::fault(), 0);
-                            }
-                        });
-                        break;
-                    }
-                }
-            }
-        });
     }
 
     fn close(&self) {
@@ -567,7 +456,7 @@ pub struct SocketBuilder {
     idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
-    runtime: Weak<AsyncRuntime>,
+    runtime: Arc<AsyncRuntime>,
 }
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
@@ -581,7 +470,7 @@ impl SocketBuilder {
     pub fn new(
         direction: ChannelDirection,
         thread_pool: Arc<dyn ThreadPool>,
-        runtime: Weak<AsyncRuntime>,
+        runtime: Arc<AsyncRuntime>,
     ) -> Self {
         Self {
             direction,
@@ -634,7 +523,53 @@ impl SocketBuilder {
             .observer
             .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
 
-        let (write_queue, receiver) = WriteQueue::new(self.max_write_queue_len);
+        let (write_queue, mut receiver) = WriteQueue::new(self.max_write_queue_len);
+        let stream = Arc::new(stream);
+        let stream_l = stream.clone();
+        // process write queue:
+        self.runtime.tokio.spawn(async move {
+            while let Some(entry) = receiver.pop().await {
+                let mut written = 0;
+                let buffer = &entry.buffer;
+                let callback = entry.callback;
+                loop {
+                    match stream_l.writable().await {
+                        Ok(()) => match stream_l.try_write(&buffer[written..]) {
+                            Ok(n) => {
+                                written += n;
+                                if written >= buffer.len() {
+                                    if let Some(cb) = callback {
+                                        spawn_blocking(move || {
+                                            cb(ErrorCode::new(), written);
+                                        });
+                                    }
+                                    break;
+                                }
+                            }
+                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                continue;
+                            }
+                            Err(_) => {
+                                if let Some(cb) = callback {
+                                    spawn_blocking(move || {
+                                        cb(ErrorCode::fault(), 0);
+                                    });
+                                }
+                                break;
+                            }
+                        },
+                        Err(_) => {
+                            if let Some(cb) = callback {
+                                spawn_blocking(move || {
+                                    cb(ErrorCode::fault(), 0);
+                                });
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        });
 
         Arc::new({
             Socket {
@@ -654,11 +589,10 @@ impl SocketBuilder {
                 closed: AtomicBool::new(false),
                 socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
                 observer,
-                write_in_progress: AtomicBool::new(false),
                 write_queue,
-                runtime: self.runtime,
+                runtime: Arc::downgrade(&self.runtime),
                 current_action: Mutex::new(None),
-                stream: Arc::new(stream),
+                stream,
             }
         })
     }

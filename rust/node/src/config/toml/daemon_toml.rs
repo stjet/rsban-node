@@ -1,6 +1,5 @@
 use super::{NodeRpcToml, NodeToml, OpenclToml};
 use crate::config::DaemonConfig;
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -589,8 +588,9 @@ mod tests {
             deserialized_httpcallback.target
         );
 
-        /*let default_ipc_flatbuffers = default_node.ipc.unwrap().flatbuffers.unwrap();
-        let deserialized_ipc_flatbuffers = deserialized_node.ipc.unwrap().flatbuffers.unwrap();
+        let default_ipc_flatbuffers = default_node.ipc.clone().unwrap().flatbuffers.unwrap();
+        let deserialized_ipc_flatbuffers =
+            deserialized_node.ipc.clone().unwrap().flatbuffers.unwrap();
 
         assert_eq!(
             default_ipc_flatbuffers.skip_unexpected_fields_in_json,
@@ -601,8 +601,8 @@ mod tests {
             deserialized_ipc_flatbuffers.verify_buffers
         );
 
-        let default_ipc_local = default_node.ipc.unwrap().local.unwrap();
-        let deserialized_ipc_local = deserialized_node.ipc.unwrap().local.unwrap();
+        let default_ipc_local = default_node.ipc.clone().unwrap().local.unwrap();
+        let deserialized_ipc_local = deserialized_node.ipc.clone().unwrap().local.unwrap();
 
         assert_eq!(
             default_ipc_local.allow_unsafe,
@@ -615,12 +615,15 @@ mod tests {
         );
         assert_eq!(default_ipc_local.path, deserialized_ipc_local.path);
 
-        let default_ipc_tcp = default_node.ipc.unwrap().tcp.unwrap();
+        let default_ipc_tcp = default_node.ipc.clone().unwrap().tcp.unwrap();
         let deserialized_ipc_tcp = deserialized_node.ipc.unwrap().tcp.unwrap();
 
-        assert_eq!(default_ipc_tcp.enable, deserialized_ipc_tcp.enable);
+        assert_eq!(
+            default_node.ipc.clone().unwrap().tcp.unwrap().enable,
+            deserialized_ipc_tcp.enable
+        );
         assert_eq!(default_ipc_tcp.io_timeout, deserialized_ipc_tcp.io_timeout);
-        assert_eq!(default_ipc_tcp.port, deserialized_ipc_tcp.port);*/
+        assert_eq!(default_ipc_tcp.port, deserialized_ipc_tcp.port);
 
         let default_lmdb = default_node.lmdb.unwrap();
         let deserialized_lmdb = deserialized_node.lmdb.unwrap();

@@ -65,7 +65,7 @@ pub struct NodeToml {
     pub max_pruning_age_s: Option<i64>,
     pub max_pruning_depth: Option<u64>,
     pub websocket_config: Option<WebsocketToml>,
-    pub ipc_config: Option<IpcToml>,
+    pub ipc: Option<IpcToml>,
     pub diagnostics: Option<DiagnosticsToml>,
     pub stat_config: Option<StatsToml>,
     pub lmdb: Option<LmdbToml>,
@@ -149,7 +149,7 @@ impl Default for NodeToml {
             max_pruning_age_s: Some(node_config.max_pruning_age_s),
             max_pruning_depth: Some(node_config.max_pruning_depth),
             websocket_config: Some(WebsocketToml::default()),
-            ipc_config: Some((&node_config.ipc_config).into()),
+            ipc: Some((&node_config.ipc_config).into()),
             diagnostics: Some(DiagnosticsToml::default()),
             stat_config: Some(StatsToml::default()),
             lmdb: Some(LmdbToml::default()),
@@ -341,7 +341,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(websocket_config_toml) = &toml.websocket_config {
             config.websocket_config = websocket_config_toml.into();
         }
-        if let Some(ipc_config_toml) = &toml.ipc_config {
+        if let Some(ipc_config_toml) = &toml.ipc {
             config.ipc_config = ipc_config_toml.into();
         }
         if let Some(diagnostics_config_toml) = &toml.diagnostics {
@@ -458,7 +458,7 @@ impl From<&NodeConfig> for NodeToml {
             max_pruning_age_s: Some(config.max_pruning_age_s),
             max_pruning_depth: Some(config.max_pruning_depth),
             websocket_config: Some((&config.websocket_config).into()),
-            ipc_config: Some((&config.ipc_config).into()),
+            ipc: Some((&config.ipc_config).into()),
             diagnostics: Some((&config.diagnostics_config).into()),
             stat_config: Some((&config.stat_config).into()),
             lmdb: Some((&config.lmdb_config).into()),

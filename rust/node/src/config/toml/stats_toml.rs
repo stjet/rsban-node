@@ -15,14 +15,7 @@ pub struct LogToml {
 impl Default for LogToml {
     fn default() -> Self {
         let config = StatsConfig::default();
-        Self {
-            interval_samples: Some(config.log_samples_interval.as_millis() as u64),
-            interval_counters: Some(config.log_counters_interval.as_millis() as u64),
-            rotation_count: Some(config.log_rotation_count),
-            headers: Some(config.log_headers),
-            filename_counters: Some(config.log_counters_filename),
-            filename_samples: Some(config.log_samples_filename),
-        }
+        (&config).into()
     }
 }
 

@@ -98,6 +98,9 @@ impl From<&LocalToml> for IpcConfigDomainSocket {
         if let Some(io_timeout) = toml.io_timeout {
             config.transport.io_timeout = io_timeout;
         }
+        if let Some(allow_unsafe) = toml.allow_unsafe {
+            config.transport.allow_unsafe = allow_unsafe;
+        }
         config
     }
 }

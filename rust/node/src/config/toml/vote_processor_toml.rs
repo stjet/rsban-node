@@ -28,11 +28,11 @@ impl From<&VoteProcessorToml> for VoteProcessorConfig {
         if let Some(max_non_pr_queue) = toml.max_non_pr_queue {
             config.max_non_pr_queue = max_non_pr_queue;
         }
-        if let Some(batch_size) = toml.pr_priority {
-            config.batch_size = batch_size;
+        if let Some(pr_priority) = toml.pr_priority {
+            config.pr_priority = pr_priority;
         }
         if let Some(threads) = toml.threads {
-            config.batch_size = threads;
+            config.threads = threads;
         }
         if let Some(batch_size) = toml.batch_size {
             config.batch_size = batch_size;

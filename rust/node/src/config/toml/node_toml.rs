@@ -313,6 +313,10 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(monitor_toml) = &toml.monitor {
             config.monitor = monitor_toml.into();
         }
+        if let Some(rep_crawler_weight_minimum) = &toml.rep_crawler_weight_minimum {
+            config.rep_crawler_weight_minimum = Amount::decode_hex(&rep_crawler_weight_minimum)
+                .expect("Invalid rep crawler weight minimum");
+        }
         if let Some(httpcallback) = &toml.httpcallback {
             if let Some(address) = &httpcallback.address {
                 config.callback_address = address.clone();

@@ -39,6 +39,12 @@ impl WebsocketConfig {
     }
 }
 
+impl Default for WebsocketConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

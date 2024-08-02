@@ -1,6 +1,9 @@
 use super::{ChannelEnum, InboundMessageQueue, Origin, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
-use rsnano_core::{utils::TomlWriter, NoValue};
+use rsnano_core::{
+    utils::{get_cpu_count, TomlWriter},
+    NoValue,
+};
 use rsnano_messages::DeserializedMessage;
 use std::{
     cmp::{max, min},
@@ -42,6 +45,17 @@ impl MessageProcessorConfig {
             self.max_queue,
             "Maximum number of messages per peer to queue for processing. \ntype:uint64",
         )
+    }
+}
+
+impl Default for MessageProcessorConfig {
+    fn default() -> Self {
+        let parallelism = get_cpu_count();
+
+        Self {
+            threads: min(2, max(parallelism / 4, 1)),
+            max_queue: 64,
+        }
     }
 }
 

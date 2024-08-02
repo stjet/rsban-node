@@ -98,6 +98,12 @@ impl IpcConfigTcpSocket {
     }
 }
 
+impl Default for IpcConfigTcpSocket {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default())
+    }
+}
+
 #[derive(Clone)]
 pub struct IpcConfig {
     pub transport_domain: IpcConfigDomainSocket,
@@ -162,5 +168,11 @@ impl IpcConfig {
         })?;
 
         Ok(())
+    }
+}
+
+impl Default for IpcConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default())
     }
 }

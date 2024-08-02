@@ -69,8 +69,8 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn toml_serialize() {
-        let toml_str = r#"
+    fn toml_serialize_default() {
+        let default_toml_str = r#"
             [node]
             allow_local_peers = true
             background_threads = 8
@@ -257,7 +257,7 @@ mod tests {
         "#;
 
         let default_daemon_toml = DaemonToml::default();
-        let deserialized_toml: DaemonToml = toml::from_str(&toml_str).unwrap();
+        let deserialized_toml: DaemonToml = toml::from_str(&default_toml_str).unwrap();
 
         let default_node = default_daemon_toml.node.unwrap();
         let deserialized_node = deserialized_toml.node.unwrap();
@@ -559,7 +559,7 @@ mod tests {
             deserialized_diagnostics_txn_tracking.min_write_txn_time
         );
 
-        /*let default_experimental = default_node.experimental.unwrap();
+        let default_experimental = default_node.experimental.unwrap();
         let deserialized_experimental = deserialized_node.experimental.unwrap();
 
         assert_eq!(
@@ -573,7 +573,7 @@ mod tests {
         assert_eq!(
             default_experimental.secondary_work_peers,
             deserialized_experimental.secondary_work_peers
-        );*/
+        );
 
         let default_httpcallback = default_node.httpcallback.unwrap();
         let deserialized_httpcallback = deserialized_node.httpcallback.unwrap();
@@ -682,13 +682,13 @@ mod tests {
             deserialized_priority_bucket.reserved_elections
         );
 
-        /*let default_rep_crawler = default_node.rep_crawler.unwrap();
+        let default_rep_crawler = default_node.rep_crawler.unwrap();
         let deserialized_rep_crawler = deserialized_node.rep_crawler.unwrap();
 
         assert_eq!(
             default_rep_crawler.query_timeout,
             deserialized_rep_crawler.query_timeout
-            );*/
+        );
 
         let default_request_aggregator = default_node.request_aggregator.unwrap();
         let deserialized_request_aggregator = deserialized_node.request_aggregator.unwrap();
@@ -706,7 +706,7 @@ mod tests {
             deserialized_request_aggregator.threads
         );
 
-        /*let default_statistics = default_node.statistics.unwrap();
+        let default_statistics = default_node.statistics.unwrap();
         let deserialized_statistics = deserialized_node.statistics.unwrap();
 
         assert_eq!(
@@ -720,7 +720,7 @@ mod tests {
         assert_eq!(
             default_statistics_log.filename_counters,
             deserialized_statistics_log.filename_counters
-            );*/
+        );
 
         let default_vote_cache = default_node.vote_cache.unwrap();
         let deserialized_vote_cache = deserialized_node.vote_cache.unwrap();
@@ -762,12 +762,12 @@ mod tests {
             deserialized_vote_processor.threads
         );
 
-        /*let default_websocket = default_node.websocket.unwrap();
+        let default_websocket = default_node.websocket.unwrap();
         let deserialized_websocket = deserialized_node.websocket.unwrap();
 
         assert_eq!(default_websocket.address, deserialized_websocket.address);
         assert_eq!(default_websocket.enable, deserialized_websocket.enable);
-        assert_eq!(default_websocket.port, deserialized_websocket.port);*/
+        assert_eq!(default_websocket.port, deserialized_websocket.port);
 
         let default_opencl = default_daemon_toml.opencl.unwrap();
         let deserialized_opencl = deserialized_toml.opencl.unwrap();

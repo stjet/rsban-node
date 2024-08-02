@@ -1,8 +1,8 @@
 use super::{
     ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
-    DiagnosticsToml, HttpcallbackToml, IpcToml, LmdbToml, MessageProcessorToml, MonitorToml,
-    OptimisticSchedulerToml, PriorityBucketToml, RequestAggregatorToml, StatsToml, VoteCacheToml,
-    VoteProcessorToml, WebsocketToml,
+    DiagnosticsToml, ExperimentalToml, HttpcallbackToml, IpcToml, LmdbToml, MessageProcessorToml,
+    MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
+    RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
 use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
 use rsnano_core::{Account, Amount};
@@ -44,6 +44,7 @@ pub struct NodeToml {
     pub preconfigured_peers: Option<Vec<String>>,
     pub preconfigured_representatives: Option<Vec<Account>>,
     pub receive_minimum: Option<String>,
+    pub rep_crawler: Option<RepCrawlerToml>,
     pub rep_crawler_weight_minimum: Option<String>,
     pub representative_vote_weight_minimum: Option<String>,
     pub request_aggregator_threads: Option<u32>,
@@ -64,10 +65,10 @@ pub struct NodeToml {
     pub secondary_work_peers: Option<Vec<Peer>>,
     pub max_pruning_age_s: Option<i64>,
     pub max_pruning_depth: Option<u64>,
-    pub websocket_config: Option<WebsocketToml>,
+    pub websocket: Option<WebsocketToml>,
     pub ipc: Option<IpcToml>,
     pub diagnostics: Option<DiagnosticsToml>,
-    pub stat_config: Option<StatsToml>,
+    pub statistics: Option<StatsToml>,
     pub lmdb: Option<LmdbToml>,
     pub vote_cache: Option<VoteCacheToml>,
     pub block_processor: Option<BlockProcessorToml>,
@@ -77,6 +78,7 @@ pub struct NodeToml {
     pub message_processor: Option<MessageProcessorToml>,
     pub monitor: Option<MonitorToml>,
     pub httpcallback: Option<HttpcallbackToml>,
+    pub experimental: Option<ExperimentalToml>,
 }
 
 impl Default for NodeToml {
@@ -122,14 +124,7 @@ impl Default for NodeToml {
             preconfigured_peers: Some(node_config.preconfigured_peers.clone()),
             preconfigured_representatives: Some(node_config.preconfigured_representatives.clone()),
             receive_minimum: Some(node_config.receive_minimum.to_string_dec()),
-            rep_crawler_weight_minimum: Some(
-                node_config.rep_crawler_weight_minimum.to_string_dec(),
-            ),
-            representative_vote_weight_minimum: Some(
-                node_config
-                    .representative_vote_weight_minimum
-                    .to_string_dec(),
-            ),
+            rep_crawler: Some((&node_config).into()),
             request_aggregator_threads: Some(node_config.request_aggregator_threads),
             signature_checker_threads: Some(node_config.signature_checker_threads),
             tcp_incoming_connections_max: Some(node_config.tcp_incoming_connections_max),
@@ -148,10 +143,10 @@ impl Default for NodeToml {
             secondary_work_peers: Some(node_config.secondary_work_peers),
             max_pruning_age_s: Some(node_config.max_pruning_age_s),
             max_pruning_depth: Some(node_config.max_pruning_depth),
-            websocket_config: Some(WebsocketToml::default()),
+            websocket: Some(WebsocketToml::default()),
             ipc: Some((&node_config.ipc_config).into()),
             diagnostics: Some(DiagnosticsToml::default()),
-            stat_config: Some(StatsToml::default()),
+            statistics: Some(StatsToml::default()),
             lmdb: Some(LmdbToml::default()),
             vote_cache: Some(VoteCacheToml::default()),
             block_processor: Some(BlockProcessorToml::default()),
@@ -161,6 +156,15 @@ impl Default for NodeToml {
             message_processor: Some(MessageProcessorToml::default()),
             monitor: Some(MonitorToml::default()),
             httpcallback: Some(HttpcallbackToml::default()),
+            rep_crawler_weight_minimum: Some(
+                node_config.rep_crawler_weight_minimum.to_string_dec(),
+            ),
+            representative_vote_weight_minimum: Some(
+                node_config
+                    .representative_vote_weight_minimum
+                    .to_string_dec(),
+            ),
+            experimental: Some(ExperimentalToml::default()),
         }
     }
 }
@@ -275,9 +279,10 @@ impl From<&NodeToml> for NodeConfig {
             config.receive_minimum =
                 Amount::decode_hex(&receive_minimum).expect("Invalid receive minimum");
         }
-        if let Some(rep_crawler_weight_minimum) = &toml.rep_crawler_weight_minimum {
-            config.rep_crawler_weight_minimum = Amount::decode_hex(&rep_crawler_weight_minimum)
-                .expect("Invalid rep crawler weight minimum");
+        if let Some(rep_crawler) = &toml.rep_crawler {
+            if let Some(query_timeout) = rep_crawler.query_timeout {
+                config.rep_crawler_query_timeout = Duration::from_millis(query_timeout);
+            }
         }
         if let Some(representative_vote_weight_minimum) = &toml.representative_vote_weight_minimum {
             config.representative_vote_weight_minimum =
@@ -338,7 +343,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(max_pruning_depth) = toml.max_pruning_depth {
             config.max_pruning_depth = max_pruning_depth;
         }
-        if let Some(websocket_config_toml) = &toml.websocket_config {
+        if let Some(websocket_config_toml) = &toml.websocket {
             config.websocket_config = websocket_config_toml.into();
         }
         if let Some(ipc_config_toml) = &toml.ipc {
@@ -347,7 +352,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(diagnostics_config_toml) = &toml.diagnostics {
             config.diagnostics_config = diagnostics_config_toml.into();
         }
-        if let Some(stat_config_toml) = &toml.stat_config {
+        if let Some(stat_config_toml) = &toml.statistics {
             config.stat_config = stat_config_toml.into();
         }
         if let Some(lmdb_config_toml) = &toml.lmdb {
@@ -457,10 +462,10 @@ impl From<&NodeConfig> for NodeToml {
             secondary_work_peers: Some(config.secondary_work_peers.clone()),
             max_pruning_age_s: Some(config.max_pruning_age_s),
             max_pruning_depth: Some(config.max_pruning_depth),
-            websocket_config: Some((&config.websocket_config).into()),
+            websocket: Some((&config.websocket_config).into()),
             ipc: Some((&config.ipc_config).into()),
             diagnostics: Some((&config.diagnostics_config).into()),
-            stat_config: Some((&config.stat_config).into()),
+            statistics: Some((&config.stat_config).into()),
             lmdb: Some((&config.lmdb_config).into()),
             vote_cache: Some((&config.vote_cache).into()),
             block_processor: Some((&config.block_processor).into()),
@@ -470,6 +475,8 @@ impl From<&NodeConfig> for NodeToml {
             message_processor: Some((&config.message_processor).into()),
             monitor: Some((&config.monitor).into()),
             httpcallback: Some(config.into()),
+            rep_crawler: Some(config.into()),
+            experimental: Some(config.into()),
         }
     }
 }

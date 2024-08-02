@@ -245,10 +245,6 @@ impl ResponseServer {
         *self.last_keepalive.lock().unwrap() = keepalive;
     }
 
-    pub fn get_last_keepalive(&self) -> Option<Keepalive> {
-        self.last_keepalive.lock().unwrap().clone()
-    }
-
     pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
         self.last_keepalive.lock().unwrap().take()
     }
@@ -553,16 +549,16 @@ impl ResponseServerExt for Arc<ResponseServer> {
                     return ProcessResult::Progress;
                 }
 
-                let payload = payload.clone();
-                let connection = Arc::clone(self);
-                let ledger = Arc::clone(&self.ledger);
-                let thread_pool2 = self.workers.clone();
-                let runtime = self.runtime.clone();
+                // TODO from original code: Add completion callback to bulk pull server
+                // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                let mut bulk_pull_server = BulkPullServer::new(
+                    payload.clone(),
+                    Arc::clone(self),
+                    self.ledger.clone(),
+                    self.workers.clone(),
+                    self.runtime.clone(),
+                );
                 self.workers.push_task(Box::new(move || {
-                    // TODO from original code: Add completion callback to bulk pull server
-                    // TODO from original code: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-                    let mut bulk_pull_server =
-                        BulkPullServer::new(payload, connection, ledger, thread_pool2, runtime);
                     bulk_pull_server.send_next();
                 }));
 
@@ -572,21 +568,16 @@ impl ResponseServerExt for Arc<ResponseServer> {
                 if self.flags.disable_bootstrap_bulk_pull_server {
                     return ProcessResult::Progress;
                 }
-                let payload = payload.clone();
-                let connection = Arc::clone(self);
-                let ledger = self.ledger.clone();
-                let thread_pool2 = self.workers.clone();
-                let runtime = self.runtime.clone();
+                // original code TODO: Add completion callback to bulk pull server
+                // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
+                let bulk_pull_account_server = BulkPullAccountServer::new(
+                    Arc::clone(self),
+                    payload.clone(),
+                    self.workers.clone(),
+                    self.ledger.clone(),
+                    self.runtime.clone(),
+                );
                 self.workers.push_task(Box::new(move || {
-                    // original code TODO: Add completion callback to bulk pull server
-                    // original code TODO: There should be no need to re-copy message as unique pointer, refactor those bulk/frontier pull/push servers
-                    let bulk_pull_account_server = BulkPullAccountServer::new(
-                        connection,
-                        payload,
-                        thread_pool2,
-                        ledger,
-                        runtime,
-                    );
                     bulk_pull_account_server.send_frontier();
                 }));
 

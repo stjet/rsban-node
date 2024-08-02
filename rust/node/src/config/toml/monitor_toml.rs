@@ -11,10 +11,7 @@ pub struct MonitorToml {
 impl Default for MonitorToml {
     fn default() -> Self {
         let config = MonitorConfig::default();
-        Self {
-            enable: Some(config.enabled),
-            interval: Some(config.interval.as_secs()),
-        }
+        (&config).into()
     }
 }
 

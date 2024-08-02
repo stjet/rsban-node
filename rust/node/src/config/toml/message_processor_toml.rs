@@ -10,10 +10,7 @@ pub struct MessageProcessorToml {
 impl Default for MessageProcessorToml {
     fn default() -> Self {
         let config = MessageProcessorConfig::default();
-        Self {
-            threads: Some(config.threads),
-            max_queue: Some(config.max_queue),
-        }
+        (&config).into()
     }
 }
 

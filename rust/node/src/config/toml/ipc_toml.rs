@@ -9,6 +9,13 @@ pub struct IpcToml {
     pub flatbuffers: Option<FlatbuffersToml>,
 }
 
+impl Default for IpcToml {
+    fn default() -> Self {
+        let config = IpcConfig::default();
+        (&config).into()
+    }
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct LocalToml {
     pub enable: Option<bool>,
@@ -17,10 +24,24 @@ pub struct LocalToml {
     pub path: Option<PathBuf>,
 }
 
+impl Default for LocalToml {
+    fn default() -> Self {
+        let config = IpcConfigDomainSocket::default();
+        (&config).into()
+    }
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct FlatbuffersToml {
     pub skip_unexpected_fields_in_json: Option<bool>,
     pub verify_buffers: Option<bool>,
+}
+
+impl Default for FlatbuffersToml {
+    fn default() -> Self {
+        let config = IpcConfigFlatbuffers::default();
+        (&config).into()
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -28,6 +49,13 @@ pub struct TcpToml {
     pub enable: Option<bool>,
     pub io_timeout: Option<usize>,
     pub port: Option<u16>,
+}
+
+impl Default for TcpToml {
+    fn default() -> Self {
+        let config = IpcConfigTcpSocket::default();
+        (&config).into()
+    }
 }
 
 impl From<&IpcConfig> for IpcToml {

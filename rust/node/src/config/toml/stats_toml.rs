@@ -35,10 +35,7 @@ pub struct StatsToml {
 impl Default for StatsToml {
     fn default() -> Self {
         let config = StatsConfig::default();
-        Self {
-            max_samples: Some(config.max_samples),
-            log: Some((&config).into()),
-        }
+        (&config).into()
     }
 }
 

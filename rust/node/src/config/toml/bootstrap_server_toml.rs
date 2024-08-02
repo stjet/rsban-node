@@ -11,11 +11,7 @@ pub struct BootstrapServerToml {
 impl Default for BootstrapServerToml {
     fn default() -> Self {
         let config = BootstrapServerConfig::default();
-        Self {
-            max_queue: Some(config.max_queue),
-            threads: Some(config.threads),
-            batch_size: Some(config.batch_size),
-        }
+        (&config).into()
     }
 }
 

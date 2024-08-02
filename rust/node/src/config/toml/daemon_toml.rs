@@ -69,7 +69,7 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn toml_serialize_default() {
+    fn toml_serialize_defaults() {
         let default_toml_str = r#"
             [node]
             allow_local_peers = true
@@ -336,10 +336,10 @@ mod tests {
             deserialized_node.external_address
         );
         assert_eq!(default_node.external_port, deserialized_node.external_port);
-        //assert_eq!(
-        //default_node.frontiers_confirmation,
-        //deserialized_node.frontiers_confirmation
-        //);
+        assert_eq!(
+            default_node.frontiers_confirmation,
+            deserialized_node.frontiers_confirmation
+        );
         assert_eq!(default_node.io_threads, deserialized_node.io_threads);
         assert_eq!(
             default_node.max_queued_requests,
@@ -801,11 +801,7 @@ mod tests {
 
     #[test]
     fn toml_deserialize_no_defaults() {
-        let path: PathBuf = "/tmp/".into();
-
-        let fs = NullableFilesystem::new_null();
-
-        fs.create_dir_all(&path).unwrap();
+        let path: PathBuf = "node-config.toml".into();
 
         let toml_str = r#"
             [node]
@@ -977,14 +973,11 @@ mod tests {
            	rpc_path = "/dev/nano_rpc"
         "#;
 
-        let file_path: PathBuf = path.join("config-node.toml");
+        let fs = NullableFilesystem::null_builder()
+            .read_to_string(&path, toml_str.to_string())
+            .finish();
 
-        fs.write(&file_path, toml_str).unwrap();
-
-        let path: PathBuf = "/tmp/config-node.toml".into();
-        std::fs::write(&path, toml_str).unwrap();
-
-        let toml_read = NullableFilesystem::new().read_to_string(&path).unwrap();
+        let toml_read = fs.read_to_string(&path).unwrap();
 
         let daemon_toml: DaemonToml =
             toml::from_str(&toml_read).expect("Failed to deserialize TOML");
@@ -993,18 +986,12 @@ mod tests {
 
         let default_daemon_config = DaemonConfig::default();
 
-        println!("{:?}", daemon_config.node.preconfigured_representatives);
-
         //assert_ne!(daemon_config, default_daemon_config);
     }
 
     #[test]
     fn deserialize_defaults() {
-        let path: PathBuf = "/tmp/".into();
-
-        let fs = NullableFilesystem::new_null();
-
-        fs.create_dir_all(&path).unwrap();
+        let path: PathBuf = "node-config.toml".into();
 
         let toml_str = r#"
             [node]
@@ -1024,14 +1011,11 @@ mod tests {
             [rpc.child_process]
         "#;
 
-        let file_path: PathBuf = path.join("config-node.toml");
+        let fs = NullableFilesystem::null_builder()
+            .read_to_string(&path, toml_str.to_string())
+            .finish();
 
-        fs.write(&file_path, toml_str).unwrap();
-
-        let path: PathBuf = "/tmp/config-node.toml".into();
-        std::fs::write(&path, toml_str).unwrap();
-
-        let toml_read = NullableFilesystem::new().read_to_string(&path).unwrap();
+        let toml_read = fs.read_to_string(&path).unwrap();
 
         let daemon_toml: DaemonToml =
             toml::from_str(&toml_read).expect("Failed to deserialize TOML");

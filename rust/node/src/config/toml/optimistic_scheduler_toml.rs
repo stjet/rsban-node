@@ -11,11 +11,7 @@ pub struct OptimisticSchedulerToml {
 impl Default for OptimisticSchedulerToml {
     fn default() -> Self {
         let config = OptimisticSchedulerConfig::new();
-        Self {
-            enable: Some(config.enabled),
-            gap_threshold: Some(config.gap_threshold),
-            max_size: Some(config.max_size),
-        }
+        (&config).into()
     }
 }
 

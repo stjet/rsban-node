@@ -11,11 +11,7 @@ pub struct PriorityBucketToml {
 impl Default for PriorityBucketToml {
     fn default() -> Self {
         let config = PriorityBucketConfig::default();
-        Self {
-            max_blocks: Some(config.max_blocks),
-            reserved_elections: Some(config.reserved_elections),
-            max_elections: Some(config.max_elections),
-        }
+        (&config).into()
     }
 }
 
@@ -40,8 +36,8 @@ impl From<&PriorityBucketConfig> for PriorityBucketToml {
     fn from(config: &PriorityBucketConfig) -> Self {
         Self {
             max_blocks: Some(config.max_blocks),
-            reserved_elections: Some(config.max_elections),
-            max_elections: Some(config.reserved_elections),
+            reserved_elections: Some(config.reserved_elections),
+            max_elections: Some(config.max_elections),
         }
     }
 }

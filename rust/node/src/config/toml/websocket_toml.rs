@@ -11,11 +11,7 @@ pub struct WebsocketToml {
 impl Default for WebsocketToml {
     fn default() -> Self {
         let config = WebsocketConfig::default();
-        Self {
-            enable: Some(config.enabled),
-            port: Some(config.port),
-            address: Some(config.address),
-        }
+        (&config).into()
     }
 }
 

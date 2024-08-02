@@ -17,16 +17,7 @@ pub struct BootstrapAscendingToml {
 impl Default for BootstrapAscendingToml {
     fn default() -> Self {
         let config = BootstrapAscendingConfig::default();
-        Self {
-            requests_limit: Some(config.requests_limit),
-            database_requests_limit: Some(config.database_requests_limit),
-            pull_count: Some(config.pull_count),
-            timeout: Some(config.timeout.as_millis() as u64),
-            throttle_coefficient: Some(config.throttle_coefficient),
-            throttle_wait: Some(config.throttle_wait.as_millis() as u64),
-            account_sets: Some(AccountSetsToml::default()),
-            block_wait_count: Some(config.block_wait_count),
-        }
+        (&config).into()
     }
 }
 

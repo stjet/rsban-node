@@ -8,9 +8,8 @@ pub struct DiagnosticsToml {
 
 impl Default for DiagnosticsToml {
     fn default() -> Self {
-        Self {
-            txn_tracking: Some(TxnTrackingConfigToml::default()),
-        }
+        let config = DiagnosticsConfig::default();
+        (&config).into()
     }
 }
 
@@ -43,14 +42,7 @@ pub struct TxnTrackingConfigToml {
 impl Default for TxnTrackingConfigToml {
     fn default() -> Self {
         let config = TxnTrackingConfig::default();
-        Self {
-            enable: Some(config.enable),
-            min_read_txn_time: Some(config.min_read_txn_time_ms),
-            min_write_txn_time: Some(config.min_write_txn_time_ms),
-            ignore_writes_below_block_processor_max_time: Some(
-                config.ignore_writes_below_block_processor_max_time,
-            ),
-        }
+        (&config).into()
     }
 }
 

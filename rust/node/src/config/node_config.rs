@@ -34,9 +34,9 @@ use std::{cmp::max, net::Ipv6Addr};
 #[serde(rename_all = "lowercase")]
 pub enum FrontiersConfirmationMode {
     Always, // Always confirm frontiers
-    //#[serde(rename = "auto")]
+    #[serde(rename = "auto")]
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
-    Disabled,  // Do not confirm frontiers
+    Disabled, // Do not confirm frontiers
     Invalid,
 }
 

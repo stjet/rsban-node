@@ -12,11 +12,7 @@ pub struct VoteCacheToml {
 impl Default for VoteCacheToml {
     fn default() -> Self {
         let config = VoteCacheConfig::default();
-        Self {
-            max_size: Some(config.max_size),
-            max_voters: Some(config.max_voters),
-            age_cutoff: Some(config.age_cutoff.as_millis() as u64),
-        }
+        (&config).into()
     }
 }
 

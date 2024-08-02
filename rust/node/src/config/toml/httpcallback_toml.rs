@@ -11,11 +11,7 @@ pub struct HttpcallbackToml {
 impl Default for HttpcallbackToml {
     fn default() -> Self {
         let config = NodeConfig::default();
-        Self {
-            address: Some(config.callback_address.clone()),
-            port: Some(config.callback_port.clone()),
-            target: Some(config.callback_target.clone()),
-        }
+        (&config).into()
     }
 }
 

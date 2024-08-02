@@ -108,10 +108,12 @@ impl Default for NodeToml {
             enable_voting: Some(node_config.enable_voting),
             external_address: Some(node_config.external_address.clone()),
             external_port: Some(node_config.external_port),
-            frontiers_confirmation: Some(
-                serde_json::to_string(&node_config.frontiers_confirmation)
-                    .expect("Failed to serialize frontiers confirmation"),
-            ),
+            frontiers_confirmation: Some(match node_config.frontiers_confirmation {
+                FrontiersConfirmationMode::Always => "always".to_string(),
+                FrontiersConfirmationMode::Automatic => "auto".to_string(),
+                FrontiersConfirmationMode::Disabled => "disabled".to_string(),
+                FrontiersConfirmationMode::Invalid => "invalid".to_string(),
+            }),
             io_threads: Some(node_config.io_threads),
             max_queued_requests: Some(node_config.max_queued_requests),
             max_unchecked_blocks: Some(node_config.max_unchecked_blocks),

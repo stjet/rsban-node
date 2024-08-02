@@ -14,14 +14,7 @@ pub struct VoteProcessorToml {
 impl Default for VoteProcessorToml {
     fn default() -> Self {
         let config = VoteProcessorConfig::default();
-        Self {
-            max_pr_queue: Some(config.max_pr_queue),
-            max_non_pr_queue: Some(config.max_non_pr_queue),
-            pr_priority: Some(config.pr_priority),
-            threads: Some(config.threads),
-            batch_size: Some(config.batch_size),
-            max_triggered: Some(config.max_triggered),
-        }
+        (&config).into()
     }
 }
 
@@ -54,7 +47,7 @@ impl From<&VoteProcessorToml> for VoteProcessorConfig {
 impl From<&VoteProcessorConfig> for VoteProcessorToml {
     fn from(config: &VoteProcessorConfig) -> Self {
         Self {
-            max_pr_queue: Some(config.max_non_pr_queue),
+            max_pr_queue: Some(config.max_pr_queue),
             max_non_pr_queue: Some(config.max_non_pr_queue),
             pr_priority: Some(config.pr_priority),
             threads: Some(config.threads),

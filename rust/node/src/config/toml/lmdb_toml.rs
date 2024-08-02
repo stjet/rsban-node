@@ -11,11 +11,7 @@ pub struct LmdbToml {
 impl Default for LmdbToml {
     fn default() -> Self {
         let config = LmdbConfig::default();
-        Self {
-            sync: Some(config.sync),
-            max_databases: Some(config.max_databases),
-            map_size: Some(config.map_size),
-        }
+        (&config).into()
     }
 }
 

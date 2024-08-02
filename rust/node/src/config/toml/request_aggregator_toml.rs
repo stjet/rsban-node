@@ -11,11 +11,7 @@ pub struct RequestAggregatorToml {
 impl Default for RequestAggregatorToml {
     fn default() -> Self {
         let config = RequestAggregatorConfig::default();
-        Self {
-            threads: Some(config.threads),
-            max_queue: Some(config.max_queue),
-            batch_size: Some(config.batch_size),
-        }
+        (&config).into()
     }
 }
 

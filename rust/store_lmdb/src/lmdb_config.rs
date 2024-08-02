@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,
-
+    #[serde(rename = "nosync_safe")]
     /** Do not flush meta data eagerly. This may cause loss of transactions, but maintains integrity. */
     NosyncSafe,
 

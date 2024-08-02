@@ -13,13 +13,7 @@ pub struct ActiveElectionsToml {
 impl Default for ActiveElectionsToml {
     fn default() -> Self {
         let config = ActiveElectionsConfig::default();
-        Self {
-            size: Some(config.size),
-            hinted_limit_percentage: Some(config.hinted_limit_percentage),
-            optimistic_limit_percentage: Some(config.optimistic_limit_percentage),
-            confirmation_history_size: Some(config.confirmation_history_size),
-            confirmation_cache: Some(config.confirmation_cache),
-        }
+        (&config).into()
     }
 }
 

@@ -68,7 +68,6 @@ pub use tcp_stream::TcpStream;
 pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
 pub use tokio_socket_facade::*;
-pub use write_queue::WriteCallback;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
 pub struct ChannelId(usize);

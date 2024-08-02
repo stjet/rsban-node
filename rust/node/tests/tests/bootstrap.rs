@@ -17,7 +17,7 @@ use rsnano_node::{
     bootstrap::{BootstrapMessageVisitorFactory, BulkPullServer},
     node::Node,
     stats::SocketStats,
-    transport::{ChannelDirection, ResponseServerImpl, SocketBuilder},
+    transport::{ChannelDirection, ResponseServer, SocketBuilder},
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -1292,7 +1292,7 @@ mod bulk_pull_account {
     }
 }
 
-fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
+fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let socket_stats = Arc::new(SocketStats::new(node.stats.clone()));
     let socket = SocketBuilder::new(ChannelDirection::Inbound, node.async_rt.clone())
         .observer(socket_stats)
@@ -1309,7 +1309,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServerImpl> {
         node.flags.clone(),
     ));
 
-    Arc::new(ResponseServerImpl::new(
+    Arc::new(ResponseServer::new(
         &node.network,
         node.network.inbound_queue.clone(),
         socket,

@@ -1,8 +1,8 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
-    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion,
-    ResponseServerImpl, Socket, TcpConfig, TrafficType, TransportType,
+    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, ResponseServer,
+    Socket, TcpConfig, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -160,7 +160,7 @@ impl Network {
     pub async fn add(
         &self,
         socket: &Arc<Socket>,
-        response_server: &Arc<ResponseServerImpl>,
+        response_server: &Arc<ResponseServer>,
         direction: ChannelDirection,
     ) -> anyhow::Result<()> {
         let Some(remote_endpoint) = socket.get_remote() else {
@@ -1003,7 +1003,7 @@ mod tests {
     async fn initiate_handshake_when_outbound_connection_added() {
         let network = Network::new_null();
         let socket = Arc::new(Socket::new_null());
-        let response_server = Arc::new(ResponseServerImpl::new_null());
+        let response_server = Arc::new(ResponseServer::new_null());
 
         network
             .add(&socket, &response_server, ChannelDirection::Outbound)

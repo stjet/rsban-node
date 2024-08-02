@@ -58,7 +58,7 @@ impl Default for TcpConfig {
     }
 }
 
-pub struct ResponseServerImpl {
+pub struct ResponseServer {
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
     stopped: AtomicBool,
@@ -86,7 +86,7 @@ pub struct ResponseServerImpl {
 
 static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
-impl ResponseServerImpl {
+impl ResponseServer {
     pub fn new(
         network: &Arc<Network>,
         inbound_queue: Arc<InboundMessageQueue>,
@@ -273,7 +273,7 @@ impl ResponseServerImpl {
     }
 }
 
-impl Drop for ResponseServerImpl {
+impl Drop for ResponseServer {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         debug!("Exiting server: {}", remote_ep);
@@ -294,7 +294,6 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
 #[async_trait]
 pub trait ResponseServerExt {
     fn timeout(&self);
-
     fn to_realtime_connection(&self, node_id: &Account) -> bool;
     async fn run(&self);
     async fn process_message(&self, message: DeserializedMessage) -> ProcessResult;
@@ -307,7 +306,7 @@ pub enum ProcessResult {
 }
 
 #[async_trait]
-impl ResponseServerExt for Arc<ResponseServerImpl> {
+impl ResponseServerExt for Arc<ResponseServer> {
     fn to_realtime_connection(&self, node_id: &Account) -> bool {
         if self.socket.mode() != ChannelMode::Undefined {
             return false;
@@ -530,13 +529,13 @@ impl ResponseServerExt for Arc<ResponseServerImpl> {
 }
 
 pub struct RealtimeMessageVisitorImpl {
-    server: Arc<ResponseServerImpl>,
+    server: Arc<ResponseServer>,
     stats: Arc<Stats>,
     process: bool,
 }
 
 impl RealtimeMessageVisitorImpl {
-    pub fn new(server: Arc<ResponseServerImpl>, stats: Arc<Stats>) -> Self {
+    pub fn new(server: Arc<ResponseServer>, stats: Arc<Stats>) -> Self {
         Self {
             server,
             stats,
@@ -594,7 +593,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "todo"]
     async fn can_track_handshake_initiation() {
-        let response_server = ResponseServerImpl::new_null();
+        let response_server = ResponseServer::new_null();
         let handshake_tracker = response_server.track_handshake_initiation();
 
         response_server.initiate_handshake().await;

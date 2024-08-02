@@ -2,7 +2,7 @@ use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use super::{
-    InboundMessageQueue, Network, OutboundBandwidthLimiter, ResponseServerImpl, Socket, SynCookies,
+    InboundMessageQueue, Network, OutboundBandwidthLimiter, ResponseServer, Socket, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -68,7 +68,7 @@ impl ResponseServerFactory {
         }
     }
 
-    pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServerImpl> {
+    pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServer> {
         let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
             self.runtime.clone(),
             self.stats.clone(),
@@ -80,7 +80,7 @@ impl ResponseServerFactory {
             self.node_flags.clone(),
         ));
 
-        Arc::new(ResponseServerImpl::new(
+        Arc::new(ResponseServer::new(
             &self.network.clone(),
             self.inbound_queue.clone(),
             socket,

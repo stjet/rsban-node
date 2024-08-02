@@ -2,7 +2,7 @@ use crate::{
     block_processing::BlockProcessor,
     config::{NetworkConstants, NodeFlags},
     stats::Stats,
-    transport::{RealtimeMessageVisitor, RealtimeMessageVisitorImpl, ResponseServerImpl},
+    transport::{RealtimeMessageVisitor, RealtimeMessageVisitorImpl, ResponseServer},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use rsnano_ledger::Ledger;
@@ -59,20 +59,14 @@ impl BootstrapMessageVisitorFactory {
         }
     }
 
-    pub fn realtime_visitor(
-        &self,
-        server: Arc<ResponseServerImpl>,
-    ) -> Box<dyn RealtimeMessageVisitor> {
+    pub fn realtime_visitor(&self, server: Arc<ResponseServer>) -> Box<dyn RealtimeMessageVisitor> {
         Box::new(RealtimeMessageVisitorImpl::new(
             server,
             Arc::clone(&self.stats),
         ))
     }
 
-    pub fn bootstrap_visitor(
-        &self,
-        server: Arc<ResponseServerImpl>,
-    ) -> BootstrapMessageVisitorImpl {
+    pub fn bootstrap_visitor(&self, server: Arc<ResponseServer>) -> BootstrapMessageVisitorImpl {
         BootstrapMessageVisitorImpl {
             async_rt: Arc::clone(&self.async_rt),
             ledger: Arc::clone(&self.ledger),

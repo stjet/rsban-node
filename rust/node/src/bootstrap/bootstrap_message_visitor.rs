@@ -8,7 +8,7 @@ use crate::{
     block_processing::BlockProcessor,
     config::NodeFlags,
     stats::Stats,
-    transport::ResponseServerImpl,
+    transport::ResponseServer,
     utils::{AsyncRuntime, ThreadPool},
 };
 
@@ -19,7 +19,7 @@ use super::{
 pub struct BootstrapMessageVisitorImpl {
     pub async_rt: Arc<AsyncRuntime>,
     pub ledger: Arc<Ledger>,
-    pub connection: Arc<ResponseServerImpl>,
+    pub connection: Arc<ResponseServer>,
     pub thread_pool: Weak<dyn ThreadPool>,
     pub block_processor: Weak<BlockProcessor>,
     pub bootstrap_initiator: Weak<BootstrapInitiator>,

@@ -21,7 +21,7 @@ use crate::{
 use super::{
     message_deserializer::{AsyncBufferReader, MessageDeserializer},
     BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, ChannelId, ChannelMode,
-    NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
+    NetworkFilter, OutboundBandwidthLimiter, TrafficType,
 };
 
 pub struct InProcChannelData {
@@ -91,13 +91,7 @@ impl ChannelInProc {
         }
     }
 
-    pub fn send_buffer_2(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Option<WriteCallback>,
-        _policy: BufferDropPolicy,
-        _traffic_type: TrafficType,
-    ) {
+    fn send_buffer_2(&self, buffer: &Arc<Vec<u8>>) {
         let stats = self.stats.clone();
         let network_constants = self.network_constants.clone();
         let limiter = self.limiter.clone();
@@ -150,15 +144,6 @@ impl ChannelInProc {
         });
 
         self.send_buffer_impl(buffer, callback_wrapper);
-
-        if let Some(cb) = callback {
-            let buffer_size = buffer.len();
-            if let Some(async_rt) = self.async_rt.upgrade() {
-                async_rt.post(Box::new(move || {
-                    cb(ErrorCode::new(), buffer_size);
-                }));
-            }
-        }
     }
 
     fn send_buffer_impl(
@@ -297,7 +282,7 @@ impl Channel for ChannelInProc {
             let buffer = serializer.serialize(message);
             Arc::new(Vec::from(buffer)) // TODO don't copy buffer
         };
-        self.send_buffer_2(&buffer, None, drop_policy, traffic_type);
+        self.send_buffer_2(&buffer);
     }
 
     async fn send_buffer(
@@ -305,7 +290,7 @@ impl Channel for ChannelInProc {
         buffer: &Arc<Vec<u8>>,
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
-        self.send_buffer_2(&buffer, None, BufferDropPolicy::NoSocketDrop, traffic_type);
+        self.send_buffer_2(&buffer);
         Ok(())
     }
 
@@ -315,7 +300,7 @@ impl Channel for ChannelInProc {
             let buffer = serializer.serialize(message);
             Arc::new(Vec::from(buffer)) // TODO don't copy buffer
         };
-        self.send_buffer_2(&buffer, None, BufferDropPolicy::NoSocketDrop, traffic_type);
+        self.send_buffer_2(&buffer);
         Ok(())
     }
 

@@ -30,7 +30,7 @@ pub struct TcpChannelData {
 pub struct ChannelTcp {
     channel_id: ChannelId,
     channel_mutex: Mutex<TcpChannelData>,
-    pub socket: Arc<Socket>,
+    socket: Arc<Socket>,
     network_version: AtomicU8,
     limiter: Arc<OutboundBandwidthLimiter>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex

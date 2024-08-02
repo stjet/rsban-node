@@ -1,10 +1,9 @@
 use super::TrafficType;
 use crate::utils::ErrorCode;
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::mpsc::{self};
 
 pub(crate) struct WriteQueue {
-    max_size: usize,
     generic_queue: mpsc::Sender<Entry>,
     bootstrap_queue: mpsc::Sender<Entry>,
 }
@@ -16,7 +15,6 @@ impl WriteQueue {
         let receiver = WriteQueueReceiver::new(generic_rx, bootstrap_rx);
         (
             Self {
-                max_size,
                 generic_queue: generic_tx,
                 bootstrap_queue: bootstrap_tx,
             },
@@ -24,8 +22,23 @@ impl WriteQueue {
         )
     }
 
+    pub async fn insert(
+        &self,
+        buffer: Arc<Vec<u8>>,
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        let entry = Entry {
+            buffer,
+            callback: None,
+        };
+        self.queue_for(traffic_type)
+            .send(entry)
+            .await
+            .map_err(|_| anyhow!("queue closed"))
+    }
+
     /// returns: inserted | write_error | callback
-    pub fn insert(
+    pub fn try_insert(
         &self,
         buffer: Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
@@ -65,14 +78,6 @@ impl WriteQueueReceiver {
         Self { generic, bootstrap }
     }
 
-    pub(crate) fn try_pop(&mut self) -> Result<Entry, mpsc::error::TryRecvError> {
-        let mut result = self.generic.try_recv();
-        if matches!(result, Err(mpsc::error::TryRecvError::Empty)) {
-            result = self.bootstrap.try_recv();
-        }
-        result
-    }
-
     pub(crate) async fn pop(&mut self) -> Option<Entry> {
         // always prefer generic queue!
         if let Ok(result) = self.generic.try_recv() {
@@ -91,25 +96,4 @@ pub type WriteCallback = Box<dyn FnOnce(ErrorCode, usize) + Send>;
 pub(crate) struct Entry {
     pub buffer: Arc<Vec<u8>>,
     pub callback: Option<WriteCallback>,
-}
-
-struct Queues {
-    generic_queue: VecDeque<Entry>,
-    bootstrap_queue: VecDeque<Entry>,
-}
-
-impl Queues {
-    fn get(&self, traffic_type: TrafficType) -> &VecDeque<Entry> {
-        match traffic_type {
-            TrafficType::Generic => &self.generic_queue,
-            TrafficType::Bootstrap => &self.bootstrap_queue,
-        }
-    }
-
-    fn get_mut(&mut self, traffic_type: TrafficType) -> &mut VecDeque<Entry> {
-        match traffic_type {
-            TrafficType::Generic => &mut self.generic_queue,
-            TrafficType::Bootstrap => &mut self.bootstrap_queue,
-        }
-    }
 }

@@ -367,9 +367,22 @@ impl SocketExtensions for Arc<Socket> {
             bail!("socket closed");
         }
 
-        todo!()
+        let buf_size = buffer.len();
 
-        //Ok(())
+        let result = self
+            .write_queue
+            .insert(Arc::new(buffer.to_vec()), traffic_type)
+            .await;
+
+        if result.is_ok() {
+            self.observer.write_successful(buf_size);
+            self.set_last_completion();
+        } else {
+            self.observer.write_error();
+            self.close();
+        }
+
+        result
     }
 
     fn async_write(
@@ -389,7 +402,7 @@ impl SocketExtensions for Arc<Socket> {
 
         let (queued, write_error, callback) =
             self.write_queue
-                .insert(Arc::clone(buffer), callback, traffic_type);
+                .try_insert(Arc::clone(buffer), callback, traffic_type);
         if write_error {
             self.observer.write_error();
             self.close();

@@ -138,13 +138,6 @@ pub trait Channel: AsyncBufferReader {
 
     async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()>;
 
-    fn send_obsolete(
-        &self,
-        message: &Message,
-        callback: Option<WriteCallback>,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    );
     fn close(&self);
 }
 

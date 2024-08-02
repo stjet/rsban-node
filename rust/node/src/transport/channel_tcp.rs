@@ -290,42 +290,6 @@ impl Channel for Arc<ChannelTcp> {
         Ok(())
     }
 
-    // TODO delete:
-    fn send_obsolete(
-        &self,
-        message: &Message,
-        callback: Option<WriteCallback>,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        let buffer = {
-            let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message);
-            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
-        };
-        let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
-        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
-        if !is_droppable_by_limiter || should_pass {
-            self.send_buffer_obsolete(&buffer, callback, drop_policy, traffic_type);
-            self.stats
-                .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
-            trace!(channel_id = %self.channel_id, message = ?message, "Message sent");
-        } else {
-            let detail_type = message.into();
-            self.stats
-                .inc_dir_aggregate(StatType::Drop, detail_type, Direction::Out);
-            trace!(channel_id = %self.channel_id, message = ?message, "Message dropped");
-
-            if let Some(callback) = callback {
-                if let Some(async_rt) = self.async_rt.upgrade() {
-                    async_rt.post(Box::new(move || {
-                        callback(ErrorCode::not_supported(), 0);
-                    }));
-                }
-            }
-        }
-    }
-
     fn close(&self) {
         self.socket.close();
     }

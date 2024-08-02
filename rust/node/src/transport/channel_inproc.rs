@@ -218,6 +218,7 @@ impl AsyncBufferReader for VecBufferReader {
     }
 }
 
+#[async_trait]
 impl Channel for ChannelInProc {
     fn channel_id(&self) -> ChannelId {
         self.channel_id
@@ -297,6 +298,15 @@ impl Channel for ChannelInProc {
             Arc::new(Vec::from(buffer)) // TODO don't copy buffer
         };
         self.send_buffer_2(&buffer, None, drop_policy, traffic_type);
+    }
+
+    async fn send_buffer(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        self.send_buffer_2(&buffer, None, BufferDropPolicy::NoSocketDrop, traffic_type);
+        Ok(())
     }
 
     fn send_obsolete(

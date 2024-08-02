@@ -18,6 +18,7 @@ use std::{
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tokio::time::sleep;
 use tracing::trace;
 
 pub struct TcpChannelData {
@@ -93,7 +94,7 @@ impl ChannelTcp {
 }
 
 pub trait ChannelTcpExt {
-    fn send_buffer(
+    fn send_buffer_obsolete(
         &self,
         buffer: &Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
@@ -109,7 +110,7 @@ impl Display for ChannelTcp {
 }
 
 impl ChannelTcpExt for Arc<ChannelTcp> {
-    fn send_buffer(
+    fn send_buffer_obsolete(
         &self,
         buffer: &Arc<Vec<u8>>,
         callback: Option<WriteCallback>,
@@ -156,6 +157,7 @@ impl ChannelTcpExt for Arc<ChannelTcp> {
     }
 }
 
+#[async_trait]
 impl Channel for Arc<ChannelTcp> {
     fn channel_id(&self) -> ChannelId {
         self.channel_id
@@ -248,7 +250,7 @@ impl Channel for Arc<ChannelTcp> {
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, None, drop_policy, traffic_type);
+            self.send_buffer_obsolete(&buffer, None, drop_policy, traffic_type);
             self.stats
                 .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = %self.channel_id, message = ?message, "Message sent");
@@ -258,6 +260,21 @@ impl Channel for Arc<ChannelTcp> {
                 .inc_dir_aggregate(StatType::Drop, detail_type, Direction::Out);
             trace!(channel_id = %self.channel_id, message = ?message, "Message dropped");
         }
+    }
+
+    async fn send_buffer(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        while !self.limiter.should_pass(buffer.len(), traffic_type.into()) {
+            // TODO: better implementation
+            sleep(Duration::from_millis(20)).await;
+        }
+
+        self.socket.write(buffer, traffic_type).await?;
+        self.channel_mutex.lock().unwrap().last_packet_sent = SystemTime::now();
+        Ok(())
     }
 
     // TODO delete:
@@ -276,7 +293,7 @@ impl Channel for Arc<ChannelTcp> {
         let is_droppable_by_limiter = drop_policy == BufferDropPolicy::Limiter;
         let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
         if !is_droppable_by_limiter || should_pass {
-            self.send_buffer(&buffer, callback, drop_policy, traffic_type);
+            self.send_buffer_obsolete(&buffer, callback, drop_policy, traffic_type);
             self.stats
                 .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
             trace!(channel_id = %self.channel_id, message = ?message, "Message sent");

@@ -83,6 +83,7 @@ impl ChannelFake {
     }
 }
 
+#[async_trait]
 impl Channel for ChannelFake {
     fn channel_id(&self) -> ChannelId {
         self.channel_id
@@ -156,6 +157,14 @@ impl Channel for ChannelFake {
         _drop_policy: BufferDropPolicy,
         _traffic_type: TrafficType,
     ) {
+    }
+
+    async fn send_buffer(
+        &self,
+        buffer: &Arc<Vec<u8>>,
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        Ok(())
     }
 
     fn send_obsolete(

@@ -93,7 +93,7 @@ impl BootstrapClient {
         traffic_type: TrafficType,
     ) {
         self.tcp_channel()
-            .send_buffer(buffer, callback, policy, traffic_type);
+            .send_buffer_obsolete(buffer, callback, policy, traffic_type);
     }
 
     pub fn send_obsolete(

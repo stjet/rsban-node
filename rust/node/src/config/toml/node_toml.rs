@@ -42,7 +42,7 @@ pub struct NodeToml {
     pub peering_port: Option<u16>,
     pub pow_sleep_interval: Option<i64>,
     pub preconfigured_peers: Option<Vec<String>>,
-    pub preconfigured_representatives: Option<Vec<Account>>,
+    pub preconfigured_representatives: Option<Vec<String>>,
     pub receive_minimum: Option<String>,
     pub rep_crawler: Option<RepCrawlerToml>,
     pub rep_crawler_weight_minimum: Option<String>,
@@ -84,90 +84,7 @@ pub struct NodeToml {
 impl Default for NodeToml {
     fn default() -> Self {
         let node_config = NodeConfig::default();
-
-        Self {
-            allow_local_peers: Some(node_config.allow_local_peers),
-            background_threads: Some(node_config.background_threads),
-            backlog_scan_batch_size: Some(node_config.backlog_scan_batch_size),
-            backlog_scan_frequency: Some(node_config.backlog_scan_frequency),
-            backup_before_upgrade: Some(node_config.backup_before_upgrade),
-            bandwidth_limit: Some(node_config.bandwidth_limit),
-            bandwidth_limit_burst_ratio: Some(node_config.bandwidth_limit_burst_ratio),
-            block_processor_batch_max_time: Some(node_config.block_processor_batch_max_time_ms),
-            bootstrap_bandwidth_burst_ratio: Some(node_config.bootstrap_bandwidth_burst_ratio),
-            bootstrap_bandwidth_limit: Some(node_config.bootstrap_bandwidth_limit),
-            bootstrap_connections: Some(node_config.bootstrap_connections),
-            bootstrap_connections_max: Some(node_config.bootstrap_connections_max),
-            bootstrap_fraction_numerator: Some(node_config.bootstrap_fraction_numerator),
-            bootstrap_frontier_request_count: Some(node_config.bootstrap_frontier_request_count),
-            bootstrap_initiator_threads: Some(node_config.bootstrap_initiator_threads),
-            bootstrap_serving_threads: Some(node_config.bootstrap_serving_threads),
-            confirming_set_batch_time: Some(
-                node_config.confirming_set_batch_time.as_millis() as u64
-            ),
-            enable_voting: Some(node_config.enable_voting),
-            external_address: Some(node_config.external_address.clone()),
-            external_port: Some(node_config.external_port),
-            frontiers_confirmation: Some(match node_config.frontiers_confirmation {
-                FrontiersConfirmationMode::Always => "always".to_string(),
-                FrontiersConfirmationMode::Automatic => "auto".to_string(),
-                FrontiersConfirmationMode::Disabled => "disabled".to_string(),
-                FrontiersConfirmationMode::Invalid => "invalid".to_string(),
-            }),
-            io_threads: Some(node_config.io_threads),
-            max_queued_requests: Some(node_config.max_queued_requests),
-            max_unchecked_blocks: Some(node_config.max_unchecked_blocks),
-            max_work_generate_multiplier: Some(node_config.max_work_generate_multiplier),
-            network_threads: Some(node_config.network_threads),
-            online_weight_minimum: Some(node_config.online_weight_minimum.to_string_dec()),
-            password_fanout: Some(node_config.password_fanout),
-            peering_port: node_config.peering_port,
-            pow_sleep_interval: Some(node_config.pow_sleep_interval_ns),
-            preconfigured_peers: Some(node_config.preconfigured_peers.clone()),
-            preconfigured_representatives: Some(node_config.preconfigured_representatives.clone()),
-            receive_minimum: Some(node_config.receive_minimum.to_string_dec()),
-            rep_crawler: Some((&node_config).into()),
-            request_aggregator_threads: Some(node_config.request_aggregator_threads),
-            signature_checker_threads: Some(node_config.signature_checker_threads),
-            tcp_incoming_connections_max: Some(node_config.tcp_incoming_connections_max),
-            tcp_io_timeout: Some(node_config.tcp_io_timeout_s),
-            unchecked_cutoff_time: Some(node_config.unchecked_cutoff_time_s),
-            use_memory_pools: Some(node_config.use_memory_pools),
-            vote_generator_delay: Some(node_config.vote_generator_delay_ms),
-            vote_generator_threshold: Some(node_config.vote_generator_threshold),
-            vote_minimum: Some(node_config.vote_minimum.to_string_dec()),
-            work_peers: Some(node_config.work_peers),
-            work_threads: Some(node_config.work_threads),
-            optimistic_scheduler: Some(OptimisticSchedulerToml::default()),
-            priority_bucket: Some(PriorityBucketToml::default()),
-            bootstrap_ascending: Some(BootstrapAscendingToml::default()),
-            bootstrap_server: Some(BootstrapServerToml::default()),
-            secondary_work_peers: Some(node_config.secondary_work_peers),
-            max_pruning_age_s: Some(node_config.max_pruning_age_s),
-            max_pruning_depth: Some(node_config.max_pruning_depth),
-            websocket: Some(WebsocketToml::default()),
-            ipc: Some((&node_config.ipc_config).into()),
-            diagnostics: Some(DiagnosticsToml::default()),
-            statistics: Some(StatsToml::default()),
-            lmdb: Some(LmdbToml::default()),
-            vote_cache: Some(VoteCacheToml::default()),
-            block_processor: Some(BlockProcessorToml::default()),
-            active_elections: Some(ActiveElectionsToml::default()),
-            vote_processor: Some(VoteProcessorToml::default()),
-            request_aggregator: Some(RequestAggregatorToml::default()),
-            message_processor: Some(MessageProcessorToml::default()),
-            monitor: Some(MonitorToml::default()),
-            httpcallback: Some(HttpcallbackToml::default()),
-            rep_crawler_weight_minimum: Some(
-                node_config.rep_crawler_weight_minimum.to_string_dec(),
-            ),
-            representative_vote_weight_minimum: Some(
-                node_config
-                    .representative_vote_weight_minimum
-                    .to_string_dec(),
-            ),
-            experimental: Some(ExperimentalToml::default()),
-        }
+        (&node_config).into()
     }
 }
 
@@ -238,7 +155,7 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(frontiers_confirmation) = &toml.frontiers_confirmation {
             config.frontiers_confirmation = match frontiers_confirmation.as_str() {
                 "always" => FrontiersConfirmationMode::Always,
-                "automatic" => FrontiersConfirmationMode::Automatic,
+                "auto" => FrontiersConfirmationMode::Automatic,
                 "disabled" => FrontiersConfirmationMode::Disabled,
                 _ => FrontiersConfirmationMode::Invalid,
             }
@@ -275,7 +192,10 @@ impl From<&NodeToml> for NodeConfig {
             config.preconfigured_peers = preconfigured_peers.clone();
         }
         if let Some(preconfigured_representatives) = &toml.preconfigured_representatives {
-            config.preconfigured_representatives = preconfigured_representatives.clone();
+            config.preconfigured_representatives = preconfigured_representatives
+                .iter()
+                .map(|string| Account::decode_account(&string).expect("Invalid representative"))
+                .collect();
         }
         if let Some(receive_minimum) = &toml.receive_minimum {
             config.receive_minimum =
@@ -426,25 +346,33 @@ impl From<&NodeConfig> for NodeToml {
             enable_voting: Some(config.enable_voting),
             external_address: Some(config.external_address.clone()),
             external_port: Some(config.external_port),
-            frontiers_confirmation: Some(
-                serde_json::to_string(&config.frontiers_confirmation)
-                    .expect("Failed to serialize frontiers confirmation"),
-            ),
+            frontiers_confirmation: Some(match config.frontiers_confirmation {
+                FrontiersConfirmationMode::Always => "always".to_string(),
+                FrontiersConfirmationMode::Automatic => "auto".to_string(),
+                FrontiersConfirmationMode::Disabled => "disabled".to_string(),
+                FrontiersConfirmationMode::Invalid => "invalid".to_string(),
+            }),
             io_threads: Some(config.io_threads),
             max_queued_requests: Some(config.max_queued_requests),
             max_unchecked_blocks: Some(config.max_unchecked_blocks),
             max_work_generate_multiplier: Some(config.max_work_generate_multiplier),
             network_threads: Some(config.network_threads),
-            online_weight_minimum: Some(config.online_weight_minimum.encode_hex()),
+            online_weight_minimum: Some(config.online_weight_minimum.to_string_dec()),
             password_fanout: Some(config.password_fanout),
             peering_port: config.peering_port,
             pow_sleep_interval: Some(config.pow_sleep_interval_ns),
             preconfigured_peers: Some(config.preconfigured_peers.clone()),
-            preconfigured_representatives: Some(config.preconfigured_representatives.clone()),
-            receive_minimum: Some(config.receive_minimum.encode_hex()),
-            rep_crawler_weight_minimum: Some(config.rep_crawler_weight_minimum.encode_hex()),
+            preconfigured_representatives: Some(
+                config
+                    .preconfigured_representatives
+                    .iter()
+                    .map(|pk| pk.encode_account())
+                    .collect(),
+            ),
+            receive_minimum: Some(config.receive_minimum.to_string_dec()),
+            rep_crawler_weight_minimum: Some(config.rep_crawler_weight_minimum.to_string_dec()),
             representative_vote_weight_minimum: Some(
-                config.representative_vote_weight_minimum.encode_hex(),
+                config.representative_vote_weight_minimum.to_string_dec(),
             ),
             request_aggregator_threads: Some(config.request_aggregator_threads),
             signature_checker_threads: Some(config.signature_checker_threads),
@@ -454,7 +382,7 @@ impl From<&NodeConfig> for NodeToml {
             use_memory_pools: Some(config.use_memory_pools),
             vote_generator_delay: Some(config.vote_generator_delay_ms),
             vote_generator_threshold: Some(config.vote_generator_threshold),
-            vote_minimum: Some(config.vote_minimum.encode_hex()),
+            vote_minimum: Some(config.vote_minimum.to_string_dec()),
             work_peers: Some(config.work_peers.clone()),
             work_threads: Some(config.work_threads),
             optimistic_scheduler: Some((&config.optimistic_scheduler).into()),

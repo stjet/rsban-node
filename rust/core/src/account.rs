@@ -58,16 +58,6 @@ impl serde::Serialize for Account {
     }
 }
 
-impl<'de> Deserialize<'de> for Account {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Account::decode_account(&s).map_err(serde::de::Error::custom)
-    }
-}
-
 struct EncodedAccountU512(U512);
 
 impl EncodedAccountU512 {

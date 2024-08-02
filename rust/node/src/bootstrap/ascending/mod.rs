@@ -127,12 +127,7 @@ impl BootstrapAscending {
         );
 
         // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        channel.send_obsolete(
-            &request,
-            None,
-            BufferDropPolicy::Limiter,
-            TrafficType::Bootstrap,
-        );
+        channel.try_send(&request, BufferDropPolicy::Limiter, TrafficType::Bootstrap);
     }
 
     pub fn priority_len(&self) -> usize {

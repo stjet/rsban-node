@@ -371,37 +371,29 @@ impl Network {
             .unwrap_or(true)
     }
 
-    pub fn send(
+    pub fn try_send(
         &self,
         channel_id: ChannelId,
         message: &Message,
-        callback: Option<WriteCallback>,
         drop_policy: BufferDropPolicy,
         traffic_type: TrafficType,
     ) {
         if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
-            channel
-                .channel
-                .send_obsolete(message, callback, drop_policy, traffic_type);
+            channel.channel.try_send(message, drop_policy, traffic_type);
         }
     }
 
     pub fn flood_message2(&self, message: &Message, drop_policy: BufferDropPolicy, scale: f32) {
         let channels = self.random_fanout(scale);
         for channel in channels {
-            channel.send_obsolete(message, None, drop_policy, TrafficType::Generic)
+            channel.try_send(message, drop_policy, TrafficType::Generic)
         }
     }
 
     pub fn flood_message(&self, message: &Message, scale: f32) {
         let channels = self.random_fanout(scale);
         for channel in channels {
-            channel.send_obsolete(
-                message,
-                None,
-                BufferDropPolicy::Limiter,
-                TrafficType::Generic,
-            )
+            channel.try_send(message, BufferDropPolicy::Limiter, TrafficType::Generic)
         }
     }
 

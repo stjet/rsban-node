@@ -993,23 +993,3 @@ pub(crate) struct ChannelsInfo {
     pub inbound: usize,
     pub outbound: usize,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    #[ignore = "todo"]
-    async fn initiate_handshake_when_outbound_connection_added() {
-        let network = Network::new_null();
-        let socket = Arc::new(Socket::new_null());
-        let response_server = Arc::new(ResponseServer::new_null());
-
-        network
-            .add(&socket, &response_server, ChannelDirection::Outbound)
-            .await
-            .unwrap();
-
-        // TODO assert that initiate handshake was called
-    }
-}

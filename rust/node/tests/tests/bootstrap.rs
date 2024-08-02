@@ -7,17 +7,17 @@ use rsnano_core::{
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
 use rsnano_node::{
+    bootstrap::BulkPullServer,
+    node::Node,
+    stats::SocketStats,
+    transport::{ChannelDirection, ResponseServer, SocketBuilder},
+};
+use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
     config::{FrontiersConfirmationMode, NodeFlags},
     node::NodeExt,
     transport::TcpStream,
     wallets::WalletsExt,
-};
-use rsnano_node::{
-    bootstrap::{BootstrapMessageVisitorFactory, BulkPullServer},
-    node::Node,
-    stats::SocketStats,
-    transport::{ChannelDirection, ResponseServer, SocketBuilder},
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -1298,17 +1298,6 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         .observer(socket_stats)
         .finish(TcpStream::new_null());
 
-    let visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
-        node.async_rt.clone(),
-        node.stats.clone(),
-        node.network_params.network.clone(),
-        node.ledger.clone(),
-        node.workers.clone(),
-        node.block_processor.clone(),
-        node.bootstrap_initiator.clone(),
-        node.flags.clone(),
-    ));
-
     Arc::new(ResponseServer::new(
         &node.network,
         node.network.inbound_queue.clone(),
@@ -1316,9 +1305,14 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.network.publish_filter.clone(),
         Arc::new(node.network_params.clone()),
         node.stats.clone(),
-        visitor_factory,
         true,
         node.syn_cookies.clone(),
         node.node_id.clone(),
+        node.async_rt.clone(),
+        node.ledger.clone(),
+        node.workers.clone(),
+        node.block_processor.clone(),
+        node.bootstrap_initiator.clone(),
+        node.flags.clone(),
     ))
 }

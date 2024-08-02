@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     stats,
-    utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode, ThreadPool, ThreadPoolImpl},
+    utils::{into_ipv6_socket_address, AsyncRuntime, ErrorCode},
 };
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
@@ -14,11 +14,11 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex,
     },
     time::Duration,
 };
-use tokio::task::spawn_blocking;
+use tokio::{task::spawn_blocking, time::sleep};
 use tracing::debug;
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -113,7 +113,6 @@ pub struct Socket {
 
     idle_timeout: Duration,
 
-    thread_pool: Arc<dyn ThreadPool>,
     direction: ChannelDirection,
     /// used in real time server sockets, number of seconds of no receive traffic that will cause the socket to timeout
     pub silent_connection_tolerance_time: AtomicU64,
@@ -131,17 +130,14 @@ pub struct Socket {
     observer: Arc<dyn SocketObserver>,
 
     write_queue: WriteQueue,
-    runtime: Weak<AsyncRuntime>,
     current_action: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
     stream: Arc<TcpStream>,
 }
 
 impl Socket {
     pub fn new_null() -> Arc<Socket> {
-        let thread_pool = Arc::new(ThreadPoolImpl::new_null());
         SocketBuilder::new(
             ChannelDirection::Outbound,
-            thread_pool,
             Arc::new(AsyncRuntime::default()),
         )
         .finish(TcpStream::new_null())
@@ -301,6 +297,43 @@ impl Socket {
         }
         Ok(())
     }
+
+    async fn ongoing_checkup(&self) {
+        loop {
+            sleep(Duration::from_secs(2)).await;
+            // If the socket is already dead, close just in case, and stop doing checkups
+            if !self.is_alive() {
+                self.close_internal();
+                return;
+            }
+
+            let now = seconds_since_epoch();
+            let mut condition_to_disconnect = false;
+
+            // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
+            if self.direction == ChannelDirection::Inbound
+                && (now - self.last_receive_time_or_init.load(Ordering::SeqCst))
+                    > self.silent_connection_tolerance_time.load(Ordering::SeqCst)
+            {
+                self.observer.silent_connection_dropped();
+                condition_to_disconnect = true;
+            }
+
+            // if there is no activity for timeout seconds then disconnect
+            if (now - self.last_completion_time_or_init.load(Ordering::SeqCst))
+                > self.timeout_seconds.load(Ordering::SeqCst)
+            {
+                self.observer.inactive_connection_dropped(self.direction);
+                condition_to_disconnect = true;
+            }
+
+            if condition_to_disconnect {
+                self.observer.disconnect_due_to_timeout(self.remote);
+                self.timed_out.store(true, Ordering::SeqCst);
+                self.close_internal();
+            }
+        }
+    }
 }
 
 impl Drop for Socket {
@@ -313,8 +346,6 @@ impl Drop for Socket {
 
 #[async_trait]
 pub trait SocketExtensions {
-    fn start(&self);
-
     async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()>;
 
     fn async_write(
@@ -324,7 +355,6 @@ pub trait SocketExtensions {
         traffic_type: TrafficType,
     );
     fn close(&self);
-    fn ongoing_checkup(&self);
 
     fn get_remote(&self) -> Option<SocketAddrV6>;
     fn has_timed_out(&self) -> bool;
@@ -332,10 +362,6 @@ pub trait SocketExtensions {
 
 #[async_trait]
 impl SocketExtensions for Arc<Socket> {
-    fn start(&self) {
-        self.ongoing_checkup();
-    }
-
     async fn write(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
         if self.is_closed() {
             bail!("socket closed");
@@ -382,56 +408,6 @@ impl SocketExtensions for Arc<Socket> {
         self.close_internal();
     }
 
-    fn ongoing_checkup(&self) {
-        let socket = Arc::downgrade(self);
-        self.thread_pool.add_delayed_task(
-            Duration::from_secs(2),
-            Box::new(move || {
-                if let Some(socket) = socket.upgrade() {
-                    // If the socket is already dead, close just in case, and stop doing checkups
-                    if !socket.is_alive() {
-                        socket.close();
-                        return;
-                    }
-
-                    let now = seconds_since_epoch();
-                    let mut condition_to_disconnect = false;
-
-                    // if this is a server socket, and no data is received for silent_connection_tolerance_time seconds then disconnect
-                    if socket.direction == ChannelDirection::Inbound
-                        && (now - socket.last_receive_time_or_init.load(Ordering::SeqCst))
-                            > socket
-                                .silent_connection_tolerance_time
-                                .load(Ordering::SeqCst)
-                    {
-                        socket.observer.silent_connection_dropped();
-                        condition_to_disconnect = true;
-                    }
-
-                    // if there is no activity for timeout seconds then disconnect
-                    if (now - socket.last_completion_time_or_init.load(Ordering::SeqCst))
-                        > socket.timeout_seconds.load(Ordering::SeqCst)
-                    {
-                        socket
-                            .observer
-                            .inactive_connection_dropped(socket.direction);
-                        condition_to_disconnect = true;
-                    }
-
-                    if condition_to_disconnect {
-                        if let Some(ep) = socket.get_remote() {
-                            socket.observer.disconnect_due_to_timeout(ep);
-                        }
-                        socket.timed_out.store(true, Ordering::SeqCst);
-                        socket.close();
-                    } else if !socket.is_closed() {
-                        socket.ongoing_checkup();
-                    }
-                }
-            }),
-        );
-    }
-
     fn get_remote(&self) -> Option<SocketAddrV6> {
         Some(self.remote)
     }
@@ -450,7 +426,6 @@ impl AsyncBufferReader for Arc<Socket> {
 
 pub struct SocketBuilder {
     direction: ChannelDirection,
-    thread_pool: Arc<dyn ThreadPool>,
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
     idle_timeout: Duration,
@@ -467,14 +442,9 @@ pub fn alive_sockets() -> usize {
 }
 
 impl SocketBuilder {
-    pub fn new(
-        direction: ChannelDirection,
-        thread_pool: Arc<dyn ThreadPool>,
-        runtime: Arc<AsyncRuntime>,
-    ) -> Self {
+    pub fn new(direction: ChannelDirection, runtime: Arc<AsyncRuntime>) -> Self {
         Self {
             direction,
-            thread_pool,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
             idle_timeout: Duration::from_secs(120),
@@ -571,7 +541,7 @@ impl SocketBuilder {
             }
         });
 
-        Arc::new({
+        let socket = Arc::new({
             Socket {
                 socket_id,
                 remote,
@@ -580,7 +550,6 @@ impl SocketBuilder {
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
                 timeout_seconds: AtomicU64::new(u64::MAX),
                 idle_timeout: self.idle_timeout,
-                thread_pool: self.thread_pool,
                 direction: self.direction,
                 silent_connection_tolerance_time: AtomicU64::new(
                     self.silent_connection_tolerance_time.as_secs(),
@@ -590,10 +559,17 @@ impl SocketBuilder {
                 socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
                 observer,
                 write_queue,
-                runtime: Arc::downgrade(&self.runtime),
                 current_action: Mutex::new(None),
                 stream,
             }
-        })
+        });
+        socket.set_default_timeout();
+
+        let socket_l = socket.clone();
+        self.runtime
+            .tokio
+            .spawn(async move { socket_l.ongoing_checkup().await });
+
+        socket
     }
 }

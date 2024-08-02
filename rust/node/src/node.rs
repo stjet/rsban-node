@@ -505,7 +505,6 @@ impl Node {
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            workers.clone(),
             network_params.clone(),
             response_server_factory.clone(),
         ));
@@ -538,7 +537,6 @@ impl Node {
             network_params.clone(),
             async_rt.clone(),
             stats.clone(),
-            workers.clone(),
             response_server_factory.clone(),
         ));
 

@@ -227,7 +227,6 @@ impl Network {
             .channels
             .insert(channel, Some(response_server.clone()));
 
-        socket.start();
         let response_server_l = response_server.clone();
         self.async_rt
             .tokio

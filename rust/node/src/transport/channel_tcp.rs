@@ -277,6 +277,19 @@ impl Channel for Arc<ChannelTcp> {
         Ok(())
     }
 
+    async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Pass slice directly
+        };
+        self.send_buffer(&buffer, traffic_type).await?;
+        self.stats
+            .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
+        trace!(channel_id = %self.channel_id, message = ?message, "Message sent");
+        Ok(())
+    }
+
     // TODO delete:
     fn send_obsolete(
         &self,

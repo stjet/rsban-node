@@ -85,6 +85,7 @@ impl BootstrapClient {
         }
     }
 
+    // TODO delete:
     pub fn send_buffer(
         &self,
         buffer: &Arc<Vec<u8>>,

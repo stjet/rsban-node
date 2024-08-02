@@ -167,6 +167,10 @@ impl Channel for ChannelFake {
         Ok(())
     }
 
+    async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn send_obsolete(
         &self,
         message: &Message,

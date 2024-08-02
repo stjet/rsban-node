@@ -309,6 +309,16 @@ impl Channel for ChannelInProc {
         Ok(())
     }
 
+    async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
+        let buffer = {
+            let mut serializer = self.message_serializer.lock().unwrap();
+            let buffer = serializer.serialize(message);
+            Arc::new(Vec::from(buffer)) // TODO don't copy buffer
+        };
+        self.send_buffer_2(&buffer, None, BufferDropPolicy::NoSocketDrop, traffic_type);
+        Ok(())
+    }
+
     fn send_obsolete(
         &self,
         message: &Message,

@@ -15,6 +15,18 @@ impl From<&DaemonToml> for DaemonConfig {
         if let Some(node_toml) = &toml.node {
             config.node = node_toml.into();
         }
+        if let Some(opencl) = &toml.opencl {
+            if let Some(enable) = opencl.enable {
+                config.opencl_enable = enable;
+            }
+            config.opencl = opencl.into();
+        }
+        if let Some(rpc) = &toml.rpc {
+            if let Some(enable) = rpc.enable {
+                config.rpc_enable = enable;
+            }
+            config.rpc = rpc.into();
+        }
         config
     }
 }
@@ -1419,10 +1431,10 @@ mod tests {
         let default_statistics = node_toml.stat_config;
         let deserialized_statistics = default_node_toml.stat_config;
 
-        //assert_ne!(
-        //default_statistics.max_samples,
-        //deserialized_statistics.max_samples
-        //);
+        assert_ne!(
+            default_statistics.max_samples,
+            deserialized_statistics.max_samples
+        );
 
         assert_ne!(
             default_statistics.log_counters_filename,
@@ -1484,31 +1496,31 @@ mod tests {
         let default_opencl = default_daemon_toml.opencl;
         let deserialized_opencl = daemon_toml.opencl;
 
-        //assert_ne!(default_opencl.device, deserialized_opencl.device);
-        //assert_ne!(default_daemon_toml.opencl_enable, daemon_toml.opencl_enable);
-        //assert_ne!(default_opencl.platform, deserialized_opencl.platform);
-        //assert_ne!(default_opencl.threads, deserialized_opencl.threads);
+        assert_ne!(default_opencl.device, deserialized_opencl.device);
+        assert_ne!(default_daemon_toml.opencl_enable, daemon_toml.opencl_enable);
+        assert_ne!(default_opencl.platform, deserialized_opencl.platform);
+        assert_ne!(default_opencl.threads, deserialized_opencl.threads);
 
         let default_rpc = default_daemon_toml.rpc;
         let deserialized_rpc = daemon_toml.rpc;
 
-        //assert_ne!(default_daemon_toml.rpc_enable, daemon_toml.rpc_enable);
-        //assert_ne!(
-        //default_rpc.enable_sign_hash,
-        //deserialized_rpc.enable_sign_hash
-        //);
+        assert_ne!(default_daemon_toml.rpc_enable, daemon_toml.rpc_enable);
+        assert_ne!(
+            default_rpc.enable_sign_hash,
+            deserialized_rpc.enable_sign_hash
+        );
 
         let default_rpc_child_process = default_rpc.child_process;
         let deserialized_rpc_child_process = deserialized_rpc.child_process;
 
-        //assert_ne!(
-        //default_rpc_child_process.enable,
-        //deserialized_rpc_child_process.enable
-        //);
-        //assert_ne!(
-        //default_rpc_child_process.rpc_path,
-        //deserialized_rpc_child_process.rpc_path
-        //);
+        assert_ne!(
+            default_rpc_child_process.enable,
+            deserialized_rpc_child_process.enable
+        );
+        assert_ne!(
+            default_rpc_child_process.rpc_path,
+            deserialized_rpc_child_process.rpc_path
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use super::NetworkConstants;
 use anyhow::Result;
-use rsnano_core::utils::TomlWriter;
+use rsnano_core::utils::{get_cpu_count, TomlWriter};
 use std::{
     net::Ipv6Addr,
     path::{Path, PathBuf},
@@ -113,6 +113,12 @@ impl RpcConfig {
             Ok(())
         })?;
         Ok(())
+    }
+}
+
+impl Default for RpcConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
     }
 }
 

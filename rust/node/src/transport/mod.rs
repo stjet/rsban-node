@@ -162,20 +162,12 @@ impl ChannelEnum {
 
     #[allow(dead_code)]
     pub(crate) fn new_null_with_channel_id(channel_id: impl Into<ChannelId>) -> Self {
-        use crate::{stats::Stats, utils::AsyncRuntime};
         use rsnano_messages::ProtocolInfo;
         use std::net::Ipv6Addr;
-
-        let limiter = Arc::new(OutboundBandwidthLimiter::default());
-        let async_rt = Arc::new(AsyncRuntime::new(tokio::runtime::Runtime::new().unwrap()));
-        let stats = Arc::new(Stats::default());
 
         Self::Fake(ChannelFake::new(
             SystemTime::now(),
             channel_id.into(),
-            &async_rt,
-            limiter,
-            stats,
             SocketAddrV6::new(Ipv6Addr::LOCALHOST, 123, 0, 0),
             ProtocolInfo::dev_network(),
         ))

@@ -3,7 +3,6 @@ use super::{
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
     InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion,
     ResponseServerImpl, Socket, SocketExtensions, TcpConfig, TrafficType, TransportType,
-    WriteCallback,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -211,9 +210,8 @@ impl Network {
         let tcp_channel = ChannelTcp::new(
             socket.clone(),
             SystemTime::now(),
-            Arc::clone(&self.stats),
-            Arc::clone(&self.limiter),
-            &self.async_rt,
+            self.stats.clone(),
+            self.limiter.clone(),
             self.get_next_channel_id(),
             self.network_params.network.protocol_info(),
         );
@@ -291,9 +289,6 @@ impl Network {
         let fake = Arc::new(ChannelEnum::Fake(ChannelFake::new(
             SystemTime::now(),
             self.get_next_channel_id(),
-            &self.async_rt,
-            Arc::clone(&self.limiter),
-            Arc::clone(&self.stats),
             endpoint,
             self.network_params.network.protocol_info(),
         )));

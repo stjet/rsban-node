@@ -1,8 +1,5 @@
 use super::{bootstrap_limits, BootstrapConnections};
-use crate::transport::{
-    BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, TrafficType, WriteCallback,
-};
-use rsnano_messages::Message;
+use crate::transport::{ChannelEnum, ChannelTcp};
 use std::{
     net::SocketAddrV6,
     sync::{

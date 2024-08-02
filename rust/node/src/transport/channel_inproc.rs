@@ -14,14 +14,14 @@ use tokio::task::spawn_blocking;
 
 use crate::{
     config::NetworkConstants,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{Direction, StatType, Stats},
     utils::{AsyncRuntime, ErrorCode},
 };
 
 use super::{
     message_deserializer::{AsyncBufferReader, MessageDeserializer},
-    BandwidthLimitType, BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, ChannelId,
-    ChannelMode, NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
+    BufferDropPolicy, Channel, ChannelDirection, ChannelEnum, ChannelId, ChannelMode,
+    NetworkFilter, OutboundBandwidthLimiter, TrafficType, WriteCallback,
 };
 
 pub struct InProcChannelData {
@@ -345,7 +345,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_vec() {
-        let mut reader = VecBufferReader::new(Vec::new());
+        let reader = VecBufferReader::new(Vec::new());
         let mut buffer = vec![0u8; 3];
         let result = reader.read(&mut buffer, 1).await;
         assert!(result.is_err());
@@ -353,7 +353,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_one_byte() {
-        let mut reader = VecBufferReader::new(vec![42]);
+        let reader = VecBufferReader::new(vec![42]);
         let mut buffer = vec![0u8; 1];
         let result = reader.read(&mut buffer, 1).await;
         assert!(result.is_ok());
@@ -362,7 +362,7 @@ mod tests {
 
     #[tokio::test]
     async fn multiple_reads() {
-        let mut reader = VecBufferReader::new(vec![1, 2, 3, 4, 5]);
+        let reader = VecBufferReader::new(vec![1, 2, 3, 4, 5]);
         let mut buffer = vec![0u8; 2];
         reader.read(&mut buffer, 1).await.unwrap();
         assert_eq!(buffer[0], 1);

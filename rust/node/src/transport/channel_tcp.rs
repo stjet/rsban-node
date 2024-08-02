@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    utils::{AsyncRuntime, ErrorCode},
+    utils::ErrorCode,
 };
 use async_trait::async_trait;
 use rsnano_core::Account;
@@ -14,7 +14,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicU8, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex,
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -36,7 +36,6 @@ pub struct ChannelTcp {
     pub socket: Arc<Socket>,
     network_version: AtomicU8,
     limiter: Arc<OutboundBandwidthLimiter>,
-    async_rt: Weak<AsyncRuntime>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
     stats: Arc<Stats>,
 }
@@ -47,7 +46,6 @@ impl ChannelTcp {
         now: SystemTime,
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
-        async_rt: &Arc<AsyncRuntime>,
         channel_id: ChannelId,
         protocol: ProtocolInfo,
     ) -> Self {
@@ -68,7 +66,6 @@ impl ChannelTcp {
             socket,
             network_version: AtomicU8::new(protocol.version_using),
             limiter,
-            async_rt: Arc::downgrade(async_rt),
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
             stats,
         }

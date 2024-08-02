@@ -24,7 +24,7 @@ use rsnano_store_lmdb::LmdbConfig;
 use std::{cmp::max, fmt, net::Ipv6Addr, str::FromStr, time::Duration};
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive)]
 pub enum FrontiersConfirmationMode {
     Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not

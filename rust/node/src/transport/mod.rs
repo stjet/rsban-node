@@ -8,6 +8,7 @@ mod channel_tcp;
 mod fair_queue;
 mod handshake_process;
 mod inbound_message_queue;
+mod keepalive_cache;
 mod message_deserializer;
 mod message_processor;
 mod network;

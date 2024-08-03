@@ -80,749 +80,199 @@ mod tests {
     };
     use std::path::PathBuf;
 
+    static DEFAULT_TOML_STR: &str = r#"[node]
+        allow_local_peers = true
+        background_threads = 8
+        backlog_scan_batch_size = 10000
+        backlog_scan_frequency = 10
+        backup_before_upgrade = false
+        bandwidth_limit = 10485760
+        bandwidth_limit_burst_ratio = 3.0
+        block_processor_batch_max_time = 500
+        bootstrap_bandwidth_burst_ratio = 1.0
+        bootstrap_bandwidth_limit = 5242880
+        bootstrap_connections = 4
+        bootstrap_connections_max = 64
+        bootstrap_fraction_numerator = 1
+        bootstrap_frontier_request_count = 1048576
+        bootstrap_initiator_threads = 1
+        bootstrap_serving_threads = 1
+        confirming_set_batch_time = 250
+        enable_voting = false
+        external_address = "::"
+        external_port = 0
+        frontiers_confirmation = "auto"
+        io_threads = 8
+        max_queued_requests = 512
+        max_unchecked_blocks = 65536
+        max_work_generate_multiplier = 64.0
+        network_threads = 8
+        online_weight_minimum = "60000000000000000000000000000000000000"
+        password_fanout = 1024
+        peering_port = 54000
+        pow_sleep_interval = 0
+        preconfigured_peers = ["peering-beta.nano.org"]
+        preconfigured_representatives = ["nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy"]
+        receive_minimum = "1000000000000000000000000"
+        rep_crawler_weight_minimum = "340282366920938463463374607431768211455"
+        representative_vote_weight_minimum = "10000000000000000000000000000000"
+        request_aggregator_threads = 8
+        signature_checker_threads = 4
+        tcp_incoming_connections_max = 2048
+        tcp_io_timeout = 15
+        unchecked_cutoff_time = 14400
+        use_memory_pools = true
+        vote_generator_delay = 100
+        vote_generator_threshold = 3
+        vote_minimum = "1000000000000000000000000000000000"
+        work_threads = 8
+
+        [node.active_elections]
+        confirmation_cache = 65536
+        confirmation_history_size = 2048
+        hinted_limit_percentage = 20
+        optimistic_limit_percentage = 10
+        size = 5000
+
+        [node.block_processor]
+        max_peer_queue = 128
+        max_system_queue = 16384
+        priority_bootstrap = 8
+        priority_live = 1
+        priority_local = 16
+
+        [node.bootstrap_ascending]
+        block_wait_count = 1000
+        database_requests_limit = 1024
+        pull_count = 128
+        requests_limit = 64
+        throttle_coefficient = 16
+        throttle_wait = 100
+        timeout = 3000
+
+        [node.bootstrap_ascending.account_sets]
+        blocking_max = 262144
+        consideration_count = 4
+        cooldown = 3000
+        priorities_max = 262144
+
+        [node.bootstrap_server]
+        batch_size = 64
+        max_queue = 16
+        threads = 1
+
+        [node.diagnostics.txn_tracking]
+        enable = false
+        ignore_writes_below_block_processor_max_time = true
+        min_read_txn_time = 5000
+        min_write_txn_time = 500
+
+        [node.experimental]
+        max_pruning_age = 300
+        max_pruning_depth = 0
+        secondary_work_peers = ["127.0.0.1:8076"]
+
+        [node.httpcallback]
+        address = ""
+        port = 0
+        target = ""
+
+        [node.ipc.flatbuffers]
+        skip_unexpected_fields_in_json = true
+        verify_buffers = true
+
+        [node.ipc.local]
+        allow_unsafe = false
+        enable = false
+        io_timeout = 15
+        path = "/tmp/nano"
+
+        [node.ipc.tcp]
+        enable = false
+        io_timeout = 15
+        port = 56000
+
+        [node.lmdb]
+        map_size = 274877906944
+        max_databases = 128
+        sync = "always"
+
+        [node.message_processor]
+        max_queue = 64
+        threads = 2
+
+        [node.monitor]
+        enable = true
+        interval = 60
+
+        [node.optimistic_scheduler]
+        enable = true
+        gap_threshold = 32
+        max_size = 65536
+
+        [node.priority_bucket]
+        max_blocks = 8192
+        max_elections = 150
+        reserved_elections = 100
+
+        [node.rep_crawler]
+        query_timeout = 60000
+
+        [node.request_aggregator]
+        batch_size = 16
+        max_queue = 128
+        threads = 4
+
+        [node.statistics]
+        max_samples = 16384
+
+        [node.statistics.log]
+        filename_counters = "counters.stat"
+        filename_samples = "samples.stat"
+        headers = true
+        interval_counters = 0
+        interval_samples = 0
+        rotation_count = 100
+
+        [node.vote_cache]
+        age_cutoff = 900
+        max_size = 65536
+        max_voters = 64
+
+        [node.vote_processor]
+        batch_size = 1024
+        max_non_pr_queue = 32
+        max_pr_queue = 256
+        pr_priority = 3
+        threads = 4
+
+        [node.websocket]
+        address = "::1"
+        enable = false
+        port = 57000
+
+        [opencl]
+        device = 0
+        enable = false
+        platform = 0
+        threads = 1048576
+
+        [rpc]
+        enable = false
+        enable_sign_hash = false
+
+        [rpc.child_process]
+        enable = false
+        rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc""#;
+
     #[test]
     fn deserialize_defaults() {
-        let default_toml_str = r#"
-            [node]
-            allow_local_peers = true
-            background_threads = 8
-            backlog_scan_batch_size = 10000
-            backlog_scan_frequency = 10
-            backup_before_upgrade = false
-            bandwidth_limit = 10485760
-            bandwidth_limit_burst_ratio = 3.0
-            block_processor_batch_max_time = 500
-            bootstrap_bandwidth_burst_ratio = 1.0
-            bootstrap_bandwidth_limit = 5242880
-            bootstrap_connections = 4
-            bootstrap_connections_max = 64
-            bootstrap_fraction_numerator = 1
-            bootstrap_frontier_request_count = 1048576
-            bootstrap_initiator_threads = 1
-            bootstrap_serving_threads = 1
-            confirming_set_batch_time = 250
-            enable_voting = false
-            external_address = "::"
-            external_port = 0
-            frontiers_confirmation = "auto"
-            io_threads = 8
-            max_queued_requests = 512
-            max_unchecked_blocks = 65536
-            max_work_generate_multiplier = 64.0
-            network_threads = 8
-            online_weight_minimum = "60000000000000000000000000000000000000"
-            password_fanout = 1024
-            peering_port = 54000
-            pow_sleep_interval = 0
-            preconfigured_peers = ["peering-beta.nano.org"]
-            preconfigured_representatives = ["nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy"]
-            receive_minimum = "1000000000000000000000000"
-            rep_crawler_weight_minimum = "340282366920938463463374607431768211455"
-            representative_vote_weight_minimum = "10000000000000000000000000000000"
-            request_aggregator_threads = 8
-            signature_checker_threads = 4
-            tcp_incoming_connections_max = 2048
-            tcp_io_timeout = 15
-            unchecked_cutoff_time = 14400
-            use_memory_pools = true
-            vote_generator_delay = 100
-            vote_generator_threshold = 3
-            vote_minimum = "1000000000000000000000000000000000"
-            work_threads = 8
-
-            [node.active_elections]
-            confirmation_cache = 65536
-            confirmation_history_size = 2048
-            hinted_limit_percentage = 20
-            optimistic_limit_percentage = 10
-            size = 5000
-
-            [node.block_processor]
-            max_peer_queue = 128
-            max_system_queue = 16384
-            priority_bootstrap = 8
-            priority_live = 1
-            priority_local = 16
-
-            [node.bootstrap_ascending]
-            block_wait_count = 1000
-            database_requests_limit = 1024
-            pull_count = 128
-            requests_limit = 64
-            throttle_coefficient = 16
-            throttle_wait = 100
-            timeout = 3000
-
-            [node.bootstrap_ascending.account_sets]
-            blocking_max = 262144
-            consideration_count = 4
-            cooldown = 3000
-            priorities_max = 262144
-
-            [node.bootstrap_server]
-            batch_size = 64
-            max_queue = 16
-            threads = 1
-
-            [node.diagnostics.txn_tracking]
-            enable = false
-            ignore_writes_below_block_processor_max_time = true
-            min_read_txn_time = 5000
-            min_write_txn_time = 500
-
-            [node.experimental]
-            max_pruning_age = 300
-            max_pruning_depth = 0
-            secondary_work_peers = ["127.0.0.1:8076"]
-
-            [node.httpcallback]
-            address = ""
-            port = 0
-            target = ""
-
-            [node.ipc.flatbuffers]
-            skip_unexpected_fields_in_json = true
-            verify_buffers = true
-
-            [node.ipc.local]
-            allow_unsafe = false
-            enable = false
-            io_timeout = 15
-            path = "/tmp/nano"
-
-            [node.ipc.tcp]
-            enable = false
-            io_timeout = 15
-            port = 56000
-
-            [node.lmdb]
-            map_size = 274877906944
-            max_databases = 128
-            sync = "always"
-
-            [node.message_processor]
-            max_queue = 64
-            threads = 2
-
-            [node.monitor]
-            enable = true
-            interval = 60
-
-            [node.optimistic_scheduler]
-            enable = true
-            gap_threshold = 32
-            max_size = 65536
-
-            [node.priority_bucket]
-            max_blocks = 8192
-            max_elections = 150
-            reserved_elections = 100
-
-            [node.rep_crawler]
-            query_timeout = 60000
-
-            [node.request_aggregator]
-            batch_size = 16
-            max_queue = 128
-            threads = 4
-
-            [node.statistics]
-            max_samples = 16384
-
-            [node.statistics.log]
-            filename_counters = "counters.stat"
-            filename_samples = "samples.stat"
-            headers = true
-            interval_counters = 0
-            interval_samples = 0
-            rotation_count = 100
-
-            [node.vote_cache]
-            age_cutoff = 900
-            max_size = 65536
-            max_voters = 64
-
-            [node.vote_processor]
-            batch_size = 1024
-            max_non_pr_queue = 32
-            max_pr_queue = 256
-            pr_priority = 3
-            threads = 4
-
-            [node.websocket]
-            address = "::1"
-            enable = false
-            port = 57000
-
-            [opencl]
-            device = 0
-            enable = false
-            platform = 0
-            threads = 1048576
-
-            [rpc]
-            enable = false
-            enable_sign_hash = false
-
-            [rpc.child_process]
-            enable = false
-            rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc"
-        "#;
-
-        let deserialized_toml: DaemonToml = toml::from_str(&default_toml_str).unwrap();
+        let deserialized_toml: DaemonToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
 
         let default_daemon_config = DaemonConfig::default();
         let deserialized_daemon_config: DaemonConfig = (&deserialized_toml).into();
 
-        let deserialized_node_config = deserialized_daemon_config.node;
-        let default_node_config = default_daemon_config.node;
-
-        assert_eq!(
-            deserialized_node_config.allow_local_peers,
-            default_node_config.allow_local_peers
-        );
-        assert_eq!(
-            deserialized_node_config.background_threads,
-            default_node_config.background_threads
-        );
-        assert_eq!(
-            deserialized_node_config.backlog_scan_batch_size,
-            default_node_config.backlog_scan_batch_size
-        );
-        assert_eq!(
-            deserialized_node_config.backlog_scan_frequency,
-            default_node_config.backlog_scan_frequency
-        );
-        assert_eq!(
-            deserialized_node_config.backup_before_upgrade,
-            default_node_config.backup_before_upgrade
-        );
-        assert_eq!(
-            deserialized_node_config.bandwidth_limit,
-            default_node_config.bandwidth_limit
-        );
-        assert_eq!(
-            deserialized_node_config.bandwidth_limit_burst_ratio,
-            default_node_config.bandwidth_limit_burst_ratio
-        );
-        assert_eq!(
-            deserialized_node_config.block_processor_batch_max_time_ms,
-            default_node_config.block_processor_batch_max_time_ms
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_bandwidth_burst_ratio,
-            default_node_config.bootstrap_bandwidth_burst_ratio
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_bandwidth_limit,
-            default_node_config.bootstrap_bandwidth_limit
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_connections,
-            default_node_config.bootstrap_connections
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_connections_max,
-            default_node_config.bootstrap_connections_max
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_fraction_numerator,
-            default_node_config.bootstrap_fraction_numerator
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_frontier_request_count,
-            default_node_config.bootstrap_frontier_request_count
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_initiator_threads,
-            default_node_config.bootstrap_initiator_threads
-        );
-        assert_eq!(
-            deserialized_node_config.bootstrap_serving_threads,
-            default_node_config.bootstrap_serving_threads
-        );
-        assert_eq!(
-            deserialized_node_config.confirming_set_batch_time,
-            default_node_config.confirming_set_batch_time
-        );
-        assert_eq!(
-            deserialized_node_config.enable_voting,
-            default_node_config.enable_voting
-        );
-        assert_eq!(
-            deserialized_node_config.external_address,
-            default_node_config.external_address
-        );
-        assert_eq!(
-            deserialized_node_config.external_port,
-            default_node_config.external_port
-        );
-        assert_eq!(
-            deserialized_node_config.frontiers_confirmation,
-            default_node_config.frontiers_confirmation
-        );
-        assert_eq!(
-            deserialized_node_config.io_threads,
-            default_node_config.io_threads
-        );
-        assert_eq!(
-            deserialized_node_config.max_queued_requests,
-            default_node_config.max_queued_requests
-        );
-        assert_eq!(
-            deserialized_node_config.max_work_generate_multiplier,
-            default_node_config.max_work_generate_multiplier
-        );
-        assert_eq!(
-            deserialized_node_config.network_threads,
-            default_node_config.network_threads
-        );
-        assert_eq!(
-            deserialized_node_config.online_weight_minimum,
-            default_node_config.online_weight_minimum
-        );
-        assert_eq!(
-            deserialized_node_config.password_fanout,
-            default_node_config.password_fanout
-        );
-        assert_eq!(
-            deserialized_node_config.peering_port,
-            default_node_config.peering_port
-        );
-        assert_eq!(
-            deserialized_node_config.pow_sleep_interval_ns,
-            default_node_config.pow_sleep_interval_ns
-        );
-        assert_eq!(
-            deserialized_node_config.preconfigured_peers,
-            default_node_config.preconfigured_peers
-        );
-        assert_eq!(
-            deserialized_node_config.preconfigured_representatives,
-            default_node_config.preconfigured_representatives
-        );
-        assert_eq!(
-            deserialized_node_config.receive_minimum,
-            default_node_config.receive_minimum
-        );
-        assert_eq!(
-            deserialized_node_config.rep_crawler_weight_minimum,
-            default_node_config.rep_crawler_weight_minimum
-        );
-        assert_eq!(
-            deserialized_node_config.representative_vote_weight_minimum,
-            default_node_config.representative_vote_weight_minimum
-        );
-        assert_eq!(
-            deserialized_node_config.request_aggregator_threads,
-            default_node_config.request_aggregator_threads
-        );
-        assert_eq!(
-            deserialized_node_config.max_unchecked_blocks,
-            default_node_config.max_unchecked_blocks
-        );
-        assert_eq!(
-            deserialized_node_config.signature_checker_threads,
-            default_node_config.signature_checker_threads
-        );
-        assert_eq!(
-            deserialized_node_config.tcp_incoming_connections_max,
-            default_node_config.tcp_incoming_connections_max
-        );
-        assert_eq!(
-            deserialized_node_config.tcp_io_timeout_s,
-            default_node_config.tcp_io_timeout_s
-        );
-        assert_eq!(
-            deserialized_node_config.unchecked_cutoff_time_s,
-            default_node_config.unchecked_cutoff_time_s
-        );
-        assert_eq!(
-            deserialized_node_config.use_memory_pools,
-            default_node_config.use_memory_pools
-        );
-        assert_eq!(
-            deserialized_node_config.vote_generator_delay_ms,
-            default_node_config.vote_generator_delay_ms
-        );
-        assert_eq!(
-            deserialized_node_config.vote_generator_threshold,
-            default_node_config.vote_generator_threshold
-        );
-        assert_eq!(
-            deserialized_node_config.vote_minimum,
-            default_node_config.vote_minimum
-        );
-        assert_eq!(
-            deserialized_node_config.work_threads,
-            default_node_config.work_threads
-        );
-
-        let default_active_elections = deserialized_node_config.active_elections;
-        let deserialized_active_elections = default_node_config.active_elections;
-
-        assert_eq!(
-            default_active_elections.confirmation_cache,
-            deserialized_active_elections.confirmation_cache
-        );
-        assert_eq!(
-            default_active_elections.confirmation_history_size,
-            deserialized_active_elections.confirmation_history_size
-        );
-        assert_eq!(
-            default_active_elections.hinted_limit_percentage,
-            deserialized_active_elections.hinted_limit_percentage
-        );
-        assert_eq!(
-            default_active_elections.optimistic_limit_percentage,
-            deserialized_active_elections.optimistic_limit_percentage
-        );
-        assert_eq!(
-            default_active_elections.size,
-            deserialized_active_elections.size
-        );
-
-        let default_block_processor = deserialized_node_config.block_processor;
-        let deserialized_block_processor = default_node_config.block_processor;
-
-        assert_eq!(
-            default_block_processor.max_peer_queue,
-            deserialized_block_processor.max_peer_queue
-        );
-        assert_eq!(
-            default_block_processor.max_system_queue,
-            deserialized_block_processor.max_system_queue
-        );
-        assert_eq!(
-            default_block_processor.priority_bootstrap,
-            deserialized_block_processor.priority_bootstrap
-        );
-        assert_eq!(
-            default_block_processor.priority_live,
-            deserialized_block_processor.priority_live
-        );
-        assert_eq!(
-            default_block_processor.priority_local,
-            deserialized_block_processor.priority_local
-        );
-
-        let default_bootstrap_ascending = deserialized_node_config.bootstrap_ascending;
-        let deserialized_bootstrap_ascending = default_node_config.bootstrap_ascending;
-
-        assert_eq!(
-            default_bootstrap_ascending.block_wait_count,
-            deserialized_bootstrap_ascending.block_wait_count
-        );
-        assert_eq!(
-            default_bootstrap_ascending.database_requests_limit,
-            deserialized_bootstrap_ascending.database_requests_limit
-        );
-        assert_eq!(
-            default_bootstrap_ascending.pull_count,
-            deserialized_bootstrap_ascending.pull_count
-        );
-        assert_eq!(
-            default_bootstrap_ascending.requests_limit,
-            deserialized_bootstrap_ascending.requests_limit
-        );
-        assert_eq!(
-            default_bootstrap_ascending.throttle_coefficient,
-            deserialized_bootstrap_ascending.throttle_coefficient
-        );
-        assert_eq!(
-            default_bootstrap_ascending.throttle_wait,
-            deserialized_bootstrap_ascending.throttle_wait
-        );
-        assert_eq!(
-            default_bootstrap_ascending.timeout,
-            deserialized_bootstrap_ascending.timeout
-        );
-
-        let default_account_sets = default_bootstrap_ascending.account_sets;
-        let deserialized_account_sets = deserialized_bootstrap_ascending.account_sets;
-
-        assert_eq!(
-            default_account_sets.blocking_max,
-            deserialized_account_sets.blocking_max
-        );
-        assert_eq!(
-            default_account_sets.consideration_count,
-            deserialized_account_sets.consideration_count
-        );
-        assert_eq!(
-            default_account_sets.cooldown,
-            deserialized_account_sets.cooldown
-        );
-        assert_eq!(
-            default_account_sets.priorities_max,
-            deserialized_account_sets.priorities_max
-        );
-
-        let default_bootstrap_server = deserialized_node_config.bootstrap_server;
-        let deserialized_bootstrap_server = default_node_config.bootstrap_server;
-
-        assert_eq!(
-            default_bootstrap_server.batch_size,
-            deserialized_bootstrap_server.batch_size
-        );
-        assert_eq!(
-            default_bootstrap_server.max_queue,
-            deserialized_bootstrap_server.max_queue
-        );
-        assert_eq!(
-            default_bootstrap_server.threads,
-            deserialized_bootstrap_server.threads
-        );
-
-        let default_diagnostics_txn_tracking =
-            deserialized_node_config.diagnostics_config.txn_tracking;
-        let deserialized_diagnostics_txn_tracking =
-            default_node_config.diagnostics_config.txn_tracking;
-
-        assert_eq!(
-            default_diagnostics_txn_tracking.enable,
-            deserialized_diagnostics_txn_tracking.enable
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time,
-            deserialized_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.min_read_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_read_txn_time_ms
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.min_write_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_write_txn_time_ms
-        );
-
-        assert_eq!(
-            default_node_config.callback_address,
-            deserialized_node_config.callback_address
-        );
-        assert_eq!(
-            default_node_config.callback_port,
-            deserialized_node_config.callback_port
-        );
-        assert_eq!(
-            default_node_config.callback_target,
-            deserialized_node_config.callback_target
-        );
-
-        let default_ipc_flatbuffers = deserialized_node_config.ipc_config.flatbuffers;
-        let deserialized_ipc_flatbuffers = default_node_config.ipc_config.flatbuffers;
-
-        assert_eq!(
-            default_ipc_flatbuffers.skip_unexpected_fields_in_json,
-            deserialized_ipc_flatbuffers.skip_unexpected_fields_in_json
-        );
-        assert_eq!(
-            default_ipc_flatbuffers.verify_buffers,
-            deserialized_ipc_flatbuffers.verify_buffers
-        );
-
-        let default_ipc_local = deserialized_node_config.ipc_config.transport_domain;
-        let deserialized_ipc_local = default_node_config.ipc_config.transport_domain;
-
-        assert_eq!(
-            default_ipc_local.transport.allow_unsafe,
-            deserialized_ipc_local.transport.allow_unsafe
-        );
-        assert_eq!(
-            default_ipc_local.transport.enabled,
-            deserialized_ipc_local.transport.enabled
-        );
-        assert_eq!(
-            default_ipc_local.transport.io_timeout,
-            deserialized_ipc_local.transport.io_timeout
-        );
-        assert_eq!(default_ipc_local.path, deserialized_ipc_local.path);
-
-        let default_ipc_tcp = deserialized_node_config.ipc_config.transport_tcp;
-        let deserialized_ipc_tcp = default_node_config.ipc_config.transport_tcp;
-
-        assert_eq!(
-            default_ipc_tcp.transport.enabled,
-            deserialized_ipc_tcp.transport.enabled
-        );
-        assert_eq!(
-            default_ipc_tcp.transport.io_timeout,
-            deserialized_ipc_tcp.transport.io_timeout
-        );
-        assert_eq!(default_ipc_tcp.port, deserialized_ipc_tcp.port);
-
-        let default_lmdb = deserialized_node_config.lmdb_config;
-        let deserialized_lmdb = default_node_config.lmdb_config;
-
-        assert_eq!(default_lmdb.map_size, deserialized_lmdb.map_size);
-        assert_eq!(default_lmdb.max_databases, deserialized_lmdb.max_databases);
-        assert_eq!(default_lmdb.sync, deserialized_lmdb.sync);
-
-        let default_message_processor = deserialized_node_config.message_processor;
-        let deserialized_message_processor = default_node_config.message_processor;
-
-        assert_eq!(
-            default_message_processor.max_queue,
-            deserialized_message_processor.max_queue
-        );
-        assert_eq!(
-            default_message_processor.threads,
-            deserialized_message_processor.threads
-        );
-
-        let default_monitor = deserialized_node_config.monitor;
-        let deserialized_monitor = default_node_config.monitor;
-
-        assert_eq!(default_monitor.enabled, deserialized_monitor.enabled);
-        assert_eq!(default_monitor.interval, deserialized_monitor.interval);
-
-        let default_optimistic_scheduler = deserialized_node_config.optimistic_scheduler;
-        let deserialized_optimistic_scheduler = default_node_config.optimistic_scheduler;
-
-        assert_eq!(
-            default_optimistic_scheduler.enabled,
-            deserialized_optimistic_scheduler.enabled
-        );
-        assert_eq!(
-            default_optimistic_scheduler.gap_threshold,
-            deserialized_optimistic_scheduler.gap_threshold
-        );
-        assert_eq!(
-            default_optimistic_scheduler.max_size,
-            deserialized_optimistic_scheduler.max_size
-        );
-
-        let default_priority_bucket = deserialized_node_config.priority_bucket;
-        let deserialized_priority_bucket = default_node_config.priority_bucket;
-
-        assert_eq!(
-            default_priority_bucket.max_blocks,
-            deserialized_priority_bucket.max_blocks
-        );
-        assert_eq!(
-            default_priority_bucket.max_elections,
-            deserialized_priority_bucket.max_elections
-        );
-        assert_eq!(
-            default_priority_bucket.reserved_elections,
-            deserialized_priority_bucket.reserved_elections
-        );
-
-        let default_request_aggregator = deserialized_node_config.request_aggregator;
-        let deserialized_request_aggregator = default_node_config.request_aggregator;
-
-        assert_eq!(
-            default_request_aggregator.batch_size,
-            deserialized_request_aggregator.batch_size
-        );
-        assert_eq!(
-            default_request_aggregator.max_queue,
-            deserialized_request_aggregator.max_queue
-        );
-        assert_eq!(
-            default_request_aggregator.threads,
-            deserialized_request_aggregator.threads
-        );
-
-        let default_statistics = deserialized_node_config.stat_config;
-        let deserialized_statistics = default_node_config.stat_config;
-
-        assert_eq!(
-            default_statistics.max_samples,
-            deserialized_statistics.max_samples
-        );
-
-        assert_eq!(
-            default_statistics.log_counters_filename,
-            deserialized_statistics.log_counters_filename
-        );
-
-        assert_eq!(
-            default_statistics.log_samples_filename,
-            deserialized_statistics.log_samples_filename
-        );
-
-        let default_vote_cache = deserialized_node_config.vote_cache;
-        let deserialized_vote_cache = default_node_config.vote_cache;
-
-        assert_eq!(
-            default_vote_cache.age_cutoff,
-            deserialized_vote_cache.age_cutoff
-        );
-        assert_eq!(
-            default_vote_cache.max_size,
-            deserialized_vote_cache.max_size
-        );
-        assert_eq!(
-            default_vote_cache.max_voters,
-            deserialized_vote_cache.max_voters
-        );
-
-        let default_vote_processor = deserialized_node_config.vote_processor;
-        let deserialized_vote_processor = default_node_config.vote_processor;
-
-        assert_eq!(
-            default_vote_processor.batch_size,
-            deserialized_vote_processor.batch_size
-        );
-        assert_eq!(
-            default_vote_processor.max_non_pr_queue,
-            deserialized_vote_processor.max_non_pr_queue
-        );
-        assert_eq!(
-            default_vote_processor.max_pr_queue,
-            deserialized_vote_processor.max_pr_queue
-        );
-        assert_eq!(
-            default_vote_processor.pr_priority,
-            deserialized_vote_processor.pr_priority
-        );
-        assert_eq!(
-            default_vote_processor.threads,
-            deserialized_vote_processor.threads
-        );
-
-        let default_websocket = deserialized_node_config.websocket_config;
-        let deserialized_websocket = default_node_config.websocket_config;
-
-        assert_eq!(default_websocket.address, deserialized_websocket.address);
-        assert_eq!(default_websocket.enabled, deserialized_websocket.enabled);
-        assert_eq!(default_websocket.port, deserialized_websocket.port);
-
-        let default_opencl = default_daemon_config.opencl;
-        let deserialized_opencl = deserialized_daemon_config.opencl;
-
-        assert_eq!(default_opencl.device, deserialized_opencl.device);
-        assert_eq!(
-            default_daemon_config.opencl_enable,
-            deserialized_daemon_config.opencl_enable
-        );
-        assert_eq!(default_opencl.platform, deserialized_opencl.platform);
-        assert_eq!(default_opencl.threads, deserialized_opencl.threads);
-
-        let default_rpc = default_daemon_config.rpc;
-        let deserialized_rpc = deserialized_daemon_config.rpc;
-
-        assert_eq!(
-            default_daemon_config.rpc_enable,
-            deserialized_daemon_config.rpc_enable
-        );
-        assert_eq!(
-            default_rpc.enable_sign_hash,
-            deserialized_rpc.enable_sign_hash
-        );
-
-        let default_rpc_child_process = default_rpc.child_process;
-        let deserialized_rpc_child_process = deserialized_rpc.child_process;
-
-        assert_eq!(
-            default_rpc_child_process.enable,
-            deserialized_rpc_child_process.enable
-        );
-        assert_eq!(
-            default_rpc_child_process.rpc_path,
-            deserialized_rpc_child_process.rpc_path
-        );
+        compare_configs(&deserialized_daemon_config, &default_daemon_config, true);
     }
 
     #[test]
@@ -1037,510 +487,7 @@ mod tests {
 
         let default_daemon_config = DaemonConfig::default();
 
-        let node_toml = deserialized_daemon_config.node;
-        let default_node_toml = default_daemon_config.node;
-
-        assert_ne!(
-            node_toml.allow_local_peers,
-            default_node_toml.allow_local_peers
-        );
-        assert_ne!(
-            node_toml.background_threads,
-            default_node_toml.background_threads
-        );
-        assert_ne!(
-            node_toml.backlog_scan_batch_size,
-            default_node_toml.backlog_scan_batch_size
-        );
-        assert_ne!(
-            node_toml.backlog_scan_frequency,
-            default_node_toml.backlog_scan_frequency
-        );
-        assert_ne!(
-            node_toml.backup_before_upgrade,
-            default_node_toml.backup_before_upgrade
-        );
-        assert_ne!(node_toml.bandwidth_limit, default_node_toml.bandwidth_limit);
-        assert_ne!(
-            node_toml.bandwidth_limit_burst_ratio,
-            default_node_toml.bandwidth_limit_burst_ratio
-        );
-        assert_ne!(
-            node_toml.block_processor_batch_max_time_ms,
-            default_node_toml.block_processor_batch_max_time_ms
-        );
-        assert_ne!(
-            node_toml.bootstrap_bandwidth_burst_ratio,
-            default_node_toml.bootstrap_bandwidth_burst_ratio
-        );
-        assert_ne!(
-            node_toml.bootstrap_bandwidth_limit,
-            default_node_toml.bootstrap_bandwidth_limit
-        );
-        assert_ne!(
-            node_toml.bootstrap_connections,
-            default_node_toml.bootstrap_connections
-        );
-        assert_ne!(
-            node_toml.bootstrap_connections_max,
-            default_node_toml.bootstrap_connections_max
-        );
-        assert_ne!(
-            node_toml.bootstrap_fraction_numerator,
-            default_node_toml.bootstrap_fraction_numerator
-        );
-        assert_ne!(
-            node_toml.bootstrap_frontier_request_count,
-            default_node_toml.bootstrap_frontier_request_count
-        );
-        assert_ne!(
-            node_toml.bootstrap_initiator_threads,
-            default_node_toml.bootstrap_initiator_threads
-        );
-        assert_ne!(
-            node_toml.bootstrap_serving_threads,
-            default_node_toml.bootstrap_serving_threads
-        );
-        assert_ne!(
-            node_toml.confirming_set_batch_time,
-            default_node_toml.confirming_set_batch_time
-        );
-        assert_ne!(node_toml.enable_voting, default_node_toml.enable_voting);
-        assert_ne!(
-            node_toml.external_address,
-            default_node_toml.external_address
-        );
-        assert_ne!(node_toml.external_port, default_node_toml.external_port);
-        assert_ne!(
-            node_toml.frontiers_confirmation,
-            default_node_toml.frontiers_confirmation
-        );
-        assert_ne!(node_toml.io_threads, default_node_toml.io_threads);
-        assert_ne!(
-            node_toml.max_queued_requests,
-            default_node_toml.max_queued_requests
-        );
-        assert_ne!(
-            node_toml.max_work_generate_multiplier,
-            default_node_toml.max_work_generate_multiplier
-        );
-        assert_ne!(node_toml.network_threads, default_node_toml.network_threads);
-        assert_ne!(
-            node_toml.online_weight_minimum,
-            default_node_toml.online_weight_minimum
-        );
-        assert_ne!(node_toml.password_fanout, default_node_toml.password_fanout);
-        assert_ne!(node_toml.peering_port, default_node_toml.peering_port);
-        assert_ne!(
-            node_toml.pow_sleep_interval_ns,
-            default_node_toml.pow_sleep_interval_ns
-        );
-        assert_ne!(
-            node_toml.preconfigured_peers,
-            default_node_toml.preconfigured_peers
-        );
-        assert_ne!(
-            node_toml.preconfigured_representatives,
-            default_node_toml.preconfigured_representatives
-        );
-        assert_ne!(node_toml.receive_minimum, default_node_toml.receive_minimum);
-        assert_ne!(
-            node_toml.rep_crawler_weight_minimum,
-            default_node_toml.rep_crawler_weight_minimum
-        );
-        assert_ne!(
-            node_toml.representative_vote_weight_minimum,
-            default_node_toml.representative_vote_weight_minimum
-        );
-        assert_ne!(
-            node_toml.request_aggregator_threads,
-            default_node_toml.request_aggregator_threads
-        );
-        assert_ne!(
-            node_toml.signature_checker_threads,
-            default_node_toml.signature_checker_threads
-        );
-        assert_ne!(
-            node_toml.tcp_incoming_connections_max,
-            default_node_toml.tcp_incoming_connections_max
-        );
-        assert_ne!(
-            node_toml.tcp_io_timeout_s,
-            default_node_toml.tcp_io_timeout_s
-        );
-        assert_ne!(
-            node_toml.unchecked_cutoff_time_s,
-            default_node_toml.unchecked_cutoff_time_s
-        );
-        assert_ne!(
-            node_toml.use_memory_pools,
-            default_node_toml.use_memory_pools
-        );
-        assert_ne!(
-            node_toml.vote_generator_delay_ms,
-            default_node_toml.vote_generator_delay_ms
-        );
-        assert_ne!(
-            node_toml.vote_generator_threshold,
-            default_node_toml.vote_generator_threshold
-        );
-        assert_ne!(node_toml.vote_minimum, default_node_toml.vote_minimum);
-        assert_ne!(node_toml.work_threads, default_node_toml.work_threads);
-
-        let default_active_elections = node_toml.active_elections;
-        let deserialized_active_elections = default_node_toml.active_elections;
-
-        assert_ne!(
-            default_active_elections.confirmation_cache,
-            deserialized_active_elections.confirmation_cache
-        );
-        assert_ne!(
-            default_active_elections.confirmation_history_size,
-            deserialized_active_elections.confirmation_history_size
-        );
-        assert_ne!(
-            default_active_elections.hinted_limit_percentage,
-            deserialized_active_elections.hinted_limit_percentage
-        );
-        assert_ne!(
-            default_active_elections.optimistic_limit_percentage,
-            deserialized_active_elections.optimistic_limit_percentage
-        );
-        assert_ne!(
-            default_active_elections.size,
-            deserialized_active_elections.size
-        );
-
-        let default_block_processor = node_toml.block_processor;
-        let deserialized_block_processor = default_node_toml.block_processor;
-
-        assert_ne!(
-            default_block_processor.max_peer_queue,
-            deserialized_block_processor.max_peer_queue
-        );
-        assert_ne!(
-            default_block_processor.max_system_queue,
-            deserialized_block_processor.max_system_queue
-        );
-        assert_ne!(
-            default_block_processor.priority_bootstrap,
-            deserialized_block_processor.priority_bootstrap
-        );
-        assert_ne!(
-            default_block_processor.priority_live,
-            deserialized_block_processor.priority_live
-        );
-        assert_ne!(
-            default_block_processor.priority_local,
-            deserialized_block_processor.priority_local
-        );
-
-        let default_bootstrap_ascending = node_toml.bootstrap_ascending;
-        let deserialized_bootstrap_ascending = default_node_toml.bootstrap_ascending;
-
-        assert_ne!(
-            default_bootstrap_ascending.block_wait_count,
-            deserialized_bootstrap_ascending.block_wait_count
-        );
-        assert_ne!(
-            default_bootstrap_ascending.database_requests_limit,
-            deserialized_bootstrap_ascending.database_requests_limit
-        );
-        assert_ne!(
-            default_bootstrap_ascending.pull_count,
-            deserialized_bootstrap_ascending.pull_count
-        );
-        assert_ne!(
-            default_bootstrap_ascending.requests_limit,
-            deserialized_bootstrap_ascending.requests_limit
-        );
-        assert_ne!(
-            default_bootstrap_ascending.throttle_coefficient,
-            deserialized_bootstrap_ascending.throttle_coefficient
-        );
-        assert_ne!(
-            default_bootstrap_ascending.throttle_wait,
-            deserialized_bootstrap_ascending.throttle_wait
-        );
-        assert_ne!(
-            default_bootstrap_ascending.timeout,
-            deserialized_bootstrap_ascending.timeout
-        );
-
-        let default_account_sets = default_bootstrap_ascending.account_sets;
-        let deserialized_account_sets = deserialized_bootstrap_ascending.account_sets;
-
-        assert_ne!(
-            default_account_sets.blocking_max,
-            deserialized_account_sets.blocking_max
-        );
-        assert_ne!(
-            default_account_sets.consideration_count,
-            deserialized_account_sets.consideration_count
-        );
-        assert_ne!(
-            default_account_sets.cooldown,
-            deserialized_account_sets.cooldown
-        );
-        assert_ne!(
-            default_account_sets.priorities_max,
-            deserialized_account_sets.priorities_max
-        );
-
-        let default_bootstrap_server = node_toml.bootstrap_server;
-        let deserialized_bootstrap_server = default_node_toml.bootstrap_server;
-
-        assert_ne!(
-            default_bootstrap_server.batch_size,
-            deserialized_bootstrap_server.batch_size
-        );
-        assert_ne!(
-            default_bootstrap_server.max_queue,
-            deserialized_bootstrap_server.max_queue
-        );
-        assert_ne!(
-            default_bootstrap_server.threads,
-            deserialized_bootstrap_server.threads
-        );
-
-        let default_diagnostics_txn_tracking = node_toml.diagnostics_config.txn_tracking;
-        let deserialized_diagnostics_txn_tracking =
-            default_node_toml.diagnostics_config.txn_tracking;
-
-        assert_ne!(
-            default_diagnostics_txn_tracking.enable,
-            deserialized_diagnostics_txn_tracking.enable
-        );
-        assert_ne!(
-            default_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time,
-            deserialized_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time
-        );
-        assert_ne!(
-            default_diagnostics_txn_tracking.min_read_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_read_txn_time_ms
-        );
-        assert_ne!(
-            default_diagnostics_txn_tracking.min_write_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_write_txn_time_ms
-        );
-
-        assert_ne!(
-            default_node_toml.callback_address,
-            node_toml.callback_address
-        );
-        assert_ne!(default_node_toml.callback_port, node_toml.callback_port);
-        assert_ne!(default_node_toml.callback_target, node_toml.callback_target);
-
-        let default_ipc_flatbuffers = node_toml.ipc_config.flatbuffers;
-        let deserialized_ipc_flatbuffers = default_node_toml.ipc_config.flatbuffers;
-
-        assert_ne!(
-            default_ipc_flatbuffers.verify_buffers,
-            deserialized_ipc_flatbuffers.verify_buffers
-        );
-
-        let default_ipc_local = node_toml.ipc_config.transport_domain;
-        let deserialized_ipc_local = default_node_toml.ipc_config.transport_domain;
-
-        assert_ne!(
-            default_ipc_local.transport.allow_unsafe,
-            deserialized_ipc_local.transport.allow_unsafe
-        );
-        assert_ne!(
-            default_ipc_local.transport.enabled,
-            deserialized_ipc_local.transport.enabled
-        );
-        assert_ne!(
-            default_ipc_local.transport.io_timeout,
-            deserialized_ipc_local.transport.io_timeout
-        );
-        assert_ne!(default_ipc_local.path, deserialized_ipc_local.path);
-
-        let default_ipc_tcp = node_toml.ipc_config.transport_tcp;
-        let deserialized_ipc_tcp = default_node_toml.ipc_config.transport_tcp;
-
-        assert_ne!(
-            default_ipc_tcp.transport.enabled,
-            deserialized_ipc_tcp.transport.enabled
-        );
-        assert_ne!(
-            default_ipc_tcp.transport.io_timeout,
-            deserialized_ipc_tcp.transport.io_timeout
-        );
-        assert_ne!(default_ipc_tcp.port, deserialized_ipc_tcp.port);
-
-        let default_lmdb = node_toml.lmdb_config;
-        let deserialized_lmdb = default_node_toml.lmdb_config;
-
-        assert_ne!(default_lmdb.map_size, deserialized_lmdb.map_size);
-        assert_ne!(default_lmdb.max_databases, deserialized_lmdb.max_databases);
-        assert_ne!(default_lmdb.sync, deserialized_lmdb.sync);
-
-        let default_message_processor = node_toml.message_processor;
-        let deserialized_message_processor = default_node_toml.message_processor;
-
-        assert_ne!(
-            default_message_processor.max_queue,
-            deserialized_message_processor.max_queue
-        );
-        assert_ne!(
-            default_message_processor.threads,
-            deserialized_message_processor.threads
-        );
-
-        let default_monitor = node_toml.monitor;
-        let deserialized_monitor = default_node_toml.monitor;
-
-        assert_ne!(default_monitor.enabled, deserialized_monitor.enabled);
-        assert_ne!(default_monitor.interval, deserialized_monitor.interval);
-
-        let default_optimistic_scheduler = node_toml.optimistic_scheduler;
-        let deserialized_optimistic_scheduler = default_node_toml.optimistic_scheduler;
-
-        assert_ne!(
-            default_optimistic_scheduler.enabled,
-            deserialized_optimistic_scheduler.enabled
-        );
-        assert_ne!(
-            default_optimistic_scheduler.gap_threshold,
-            deserialized_optimistic_scheduler.gap_threshold
-        );
-        assert_ne!(
-            default_optimistic_scheduler.max_size,
-            deserialized_optimistic_scheduler.max_size
-        );
-
-        let default_priority_bucket = node_toml.priority_bucket;
-        let deserialized_priority_bucket = default_node_toml.priority_bucket;
-
-        assert_ne!(
-            default_priority_bucket.max_blocks,
-            deserialized_priority_bucket.max_blocks
-        );
-        assert_ne!(
-            default_priority_bucket.max_elections,
-            deserialized_priority_bucket.max_elections
-        );
-        assert_ne!(
-            default_priority_bucket.reserved_elections,
-            deserialized_priority_bucket.reserved_elections
-        );
-
-        let default_request_aggregator = node_toml.request_aggregator;
-        let deserialized_request_aggregator = default_node_toml.request_aggregator;
-
-        assert_ne!(
-            default_request_aggregator.batch_size,
-            deserialized_request_aggregator.batch_size
-        );
-        assert_ne!(
-            default_request_aggregator.max_queue,
-            deserialized_request_aggregator.max_queue
-        );
-        assert_ne!(
-            default_request_aggregator.threads,
-            deserialized_request_aggregator.threads
-        );
-
-        let default_statistics = node_toml.stat_config;
-        let deserialized_statistics = default_node_toml.stat_config;
-
-        assert_ne!(
-            default_statistics.max_samples,
-            deserialized_statistics.max_samples
-        );
-
-        assert_ne!(
-            default_statistics.log_counters_filename,
-            deserialized_statistics.log_counters_filename
-        );
-
-        assert_ne!(
-            default_statistics.log_samples_filename,
-            deserialized_statistics.log_samples_filename
-        );
-
-        let default_vote_cache = node_toml.vote_cache;
-        let deserialized_vote_cache = default_node_toml.vote_cache;
-
-        assert_ne!(
-            default_vote_cache.age_cutoff,
-            deserialized_vote_cache.age_cutoff
-        );
-        assert_ne!(
-            default_vote_cache.max_size,
-            deserialized_vote_cache.max_size
-        );
-        assert_ne!(
-            default_vote_cache.max_voters,
-            deserialized_vote_cache.max_voters
-        );
-
-        let default_vote_processor = node_toml.vote_processor;
-        let deserialized_vote_processor = default_node_toml.vote_processor;
-
-        assert_ne!(
-            default_vote_processor.batch_size,
-            deserialized_vote_processor.batch_size
-        );
-        assert_ne!(
-            default_vote_processor.max_non_pr_queue,
-            deserialized_vote_processor.max_non_pr_queue
-        );
-        assert_ne!(
-            default_vote_processor.max_pr_queue,
-            deserialized_vote_processor.max_pr_queue
-        );
-        assert_ne!(
-            default_vote_processor.pr_priority,
-            deserialized_vote_processor.pr_priority
-        );
-        assert_ne!(
-            default_vote_processor.threads,
-            deserialized_vote_processor.threads
-        );
-
-        let default_websocket = node_toml.websocket_config;
-        let deserialized_websocket = default_node_toml.websocket_config;
-
-        assert_ne!(default_websocket.address, deserialized_websocket.address);
-        assert_ne!(default_websocket.enabled, deserialized_websocket.enabled);
-        assert_ne!(default_websocket.port, deserialized_websocket.port);
-
-        let default_opencl = default_daemon_config.opencl;
-        let deserialized_opencl = deserialized_daemon_config.opencl;
-
-        assert_ne!(default_opencl.device, deserialized_opencl.device);
-        assert_ne!(
-            default_daemon_config.opencl_enable,
-            deserialized_daemon_config.opencl_enable
-        );
-        assert_ne!(default_opencl.platform, deserialized_opencl.platform);
-        assert_ne!(default_opencl.threads, deserialized_opencl.threads);
-
-        let default_rpc = default_daemon_config.rpc;
-        let deserialized_rpc = deserialized_daemon_config.rpc;
-
-        assert_ne!(
-            default_daemon_config.rpc_enable,
-            deserialized_daemon_config.rpc_enable
-        );
-        assert_ne!(
-            default_rpc.enable_sign_hash,
-            deserialized_rpc.enable_sign_hash
-        );
-
-        let default_rpc_child_process = default_rpc.child_process;
-        let deserialized_rpc_child_process = deserialized_rpc.child_process;
-
-        assert_ne!(
-            default_rpc_child_process.enable,
-            deserialized_rpc_child_process.enable
-        );
-        assert_ne!(
-            default_rpc_child_process.rpc_path,
-            deserialized_rpc_child_process.rpc_path
-        );
+        compare_configs(&deserialized_daemon_config, &default_daemon_config, false);
     }
 
     #[test]
@@ -1562,514 +509,7 @@ mod tests {
 
         let default_daemon_config = DaemonConfig::default();
 
-        let node_toml = deserialized_daemon_config.node;
-        let default_node_toml = default_daemon_config.node;
-
-        assert_eq!(
-            node_toml.allow_local_peers,
-            default_node_toml.allow_local_peers
-        );
-        assert_eq!(
-            node_toml.background_threads,
-            default_node_toml.background_threads
-        );
-        assert_eq!(
-            node_toml.backlog_scan_batch_size,
-            default_node_toml.backlog_scan_batch_size
-        );
-        assert_eq!(
-            node_toml.backlog_scan_frequency,
-            default_node_toml.backlog_scan_frequency
-        );
-        assert_eq!(
-            node_toml.backup_before_upgrade,
-            default_node_toml.backup_before_upgrade
-        );
-        assert_eq!(node_toml.bandwidth_limit, default_node_toml.bandwidth_limit);
-        assert_eq!(
-            node_toml.bandwidth_limit_burst_ratio,
-            default_node_toml.bandwidth_limit_burst_ratio
-        );
-        assert_eq!(
-            node_toml.block_processor_batch_max_time_ms,
-            default_node_toml.block_processor_batch_max_time_ms
-        );
-        assert_eq!(
-            node_toml.bootstrap_bandwidth_burst_ratio,
-            default_node_toml.bootstrap_bandwidth_burst_ratio
-        );
-        assert_eq!(
-            node_toml.bootstrap_bandwidth_limit,
-            default_node_toml.bootstrap_bandwidth_limit
-        );
-        assert_eq!(
-            node_toml.bootstrap_connections,
-            default_node_toml.bootstrap_connections
-        );
-        assert_eq!(
-            node_toml.bootstrap_connections_max,
-            default_node_toml.bootstrap_connections_max
-        );
-        assert_eq!(
-            node_toml.bootstrap_fraction_numerator,
-            default_node_toml.bootstrap_fraction_numerator
-        );
-        assert_eq!(
-            node_toml.bootstrap_frontier_request_count,
-            default_node_toml.bootstrap_frontier_request_count
-        );
-        assert_eq!(
-            node_toml.bootstrap_initiator_threads,
-            default_node_toml.bootstrap_initiator_threads
-        );
-        assert_eq!(
-            node_toml.bootstrap_serving_threads,
-            default_node_toml.bootstrap_serving_threads
-        );
-        assert_eq!(
-            node_toml.confirming_set_batch_time,
-            default_node_toml.confirming_set_batch_time
-        );
-        assert_eq!(node_toml.enable_voting, default_node_toml.enable_voting);
-        assert_eq!(
-            node_toml.external_address,
-            default_node_toml.external_address
-        );
-        assert_eq!(node_toml.external_port, default_node_toml.external_port);
-        assert_eq!(
-            node_toml.frontiers_confirmation,
-            default_node_toml.frontiers_confirmation
-        );
-        assert_eq!(node_toml.io_threads, default_node_toml.io_threads);
-        assert_eq!(
-            node_toml.max_queued_requests,
-            default_node_toml.max_queued_requests
-        );
-        assert_eq!(
-            node_toml.max_work_generate_multiplier,
-            default_node_toml.max_work_generate_multiplier
-        );
-        assert_eq!(node_toml.network_threads, default_node_toml.network_threads);
-        assert_eq!(
-            node_toml.online_weight_minimum,
-            default_node_toml.online_weight_minimum
-        );
-        assert_eq!(node_toml.password_fanout, default_node_toml.password_fanout);
-        assert_eq!(node_toml.peering_port, default_node_toml.peering_port);
-        assert_eq!(
-            node_toml.pow_sleep_interval_ns,
-            default_node_toml.pow_sleep_interval_ns
-        );
-        assert_eq!(
-            node_toml.preconfigured_peers,
-            default_node_toml.preconfigured_peers
-        );
-        assert_eq!(
-            node_toml.preconfigured_representatives,
-            default_node_toml.preconfigured_representatives
-        );
-        assert_eq!(node_toml.receive_minimum, default_node_toml.receive_minimum);
-        assert_eq!(
-            node_toml.rep_crawler_weight_minimum,
-            default_node_toml.rep_crawler_weight_minimum
-        );
-        assert_eq!(
-            node_toml.representative_vote_weight_minimum,
-            default_node_toml.representative_vote_weight_minimum
-        );
-        assert_eq!(
-            node_toml.request_aggregator_threads,
-            default_node_toml.request_aggregator_threads
-        );
-        assert_eq!(
-            node_toml.signature_checker_threads,
-            default_node_toml.signature_checker_threads
-        );
-        assert_eq!(
-            node_toml.tcp_incoming_connections_max,
-            default_node_toml.tcp_incoming_connections_max
-        );
-        assert_eq!(
-            node_toml.tcp_io_timeout_s,
-            default_node_toml.tcp_io_timeout_s
-        );
-        assert_eq!(
-            node_toml.unchecked_cutoff_time_s,
-            default_node_toml.unchecked_cutoff_time_s
-        );
-        assert_eq!(
-            node_toml.use_memory_pools,
-            default_node_toml.use_memory_pools
-        );
-        assert_eq!(
-            node_toml.vote_generator_delay_ms,
-            default_node_toml.vote_generator_delay_ms
-        );
-        assert_eq!(
-            node_toml.vote_generator_threshold,
-            default_node_toml.vote_generator_threshold
-        );
-        assert_eq!(node_toml.vote_minimum, default_node_toml.vote_minimum);
-        assert_eq!(node_toml.work_threads, default_node_toml.work_threads);
-
-        let default_active_elections = node_toml.active_elections;
-        let deserialized_active_elections = default_node_toml.active_elections;
-
-        assert_eq!(
-            default_active_elections.confirmation_cache,
-            deserialized_active_elections.confirmation_cache
-        );
-        assert_eq!(
-            default_active_elections.confirmation_history_size,
-            deserialized_active_elections.confirmation_history_size
-        );
-        assert_eq!(
-            default_active_elections.hinted_limit_percentage,
-            deserialized_active_elections.hinted_limit_percentage
-        );
-        assert_eq!(
-            default_active_elections.optimistic_limit_percentage,
-            deserialized_active_elections.optimistic_limit_percentage
-        );
-        assert_eq!(
-            default_active_elections.size,
-            deserialized_active_elections.size
-        );
-
-        let default_block_processor = node_toml.block_processor;
-        let deserialized_block_processor = default_node_toml.block_processor;
-
-        assert_eq!(
-            default_block_processor.max_peer_queue,
-            deserialized_block_processor.max_peer_queue
-        );
-        assert_eq!(
-            default_block_processor.max_system_queue,
-            deserialized_block_processor.max_system_queue
-        );
-        assert_eq!(
-            default_block_processor.priority_bootstrap,
-            deserialized_block_processor.priority_bootstrap
-        );
-        assert_eq!(
-            default_block_processor.priority_live,
-            deserialized_block_processor.priority_live
-        );
-        assert_eq!(
-            default_block_processor.priority_local,
-            deserialized_block_processor.priority_local
-        );
-
-        let default_bootstrap_ascending = node_toml.bootstrap_ascending;
-        let deserialized_bootstrap_ascending = default_node_toml.bootstrap_ascending;
-
-        assert_eq!(
-            default_bootstrap_ascending.block_wait_count,
-            deserialized_bootstrap_ascending.block_wait_count
-        );
-        assert_eq!(
-            default_bootstrap_ascending.database_requests_limit,
-            deserialized_bootstrap_ascending.database_requests_limit
-        );
-        assert_eq!(
-            default_bootstrap_ascending.pull_count,
-            deserialized_bootstrap_ascending.pull_count
-        );
-        assert_eq!(
-            default_bootstrap_ascending.requests_limit,
-            deserialized_bootstrap_ascending.requests_limit
-        );
-        assert_eq!(
-            default_bootstrap_ascending.throttle_coefficient,
-            deserialized_bootstrap_ascending.throttle_coefficient
-        );
-        assert_eq!(
-            default_bootstrap_ascending.throttle_wait,
-            deserialized_bootstrap_ascending.throttle_wait
-        );
-        assert_eq!(
-            default_bootstrap_ascending.timeout,
-            deserialized_bootstrap_ascending.timeout
-        );
-
-        let default_account_sets = default_bootstrap_ascending.account_sets;
-        let deserialized_account_sets = deserialized_bootstrap_ascending.account_sets;
-
-        assert_eq!(
-            default_account_sets.blocking_max,
-            deserialized_account_sets.blocking_max
-        );
-        assert_eq!(
-            default_account_sets.consideration_count,
-            deserialized_account_sets.consideration_count
-        );
-        assert_eq!(
-            default_account_sets.cooldown,
-            deserialized_account_sets.cooldown
-        );
-        assert_eq!(
-            default_account_sets.priorities_max,
-            deserialized_account_sets.priorities_max
-        );
-
-        let default_bootstrap_server = node_toml.bootstrap_server;
-        let deserialized_bootstrap_server = default_node_toml.bootstrap_server;
-
-        assert_eq!(
-            default_bootstrap_server.batch_size,
-            deserialized_bootstrap_server.batch_size
-        );
-        assert_eq!(
-            default_bootstrap_server.max_queue,
-            deserialized_bootstrap_server.max_queue
-        );
-        assert_eq!(
-            default_bootstrap_server.threads,
-            deserialized_bootstrap_server.threads
-        );
-
-        let default_diagnostics_txn_tracking = node_toml.diagnostics_config.txn_tracking;
-        let deserialized_diagnostics_txn_tracking =
-            default_node_toml.diagnostics_config.txn_tracking;
-
-        assert_eq!(
-            default_diagnostics_txn_tracking.enable,
-            deserialized_diagnostics_txn_tracking.enable
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time,
-            deserialized_diagnostics_txn_tracking.ignore_writes_below_block_processor_max_time
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.min_read_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_read_txn_time_ms
-        );
-        assert_eq!(
-            default_diagnostics_txn_tracking.min_write_txn_time_ms,
-            deserialized_diagnostics_txn_tracking.min_write_txn_time_ms
-        );
-
-        assert_eq!(
-            default_node_toml.callback_address,
-            node_toml.callback_address
-        );
-        assert_eq!(default_node_toml.callback_port, node_toml.callback_port);
-        assert_eq!(default_node_toml.callback_target, node_toml.callback_target);
-
-        let default_ipc_flatbuffers = node_toml.ipc_config.flatbuffers;
-        let deserialized_ipc_flatbuffers = default_node_toml.ipc_config.flatbuffers;
-
-        assert_eq!(
-            default_ipc_flatbuffers.skip_unexpected_fields_in_json,
-            deserialized_ipc_flatbuffers.skip_unexpected_fields_in_json
-        );
-        assert_eq!(
-            default_ipc_flatbuffers.verify_buffers,
-            deserialized_ipc_flatbuffers.verify_buffers
-        );
-
-        let default_ipc_local = node_toml.ipc_config.transport_domain;
-        let deserialized_ipc_local = default_node_toml.ipc_config.transport_domain;
-
-        assert_eq!(
-            default_ipc_local.transport.allow_unsafe,
-            deserialized_ipc_local.transport.allow_unsafe
-        );
-        assert_eq!(
-            default_ipc_local.transport.enabled,
-            deserialized_ipc_local.transport.enabled
-        );
-        assert_eq!(
-            default_ipc_local.transport.io_timeout,
-            deserialized_ipc_local.transport.io_timeout
-        );
-        assert_eq!(default_ipc_local.path, deserialized_ipc_local.path);
-
-        let default_ipc_tcp = node_toml.ipc_config.transport_tcp;
-        let deserialized_ipc_tcp = default_node_toml.ipc_config.transport_tcp;
-
-        assert_eq!(
-            default_ipc_tcp.transport.enabled,
-            deserialized_ipc_tcp.transport.enabled
-        );
-        assert_eq!(
-            default_ipc_tcp.transport.io_timeout,
-            deserialized_ipc_tcp.transport.io_timeout
-        );
-        assert_eq!(default_ipc_tcp.port, deserialized_ipc_tcp.port);
-
-        let default_lmdb = node_toml.lmdb_config;
-        let deserialized_lmdb = default_node_toml.lmdb_config;
-
-        assert_eq!(default_lmdb.map_size, deserialized_lmdb.map_size);
-        assert_eq!(default_lmdb.max_databases, deserialized_lmdb.max_databases);
-        assert_eq!(default_lmdb.sync, deserialized_lmdb.sync);
-
-        let default_message_processor = node_toml.message_processor;
-        let deserialized_message_processor = default_node_toml.message_processor;
-
-        assert_eq!(
-            default_message_processor.max_queue,
-            deserialized_message_processor.max_queue
-        );
-        assert_eq!(
-            default_message_processor.threads,
-            deserialized_message_processor.threads
-        );
-
-        let default_monitor = node_toml.monitor;
-        let deserialized_monitor = default_node_toml.monitor;
-
-        assert_eq!(default_monitor.enabled, deserialized_monitor.enabled);
-        assert_eq!(default_monitor.interval, deserialized_monitor.interval);
-
-        let default_optimistic_scheduler = node_toml.optimistic_scheduler;
-        let deserialized_optimistic_scheduler = default_node_toml.optimistic_scheduler;
-
-        assert_eq!(
-            default_optimistic_scheduler.enabled,
-            deserialized_optimistic_scheduler.enabled
-        );
-        assert_eq!(
-            default_optimistic_scheduler.gap_threshold,
-            deserialized_optimistic_scheduler.gap_threshold
-        );
-        assert_eq!(
-            default_optimistic_scheduler.max_size,
-            deserialized_optimistic_scheduler.max_size
-        );
-
-        let default_priority_bucket = node_toml.priority_bucket;
-        let deserialized_priority_bucket = default_node_toml.priority_bucket;
-
-        assert_eq!(
-            default_priority_bucket.max_blocks,
-            deserialized_priority_bucket.max_blocks
-        );
-        assert_eq!(
-            default_priority_bucket.max_elections,
-            deserialized_priority_bucket.max_elections
-        );
-        assert_eq!(
-            default_priority_bucket.reserved_elections,
-            deserialized_priority_bucket.reserved_elections
-        );
-
-        let default_request_aggregator = node_toml.request_aggregator;
-        let deserialized_request_aggregator = default_node_toml.request_aggregator;
-
-        assert_eq!(
-            default_request_aggregator.batch_size,
-            deserialized_request_aggregator.batch_size
-        );
-        assert_eq!(
-            default_request_aggregator.max_queue,
-            deserialized_request_aggregator.max_queue
-        );
-        assert_eq!(
-            default_request_aggregator.threads,
-            deserialized_request_aggregator.threads
-        );
-
-        let default_statistics = node_toml.stat_config;
-        let deserialized_statistics = default_node_toml.stat_config;
-
-        assert_eq!(
-            default_statistics.max_samples,
-            deserialized_statistics.max_samples
-        );
-
-        assert_eq!(
-            default_statistics.log_counters_filename,
-            deserialized_statistics.log_counters_filename
-        );
-
-        assert_eq!(
-            default_statistics.log_samples_filename,
-            deserialized_statistics.log_samples_filename
-        );
-
-        let default_vote_cache = node_toml.vote_cache;
-        let deserialized_vote_cache = default_node_toml.vote_cache;
-
-        assert_eq!(
-            default_vote_cache.age_cutoff,
-            deserialized_vote_cache.age_cutoff
-        );
-        assert_eq!(
-            default_vote_cache.max_size,
-            deserialized_vote_cache.max_size
-        );
-        assert_eq!(
-            default_vote_cache.max_voters,
-            deserialized_vote_cache.max_voters
-        );
-
-        let default_vote_processor = node_toml.vote_processor;
-        let deserialized_vote_processor = default_node_toml.vote_processor;
-
-        assert_eq!(
-            default_vote_processor.batch_size,
-            deserialized_vote_processor.batch_size
-        );
-        assert_eq!(
-            default_vote_processor.max_non_pr_queue,
-            deserialized_vote_processor.max_non_pr_queue
-        );
-        assert_eq!(
-            default_vote_processor.max_pr_queue,
-            deserialized_vote_processor.max_pr_queue
-        );
-        assert_eq!(
-            default_vote_processor.pr_priority,
-            deserialized_vote_processor.pr_priority
-        );
-        assert_eq!(
-            default_vote_processor.threads,
-            deserialized_vote_processor.threads
-        );
-
-        let default_websocket = node_toml.websocket_config;
-        let deserialized_websocket = default_node_toml.websocket_config;
-
-        assert_eq!(default_websocket.address, deserialized_websocket.address);
-        assert_eq!(default_websocket.enabled, deserialized_websocket.enabled);
-        assert_eq!(default_websocket.port, deserialized_websocket.port);
-
-        let default_opencl = default_daemon_config.opencl;
-        let deserialized_opencl = deserialized_daemon_config.opencl;
-
-        assert_eq!(default_opencl.device, deserialized_opencl.device);
-        assert_eq!(
-            default_daemon_config.opencl_enable,
-            deserialized_daemon_config.opencl_enable
-        );
-        assert_eq!(default_opencl.platform, deserialized_opencl.platform);
-        assert_eq!(default_opencl.threads, deserialized_opencl.threads);
-
-        let default_rpc = default_daemon_config.rpc;
-        let deserialized_rpc = deserialized_daemon_config.rpc;
-
-        assert_eq!(
-            default_daemon_config.rpc_enable,
-            deserialized_daemon_config.rpc_enable
-        );
-        assert_eq!(
-            default_rpc.enable_sign_hash,
-            deserialized_rpc.enable_sign_hash
-        );
-
-        let default_rpc_child_process = default_rpc.child_process;
-        let deserialized_rpc_child_process = deserialized_rpc.child_process;
-
-        assert_eq!(
-            default_rpc_child_process.enable,
-            deserialized_rpc_child_process.enable
-        );
-        assert_eq!(
-            default_rpc_child_process.rpc_path,
-            deserialized_rpc_child_process.rpc_path
-        );
+        compare_configs(&deserialized_daemon_config, &default_daemon_config, true);
     }
 
     #[test]
@@ -2080,192 +520,7 @@ mod tests {
 
         let serialized_toml = toml::to_string(&default_daemon_toml).unwrap();
 
-        let default_toml_str = r#"[node]
-            allow_local_peers = true
-            background_threads = 8
-            backlog_scan_batch_size = 10000
-            backlog_scan_frequency = 10
-            backup_before_upgrade = false
-            bandwidth_limit = 10485760
-            bandwidth_limit_burst_ratio = 3.0
-            block_processor_batch_max_time = 500
-            bootstrap_bandwidth_burst_ratio = 1.0
-            bootstrap_bandwidth_limit = 5242880
-            bootstrap_connections = 4
-            bootstrap_connections_max = 64
-            bootstrap_fraction_numerator = 1
-            bootstrap_frontier_request_count = 1048576
-            bootstrap_initiator_threads = 1
-            bootstrap_serving_threads = 1
-            confirming_set_batch_time = 250
-            enable_voting = false
-            external_address = "::"
-            external_port = 0
-            frontiers_confirmation = "auto"
-            io_threads = 8
-            max_queued_requests = 512
-            max_unchecked_blocks = 65536
-            max_work_generate_multiplier = 64.0
-            network_threads = 8
-            online_weight_minimum = "60000000000000000000000000000000000000"
-            password_fanout = 1024
-            peering_port = 54000
-            pow_sleep_interval = 0
-            preconfigured_peers = ["peering-beta.nano.org"]
-            preconfigured_representatives = ["nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy"]
-            receive_minimum = "1000000000000000000000000"
-            rep_crawler_weight_minimum = "340282366920938463463374607431768211455"
-            representative_vote_weight_minimum = "10000000000000000000000000000000"
-            request_aggregator_threads = 8
-            signature_checker_threads = 4
-            tcp_incoming_connections_max = 2048
-            tcp_io_timeout = 15
-            unchecked_cutoff_time = 14400
-            use_memory_pools = true
-            vote_generator_delay = 100
-            vote_generator_threshold = 3
-            vote_minimum = "1000000000000000000000000000000000"
-            work_threads = 8
-
-            [node.active_elections]
-            confirmation_cache = 65536
-            confirmation_history_size = 2048
-            hinted_limit_percentage = 20
-            optimistic_limit_percentage = 10
-            size = 5000
-
-            [node.block_processor]
-            max_peer_queue = 128
-            max_system_queue = 16384
-            priority_bootstrap = 8
-            priority_live = 1
-            priority_local = 16
-
-            [node.bootstrap_ascending]
-            block_wait_count = 1000
-            database_requests_limit = 1024
-            pull_count = 128
-            requests_limit = 64
-            throttle_coefficient = 16
-            throttle_wait = 100
-            timeout = 3000
-
-            [node.bootstrap_ascending.account_sets]
-            blocking_max = 262144
-            consideration_count = 4
-            cooldown = 3000
-            priorities_max = 262144
-
-            [node.bootstrap_server]
-            batch_size = 64
-            max_queue = 16
-            threads = 1
-
-            [node.diagnostics.txn_tracking]
-            enable = false
-            ignore_writes_below_block_processor_max_time = true
-            min_read_txn_time = 5000
-            min_write_txn_time = 500
-
-            [node.experimental]
-            max_pruning_age = 300
-            max_pruning_depth = 0
-            secondary_work_peers = ["127.0.0.1:8076"]
-
-            [node.httpcallback]
-            address = ""
-            port = 0
-            target = ""
-
-            [node.ipc.flatbuffers]
-            skip_unexpected_fields_in_json = true
-            verify_buffers = true
-
-            [node.ipc.local]
-            allow_unsafe = false
-            enable = false
-            io_timeout = 15
-            path = "/tmp/nano"
-
-            [node.ipc.tcp]
-            enable = false
-            io_timeout = 15
-            port = 56000
-
-            [node.lmdb]
-            map_size = 274877906944
-            max_databases = 128
-            sync = "always"
-
-            [node.message_processor]
-            max_queue = 64
-            threads = 2
-
-            [node.monitor]
-            enable = true
-            interval = 60
-
-            [node.optimistic_scheduler]
-            enable = true
-            gap_threshold = 32
-            max_size = 65536
-
-            [node.priority_bucket]
-            max_blocks = 8192
-            max_elections = 150
-            reserved_elections = 100
-
-            [node.rep_crawler]
-            query_timeout = 60000
-
-            [node.request_aggregator]
-            batch_size = 16
-            max_queue = 128
-            threads = 4
-
-            [node.statistics]
-            max_samples = 16384
-
-            [node.statistics.log]
-            filename_counters = "counters.stat"
-            filename_samples = "samples.stat"
-            headers = true
-            interval_counters = 0
-            interval_samples = 0
-            rotation_count = 100
-
-            [node.vote_cache]
-            age_cutoff = 900
-            max_size = 65536
-            max_voters = 64
-
-            [node.vote_processor]
-            batch_size = 1024
-            max_non_pr_queue = 32
-            max_pr_queue = 256
-            pr_priority = 3
-            threads = 4
-
-            [node.websocket]
-            address = "::1"
-            enable = false
-            port = 57000
-
-            [opencl]
-            device = 0
-            enable = false
-            platform = 0
-            threads = 1048576
-
-            [rpc]
-            enable = false
-            enable_sign_hash = false
-
-            [rpc.child_process]
-            enable = false
-            rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc""#;
-
-        let default_toml_str_trimmed: String = default_toml_str
+        let default_toml_str_trimmed: String = DEFAULT_TOML_STR
             .lines()
             .map(str::trim)
             .collect::<Vec<&str>>()
@@ -2278,5 +533,375 @@ mod tests {
             .join("\n");
 
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
+    }
+
+    fn compare_configs(config1: &DaemonConfig, config2: &DaemonConfig, use_equal: bool) {
+        macro_rules! compare {
+            ($field:expr) => {
+                if use_equal {
+                    assert_eq!($field.0, $field.1);
+                } else {
+                    assert_ne!($field.0, $field.1);
+                }
+            };
+        }
+
+        let node1 = &config1.node;
+        let node2 = &config2.node;
+
+        compare!((node1.allow_local_peers, node2.allow_local_peers));
+        compare!((node1.background_threads, node2.background_threads));
+        compare!((node1.backlog_scan_batch_size, node2.backlog_scan_batch_size));
+        compare!((node1.backlog_scan_frequency, node2.backlog_scan_frequency));
+        compare!((node1.backup_before_upgrade, node2.backup_before_upgrade));
+        compare!((node1.bandwidth_limit, node2.bandwidth_limit));
+        compare!((
+            node1.bandwidth_limit_burst_ratio,
+            node2.bandwidth_limit_burst_ratio
+        ));
+        compare!((
+            node1.block_processor_batch_max_time_ms,
+            node2.block_processor_batch_max_time_ms
+        ));
+        compare!((
+            node1.bootstrap_bandwidth_burst_ratio,
+            node2.bootstrap_bandwidth_burst_ratio
+        ));
+        compare!((
+            node1.bootstrap_bandwidth_limit,
+            node2.bootstrap_bandwidth_limit
+        ));
+        compare!((node1.bootstrap_connections, node2.bootstrap_connections));
+        compare!((
+            node1.bootstrap_connections_max,
+            node2.bootstrap_connections_max
+        ));
+        compare!((
+            node1.bootstrap_fraction_numerator,
+            node2.bootstrap_fraction_numerator
+        ));
+        compare!((
+            node1.bootstrap_frontier_request_count,
+            node2.bootstrap_frontier_request_count
+        ));
+        compare!((
+            node1.bootstrap_initiator_threads,
+            node2.bootstrap_initiator_threads
+        ));
+        compare!((
+            node1.bootstrap_serving_threads,
+            node2.bootstrap_serving_threads
+        ));
+        compare!((
+            node1.confirming_set_batch_time,
+            node2.confirming_set_batch_time
+        ));
+        compare!((node1.enable_voting, node2.enable_voting));
+        compare!((&node1.external_address, &node2.external_address));
+        compare!((node1.external_port, node2.external_port));
+        compare!((node1.frontiers_confirmation, node2.frontiers_confirmation));
+        compare!((node1.io_threads, node2.io_threads));
+        compare!((node1.max_queued_requests, node2.max_queued_requests));
+        compare!((
+            node1.max_work_generate_multiplier,
+            node2.max_work_generate_multiplier
+        ));
+        compare!((node1.network_threads, node2.network_threads));
+        compare!((node1.online_weight_minimum, node2.online_weight_minimum));
+        compare!((node1.password_fanout, node2.password_fanout));
+        compare!((node1.peering_port, node2.peering_port));
+        compare!((node1.pow_sleep_interval_ns, node2.pow_sleep_interval_ns));
+        compare!((&node1.preconfigured_peers, &node2.preconfigured_peers));
+        compare!((
+            &node1.preconfigured_representatives,
+            &node2.preconfigured_representatives
+        ));
+        compare!((node1.receive_minimum, node2.receive_minimum));
+        compare!((
+            node1.rep_crawler_weight_minimum,
+            node2.rep_crawler_weight_minimum
+        ));
+        compare!((
+            node1.representative_vote_weight_minimum,
+            node2.representative_vote_weight_minimum
+        ));
+        compare!((
+            node1.request_aggregator_threads,
+            node2.request_aggregator_threads
+        ));
+        compare!((
+            node1.signature_checker_threads,
+            node2.signature_checker_threads
+        ));
+        compare!((
+            node1.tcp_incoming_connections_max,
+            node2.tcp_incoming_connections_max
+        ));
+        compare!((node1.tcp_io_timeout_s, node2.tcp_io_timeout_s));
+        compare!((node1.unchecked_cutoff_time_s, node2.unchecked_cutoff_time_s));
+        compare!((node1.use_memory_pools, node2.use_memory_pools));
+        compare!((node1.vote_generator_delay_ms, node2.vote_generator_delay_ms));
+        compare!((
+            node1.vote_generator_threshold,
+            node2.vote_generator_threshold
+        ));
+        compare!((node1.vote_minimum, node2.vote_minimum));
+        compare!((node1.work_threads, node2.work_threads));
+
+        let active_elections1 = &node1.active_elections;
+        let active_elections2 = &node2.active_elections;
+
+        compare!((
+            active_elections1.confirmation_cache,
+            active_elections2.confirmation_cache
+        ));
+        compare!((
+            active_elections1.confirmation_history_size,
+            active_elections2.confirmation_history_size
+        ));
+        compare!((
+            active_elections1.hinted_limit_percentage,
+            active_elections2.hinted_limit_percentage
+        ));
+        compare!((
+            active_elections1.optimistic_limit_percentage,
+            active_elections2.optimistic_limit_percentage
+        ));
+        compare!((active_elections1.size, active_elections2.size));
+
+        let block_processor1 = &node1.block_processor;
+        let block_processor2 = &node2.block_processor;
+
+        compare!((
+            block_processor1.max_peer_queue,
+            block_processor2.max_peer_queue
+        ));
+        compare!((
+            block_processor1.max_system_queue,
+            block_processor2.max_system_queue
+        ));
+        compare!((
+            block_processor1.priority_bootstrap,
+            block_processor2.priority_bootstrap
+        ));
+        compare!((
+            block_processor1.priority_live,
+            block_processor2.priority_live
+        ));
+        compare!((
+            block_processor1.priority_local,
+            block_processor2.priority_local
+        ));
+
+        let bootstrap_ascending1 = &node1.bootstrap_ascending;
+        let bootstrap_ascending2 = &node2.bootstrap_ascending;
+
+        compare!((
+            bootstrap_ascending1.block_wait_count,
+            bootstrap_ascending2.block_wait_count
+        ));
+        compare!((
+            bootstrap_ascending1.database_requests_limit,
+            bootstrap_ascending2.database_requests_limit
+        ));
+        compare!((
+            bootstrap_ascending1.pull_count,
+            bootstrap_ascending2.pull_count
+        ));
+        compare!((
+            bootstrap_ascending1.requests_limit,
+            bootstrap_ascending2.requests_limit
+        ));
+        compare!((
+            bootstrap_ascending1.throttle_coefficient,
+            bootstrap_ascending2.throttle_coefficient
+        ));
+        compare!((
+            bootstrap_ascending1.throttle_wait,
+            bootstrap_ascending2.throttle_wait
+        ));
+        compare!((bootstrap_ascending1.timeout, bootstrap_ascending2.timeout));
+
+        let account_sets1 = &bootstrap_ascending1.account_sets;
+        let account_sets2 = &bootstrap_ascending2.account_sets;
+
+        compare!((account_sets1.blocking_max, account_sets2.blocking_max));
+        compare!((
+            account_sets1.consideration_count,
+            account_sets2.consideration_count
+        ));
+        compare!((account_sets1.cooldown, account_sets2.cooldown));
+        compare!((account_sets1.priorities_max, account_sets2.priorities_max));
+
+        let bootstrap_server1 = &node1.bootstrap_server;
+        let bootstrap_server2 = &node2.bootstrap_server;
+
+        compare!((bootstrap_server1.batch_size, bootstrap_server2.batch_size));
+        compare!((bootstrap_server1.max_queue, bootstrap_server2.max_queue));
+        compare!((bootstrap_server1.threads, bootstrap_server2.threads));
+
+        let diagnostics_txn_tracking1 = &node1.diagnostics_config.txn_tracking;
+        let diagnostics_txn_tracking2 = &node2.diagnostics_config.txn_tracking;
+
+        compare!((
+            diagnostics_txn_tracking1.enable,
+            diagnostics_txn_tracking2.enable
+        ));
+        compare!((
+            diagnostics_txn_tracking1.ignore_writes_below_block_processor_max_time,
+            diagnostics_txn_tracking2.ignore_writes_below_block_processor_max_time
+        ));
+        compare!((
+            diagnostics_txn_tracking1.min_read_txn_time_ms,
+            diagnostics_txn_tracking2.min_read_txn_time_ms
+        ));
+        compare!((
+            diagnostics_txn_tracking1.min_write_txn_time_ms,
+            diagnostics_txn_tracking2.min_write_txn_time_ms
+        ));
+
+        compare!((&node1.callback_address, &node2.callback_address));
+        compare!((node1.callback_port, node2.callback_port));
+        compare!((&node1.callback_target, &node2.callback_target));
+
+        let ipc_flatbuffers1 = &node1.ipc_config.flatbuffers;
+        let ipc_flatbuffers2 = &node2.ipc_config.flatbuffers;
+
+        compare!((
+            ipc_flatbuffers1.verify_buffers,
+            ipc_flatbuffers2.verify_buffers
+        ));
+
+        let ipc_local1 = &node1.ipc_config.transport_domain;
+        let ipc_local2 = &node2.ipc_config.transport_domain;
+
+        compare!((
+            ipc_local1.transport.allow_unsafe,
+            ipc_local2.transport.allow_unsafe
+        ));
+        compare!((ipc_local1.transport.enabled, ipc_local2.transport.enabled));
+        compare!((
+            ipc_local1.transport.io_timeout,
+            ipc_local2.transport.io_timeout
+        ));
+        compare!((&ipc_local1.path, &ipc_local2.path));
+
+        let ipc_tcp1 = &node1.ipc_config.transport_tcp;
+        let ipc_tcp2 = &node2.ipc_config.transport_tcp;
+
+        compare!((ipc_tcp1.transport.enabled, ipc_tcp2.transport.enabled));
+        compare!((ipc_tcp1.transport.io_timeout, ipc_tcp2.transport.io_timeout));
+        compare!((ipc_tcp1.port, ipc_tcp2.port));
+
+        let lmdb1 = &node1.lmdb_config;
+        let lmdb2 = &node2.lmdb_config;
+
+        compare!((lmdb1.map_size, lmdb2.map_size));
+        compare!((lmdb1.max_databases, lmdb2.max_databases));
+        compare!((lmdb1.sync, lmdb2.sync));
+
+        let message_processor1 = &node1.message_processor;
+        let message_processor2 = &node2.message_processor;
+
+        compare!((message_processor1.max_queue, message_processor2.max_queue));
+        compare!((message_processor1.threads, message_processor2.threads));
+
+        let monitor1 = &node1.monitor;
+        let monitor2 = &node2.monitor;
+
+        compare!((monitor1.enabled, monitor2.enabled));
+        compare!((monitor1.interval, monitor2.interval));
+
+        let optimistic_scheduler1 = &node1.optimistic_scheduler;
+        let optimistic_scheduler2 = &node2.optimistic_scheduler;
+
+        compare!((optimistic_scheduler1.enabled, optimistic_scheduler2.enabled));
+        compare!((
+            optimistic_scheduler1.gap_threshold,
+            optimistic_scheduler2.gap_threshold
+        ));
+        compare!((
+            optimistic_scheduler1.max_size,
+            optimistic_scheduler2.max_size
+        ));
+
+        let priority_bucket1 = &node1.priority_bucket;
+        let priority_bucket2 = &node2.priority_bucket;
+
+        compare!((priority_bucket1.max_blocks, priority_bucket2.max_blocks));
+        compare!((
+            priority_bucket1.max_elections,
+            priority_bucket2.max_elections
+        ));
+        compare!((
+            priority_bucket1.reserved_elections,
+            priority_bucket2.reserved_elections
+        ));
+
+        let request_aggregator1 = &node1.request_aggregator;
+        let request_aggregator2 = &node2.request_aggregator;
+
+        compare!((
+            request_aggregator1.batch_size,
+            request_aggregator2.batch_size
+        ));
+        compare!((request_aggregator1.max_queue, request_aggregator2.max_queue));
+        compare!((request_aggregator1.threads, request_aggregator2.threads));
+
+        let stat_config1 = &node1.stat_config;
+        let stat_config2 = &node2.stat_config;
+
+        compare!((stat_config1.max_samples, stat_config2.max_samples));
+        compare!((
+            &stat_config1.log_counters_filename,
+            &stat_config2.log_counters_filename
+        ));
+        compare!((
+            &stat_config1.log_samples_filename,
+            &stat_config2.log_samples_filename
+        ));
+
+        let vote_cache1 = &node1.vote_cache;
+        let vote_cache2 = &node2.vote_cache;
+
+        compare!((vote_cache1.age_cutoff, vote_cache2.age_cutoff));
+        compare!((vote_cache1.max_size, vote_cache2.max_size));
+        compare!((vote_cache1.max_voters, vote_cache2.max_voters));
+
+        let vote_processor1 = &node1.vote_processor;
+        let vote_processor2 = &node2.vote_processor;
+
+        compare!((vote_processor1.batch_size, vote_processor2.batch_size));
+        compare!((
+            vote_processor1.max_non_pr_queue,
+            vote_processor2.max_non_pr_queue
+        ));
+        compare!((vote_processor1.max_pr_queue, vote_processor2.max_pr_queue));
+        compare!((vote_processor1.pr_priority, vote_processor2.pr_priority));
+        compare!((vote_processor1.threads, vote_processor2.threads));
+
+        let websocket1 = &node1.websocket_config;
+        let websocket2 = &node2.websocket_config;
+
+        compare!((&websocket1.address, &websocket2.address));
+        compare!((websocket1.enabled, websocket2.enabled));
+        compare!((websocket1.port, websocket2.port));
+
+        let opencl1 = &config1.opencl;
+        let opencl2 = &config2.opencl;
+
+        compare!((opencl1.device, opencl2.device));
+        compare!((config1.opencl_enable, config2.opencl_enable));
+        compare!((opencl1.platform, opencl2.platform));
+        compare!((opencl1.threads, opencl2.threads));
+
+        let rpc1 = &config1.rpc;
+        let rpc2 = &config2.rpc;
+
+        compare!((config1.rpc_enable, config2.rpc_enable));
+        compare!((rpc1.enable_sign_hash, rpc2.enable_sign_hash));
+
+        compare!((rpc1.child_process.enable, rpc2.child_process.enable));
+        compare!((&rpc1.child_process.rpc_path, &rpc2.child_process.rpc_path));
     }
 }

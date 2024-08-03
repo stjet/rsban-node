@@ -177,7 +177,7 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(online_weight_minimum) = &toml.online_weight_minimum {
             config.online_weight_minimum =
-                Amount::decode_hex(&online_weight_minimum).expect("Invalid online weight minimum");
+                Amount::decode_dec(&online_weight_minimum).expect("Invalid online weight minimum");
         }
         if let Some(password_fanout) = toml.password_fanout {
             config.password_fanout = password_fanout;
@@ -199,7 +199,7 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(receive_minimum) = &toml.receive_minimum {
             config.receive_minimum =
-                Amount::decode_hex(&receive_minimum).expect("Invalid receive minimum");
+                Amount::decode_dec(&receive_minimum).expect("Invalid receive minimum");
         }
         if let Some(rep_crawler) = &toml.rep_crawler {
             if let Some(query_timeout) = rep_crawler.query_timeout {
@@ -208,8 +208,8 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(representative_vote_weight_minimum) = &toml.representative_vote_weight_minimum {
             config.representative_vote_weight_minimum =
-                Amount::decode_hex(&representative_vote_weight_minimum)
-                    .expect("Invalid representative_vote_weight_minimum");
+                Amount::decode_dec(&representative_vote_weight_minimum)
+                    .expect("Invalid representative vote weight minimum");
         }
         if let Some(request_aggregator_threads) = toml.request_aggregator_threads {
             config.request_aggregator_threads = request_aggregator_threads;
@@ -236,7 +236,7 @@ impl From<&NodeToml> for NodeConfig {
             config.vote_generator_threshold = vote_generator_threshold;
         }
         if let Some(vote_minimum) = &toml.vote_minimum {
-            config.vote_minimum = Amount::decode_hex(&vote_minimum).expect("Invalid vote minimum");
+            config.vote_minimum = Amount::decode_dec(&vote_minimum).expect("Invalid vote minimum");
         }
         if let Some(work_peers) = &toml.work_peers {
             config.work_peers = work_peers
@@ -314,7 +314,7 @@ impl From<&NodeToml> for NodeConfig {
             config.monitor = monitor_toml.into();
         }
         if let Some(rep_crawler_weight_minimum) = &toml.rep_crawler_weight_minimum {
-            config.rep_crawler_weight_minimum = Amount::decode_hex(&rep_crawler_weight_minimum)
+            config.rep_crawler_weight_minimum = Amount::decode_dec(&rep_crawler_weight_minimum)
                 .expect("Invalid rep crawler weight minimum");
         }
         if let Some(httpcallback) = &toml.httpcallback {

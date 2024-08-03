@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct BootstrapAscendingToml {
-    pub requests_limit: Option<usize>,
+    pub block_wait_count: Option<usize>,
     pub database_requests_limit: Option<usize>,
     pub pull_count: Option<usize>,
-    pub timeout: Option<u64>,
+    pub requests_limit: Option<usize>,
     pub throttle_coefficient: Option<usize>,
     pub throttle_wait: Option<u64>,
+    pub timeout: Option<u64>,
     pub account_sets: Option<AccountSetsToml>,
-    pub block_wait_count: Option<usize>,
 }
 
 impl Default for BootstrapAscendingToml {
@@ -22,10 +22,10 @@ impl Default for BootstrapAscendingToml {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct AccountSetsToml {
-    pub consideration_count: Option<usize>,
-    pub priorities_max: Option<usize>,
     pub blocking_max: Option<usize>,
+    pub consideration_count: Option<usize>,
     pub cooldown: Option<u64>,
+    pub priorities_max: Option<usize>,
 }
 
 impl Default for AccountSetsToml {

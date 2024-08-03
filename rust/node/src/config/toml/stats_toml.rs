@@ -4,12 +4,12 @@ use std::time::Duration;
 
 #[derive(Deserialize, Serialize)]
 pub struct LogToml {
-    pub interval_samples: Option<u64>,
-    pub interval_counters: Option<u64>,
-    pub rotation_count: Option<usize>,
-    pub headers: Option<bool>,
     pub filename_counters: Option<String>,
     pub filename_samples: Option<String>,
+    pub headers: Option<bool>,
+    pub interval_counters: Option<u64>,
+    pub interval_samples: Option<u64>,
+    pub rotation_count: Option<usize>,
 }
 
 impl Default for LogToml {

@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct MessageProcessorToml {
-    pub threads: Option<usize>,
     pub max_queue: Option<usize>,
+    pub threads: Option<usize>,
 }
 
 impl Default for MessageProcessorToml {

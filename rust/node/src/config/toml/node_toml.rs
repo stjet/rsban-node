@@ -44,7 +44,6 @@ pub struct NodeToml {
     pub preconfigured_peers: Option<Vec<String>>,
     pub preconfigured_representatives: Option<Vec<String>>,
     pub receive_minimum: Option<String>,
-    pub rep_crawler: Option<RepCrawlerToml>,
     pub rep_crawler_weight_minimum: Option<String>,
     pub representative_vote_weight_minimum: Option<String>,
     pub request_aggregator_threads: Option<u32>,
@@ -56,29 +55,26 @@ pub struct NodeToml {
     pub vote_generator_delay: Option<i64>,
     pub vote_generator_threshold: Option<u32>,
     pub vote_minimum: Option<String>,
-    pub work_peers: Option<Vec<String>>,
     pub work_threads: Option<u32>,
-    pub optimistic_scheduler: Option<OptimisticSchedulerToml>,
-    pub priority_bucket: Option<PriorityBucketToml>,
+    pub active_elections: Option<ActiveElectionsToml>,
+    pub block_processor: Option<BlockProcessorToml>,
     pub bootstrap_ascending: Option<BootstrapAscendingToml>,
     pub bootstrap_server: Option<BootstrapServerToml>,
-    pub secondary_work_peers: Option<Vec<String>>,
-    pub max_pruning_age_s: Option<i64>,
-    pub max_pruning_depth: Option<u64>,
-    pub websocket: Option<WebsocketToml>,
-    pub ipc: Option<IpcToml>,
     pub diagnostics: Option<DiagnosticsToml>,
-    pub statistics: Option<StatsToml>,
+    pub experimental: Option<ExperimentalToml>,
+    pub httpcallback: Option<HttpcallbackToml>,
+    pub ipc: Option<IpcToml>,
     pub lmdb: Option<LmdbToml>,
-    pub vote_cache: Option<VoteCacheToml>,
-    pub block_processor: Option<BlockProcessorToml>,
-    pub active_elections: Option<ActiveElectionsToml>,
-    pub vote_processor: Option<VoteProcessorToml>,
-    pub request_aggregator: Option<RequestAggregatorToml>,
     pub message_processor: Option<MessageProcessorToml>,
     pub monitor: Option<MonitorToml>,
-    pub httpcallback: Option<HttpcallbackToml>,
-    pub experimental: Option<ExperimentalToml>,
+    pub optimistic_scheduler: Option<OptimisticSchedulerToml>,
+    pub priority_bucket: Option<PriorityBucketToml>,
+    pub rep_crawler: Option<RepCrawlerToml>,
+    pub request_aggregator: Option<RequestAggregatorToml>,
+    pub statistics: Option<StatsToml>,
+    pub vote_cache: Option<VoteCacheToml>,
+    pub vote_processor: Option<VoteProcessorToml>,
+    pub websocket: Option<WebsocketToml>,
 }
 
 impl Default for NodeToml {
@@ -238,12 +234,6 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(vote_minimum) = &toml.vote_minimum {
             config.vote_minimum = Amount::decode_dec(&vote_minimum).expect("Invalid vote minimum");
         }
-        if let Some(work_peers) = &toml.work_peers {
-            config.work_peers = work_peers
-                .iter()
-                .map(|string| string.parse::<Peer>().expect("Invalid peer format"))
-                .collect();
-        }
         if let Some(work_threads) = toml.work_threads {
             config.work_threads = work_threads;
         }
@@ -258,18 +248,6 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(bootstrap_server_toml) = &toml.bootstrap_server {
             config.bootstrap_server = bootstrap_server_toml.into();
-        }
-        if let Some(secondary_work_peers) = &toml.secondary_work_peers {
-            config.secondary_work_peers = secondary_work_peers
-                .iter()
-                .map(|string| string.parse::<Peer>().expect("Invalid peer format"))
-                .collect();
-        }
-        if let Some(max_pruning_age_s) = toml.max_pruning_age_s {
-            config.max_pruning_age_s = max_pruning_age_s;
-        }
-        if let Some(max_pruning_depth) = toml.max_pruning_depth {
-            config.max_pruning_depth = max_pruning_depth;
         }
         if let Some(websocket_config_toml) = &toml.websocket {
             config.websocket_config = websocket_config_toml.into();
@@ -393,27 +371,11 @@ impl From<&NodeConfig> for NodeToml {
             vote_generator_delay: Some(config.vote_generator_delay_ms),
             vote_generator_threshold: Some(config.vote_generator_threshold),
             vote_minimum: Some(config.vote_minimum.to_string_dec()),
-            work_peers: Some(
-                config
-                    .secondary_work_peers
-                    .iter()
-                    .map(|peer| peer.to_string())
-                    .collect(),
-            ),
             work_threads: Some(config.work_threads),
             optimistic_scheduler: Some((&config.optimistic_scheduler).into()),
             priority_bucket: Some((&config.priority_bucket).into()),
             bootstrap_ascending: Some((&config.bootstrap_ascending).into()),
             bootstrap_server: Some((&config.bootstrap_server).into()),
-            secondary_work_peers: Some(
-                config
-                    .secondary_work_peers
-                    .iter()
-                    .map(|peer| peer.to_string())
-                    .collect(),
-            ),
-            max_pruning_age_s: Some(config.max_pruning_age_s),
-            max_pruning_depth: Some(config.max_pruning_depth),
             websocket: Some((&config.websocket_config).into()),
             ipc: Some((&config.ipc_config).into()),
             diagnostics: Some((&config.diagnostics_config).into()),

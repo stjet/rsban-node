@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct WebsocketToml {
+    pub address: Option<String>,
     pub enable: Option<bool>,
     pub port: Option<u16>,
-    pub address: Option<String>,
 }
 
 impl Default for WebsocketToml {

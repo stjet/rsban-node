@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct IpcToml {
+    pub flatbuffers: Option<FlatbuffersToml>,
     pub local: Option<LocalToml>,
     pub tcp: Option<TcpToml>,
-    pub flatbuffers: Option<FlatbuffersToml>,
 }
 
 impl Default for IpcToml {
@@ -18,9 +18,9 @@ impl Default for IpcToml {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct LocalToml {
+    pub allow_unsafe: Option<bool>,
     pub enable: Option<bool>,
     pub io_timeout: Option<usize>,
-    pub allow_unsafe: Option<bool>,
     pub path: Option<PathBuf>,
 }
 

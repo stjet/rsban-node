@@ -34,9 +34,9 @@ impl From<&DiagnosticsToml> for DiagnosticsConfig {
 #[derive(Deserialize, Serialize)]
 pub struct TxnTrackingConfigToml {
     pub enable: Option<bool>,
+    pub ignore_writes_below_block_processor_max_time: Option<bool>,
     pub min_read_txn_time: Option<i64>,
     pub min_write_txn_time: Option<i64>,
-    pub ignore_writes_below_block_processor_max_time: Option<bool>,
 }
 
 impl Default for TxnTrackingConfigToml {

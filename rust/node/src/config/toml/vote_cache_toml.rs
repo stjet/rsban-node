@@ -4,9 +4,9 @@ use std::time::Duration;
 
 #[derive(Deserialize, Serialize)]
 pub struct VoteCacheToml {
+    pub age_cutoff: Option<u64>,
     pub max_size: Option<usize>,
     pub max_voters: Option<usize>,
-    pub age_cutoff: Option<u64>,
 }
 
 impl Default for VoteCacheToml {

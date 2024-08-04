@@ -21,6 +21,7 @@ pub struct LocalToml {
     pub allow_unsafe: Option<bool>,
     pub enable: Option<bool>,
     pub io_timeout: Option<usize>,
+    pub io_threads: Option<i64>,
     pub path: Option<PathBuf>,
 }
 
@@ -48,6 +49,7 @@ impl Default for FlatbuffersToml {
 pub struct TcpToml {
     pub enable: Option<bool>,
     pub io_timeout: Option<usize>,
+    pub io_threads: Option<i64>,
     pub port: Option<u16>,
 }
 
@@ -98,6 +100,9 @@ impl From<&LocalToml> for IpcConfigDomainSocket {
         if let Some(io_timeout) = toml.io_timeout {
             config.transport.io_timeout = io_timeout;
         }
+        if let Some(io_threads) = toml.io_threads {
+            config.transport.io_threads = io_threads;
+        }
         if let Some(allow_unsafe) = toml.allow_unsafe {
             config.transport.allow_unsafe = allow_unsafe;
         }
@@ -110,6 +115,7 @@ impl From<&IpcConfigDomainSocket> for LocalToml {
         Self {
             enable: Some(config.transport.enabled),
             io_timeout: Some(config.transport.io_timeout),
+            io_threads: Some(config.transport.io_threads),
             path: Some(config.path.clone()),
             allow_unsafe: Some(config.transport.allow_unsafe),
         }
@@ -149,6 +155,9 @@ impl From<&TcpToml> for IpcConfigTcpSocket {
         if let Some(io_timeout) = toml.io_timeout {
             config.transport.io_timeout = io_timeout;
         }
+        if let Some(io_threads) = toml.io_threads {
+            config.transport.io_threads = io_threads;
+        }
         if let Some(port) = toml.port {
             config.port = port;
         }
@@ -161,6 +170,7 @@ impl From<&IpcConfigTcpSocket> for TcpToml {
         Self {
             enable: Some(config.transport.enabled),
             io_timeout: Some(config.transport.io_timeout),
+            io_threads: Some(config.transport.io_threads),
             port: Some(config.port),
         }
     }

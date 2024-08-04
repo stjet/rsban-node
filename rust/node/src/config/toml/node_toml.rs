@@ -1,10 +1,10 @@
 use super::{
     ActiveElectionsToml, BlockProcessorToml, BootstrapServerToml, DiagnosticsToml,
-    ExperimentalToml, HttpcallbackToml, IpcToml, LmdbToml, MessageProcessorToml, MonitorToml,
-    OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml, RequestAggregatorToml, StatsToml,
-    VoteCacheToml, VoteProcessorToml, WebsocketToml,
+    ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
+    MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
+    RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
-use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig, Peer};
+use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig};
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -68,6 +68,7 @@ pub struct NodeToml {
     pub message_processor: Option<MessageProcessorToml>,
     pub monitor: Option<MonitorToml>,
     pub optimistic_scheduler: Option<OptimisticSchedulerToml>,
+    pub hinted_scheduler: Option<HintedSchedulerToml>,
     pub priority_bucket: Option<PriorityBucketToml>,
     pub rep_crawler: Option<RepCrawlerToml>,
     pub request_aggregator: Option<RequestAggregatorToml>,
@@ -240,6 +241,9 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(optimistic_scheduler_toml) = &toml.optimistic_scheduler {
             config.optimistic_scheduler = optimistic_scheduler_toml.into();
         }
+        if let Some(hinted_scheduler_toml) = &toml.hinted_scheduler {
+            config.hinted_scheduler = hinted_scheduler_toml.into();
+        }
         if let Some(priority_bucket_toml) = &toml.priority_bucket {
             config.priority_bucket = priority_bucket_toml.into();
         }
@@ -373,6 +377,7 @@ impl From<&NodeConfig> for NodeToml {
             vote_minimum: Some(config.vote_minimum.to_string_dec()),
             work_threads: Some(config.work_threads),
             optimistic_scheduler: Some((&config.optimistic_scheduler).into()),
+            hinted_scheduler: Some((&config.hinted_scheduler).into()),
             priority_bucket: Some((&config.priority_bucket).into()),
             bootstrap_ascending: Some((&config.bootstrap_ascending).into()),
             bootstrap_server: Some((&config.bootstrap_server).into()),

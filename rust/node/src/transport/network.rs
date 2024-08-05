@@ -1,7 +1,7 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
-    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, Socket, TcpConfig,
+    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, TcpConfig,
     TcpStream, TrafficType, TransportType,
 };
 use crate::{
@@ -9,14 +9,14 @@ use crate::{
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
     transport::{Channel, SocketBuilder},
     utils::{
-        ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        reserved_address,
+        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
+        map_address_to_subnetwork, reserved_address,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
     Account, PublicKey,
 };
 use rsnano_messages::*;
@@ -153,11 +153,52 @@ impl Network {
         }
     }
 
-    pub async fn add2(
+    pub async fn add(
         &self,
         stream: TcpStream,
         direction: ChannelDirection,
     ) -> anyhow::Result<Arc<ChannelEnum>> {
+        let remote_endpoint = stream
+            .peer_addr()
+            .map(into_ipv6_socket_address)
+            .unwrap_or(NULL_ENDPOINT);
+
+        let result = self.check_limits(remote_endpoint.ip(), direction);
+
+        if result != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::AcceptRejected,
+                direction.into(),
+            );
+            if direction == ChannelDirection::Outbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::ConnectFailure,
+                    Direction::Out,
+                );
+            }
+            debug!(
+                "Rejected connection from: {} ({:?})",
+                remote_endpoint, direction
+            );
+            if direction == ChannelDirection::Inbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::AcceptFailure,
+                    Direction::In,
+                );
+                // Refusal reason should be logged earlier
+            }
+            return Err(anyhow!("check_limits failed"));
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::AcceptSuccess,
+            direction.into(),
+        );
+
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
         let socket = SocketBuilder::new(direction)
             .silent_connection_tolerance_time(Duration::from_secs(
@@ -170,42 +211,6 @@ impl Network {
             .finish(stream)
             .await;
 
-        let remote_endpoint = socket.remote_addr();
-        let result = self.check_limits(remote_endpoint.ip(), direction);
-
-        if result != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::AcceptRejected,
-                direction.into(),
-            );
-            if direction == ChannelDirection::Outbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::ConnectFailure,
-                    Direction::Out,
-                );
-            }
-            debug!(
-                "Rejected connection from: {} ({:?})",
-                remote_endpoint, direction
-            );
-            if direction == ChannelDirection::Inbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::AcceptFailure,
-                    Direction::In,
-                );
-                // Refusal reason should be logged earlier
-            }
-            return Err(anyhow!("check_limits failed"));
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::AcceptSuccess,
-            direction.into(),
-        );
         socket.set_timeout(self.network_params.network.idle_timeout);
 
         if direction == ChannelDirection::Outbound {
@@ -215,8 +220,6 @@ impl Network {
                 Direction::Out,
             );
         }
-
-        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
 
         let channel = ChannelTcp::new(
             socket.clone(),
@@ -228,73 +231,9 @@ impl Network {
         );
         let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
         self.state.lock().unwrap().channels.insert(channel.clone());
-        Ok(channel)
-    }
-
-    pub async fn add(
-        &self,
-        socket: &Arc<Socket>,
-        direction: ChannelDirection,
-    ) -> anyhow::Result<Arc<ChannelEnum>> {
-        let remote_endpoint = socket.remote_addr();
-
-        let result = self.check_limits(remote_endpoint.ip(), direction);
-
-        if result != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::AcceptRejected,
-                direction.into(),
-            );
-            if direction == ChannelDirection::Outbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::ConnectFailure,
-                    Direction::Out,
-                );
-            }
-            debug!(
-                "Rejected connection from: {} ({:?})",
-                remote_endpoint, direction
-            );
-            if direction == ChannelDirection::Inbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::AcceptFailure,
-                    Direction::In,
-                );
-                // Refusal reason should be logged earlier
-            }
-            return Err(anyhow!("check_limits failed"));
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::AcceptSuccess,
-            direction.into(),
-        );
-        socket.set_timeout(self.network_params.network.idle_timeout);
-
-        if direction == ChannelDirection::Outbound {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectSuccess,
-                Direction::Out,
-            );
-        }
 
         debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
 
-        let channel = ChannelTcp::new(
-            socket.clone(),
-            SystemTime::now(),
-            self.stats.clone(),
-            self.limiter.clone(),
-            self.get_next_channel_id(),
-            self.network_params.network.protocol_info(),
-        );
-        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
-        self.state.lock().unwrap().channels.insert(channel.clone());
         Ok(channel)
     }
 

@@ -503,11 +503,9 @@ impl Node {
 
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
-            config.clone(),
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            network_params.clone(),
             response_server_factory.clone(),
         ));
 
@@ -534,9 +532,7 @@ impl Node {
         //
         let tcp_listener = Arc::new(TcpListener::new(
             network.port(),
-            config.clone(),
             network.clone(),
-            network_params.clone(),
             async_rt.clone(),
             stats.clone(),
             response_server_factory.clone(),

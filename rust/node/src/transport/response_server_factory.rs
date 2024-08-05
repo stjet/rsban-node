@@ -3,7 +3,7 @@ use rsnano_ledger::Ledger;
 
 use super::{
     ChannelEnum, InboundMessageQueue, LatestKeepalives, Network, OutboundBandwidthLimiter,
-    ResponseServer, ResponseServerExt, Socket, SynCookies,
+    ResponseServer, ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,

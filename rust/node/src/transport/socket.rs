@@ -1,10 +1,7 @@
 use super::{
     message_deserializer::AsyncBufferReader, write_queue::WriteQueue, TcpStream, TrafficType,
 };
-use crate::{
-    stats,
-    utils::{into_ipv6_socket_address, AsyncRuntime},
-};
+use crate::{stats, utils::into_ipv6_socket_address};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::{seconds_since_epoch, NULL_ENDPOINT};
@@ -310,29 +307,6 @@ impl Socket {
             self.observer.write_error();
             self.close();
         }
-    }
-
-    /// Writes directly to the stream and does not use the queues
-    pub(crate) async fn write_directly(&self, data: &[u8]) -> anyhow::Result<()> {
-        let mut written = 0;
-        loop {
-            self.stream.writable().await?;
-            match self.stream.try_write(&data[written..]) {
-                Ok(n) => {
-                    written += n;
-                    if written >= data.len() {
-                        break;
-                    }
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    continue;
-                }
-                Err(e) => {
-                    bail!(e)
-                }
-            }
-        }
-        Ok(())
     }
 
     async fn ongoing_checkup(&self) {

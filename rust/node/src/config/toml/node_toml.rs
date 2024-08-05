@@ -4,10 +4,10 @@ use super::{
     MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
     RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
-use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig};
+use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig, Peer};
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 #[derive(Serialize, Deserialize)]
 pub struct NodeToml {
@@ -55,6 +55,7 @@ pub struct NodeToml {
     pub vote_generator_delay: Option<i64>,
     pub vote_generator_threshold: Option<u32>,
     pub vote_minimum: Option<String>,
+    pub work_peers: Option<Vec<String>>,
     pub work_threads: Option<u32>,
     pub active_elections: Option<ActiveElectionsToml>,
     pub block_processor: Option<BlockProcessorToml>,
@@ -235,6 +236,12 @@ impl From<&NodeToml> for NodeConfig {
         if let Some(vote_minimum) = &toml.vote_minimum {
             config.vote_minimum = Amount::decode_dec(&vote_minimum).expect("Invalid vote minimum");
         }
+        if let Some(work_peers) = &toml.work_peers {
+            config.work_peers = work_peers
+                .iter()
+                .map(|string| Peer::from_str(&string).expect("Invalid work peer"))
+                .collect();
+        }
         if let Some(work_threads) = toml.work_threads {
             config.work_threads = work_threads;
         }
@@ -375,6 +382,13 @@ impl From<&NodeConfig> for NodeToml {
             vote_generator_delay: Some(config.vote_generator_delay_ms),
             vote_generator_threshold: Some(config.vote_generator_threshold),
             vote_minimum: Some(config.vote_minimum.to_string_dec()),
+            work_peers: Some(
+                config
+                    .work_peers
+                    .iter()
+                    .map(|peer| peer.to_string())
+                    .collect(),
+            ),
             work_threads: Some(config.work_threads),
             optimistic_scheduler: Some((&config.optimistic_scheduler).into()),
             hinted_scheduler: Some((&config.hinted_scheduler).into()),

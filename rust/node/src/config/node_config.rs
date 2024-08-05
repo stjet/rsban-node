@@ -124,7 +124,7 @@ impl Default for NodeConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Peer {
     pub address: String,
     pub port: u16,

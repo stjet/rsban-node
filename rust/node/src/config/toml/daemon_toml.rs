@@ -125,6 +125,7 @@ mod tests {
         vote_generator_delay = 100
         vote_generator_threshold = 3
         vote_minimum = "1000000000000000000000000000000000"
+        work_peers = []
         work_threads = 8
 
         [node.active_elections]
@@ -274,202 +275,200 @@ mod tests {
         enable = false
         rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc""#;
 
-    static MODIFIED_TOML_STR: &str = r#"
-            [node]
-           	allow_local_peers = false
-           	backup_before_upgrade = true
-           	bandwidth_limit = 999
-           	bandwidth_limit_burst_ratio = 999.9
-           	bootstrap_bandwidth_limit = 999
-           	bootstrap_bandwidth_burst_ratio = 999.9
-           	block_processor_batch_max_time = 999
-           	bootstrap_connections = 999
-           	bootstrap_connections_max = 999
-           	bootstrap_initiator_threads = 999
-           	bootstrap_serving_threads = 999
-           	bootstrap_frontier_request_count = 9999
-           	bootstrap_fraction_numerator = 999
-           	confirming_set_batch_time = 999
-           	enable_voting = true
-           	external_address = "0:0:0:0:0:ffff:7f01:101"
-           	external_port = 999
-           	io_threads = 999
-            max_queued_requests = 999
-           	network_threads = 999
-           	background_threads = 999
-           	online_weight_minimum = "999"
-           	representative_vote_weight_minimum = "999"
-           	rep_crawler_weight_minimum = "999"
-           	password_fanout = 999
-           	peering_port = 999
-           	pow_sleep_interval = 999
-           	preconfigured_peers = ["dev.org"]
-           	preconfigured_representatives = ["nano_3arg3asgtigae3xckabaaewkx3bzsh7nwz7jkmjos79ihyaxwphhm6qgjps4"]
-           	receive_minimum = "999"
-           	signature_checker_threads = 999
-           	tcp_incoming_connections_max = 999
-           	tcp_io_timeout = 999
-           	unchecked_cutoff_time = 999
-           	use_memory_pools = false
-           	vote_generator_delay = 999
-           	vote_generator_threshold = 9
-           	vote_minimum = "999"
-           	work_peers = ["dev.org:999"]
-           	work_threads = 999
-           	max_work_generate_multiplier = 999
-           	request_aggregator_threads = 999
-           	max_unchecked_blocks = 999
-           	frontiers_confirmation = "always"
-           	backlog_scan_batch_size = 999
-           	backlog_scan_frequency = 999
+    static MODIFIED_TOML_STR: &str = r#"[node]
+        allow_local_peers = false
+        backup_before_upgrade = true
+        bandwidth_limit = 999
+        bandwidth_limit_burst_ratio = 999.9
+        bootstrap_bandwidth_limit = 999
+        bootstrap_bandwidth_burst_ratio = 999.9
+        block_processor_batch_max_time = 999
+        bootstrap_connections = 999
+        bootstrap_connections_max = 999
+        bootstrap_initiator_threads = 999
+        bootstrap_serving_threads = 999
+        bootstrap_frontier_request_count = 9999
+        bootstrap_fraction_numerator = 999
+        confirming_set_batch_time = 999
+        enable_voting = true
+        external_address = "0:0:0:0:0:ffff:7f01:101"
+        external_port = 999
+        io_threads = 999
+        max_queued_requests = 999
+        network_threads = 999
+        background_threads = 999
+        online_weight_minimum = "999"
+        representative_vote_weight_minimum = "999"
+        rep_crawler_weight_minimum = "999"
+        password_fanout = 999
+        peering_port = 999
+        pow_sleep_interval = 999
+        preconfigured_peers = ["dev.org"]
+        preconfigured_representatives = ["nano_3arg3asgtigae3xckabaaewkx3bzsh7nwz7jkmjos79ihyaxwphhm6qgjps4"]
+        receive_minimum = "999"
+        signature_checker_threads = 999
+        tcp_incoming_connections_max = 999
+        tcp_io_timeout = 999
+        unchecked_cutoff_time = 999
+        use_memory_pools = false
+        vote_generator_delay = 999
+        vote_generator_threshold = 9
+        vote_minimum = "999"
+        work_peers = ["dev.org:999"]
+        work_threads = 999
+        max_work_generate_multiplier = 999
+        request_aggregator_threads = 999
+        max_unchecked_blocks = 999
+        frontiers_confirmation = "always"
+        backlog_scan_batch_size = 999
+        backlog_scan_frequency = 999
 
-           	[node.block_processor]
-           	max_peer_queue = 999
-           	max_system_queue = 999
-           	priority_live = 999
-           	priority_bootstrap = 999
-           	priority_local = 999
+        [node.block_processor]
+        max_peer_queue = 999
+        max_system_queue = 999
+        priority_live = 999
+        priority_bootstrap = 999
+        priority_local = 999
 
-           	[node.active_elections]
-           	size = 999
-           	hinted_limit_percentage = 90
-           	optimistic_limit_percentage = 90
-           	confirmation_history_size = 999
-           	confirmation_cache = 999
+        [node.active_elections]
+        size = 999
+        hinted_limit_percentage = 90
+        optimistic_limit_percentage = 90
+        confirmation_history_size = 999
+        confirmation_cache = 999
 
-           	[node.diagnostics.txn_tracking]
-           	enable = true
-           	ignore_writes_below_block_processor_max_time = false
-           	min_read_txn_time = 999
-           	min_write_txn_time = 999
+        [node.diagnostics.txn_tracking]
+        enable = true
+        ignore_writes_below_block_processor_max_time = false
+        min_read_txn_time = 999
+        min_write_txn_time = 999
 
-           	[node.httpcallback]
-           	address = "dev.org"
-           	port = 999
-           	target = "/dev"
+        [node.httpcallback]
+        address = "dev.org"
+        port = 999
+        target = "/dev"
 
-            [node.priority_bucket]
-            max_blocks = 999
-            max_elections = 999
-            reserved_elections = 999
+        [node.priority_bucket]
+        max_blocks = 999
+        max_elections = 999
+        reserved_elections = 999
 
-            [node.rep_crawler]
-            query_timeout = 999
+        [node.rep_crawler]
+        query_timeout = 999
 
-            [node.monitor]
-            enable = false
-            interval = 999
+        [node.monitor]
+        enable = false
+        interval = 999
 
-           	[node.ipc.local]
-           	allow_unsafe = true
-           	enable = true
-           	io_timeout = 999
-           	io_threads = 999
-           	path = "/tmp/dev"
+        [node.ipc.local]
+        allow_unsafe = true
+        enable = true
+        io_timeout = 999
+        io_threads = 999
+        path = "/tmp/dev"
 
-           	[node.ipc.tcp]
-           	enable = true
-           	io_timeout = 999
-           	io_threads = 999
-           	port = 999
+        [node.ipc.tcp]
+        enable = true
+        io_timeout = 999
+        io_threads = 999
+        port = 999
 
-           	[node.ipc.flatbuffers]
-           	skip_unexpected_fields_in_json = false
-           	verify_buffers = false
+        [node.ipc.flatbuffers]
+        skip_unexpected_fields_in_json = false
+        verify_buffers = false
 
-           	[node.statistics]
-           	max_samples = 999
+        [node.statistics]
+        max_samples = 999
 
-           	[node.statistics.log]
-           	filename_counters = "devcounters.stat"
-           	filename_samples = "devsamples.stat"
-           	headers = false
-           	interval_counters = 999
-           	interval_samples = 999
-           	rotation_count = 999
+        [node.statistics.log]
+        filename_counters = "devcounters.stat"
+        filename_samples = "devsamples.stat"
+        headers = false
+        interval_counters = 999
+        interval_samples = 999
+        rotation_count = 999
 
-           	[node.websocket]
-           	address = "0:0:0:0:0:ffff:7f01:101"
-           	enable = true
-           	port = 999
+        [node.websocket]
+        address = "0:0:0:0:0:ffff:7f01:101"
+        enable = true
+        port = 999
 
-           	[node.lmdb]
-           	sync = "nosync_safe"
-           	max_databases = 999
-           	map_size = 999
+        [node.lmdb]
+        sync = "nosync_safe"
+        max_databases = 999
+        map_size = 999
 
-           	[node.optimistic_scheduler]
-           	enable = false
-           	gap_threshold = 999
-           	max_size = 999
+        [node.optimistic_scheduler]
+        enable = false
+        gap_threshold = 999
+        max_size = 999
 
-           	[node.hinted_scheduler]
-           	enable = false
-           	hinting_threshold = 99
-           	check_interval = 999
-           	block_cooldown = 999
-           	vacancy_threshold = 99
+        [node.hinted_scheduler]
+        enable = false
+        hinting_threshold = 99
+        check_interval = 999
+        block_cooldown = 999
+        vacancy_threshold = 99
 
-           	[node.experimental]
-           	secondary_work_peers = ["dev.org:998"]
-           	max_pruning_age = 999
-           	max_pruning_depth = 999
+        [node.experimental]
+        secondary_work_peers = ["dev.org:998"]
+        max_pruning_age = 999
+        max_pruning_depth = 999
 
-           	[node.vote_cache]
-            age_cutoff = 999
-           	max_size = 999
-           	max_voters = 999
+        [node.vote_cache]
+        age_cutoff = 999
+        max_size = 999
+        max_voters = 999
 
-           	[node.vote_processor]
-           	max_pr_queue = 999
-           	max_non_pr_queue = 999
-           	pr_priority = 999
-           	threads = 999
-           	batch_size = 999
+        [node.vote_processor]
+        max_pr_queue = 999
+        max_non_pr_queue = 999
+        pr_priority = 999
+        threads = 999
+        batch_size = 999
 
-            [node.bootstrap_ascending]
-            block_wait_count = 999
-            database_requests_limit = 999
-            pull_count = 999
-            requests_limit = 999
-            throttle_coefficient = 999
-            throttle_wait = 999
-            timeout = 999
+        [node.bootstrap_ascending]
+        block_wait_count = 999
+        database_requests_limit = 999
+        pull_count = 999
+        requests_limit = 999
+        throttle_coefficient = 999
+        throttle_wait = 999
+        timeout = 999
 
-            [node.bootstrap_ascending.account_sets]
-            blocking_max = 999
-            consideration_count = 999
-            cooldown = 999
-            priorities_max = 999
+        [node.bootstrap_ascending.account_sets]
+        blocking_max = 999
+        consideration_count = 999
+        cooldown = 999
+        priorities_max = 999
 
-           	[node.bootstrap_server]
-           	max_queue = 999
-           	threads = 999
-           	batch_size = 999
+        [node.bootstrap_server]
+        max_queue = 999
+        threads = 999
+        batch_size = 999
 
-           	[node.request_aggregator]
-           	max_queue = 999
-           	threads = 999
-           	batch_size = 999
+        [node.request_aggregator]
+        max_queue = 999
+        threads = 999
+        batch_size = 999
 
-           	[node.message_processor]
-           	threads = 999
-           	max_queue = 999
+        [node.message_processor]
+        threads = 999
+        max_queue = 999
 
-           	[opencl]
-           	device = 999
-           	enable = true
-           	platform = 999
-           	threads = 999
+        [opencl]
+        device = 999
+        enable = true
+        platform = 999
+        threads = 999
 
-           	[rpc]
-           	enable = true
-           	enable_sign_hash = true
+        [rpc]
+        enable = true
+        enable_sign_hash = true
 
-           	[rpc.child_process]
-           	enable = true
-           	rpc_path = "/dev/nano_rpc"
-        "#;
+        [rpc.child_process]
+        enable = true
+        rpc_path = "/dev/nano_rpc""#;
 
     #[test]
     fn deserialize_defaults() {
@@ -563,8 +562,6 @@ mod tests {
             .collect::<Vec<&str>>()
             .join("\n");
 
-        println!("{}", default_toml_str_trimmed);
-
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
     }
 
@@ -588,13 +585,14 @@ mod tests {
         compare!((node1.backlog_scan_frequency, node2.backlog_scan_frequency));
         compare!((node1.backup_before_upgrade, node2.backup_before_upgrade));
         compare!((node1.bandwidth_limit, node2.bandwidth_limit));
-        compare!((
-            node1.bandwidth_limit_burst_ratio,
-            node2.bandwidth_limit_burst_ratio
-        ));
+        compare!((node1.max_unchecked_blocks, node2.max_unchecked_blocks));
         compare!((
             node1.block_processor_batch_max_time_ms,
             node2.block_processor_batch_max_time_ms
+        ));
+        compare!((
+            node1.bandwidth_limit_burst_ratio,
+            node2.bandwidth_limit_burst_ratio
         ));
         compare!((
             node1.bootstrap_bandwidth_burst_ratio,
@@ -629,6 +627,7 @@ mod tests {
             node1.confirming_set_batch_time,
             node2.confirming_set_batch_time
         ));
+        compare!((&node1.work_peers, &node2.work_peers));
         compare!((node1.enable_voting, node2.enable_voting));
         compare!((&node1.external_address, &node2.external_address));
         compare!((node1.external_port, node2.external_port));

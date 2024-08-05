@@ -1,13 +1,10 @@
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
-use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum SyncStrategy {
     /** Always flush to disk on commit. This is default. */
     Always,
-    #[serde(rename = "nosync_safe")]
     /** Do not flush meta data eagerly. This may cause loss of transactions, but maintains integrity. */
     NosyncSafe,
 

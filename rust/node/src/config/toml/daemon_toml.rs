@@ -274,21 +274,7 @@ mod tests {
         enable = false
         rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc""#;
 
-    #[test]
-    fn deserialize_defaults() {
-        let deserialized_toml: DaemonToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
-
-        let default_daemon_config = DaemonConfig::default();
-        let deserialized_daemon_config: DaemonConfig = (&deserialized_toml).into();
-
-        compare_configs(&deserialized_daemon_config, &default_daemon_config, true);
-    }
-
-    #[test]
-    fn deserialize_no_defaults() {
-        let path: PathBuf = "node-config.toml".into();
-
-        let toml_str = r#"
+    static MODIFIED_TOML_STR: &str = r#"
             [node]
            	allow_local_peers = false
            	backup_before_upgrade = true
@@ -485,8 +471,22 @@ mod tests {
            	rpc_path = "/dev/nano_rpc"
         "#;
 
+    #[test]
+    fn deserialize_defaults() {
+        let deserialized_toml: DaemonToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
+
+        let default_daemon_config = DaemonConfig::default();
+        let deserialized_daemon_config: DaemonConfig = (&deserialized_toml).into();
+
+        compare_configs(&deserialized_daemon_config, &default_daemon_config, true);
+    }
+
+    #[test]
+    fn deserialize_no_defaults() {
+        let path: PathBuf = "node-config.toml".into();
+
         let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, toml_str.to_string())
+            .read_to_string(&path, MODIFIED_TOML_STR.to_string())
             .finish();
 
         let toml_read = fs.read_to_string(&path).unwrap();
@@ -506,7 +506,7 @@ mod tests {
         let path: PathBuf = "node-config.toml".into();
 
         let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, comment_fields(DEFAULT_TOML_STR).to_string())
+            .read_to_string(&path, comment_fields(MODIFIED_TOML_STR).to_string())
             .finish();
 
         let toml_read = fs.read_to_string(&path).unwrap();
@@ -562,6 +562,8 @@ mod tests {
             .map(str::trim)
             .collect::<Vec<&str>>()
             .join("\n");
+
+        println!("{}", default_toml_str_trimmed);
 
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
     }

@@ -1,13 +1,13 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
-    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, ResponseServer,
-    Socket, TcpConfig, TrafficType, TransportType,
+    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, Socket, TcpConfig,
+    TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Channel, ResponseServerExt},
+    transport::Channel,
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
         reserved_address, AsyncRuntime,
@@ -160,9 +160,8 @@ impl Network {
     pub async fn add(
         &self,
         socket: &Arc<Socket>,
-        response_server: &Arc<ResponseServer>,
         direction: ChannelDirection,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Arc<ChannelEnum>> {
         let Some(remote_endpoint) = socket.get_remote() else {
             return Err(anyhow!("no remote endpoint"));
         };
@@ -202,29 +201,7 @@ impl Network {
             DetailType::AcceptSuccess,
             direction.into(),
         );
-
-        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
-
         socket.set_timeout(self.network_params.network.idle_timeout);
-
-        let tcp_channel = ChannelTcp::new(
-            socket.clone(),
-            SystemTime::now(),
-            self.stats.clone(),
-            self.limiter.clone(),
-            self.get_next_channel_id(),
-            self.network_params.network.protocol_info(),
-        );
-        tcp_channel.update_remote_endpoint();
-        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));
-        response_server.set_channel(channel.clone());
-
-        self.state.lock().unwrap().channels.insert(channel);
-
-        let response_server_l = response_server.clone();
-        self.async_rt
-            .tokio
-            .spawn(async move { response_server_l.run().await });
 
         if direction == ChannelDirection::Outbound {
             self.stats.inc_dir(
@@ -232,11 +209,22 @@ impl Network {
                 DetailType::ConnectSuccess,
                 Direction::Out,
             );
-            debug!("Successfully connected to: {}", remote_endpoint);
-            response_server.initiate_handshake().await;
         }
 
-        Ok(())
+        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+
+        let channel = ChannelTcp::new(
+            socket.clone(),
+            SystemTime::now(),
+            self.stats.clone(),
+            self.limiter.clone(),
+            self.get_next_channel_id(),
+            self.network_params.network.protocol_info(),
+        );
+        channel.update_remote_endpoint();
+        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
+        self.state.lock().unwrap().channels.insert(channel.clone());
+        Ok(channel)
     }
 
     pub fn new_null() -> Self {

@@ -201,11 +201,7 @@ impl Channel for Arc<ChannelTcp> {
         }
     }
 
-    async fn send_buffer(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        traffic_type: TrafficType,
-    ) -> anyhow::Result<()> {
+    async fn send_buffer(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
         while !self.limiter.should_pass(buffer.len(), traffic_type.into()) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;

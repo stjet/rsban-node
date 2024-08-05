@@ -132,13 +132,7 @@ pub trait Channel: AsyncBufferReader {
     fn subnetwork(&self) -> Ipv6Addr;
 
     fn try_send(&self, message: &Message, drop_policy: BufferDropPolicy, traffic_type: TrafficType);
-
-    async fn send_buffer(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        traffic_type: TrafficType,
-    ) -> anyhow::Result<()>;
-
+    async fn send_buffer(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()>;
     async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()>;
 
     fn close(&self);
@@ -204,6 +198,13 @@ impl Deref for ChannelEnum {
 
 #[async_trait]
 impl AsyncBufferReader for ChannelEnum {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        self.deref().read(buffer, count).await
+    }
+}
+
+#[async_trait]
+impl AsyncBufferReader for Arc<ChannelEnum> {
     async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
         self.deref().read(buffer, count).await
     }

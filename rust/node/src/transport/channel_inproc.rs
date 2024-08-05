@@ -91,7 +91,7 @@ impl ChannelInProc {
         }
     }
 
-    fn send_buffer_2(&self, buffer: &Arc<Vec<u8>>) {
+    fn send_buffer_2(&self, buffer: &[u8]) {
         let stats = self.stats.clone();
         let network_constants = self.network_constants.clone();
         let limiter = self.limiter.clone();
@@ -274,27 +274,23 @@ impl Channel for ChannelInProc {
     fn try_send(
         &self,
         message: &Message,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
+        _drop_policy: BufferDropPolicy,
+        _traffic_type: TrafficType,
     ) {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
             let buffer = serializer.serialize(message);
-            Arc::new(Vec::from(buffer)) // TODO don't copy buffer
+            Vec::from(buffer)
         };
         self.send_buffer_2(&buffer);
     }
 
-    async fn send_buffer(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        traffic_type: TrafficType,
-    ) -> anyhow::Result<()> {
-        self.send_buffer_2(&buffer);
+    async fn send_buffer(&self, buffer: &[u8], _traffic_type: TrafficType) -> anyhow::Result<()> {
+        self.send_buffer_2(buffer);
         Ok(())
     }
 
-    async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
+    async fn send(&self, message: &Message, _traffic_type: TrafficType) -> anyhow::Result<()> {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
             let buffer = serializer.serialize(message);

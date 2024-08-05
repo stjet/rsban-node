@@ -2,8 +2,8 @@ use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use super::{
-    InboundMessageQueue, LatestKeepalives, Network, OutboundBandwidthLimiter, ResponseServer,
-    Socket, SynCookies,
+    ChannelEnum, InboundMessageQueue, LatestKeepalives, Network, OutboundBandwidthLimiter,
+    ResponseServer, ResponseServerExt, Socket, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -71,11 +71,11 @@ impl ResponseServerFactory {
         }
     }
 
-    pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServer> {
-        Arc::new(ResponseServer::new(
+    pub(crate) fn start_response_server(&self, channel: Arc<ChannelEnum>) -> Arc<ResponseServer> {
+        let server = Arc::new(ResponseServer::new(
             &self.network.clone(),
             self.inbound_queue.clone(),
-            socket,
+            channel,
             Arc::clone(&self.network.publish_filter),
             Arc::new(self.network_params.clone()),
             Arc::clone(&self.stats),
@@ -89,6 +89,11 @@ impl ResponseServerFactory {
             self.bootstrap_initiator.clone(),
             self.node_flags.clone(),
             self.latest_keepalives.clone(),
-        ))
+        ));
+
+        let server_l = server.clone();
+        tokio::spawn(async move { server_l.run().await });
+
+        server
     }
 }

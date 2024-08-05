@@ -133,11 +133,7 @@ impl Channel for ChannelFake {
     ) {
     }
 
-    async fn send_buffer(
-        &self,
-        _buffer: &Arc<Vec<u8>>,
-        _traffic_type: TrafficType,
-    ) -> anyhow::Result<()> {
+    async fn send_buffer(&self, _buffer: &[u8], _traffic_type: TrafficType) -> anyhow::Result<()> {
         Ok(())
     }
 

@@ -162,9 +162,7 @@ impl Network {
         socket: &Arc<Socket>,
         direction: ChannelDirection,
     ) -> anyhow::Result<Arc<ChannelEnum>> {
-        let Some(remote_endpoint) = socket.get_remote() else {
-            return Err(anyhow!("no remote endpoint"));
-        };
+        let remote_endpoint = socket.remote_addr();
 
         let result = self.check_limits(remote_endpoint.ip(), direction);
 
@@ -221,7 +219,6 @@ impl Network {
             self.get_next_channel_id(),
             self.network_params.network.protocol_info(),
         );
-        channel.update_remote_endpoint();
         let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
         self.state.lock().unwrap().channels.insert(channel.clone());
         Ok(channel)

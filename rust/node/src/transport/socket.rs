@@ -227,8 +227,8 @@ impl Socket {
         self.timed_out.load(Ordering::SeqCst)
     }
 
-    pub fn get_remote(&self) -> Option<SocketAddrV6> {
-        Some(self.remote)
+    pub fn remote_addr(&self) -> SocketAddrV6 {
+        self.remote
     }
 
     pub async fn read_raw(&self, buffer: &mut [u8], size: usize) -> anyhow::Result<()> {

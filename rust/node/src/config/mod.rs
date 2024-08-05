@@ -1,4 +1,3 @@
-mod block_processor;
 mod bootstrap_ascending;
 mod converters;
 mod daemon_config;

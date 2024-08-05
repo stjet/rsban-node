@@ -1,9 +1,9 @@
 use super::{
     AsyncBufferReader, BufferDropPolicy, Channel, ChannelDirection, ChannelId, ChannelMode,
-    OutboundBandwidthLimiter, Socket, TrafficType,
+    OutboundBandwidthLimiter, Socket, SocketBuilder, TcpStream, TrafficType,
 };
 use crate::{
-    stats::{Direction, StatType, Stats},
+    stats::{Direction, SocketStats, StatType, Stats},
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 use async_trait::async_trait;
@@ -67,6 +67,30 @@ impl ChannelTcp {
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
             stats,
         }
+    }
+
+    pub async fn create(
+        channel_id: ChannelId,
+        stream: TcpStream,
+        direction: ChannelDirection,
+        protocol: ProtocolInfo,
+        stats: Arc<Stats>,
+        limiter: Arc<OutboundBandwidthLimiter>,
+    ) -> Self {
+        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&stats)));
+        let socket = SocketBuilder::new(direction)
+            .observer(socket_stats)
+            .finish(stream)
+            .await;
+
+        Self::new(
+            socket,
+            SystemTime::now(),
+            stats,
+            limiter,
+            channel_id,
+            protocol,
+        )
     }
 
     pub(crate) fn set_peering_endpoint(&self, address: SocketAddrV6) {

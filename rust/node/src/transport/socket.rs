@@ -468,7 +468,7 @@ impl SocketBuilder {
                 last_completion_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 last_receive_time_or_init: AtomicU64::new(seconds_since_epoch()),
                 default_timeout: AtomicU64::new(self.default_timeout.as_secs()),
-                timeout_seconds: AtomicU64::new(u64::MAX),
+                timeout_seconds: AtomicU64::new(self.idle_timeout.as_secs()),
                 idle_timeout: self.idle_timeout,
                 direction: self.direction,
                 silent_connection_tolerance_time: AtomicU64::new(

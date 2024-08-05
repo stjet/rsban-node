@@ -1299,10 +1299,13 @@ mod bulk_pull_account {
 }
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {
-    let socket_stats = Arc::new(SocketStats::new(node.stats.clone()));
-    let socket = SocketBuilder::new(ChannelDirection::Inbound, node.async_rt.clone())
-        .observer(socket_stats)
-        .finish(TcpStream::new_null());
+    let socket = node.async_rt.tokio.block_on(async {
+        let socket_stats = Arc::new(SocketStats::new(node.stats.clone()));
+        SocketBuilder::new(ChannelDirection::Inbound)
+            .observer(socket_stats)
+            .finish(TcpStream::new_null())
+            .await
+    });
 
     let channel = Arc::new(ChannelEnum::Tcp(Arc::new(ChannelTcp::new(
         socket.clone(),

@@ -26,8 +26,7 @@ pub struct TcpChannelData {
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
     node_id: Option<Account>,
-    pub remote_endpoint: SocketAddrV6,
-    pub peering_endpoint: Option<SocketAddrV6>,
+    peering_endpoint: Option<SocketAddrV6>,
 }
 
 pub struct ChannelTcp {
@@ -51,7 +50,7 @@ impl ChannelTcp {
     ) -> Self {
         let peering_endpoint = match socket.direction() {
             ChannelDirection::Inbound => None,
-            ChannelDirection::Outbound => socket.get_remote(),
+            ChannelDirection::Outbound => Some(socket.remote_addr()),
         };
         Self {
             channel_id,
@@ -60,7 +59,6 @@ impl ChannelTcp {
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: None,
-                remote_endpoint: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
                 peering_endpoint,
             }),
             socket,
@@ -68,15 +66,6 @@ impl ChannelTcp {
             limiter,
             message_serializer: Mutex::new(MessageSerializer::new(protocol)),
             stats,
-        }
-    }
-
-    pub(crate) fn update_remote_endpoint(&self) {
-        let mut lock = self.channel_mutex.lock().unwrap();
-        debug_assert!(lock.remote_endpoint == SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)); // Not initialized endpoint value
-                                                                                                  // Calculate TCP socket endpoint
-        if let Some(ep) = self.socket.get_remote() {
-            lock.remote_endpoint = ep;
         }
     }
 
@@ -92,7 +81,7 @@ impl ChannelTcp {
 
 impl Display for ChannelTcp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.channel_mutex.lock().unwrap().remote_endpoint.fmt(f)
+        self.socket.remote_addr().fmt(f)
     }
 }
 
@@ -147,7 +136,7 @@ impl Channel for Arc<ChannelTcp> {
     }
 
     fn remote_addr(&self) -> SocketAddrV6 {
-        self.channel_mutex.lock().unwrap().remote_endpoint
+        self.socket.remote_addr()
     }
 
     fn peering_endpoint(&self) -> Option<SocketAddrV6> {

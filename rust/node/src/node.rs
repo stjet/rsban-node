@@ -237,7 +237,6 @@ impl Node {
             allow_local_peers: config.allow_local_peers,
             tcp_config: config.tcp.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
-            async_rt: async_rt.clone(),
             network_params: network_params.clone(),
             stats: stats.clone(),
             inbound_queue: inbound_message_queue.clone(),
@@ -504,11 +503,9 @@ impl Node {
 
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
-            config.clone(),
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            network_params.clone(),
             response_server_factory.clone(),
         ));
 
@@ -535,9 +532,7 @@ impl Node {
         //
         let tcp_listener = Arc::new(TcpListener::new(
             network.port(),
-            config.clone(),
             network.clone(),
-            network_params.clone(),
             async_rt.clone(),
             stats.clone(),
             response_server_factory.clone(),

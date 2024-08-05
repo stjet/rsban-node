@@ -1,10 +1,8 @@
-use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory, SocketBuilder};
+use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory};
 use crate::{
-    config::NodeConfig,
-    stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    transport::{ResponseServerExt, TcpStream},
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::TcpStream,
     utils::AsyncRuntime,
-    NetworkParams,
 };
 use async_trait::async_trait;
 use std::{
@@ -21,11 +19,9 @@ use tracing::{debug, error, warn};
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
-    node_config: NodeConfig,
     network: Arc<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
-    network_params: NetworkParams,
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
@@ -46,22 +42,18 @@ struct TcpListenerData {
 impl TcpListener {
     pub(crate) fn new(
         port: u16,
-        node_config: NodeConfig,
         network: Arc<Network>,
-        network_params: NetworkParams,
         runtime: Arc<AsyncRuntime>,
         stats: Arc<Stats>,
         response_server_factory: Arc<ResponseServerFactory>,
     ) -> Self {
         Self {
             port: AtomicU16::new(port),
-            node_config,
             network,
             data: Mutex::new(TcpListenerData {
                 stopped: false,
                 local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
-            network_params,
             runtime: Arc::clone(&runtime),
             stats,
             condition: Condvar::new(),
@@ -143,22 +135,12 @@ impl TcpListenerExt for Arc<TcpListener> {
                     continue;
                 };
 
-                let raw_stream = TcpStream::new(stream);
-                let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-                let socket = SocketBuilder::new(ChannelDirection::Inbound, self.runtime.clone())
-                    .default_timeout(Duration::from_secs(
-                        self.node_config.tcp_io_timeout_s as u64,
-                    ))
-                    .silent_connection_tolerance_time(Duration::from_secs(
-                        self.network_params
-                            .network
-                            .silent_connection_tolerance_time_s as u64,
-                    ))
-                    .idle_timeout(self.network_params.network.idle_timeout)
-                    .observer(socket_stats)
-                    .finish(raw_stream);
-
-                match self.network.add(&socket, ChannelDirection::Inbound).await {
+                let tcp_stream = TcpStream::new(stream);
+                match self
+                    .network
+                    .add(tcp_stream, ChannelDirection::Inbound)
+                    .await
+                {
                     Ok(channel) => {
                         self.response_server_factory.start_response_server(channel);
                     }

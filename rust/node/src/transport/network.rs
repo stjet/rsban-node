@@ -1,22 +1,22 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
-    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, Socket, TcpConfig,
-    TrafficType, TransportType,
+    InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, TcpConfig,
+    TcpStream, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::Channel,
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    transport::{Channel, SocketBuilder},
     utils::{
-        ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        reserved_address, AsyncRuntime,
+        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
+        map_address_to_subnetwork, reserved_address,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
     Account, PublicKey,
 };
 use rsnano_messages::*;
@@ -34,7 +34,6 @@ pub struct NetworkOptions {
     pub allow_local_peers: bool,
     pub tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
-    pub async_rt: Arc<AsyncRuntime>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
     pub inbound_queue: Arc<InboundMessageQueue>,
@@ -49,7 +48,6 @@ impl NetworkOptions {
             allow_local_peers: true,
             tcp_config: TcpConfig::for_dev_network(),
             publish_filter: Arc::new(NetworkFilter::default()),
-            async_rt: Arc::new(AsyncRuntime::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
             inbound_queue: Arc::new(InboundMessageQueue::default()),
@@ -72,7 +70,6 @@ pub struct Network {
     next_channel_id: AtomicUsize,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
-    async_rt: Arc<AsyncRuntime>,
     tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
 }
@@ -109,7 +106,6 @@ impl Network {
             network_params: network,
             limiter: options.limiter,
             publish_filter: options.publish_filter,
-            async_rt: options.async_rt,
         }
     }
 
@@ -159,12 +155,13 @@ impl Network {
 
     pub async fn add(
         &self,
-        socket: &Arc<Socket>,
+        stream: TcpStream,
         direction: ChannelDirection,
     ) -> anyhow::Result<Arc<ChannelEnum>> {
-        let Some(remote_endpoint) = socket.get_remote() else {
-            return Err(anyhow!("no remote endpoint"));
-        };
+        let remote_endpoint = stream
+            .peer_addr()
+            .map(into_ipv6_socket_address)
+            .unwrap_or(NULL_ENDPOINT);
 
         let result = self.check_limits(remote_endpoint.ip(), direction);
 
@@ -201,6 +198,19 @@ impl Network {
             DetailType::AcceptSuccess,
             direction.into(),
         );
+
+        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+        let socket = SocketBuilder::new(direction)
+            .silent_connection_tolerance_time(Duration::from_secs(
+                self.network_params
+                    .network
+                    .silent_connection_tolerance_time_s as u64,
+            ))
+            .idle_timeout(self.network_params.network.idle_timeout)
+            .observer(socket_stats)
+            .finish(stream)
+            .await;
+
         socket.set_timeout(self.network_params.network.idle_timeout);
 
         if direction == ChannelDirection::Outbound {
@@ -211,8 +221,6 @@ impl Network {
             );
         }
 
-        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
-
         let channel = ChannelTcp::new(
             socket.clone(),
             SystemTime::now(),
@@ -221,9 +229,11 @@ impl Network {
             self.get_next_channel_id(),
             self.network_params.network.protocol_info(),
         );
-        channel.update_remote_endpoint();
         let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
         self.state.lock().unwrap().channels.insert(channel.clone());
+
+        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+
         Ok(channel)
     }
 

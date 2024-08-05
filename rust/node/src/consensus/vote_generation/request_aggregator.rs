@@ -18,7 +18,7 @@ use std::{
     thread::JoinHandle,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RequestAggregatorConfig {
     pub threads: usize,
     pub max_queue: usize,

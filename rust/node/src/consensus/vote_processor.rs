@@ -18,7 +18,7 @@ use std::{
 };
 use tracing::{debug, trace};
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VoteProcessorConfig {
     pub max_pr_queue: usize,
     pub max_non_pr_queue: usize,

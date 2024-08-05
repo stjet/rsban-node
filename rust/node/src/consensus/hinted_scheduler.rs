@@ -22,7 +22,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HintedSchedulerConfig {
     pub enabled: bool,
     pub check_interval: Duration,

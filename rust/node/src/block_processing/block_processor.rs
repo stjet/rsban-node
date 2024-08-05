@@ -111,7 +111,7 @@ impl BlockProcessorWaiter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BlockProcessorConfig {
     // Maximum number of blocks to queue from network peers
     pub max_peer_queue: usize,

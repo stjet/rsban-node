@@ -592,7 +592,7 @@ fn compute_throttle_size(ledger: &Ledger, config: &BootstrapAscendingConfig) -> 
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BootstrapAscendingConfig {
     /// Maximum number of un-responded requests per channel
     pub requests_limit: usize,

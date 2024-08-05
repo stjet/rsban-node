@@ -22,7 +22,7 @@ use std::{
     time::Instant,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OptimisticSchedulerConfig {
     pub enabled: bool,
 

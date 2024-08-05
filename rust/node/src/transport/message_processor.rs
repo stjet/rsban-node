@@ -17,7 +17,7 @@ use std::{
 };
 use tracing::debug;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MessageProcessorConfig {
     pub threads: usize,
     pub max_queue: usize,

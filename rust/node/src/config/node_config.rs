@@ -1,13 +1,11 @@
-use super::{
-    DiagnosticsConfig, HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
-};
+use super::{DiagnosticsConfig, Networks, WebsocketConfig};
 use crate::{
     block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
     bootstrap::{BootstrapAscendingConfig, BootstrapInitiatorConfig, BootstrapServerConfig},
     cementation::ConfirmingSetConfig,
     consensus::{
-        ActiveElectionsConfig, PriorityBucketConfig, RequestAggregatorConfig, VoteCacheConfig,
-        VoteProcessorConfig,
+        ActiveElectionsConfig, HintedSchedulerConfig, OptimisticSchedulerConfig,
+        PriorityBucketConfig, RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
     },
     stats::StatsConfig,
     transport::{MessageProcessorConfig, TcpConfig},

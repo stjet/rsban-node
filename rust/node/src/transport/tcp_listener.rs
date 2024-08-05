@@ -2,7 +2,7 @@ use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory, Socke
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    transport::{ResponseServerExt, TcpStream},
+    transport::TcpStream,
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -145,7 +145,7 @@ impl TcpListenerExt for Arc<TcpListener> {
 
                 let raw_stream = TcpStream::new(stream);
                 let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-                let socket = SocketBuilder::new(ChannelDirection::Inbound, self.runtime.clone())
+                let socket = SocketBuilder::new(ChannelDirection::Inbound)
                     .default_timeout(Duration::from_secs(
                         self.node_config.tcp_io_timeout_s as u64,
                     ))
@@ -156,7 +156,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                     ))
                     .idle_timeout(self.network_params.network.idle_timeout)
                     .observer(socket_stats)
-                    .finish(raw_stream);
+                    .finish(raw_stream)
+                    .await;
 
                 match self.network.add(&socket, ChannelDirection::Inbound).await {
                     Ok(channel) => {

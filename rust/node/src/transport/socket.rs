@@ -132,14 +132,6 @@ pub struct Socket {
 }
 
 impl Socket {
-    pub fn new_null() -> Arc<Socket> {
-        SocketBuilder::new(
-            ChannelDirection::Outbound,
-            Arc::new(AsyncRuntime::default()),
-        )
-        .finish(TcpStream::new_null())
-    }
-
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst) || self.write_queue.is_closed()
     }
@@ -403,7 +395,6 @@ pub struct SocketBuilder {
     idle_timeout: Duration,
     observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
-    runtime: Arc<AsyncRuntime>,
 }
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
@@ -414,7 +405,7 @@ pub fn alive_sockets() -> usize {
 }
 
 impl SocketBuilder {
-    pub fn new(direction: ChannelDirection, runtime: Arc<AsyncRuntime>) -> Self {
+    pub fn new(direction: ChannelDirection) -> Self {
         Self {
             direction,
             default_timeout: Duration::from_secs(15),
@@ -422,7 +413,6 @@ impl SocketBuilder {
             idle_timeout: Duration::from_secs(120),
             observer: None,
             max_write_queue_len: Socket::MAX_QUEUE_SIZE,
-            runtime,
         }
     }
 
@@ -451,7 +441,7 @@ impl SocketBuilder {
         self
     }
 
-    pub fn finish(self, stream: TcpStream) -> Arc<Socket> {
+    pub async fn finish(self, stream: TcpStream) -> Arc<Socket> {
         let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
         let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
         debug!(socket_id, alive, "Creating socket");
@@ -469,7 +459,7 @@ impl SocketBuilder {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
         // process write queue:
-        self.runtime.tokio.spawn(async move {
+        tokio::spawn(async move {
             while let Some(entry) = receiver.pop().await {
                 let mut written = 0;
                 let buffer = &entry.buffer;
@@ -521,10 +511,7 @@ impl SocketBuilder {
         socket.set_default_timeout();
 
         let socket_l = socket.clone();
-        self.runtime
-            .tokio
-            .spawn(async move { socket_l.ongoing_checkup().await });
-
+        tokio::spawn(async move { socket_l.ongoing_checkup().await });
         socket
     }
 }

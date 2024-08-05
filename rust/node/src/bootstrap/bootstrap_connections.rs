@@ -548,12 +548,13 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 }
             };
 
-            let socket = SocketBuilder::new(ChannelDirection::Outbound, self_l.runtime.clone())
+            let socket = SocketBuilder::new(ChannelDirection::Outbound)
                 .default_timeout(self_l.config.tcp_io_timeout)
                 .silent_connection_tolerance_time(self_l.config.silent_connection_tolerance_time)
                 .idle_timeout(self_l.config.idle_timeout)
                 .observer(Arc::new(SocketStats::new(self_l.stats.clone())))
-                .finish(stream);
+                .finish(stream)
+                .await;
 
             debug!("Connection established to: {}", endpoint);
 

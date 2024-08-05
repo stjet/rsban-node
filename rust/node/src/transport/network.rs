@@ -2,15 +2,15 @@ use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
     ChannelDirection, ChannelEnum, ChannelFake, ChannelId, ChannelMode, ChannelTcp,
     InboundMessageQueue, NetworkFilter, OutboundBandwidthLimiter, PeerExclusion, Socket, TcpConfig,
-    TrafficType, TransportType,
+    TcpStream, TrafficType, TransportType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::Channel,
+    stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    transport::{Channel, SocketBuilder},
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address, map_address_to_subnetwork,
-        reserved_address, AsyncRuntime,
+        reserved_address,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
@@ -34,7 +34,6 @@ pub struct NetworkOptions {
     pub allow_local_peers: bool,
     pub tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
-    pub async_rt: Arc<AsyncRuntime>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
     pub inbound_queue: Arc<InboundMessageQueue>,
@@ -49,7 +48,6 @@ impl NetworkOptions {
             allow_local_peers: true,
             tcp_config: TcpConfig::for_dev_network(),
             publish_filter: Arc::new(NetworkFilter::default()),
-            async_rt: Arc::new(AsyncRuntime::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
             inbound_queue: Arc::new(InboundMessageQueue::default()),
@@ -72,7 +70,6 @@ pub struct Network {
     next_channel_id: AtomicUsize,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
-    async_rt: Arc<AsyncRuntime>,
     tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
 }
@@ -109,7 +106,6 @@ impl Network {
             network_params: network,
             limiter: options.limiter,
             publish_filter: options.publish_filter,
-            async_rt: options.async_rt,
         }
     }
 
@@ -155,6 +151,84 @@ impl Network {
 
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
+    }
+
+    pub async fn add2(
+        &self,
+        stream: TcpStream,
+        direction: ChannelDirection,
+    ) -> anyhow::Result<Arc<ChannelEnum>> {
+        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
+        let socket = SocketBuilder::new(direction)
+            .silent_connection_tolerance_time(Duration::from_secs(
+                self.network_params
+                    .network
+                    .silent_connection_tolerance_time_s as u64,
+            ))
+            .idle_timeout(self.network_params.network.idle_timeout)
+            .observer(socket_stats)
+            .finish(stream)
+            .await;
+
+        let remote_endpoint = socket.remote_addr();
+        let result = self.check_limits(remote_endpoint.ip(), direction);
+
+        if result != AcceptResult::Accepted {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::AcceptRejected,
+                direction.into(),
+            );
+            if direction == ChannelDirection::Outbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::ConnectFailure,
+                    Direction::Out,
+                );
+            }
+            debug!(
+                "Rejected connection from: {} ({:?})",
+                remote_endpoint, direction
+            );
+            if direction == ChannelDirection::Inbound {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::AcceptFailure,
+                    Direction::In,
+                );
+                // Refusal reason should be logged earlier
+            }
+            return Err(anyhow!("check_limits failed"));
+        }
+
+        self.stats.inc_dir(
+            StatType::TcpListener,
+            DetailType::AcceptSuccess,
+            direction.into(),
+        );
+        socket.set_timeout(self.network_params.network.idle_timeout);
+
+        if direction == ChannelDirection::Outbound {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectSuccess,
+                Direction::Out,
+            );
+        }
+
+        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+
+        let channel = ChannelTcp::new(
+            socket.clone(),
+            SystemTime::now(),
+            self.stats.clone(),
+            self.limiter.clone(),
+            self.get_next_channel_id(),
+            self.network_params.network.protocol_info(),
+        );
+        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
+        self.state.lock().unwrap().channels.insert(channel.clone());
+        Ok(channel)
     }
 
     pub async fn add(

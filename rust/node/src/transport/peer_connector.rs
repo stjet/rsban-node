@@ -1,6 +1,4 @@
-use super::{
-    ChannelDirection, Network, ResponseServerExt, ResponseServerFactory, SocketBuilder, TcpConfig,
-};
+use super::{ChannelDirection, Network, ResponseServerFactory, SocketBuilder, TcpConfig};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -78,7 +76,7 @@ impl PeerConnector {
         let raw_stream = TcpStream::new(raw_stream);
 
         let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-        let socket = SocketBuilder::new(ChannelDirection::Outbound, self.runtime.clone())
+        let socket = SocketBuilder::new(ChannelDirection::Outbound)
             .default_timeout(Duration::from_secs(
                 self.node_config.tcp_io_timeout_s as u64,
             ))
@@ -89,7 +87,8 @@ impl PeerConnector {
             ))
             .idle_timeout(self.network_params.network.idle_timeout)
             .observer(socket_stats)
-            .finish(raw_stream);
+            .finish(raw_stream)
+            .await;
 
         let channel = self
             .network

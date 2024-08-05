@@ -2,7 +2,7 @@ use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory, Socke
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
-    transport::TcpStream,
+    transport::{ResponseServerExt, TcpStream},
     utils::AsyncRuntime,
     NetworkParams,
 };
@@ -16,7 +16,7 @@ use std::{
     time::Duration,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
@@ -158,14 +158,14 @@ impl TcpListenerExt for Arc<TcpListener> {
                     .observer(socket_stats)
                     .finish(raw_stream);
 
-                let response_server = self
-                    .response_server_factory
-                    .create_response_server(socket.clone());
-
-                let _ = self
-                    .network
-                    .add(&socket, &response_server, ChannelDirection::Inbound)
-                    .await;
+                match self.network.add(&socket, ChannelDirection::Inbound).await {
+                    Ok(channel) => {
+                        self.response_server_factory.start_response_server(channel);
+                    }
+                    Err(e) => {
+                        warn!("Could not accept incoming connection: {:?}", e);
+                    }
+                };
 
                 // Sleep for a while to prevent busy loop
                 tokio::time::sleep(Duration::from_millis(10)).await;

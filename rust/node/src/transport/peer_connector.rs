@@ -1,4 +1,6 @@
-use super::{ChannelDirection, Network, ResponseServerFactory, SocketBuilder, TcpConfig};
+use super::{
+    ChannelDirection, Network, ResponseServerExt, ResponseServerFactory, SocketBuilder, TcpConfig,
+};
 use crate::{
     config::NodeConfig,
     stats::{DetailType, Direction, SocketStats, StatType, Stats},
@@ -89,13 +91,16 @@ impl PeerConnector {
             .observer(socket_stats)
             .finish(raw_stream);
 
-        let response_server = self
-            .response_server_factory
-            .create_response_server(socket.clone());
+        let channel = self
+            .network
+            .add(&socket, ChannelDirection::Outbound)
+            .await?;
 
-        self.network
-            .add(&socket, &response_server, ChannelDirection::Outbound)
-            .await
+        let response_server = self.response_server_factory.start_response_server(channel);
+
+        response_server.initiate_handshake().await;
+
+        Ok(())
     }
 }
 

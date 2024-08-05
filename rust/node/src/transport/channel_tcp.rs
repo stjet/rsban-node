@@ -2,7 +2,10 @@ use super::{
     AsyncBufferReader, BufferDropPolicy, Channel, ChannelDirection, ChannelId, ChannelMode,
     OutboundBandwidthLimiter, Socket, TrafficType,
 };
-use crate::stats::{Direction, StatType, Stats};
+use crate::{
+    stats::{Direction, StatType, Stats},
+    utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
+};
 use async_trait::async_trait;
 use rsnano_core::Account;
 use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
@@ -198,11 +201,7 @@ impl Channel for Arc<ChannelTcp> {
         }
     }
 
-    async fn send_buffer(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        traffic_type: TrafficType,
-    ) -> anyhow::Result<()> {
+    async fn send_buffer(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()> {
         while !self.limiter.should_pass(buffer.len(), traffic_type.into()) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
@@ -228,6 +227,14 @@ impl Channel for Arc<ChannelTcp> {
 
     fn close(&self) {
         self.socket.close();
+    }
+
+    fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
+        ipv4_address_or_ipv6_subnet(&self.remote_addr().ip())
+    }
+
+    fn subnetwork(&self) -> Ipv6Addr {
+        map_address_to_subnetwork(self.remote_addr().ip())
     }
 }
 

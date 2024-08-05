@@ -1,4 +1,4 @@
-use crate::config::NetworkConstants;
+use super::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 use std::net::Ipv6Addr;

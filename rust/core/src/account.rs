@@ -5,7 +5,6 @@ use blake2::{
     Blake2bVar,
 };
 use primitive_types::U512;
-use serde::{Deserialize, Deserializer};
 
 pub type Account = PublicKey;
 

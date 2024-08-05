@@ -3,9 +3,8 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{ChannelEnum, FairQueue, Origin},
 };
-use rsnano_core::utils::TomlWriter;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     work::WorkThresholds,
     BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, UncheckedInfo,
 };
@@ -147,9 +146,6 @@ impl Default for BlockProcessorConfig {
 }
 
 impl BlockProcessorConfig {
-    pub fn new() -> Self {
-        Default::default()
-    }
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize(
             "max_peer_queue",

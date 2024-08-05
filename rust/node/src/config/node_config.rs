@@ -1,42 +1,34 @@
-use super::DiagnosticsConfig;
-use crate::block_processing::BlockProcessorConfig;
-use crate::bootstrap::{BootstrapAscendingConfig, BootstrapServerConfig};
-use crate::consensus::{
-    ActiveElectionsConfig, HintedSchedulerConfig, OptimisticSchedulerConfig, PriorityBucketConfig,
-    RequestAggregatorConfig, VoteCacheConfig, VoteProcessorConfig,
+use super::{
+    DiagnosticsConfig, HintedSchedulerConfig, Networks, OptimisticSchedulerConfig, WebsocketConfig,
 };
-use crate::monitor::MonitorConfig;
-use crate::stats::StatsConfig;
-use crate::transport::MessageProcessorConfig;
-use crate::websocket::WebsocketConfig;
-use crate::IpcConfig;
 use crate::{
-    block_processing::LocalBlockBroadcasterConfig, bootstrap::BootstrapInitiatorConfig,
-    cementation::ConfirmingSetConfig, transport::TcpConfig, NetworkParams, DEV_NETWORK_PARAMS,
+    block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
+    bootstrap::{BootstrapAscendingConfig, BootstrapInitiatorConfig, BootstrapServerConfig},
+    cementation::ConfirmingSetConfig,
+    consensus::{
+        ActiveElectionsConfig, PriorityBucketConfig, RequestAggregatorConfig, VoteCacheConfig,
+        VoteProcessorConfig,
+    },
+    stats::StatsConfig,
+    transport::{MessageProcessorConfig, TcpConfig},
+    IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
-use rsnano_core::utils::{
-    get_cpu_count, get_env_or_default_string, is_sanitizer_build, TomlWriter,
+use rsnano_core::{
+    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build, TomlWriter},
+    Account, Amount, GXRB_RATIO, XRB_RATIO,
 };
-use rsnano_core::{Account, Amount, Networks, GXRB_RATIO, XRB_RATIO};
 use rsnano_store_lmdb::LmdbConfig;
-use serde::Serialize;
-use serde::{Deserialize, Deserializer, Serializer};
-use std::fmt;
-use std::str::FromStr;
-use std::time::Duration;
-use std::{cmp::max, net::Ipv6Addr};
+use std::{cmp::max, fmt, net::Ipv6Addr, str::FromStr, time::Duration};
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive)]
 pub enum FrontiersConfirmationMode {
-    Always, // Always confirm frontiers
-    #[serde(rename = "auto")]
+    Always,    // Always confirm frontiers
     Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
-    Disabled, // Do not confirm frontiers
+    Disabled,  // Do not confirm frontiers
     Invalid,
 }
 
@@ -133,7 +125,7 @@ impl Default for NodeConfig {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct Peer {
     pub address: String,
     pub port: u16,
@@ -142,6 +134,15 @@ pub struct Peer {
 impl fmt::Display for Peer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.address, self.port)
+    }
+}
+
+impl Peer {
+    pub fn new(address: impl Into<String>, port: u16) -> Self {
+        Self {
+            address: address.into(),
+            port,
+        }
     }
 }
 
@@ -160,34 +161,6 @@ impl FromStr for Peer {
             .map_err(|_| "Invalid port".to_string())?;
 
         Ok(Peer { address, port })
-    }
-}
-
-impl Serialize for Peer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Peer {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse::<Peer>().map_err(serde::de::Error::custom)
-    }
-}
-
-impl Peer {
-    pub fn new(address: impl Into<String>, port: u16) -> Self {
-        Self {
-            address: address.into(),
-            port,
-        }
     }
 }
 
@@ -407,11 +380,6 @@ impl NodeConfig {
         Self::new(None, &DEV_NETWORK_PARAMS, 1)
     }
 
-    pub fn random_representative(&self) -> Account {
-        let i = thread_rng().gen_range(0..self.preconfigured_representatives.len());
-        return self.preconfigured_representatives[i];
-    }
-
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
         if let Some(port) = self.peering_port {
             toml.put_u16("peering_port", port, "Node peering port.\ntype:uint16")?;
@@ -504,33 +472,33 @@ impl NodeConfig {
         )?;
 
         toml.create_array ("preconfigured_peers", "A list of \"address\" (hostname or ipv6 notation ip address) entries to identify preconfigured peers.\nThe contents of the NANO_DEFAULT_PEER environment variable are added to preconfigured_peers.",
-            &mut |peers| {
-                for peer in &self.preconfigured_peers {
-                    peers.push_back_str(peer)?;
-                }
-                Ok(())
-            })?;
+        &mut |peers| {
+            for peer in &self.preconfigured_peers {
+                peers.push_back_str(peer)?;
+            }
+            Ok(())
+        })?;
 
         toml.create_array ("preconfigured_representatives", "A list of representative account addresses used when creating new accounts in internal wallets.",
-            &mut |reps|{
-                for rep in &self.preconfigured_representatives {
-                    reps.push_back_str(&rep.encode_account())?;
-                }
-                Ok(())
-            })?;
+        &mut |reps|{
+            for rep in &self.preconfigured_representatives {
+                reps.push_back_str(&rep.encode_account())?;
+            }
+            Ok(())
+        })?;
 
         toml.put_child("experimental", &mut|child|{
-                child.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation.",
-            &mut |peers|{
-                for p in &self.secondary_work_peers{
-                    peers.push_back_str(&format!("{}:{}", p.address, p.port))?;
-                }
-                Ok(())
-            })?;
-                child.put_i64("max_pruning_age", self.max_pruning_age_s, "Time limit for blocks age after pruning.\ntype:seconds")?;
-                child.put_u64("max_pruning_depth", self.max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64")?;
-                Ok(())
-            })?;
+            child.create_array ("secondary_work_peers", "A list of \"address:port\" entries to identify work peers for secondary work generation.",
+        &mut |peers|{
+            for p in &self.secondary_work_peers{
+                peers.push_back_str(&format!("{}:{}", p.address, p.port))?;
+            }
+            Ok(())
+        })?;
+            child.put_i64("max_pruning_age", self.max_pruning_age_s, "Time limit for blocks age after pruning.\ntype:seconds")?;
+            child.put_u64("max_pruning_depth", self.max_pruning_depth, "Limit for full blocks in chain after pruning.\ntype:uint64")?;
+            Ok(())
+        })?;
 
         toml.put_child("httpcallback", &mut |callback| {
             callback.put_str(
@@ -619,6 +587,11 @@ impl NodeConfig {
 
         Ok(())
     }
+
+    pub fn random_representative(&self) -> Account {
+        let i = thread_rng().gen_range(0..self.preconfigured_representatives.len());
+        return self.preconfigured_representatives[i];
+    }
 }
 
 fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static str {
@@ -627,5 +600,36 @@ fn serialize_frontiers_confirmation(mode: FrontiersConfirmationMode) -> &'static
         FrontiersConfirmationMode::Automatic => "auto",
         FrontiersConfirmationMode::Disabled => "disabled",
         FrontiersConfirmationMode::Invalid => "auto",
+    }
+}
+
+#[derive(Clone)]
+pub struct MonitorConfig {
+    pub enabled: bool,
+    pub interval: Duration,
+}
+
+impl Default for MonitorConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval: Duration::from_secs(60),
+        }
+    }
+}
+
+impl MonitorConfig {
+    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
+        toml.put_bool(
+            "enable",
+            self.enabled,
+            "Enable or disable periodic node status logging\ntype:bool",
+        )?;
+
+        toml.put_u64(
+            "interval",
+            self.interval.as_secs(),
+            "Interval between status logs\ntype:seconds",
+        )
     }
 }

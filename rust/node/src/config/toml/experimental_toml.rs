@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct ExperimentalToml {
-    pub secondary_work_peers: Option<Vec<String>>,
     pub max_pruning_age: Option<u64>,
     pub max_pruning_depth: Option<u64>,
+    pub secondary_work_peers: Option<Vec<String>>,
 }
 
 impl Default for ExperimentalToml {

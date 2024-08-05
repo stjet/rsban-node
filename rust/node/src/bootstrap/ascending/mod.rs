@@ -19,12 +19,10 @@ use crate::{
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
 };
-pub use account_sets::AccountSetsConfig;
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
-use rsnano_core::utils::TomlWriter;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
     Account, BlockEnum, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
@@ -38,6 +36,8 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+pub use account_sets::AccountSetsConfig;
 
 enum VerifyResult {
     Ok,

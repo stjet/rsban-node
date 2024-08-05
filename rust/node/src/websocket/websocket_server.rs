@@ -1,5 +1,6 @@
-use super::{OutgoingMessageEnvelope, WebsocketConfig, WebsocketListener};
+use super::{OutgoingMessageEnvelope, WebsocketListener};
 use crate::{
+    config::WebsocketConfig,
     consensus::{ActiveElections, ElectionStatus, ElectionStatusType, VoteProcessor},
     utils::AsyncRuntime,
     wallets::Wallets,

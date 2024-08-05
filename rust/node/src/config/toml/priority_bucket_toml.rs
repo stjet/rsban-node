@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize)]
 pub struct PriorityBucketToml {
     pub max_blocks: Option<usize>,
-    pub reserved_elections: Option<usize>,
     pub max_elections: Option<usize>,
+    pub reserved_elections: Option<usize>,
 }
 
 impl Default for PriorityBucketToml {

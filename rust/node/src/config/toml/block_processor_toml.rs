@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct BlockProcessorToml {
     pub max_peer_queue: Option<usize>,
     pub max_system_queue: Option<usize>,
-    pub priority_live: Option<usize>,
     pub priority_bootstrap: Option<usize>,
+    pub priority_live: Option<usize>,
     pub priority_local: Option<usize>,
 }
 

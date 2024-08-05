@@ -1,25 +1,5 @@
-use crate::bootstrap::{AccountSetsConfig, BootstrapAscendingConfig};
-use serde::{Deserialize, Serialize};
+use crate::{bootstrap::BootstrapAscendingConfig, config::BootstrapAscendingToml};
 use std::time::Duration;
-
-#[derive(Deserialize, Serialize)]
-pub struct BootstrapAscendingToml {
-    pub requests_limit: Option<usize>,
-    pub database_requests_limit: Option<usize>,
-    pub pull_count: Option<usize>,
-    pub timeout: Option<u64>,
-    pub throttle_coefficient: Option<usize>,
-    pub throttle_wait: Option<u64>,
-    pub account_sets: Option<AccountSetsToml>,
-    pub block_wait_count: Option<usize>,
-}
-
-impl Default for BootstrapAscendingToml {
-    fn default() -> Self {
-        let config = BootstrapAscendingConfig::default();
-        (&config).into()
-    }
-}
 
 impl From<&BootstrapAscendingConfig> for BootstrapAscendingToml {
     fn from(config: &BootstrapAscendingConfig) -> Self {
@@ -65,56 +45,5 @@ impl From<&BootstrapAscendingToml> for BootstrapAscendingConfig {
             config.throttle_coefficient = throttle_coefficient;
         }
         config
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize)]
-pub struct AccountSetsToml {
-    pub consideration_count: Option<usize>,
-    pub priorities_max: Option<usize>,
-    pub blocking_max: Option<usize>,
-    pub cooldown: Option<u64>,
-}
-
-impl Default for AccountSetsToml {
-    fn default() -> Self {
-        let config = AccountSetsConfig::default();
-        Self {
-            consideration_count: Some(config.consideration_count),
-            priorities_max: Some(config.priorities_max),
-            blocking_max: Some(config.blocking_max),
-            cooldown: Some(config.cooldown.as_millis() as u64),
-        }
-    }
-}
-
-impl From<&AccountSetsToml> for AccountSetsConfig {
-    fn from(toml: &AccountSetsToml) -> Self {
-        let mut config = AccountSetsConfig::default();
-
-        if let Some(blocking_max) = toml.blocking_max {
-            config.blocking_max = blocking_max;
-        }
-        if let Some(consideration_count) = toml.consideration_count {
-            config.consideration_count = consideration_count;
-        }
-        if let Some(priorities_max) = toml.priorities_max {
-            config.priorities_max = priorities_max;
-        }
-        if let Some(cooldown) = &toml.cooldown {
-            config.cooldown = Duration::from_millis(*cooldown);
-        }
-        config
-    }
-}
-
-impl From<&AccountSetsConfig> for AccountSetsToml {
-    fn from(value: &AccountSetsConfig) -> Self {
-        Self {
-            consideration_count: Some(value.consideration_count),
-            priorities_max: Some(value.priorities_max),
-            blocking_max: Some(value.blocking_max),
-            cooldown: Some(value.cooldown.as_millis() as u64),
-        }
     }
 }

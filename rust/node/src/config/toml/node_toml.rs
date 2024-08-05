@@ -1,15 +1,15 @@
 use super::{
-    ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
-    DiagnosticsToml, ExperimentalToml, HttpcallbackToml, IpcToml, LmdbToml, MessageProcessorToml,
-    MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
+    ActiveElectionsToml, BlockProcessorToml, BootstrapServerToml, DiagnosticsToml,
+    ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
+    MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
     RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
-use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
+use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig};
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct NodeToml {
     pub allow_local_peers: Option<bool>,
     pub background_threads: Option<u32>,
@@ -44,7 +44,6 @@ pub struct NodeToml {
     pub preconfigured_peers: Option<Vec<String>>,
     pub preconfigured_representatives: Option<Vec<String>>,
     pub receive_minimum: Option<String>,
-    pub rep_crawler: Option<RepCrawlerToml>,
     pub rep_crawler_weight_minimum: Option<String>,
     pub representative_vote_weight_minimum: Option<String>,
     pub request_aggregator_threads: Option<u32>,
@@ -56,29 +55,27 @@ pub struct NodeToml {
     pub vote_generator_delay: Option<i64>,
     pub vote_generator_threshold: Option<u32>,
     pub vote_minimum: Option<String>,
-    pub work_peers: Option<Vec<Peer>>,
     pub work_threads: Option<u32>,
-    pub optimistic_scheduler: Option<OptimisticSchedulerToml>,
-    pub priority_bucket: Option<PriorityBucketToml>,
+    pub active_elections: Option<ActiveElectionsToml>,
+    pub block_processor: Option<BlockProcessorToml>,
     pub bootstrap_ascending: Option<BootstrapAscendingToml>,
     pub bootstrap_server: Option<BootstrapServerToml>,
-    pub secondary_work_peers: Option<Vec<Peer>>,
-    pub max_pruning_age_s: Option<i64>,
-    pub max_pruning_depth: Option<u64>,
-    pub websocket: Option<WebsocketToml>,
-    pub ipc: Option<IpcToml>,
     pub diagnostics: Option<DiagnosticsToml>,
-    pub statistics: Option<StatsToml>,
+    pub experimental: Option<ExperimentalToml>,
+    pub httpcallback: Option<HttpcallbackToml>,
+    pub ipc: Option<IpcToml>,
     pub lmdb: Option<LmdbToml>,
-    pub vote_cache: Option<VoteCacheToml>,
-    pub block_processor: Option<BlockProcessorToml>,
-    pub active_elections: Option<ActiveElectionsToml>,
-    pub vote_processor: Option<VoteProcessorToml>,
-    pub request_aggregator: Option<RequestAggregatorToml>,
     pub message_processor: Option<MessageProcessorToml>,
     pub monitor: Option<MonitorToml>,
-    pub httpcallback: Option<HttpcallbackToml>,
-    pub experimental: Option<ExperimentalToml>,
+    pub optimistic_scheduler: Option<OptimisticSchedulerToml>,
+    pub hinted_scheduler: Option<HintedSchedulerToml>,
+    pub priority_bucket: Option<PriorityBucketToml>,
+    pub rep_crawler: Option<RepCrawlerToml>,
+    pub request_aggregator: Option<RequestAggregatorToml>,
+    pub statistics: Option<StatsToml>,
+    pub vote_cache: Option<VoteCacheToml>,
+    pub vote_processor: Option<VoteProcessorToml>,
+    pub websocket: Option<WebsocketToml>,
 }
 
 impl Default for NodeToml {
@@ -177,7 +174,7 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(online_weight_minimum) = &toml.online_weight_minimum {
             config.online_weight_minimum =
-                Amount::decode_hex(&online_weight_minimum).expect("Invalid online weight minimum");
+                Amount::decode_dec(&online_weight_minimum).expect("Invalid online weight minimum");
         }
         if let Some(password_fanout) = toml.password_fanout {
             config.password_fanout = password_fanout;
@@ -199,7 +196,7 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(receive_minimum) = &toml.receive_minimum {
             config.receive_minimum =
-                Amount::decode_hex(&receive_minimum).expect("Invalid receive minimum");
+                Amount::decode_dec(&receive_minimum).expect("Invalid receive minimum");
         }
         if let Some(rep_crawler) = &toml.rep_crawler {
             if let Some(query_timeout) = rep_crawler.query_timeout {
@@ -208,8 +205,8 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(representative_vote_weight_minimum) = &toml.representative_vote_weight_minimum {
             config.representative_vote_weight_minimum =
-                Amount::decode_hex(&representative_vote_weight_minimum)
-                    .expect("Invalid representative_vote_weight_minimum");
+                Amount::decode_dec(&representative_vote_weight_minimum)
+                    .expect("Invalid representative vote weight minimum");
         }
         if let Some(request_aggregator_threads) = toml.request_aggregator_threads {
             config.request_aggregator_threads = request_aggregator_threads;
@@ -236,16 +233,16 @@ impl From<&NodeToml> for NodeConfig {
             config.vote_generator_threshold = vote_generator_threshold;
         }
         if let Some(vote_minimum) = &toml.vote_minimum {
-            config.vote_minimum = Amount::decode_hex(&vote_minimum).expect("Invalid vote minimum");
-        }
-        if let Some(work_peers) = &toml.work_peers {
-            config.work_peers = work_peers.clone();
+            config.vote_minimum = Amount::decode_dec(&vote_minimum).expect("Invalid vote minimum");
         }
         if let Some(work_threads) = toml.work_threads {
             config.work_threads = work_threads;
         }
         if let Some(optimistic_scheduler_toml) = &toml.optimistic_scheduler {
             config.optimistic_scheduler = optimistic_scheduler_toml.into();
+        }
+        if let Some(hinted_scheduler_toml) = &toml.hinted_scheduler {
+            config.hinted_scheduler = hinted_scheduler_toml.into();
         }
         if let Some(priority_bucket_toml) = &toml.priority_bucket {
             config.priority_bucket = priority_bucket_toml.into();
@@ -255,15 +252,6 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(bootstrap_server_toml) = &toml.bootstrap_server {
             config.bootstrap_server = bootstrap_server_toml.into();
-        }
-        if let Some(secondary_work_peers) = &toml.secondary_work_peers {
-            config.secondary_work_peers = secondary_work_peers.clone();
-        }
-        if let Some(max_pruning_age_s) = toml.max_pruning_age_s {
-            config.max_pruning_age_s = max_pruning_age_s;
-        }
-        if let Some(max_pruning_depth) = toml.max_pruning_depth {
-            config.max_pruning_depth = max_pruning_depth;
         }
         if let Some(websocket_config_toml) = &toml.websocket {
             config.websocket_config = websocket_config_toml.into();
@@ -306,6 +294,10 @@ impl From<&NodeToml> for NodeConfig {
         }
         if let Some(monitor_toml) = &toml.monitor {
             config.monitor = monitor_toml.into();
+        }
+        if let Some(rep_crawler_weight_minimum) = &toml.rep_crawler_weight_minimum {
+            config.rep_crawler_weight_minimum = Amount::decode_dec(&rep_crawler_weight_minimum)
+                .expect("Invalid rep crawler weight minimum");
         }
         if let Some(httpcallback) = &toml.httpcallback {
             if let Some(address) = &httpcallback.address {
@@ -383,15 +375,12 @@ impl From<&NodeConfig> for NodeToml {
             vote_generator_delay: Some(config.vote_generator_delay_ms),
             vote_generator_threshold: Some(config.vote_generator_threshold),
             vote_minimum: Some(config.vote_minimum.to_string_dec()),
-            work_peers: Some(config.work_peers.clone()),
             work_threads: Some(config.work_threads),
             optimistic_scheduler: Some((&config.optimistic_scheduler).into()),
+            hinted_scheduler: Some((&config.hinted_scheduler).into()),
             priority_bucket: Some((&config.priority_bucket).into()),
             bootstrap_ascending: Some((&config.bootstrap_ascending).into()),
             bootstrap_server: Some((&config.bootstrap_server).into()),
-            secondary_work_peers: Some(config.secondary_work_peers.clone()),
-            max_pruning_age_s: Some(config.max_pruning_age_s),
-            max_pruning_depth: Some(config.max_pruning_depth),
             websocket: Some((&config.websocket_config).into()),
             ipc: Some((&config.ipc_config).into()),
             diagnostics: Some((&config.diagnostics_config).into()),

@@ -41,6 +41,13 @@ impl VoteProcessorConfig {
     }
 }
 
+impl Default for VoteProcessorConfig {
+    fn default() -> Self {
+        let parallelism = get_cpu_count();
+        Self::new(parallelism)
+    }
+}
+
 impl VoteProcessorConfig {
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize(
@@ -71,13 +78,6 @@ impl VoteProcessorConfig {
             self.batch_size,
             "Maximum number of votes to process in a single batch. \ntype:uint64",
         )
-    }
-}
-
-impl Default for VoteProcessorConfig {
-    fn default() -> Self {
-        let parallelism = get_cpu_count();
-        Self::new(parallelism)
     }
 }
 

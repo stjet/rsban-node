@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct LmdbToml {
-    pub sync: Option<SyncStrategy>,
-    pub max_databases: Option<u32>,
     pub map_size: Option<usize>,
+    pub max_databases: Option<u32>,
+    pub sync: Option<SyncStrategy>,
 }
 
 impl Default for LmdbToml {

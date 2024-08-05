@@ -1,4 +1,4 @@
-use crate::consensus::OptimisticSchedulerConfig;
+use crate::config::OptimisticSchedulerConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

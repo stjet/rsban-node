@@ -1,4 +1,4 @@
-use crate::monitor::MonitorConfig;
+use crate::config::MonitorConfig;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

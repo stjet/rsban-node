@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct BootstrapServerToml {
+    pub batch_size: Option<usize>,
     pub max_queue: Option<usize>,
     pub threads: Option<usize>,
-    pub batch_size: Option<usize>,
 }
 
 impl Default for BootstrapServerToml {

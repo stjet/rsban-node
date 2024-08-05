@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct ActiveElectionsToml {
-    pub size: Option<usize>,
+    pub confirmation_cache: Option<usize>,
+    pub confirmation_history_size: Option<usize>,
     pub hinted_limit_percentage: Option<usize>,
     pub optimistic_limit_percentage: Option<usize>,
-    pub confirmation_history_size: Option<usize>,
-    pub confirmation_cache: Option<usize>,
+    pub size: Option<usize>,
 }
 
 impl Default for ActiveElectionsToml {

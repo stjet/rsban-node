@@ -1,4 +1,3 @@
-//mod bootstrap_ascending;
 mod converters;
 mod daemon_config;
 mod diagnostics_config;
@@ -13,7 +12,6 @@ mod toml;
 mod websocket_config;
 
 use crate::NetworkParams;
-//pub use bootstrap_ascending::*;
 pub use daemon_config::*;
 pub use diagnostics_config::*;
 pub use network_constants::*;

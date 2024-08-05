@@ -1303,7 +1303,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.outbound_limiter.clone(),
     ));
 
-    let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
+    let channel = Arc::new(ChannelEnum::Tcp(channel));
 
     Arc::new(ResponseServer::new(
         &node.network,

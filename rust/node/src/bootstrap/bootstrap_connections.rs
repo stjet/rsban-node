@@ -553,7 +553,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             let channel_id = self_l.network.get_next_channel_id();
             let protocol = self_l.config.protocol;
 
-            let channel = Arc::new(ChannelEnum::Tcp(Arc::new(
+            let channel = Arc::new(ChannelEnum::Tcp(
                 ChannelTcp::create(
                     channel_id,
                     tcp_stream,
@@ -563,7 +563,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     self_l.outbound_limiter.clone(),
                 )
                 .await,
-            )));
+            ));
 
             let client = Arc::new(BootstrapClient::new(&self_l, channel));
             self_l.pool_connection(client, true, push_front);

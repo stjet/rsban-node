@@ -216,7 +216,7 @@ impl Network {
             self.limiter.clone(),
         )
         .await;
-        let channel = Arc::new(ChannelEnum::Tcp(Arc::new(channel)));
+        let channel = Arc::new(ChannelEnum::Tcp(channel));
         self.state.lock().unwrap().channels.insert(channel.clone());
 
         debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);

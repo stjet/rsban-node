@@ -1,4 +1,4 @@
-use super::{DiagnosticsConfig, Networks, WebsocketConfig};
+use super::{DiagnosticsConfig, Networks};
 use crate::{
     block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
     bootstrap::{BootstrapAscendingConfig, BootstrapInitiatorConfig, BootstrapServerConfig},
@@ -9,6 +9,7 @@ use crate::{
     },
     stats::StatsConfig,
     transport::{MessageProcessorConfig, TcpConfig},
+    websocket::WebsocketConfig,
     IpcConfig, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use anyhow::Result;

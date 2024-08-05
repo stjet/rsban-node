@@ -1,6 +1,6 @@
 use super::{
-    ChannelEnum, HandshakeProcess, HandshakeStatus, InboundMessageQueue, MessageDeserializer,
-    Network, NetworkFilter, SynCookies,
+    ChannelEnum, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
+    MessageDeserializer, Network, NetworkFilter, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -82,7 +82,6 @@ pub struct ResponseServer {
     pub disable_bootstrap_bulk_pull_server: bool,
     allow_bootstrap: bool,
     notify_stop: Notify,
-    last_keepalive: Mutex<Option<Keepalive>>,
     network: Weak<Network>,
     inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
@@ -93,6 +92,7 @@ pub struct ResponseServer {
     workers: Arc<dyn ThreadPool>,
     block_processor: Arc<BlockProcessor>,
     bootstrap_initiator: Arc<BootstrapInitiator>,
+    latest_keepalives: Arc<Mutex<LatestKeepalives>>,
     flags: NodeFlags,
 }
 
@@ -115,6 +115,7 @@ impl ResponseServer {
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
         flags: NodeFlags,
+        latest_keepalives: Arc<Mutex<LatestKeepalives>>,
     ) -> Self {
         let network_constants = network_params.network.clone();
         debug!(
@@ -146,7 +147,6 @@ impl ResponseServer {
             disable_bootstrap_bulk_pull_server: false,
             allow_bootstrap,
             notify_stop: Notify::new(),
-            last_keepalive: Mutex::new(None),
             initiate_handshake_listener: OutputListenerMt::new(),
             publish_filter,
             runtime,
@@ -155,6 +155,7 @@ impl ResponseServer {
             block_processor,
             bootstrap_initiator,
             flags,
+            latest_keepalives,
         }
     }
 
@@ -241,12 +242,11 @@ impl ResponseServer {
         // TODO: Throttle if not added
     }
 
-    fn set_last_keepalive(&self, keepalive: Option<Keepalive>) {
-        *self.last_keepalive.lock().unwrap() = keepalive;
-    }
-
-    pub fn pop_last_keepalive(&self) -> Option<Keepalive> {
-        self.last_keepalive.lock().unwrap().take()
+    fn set_last_keepalive(&self, keepalive: Keepalive) {
+        self.latest_keepalives.lock().unwrap().insert(
+            self.channel.lock().unwrap().as_ref().unwrap().channel_id(),
+            keepalive,
+        );
     }
 
     pub fn set_channel(&self, channel: Arc<ChannelEnum>) {
@@ -508,7 +508,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
     fn process_realtime(&self, message: DeserializedMessage) -> ProcessResult {
         let process = match &message.message {
             Message::Keepalive(keepalive) => {
-                self.set_last_keepalive(Some(keepalive.clone()));
+                self.set_last_keepalive(keepalive.clone());
                 true
             }
             Message::Publish(_)

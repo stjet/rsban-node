@@ -2,7 +2,8 @@ use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
 
 use super::{
-    InboundMessageQueue, Network, OutboundBandwidthLimiter, ResponseServer, Socket, SynCookies,
+    InboundMessageQueue, LatestKeepalives, Network, OutboundBandwidthLimiter, ResponseServer,
+    Socket, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -12,7 +13,7 @@ use crate::{
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub(crate) struct ResponseServerFactory {
     pub(crate) runtime: Arc<AsyncRuntime>,
@@ -27,6 +28,7 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) node_flags: NodeFlags,
     pub(crate) network_params: NetworkParams,
     pub(crate) syn_cookies: Arc<SynCookies>,
+    pub(crate) latest_keepalives: Arc<Mutex<LatestKeepalives>>,
 }
 
 impl ResponseServerFactory {
@@ -65,6 +67,7 @@ impl ResponseServerFactory {
             node_flags: flags,
             network_params,
             syn_cookies: Arc::new(SynCookies::new(1)),
+            latest_keepalives: Arc::new(Mutex::new(LatestKeepalives::default())),
         }
     }
 
@@ -85,6 +88,7 @@ impl ResponseServerFactory {
             self.block_processor.clone(),
             self.bootstrap_initiator.clone(),
             self.node_flags.clone(),
+            self.latest_keepalives.clone(),
         ))
     }
 }

@@ -10,7 +10,7 @@ use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
     stats::SocketStats,
-    transport::{ChannelDirection, ResponseServer, SocketBuilder},
+    transport::{ChannelDirection, LatestKeepalives, ResponseServer, SocketBuilder},
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
@@ -19,7 +19,7 @@ use rsnano_node::{
     transport::TcpStream,
     wallets::WalletsExt,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 mod bootstrap_processor {
@@ -1314,5 +1314,6 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.block_processor.clone(),
         node.bootstrap_initiator.clone(),
         node.flags.clone(),
+        Arc::new(Mutex::new(LatestKeepalives::default())),
     ))
 }

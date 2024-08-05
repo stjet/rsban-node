@@ -26,7 +26,7 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
-        MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        LatestKeepalives, MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
         OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
         RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
         TrafficType,
@@ -484,6 +484,8 @@ impl Node {
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
 
+        let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
+
         let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
             stats: stats.clone(),
@@ -497,6 +499,7 @@ impl Node {
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             syn_cookies: syn_cookies.clone(),
+            latest_keepalives: latest_keepalives.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(
@@ -655,6 +658,7 @@ impl Node {
             syn_cookies.clone(),
             keepalive_factory.clone(),
             online_reps.clone(),
+            latest_keepalives.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(

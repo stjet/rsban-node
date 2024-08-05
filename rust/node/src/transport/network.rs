@@ -14,7 +14,7 @@ use crate::{
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, PublicKey,
@@ -562,23 +562,6 @@ impl Network {
         let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
         self.random_fill(&mut peers);
         Message::Keepalive(Keepalive { peers })
-    }
-
-    pub fn sample_keepalive(&self) -> Option<Keepalive> {
-        let channels = self.state.lock().unwrap();
-        let mut rng = thread_rng();
-        for _ in 0..channels.channels.len() {
-            let index = rng.gen_range(0..channels.channels.len());
-            if let Some(channel) = channels.channels.get_by_index(index) {
-                if let Some(server) = &channel.response_server {
-                    if let Some(keepalive) = server.pop_last_keepalive() {
-                        return Some(keepalive);
-                    }
-                }
-            }
-        }
-
-        None
     }
 
     pub fn is_excluded(&self, addr: &SocketAddrV6) -> bool {

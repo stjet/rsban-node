@@ -1,7 +1,10 @@
 use super::{
     message_deserializer::AsyncBufferReader, write_queue::WriteQueue, TcpStream, TrafficType,
 };
-use crate::{stats, utils::into_ipv6_socket_address};
+use crate::{
+    stats::{self, DetailType, Direction, StatType, Stats},
+    utils::into_ipv6_socket_address,
+};
 use async_trait::async_trait;
 use num_traits::FromPrimitive;
 use rsnano_core::utils::{seconds_since_epoch, NULL_ENDPOINT};
@@ -64,29 +67,6 @@ impl ChannelMode {
     }
 }
 
-pub trait SocketObserver: Send + Sync {
-    fn socket_connected(&self, _socket: Arc<Socket>) {}
-    fn disconnect_due_to_timeout(&self, _endpoint: SocketAddrV6) {}
-    fn connect_error(&self) {}
-    fn read_error(&self) {}
-    fn read_successful(&self, _len: usize) {}
-    fn write_error(&self) {}
-    fn write_successful(&self, _len: usize) {}
-    fn silent_connection_dropped(&self) {}
-    fn inactive_connection_dropped(&self, _direction: ChannelDirection) {}
-}
-
-#[derive(Default)]
-pub struct NullSocketObserver {}
-
-impl NullSocketObserver {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-
-impl SocketObserver for NullSocketObserver {}
-
 pub struct Socket {
     pub socket_id: usize,
     /// The other end of the connection
@@ -122,10 +102,9 @@ pub struct Socket {
 
     socket_type: AtomicU8,
 
-    observer: Arc<dyn SocketObserver>,
-
     write_queue: WriteQueue,
     stream: Arc<TcpStream>,
+    stats: Arc<Stats>,
 }
 
 impl Socket {
@@ -237,13 +216,22 @@ impl Socket {
                 Ok(_) => {
                     match self.stream.try_read(&mut buffer[read..size]) {
                         Ok(0) => {
-                            self.observer.read_error();
+                            self.stats.inc_dir(
+                                StatType::Tcp,
+                                DetailType::TcpReadError,
+                                Direction::In,
+                            );
                             return Err(anyhow!("remote side closed the channel"));
                         }
                         Ok(n) => {
                             read += n;
                             if read >= size {
-                                self.observer.read_successful(size);
+                                self.stats.add_dir(
+                                    StatType::TrafficTcp,
+                                    DetailType::All,
+                                    Direction::In,
+                                    size as u64,
+                                );
                                 self.set_last_completion();
                                 self.set_last_receive_time();
                                 return Ok(());
@@ -253,13 +241,18 @@ impl Socket {
                             continue;
                         }
                         Err(e) => {
-                            self.observer.read_error();
+                            self.stats.inc_dir(
+                                StatType::Tcp,
+                                DetailType::TcpReadError,
+                                Direction::In,
+                            );
                             return Err(e.into());
                         }
                     };
                 }
                 Err(e) => {
-                    self.observer.read_error();
+                    self.stats
+                        .inc_dir(StatType::Tcp, DetailType::TcpReadError, Direction::In);
                     return Err(e.into());
                 }
             }
@@ -279,10 +272,16 @@ impl Socket {
             .await;
 
         if result.is_ok() {
-            self.observer.write_successful(buf_size);
+            self.stats.add_dir_aggregate(
+                StatType::TrafficTcp,
+                DetailType::All,
+                Direction::Out,
+                buf_size as u64,
+            );
             self.set_last_completion();
         } else {
-            self.observer.write_error();
+            self.stats
+                .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
             self.close();
         }
 
@@ -301,10 +300,16 @@ impl Socket {
             .try_insert(Arc::new(buffer.to_vec()), traffic_type);
 
         if inserted {
-            self.observer.write_successful(buf_size);
+            self.stats.add_dir_aggregate(
+                StatType::TrafficTcp,
+                DetailType::All,
+                Direction::Out,
+                buf_size as u64,
+            );
             self.set_last_completion();
         } else if write_error {
-            self.observer.write_error();
+            self.stats
+                .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
             self.close();
         }
     }
@@ -326,7 +331,11 @@ impl Socket {
                 && (now - self.last_receive_time_or_init.load(Ordering::SeqCst))
                     > self.silent_connection_tolerance_time.load(Ordering::SeqCst)
             {
-                self.observer.silent_connection_dropped();
+                self.stats.inc_dir(
+                    StatType::Tcp,
+                    DetailType::TcpSilentConnectionDrop,
+                    Direction::In,
+                );
                 condition_to_disconnect = true;
             }
 
@@ -334,12 +343,20 @@ impl Socket {
             if (now - self.last_completion_time_or_init.load(Ordering::SeqCst))
                 > self.timeout_seconds.load(Ordering::SeqCst)
             {
-                self.observer.inactive_connection_dropped(self.direction);
+                self.stats.inc_dir(
+                    StatType::Tcp,
+                    DetailType::TcpIoTimeoutDrop,
+                    if self.direction == ChannelDirection::Inbound {
+                        Direction::In
+                    } else {
+                        Direction::Out
+                    },
+                );
                 condition_to_disconnect = true;
             }
 
             if condition_to_disconnect {
-                self.observer.disconnect_due_to_timeout(self.remote);
+                debug!("Closing socket due to timeout ({})", self.remote);
                 self.timed_out.store(true, Ordering::SeqCst);
                 self.close();
             }
@@ -367,8 +384,9 @@ pub struct SocketBuilder {
     default_timeout: Duration,
     silent_connection_tolerance_time: Duration,
     idle_timeout: Duration,
-    observer: Option<Arc<dyn SocketObserver>>,
     max_write_queue_len: usize,
+    stream: TcpStream,
+    stats: Option<Arc<Stats>>,
 }
 
 static NEXT_SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
@@ -379,19 +397,25 @@ pub fn alive_sockets() -> usize {
 }
 
 impl SocketBuilder {
-    pub fn new(direction: ChannelDirection) -> Self {
+    pub fn new(direction: ChannelDirection, stream: TcpStream) -> Self {
         Self {
             direction,
+            stream,
             default_timeout: Duration::from_secs(15),
             silent_connection_tolerance_time: Duration::from_secs(120),
             idle_timeout: Duration::from_secs(120),
-            observer: None,
             max_write_queue_len: Socket::MAX_QUEUE_SIZE,
+            stats: None,
         }
     }
 
     pub fn default_timeout(mut self, timeout: Duration) -> Self {
         self.default_timeout = timeout;
+        self
+    }
+
+    pub fn stats(mut self, stats: Arc<Stats>) -> Self {
+        self.stats = Some(stats);
         self
     }
 
@@ -405,32 +429,24 @@ impl SocketBuilder {
         self
     }
 
-    pub fn observer(mut self, observer: Arc<dyn SocketObserver>) -> Self {
-        self.observer = Some(observer);
-        self
-    }
-
     pub fn max_write_queue_len(mut self, max_len: usize) -> Self {
         self.max_write_queue_len = max_len;
         self
     }
 
-    pub async fn finish(self, stream: TcpStream) -> Arc<Socket> {
+    pub async fn finish(self) -> Arc<Socket> {
         let socket_id = NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed);
         let alive = LIVE_SOCKETS.fetch_add(1, Ordering::Relaxed) + 1;
         debug!(socket_id, alive, "Creating socket");
 
-        let remote = stream
+        let remote = self
+            .stream
             .peer_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let observer = self
-            .observer
-            .unwrap_or_else(|| Arc::new(NullSocketObserver::new()));
-
         let (write_queue, mut receiver) = WriteQueue::new(self.max_write_queue_len);
-        let stream = Arc::new(stream);
+        let stream = Arc::new(self.stream);
         let stream_l = stream.clone();
         // process write queue:
         tokio::spawn(async move {
@@ -477,9 +493,9 @@ impl SocketBuilder {
                 timed_out: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
                 socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
-                observer,
                 write_queue,
                 stream,
+                stats: self.stats.unwrap_or_else(|| Arc::new(Stats::default())),
             }
         });
         socket.set_default_timeout();

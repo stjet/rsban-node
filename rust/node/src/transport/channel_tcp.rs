@@ -3,7 +3,7 @@ use super::{
     OutboundBandwidthLimiter, Socket, SocketBuilder, TcpStream, TrafficType,
 };
 use crate::{
-    stats::{Direction, SocketStats, StatType, Stats},
+    stats::{Direction, StatType, Stats},
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 use async_trait::async_trait;
@@ -77,10 +77,9 @@ impl ChannelTcp {
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
     ) -> Self {
-        let socket_stats = Arc::new(SocketStats::new(Arc::clone(&stats)));
-        let socket = SocketBuilder::new(direction)
-            .observer(socket_stats)
-            .finish(stream)
+        let socket = SocketBuilder::new(direction, stream)
+            .stats(stats.clone())
+            .finish()
             .await;
 
         Self::new(

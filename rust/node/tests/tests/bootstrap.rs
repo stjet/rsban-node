@@ -9,10 +9,8 @@ use rsnano_messages::BulkPull;
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
-    stats::SocketStats,
     transport::{
         ChannelDirection, ChannelEnum, ChannelId, ChannelTcp, LatestKeepalives, ResponseServer,
-        SocketBuilder,
     },
 };
 use rsnano_node::{
@@ -22,11 +20,8 @@ use rsnano_node::{
     transport::TcpStream,
     wallets::WalletsExt,
 };
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::{
-    sync::{Arc, Mutex},
-    time::SystemTime,
-};
 
 mod bootstrap_processor {
     use super::*;

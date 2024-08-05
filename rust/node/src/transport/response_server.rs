@@ -68,7 +68,6 @@ impl Default for TcpConfig {
 pub struct ResponseServer {
     channel: Mutex<Option<Arc<ChannelEnum>>>,
     pub socket: Arc<Socket>,
-    stopped: AtomicBool,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
@@ -81,7 +80,6 @@ pub struct ResponseServer {
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     allow_bootstrap: bool,
-    notify_stop: Notify,
     network: Weak<Network>,
     inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
@@ -128,7 +126,6 @@ impl ResponseServer {
             inbound_queue,
             socket,
             channel: Mutex::new(None),
-            stopped: AtomicBool::new(false),
             disable_bootstrap_listener: false,
             connections_max: 64,
             remote_endpoint: Mutex::new(remote_endpoint),
@@ -146,7 +143,6 @@ impl ResponseServer {
             stats: stats.clone(),
             disable_bootstrap_bulk_pull_server: false,
             allow_bootstrap,
-            notify_stop: Notify::new(),
             initiate_handshake_listener: OutputListenerMt::new(),
             publish_filter,
             runtime,
@@ -164,14 +160,16 @@ impl ResponseServer {
     }
 
     pub fn is_stopped(&self) -> bool {
-        self.stopped.load(Ordering::SeqCst)
+        self.channel
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|c| !c.is_alive())
+            .unwrap_or(true)
     }
 
     pub fn stop(&self) {
-        if !self.stopped.swap(true, Ordering::SeqCst) {
-            self.socket.close();
-            self.notify_stop.notify_one();
-        }
+        self.socket.close();
     }
 
     pub fn remote_endpoint(&self) -> SocketAddrV6 {
@@ -352,12 +350,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
                 break;
             }
 
-            let result = tokio::select! {
-                i = message_deserializer.read() => i,
-                _ = self.notify_stop.notified() => Err(ParseMessageError::Stopped)
-            };
-
-            let result = match result {
+            let result = match message_deserializer.read().await {
                 Ok(msg) => self.process_message(msg).await,
                 Err(ParseMessageError::DuplicatePublishMessage) => {
                     // Avoid too much noise about `duplicate_publish_message` errors

@@ -1,5 +1,5 @@
 use std::{
-    net::SocketAddrV6,
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex, Weak,
@@ -313,6 +313,14 @@ impl Channel for ChannelInProc {
     }
 
     fn set_timeout(&self, _timeout: Duration) {}
+
+    fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
+        Ipv6Addr::UNSPECIFIED
+    }
+
+    fn subnetwork(&self) -> Ipv6Addr {
+        Ipv6Addr::UNSPECIFIED
+    }
 }
 
 #[async_trait]

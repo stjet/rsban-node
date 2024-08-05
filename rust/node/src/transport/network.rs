@@ -120,12 +120,12 @@ impl Network {
             state.channels.len(),
             self.port()
         );
-        for i in state.channels.iter() {
+        for c in state.channels.iter() {
             println!(
                 "    remote: {}, direction: {:?}, mode: {:?}",
-                i.channel.remote_addr(),
-                i.channel.direction(),
-                i.channel.mode()
+                c.remote_addr(),
+                c.direction(),
+                c.mode()
             )
         }
     }
@@ -219,11 +219,7 @@ impl Network {
         let channel = Arc::new(ChannelEnum::Tcp(Arc::new(tcp_channel)));
         response_server.set_channel(channel.clone());
 
-        self.state
-            .lock()
-            .unwrap()
-            .channels
-            .insert(channel, Some(response_server.clone()));
+        self.state.lock().unwrap().channels.insert(channel);
 
         let response_server_l = response_server.clone();
         self.async_rt
@@ -267,7 +263,7 @@ impl Network {
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|e| e.endpoint())
+            .map(|e| e.remote_addr())
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -294,7 +290,7 @@ impl Network {
         )));
         fake.set_node_id(PublicKey::from(fake.channel_id().as_usize() as u64));
         let mut channels = self.state.lock().unwrap();
-        channels.channels.insert(fake, None);
+        channels.channels.insert(fake);
     }
 
     pub(crate) fn check_limits(&self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
@@ -362,7 +358,7 @@ impl Network {
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|c| c.channel.max(traffic_type))
+            .map(|c| c.max(traffic_type))
             .unwrap_or(true)
     }
 
@@ -374,7 +370,7 @@ impl Network {
         traffic_type: TrafficType,
     ) {
         if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
-            channel.channel.try_send(message, drop_policy, traffic_type);
+            channel.try_send(message, drop_policy, traffic_type);
         }
     }
 
@@ -605,10 +601,10 @@ impl NetworkExt for Arc<Network> {
             };
 
             if let Some(other) = state.channels.get_by_node_id(&node_id) {
-                if other.ip_address() == entry.ip_address() {
+                if other.ipv4_address_or_ipv6_subnet() == entry.ipv4_address_or_ipv6_subnet() {
                     // We already have a connection to that node. We allow duplicate node ids, but
                     // only if they come from different IP addresses
-                    let endpoint = entry.endpoint();
+                    let endpoint = entry.remote_addr();
                     state.channels.remove_by_endpoint(&endpoint);
                     drop(state);
                     debug!(
@@ -620,11 +616,11 @@ impl NetworkExt for Arc<Network> {
                 }
             }
 
-            entry.channel.set_node_id(node_id);
-            entry.channel.set_mode(ChannelMode::Realtime);
+            entry.set_node_id(node_id);
+            entry.set_mode(ChannelMode::Realtime);
 
             let observers = state.new_channel_observers.clone();
-            let channel = entry.channel.clone();
+            let channel = entry.clone();
             (observers, channel)
         };
 
@@ -675,11 +671,11 @@ impl State {
         let mut channel_endpoint = None;
         let mut peering_endpoint = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
-            if channel.channel.mode() == ChannelMode::Realtime
+            if channel.mode() == ChannelMode::Realtime
                 && channel.network_version() >= self.network_constants.protocol_version_min
             {
-                if let Some(peering) = channel.channel.peering_endpoint() {
-                    channel_endpoint = Some(channel.endpoint());
+                if let Some(peering) = channel.peering_endpoint() {
+                    channel_endpoint = Some(channel.remote_addr());
                     peering_endpoint = Some(peering);
                     break;
                 }
@@ -699,10 +695,6 @@ impl State {
     pub fn close_channels(&mut self) {
         for channel in self.channels.iter() {
             channel.close();
-            // Remove response server
-            if let Some(server) = &channel.response_server {
-                server.stop();
-            }
         }
         self.channels.clear();
     }
@@ -737,10 +729,10 @@ impl State {
             .iter()
             .filter(|c| {
                 c.network_version() >= min_version
-                    && c.channel.is_alive()
-                    && c.channel.mode() == ChannelMode::Realtime
+                    && c.is_alive()
+                    && c.mode() == ChannelMode::Realtime
             })
-            .map(|c| c.channel.clone())
+            .map(|c| c.clone())
             .collect()
     }
 
@@ -748,10 +740,8 @@ impl State {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
         for channel in self.channels.iter() {
-            if channel.channel.mode() == ChannelMode::Realtime
-                && channel.last_packet_sent() < cutoff
-            {
-                result.push(channel.channel.clone());
+            if channel.mode() == ChannelMode::Realtime && channel.get_last_packet_sent() < cutoff {
+                result.push(channel.clone());
             }
         }
 
@@ -761,7 +751,7 @@ impl State {
     pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
         self.channels
             .get_by_remote_addr(endpoint)
-            .map(|c| c.channel.clone())
+            .map(|c| c.clone())
     }
 
     pub fn find_channel_by_peering_addr(
@@ -770,7 +760,7 @@ impl State {
     ) -> Option<Arc<ChannelEnum>> {
         self.channels
             .get_by_peering_addr(peering_addr)
-            .map(|c| c.channel.clone())
+            .map(|c| c.clone())
     }
 
     pub fn get_realtime_peers(&self) -> Vec<SocketAddrV6> {
@@ -778,15 +768,13 @@ impl State {
         // we collect endpoints to be saved and then release the lock.
         self.channels
             .iter()
-            .filter(|c| c.channel.mode() == ChannelMode::Realtime)
-            .map(|c| c.endpoint())
+            .filter(|c| c.mode() == ChannelMode::Realtime)
+            .map(|c| c.remote_addr())
             .collect()
     }
 
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelEnum>> {
-        self.channels
-            .get_by_node_id(node_id)
-            .map(|c| c.channel.clone())
+        self.channels.get_by_node_id(node_id).map(|c| c.clone())
     }
 
     pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelEnum>> {
@@ -923,12 +911,12 @@ impl State {
         let mut info = ChannelsInfo::default();
         for entry in self.channels.iter() {
             info.total += 1;
-            match entry.channel.mode() {
+            match entry.mode() {
                 ChannelMode::Bootstrap => info.bootstrap += 1,
                 ChannelMode::Realtime => info.realtime += 1,
                 _ => {}
             }
-            match entry.channel.direction() {
+            match entry.direction() {
                 ChannelDirection::Inbound => info.inbound += 1,
                 ChannelDirection::Outbound => info.outbound += 1,
             }

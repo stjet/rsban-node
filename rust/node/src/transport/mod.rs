@@ -59,7 +59,7 @@ use rsnano_messages::Message;
 pub use socket::*;
 use std::{
     fmt::{Debug, Display},
-    net::SocketAddrV6,
+    net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
     sync::Arc,
     time::{Duration, SystemTime},
@@ -128,6 +128,8 @@ pub trait Channel: AsyncBufferReader {
     fn mode(&self) -> ChannelMode;
     fn set_mode(&self, mode: ChannelMode);
     fn set_timeout(&self, timeout: Duration);
+    fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr;
+    fn subnetwork(&self) -> Ipv6Addr;
 
     fn try_send(&self, message: &Message, drop_policy: BufferDropPolicy, traffic_type: TrafficType);
 

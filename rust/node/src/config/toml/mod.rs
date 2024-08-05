@@ -25,6 +25,7 @@ mod websocket_toml;
 
 pub use active_elections_toml::*;
 pub use block_processor_toml::*;
+pub use bootstrap_ascending_toml::*;
 pub use bootstrap_server_toml::*;
 pub use daemon_toml::*;
 pub use diagnostics_toml::*;

@@ -372,3 +372,48 @@ fn online_reps_rep_crawler() {
         node.online_reps.lock().unwrap().online_weight()
     );
 }
+
+#[test]
+fn online_reps_election() {
+    let mut system = System::new();
+    let mut flags = NodeFlags::default();
+    flags.disable_rep_crawler = true;
+    let node = system.build_node().flags(flags).finish();
+
+    // Start election
+    let key = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node.process_active(send1.clone());
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
+
+    // Process vote for ongoing election
+    let vote = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        milliseconds_since_epoch(),
+        0,
+        vec![send1.hash()],
+    ));
+    assert_eq!(
+        Amount::zero(),
+        node.online_reps.lock().unwrap().online_weight()
+    );
+
+    let channel = make_fake_channel(&node);
+    node.vote_processor
+        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+
+    assert_eq!(
+        Amount::MAX - Amount::nano(1000),
+        node.online_reps.lock().unwrap().online_weight()
+    );
+}

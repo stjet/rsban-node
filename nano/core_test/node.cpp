@@ -1348,33 +1348,6 @@ TEST (node, bootstrap_connection_scaling)
 	// ASSERT_EQ (1, node1.bootstrap_initiator.connections->target_connections (50000, 1));
 }
 
-TEST (node, online_reps_election)
-{
-	nano::test::system system;
-	nano::node_flags flags;
-	flags.set_disable_rep_crawler (true);
-	auto & node1 = *system.add_node (flags);
-	// Start election
-	nano::keypair key;
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node1.work_generate_blocking (nano::dev::genesis->hash ()))
-				 .build ();
-	node1.process_active (send1);
-	ASSERT_TIMELY_EQ (5s, 1, node1.active.size ());
-	// Process vote for ongoing election
-	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), 0, std::vector<nano::block_hash>{ send1->hash () });
-	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
-	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
-	ASSERT_EQ (nano::dev::constants.genesis_amount - nano::Gxrb_ratio, node1.quorum ().online_weight.number ());
-}
-
 TEST (node, block_confirm)
 {
 	auto type = nano::transport::transport_type::tcp;

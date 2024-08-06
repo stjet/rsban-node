@@ -6,6 +6,16 @@
 //
 //use super::helpers::System;
 
+use std::{sync::Arc, time::Duration};
+
+use rsnano_core::{
+    Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_node::stats::{DetailType, Direction, StatType};
+
+use super::helpers::{assert_timely, assert_timely_eq, make_fake_channel, System};
+
 /// What this test is doing:
 /// Create 20 representatives with minimum principal weight each
 /// Create a send block on the genesis account (the last send block)
@@ -65,4 +75,40 @@ fn fork_replacement_tally() {
     //        .vote(Arc::new(vote), channel, source)
     //}
     // TODO port remainig part
+}
+
+#[test]
+fn inactive_votes_cache_basic() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(100),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send.hash()]));
+    let channel = make_fake_channel(&node);
+    node.vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.vote_cache.lock().unwrap().size(),
+        1,
+    );
+    node.process_active(send.clone());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block_confirmed(&send.hash()),
+        true,
+    );
+    assert_eq!(
+        1,
+        node.stats
+            .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
+    )
 }

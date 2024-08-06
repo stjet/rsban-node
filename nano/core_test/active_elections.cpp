@@ -232,27 +232,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-TEST (inactive_votes_cache, basic)
-{
-	nano::test::system system (1);
-	auto & node = *system.nodes[0];
-	nano::block_hash latest (node.latest (nano::dev::genesis_key.pub));
-	nano::keypair key;
-	auto send = nano::send_block_builder ()
-				.previous (latest)
-				.destination (key.pub)
-				.balance (nano::dev::constants.genesis_amount - 100)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (latest))
-				.build ();
-	auto vote = nano::test::make_final_vote (nano::dev::genesis_key, { send });
-	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
-	ASSERT_TIMELY_EQ (5s, node.vote_cache.size (), 1);
-	node.process_active (send);
-	ASSERT_TIMELY (5s, node.ledger.confirmed ().block_exists_or_pruned (*node.store.tx_begin_read (), send->hash ()));
-	ASSERT_EQ (1, node.stats->count (nano::stat::type::election_vote, nano::stat::detail::cache));
-}
-
 /**
  * This test case confirms that a non final vote cannot cause an election to become confirmed
  */

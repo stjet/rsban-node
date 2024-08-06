@@ -1614,51 +1614,6 @@ TEST (node, DISABLED_fork_invalid_block_signature)
 	ASSERT_EQ (node1.block (send2->hash ())->block_signature (), send2->block_signature ());
 }
 
-TEST (node, fork_election_invalid_block_signature)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::block_builder builder;
-	auto send1 = builder.state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .build ();
-	auto send2 = builder.state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 2 * nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .build ();
-	auto send3 = builder.state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 2 * nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .sign (nano::dev::genesis_key.prv, 0) // Invalid signature
-				 .build ();
-
-	auto channel1 = std::make_shared<nano::transport::fake::channel> (node1);
-	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send1 }, channel1);
-	ASSERT_TIMELY (5s, node1.active.active (send1->qualified_root ()));
-	auto election (node1.active.election (send1->qualified_root ()));
-	ASSERT_NE (nullptr, election);
-	ASSERT_EQ (1, election->blocks ().size ());
-	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send3 }, channel1);
-	node1.network->inbound (nano::publish{ nano::dev::network_params.network, send2 }, channel1);
-	ASSERT_TIMELY (3s, election->blocks ().size () > 1);
-	ASSERT_EQ (election->blocks ()[send2->hash ()]->block_signature (), send2->block_signature ());
-}
-
 TEST (node, block_processor_signatures)
 {
 	nano::test::system system{ 1 };

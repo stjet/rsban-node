@@ -3,7 +3,7 @@ use crate::tests::helpers::{
 };
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey,
-    SendBlock, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    SendBlock, Signature, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
@@ -597,4 +597,87 @@ fn vote_by_hash_republish() {
     );
     assert_eq!(node1.block_exists(&send1.hash()), false);
     assert_eq!(node2.block_exists(&send1.hash()), false);
+}
+
+#[test]
+fn fork_election_invalid_block_signature() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+
+    // send1 and send2 are forks of each other
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(2000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let mut send3 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(2000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    send3.set_block_signature(&Signature::new()); // Invalid signature
+
+    let channel = make_fake_channel(&node1);
+    node1.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(send1.clone())),
+            node1.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+    assert_timely(
+        Duration::from_secs(5),
+        || node1.active.active(&send1),
+        "not active on node 1",
+    );
+    let election = node1.active.election(&send1.qualified_root()).unwrap();
+    assert_eq!(1, election.mutex.lock().unwrap().last_blocks.len());
+
+    node1.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(send3)),
+            node1.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+    node1.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(send2.clone())),
+            node1.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+    assert_timely(
+        Duration::from_secs(3),
+        || election.mutex.lock().unwrap().last_blocks.len() > 1,
+        "block len was < 2",
+    );
+    assert_eq!(
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .last_blocks
+            .get(&send2.hash())
+            .unwrap()
+            .block_signature(),
+        send2.block_signature()
+    );
 }

@@ -1,11 +1,14 @@
-use crate::tests::helpers::{assert_never, assert_timely, assert_timely_eq, System};
+use crate::tests::helpers::{
+    assert_never, assert_timely, assert_timely_eq, make_fake_channel, System,
+};
 use rsnano_core::{
-    work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey, SendBlock, StateBlock, Vote,
-    DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey,
+    SendBlock, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
 use rsnano_node::{
+    config::NodeFlags,
     consensus::ActiveElectionsExt,
     stats::{DetailType, Direction, StatType},
     transport::{
@@ -14,7 +17,7 @@ use rsnano_node::{
     },
     wallets::WalletsExt,
 };
-use std::{thread::sleep, time::Duration};
+use std::{sync::Arc, thread::sleep, time::Duration};
 use tracing::error;
 
 #[test]
@@ -231,14 +234,7 @@ fn fork_open() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let channel = node
-        .async_rt
-        .tokio
-        .block_on(
-            node.network
-                .add(TcpStream::new_null(), ChannelDirection::Inbound),
-        )
-        .unwrap();
+    let channel = make_fake_channel(&node);
 
     node.inbound_message_queue.put(
         DeserializedMessage::new(
@@ -337,4 +333,42 @@ fn fork_open() {
         "open1 not in ledger",
     );
     assert_eq!(node.block_exists(&open2.hash()), false);
+}
+
+#[test]
+fn online_reps_rep_crawler() {
+    let mut system = System::new();
+    let mut flags = NodeFlags::default();
+    flags.disable_rep_crawler = true;
+    let node = system.build_node().flags(flags).finish();
+    let vote = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        milliseconds_since_epoch(),
+        0,
+        vec![*DEV_GENESIS_HASH],
+    ));
+    assert_eq!(
+        Amount::zero(),
+        node.online_reps.lock().unwrap().online_weight()
+    );
+
+    // Without rep crawler
+    let channel = make_fake_channel(&node);
+    node.vote_processor
+        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+    assert_eq!(
+        Amount::zero(),
+        node.online_reps.lock().unwrap().online_weight()
+    );
+
+    // After inserting to rep crawler
+    node.rep_crawler
+        .force_query(*DEV_GENESIS_HASH, channel.clone());
+    node.vote_processor
+        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+    assert_eq!(
+        Amount::MAX,
+        node.online_reps.lock().unwrap().online_weight()
+    );
 }

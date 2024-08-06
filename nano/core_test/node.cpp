@@ -1348,24 +1348,6 @@ TEST (node, bootstrap_connection_scaling)
 	// ASSERT_EQ (1, node1.bootstrap_initiator.connections->target_connections (50000, 1));
 }
 
-TEST (node, online_reps_rep_crawler)
-{
-	nano::test::system system;
-	nano::node_flags flags;
-	flags.set_disable_rep_crawler (true);
-	auto & node1 = *system.add_node (flags);
-	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, nano::milliseconds_since_epoch (), 0, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
-	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
-	// Without rep crawler
-	node1.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node1));
-	ASSERT_EQ (0, node1.quorum ().online_weight.number ());
-	// After inserting to rep crawler
-	auto channel = std::make_shared<nano::transport::fake::channel> (node1);
-	node1.rep_crawler.force_query (nano::dev::genesis->hash (), channel);
-	node1.vote_processor.vote_blocking (vote, channel);
-	ASSERT_EQ (nano::dev::constants.genesis_amount, node1.quorum ().online_weight.number ());
-}
-
 TEST (node, online_reps_election)
 {
 	nano::test::system system;

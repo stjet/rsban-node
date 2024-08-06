@@ -2,7 +2,6 @@ mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel_container;
-mod channel_fake;
 mod channel_inproc;
 mod channel_tcp;
 mod fair_queue;
@@ -34,7 +33,6 @@ pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
 pub use block_deserializer::read_block;
-pub use channel_fake::ChannelFake;
 pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
 pub use fair_queue::*;
@@ -104,7 +102,6 @@ pub enum TransportType {
     Undefined = 0,
     Tcp = 1,
     Loopback = 2,
-    Fake = 3,
 }
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -196,21 +193,12 @@ pub enum TrafficType {
 pub enum ChannelEnum {
     Tcp(Arc<ChannelTcp>),
     InProc(ChannelInProc),
-    Fake(ChannelFake),
 }
 
 impl ChannelEnum {
     #[allow(dead_code)]
     pub fn new_null() -> Self {
-        use rsnano_messages::ProtocolInfo;
-        use std::net::Ipv6Addr;
-
-        Self::Fake(ChannelFake::new(
-            SystemTime::now(),
-            42.into(),
-            SocketAddrV6::new(Ipv6Addr::LOCALHOST, 123, 0, 0),
-            ProtocolInfo::dev_network(),
-        ))
+        Self::Tcp(Arc::new(ChannelTcp::new_null()))
     }
 
     pub fn max(&self, traffic_type: TrafficType) -> bool {
@@ -234,7 +222,6 @@ impl Deref for ChannelEnum {
         match &self {
             ChannelEnum::Tcp(tcp) => tcp,
             ChannelEnum::InProc(inproc) => inproc,
-            ChannelEnum::Fake(fake) => fake,
         }
     }
 }

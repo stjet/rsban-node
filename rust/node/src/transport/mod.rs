@@ -202,17 +202,12 @@ pub enum ChannelEnum {
 impl ChannelEnum {
     #[allow(dead_code)]
     pub fn new_null() -> Self {
-        Self::new_null_with_channel_id(42)
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn new_null_with_channel_id(channel_id: impl Into<ChannelId>) -> Self {
         use rsnano_messages::ProtocolInfo;
         use std::net::Ipv6Addr;
 
         Self::Fake(ChannelFake::new(
             SystemTime::now(),
-            channel_id.into(),
+            42.into(),
             SocketAddrV6::new(Ipv6Addr::LOCALHOST, 123, 0, 0),
             ProtocolInfo::dev_network(),
         ))

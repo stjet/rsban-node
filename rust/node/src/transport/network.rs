@@ -827,8 +827,8 @@ impl State {
                     direction.into(),
                 );
                 debug!(
-                    "Max connections per IP reached ({}), unable to open new connection",
-                    ip
+                    "Max connections per IP reached ({}, count: {}), unable to open new connection",
+                    ip, count
                 );
                 return AcceptResult::Rejected;
             }

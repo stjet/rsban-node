@@ -417,3 +417,104 @@ fn online_reps_election() {
         node.online_reps.lock().unwrap().online_weight()
     );
 }
+
+#[test]
+fn vote_republish() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let key2 = KeyPair::new();
+    // by not setting a private key on node1's wallet for genesis account, it is stopped from voting
+    let wallet_id = node2.wallets.wallet_ids()[0];
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    // send1 and send2 are forks of each other
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key2.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(2000),
+        key2.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    // process send1 first, this will make sure send1 goes into the ledger and an election is started
+    node1.process_active(send1.clone());
+    assert_timely(
+        Duration::from_secs(5),
+        || node2.block_exists(&send1.hash()),
+        "block not found on node2",
+    );
+    assert_timely(
+        Duration::from_secs(5),
+        || node1.active.active(&send1),
+        "not active on node 1",
+    );
+    assert_timely(
+        Duration::from_secs(5),
+        || node2.active.active(&send1),
+        "not active on node 2",
+    );
+
+    // now process send2, send2 will not go in the ledger because only the first block of a fork goes in the ledger
+    node1.process_active(send2.clone());
+    assert_timely(
+        Duration::from_secs(5),
+        || node1.active.active(&send2),
+        "send2 not active on node 2",
+    );
+
+    // send2 cannot be synced because it is not in the ledger of node1, it is only in the election object in RAM on node1
+    assert_eq!(node1.block_exists(&send2.hash()), false);
+
+    // the vote causes the election to reach quorum and for the vote (and block?) to be published from node1 to node2
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
+    let channel = make_fake_channel(&node1);
+    node1
+        .vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+
+    // FIXME: there is a race condition here, if the vote arrives before the block then the vote is wasted and the test fails
+    // we could resend the vote but then there is a race condition between the vote resending and the election reaching quorum on node1
+    // the proper fix would be to observe on node2 that both the block and the vote arrived in whatever order
+    // the real node will do a confirm request if it needs to find a lost vote
+
+    // check that send2 won on both nodes
+    assert_timely(
+        Duration::from_secs(5),
+        || node1.blocks_confirmed(&[send2.clone()]),
+        "not confirmed on node1",
+    );
+    assert_timely(
+        Duration::from_secs(5),
+        || node2.blocks_confirmed(&[send2.clone()]),
+        "not confirmed on node2",
+    );
+
+    // check that send1 is deleted from the ledger on nodes
+    assert_eq!(node1.block_exists(&send1.hash()), false);
+    assert_eq!(node2.block_exists(&send1.hash()), false);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&key2.public_key()),
+        Amount::nano(2000),
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node2.balance(&key2.public_key()),
+        Amount::nano(2000),
+    );
+}

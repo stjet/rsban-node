@@ -9,6 +9,7 @@ use rsnano_node::{
     NetworkParams,
 };
 use std::{
+    fmt::Display,
     net::TcpListener,
     sync::{
         atomic::{AtomicU16, Ordering},
@@ -212,17 +213,19 @@ where
 
 pub(crate) fn assert_timely_eq<T, F>(timeout: Duration, mut check: F, expected: T)
 where
-    T: PartialEq,
+    T: PartialEq + std::fmt::Debug + Clone,
     F: FnMut() -> T,
 {
     let start = Instant::now();
+    let mut actual = expected.clone();
     while start.elapsed() < timeout {
-        if check() == expected {
+        actual = check();
+        if actual == expected {
             return;
         }
         sleep(Duration::from_millis(50));
     }
-    panic!("timeout");
+    panic!("timeout. expected: {expected:?}, actual: {actual:?}");
 }
 
 pub(crate) fn assert_always_eq<T, F>(time: Duration, mut condition: F, expected: T)

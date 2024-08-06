@@ -1,3 +1,5 @@
+#include "nano/lib/rsnano.hpp"
+#include "nano/node/transport/tcp.hpp"
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/node/scheduler/component.hpp>
@@ -228,9 +230,9 @@ std::vector<nano::block_hash> nano::test::blocks_to_hashes (std::vector<std::sha
 	return hashes;
 }
 
-std::shared_ptr<nano::transport::fake::channel> nano::test::fake_channel (nano::node & node, nano::account node_id)
+std::shared_ptr<nano::transport::channel> nano::test::fake_channel (nano::node & node, nano::account node_id)
 {
-	auto channel = std::make_shared<nano::transport::fake::channel> (node);
+	auto channel {transport::channel_handle_to_channel(rsnano::rsn_node_fake_channel(node.handle))};
 	if (!node_id.is_zero ())
 	{
 		channel->set_node_id (node_id);

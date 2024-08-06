@@ -28,19 +28,20 @@ use crate::{
     VoidPointerCallback,
 };
 use rsnano_core::{
-    utils::NULL_ENDPOINT, Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
+    utils::{NULL_ENDPOINT, TEST_ENDPOINT_1},
+    Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
 };
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelEnum, PeerConnectorExt},
+    transport::{ChannelDirection, ChannelEnum, ChannelFake, PeerConnectorExt, TcpStream},
 };
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void},
     net::SocketAddrV6,
     sync::Arc,
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 pub struct NodeHandle(Arc<Node>);
@@ -583,4 +584,21 @@ pub unsafe extern "C" fn rsn_node_flood_block_many(
         Box::new(move || callback(ctx_wrapper.get_context())),
         Duration::from_millis(delay_ms),
     )
+}
+
+#[no_mangle]
+pub extern "C" fn rsn_node_fake_channel(handle: &NodeHandle) -> *mut ChannelHandle {
+    let channel = handle
+        .0
+        .async_rt
+        .tokio
+        .block_on(
+            handle
+                .0
+                .network
+                .add(TcpStream::new_null(), ChannelDirection::Inbound),
+        )
+        .unwrap();
+
+    ChannelHandle::new(channel)
 }

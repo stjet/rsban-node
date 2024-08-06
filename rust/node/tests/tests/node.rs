@@ -1,16 +1,20 @@
 use crate::tests::helpers::{assert_never, assert_timely, assert_timely_eq, System};
 use rsnano_core::{
-    work::WorkPool, Amount, BlockEnum, KeyPair, RawKey, SendBlock, StateBlock, Vote,
+    work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey, SendBlock, StateBlock, Vote,
     DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{ConfirmAck, Message};
+use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
 use rsnano_node::{
+    consensus::ActiveElectionsExt,
     stats::{DetailType, Direction, StatType},
-    transport::{BufferDropPolicy, PeerConnectorExt, TrafficType},
+    transport::{
+        BufferDropPolicy, ChannelDirection, ChannelEnum, ChannelTcp, PeerConnectorExt, TcpStream,
+        TrafficType,
+    },
     wallets::WalletsExt,
 };
-use std::time::Duration;
+use std::{thread::sleep, time::Duration};
 use tracing::error;
 
 #[test]
@@ -206,4 +210,131 @@ fn fork_no_vote_quorum() {
     assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), send1.hash());
     assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), send1.hash());
     assert_eq!(node3.latest(&DEV_GENESIS_ACCOUNT), send1.hash());
+}
+
+#[test]
+fn fork_open() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    // create block send1, to send all the balance from genesis to key1
+    // this is done to ensure that the open block(s) cannot be voted on and confirmed
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::zero(),
+        key1.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let channel = node
+        .async_rt
+        .tokio
+        .block_on(
+            node.network
+                .add(TcpStream::new_null(), ChannelDirection::Inbound),
+        )
+        .unwrap();
+
+    node.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(send1.clone())),
+            node.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&send1.qualified_root()).is_some(),
+        "election not found",
+    );
+    let election = node.active.election(&send1.qualified_root()).unwrap();
+    node.active.force_confirm(&election);
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 0);
+
+    // register key for genesis account, not sure why we do this, it seems needless,
+    // since the genesis account at this stage has zero voting weight
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
+    let open1 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        BlockHash::zero(),
+        1.into(),
+        Amount::MAX,
+        send1.hash().into(),
+        &key1,
+        node.work_generate_dev(key1.public_key().into()),
+    ));
+    node.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(open1.clone())),
+            node.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
+
+    // create 2nd open block, which is a fork of open1 block
+    // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
+    let open2 = BlockEnum::State(StateBlock::new(
+        key1.public_key(),
+        BlockHash::zero(),
+        2.into(),
+        Amount::MAX,
+        send1.hash().into(),
+        &key1,
+        node.work_generate_dev(key1.public_key().into()),
+    ));
+    node.inbound_message_queue.put(
+        DeserializedMessage::new(
+            Message::Publish(Publish::new_forward(open2.clone())),
+            node.network_params.network.protocol_info(),
+        ),
+        channel.clone(),
+    );
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&open2.qualified_root()).is_some(),
+        "no election for open2",
+    );
+
+    let election = node.active.election(&open2.qualified_root()).unwrap();
+    // we expect to find 2 blocks in the election and we expect the first block to be the winner just because it was first
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        2,
+    );
+    assert_eq!(
+        open1.hash(),
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .status
+            .winner
+            .as_ref()
+            .unwrap()
+            .hash()
+    );
+
+    // wait for a second and check that the election did not get confirmed
+    sleep(Duration::from_millis(1000));
+    assert_eq!(node.active.confirmed(&election), false);
+
+    // check that only the first block is saved to the ledger
+    assert_timely(
+        Duration::from_secs(5),
+        || node.block_exists(&open1.hash()),
+        "open1 not in ledger",
+    );
+    assert_eq!(node.block_exists(&open2.hash()), false);
 }

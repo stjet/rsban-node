@@ -232,35 +232,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-/**
- * This test case confirms that a non final vote cannot cause an election to become confirmed
- */
-TEST (active_elections, non_final)
-{
-	nano::test::system system (1);
-	auto & node = *system.nodes[0];
-
-	auto send = nano::send_block_builder ()
-				.previous (nano::dev::genesis->hash ())
-				.destination (nano::keypair{}.pub)
-				.balance (nano::dev::constants.genesis_amount - 100)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (nano::dev::genesis->hash ()))
-				.build ();
-
-	// Non-final vote
-	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector<nano::block_hash> (1, send->hash ()));
-	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
-	ASSERT_TIMELY_EQ (5s, node.vote_cache.size (), 1);
-
-	node.process_active (send);
-	std::shared_ptr<nano::election> election;
-	ASSERT_TIMELY (5s, election = node.active.election (send->qualified_root ()));
-	ASSERT_TIMELY_EQ (5s, node.stats->count (nano::stat::type::election_vote, nano::stat::detail::cache), 1);
-	ASSERT_TIMELY_EQ (5s, nano::dev::constants.genesis_amount - 100, node.active.tally (*election).begin ()->first);
-	ASSERT_FALSE (node.active.confirmed (*election));
-}
-
 TEST (inactive_votes_cache, fork)
 {
 	nano::test::system system{ 1 };

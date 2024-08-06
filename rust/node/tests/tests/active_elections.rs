@@ -112,3 +112,70 @@ fn inactive_votes_cache_basic() {
             .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
     )
 }
+
+// This test case confirms that a non final vote cannot cause an election to become confirmed
+#[test]
+fn non_final() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(100),
+        Account::from(42).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    // Non-final vote
+    let vote = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        0,
+        0,
+        vec![send.hash()],
+    ));
+    let channel = make_fake_channel(&node);
+    node.vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.vote_cache.lock().unwrap().size(),
+        1,
+    );
+
+    node.process_active(send.clone());
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&send.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node.active.election(&send.qualified_root()).unwrap();
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats
+                .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
+        },
+        1,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.active
+                .vote_applier
+                .tally_impl(&mut election.mutex.lock().unwrap())
+                .first_key_value()
+                .unwrap()
+                .0
+                 .0
+        },
+        Amount::MAX - Amount::raw(100),
+    );
+    assert_eq!(node.active.confirmed(&election), false);
+}

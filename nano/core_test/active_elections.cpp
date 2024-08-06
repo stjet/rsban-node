@@ -232,59 +232,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-TEST (inactive_votes_cache, multiple_votes)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node = *system.add_node (node_config);
-	nano::keypair key1;
-	nano::block_builder builder;
-
-	auto send1 = builder.send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (nano::dev::constants.genesis_amount - 100 * nano::Gxrb_ratio)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-
-	auto send2 = builder.send ()
-				 .previous (send1->hash ())
-				 .destination (key1.pub)
-				 .balance (100 * nano::Gxrb_ratio)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (send1->hash ()))
-				 .build ();
-
-	auto open = builder.state ()
-				.account (key1.pub)
-				.previous (0)
-				.representative (key1.pub)
-				.balance (100 * nano::Gxrb_ratio)
-				.link (send1->hash ())
-				.sign (key1.prv, key1.pub)
-				.work (*system.work.generate (key1.pub))
-				.build ();
-
-	// put the blocks in the ledger witout triggering an election
-	ASSERT_TRUE (nano::test::process (node, { send1, send2, open }));
-	ASSERT_TIMELY (5s, nano::test::exists (node, { send1, send2, open }));
-
-	// Process votes
-	auto vote1 = nano::test::make_vote (key1, { send1 }, 0, 0);
-	node.vote_processor_queue.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
-
-	auto vote2 = nano::test::make_vote (nano::dev::genesis_key, { send1 }, 0, 0);
-	node.vote_processor_queue.vote (vote2, std::make_shared<nano::transport::inproc::channel> (node, node));
-
-	ASSERT_TIMELY_EQ (5s, node.vote_cache.find (send1->hash ()).size (), 2);
-	ASSERT_EQ (1, node.vote_cache.size ());
-	auto election = nano::test::start_election (system, node, send1->hash ());
-	ASSERT_TIMELY_EQ (5s, 3, election->votes ().size ()); // 2 votes and 1 default not_an_account
-	ASSERT_EQ (2, node.stats->count (nano::stat::type::election_vote, nano::stat::detail::cache));
-}
-
 TEST (inactive_votes_cache, election_start)
 {
 	nano::test::system system;

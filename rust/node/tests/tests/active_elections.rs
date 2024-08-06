@@ -351,3 +351,87 @@ fn inactive_votes_cache_existing_vote() {
             .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
     );
 }
+
+#[test]
+fn inactive_votes_cache_multiple_votes() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+    let key = KeyPair::new();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(100_000),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_ACCOUNT,
+        Amount::nano(100_000),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send1.hash().into()),
+    ));
+
+    let open = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::nano(100_000),
+        send1.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+
+    // put the blocks in the ledger witout triggering an election
+    node.process(send1.clone()).unwrap();
+    node.process(send2.clone()).unwrap();
+    node.process(open.clone()).unwrap();
+
+    // Process votes
+    let vote1 = Arc::new(Vote::new(
+        key.public_key(),
+        &key.private_key(),
+        0,
+        0,
+        vec![send1.hash()],
+    ));
+    let channel = make_fake_channel(&node);
+    node.vote_processor_queue
+        .vote(vote1, &channel, VoteSource::Live);
+
+    let vote2 = Arc::new(Vote::new(
+        DEV_GENESIS_KEY.public_key(),
+        &DEV_GENESIS_KEY.private_key(),
+        0,
+        0,
+        vec![send1.hash()],
+    ));
+    node.vote_processor_queue
+        .vote(vote2, &channel, VoteSource::Live);
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.vote_cache.lock().unwrap().find(&send1.hash()).len(),
+        2,
+    );
+    assert_eq!(1, node.vote_cache.lock().unwrap().size());
+    let election = start_election(&node, &send1.hash());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_votes.len(),
+        3,
+    ); // 2 votes and 1 default not_an_account
+    assert_eq!(
+        2,
+        node.stats
+            .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
+    );
+}

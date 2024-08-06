@@ -1,4 +1,4 @@
-use rsnano_core::{work::WorkPoolImpl, Amount, Networks, WalletId};
+use rsnano_core::{work::WorkPoolImpl, Amount, BlockHash, Networks, WalletId};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     node::{Node, NodeExt},
@@ -278,4 +278,23 @@ pub(crate) fn make_fake_channel(node: &Node) -> Arc<ChannelEnum> {
                 .add(TcpStream::new_null(), ChannelDirection::Inbound),
         )
         .unwrap()
+}
+
+pub(crate) fn start_election(node: &Node, hash: &BlockHash) {
+    assert_timely(
+        Duration::from_secs(5),
+        || node.block_exists(hash),
+        "block not in ledger",
+    );
+
+    let block = node.block(hash).unwrap();
+    node.manual_scheduler.push(Arc::new(block.clone()), None);
+    // wait for the election to appear
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&block.qualified_root()).is_some(),
+        "election not active",
+    );
+    let election = node.active.election(&block.qualified_root()).unwrap();
+    election.transition_active();
 }

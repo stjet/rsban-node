@@ -1759,51 +1759,6 @@ TEST (node, block_processor_reject_state)
 	ASSERT_TIMELY (5s, node.block_or_pruned_exists (send2->hash ()));
 }
 
-TEST (node, confirm_back)
-{
-	nano::test::system system (1);
-	nano::keypair key;
-	auto & node (*system.nodes[0]);
-	auto genesis_start_balance (node.balance (nano::dev::genesis_key.pub));
-	auto send1 = nano::send_block_builder ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key.pub)
-				 .balance (genesis_start_balance - 1)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	nano::state_block_builder builder;
-	auto open = builder.make_block ()
-				.account (key.pub)
-				.previous (0)
-				.representative (key.pub)
-				.balance (1)
-				.link (send1->hash ())
-				.sign (key.prv, key.pub)
-				.work (*system.work.generate (key.pub))
-				.build ();
-	auto send2 = builder.make_block ()
-				 .account (key.pub)
-				 .previous (open->hash ())
-				 .representative (key.pub)
-				 .balance (0)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (key.prv, key.pub)
-				 .work (*system.work.generate (open->hash ()))
-				 .build ();
-	node.process_active (send1);
-	node.process_active (open);
-	node.process_active (send2);
-	ASSERT_TIMELY (5s, node.block (send2->hash ()) != nullptr);
-	ASSERT_TRUE (nano::test::start_elections (system, node, { send1, open, send2 }));
-	ASSERT_EQ (3, node.active.size ());
-	std::vector<nano::block_hash> vote_blocks;
-	vote_blocks.push_back (send2->hash ());
-	auto vote = nano::test::make_final_vote (nano::dev::genesis_key, { vote_blocks });
-	node.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::fake::channel> (node));
-	ASSERT_TIMELY (10s, node.active.empty ());
-}
-
 /** This checks that a node can be opened (without being blocked) when a write lock is held elsewhere */
 TEST (node, dont_write_lock_node)
 {

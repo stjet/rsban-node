@@ -20,6 +20,8 @@ use rsnano_node::{
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tracing::error;
 
+use super::helpers::start_election;
+
 #[test]
 fn local_block_broadcast() {
     let mut system = System::new();
@@ -680,4 +682,59 @@ fn fork_election_invalid_block_signature() {
             .block_signature(),
         send2.block_signature()
     );
+}
+
+#[test]
+fn confirm_back() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key = KeyPair::new();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let open = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::raw(1),
+        send1.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        open.hash(),
+        key.public_key(),
+        Amount::zero(),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key,
+        node.work_generate_dev(open.hash().into()),
+    ));
+
+    node.process_active(send1.clone());
+    node.process_active(open.clone());
+    node.process_active(send2.clone());
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node.block_exists(&send2.hash()),
+        "send2 not found",
+    );
+
+    start_election(&node, &send1.hash());
+    start_election(&node, &open.hash());
+    start_election(&node, &send2.hash());
+    assert_eq!(node.active.len(), 3);
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
+    let channel = make_fake_channel(&node);
+    node.vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+    assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
 }

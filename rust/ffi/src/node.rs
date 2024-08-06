@@ -28,20 +28,19 @@ use crate::{
     VoidPointerCallback,
 };
 use rsnano_core::{
-    utils::{NULL_ENDPOINT, TEST_ENDPOINT_1},
-    Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
+    utils::NULL_ENDPOINT, Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
 };
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelDirection, ChannelEnum, ChannelFake, PeerConnectorExt, TcpStream},
+    transport::{ChannelDirection, ChannelEnum, PeerConnectorExt, TcpStream},
 };
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void},
     net::SocketAddrV6,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 pub struct NodeHandle(Arc<Node>);

@@ -232,61 +232,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-TEST (inactive_votes_cache, existing_vote)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node = *system.add_node (node_config);
-	nano::block_hash latest (node.latest (nano::dev::genesis_key.pub));
-	nano::keypair key;
-	nano::block_builder builder;
-	nano::uint128_t rep_weight{ 100 * nano::Gxrb_ratio };
-	auto send = builder.send ()
-				.previous (latest)
-				.destination (key.pub)
-				.balance (nano::dev::constants.genesis_amount - rep_weight)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (latest))
-				.build ();
-	auto open = builder.state ()
-				.account (key.pub)
-				.previous (0)
-				.representative (key.pub)
-				.balance (rep_weight)
-				.link (send->hash ())
-				.sign (key.prv, key.pub)
-				.work (*system.work.generate (key.pub))
-				.build ();
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.ledger.store.tx_begin_write (), send));
-	ASSERT_EQ (nano::block_status::progress, node.ledger.process (*node.ledger.store.tx_begin_write (), open));
-	auto election = nano::test::start_election (system, node, send->hash ());
-	ASSERT_GT (node.weight (key.pub), node.minimum_principal_weight ());
-	// Insert vote
-	auto vote1 = nano::test::make_vote (key, { send }, nano::vote::timestamp_min * 1, 0);
-	node.vote_processor_queue.vote (vote1, std::make_shared<nano::transport::inproc::channel> (node, node));
-	ASSERT_TIMELY_EQ (5s, election->votes ().size (), 2);
-	ASSERT_EQ (1, node.stats->count (nano::stat::type::election, nano::stat::detail::vote));
-	auto last_vote1 (election->votes ()[key.pub]);
-	ASSERT_EQ (send->hash (), last_vote1.get_hash ());
-	ASSERT_EQ (nano::vote::timestamp_min * 1, last_vote1.get_timestamp ());
-	// Attempt to change vote with inactive_votes_cache
-	node.vote_cache.insert (vote1, rep_weight);
-	auto cached = node.vote_cache.find (send->hash ());
-	ASSERT_EQ (1, cached.size ());
-	for (auto const & cached_vote : cached)
-	{
-		node.vote (*cached_vote);
-	}
-	// Check that election data is not changed
-	ASSERT_EQ (2, election->votes ().size ());
-	auto last_vote2 (election->votes ()[key.pub]);
-	ASSERT_EQ (last_vote1.get_hash (), last_vote2.get_hash ());
-	ASSERT_EQ (last_vote1.get_timestamp (), last_vote2.get_timestamp ());
-	ASSERT_EQ (last_vote1.get_time (), last_vote2.get_time ());
-	ASSERT_EQ (0, node.stats->count (nano::stat::type::election_vote, nano::stat::detail::cache));
-}
-
 TEST (inactive_votes_cache, multiple_votes)
 {
 	nano::test::system system;

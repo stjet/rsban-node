@@ -1,15 +1,15 @@
 use crate::tests::helpers::{
-    assert_never, assert_timely, assert_timely_eq, make_fake_channel, System,
+    assert_always_eq, assert_never, assert_timely, assert_timely_eq, make_fake_channel, System,
 };
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey,
-    SendBlock, Signature, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
 use rsnano_node::{
     config::NodeFlags,
-    consensus::ActiveElectionsExt,
+    consensus::{ActiveElectionsExt, VoteApplierExt},
     stats::{DetailType, Direction, StatType},
     transport::{
         BufferDropPolicy, ChannelDirection, ChannelEnum, ChannelTcp, PeerConnectorExt, TcpStream,
@@ -737,4 +737,163 @@ fn confirm_back() {
     node.vote_processor_queue
         .vote(vote, &channel, VoteSource::Live);
     assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
+}
+
+#[test]
+fn rollback_vote_self() {
+    let mut system = System::new();
+    let mut flags = NodeFlags::default();
+    flags.disable_request_loop = true;
+    let node = system.build_node().flags(flags).finish();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+
+    // send half the voting weight to a non voting rep to ensure quorum cannot be reached
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::MAX / 2,
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let open = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::MAX / 2,
+        send1.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+
+    // send 1 raw
+    let send2 = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        open.hash(),
+        key.public_key(),
+        open.balance() - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key,
+        node.work_generate_dev(open.hash().into()),
+    ));
+
+    // fork of send2 block
+    let fork = BlockEnum::State(StateBlock::new(
+        key.public_key(),
+        open.hash(),
+        key.public_key(),
+        open.balance() - Amount::raw(2),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key,
+        node.work_generate_dev(open.hash().into()),
+    ));
+
+    // Process and mark the first 2 blocks as confirmed to allow voting
+    node.process(send1.clone()).unwrap();
+    node.process(open.clone()).unwrap();
+    node.confirm(open.hash());
+
+    // wait until the rep weights have caught up with the weight transfer
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.ledger.weight(&key.public_key()),
+        Amount::MAX / 2,
+    );
+
+    // process forked blocks, send2 will be the winner because it was first and there are no votes yet
+    node.process_active(send2.clone());
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&send2.qualified_root()).is_some(),
+        "election not found",
+    );
+    let election = node.active.election(&send2.qualified_root()).unwrap();
+    node.process_active(fork.clone());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        2,
+    );
+    assert_eq!(
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .status
+            .winner
+            .as_ref()
+            .unwrap()
+            .hash(),
+        send2.hash()
+    );
+
+    {
+        // The write guard prevents the block processor from performing the rollback
+        let _write_guard = node.ledger.write_queue.wait(Writer::Testing);
+
+        assert_eq!(0, node.active.votes_with_weight(&election).len());
+        // Vote with key to switch the winner
+        node.active.vote_applier.vote(
+            &election,
+            &key.public_key(),
+            0,
+            &fork.hash(),
+            VoteSource::Live,
+        );
+        assert_eq!(1, node.active.votes_with_weight(&election).len());
+        // The winner changed
+        assert_eq!(
+            election
+                .mutex
+                .lock()
+                .unwrap()
+                .status
+                .winner
+                .as_ref()
+                .unwrap()
+                .hash(),
+            fork.hash(),
+        );
+
+        // Insert genesis key in the wallet
+        node.wallets
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .unwrap();
+
+        // Without the rollback being finished, the aggregator should not reply with any vote
+        let channel = make_fake_channel(&node);
+
+        node.request_aggregator
+            .request(vec![(send2.hash(), send2.root())], channel);
+
+        assert_always_eq(
+            Duration::from_secs(1),
+            || {
+                node.stats.count(
+                    StatType::RequestAggregatorReplies,
+                    DetailType::NormalVote,
+                    Direction::Out,
+                )
+            },
+            0,
+        );
+
+        // Going out of the scope allows the rollback to complete
+    }
+
+    // A vote is eventually generated from the local representative
+    let is_genesis_vote = |info: &&VoteWithWeightInfo| info.representative == *DEV_GENESIS_ACCOUNT;
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.active.votes_with_weight(&election).len(),
+        2,
+    );
+    let votes_with_weight = node.active.votes_with_weight(&election);
+    assert_eq!(1, votes_with_weight.iter().filter(is_genesis_vote).count());
+    let vote = votes_with_weight.iter().find(is_genesis_vote).unwrap();
+    assert_eq!(fork.hash(), vote.hash);
 }

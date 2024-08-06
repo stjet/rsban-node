@@ -232,46 +232,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-TEST (inactive_votes_cache, fork)
-{
-	nano::test::system system{ 1 };
-	auto & node = *system.nodes[0];
-
-	auto const latest = node.latest (nano::dev::genesis_key.pub);
-	nano::keypair key{};
-
-	nano::send_block_builder builder{};
-	auto send1 = builder.make_block ()
-				 .previous (latest)
-				 .destination (key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 100)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (latest))
-				 .build ();
-
-	auto send2 = builder.make_block ()
-				 .previous (latest)
-				 .destination (key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 200)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (latest))
-				 .build ();
-
-	auto const vote = nano::test::make_final_vote (nano::dev::genesis_key, { send1 });
-	node.vote_processor_queue.vote (vote, std::make_shared<nano::transport::inproc::channel> (node, node));
-	ASSERT_TIMELY_EQ (5s, node.vote_cache.size (), 1);
-
-	node.process_active (send2);
-
-	std::shared_ptr<nano::election> election{};
-	ASSERT_TIMELY (5s, (election = node.active.election (send1->qualified_root ())) != nullptr);
-
-	node.process_active (send1);
-	ASSERT_TIMELY_EQ (5s, election->blocks ().size (), 2);
-	ASSERT_TIMELY (5s, node.block_confirmed (send1->hash ()));
-	ASSERT_EQ (1, node.stats->count (nano::stat::type::election_vote, nano::stat::detail::cache));
-}
-
 TEST (inactive_votes_cache, existing_vote)
 {
 	nano::test::system system;

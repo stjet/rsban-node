@@ -8,6 +8,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use futures_util::sink::drain;
 use rsnano_core::{
     Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
@@ -178,4 +179,71 @@ fn non_final() {
         Amount::MAX - Amount::raw(100),
     );
     assert_eq!(node.active.confirmed(&election), false);
+}
+
+#[test]
+fn inactive_votes_cache_fork() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key = KeyPair::new();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(100),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(200),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
+    let channel = make_fake_channel(&node);
+    node.vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.vote_cache.lock().unwrap().size(),
+        1,
+    );
+
+    node.process_active(send2.clone());
+
+    assert_timely(
+        Duration::from_secs(5),
+        || node.active.election(&send1.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node.active.election(&send1.qualified_root()).unwrap();
+
+    node.process_active(send1.clone());
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        2,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block_confirmed(&send1.hash()),
+        true,
+    );
+    assert_eq!(
+        1,
+        node.stats
+            .count(StatType::ElectionVote, DetailType::Cache, Direction::In)
+    )
 }

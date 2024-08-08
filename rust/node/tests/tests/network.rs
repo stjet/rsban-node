@@ -1,14 +1,18 @@
-use crate::tests::helpers::assert_timely_msg;
+use crate::tests::helpers::{assert_timely, assert_timely_msg};
 
-use super::helpers::{assert_timely_eq, establish_tcp, System};
-use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+use super::helpers::{assert_timely_eq, establish_tcp, make_fake_channel, start_election, System};
+use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{Keepalive, Message, Publish};
+use rsnano_messages::{ConfirmAck, DeserializedMessage, Keepalive, Message, Publish};
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     transport::{BufferDropPolicy, ChannelMode, TrafficType},
 };
-use std::time::{Duration, SystemTime};
+use std::{
+    ops::Deref,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 #[test]
 fn last_contacted() {
@@ -124,4 +128,41 @@ fn send_discarded_publish() {
     );
     assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
     assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
+}
+
+#[test]
+fn receivable_processor_confirm_insufficient_pos() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        Account::zero().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1.process(send1.clone()).unwrap();
+    let election = start_election(&node1, &send1.hash());
+
+    let key1 = KeyPair::new();
+    let vote = Arc::new(Vote::new_final(&key1, vec![send1.hash()]));
+    let channel = make_fake_channel(&node1);
+    let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
+        vote.deref().clone(),
+    ));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+
+    node1.inbound_message_queue.put(
+        DeserializedMessage::new(con1, node1.network_params.network.protocol_info()),
+        channel,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_votes.len(),
+        2,
+    );
 }

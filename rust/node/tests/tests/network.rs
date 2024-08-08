@@ -1,4 +1,4 @@
-use crate::tests::helpers::assert_timely;
+use crate::tests::helpers::assert_timely_msg;
 
 use super::helpers::{assert_timely_eq, establish_tcp, System};
 use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
@@ -47,7 +47,7 @@ fn last_contacted() {
         node0
             .stats
             .count(StatType::Message, DetailType::Keepalive, Direction::In);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || SystemTime::now() > timestamp_before_keepalive,
         "clock did not advance",
@@ -74,7 +74,7 @@ fn last_contacted() {
         TrafficType::Generic,
     );
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || {
             node0
@@ -112,7 +112,7 @@ fn send_discarded_publish() {
 
     assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
     assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(10),
         || {
             node2

@@ -1,13 +1,3 @@
-//use rsnano_core::{
-//    work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY,
-//};
-//use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-//use rsnano_node::config::FrontiersConfirmationMode;
-//
-//use super::helpers::System;
-
-use std::{collections::HashMap, sync::Arc, time::Duration};
-
 use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
@@ -16,8 +6,12 @@ use rsnano_node::{
     config::FrontiersConfirmationMode,
     stats::{DetailType, Direction, StatType},
 };
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use super::helpers::{assert_timely, assert_timely_eq, make_fake_channel, start_election, System};
+use super::helpers::{
+    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, make_fake_channel,
+    start_election, System,
+};
 
 /// What this test is doing:
 /// Create 20 representatives with minimum principal weight each
@@ -151,7 +145,7 @@ fn non_final() {
 
     node.process_active(send.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send.qualified_root()).is_some(),
         "election not found",
@@ -222,7 +216,7 @@ fn inactive_votes_cache_fork() {
 
     node.process_active(send2.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send1.qualified_root()).is_some(),
         "election not found",
@@ -578,4 +572,96 @@ fn inactive_votes_cache_election_start() {
     assert_eq!(node.ledger.dependents_confirmed(&tx, &send4), false);
     node.process_active(send4);
     assert_timely_eq(Duration::from_secs(5), || node.ledger.cemented_count(), 7);
+}
+
+#[test]
+fn republish_winner() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node1 = system.build_node().config(config.clone()).finish();
+    config.peering_port = Some(get_available_port());
+    let node2 = system.build_node().config(config).finish();
+
+    let key = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(1000),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1.process_active(send1.clone());
+    assert_timely(Duration::from_secs(5), || node1.block_exists(&send1.hash()));
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || {
+            node2
+                .stats
+                .count(StatType::Message, DetailType::Publish, Direction::In)
+        },
+        1,
+    );
+
+    // Several forks
+    for i in 0..5 {
+        let fork = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_ACCOUNT,
+            Amount::MAX - Amount::raw(1 + i),
+            key.public_key().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node1.process_active(fork.clone());
+        assert_timely(Duration::from_secs(5), || node1.active.active(&fork));
+    }
+    assert_timely(Duration::from_secs(3), || node1.active.len() > 0);
+    assert_eq!(
+        1,
+        node2
+            .stats
+            .count(StatType::Message, DetailType::Publish, Direction::In)
+    );
+
+    // Process new fork with vote to change winner
+    let fork = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::nano(2000),
+        key.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    node1.process_active(fork.clone());
+    assert_timely(Duration::from_secs(5), || {
+        node1.vote_router.active(&fork.hash())
+    });
+    let election = node1.active.election(&fork.qualified_root()).unwrap();
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![fork.hash()]));
+    let channel = make_fake_channel(&node1);
+    node1
+        .vote_processor_queue
+        .vote(vote, &channel, VoteSource::Live);
+    assert_timely(Duration::from_secs(5), || node1.active.confirmed(&election));
+    assert_eq!(
+        fork.hash(),
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .status
+            .winner
+            .as_ref()
+            .unwrap()
+            .hash()
+    );
+    assert_timely(Duration::from_secs(5), || {
+        node2.block_confirmed(&fork.hash())
+    });
 }

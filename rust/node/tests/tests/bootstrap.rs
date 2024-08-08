@@ -1,4 +1,4 @@
-use super::helpers::{assert_timely, assert_timely_eq, establish_tcp, System};
+use super::helpers::{assert_timely_eq, assert_timely_msg, establish_tcp, System};
 use crate::tests::helpers::get_available_port;
 use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
@@ -82,7 +82,7 @@ mod bootstrap_processor {
         let blocks = [send1, receive1, send2, receive2.clone()];
         node0.process_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node0.blocks_exist(&blocks),
             "blocks not processed",
@@ -172,7 +172,7 @@ mod bootstrap_processor {
         let blocks = [send1, receive1, send2, receive2.clone()];
         node0.process_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node0.blocks_exist(&blocks),
             "blocks not processed",
@@ -279,7 +279,7 @@ mod bootstrap_processor {
         let blocks = [send1.clone(), send2.clone(), receive1, receive2];
         node1.process_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node1.blocks_exist(&blocks),
             "blocks not processed",
@@ -287,7 +287,7 @@ mod bootstrap_processor {
 
         node1.confirm_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node1.blocks_confirmed(&blocks),
             "blocks not confirmed",
@@ -323,7 +323,7 @@ mod bootstrap_processor {
             .current_lazy_attempt()
             .expect("no lazy attempt");
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || lazy_attempt.stopped() || lazy_attempt.requeued_pulls() >= 4,
             "did not stop",
@@ -385,7 +385,7 @@ mod bootstrap_processor {
                 .expect("no lazy attempt found");
         }
         // Cancel failing lazy bootstrap
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(10),
             || !node1.bootstrap_initiator.in_progress(),
             "attempt not cancelled",
@@ -449,7 +449,7 @@ mod bootstrap_processor {
         let blocks = [send1, receive1, send2, receive2.clone()];
         node0.process_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node0.blocks_exist(&blocks),
             "blocks not processed",
@@ -472,14 +472,14 @@ mod bootstrap_processor {
             .bootstrap_initiator
             .bootstrap(false, "".to_owned(), u32::MAX, Account::zero());
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node1.bootstrap_initiator.current_legacy_attempt().is_some(),
             "no legacy attempt found",
         );
 
         // Check processed blocks
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(10),
             || node1.balance(&key2.public_key()) > Amount::zero(),
             "balance not updated",
@@ -553,7 +553,7 @@ mod bootstrap_processor {
         let blocks = [send1, receive1, send2, receive2.clone()];
         node0.process_multi(&blocks);
 
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(5),
             || node0.blocks_exist(&blocks),
             "blocks not processed",
@@ -576,7 +576,7 @@ mod bootstrap_processor {
                 .expect("no wallet attempt found");
         }
         // Check processed blocks
-        assert_timely(
+        assert_timely_msg(
             Duration::from_secs(10),
             || node1.block_exists(&receive2.hash()),
             "receive 2 not  found",

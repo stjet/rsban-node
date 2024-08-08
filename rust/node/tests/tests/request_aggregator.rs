@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use super::helpers::{assert_timely, assert_timely_eq, System};
+use super::helpers::{assert_timely_eq, assert_timely_msg, System};
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::ConfirmAck;
@@ -41,7 +41,7 @@ fn one() {
     let dummy_channel = Arc::new(ChannelEnum::new_null());
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator not empty",
@@ -67,12 +67,12 @@ fn one() {
     // In the ledger but no vote generated yet
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator not empty",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || {
             node.stats.count(
@@ -87,7 +87,7 @@ fn one() {
     // Already cached
     // TODO: This is outdated, aggregator should not be using cache
     node.request_aggregator.request(request, dummy_channel);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator not empty",
@@ -213,7 +213,7 @@ fn one_update() {
         .request(request2, dummy_channel.clone());
 
     // In the ledger but no vote generated yet
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || {
             node.stats.count(
@@ -224,7 +224,7 @@ fn one_update() {
         },
         "generated votes",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",
@@ -355,7 +355,7 @@ fn two() {
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
     // One vote should be generated for both blocks
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || {
             node.stats.count(
@@ -366,7 +366,7 @@ fn two() {
         },
         "generated votes",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",
@@ -374,7 +374,7 @@ fn two() {
     // The same request should now send the cached vote
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",
@@ -634,7 +634,7 @@ fn cannot_vote() {
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",
@@ -685,7 +685,7 @@ fn cannot_vote() {
 
     // With an ongoing election
     node.manual_scheduler.push(Arc::new(send2.clone()), None);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send2.qualified_root()).is_some(),
         "no election",
@@ -694,7 +694,7 @@ fn cannot_vote() {
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",
@@ -750,7 +750,7 @@ fn cannot_vote() {
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || node.request_aggregator.is_empty(),
         "aggregator empty",

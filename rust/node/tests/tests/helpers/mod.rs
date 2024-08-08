@@ -198,7 +198,14 @@ pub(crate) fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) 
     }
 }
 
-pub(crate) fn assert_timely<F>(timeout: Duration, mut check: F, error_message: &str)
+pub(crate) fn assert_timely<F>(timeout: Duration, mut check: F)
+where
+    F: FnMut() -> bool,
+{
+    assert_timely_msg(timeout, check, "timeout");
+}
+
+pub(crate) fn assert_timely_msg<F>(timeout: Duration, mut check: F, error_message: &str)
 where
     F: FnMut() -> bool,
 {
@@ -259,7 +266,7 @@ pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelEnum> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(2),
         || {
             node.network
@@ -285,7 +292,7 @@ pub(crate) fn make_fake_channel(node: &Node) -> Arc<ChannelEnum> {
 }
 
 pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.block_exists(hash),
         "block not in ledger",
@@ -294,7 +301,7 @@ pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     let block = node.block(hash).unwrap();
     node.manual_scheduler.push(Arc::new(block.clone()), None);
     // wait for the election to appear
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&block.qualified_root()).is_some(),
         "election not active",

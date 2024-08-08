@@ -1,5 +1,5 @@
 use crate::tests::helpers::{
-    assert_always_eq, assert_never, assert_timely, assert_timely_eq, make_fake_channel, System,
+    assert_always_eq, assert_never, assert_timely_eq, assert_timely_msg, make_fake_channel, System,
 };
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey,
@@ -62,7 +62,7 @@ fn local_block_broadcast() {
         || node1.local_block_broadcaster.len(),
         1,
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || {
             node1.stats.count(
@@ -88,12 +88,12 @@ fn local_block_broadcast() {
     node1
         .peer_connector
         .connect_to(node2.tcp_listener.local_address());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.network.find_node_id(&node2.get_node_id()).is_some(),
         "node2 not connected",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(10),
         || node2.block(&send_hash).is_some(),
         "block not received",
@@ -149,7 +149,7 @@ fn fork_no_vote_quorum() {
             None,
         )
         .unwrap();
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(30),
         || {
             node3.balance(&key1) == node1.config.receive_minimum
@@ -203,7 +203,7 @@ fn fork_no_vote_quorum() {
         TrafficType::Generic,
     );
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(10),
         || {
             node3
@@ -247,7 +247,7 @@ fn fork_open() {
         channel.clone(),
     );
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send1.qualified_root()).is_some(),
         "election not found",
@@ -299,7 +299,7 @@ fn fork_open() {
         ),
         channel.clone(),
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&open2.qualified_root()).is_some(),
         "no election for open2",
@@ -330,7 +330,7 @@ fn fork_open() {
     assert_eq!(node.active.confirmed(&election), false);
 
     // check that only the first block is saved to the ledger
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.block_exists(&open1.hash()),
         "open1 not in ledger",
@@ -456,17 +456,17 @@ fn vote_republish() {
 
     // process send1 first, this will make sure send1 goes into the ledger and an election is started
     node1.process_active(send1.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node2.block_exists(&send1.hash()),
         "block not found on node2",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.active(&send1),
         "not active on node 1",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node2.active.active(&send1),
         "not active on node 2",
@@ -474,7 +474,7 @@ fn vote_republish() {
 
     // now process send2, send2 will not go in the ledger because only the first block of a fork goes in the ledger
     node1.process_active(send2.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.active(&send2),
         "send2 not active on node 2",
@@ -496,12 +496,12 @@ fn vote_republish() {
     // the real node will do a confirm request if it needs to find a lost vote
 
     // check that send2 won on both nodes
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.blocks_confirmed(&[send2.clone()]),
         "not confirmed on node1",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node2.blocks_confirmed(&[send2.clone()]),
         "not confirmed on node2",
@@ -560,12 +560,12 @@ fn vote_by_hash_republish() {
 
     // give block send1 to node1 and check that an election for send1 starts on both nodes
     node1.process_active(send1.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.active(&send1),
         "not active on node 1",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node2.active.active(&send1),
         "not active on node 2",
@@ -574,7 +574,7 @@ fn vote_by_hash_republish() {
     // give block send2 to node1 and wait until the block is received and processed by node1
     node1.network.publish_filter.clear_all();
     node1.process_active(send2.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.active(&send2),
         "send2 not active on node 1",
@@ -588,12 +588,12 @@ fn vote_by_hash_republish() {
         .vote(vote, &channel, VoteSource::Live);
 
     // send2 should win on both nodes
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.blocks_confirmed(&[send2.clone()]),
         "not confirmed on node1",
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node2.blocks_confirmed(&[send2.clone()]),
         "not confirmed on node2",
@@ -645,7 +645,7 @@ fn fork_election_invalid_block_signature() {
         ),
         channel.clone(),
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.active(&send1),
         "not active on node 1",
@@ -667,7 +667,7 @@ fn fork_election_invalid_block_signature() {
         ),
         channel.clone(),
     );
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || election.mutex.lock().unwrap().last_blocks.len() > 1,
         "block len was < 2",
@@ -723,7 +723,7 @@ fn confirm_back() {
     node.process_active(open.clone());
     node.process_active(send2.clone());
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.block_exists(&send2.hash()),
         "send2 not found",
@@ -806,7 +806,7 @@ fn rollback_vote_self() {
 
     // process forked blocks, send2 will be the winner because it was first and there are no votes yet
     node.process_active(send2.clone());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send2.qualified_root()).is_some(),
         "election not found",
@@ -1065,7 +1065,7 @@ fn rep_crawler_rep_remove() {
     searching_node
         .peer_connector
         .connect_to(node_rep2.tcp_listener.local_address());
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(10),
         || {
             searching_node

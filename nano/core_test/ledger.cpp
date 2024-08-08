@@ -15,37 +15,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (votes, check_signature)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.online_weight_minimum = std::numeric_limits<nano::uint128_t>::max ();
-	auto & node1 = *system.add_node (node_config);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (nano::dev::constants.genesis_amount - 100)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send1);
-	{
-		auto transaction (node1.store.tx_begin_write ());
-		ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, send1));
-	}
-	auto election1 = nano::test::start_election (system, node1, send1->hash ());
-	ASSERT_EQ (1, election1->votes ().size ());
-	auto vote1 = nano::test::make_vote (nano::dev::genesis_key, { send1 }, nano::vote::timestamp_min * 1, 0);
-	vote1->flip_signature_bit_0 ();
-	ASSERT_EQ (nano::vote_code::invalid, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::inproc::channel> (node1, node1)));
-	vote1->flip_signature_bit_0 ();
-	ASSERT_EQ (nano::vote_code::vote, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::inproc::channel> (node1, node1)));
-	ASSERT_EQ (nano::vote_code::replay, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::inproc::channel> (node1, node1)));
-}
-
 TEST (votes, add_one)
 {
 	nano::test::system system (1);
@@ -190,64 +159,6 @@ TEST (votes, add_old)
 	ASSERT_EQ (send1->hash (), votes[nano::dev::genesis_key.pub].get_hash ());
 	ASSERT_EQ (*send1, *election1->winner ());
 }
-}
-
-// Lower timestamps are accepted for different accounts
-// Test disabled because it's failing intermittently.
-// PR in which it got disabled: https://github.com/nanocurrency/nano-node/pull/3629
-// Issue for investigating it: https://github.com/nanocurrency/nano-node/issues/3631
-TEST (votes, DISABLED_add_old_different_account)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send1);
-	auto send2 = builder
-				 .send ()
-				 .previous (send1->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send2);
-	ASSERT_EQ (nano::block_status::progress, node1.process (send1));
-	ASSERT_EQ (nano::block_status::progress, node1.process (send2));
-	ASSERT_TRUE (nano::test::start_elections (system, node1, { send1, send2 }));
-	auto election1 = node1.active.election (send1->qualified_root ());
-	ASSERT_NE (nullptr, election1);
-	auto election2 = node1.active.election (send2->qualified_root ());
-	ASSERT_NE (nullptr, election2);
-	ASSERT_EQ (1, election1->votes ().size ());
-	ASSERT_EQ (1, election2->votes ().size ());
-	auto vote1 = nano::test::make_vote (nano::dev::genesis_key, { send1 }, nano::vote::timestamp_min * 2, 0);
-	auto channel (std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	auto vote_result1 (node1.vote_processor.vote_blocking (vote1, channel));
-	ASSERT_EQ (nano::vote_code::vote, vote_result1);
-	ASSERT_EQ (2, election1->votes ().size ());
-	ASSERT_EQ (1, election2->votes ().size ());
-	auto vote2 = nano::test::make_vote (nano::dev::genesis_key, { send2 }, nano::vote::timestamp_min * 1, 0);
-	auto vote_result2 (node1.vote_processor.vote_blocking (vote2, channel));
-	ASSERT_EQ (nano::vote_code::vote, vote_result2);
-	ASSERT_EQ (2, election1->votes ().size ());
-	ASSERT_EQ (2, election2->votes ().size ());
-	auto votes1 (election1->votes ());
-	auto votes2 (election2->votes ());
-	ASSERT_NE (votes1.end (), votes1.find (nano::dev::genesis_key.pub));
-	ASSERT_NE (votes2.end (), votes2.find (nano::dev::genesis_key.pub));
-	ASSERT_EQ (send1->hash (), votes1[nano::dev::genesis_key.pub].get_hash ());
-	ASSERT_EQ (send2->hash (), votes2[nano::dev::genesis_key.pub].get_hash ());
-	ASSERT_EQ (*send1, *election1->winner ());
-	ASSERT_EQ (*send2, *election2->winner ());
 }
 
 // The voting cooldown is respected

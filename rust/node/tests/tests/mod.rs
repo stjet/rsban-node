@@ -7,3 +7,4 @@ mod network;
 mod node;
 mod rep_crawler;
 mod request_aggregator;
+mod votes;

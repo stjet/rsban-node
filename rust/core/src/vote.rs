@@ -108,6 +108,7 @@ impl Vote {
     pub const FINAL_TIMESTAMP: u64 = u64::MAX;
     pub const DURATION_MAX: u8 = 0x0F;
     pub const TIMESTAMP_MAX: u64 = 0xFFFF_FFFF_FFFF_FFF0;
+    pub const TIMESTAMP_MIN: u64 = 0x0000_0000_0000_0010;
     const TIMESTAMP_MASK: u64 = 0xFFFF_FFFF_FFFF_FFF0;
 
     /// Returns the timestamp of the vote (with the duration bits masked, set to zero)

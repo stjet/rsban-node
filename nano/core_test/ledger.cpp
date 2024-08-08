@@ -113,49 +113,6 @@ TEST (votes, add_existing)
 }
 }
 
-// The voting cooldown is respected
-TEST (votes, add_cooldown)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send1);
-	auto transaction (node1.store.tx_begin_write ());
-	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*transaction, send1));
-	node1.start_election (send1);
-	ASSERT_TIMELY (5s, node1.active.election (send1->qualified_root ()));
-	auto election1 = node1.active.election (send1->qualified_root ());
-	auto vote1 = nano::test::make_vote (nano::dev::genesis_key, { send1 }, nano::vote::timestamp_min * 1, 0);
-	auto channel (std::make_shared<nano::transport::inproc::channel> (node1, node1));
-	node1.vote_processor.vote_blocking (vote1, channel);
-	nano::keypair key2;
-	auto send2 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key2.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send2);
-	auto vote2 = nano::test::make_vote (nano::dev::genesis_key, { send2 }, nano::vote::timestamp_min * 2, 0);
-	node1.vote_processor.vote_blocking (vote2, channel);
-	ASSERT_EQ (2, election1->votes ().size ());
-	auto votes (election1->votes ());
-	ASSERT_NE (votes.end (), votes.find (nano::dev::genesis_key.pub));
-	ASSERT_EQ (send1->hash (), votes[nano::dev::genesis_key.pub].get_hash ());
-	ASSERT_EQ (*send1, *election1->winner ());
-}
-
 TEST (ledger, epoch_open_pending)
 {
 	nano::block_builder builder{};

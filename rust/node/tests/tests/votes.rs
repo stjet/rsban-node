@@ -1,8 +1,11 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant, SystemTime},
+};
 
 use crate::tests::helpers::make_fake_channel;
 
-use super::helpers::{start_election, System};
+use super::helpers::{assert_timely, start_election, System};
 use rsnano_core::{
     Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
@@ -62,5 +65,83 @@ fn check_signature() {
             &Some(channel.clone()),
             VoteSource::Live
         )
+    );
+}
+
+// Lower timestamps are ignored
+#[test]
+fn add_old() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::zero(),
+        key1.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    node.process(send1.clone()).unwrap();
+    start_election(&node, &send1.hash());
+    assert_timely(Duration::from_secs(5), || {
+        node.active.election(&send1.qualified_root()).is_some()
+    });
+    let election1 = node.active.election(&send1.qualified_root()).unwrap();
+    let vote1 = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        Vote::TIMESTAMP_MIN * 2,
+        0,
+        vec![send1.hash()],
+    ));
+    let channel = make_fake_channel(&node);
+    node.vote_processor
+        .vote_blocking(&vote1, &Some(channel.clone()), VoteSource::Live);
+
+    let key2 = KeyPair::new();
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::zero(),
+        key2.public_key().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let vote2 = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        Vote::TIMESTAMP_MIN * 1,
+        0,
+        vec![send2.hash()],
+    ));
+
+    election1
+        .mutex
+        .lock()
+        .unwrap()
+        .last_votes
+        .get_mut(&DEV_GENESIS_ACCOUNT)
+        .unwrap()
+        .time = SystemTime::now() - Duration::from_secs(20);
+    node.vote_processor
+        .vote_blocking(&vote2, &Some(channel), VoteSource::Live);
+    assert_eq!(2, election1.mutex.lock().unwrap().last_votes.len());
+    let votes = election1.mutex.lock().unwrap().last_votes.clone();
+    assert!(votes.contains_key(&DEV_GENESIS_ACCOUNT));
+    assert_eq!(send1.hash(), votes.get(&DEV_GENESIS_ACCOUNT).unwrap().hash);
+    assert_eq!(
+        send1.hash(),
+        election1
+            .mutex
+            .lock()
+            .unwrap()
+            .status
+            .winner
+            .as_ref()
+            .unwrap()
+            .hash()
     );
 }

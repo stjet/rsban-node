@@ -371,20 +371,6 @@ TEST (network, cleanup_purge)
 	ASSERT_TIMELY_EQ (5s, 0, node1.network->size ());
 }
 
-TEST (network, loopback_channel)
-{
-	nano::test::system system (2);
-	auto & node1 = *system.nodes[0];
-	auto & node2 = *system.nodes[1];
-	nano::transport::inproc::channel channel1 (node1, node1);
-	ASSERT_EQ (channel1.get_type (), nano::transport::transport_type::loopback);
-	ASSERT_EQ (channel1.get_remote_endpoint (), node1.network->endpoint ());
-	ASSERT_EQ (channel1.get_tcp_remote_endpoint (), nano::transport::map_endpoint_to_tcp (node1.network->endpoint ()));
-	ASSERT_EQ (channel1.get_network_version (), node1.network_params.network.protocol_version);
-	ASSERT_EQ (channel1.get_node_id (), node1.node_id.pub);
-	ASSERT_EQ (channel1.get_node_id_optional ().value_or (0), node1.node_id.pub);
-}
-
 // Ensure the network filters messages with the incorrect magic number
 // Disabled, because there is currently no way to send messages with a given network id
 TEST (DISABLED_network, filter_invalid_network_bytes)

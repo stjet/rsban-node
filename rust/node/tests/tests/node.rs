@@ -6,16 +6,12 @@ use rsnano_core::{
     SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
+use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_node::{
     config::NodeFlags,
     consensus::{ActiveElectionsExt, VoteApplierExt},
-    node::NodeExt,
     stats::{DetailType, Direction, StatType},
-    transport::{
-        BufferDropPolicy, ChannelDirection, ChannelEnum, ChannelTcp, PeerConnectorExt, TcpStream,
-        TrafficType,
-    },
+    transport::{BufferDropPolicy, PeerConnectorExt, TrafficType},
     wallets::WalletsExt,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
@@ -240,10 +236,7 @@ fn fork_open() {
     let channel = make_fake_channel(&node);
 
     node.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(send1.clone())),
-            node.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(send1.clone())),
         channel.clone(),
     );
 
@@ -273,10 +266,7 @@ fn fork_open() {
         node.work_generate_dev(key1.public_key().into()),
     ));
     node.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(open1.clone())),
-            node.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(open1.clone())),
         channel.clone(),
     );
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
@@ -293,10 +283,7 @@ fn fork_open() {
         node.work_generate_dev(key1.public_key().into()),
     ));
     node.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(open2.clone())),
-            node.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(open2.clone())),
         channel.clone(),
     );
     assert_timely_msg(
@@ -639,10 +626,7 @@ fn fork_election_invalid_block_signature() {
 
     let channel = make_fake_channel(&node1);
     node1.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(send1.clone())),
-            node1.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(send1.clone())),
         channel.clone(),
     );
     assert_timely_msg(
@@ -654,17 +638,11 @@ fn fork_election_invalid_block_signature() {
     assert_eq!(1, election.mutex.lock().unwrap().last_blocks.len());
 
     node1.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(send3)),
-            node1.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(send3)),
         channel.clone(),
     );
     node1.inbound_message_queue.put(
-        DeserializedMessage::new(
-            Message::Publish(Publish::new_forward(send2.clone())),
-            node1.network_params.network.protocol_info(),
-        ),
+        Message::Publish(Publish::new_forward(send2.clone())),
         channel.clone(),
     );
     assert_timely_msg(

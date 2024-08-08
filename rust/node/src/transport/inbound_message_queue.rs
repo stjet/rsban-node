@@ -1,8 +1,7 @@
-use crate::stats::{DetailType, StatType, Stats};
-
 use super::{ChannelEnum, FairQueue, Origin};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{utils::ContainerInfoComponent, NoValue};
-use rsnano_messages::DeserializedMessage;
+use rsnano_messages::Message;
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},
@@ -26,8 +25,8 @@ impl InboundMessageQueue {
         }
     }
 
-    pub fn put(&self, message: DeserializedMessage, channel: Arc<ChannelEnum>) -> bool {
-        let message_type = message.message.message_type();
+    pub fn put(&self, message: Message, channel: Arc<ChannelEnum>) -> bool {
+        let message_type = message.message_type();
         let added = self
             .state
             .lock()
@@ -55,7 +54,7 @@ impl InboundMessageQueue {
     pub fn next_batch(
         &self,
         max_batch_size: usize,
-    ) -> VecDeque<((DeserializedMessage, Arc<ChannelEnum>), Origin<NoValue>)> {
+    ) -> VecDeque<((Message, Arc<ChannelEnum>), Origin<NoValue>)> {
         self.state.lock().unwrap().queue.next_batch(max_batch_size)
     }
 
@@ -103,7 +102,7 @@ impl Default for InboundMessageQueue {
 }
 
 struct State {
-    queue: FairQueue<(DeserializedMessage, Arc<ChannelEnum>), NoValue>,
+    queue: FairQueue<(Message, Arc<ChannelEnum>), NoValue>,
     stopped: bool,
 }
 
@@ -116,10 +115,7 @@ mod tests {
     fn put_and_get_one_message() {
         let manager = InboundMessageQueue::new(1, Arc::new(Stats::default()));
         assert_eq!(manager.size(), 0);
-        manager.put(
-            DeserializedMessage::new(Message::BulkPush, Default::default()),
-            Arc::new(ChannelEnum::new_null()),
-        );
+        manager.put(Message::BulkPush, Arc::new(ChannelEnum::new_null()));
         assert_eq!(manager.size(), 1);
         assert_eq!(manager.next_batch(1000).len(), 1);
         assert_eq!(manager.size(), 0);

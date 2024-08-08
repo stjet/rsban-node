@@ -1,7 +1,7 @@
 use super::{ChannelEnum, InboundMessageQueue, Origin, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
 use rsnano_core::{utils::TomlWriter, NoValue};
-use rsnano_messages::DeserializedMessage;
+use rsnano_messages::Message;
 use std::{
     cmp::{max, min},
     collections::VecDeque,
@@ -124,14 +124,11 @@ impl State {
         }
     }
 
-    fn handle_batch(
-        &self,
-        batch: VecDeque<((DeserializedMessage, Arc<ChannelEnum>), Origin<NoValue>)>,
-    ) {
+    fn handle_batch(&self, batch: VecDeque<((Message, Arc<ChannelEnum>), Origin<NoValue>)>) {
         let start = Instant::now();
         let batch_size = batch.len();
         for ((message, channel), _) in batch {
-            self.realtime_handler.process(message.message, &channel);
+            self.realtime_handler.process(message, &channel);
         }
 
         let elapsed_millis = start.elapsed().as_millis();

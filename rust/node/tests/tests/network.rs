@@ -1,9 +1,8 @@
-use crate::tests::helpers::{assert_timely, assert_timely_msg};
-
 use super::helpers::{assert_timely_eq, establish_tcp, make_fake_channel, start_election, System};
+use crate::tests::helpers::assert_timely_msg;
 use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Keepalive, Message, Publish};
+use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     transport::{BufferDropPolicy, ChannelMode, TrafficType},
@@ -155,10 +154,7 @@ fn receivable_processor_confirm_insufficient_pos() {
     ));
     assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
 
-    node1.inbound_message_queue.put(
-        DeserializedMessage::new(con1, node1.network_params.network.protocol_info()),
-        channel,
-    );
+    node1.inbound_message_queue.put(con1, channel);
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -191,10 +187,7 @@ fn receivable_processor_confirm_sufficient_pos() {
     ));
     assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
 
-    node1.inbound_message_queue.put(
-        DeserializedMessage::new(con1, node1.network_params.network.protocol_info()),
-        channel,
-    );
+    node1.inbound_message_queue.put(con1, channel);
 
     assert_timely_eq(
         Duration::from_secs(5),

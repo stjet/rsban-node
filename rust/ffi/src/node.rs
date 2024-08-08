@@ -430,7 +430,7 @@ pub unsafe extern "C" fn rsn_node_inbound(
     handle
         .0
         .inbound_message_queue
-        .put(message.0.clone(), (**channel).clone());
+        .put(message.0.message.clone(), (**channel).clone());
 }
 
 #[no_mangle]

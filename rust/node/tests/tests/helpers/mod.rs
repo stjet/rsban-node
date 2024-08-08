@@ -10,7 +10,6 @@ use rsnano_node::{
     NetworkParams,
 };
 use std::{
-    fmt::Display,
     net::TcpListener,
     sync::{
         atomic::{AtomicU16, Ordering},
@@ -198,7 +197,7 @@ pub(crate) fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) 
     }
 }
 
-pub(crate) fn assert_timely<F>(timeout: Duration, mut check: F)
+pub(crate) fn assert_timely<F>(timeout: Duration, check: F)
 where
     F: FnMut() -> bool,
 {

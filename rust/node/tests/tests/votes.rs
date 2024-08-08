@@ -1,6 +1,6 @@
 use std::{
     sync::Arc,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 
 use crate::tests::helpers::make_fake_channel;

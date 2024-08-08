@@ -166,3 +166,39 @@ fn receivable_processor_confirm_insufficient_pos() {
         2,
     );
 }
+
+#[test]
+fn receivable_processor_confirm_sufficient_pos() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        Account::zero().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1.process(send1.clone()).unwrap();
+    let election = start_election(&node1, &send1.hash());
+
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
+    let channel = make_fake_channel(&node1);
+    let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
+        vote.deref().clone(),
+    ));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+
+    node1.inbound_message_queue.put(
+        DeserializedMessage::new(con1, node1.network_params.network.protocol_info()),
+        channel,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_votes.len(),
+        2,
+    );
+}

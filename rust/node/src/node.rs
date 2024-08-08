@@ -813,7 +813,7 @@ impl Node {
                 return;
             }
 
-            let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.clone());
+            let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.channel_id());
             if active_in_rep_crawler {
                 // Representative is defined as online if replying to live votes or rep_crawler queries
                 reps.lock()

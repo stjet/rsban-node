@@ -2,7 +2,9 @@ use crate::{
     config::NodeConfig,
     consensus::VoteBroadcaster,
     stats::Stats,
-    transport::{ChannelEnum, ChannelInProc, InboundCallback, Network, OutboundBandwidthLimiter},
+    transport::{
+        ChannelEnum, ChannelId, ChannelInProc, InboundCallback, Network, OutboundBandwidthLimiter,
+    },
     utils::AsyncRuntime,
     wallets::Wallets,
     NetworkParams,
@@ -32,7 +34,7 @@ pub(crate) fn create_loopback_channel(
 ) -> Arc<ChannelEnum> {
     let local_endpoint = SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0);
     Arc::new(ChannelEnum::InProc(ChannelInProc::new(
-        network.get_next_channel_id(),
+        ChannelId::LOOPBACK,
         SystemTime::now(),
         network_params.network.clone(),
         network.publish_filter.clone(),

@@ -354,7 +354,7 @@ fn online_reps_rep_crawler() {
 
     // After inserting to rep crawler
     node.rep_crawler
-        .force_query(*DEV_GENESIS_HASH, channel.clone());
+        .force_query(*DEV_GENESIS_HASH, channel.channel_id());
     node.vote_processor
         .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
     assert_eq!(
@@ -967,7 +967,7 @@ fn rep_crawler_rep_remove() {
     ));
     searching_node
         .rep_crawler
-        .force_process(vote_rep1, channel_rep1.clone());
+        .force_process(vote_rep1, channel_rep1.channel_id());
     assert_timely_eq(
         Duration::from_secs(5),
         || {
@@ -1025,7 +1025,7 @@ fn rep_crawler_rep_remove() {
     ));
     searching_node
         .rep_crawler
-        .force_process(vote_genesis_rep, channel_genesis_rep);
+        .force_process(vote_genesis_rep, channel_genesis_rep.channel_id());
     assert_timely_eq(
         Duration::from_secs(10),
         || {
@@ -1068,7 +1068,7 @@ fn rep_crawler_rep_remove() {
     ));
     searching_node
         .rep_crawler
-        .force_process(vote_rep2, channel_rep2);
+        .force_process(vote_rep2, channel_rep2.channel_id());
     assert_timely_eq(
         Duration::from_secs(10),
         || {

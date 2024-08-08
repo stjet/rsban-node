@@ -73,6 +73,8 @@ use crate::stats;
 pub struct ChannelId(usize);
 
 impl ChannelId {
+    pub const LOOPBACK: Self = Self(0);
+
     pub fn as_usize(&self) -> usize {
         self.0
     }

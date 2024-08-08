@@ -24,7 +24,7 @@ fn ignore_rebroadcast() {
 
     node1
         .rep_crawler
-        .force_query(*DEV_GENESIS_HASH, channel1to2.clone());
+        .force_query(*DEV_GENESIS_HASH, channel1to2.channel_id());
 
     assert_always_eq(
         Duration::from_millis(100),
@@ -42,7 +42,7 @@ fn ignore_rebroadcast() {
     );
     node1
         .rep_crawler
-        .force_query(*DEV_GENESIS_HASH, channel1to2);
+        .force_query(*DEV_GENESIS_HASH, channel1to2.channel_id());
 
     let tick = || {
         let msg = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(vote.clone()));

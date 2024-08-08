@@ -346,7 +346,7 @@ fn online_reps_rep_crawler() {
     // Without rep crawler
     let channel = make_fake_channel(&node);
     node.vote_processor
-        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+        .vote_blocking(&vote, channel.channel_id(), VoteSource::Live);
     assert_eq!(
         Amount::zero(),
         node.online_reps.lock().unwrap().online_weight()
@@ -356,7 +356,7 @@ fn online_reps_rep_crawler() {
     node.rep_crawler
         .force_query(*DEV_GENESIS_HASH, channel.channel_id());
     node.vote_processor
-        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+        .vote_blocking(&vote, channel.channel_id(), VoteSource::Live);
     assert_eq!(
         Amount::MAX,
         node.online_reps.lock().unwrap().online_weight()
@@ -400,7 +400,7 @@ fn online_reps_election() {
 
     let channel = make_fake_channel(&node);
     node.vote_processor
-        .vote_blocking(&vote, &Some(channel.clone()), VoteSource::Live);
+        .vote_blocking(&vote, channel.channel_id(), VoteSource::Live);
 
     assert_eq!(
         Amount::MAX - Amount::nano(1000),

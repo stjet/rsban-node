@@ -33,7 +33,7 @@ use rsnano_core::{
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelDirection, ChannelEnum, PeerConnectorExt, TcpStream},
+    transport::{ChannelDirection, ChannelId, PeerConnectorExt, TcpStream},
 };
 use std::{
     collections::VecDeque,
@@ -91,22 +91,9 @@ pub unsafe extern "C" fn rsn_node_create(
 
     let ctx = Arc::clone(&ctx_wrapper);
     let vote_processed = Box::new(
-        move |vote: &Arc<Vote>,
-              channel: &Option<Arc<ChannelEnum>>,
-              source: VoteSource,
-              code: VoteCode| {
+        move |vote: &Arc<Vote>, _channel_id: ChannelId, source: VoteSource, code: VoteCode| {
             let vote_handle = VoteHandle::new(Arc::clone(vote));
-            let channel_handle = match channel {
-                Some(c) => ChannelHandle::new(Arc::clone(c)),
-                None => std::ptr::null_mut(),
-            };
-            vote_processed(
-                ctx.get_context(),
-                vote_handle,
-                channel_handle,
-                source as u8,
-                code as u8,
-            );
+            vote_processed(ctx.get_context(), vote_handle, source as u8, code as u8);
         },
     );
 

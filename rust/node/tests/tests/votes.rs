@@ -1,15 +1,13 @@
-use std::{
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
-
-use crate::tests::helpers::make_fake_channel;
-
 use super::helpers::{assert_timely, start_election, System};
+use crate::tests::helpers::make_fake_channel;
 use rsnano_core::{
     Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 #[test]
 fn check_signature() {
@@ -44,7 +42,7 @@ fn check_signature() {
         VoteCode::Invalid,
         node.vote_processor.vote_blocking(
             &Arc::new(vote1.clone()),
-            &Some(channel.clone()),
+            channel.channel_id(),
             VoteSource::Live
         )
     );
@@ -54,7 +52,7 @@ fn check_signature() {
         VoteCode::Vote,
         node.vote_processor.vote_blocking(
             &Arc::new(vote1.clone()),
-            &Some(channel.clone()),
+            channel.channel_id(),
             VoteSource::Live
         )
     );
@@ -62,7 +60,7 @@ fn check_signature() {
         VoteCode::Replay,
         node.vote_processor.vote_blocking(
             &Arc::new(vote1.clone()),
-            &Some(channel.clone()),
+            channel.channel_id(),
             VoteSource::Live
         )
     );
@@ -98,7 +96,7 @@ fn add_old() {
     ));
     let channel = make_fake_channel(&node);
     node.vote_processor
-        .vote_blocking(&vote1, &Some(channel.clone()), VoteSource::Live);
+        .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = KeyPair::new();
     let send2 = BlockEnum::State(StateBlock::new(
@@ -127,7 +125,7 @@ fn add_old() {
         .unwrap()
         .time = SystemTime::now() - Duration::from_secs(20);
     node.vote_processor
-        .vote_blocking(&vote2, &Some(channel), VoteSource::Live);
+        .vote_blocking(&vote2, channel.channel_id(), VoteSource::Live);
     assert_eq!(2, election1.mutex.lock().unwrap().last_votes.len());
     let votes = election1.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_ACCOUNT));
@@ -176,7 +174,7 @@ fn add_cooldown() {
     ));
     let channel = make_fake_channel(&node);
     node.vote_processor
-        .vote_blocking(&vote1, &Some(channel.clone()), VoteSource::Live);
+        .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = KeyPair::new();
     let send2 = BlockEnum::State(StateBlock::new(
@@ -197,7 +195,7 @@ fn add_cooldown() {
     ));
 
     node.vote_processor
-        .vote_blocking(&vote2, &Some(channel), VoteSource::Live);
+        .vote_blocking(&vote2, channel.channel_id(), VoteSource::Live);
     assert_eq!(2, election1.mutex.lock().unwrap().last_votes.len());
     let votes = election1.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_ACCOUNT));

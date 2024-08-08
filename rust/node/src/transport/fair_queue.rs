@@ -1,4 +1,4 @@
-use super::ChannelEnum;
+use super::{ChannelEnum, ChannelId};
 use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     cmp::{min, Ordering},
@@ -42,6 +42,13 @@ where
             // Some sources (eg. local RPC) don't have an associated channel, never remove their queue
             true
         }
+    }
+
+    pub fn channel_id(&self) -> ChannelId {
+        self.channel
+            .as_ref()
+            .map(|c| c.channel_id())
+            .unwrap_or(ChannelId::LOOPBACK)
     }
 }
 

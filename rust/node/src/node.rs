@@ -25,11 +25,11 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
-        LatestKeepalives, MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
-        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
-        TrafficType,
+        BufferDropPolicy, ChannelEnum, ChannelId, InboundCallback, InboundMessageQueue,
+        KeepaliveFactory, LatestKeepalives, MessageProcessor, Network, NetworkFilter,
+        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
+        TcpListener, TcpListenerExt, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -142,9 +142,7 @@ impl Node {
         work: Arc<WorkPoolImpl>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<
-            dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteSource, VoteCode) + Send + Sync,
-        >,
+        on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
     ) -> Self {
         let network_label = network_params.network.get_current_network_as_string();
         let global_config = GlobalConfig {
@@ -797,30 +795,29 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let reps_w = Arc::downgrade(&online_reps);
-        vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {
-            debug_assert!(code != VoteCode::Invalid);
-            let Some(rep_crawler) = rep_crawler_w.upgrade() else {
-                return;
-            };
-            let Some(reps) = reps_w.upgrade() else {
-                return;
-            };
-            let Some(channel) = &channel else {
-                return; // Channel expired when waiting for vote to be processed
-            };
-            // Ignore republished votes
-            if source != VoteSource::Live {
-                return;
-            }
+        vote_processor.add_vote_processed_callback(Box::new(
+            move |vote, channel_id, source, code| {
+                debug_assert!(code != VoteCode::Invalid);
+                let Some(rep_crawler) = rep_crawler_w.upgrade() else {
+                    return;
+                };
+                let Some(reps) = reps_w.upgrade() else {
+                    return;
+                };
+                // Ignore republished votes
+                if source != VoteSource::Live {
+                    return;
+                }
 
-            let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.channel_id());
-            if active_in_rep_crawler {
-                // Representative is defined as online if replying to live votes or rep_crawler queries
-                reps.lock()
-                    .unwrap()
-                    .vote_observed(vote.voting_account, relative_time.elapsed());
-            }
-        }));
+                let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel_id);
+                if active_in_rep_crawler {
+                    // Representative is defined as online if replying to live votes or rep_crawler queries
+                    reps.lock()
+                        .unwrap()
+                        .vote_observed(vote.voting_account, relative_time.elapsed());
+                }
+            },
+        ));
 
         if !distributed_work.work_generation_enabled() {
             info!("Work generation is disabled");

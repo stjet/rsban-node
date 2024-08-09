@@ -1,10 +1,10 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use super::helpers::{assert_always_eq, assert_never, System};
 use rsnano_core::{Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{ConfirmAck, Message};
-use rsnano_node::transport::{BufferDropPolicy, TrafficType};
+use rsnano_node::transport::{BufferDropPolicy, ChannelId, TrafficType};
 
 #[test]
 fn ignore_rebroadcast() {
@@ -53,4 +53,25 @@ fn ignore_rebroadcast() {
     assert_never(Duration::from_secs(1), || {
         tick() || node1.online_reps.lock().unwrap().peered_reps_count() > 0
     })
+}
+
+// Votes from local channels should be ignored
+#[test]
+fn ignore_local() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let vote = Arc::new(Vote::new(
+        *DEV_GENESIS_ACCOUNT,
+        &DEV_GENESIS_KEY.private_key(),
+        0,
+        0,
+        vec![*DEV_GENESIS_HASH],
+    ));
+    node.rep_crawler.force_process(vote, ChannelId::LOOPBACK);
+    assert_always_eq(
+        Duration::from_millis(500),
+        || node.online_reps.lock().unwrap().peered_reps_count(),
+        0,
+    )
 }

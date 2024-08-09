@@ -145,15 +145,3 @@ TEST (rep_crawler, recently_confirmed)
 	node1.rep_crawler.query (channel); // this query should be dropped due to the recently_confirmed entry
 	ASSERT_ALWAYS_EQ (0.5s, node1.rep_crawler.representative_count (), 0);
 }
-
-// Votes from local channels should be ignored
-TEST (rep_crawler, ignore_local)
-{
-	nano::test::system system;
-	nano::node_flags flags;
-	auto & node = *system.add_node (flags);
-	auto loopback = std::make_shared<nano::transport::inproc::channel> (node, node);
-	auto vote = std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 0, 0, std::vector{ nano::dev::genesis->hash () });
-	node.rep_crawler.force_process (vote, loopback);
-	ASSERT_ALWAYS_EQ (0.5s, node.rep_crawler.representative_count (), 0);
-}

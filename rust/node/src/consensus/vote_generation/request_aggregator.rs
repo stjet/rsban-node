@@ -122,11 +122,10 @@ impl RequestAggregator {
         let request_len = request.len();
 
         let added = {
-            self.state
-                .lock()
-                .unwrap()
-                .queue
-                .push((request, channel.clone()), Origin::new(NoValue {}, channel))
+            self.state.lock().unwrap().queue.push(
+                (request, channel.clone()),
+                Origin::new(NoValue {}, channel.channel_id()),
+            )
         };
 
         if added {
@@ -309,7 +308,7 @@ impl DeadChannelCleanupStep for RequestAggregatorCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut guard = self.state.lock().unwrap();
         for channel_id in dead_channel_ids {
-            guard.queue.remove(&Origin::new2(NoValue {}, *channel_id));
+            guard.queue.remove(&Origin::new(NoValue {}, *channel_id));
         }
     }
 }

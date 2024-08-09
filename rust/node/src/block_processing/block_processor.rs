@@ -327,7 +327,7 @@ impl BlockProcessorLoop {
                         guard.queue.len(),
                         guard
                             .queue
-                            .queue_len(&Origin::new_opt(BlockSource::Forced, None))
+                            .queue_len(&Origin::new(BlockSource::Forced, ChannelId::LOOPBACK))
                     );
                 }
 
@@ -478,7 +478,11 @@ impl BlockProcessorLoop {
         let added;
         {
             let mut guard = self.mutex.lock().unwrap();
-            added = guard.queue.push(context, Origin::new_opt(source, channel));
+            let channel_id = channel
+                .as_ref()
+                .map(|c| c.channel_id())
+                .unwrap_or(ChannelId::LOOPBACK);
+            added = guard.queue.push(context, Origin::new(source, channel_id));
         }
         if added {
             self.condition.notify_all();
@@ -735,7 +739,7 @@ impl DeadChannelCleanupStep for BlockProcessorCleanup {
         let mut guard = self.0.mutex.lock().unwrap();
         for channel_id in dead_channel_ids {
             for source in BlockSource::iter() {
-                guard.queue.remove(&Origin::new2(source, *channel_id))
+                guard.queue.remove(&Origin::new(source, *channel_id))
             }
         }
     }

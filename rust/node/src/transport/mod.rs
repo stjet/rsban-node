@@ -37,7 +37,7 @@ pub use block_deserializer::read_block;
 pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
 pub(crate) use dead_channel_cleanup::*;
-pub use fair_queue::*;
+pub(crate) use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::InboundMessageQueue;
 pub use latest_keepalives::*;

@@ -1,24 +1,19 @@
-use super::{ChannelEnum, ChannelId};
+use super::ChannelId;
 use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeMap, VecDeque},
-    sync::Arc,
     time::{Duration, Instant},
 };
 
 /// Holds user supplied source type(s) and an optional channel.
 /// This is used to uniquely identify and categorize the source of a request.
 #[derive(Clone)]
-pub struct Origin<S>
+pub(crate) struct Origin<S>
 where
     S: Ord + Copy,
 {
     pub source: S,
-
-    /// This can be null for some sources (eg. local RPC) to indicate that the source is not associated with a channel.
-    pub channel: Option<Arc<ChannelEnum>>,
-
     pub channel_id: ChannelId,
 }
 
@@ -26,31 +21,8 @@ impl<S> Origin<S>
 where
     S: Ord + Copy,
 {
-    pub fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
-        Self {
-            source,
-            channel_id: channel.channel_id(),
-            channel: Some(channel),
-        }
-    }
-
-    pub fn new2(source: S, channel_id: ChannelId) -> Self {
-        Self {
-            source,
-            channel_id,
-            channel: None,
-        }
-    }
-
-    pub fn new_opt(source: S, channel: Option<Arc<ChannelEnum>>) -> Self {
-        Self {
-            source,
-            channel_id: channel
-                .as_ref()
-                .map(|c| c.channel_id())
-                .unwrap_or(ChannelId::LOOPBACK),
-            channel,
-        }
+    pub fn new(source: S, channel_id: ChannelId) -> Self {
+        Self { source, channel_id }
     }
 }
 
@@ -94,7 +66,6 @@ where
     fn from(value: S) -> Self {
         Origin {
             source: value,
-            channel: None,
             channel_id: ChannelId::LOOPBACK,
         }
     }
@@ -137,7 +108,7 @@ impl<R> Entry<R> {
     }
 }
 
-pub struct FairQueue<R, S>
+pub(crate) struct FairQueue<R, S>
 where
     S: Ord + Copy,
 {
@@ -173,6 +144,7 @@ where
         self.queues.get(source).map(|q| q.len()).unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     pub fn max_len(&self, source: &Origin<S>) -> usize {
         self.queues
             .get(source)
@@ -180,6 +152,7 @@ where
             .unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     pub fn priority(&self, source: &Origin<S>) -> usize {
         self.queues
             .get(source)
@@ -195,6 +168,7 @@ where
         self.len() == 0
     }
 
+    #[allow(dead_code)]
     pub fn queues_len(&self) -> usize {
         self.queues.len()
     }
@@ -361,7 +335,6 @@ mod tests {
         let (result, origin) = queue.next().unwrap();
         assert_eq!(result, 7);
         assert_eq!(origin.source, TestSource::Live);
-        assert!(origin.channel.is_none());
         assert!(queue.is_empty());
     }
 
@@ -484,29 +457,24 @@ mod tests {
         let mut queue: FairQueue<i32, TestSource> =
             FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
 
-        let channel1 = Arc::new(ChannelEnum::new_null_with_id(1));
-        let channel2 = Arc::new(ChannelEnum::new_null_with_id(2));
-        let channel3 = Arc::new(ChannelEnum::new_null_with_id(3));
+        let channel1 = ChannelId::from(1);
+        let channel2 = ChannelId::from(2);
+        let channel3 = ChannelId::from(3);
 
-        queue.push(6, Origin::new(TestSource::Live, Arc::clone(&channel1)));
-        queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel2)));
-        queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel3)));
-        queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel1))); // Channel 1 has multiple entries
+        queue.push(6, Origin::new(TestSource::Live, channel1));
+        queue.push(7, Origin::new(TestSource::Live, channel2));
+        queue.push(8, Origin::new(TestSource::Live, channel3));
+        queue.push(9, Origin::new(TestSource::Live, channel1)); // Channel 1 has multiple entries
         assert_eq!(queue.len(), 4);
         assert_eq!(queue.queues_len(), 3); // Each <source, channel> pair is a separate queue
-        assert_eq!(
-            queue.queue_len(&Origin::new(TestSource::Live, Arc::clone(&channel1))),
-            2
-        );
+        assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel1)), 2);
         assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel2)), 1);
         assert_eq!(queue.queue_len(&Origin::new(TestSource::Live, channel3)), 1);
 
         let all = queue.next_batch(999);
         assert_eq!(all.len(), 4);
 
-        let _channel1_results = all
-            .iter()
-            .filter(|i| Arc::ptr_eq(i.1.channel.as_ref().unwrap(), &channel1));
+        let _channel1_results = all.iter().filter(|i| i.1.channel_id == channel1);
         assert!(queue.is_empty());
     }
 }

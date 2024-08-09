@@ -27,12 +27,10 @@ impl InboundMessageQueue {
 
     pub fn put(&self, message: Message, channel: Arc<ChannelEnum>) -> bool {
         let message_type = message.message_type();
-        let added = self
-            .state
-            .lock()
-            .unwrap()
-            .queue
-            .push((message, channel.clone()), Origin::new(NoValue {}, channel));
+        let added = self.state.lock().unwrap().queue.push(
+            (message, channel.clone()),
+            Origin::new(NoValue {}, channel.channel_id()),
+        );
 
         if added {
             self.stats
@@ -51,7 +49,7 @@ impl InboundMessageQueue {
         added
     }
 
-    pub fn next_batch(
+    pub(crate) fn next_batch(
         &self,
         max_batch_size: usize,
     ) -> VecDeque<((Message, Arc<ChannelEnum>), Origin<NoValue>)> {
@@ -113,7 +111,7 @@ impl DeadChannelCleanupStep for InboundMessageQueueCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[super::ChannelId]) {
         let mut guard = self.0.state.lock().unwrap();
         for channel_id in dead_channel_ids {
-            guard.queue.remove(&Origin::new2(NoValue {}, *channel_id));
+            guard.queue.remove(&Origin::new(NoValue {}, *channel_id));
         }
     }
 }

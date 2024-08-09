@@ -64,7 +64,7 @@ impl VoteProcessorQueue {
             let mut guard = self.data.lock().unwrap();
             guard
                 .queue
-                .push((vote, source), Origin::new(tier, Arc::clone(channel)))
+                .push((vote, source), Origin::new(tier, channel.channel_id()))
         };
 
         if added {
@@ -80,7 +80,7 @@ impl VoteProcessorQueue {
         added
     }
 
-    pub fn wait_for_votes(
+    pub(crate) fn wait_for_votes(
         &self,
         max_batch_size: usize,
     ) -> VecDeque<((Arc<Vote>, VoteSource), Origin<RepTier>)> {
@@ -143,7 +143,7 @@ impl DeadChannelCleanupStep for VoteProcessorQueueCleanup {
         let mut guard = self.0.data.lock().unwrap();
         for channel_id in dead_channel_ids {
             for tier in RepTier::iter() {
-                guard.queue.remove(&Origin::new2(tier, *channel_id));
+                guard.queue.remove(&Origin::new(tier, *channel_id));
             }
         }
     }

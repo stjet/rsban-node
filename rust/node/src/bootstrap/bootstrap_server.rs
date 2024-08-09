@@ -153,7 +153,7 @@ impl BootstrapServer {
             let mut guard = self.server_impl.queue.lock().unwrap();
             guard.push(
                 (message, Arc::clone(&channel)),
-                Origin::new(NoValue {}, channel),
+                Origin::new(NoValue {}, channel.channel_id()),
             )
         };
 
@@ -469,7 +469,7 @@ impl DeadChannelCleanupStep for BootstrapServerCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut queue = self.server.queue.lock().unwrap();
         for channel_id in dead_channel_ids {
-            queue.remove(&Origin::new2(NoValue {}, *channel_id));
+            queue.remove(&Origin::new(NoValue {}, *channel_id));
         }
     }
 }

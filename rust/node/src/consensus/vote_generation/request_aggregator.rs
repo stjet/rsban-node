@@ -4,11 +4,11 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelEnum, FairQueue, Origin, TrafficType},
+    transport::{Channel, ChannelId, DeadChannelCleanupStep, FairQueue, TrafficType},
 };
 use rsnano_core::{
-    utils::{get_cpu_count, ContainerInfoComponent, TomlWriter},
-    BlockHash, NoValue, Root,
+    utils::{ContainerInfoComponent, TomlWriter},
+    BlockHash, Root,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -120,7 +120,7 @@ impl RequestAggregator {
         }
     }
 
-    pub fn request(&self, request: RequestType, channel: Arc<ChannelEnum>) -> bool {
+    pub fn request(&self, request: RequestType, channel: Arc<Channel>) -> bool {
         if request.is_empty() {
             return false;
         }
@@ -132,7 +132,7 @@ impl RequestAggregator {
                 .lock()
                 .unwrap()
                 .queue
-                .push((request, channel.clone()), Origin::new(NoValue {}, channel))
+                .push(channel.channel_id(), (request, channel.clone()))
         };
 
         if added {
@@ -205,10 +205,10 @@ impl Drop for RequestAggregator {
 }
 
 type RequestType = Vec<(BlockHash, Root)>;
-type ValueType = (RequestType, Arc<ChannelEnum>);
+type ValueType = (RequestType, Arc<Channel>);
 
 struct RequestAggregatorState {
-    queue: FairQueue<ValueType, NoValue>,
+    queue: FairQueue<ChannelId, ValueType>,
     stopped: bool,
 }
 
@@ -245,7 +245,7 @@ impl RequestAggregatorLoop {
 
         let mut tx = self.ledger.read_txn();
 
-        for ((request, channel), _) in &batch {
+        for (_, (request, channel)) in &batch {
             tx.refresh_if_needed();
 
             if !channel.max(TrafficType::Generic) {
@@ -262,7 +262,7 @@ impl RequestAggregatorLoop {
         self.mutex.lock().unwrap()
     }
 
-    fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<ChannelEnum>) {
+    fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<Channel>) {
         let remaining = self.aggregate(tx, request);
 
         if !remaining.remaining_normal.is_empty() {
@@ -304,5 +304,18 @@ impl RequestAggregatorLoop {
         let mut aggregator = RequestAggregatorImpl::new(&self.ledger, &self.stats, tx);
         aggregator.add_votes(requests);
         aggregator.get_result()
+    }
+}
+
+pub(crate) struct RequestAggregatorCleanup {
+    state: Arc<Mutex<RequestAggregatorState>>,
+}
+
+impl DeadChannelCleanupStep for RequestAggregatorCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut guard = self.state.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            guard.queue.remove(channel_id);
+        }
     }
 }

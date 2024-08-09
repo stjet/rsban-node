@@ -1,6 +1,6 @@
 use super::helpers::{setup_chain, System};
-use crate::tests::helpers::{assert_timely, start_election};
-use rsnano_core::{Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
+use crate::tests::helpers::{assert_timely, assert_timely_eq, start_election};
+use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::{config::FrontiersConfirmationMode, transport::ChannelId};
 use std::{sync::Arc, time::Duration};
@@ -77,5 +77,46 @@ fn codes() {
         VoteCode::Indeterminate,
         node.vote_processor
             .vote_blocking(&vote, channel_id, VoteSource::Live)
+    );
+}
+
+#[test]
+fn invalid_signature() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let chain = setup_chain(&node, 1, &DEV_GENESIS_KEY, false);
+    let key = KeyPair::new();
+    let vote = Vote::new(
+        key.public_key(),
+        &key.private_key(),
+        Vote::TIMESTAMP_MIN,
+        0,
+        vec![chain[0].hash()],
+    );
+    let mut vote_invalid = vote.clone();
+    vote_invalid.signature = Signature::new();
+
+    let vote = Arc::new(vote);
+    let vote_invalid = Arc::new(vote_invalid);
+    let election = start_election(&node, &chain[0].hash());
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+    let channel_id = ChannelId::from(42);
+
+    node.vote_processor_queue
+        .vote(vote_invalid, channel_id, VoteSource::Live);
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_votes.len(),
+        1,
+    );
+
+    node.vote_processor_queue
+        .vote(vote, channel_id, VoteSource::Live);
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_votes.len(),
+        2,
     );
 }

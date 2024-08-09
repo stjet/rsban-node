@@ -93,11 +93,9 @@ impl RealtimeMessageHandler {
                 } else {
                     BlockSource::Live
                 };
-                let added = self.block_processor.add(
-                    Arc::new(publish.block),
-                    source,
-                    Some(Arc::clone(channel)),
-                );
+                let added =
+                    self.block_processor
+                        .add(Arc::new(publish.block), source, channel.channel_id());
                 if !added {
                     self.network.publish_filter.clear(publish.digest);
                     self.stats
@@ -109,7 +107,7 @@ impl RealtimeMessageHandler {
                 // TODO: This check should be cached somewhere
                 if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
                     self.request_aggregator
-                        .request(req.roots_hashes, Arc::clone(channel));
+                        .request(req.roots_hashes, channel.clone());
                 }
             }
             Message::ConfirmAck(ack) => {

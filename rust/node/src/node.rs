@@ -702,7 +702,7 @@ impl Node {
                 processor.add(
                     info.block.as_ref().unwrap().clone(),
                     BlockSource::Unchecked,
-                    None,
+                    ChannelId::LOOPBACK,
                 );
             }
         }));

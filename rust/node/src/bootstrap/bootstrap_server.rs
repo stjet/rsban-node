@@ -148,7 +148,7 @@ impl BootstrapServer {
         let req_type = DetailType::from(&message.req_type);
         let added = {
             let mut guard = self.server_impl.queue.lock().unwrap();
-            guard.push(channel.channel_id(), (message, Arc::clone(&channel)))
+            guard.push(channel.channel_id(), (message, channel.clone()))
         };
 
         if added {

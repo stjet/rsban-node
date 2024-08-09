@@ -1,7 +1,7 @@
 use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{Channel, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
+    transport::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -256,13 +256,8 @@ impl BlockProcessor {
         self.processor_loop.add_rolled_back_observer(observer);
     }
 
-    pub fn add(
-        &self,
-        block: Arc<BlockEnum>,
-        source: BlockSource,
-        channel: Option<Arc<Channel>>,
-    ) -> bool {
-        self.processor_loop.add(block, source, channel)
+    pub fn add(&self, block: Arc<BlockEnum>, source: BlockSource, channel_id: ChannelId) -> bool {
+        self.processor_loop.add(block, source, channel_id)
     }
 
     pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
@@ -395,15 +390,10 @@ impl BlockProcessorLoop {
     }
 
     pub fn process_active(&self, block: Arc<BlockEnum>) {
-        self.add(block, BlockSource::Live, None);
+        self.add(block, BlockSource::Live, ChannelId::LOOPBACK);
     }
 
-    pub fn add(
-        &self,
-        block: Arc<BlockEnum>,
-        source: BlockSource,
-        channel: Option<Arc<Channel>>,
-    ) -> bool {
+    pub fn add(&self, block: Arc<BlockEnum>, source: BlockSource, channel_id: ChannelId) -> bool {
         if self.config.work_thresholds.validate_entry_block(&block) {
             // true => error
             self.stats
@@ -414,16 +404,16 @@ impl BlockProcessorLoop {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::Process);
         debug!(
-            "Processing block (async): {} (source: {:?} {})",
+            "Processing block (async): {} (source: {:?} channel id: {})",
             block.hash(),
             source,
-            channel
-                .as_ref()
-                .map(|c| c.remote_addr().to_string())
-                .unwrap_or_else(|| "<unknown>".to_string())
+            channel_id
         );
 
-        self.add_impl(Arc::new(BlockProcessorContext::new(block, source)), channel)
+        self.add_impl(
+            Arc::new(BlockProcessorContext::new(block, source)),
+            channel_id,
+        )
     }
 
     pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
@@ -438,7 +428,7 @@ impl BlockProcessorLoop {
         let hash = block.hash();
         let ctx = Arc::new(BlockProcessorContext::new(block, source));
         let waiter = ctx.get_waiter();
-        self.add_impl(ctx, None);
+        self.add_impl(ctx, ChannelId::LOOPBACK);
 
         match waiter.wait_result() {
             Some(status) => Some(status),
@@ -455,7 +445,7 @@ impl BlockProcessorLoop {
         self.stats.inc(StatType::Blockprocessor, DetailType::Force);
         debug!("Forcing block: {}", block.hash());
         let ctx = Arc::new(BlockProcessorContext::new(block, BlockSource::Forced));
-        self.add_impl(ctx, None);
+        self.add_impl(ctx, ChannelId::LOOPBACK);
     }
 
     // TODO: Remove and replace all checks with calls to size (block_source)
@@ -471,15 +461,11 @@ impl BlockProcessorLoop {
             .sum_queue_len((source, ChannelId::MIN)..=(source, ChannelId::MAX))
     }
 
-    fn add_impl(&self, context: Arc<BlockProcessorContext>, channel: Option<Arc<Channel>>) -> bool {
+    fn add_impl(&self, context: Arc<BlockProcessorContext>, channel_id: ChannelId) -> bool {
         let source = context.source;
         let added;
         {
             let mut guard = self.mutex.lock().unwrap();
-            let channel_id = channel
-                .as_ref()
-                .map(|c| c.channel_id())
-                .unwrap_or(ChannelId::LOOPBACK);
             added = guard.queue.push((source, channel_id), context);
         }
         if added {
@@ -763,7 +749,7 @@ mod tests {
         let mut block = BlockEnum::new_test_instance();
         block.set_work(3);
 
-        block_processor.add(Arc::new(block), BlockSource::Live, None);
+        block_processor.add(Arc::new(block), BlockSource::Live, ChannelId::LOOPBACK);
 
         assert_eq!(
             stats.count(

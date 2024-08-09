@@ -17,7 +17,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, Channel, Network, TrafficType},
+    transport::{BandwidthLimiter, BufferDropPolicy, Channel, ChannelId, Network, TrafficType},
 };
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
@@ -336,8 +336,11 @@ impl BootstrapAscending {
                 );
 
                 for block in response.blocks() {
-                    self.block_processor
-                        .add(Arc::new(block.clone()), BlockSource::Bootstrap, None);
+                    self.block_processor.add(
+                        Arc::new(block.clone()),
+                        BlockSource::Bootstrap,
+                        ChannelId::LOOPBACK,
+                    );
                 }
                 let mut guard = self.mutex.lock().unwrap();
                 guard.throttle.add(true);

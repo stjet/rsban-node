@@ -11,7 +11,7 @@ use rsnano_node::{
     config::NodeFlags,
     consensus::{ActiveElectionsExt, VoteApplierExt},
     stats::{DetailType, Direction, StatType},
-    transport::{BufferDropPolicy, PeerConnectorExt, TrafficType},
+    transport::{BufferDropPolicy, ChannelId, PeerConnectorExt, TrafficType},
     wallets::WalletsExt,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
@@ -472,10 +472,10 @@ fn vote_republish() {
 
     // the vote causes the election to reach quorum and for the vote (and block?) to be published from node1 to node2
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
-    let channel = make_fake_channel(&node1);
+    let channel_id = ChannelId::from(999);
     node1
         .vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, channel_id, VoteSource::Live);
 
     // FIXME: there is a race condition here, if the vote arrives before the block then the vote is wasted and the test fails
     // we could resend the vote but then there is a race condition between the vote resending and the election reaching quorum on node1
@@ -569,10 +569,9 @@ fn vote_by_hash_republish() {
 
     // construct a vote for send2 in order to overturn send1
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
-    let channel = make_fake_channel(&node1);
     node1
         .vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(999), VoteSource::Live);
 
     // send2 should win on both nodes
     assert_timely_msg(
@@ -712,9 +711,8 @@ fn confirm_back() {
     start_election(&node, &send2.hash());
     assert_eq!(node.active.len(), 3);
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(999), VoteSource::Live);
     assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
 }
 

@@ -5,12 +5,12 @@ use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
     config::FrontiersConfirmationMode,
     stats::{DetailType, Direction, StatType},
+    transport::ChannelId,
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use super::helpers::{
-    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, make_fake_channel,
-    start_election, System,
+    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, start_election, System,
 };
 
 /// What this test is doing:
@@ -89,9 +89,8 @@ fn inactive_votes_cache_basic() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send.hash()]));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(111), VoteSource::Live);
     assert_timely_eq(
         Duration::from_secs(5),
         || node.vote_cache.lock().unwrap().size(),
@@ -134,9 +133,8 @@ fn non_final() {
         0,
         vec![send.hash()],
     ));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(111), VoteSource::Live);
     assert_timely_eq(
         Duration::from_secs(5),
         || node.vote_cache.lock().unwrap().size(),
@@ -204,9 +202,8 @@ fn inactive_votes_cache_fork() {
     ));
 
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(111), VoteSource::Live);
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -290,9 +287,8 @@ fn inactive_votes_cache_existing_vote() {
         0,
         vec![send.hash()],
     ));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote1.clone(), &channel, VoteSource::Live);
+        .vote(vote1.clone(), ChannelId::from(111), VoteSource::Live);
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -396,9 +392,8 @@ fn inactive_votes_cache_multiple_votes() {
         0,
         vec![send1.hash()],
     ));
-    let channel = make_fake_channel(&node);
     node.vote_processor_queue
-        .vote(vote1, &channel, VoteSource::Live);
+        .vote(vote1, ChannelId::from(111), VoteSource::Live);
 
     let vote2 = Arc::new(Vote::new(
         DEV_GENESIS_KEY.public_key(),
@@ -408,7 +403,7 @@ fn inactive_votes_cache_multiple_votes() {
         vec![send1.hash()],
     ));
     node.vote_processor_queue
-        .vote(vote2, &channel, VoteSource::Live);
+        .vote(vote2, ChannelId::from(222), VoteSource::Live);
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -520,9 +515,9 @@ fn inactive_votes_cache_election_start() {
         0,
         vec![open1.hash(), open2.hash(), send4.hash()],
     ));
-    let channel = make_fake_channel(&node);
+    let channel = ChannelId::from(111);
     node.vote_processor_queue
-        .vote(vote1, &channel, VoteSource::Live);
+        .vote(vote1, channel, VoteSource::Live);
     assert_timely_eq(
         Duration::from_secs(5),
         || node.vote_cache.lock().unwrap().size(),
@@ -540,7 +535,7 @@ fn inactive_votes_cache_election_start() {
         vec![open1.hash(), open2.hash(), send4.hash()],
     ));
     node.vote_processor_queue
-        .vote(vote2, &channel, VoteSource::Live);
+        .vote(vote2, channel, VoteSource::Live);
     // Only election for send1 should start, other blocks are missing dependencies and don't have enough final weight
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
     assert!(node.vote_router.active(&send1.hash()));
@@ -551,7 +546,7 @@ fn inactive_votes_cache_election_start() {
         vec![open1.hash(), open2.hash(), send4.hash()],
     ));
     node.vote_processor_queue
-        .vote(vote0, &channel, VoteSource::Live);
+        .vote(vote0, channel, VoteSource::Live);
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 0);
     assert_timely_eq(Duration::from_secs(5), || node.ledger.cemented_count(), 5);
     assert!(node.blocks_confirmed(&[send1, send2, open1, open2]));
@@ -644,10 +639,9 @@ fn republish_winner() {
     });
     let election = node1.active.election(&fork.qualified_root()).unwrap();
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![fork.hash()]));
-    let channel = make_fake_channel(&node1);
     node1
         .vote_processor_queue
-        .vote(vote, &channel, VoteSource::Live);
+        .vote(vote, ChannelId::from(111), VoteSource::Live);
     assert_timely(Duration::from_secs(5), || node1.active.confirmed(&election));
     assert_eq!(
         fork.hash(),

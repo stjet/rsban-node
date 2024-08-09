@@ -10,14 +10,13 @@ use crate::{
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        create_loopback_channel, get_bootstrap_weights, log_bootstrap_weights,
-        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
-        ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
-        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
-        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RecentlyConfirmedCache, RepTiers, RequestAggregator, VoteApplier, VoteBroadcaster,
-        VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt,
-        VoteProcessorQueue, VoteRouter,
+        get_bootstrap_weights, log_bootstrap_weights, AccountBalanceChangedCallback,
+        ActiveElections, ActiveElectionsExt, ElectionEndCallback, ElectionStatusType,
+        HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
+        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
+        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
+        RequestAggregator, VoteApplier, VoteBroadcaster, VoteCache, VoteCacheProcessor,
+        VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -25,11 +24,11 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelId, DeadChannelCleanup, InboundCallback,
-        InboundMessageQueue, KeepaliveFactory, LatestKeepalives, MessageProcessor, Network,
-        NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
-        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
-        ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt, TrafficType,
+        BufferDropPolicy, ChannelId, DeadChannelCleanup, InboundMessageQueue, KeepaliveFactory,
+        LatestKeepalives, MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -52,7 +51,7 @@ use rsnano_core::{
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
+use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -64,7 +63,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -119,7 +118,7 @@ pub struct Node {
     pub backlog_population: Arc<BacklogPopulation>,
     ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
-    process_live_dispatcher: Arc<ProcessLiveDispatcher>,
+    _process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     message_processor: Mutex<MessageProcessor>,
     network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
@@ -368,32 +367,10 @@ impl Node {
         );
         wallets.initialize2();
 
-        let inbound_impl: Arc<
-            RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
-        > = Arc::new(RwLock::new(Box::new(|_msg, _channel| {
-            panic!("inbound callback not set");
-        })));
-        let inbound_impl_clone = inbound_impl.clone();
-        let inbound: InboundCallback =
-            Arc::new(move |msg: DeserializedMessage, channel: Arc<ChannelEnum>| {
-                let cb = inbound_impl_clone.read().unwrap();
-                (*cb)(msg, channel);
-            });
-
-        let loopback_channel = create_loopback_channel(
-            node_id.public_key(),
-            &network,
-            stats.clone(),
-            &network_params,
-            inbound,
-            &async_rt,
-        );
-
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
             online_reps.clone(),
             network.clone(),
             vote_processor_queue.clone(),
-            loopback_channel,
         ));
 
         let vote_generators = Arc::new(VoteGenerators::new(
@@ -637,14 +614,6 @@ impl Node {
             bootstrap_server.clone(),
             ascendboot.clone(),
         ));
-
-        let realtime_message_handler_weak = Arc::downgrade(&realtime_message_handler);
-        *inbound_impl.write().unwrap() =
-            Box::new(move |msg: DeserializedMessage, channel: Arc<ChannelEnum>| {
-                if let Some(handler) = realtime_message_handler_weak.upgrade() {
-                    handler.process(msg.message, &channel);
-                }
-            });
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
             network: network.clone(),
@@ -1078,7 +1047,7 @@ impl Node {
             backlog_population,
             ascendboot,
             local_block_broadcaster,
-            process_live_dispatcher,
+            _process_live_dispatcher: process_live_dispatcher, // needs to stay alive
             ledger_pruning,
             network_threads,
             message_processor,

@@ -59,14 +59,12 @@ impl VoteProcessorQueue {
     }
 
     /// Queue vote for processing. @returns true if the vote was queued
-    pub fn vote(&self, vote: Arc<Vote>, channel: &Arc<ChannelEnum>, source: VoteSource) -> bool {
+    pub fn vote(&self, vote: Arc<Vote>, channel_id: ChannelId, source: VoteSource) -> bool {
         let tier = self.rep_tiers.tier(&vote.voting_account);
 
         let added = {
             let mut guard = self.data.lock().unwrap();
-            guard
-                .queue
-                .push((tier, channel.channel_id()), (vote, source))
+            guard.queue.push((tier, channel_id), (vote, source))
         };
 
         if added {

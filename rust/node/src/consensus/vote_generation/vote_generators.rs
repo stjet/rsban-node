@@ -1,53 +1,16 @@
 use crate::{
-    config::NodeConfig,
-    consensus::VoteBroadcaster,
-    stats::Stats,
-    transport::{
-        ChannelEnum, ChannelId, ChannelInProc, InboundCallback, Network, OutboundBandwidthLimiter,
-    },
-    utils::AsyncRuntime,
-    wallets::Wallets,
-    NetworkParams,
+    config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::ChannelEnum,
+    wallets::Wallets, NetworkParams,
 };
 
 use super::{vote_generator::VoteGenerator, LocalVoteHistory};
-use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, PublicKey, Root};
+use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, Root};
 use rsnano_ledger::Ledger;
-use std::{
-    net::{Ipv6Addr, SocketAddrV6},
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::{sync::Arc, time::Duration};
 
 pub struct VoteGenerators {
     non_final_vote_generator: VoteGenerator,
     final_vote_generator: VoteGenerator,
-}
-
-pub(crate) fn create_loopback_channel(
-    node_id: PublicKey,
-    network: &Network,
-    stats: Arc<Stats>,
-    network_params: &NetworkParams,
-    inbound: InboundCallback,
-    runtime: &Arc<AsyncRuntime>,
-) -> Arc<ChannelEnum> {
-    let local_endpoint = SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.port(), 0, 0);
-    Arc::new(ChannelEnum::InProc(ChannelInProc::new(
-        ChannelId::LOOPBACK,
-        SystemTime::now(),
-        network_params.network.clone(),
-        network.publish_filter.clone(),
-        stats,
-        Arc::new(OutboundBandwidthLimiter::default()),
-        Arc::clone(&inbound),
-        Arc::clone(&inbound),
-        runtime,
-        local_endpoint,
-        local_endpoint,
-        node_id,
-        node_id,
-    )))
 }
 
 impl VoteGenerators {

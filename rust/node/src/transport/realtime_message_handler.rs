@@ -118,8 +118,11 @@ impl RealtimeMessageHandler {
                         true => VoteSource::Rebroadcast,
                         false => VoteSource::Live,
                     };
-                    self.vote_processor_queue
-                        .vote(Arc::new(ack.vote().clone()), channel, source);
+                    self.vote_processor_queue.vote(
+                        Arc::new(ack.vote().clone()),
+                        channel.channel_id(),
+                        source,
+                    );
                 }
             }
             Message::NodeIdHandshake(_) => {

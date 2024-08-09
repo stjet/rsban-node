@@ -9,9 +9,7 @@ use rsnano_messages::BulkPull;
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
-    transport::{
-        ChannelDirection, ChannelEnum, ChannelId, ChannelTcp, LatestKeepalives, ResponseServer,
-    },
+    transport::{ChannelDirection, ChannelId, ChannelTcp, LatestKeepalives, ResponseServer},
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
@@ -1302,8 +1300,6 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.stats.clone(),
         node.outbound_limiter.clone(),
     ));
-
-    let channel = Arc::new(ChannelEnum::Tcp(channel));
 
     Arc::new(ResponseServer::new(
         &node.network,

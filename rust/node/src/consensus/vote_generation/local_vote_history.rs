@@ -170,9 +170,8 @@ fn clean(data: &mut LocalVoteHistoryData, max_cache: usize) {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Account, KeyPair};
-
     use super::*;
+    use rsnano_core::KeyPair;
 
     #[test]
     fn empty_history() {

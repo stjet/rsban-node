@@ -1,7 +1,7 @@
 use super::helpers::{setup_chain, System};
 use crate::tests::helpers::{assert_timely, assert_timely_eq, start_election};
 use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
     stats::{DetailType, Direction, StatType},

@@ -2,7 +2,7 @@ use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{
-        ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue,
+        ChannelId, ChannelTcp, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue,
     },
 };
 use rsnano_core::{
@@ -262,7 +262,7 @@ impl BlockProcessor {
         &self,
         block: Arc<BlockEnum>,
         source: BlockSource,
-        channel: Option<Arc<ChannelEnum>>,
+        channel: Option<Arc<ChannelTcp>>,
     ) -> bool {
         self.processor_loop.add(block, source, channel)
     }
@@ -404,7 +404,7 @@ impl BlockProcessorLoop {
         &self,
         block: Arc<BlockEnum>,
         source: BlockSource,
-        channel: Option<Arc<ChannelEnum>>,
+        channel: Option<Arc<ChannelTcp>>,
     ) -> bool {
         if self.config.work_thresholds.validate_entry_block(&block) {
             // true => error
@@ -476,7 +476,7 @@ impl BlockProcessorLoop {
     fn add_impl(
         &self,
         context: Arc<BlockProcessorContext>,
-        channel: Option<Arc<ChannelEnum>>,
+        channel: Option<Arc<ChannelTcp>>,
     ) -> bool {
         let source = context.source;
         let added;

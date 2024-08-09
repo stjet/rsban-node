@@ -18,7 +18,7 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, ChannelMode, Network, TrafficType},
+    transport::{BufferDropPolicy, ChannelMode, ChannelTcp, Network, TrafficType},
     NetworkParams,
 };
 
@@ -44,7 +44,7 @@ pub struct Telemetry {
     network: Arc<Network>,
     node_id: KeyPair,
     startup_time: Instant,
-    notify: Mutex<Vec<Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>>>,
+    notify: Mutex<Vec<Box<dyn Fn(&TelemetryData, &Arc<ChannelTcp>) + Send + Sync>>>,
 }
 
 impl Telemetry {
@@ -91,11 +91,11 @@ impl Telemetry {
         }
     }
 
-    pub fn add_callback(&self, f: Box<dyn Fn(&TelemetryData, &Arc<ChannelEnum>) + Send + Sync>) {
+    pub fn add_callback(&self, f: Box<dyn Fn(&TelemetryData, &Arc<ChannelTcp>) + Send + Sync>) {
         self.notify.lock().unwrap().push(f);
     }
 
-    fn verify(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelEnum>) -> bool {
+    fn verify(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelTcp>) -> bool {
         let Some(data) = &telemetry.0 else {
             self.stats
                 .inc(StatType::Telemetry, DetailType::EmptyPayload);
@@ -128,7 +128,7 @@ impl Telemetry {
     }
 
     /// Process telemetry message from network
-    pub fn process(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelEnum>) {
+    pub fn process(&self, telemetry: &TelemetryAck, channel: &Arc<ChannelTcp>) {
         if !self.verify(telemetry, channel) {
             return;
         }
@@ -249,7 +249,7 @@ impl Telemetry {
         }
     }
 
-    fn request(&self, channel: &ChannelEnum) {
+    fn request(&self, channel: &ChannelTcp) {
         self.stats.inc(StatType::Telemetry, DetailType::Request);
         channel.try_send(
             &Message::TelemetryReq,
@@ -267,7 +267,7 @@ impl Telemetry {
         }
     }
 
-    fn broadcast(&self, channel: &ChannelEnum, message: &Message) {
+    fn broadcast(&self, channel: &ChannelTcp, message: &Message) {
         self.stats.inc(StatType::Telemetry, DetailType::Broadcast);
         channel.try_send(message, BufferDropPolicy::Limiter, TrafficType::Generic)
     }

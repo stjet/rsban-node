@@ -1,4 +1,4 @@
-use super::{ChannelEnum, Network};
+use super::{ChannelTcp, Network};
 use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
@@ -43,7 +43,7 @@ impl PeerCacheUpdater {
         }
     }
 
-    fn save_peer(&self, tx: &mut LmdbWriteTransaction, channel: &ChannelEnum) {
+    fn save_peer(&self, tx: &mut LmdbWriteTransaction, channel: &ChannelTcp) {
         let Some(endpoint) = channel.peering_endpoint() else {
             return;
         };

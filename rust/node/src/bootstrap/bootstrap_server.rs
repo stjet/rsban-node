@@ -1,7 +1,7 @@
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget,
+        BufferDropPolicy, ChannelId, ChannelTcp, DeadChannelCleanupStep, DeadChannelCleanupTarget,
         FairQueue, TrafficType,
     },
 };
@@ -125,12 +125,12 @@ impl BootstrapServer {
 
     pub fn set_response_callback(
         &self,
-        cb: Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>,
+        cb: Box<dyn Fn(&AscPullAck, &Arc<ChannelTcp>) + Send + Sync>,
     ) {
         *self.server_impl.on_response.lock().unwrap() = Some(cb);
     }
 
-    pub fn request(&self, message: AscPullReq, channel: Arc<ChannelEnum>) -> bool {
+    pub fn request(&self, message: AscPullReq, channel: Arc<ChannelTcp>) -> bool {
         if !self.verify(&message) {
             self.stats
                 .inc(StatType::BootstrapServer, DetailType::Invalid);
@@ -195,10 +195,10 @@ impl DeadChannelCleanupTarget for Arc<BootstrapServer> {
 struct BootstrapServerImpl {
     stats: Arc<Stats>,
     ledger: Arc<Ledger>,
-    on_response: Arc<Mutex<Option<Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>>>>,
+    on_response: Arc<Mutex<Option<Box<dyn Fn(&AscPullAck, &Arc<ChannelTcp>) + Send + Sync>>>>,
     stopped: AtomicBool,
     condition: Condvar,
-    queue: Mutex<FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>>,
+    queue: Mutex<FairQueue<ChannelId, (AscPullReq, Arc<ChannelTcp>)>>,
     batch_size: usize,
 }
 
@@ -222,8 +222,8 @@ impl BootstrapServerImpl {
 
     fn run_batch<'a>(
         &'a self,
-        mut queue: MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>>,
-    ) -> MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>> {
+        mut queue: MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelTcp>)>>,
+    ) -> MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelTcp>)>> {
         let batch = queue.next_batch(self.batch_size);
         drop(queue);
 
@@ -394,7 +394,7 @@ impl BootstrapServerImpl {
         result
     }
 
-    fn respond(&self, response: AscPullAck, channel: Arc<ChannelEnum>) {
+    fn respond(&self, response: AscPullAck, channel: Arc<ChannelTcp>) {
         self.stats.inc_dir(
             StatType::BootstrapServer,
             DetailType::Response,

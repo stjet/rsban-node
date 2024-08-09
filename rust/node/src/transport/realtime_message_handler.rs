@@ -14,7 +14,7 @@ use rsnano_messages::{Message, TelemetryAck};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::trace;
 
-use super::{peer_connector, ChannelEnum, Network, PeerConnector};
+use super::{peer_connector, ChannelTcp, Network, PeerConnector};
 
 /// Handle realtime messages (as opposed to bootstrap messages)
 pub struct RealtimeMessageHandler {
@@ -63,7 +63,7 @@ impl RealtimeMessageHandler {
         }
     }
 
-    pub fn process(&self, message: Message, channel: &Arc<ChannelEnum>) {
+    pub fn process(&self, message: Message, channel: &Arc<ChannelTcp>) {
         self.stats.inc_dir(
             StatType::Message,
             message.message_type().into(),

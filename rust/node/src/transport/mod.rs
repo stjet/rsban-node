@@ -29,7 +29,6 @@ mod tokio_socket_facade;
 mod vec_buffer_reader;
 mod write_queue;
 
-use async_trait::async_trait;
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
@@ -52,15 +51,7 @@ pub use peer_exclusion::PeerExclusion;
 pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
 pub(crate) use response_server_factory::*;
-use rsnano_core::Account;
-use rsnano_messages::Message;
-use std::{
-    fmt::{Debug, Display},
-    net::{Ipv6Addr, SocketAddrV6},
-    ops::Deref,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::fmt::{Debug, Display};
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 pub use tcp_stream::TcpStream;
@@ -100,13 +91,6 @@ impl From<usize> for ChannelId {
     fn from(value: usize) -> Self {
         Self(value)
     }
-}
-
-#[repr(u8)]
-#[derive(FromPrimitive, PartialEq, Eq)]
-pub enum TransportType {
-    Undefined = 0,
-    Tcp = 1,
 }
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -157,93 +141,9 @@ impl ChannelMode {
     }
 }
 
-#[async_trait]
-pub trait Channel: AsyncBufferReader {
-    fn channel_id(&self) -> ChannelId;
-    fn get_last_bootstrap_attempt(&self) -> SystemTime; //todo switch back to Instant
-    fn set_last_bootstrap_attempt(&self, time: SystemTime); //todo switch back to Instant
-    fn get_last_packet_received(&self) -> SystemTime; //todo switch back to Instant
-    fn set_last_packet_received(&self, instant: SystemTime); //todo switch back to Instant
-    fn get_last_packet_sent(&self) -> SystemTime; //todo switch back to Instant
-    fn set_last_packet_sent(&self, instant: SystemTime); //todo switch back to Instant
-    fn get_node_id(&self) -> Option<Account>;
-    fn set_node_id(&self, id: Account);
-    fn is_alive(&self) -> bool;
-    fn get_type(&self) -> TransportType;
-    fn local_addr(&self) -> SocketAddrV6;
-    fn remote_addr(&self) -> SocketAddrV6;
-    fn peering_endpoint(&self) -> Option<SocketAddrV6>;
-    fn network_version(&self) -> u8;
-    fn direction(&self) -> ChannelDirection;
-    fn mode(&self) -> ChannelMode;
-    fn set_mode(&self, mode: ChannelMode);
-    fn set_timeout(&self, timeout: Duration);
-    fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr;
-    fn subnetwork(&self) -> Ipv6Addr;
-
-    fn try_send(&self, message: &Message, drop_policy: BufferDropPolicy, traffic_type: TrafficType);
-    async fn send_buffer(&self, buffer: &[u8], traffic_type: TrafficType) -> anyhow::Result<()>;
-    async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()>;
-
-    fn close(&self);
-}
-
 #[derive(FromPrimitive, Copy, Clone, Debug)]
 pub enum TrafficType {
     Generic,
     /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
     Bootstrap,
-}
-
-pub enum ChannelEnum {
-    Tcp(Arc<ChannelTcp>),
-}
-
-impl ChannelEnum {
-    #[allow(dead_code)]
-    pub fn new_null() -> Self {
-        Self::Tcp(Arc::new(ChannelTcp::new_null()))
-    }
-
-    #[allow(dead_code)]
-    pub fn new_null_with_id(id: impl Into<ChannelId>) -> Self {
-        Self::Tcp(Arc::new(ChannelTcp::new_null_with_id(id)))
-    }
-
-    pub fn max(&self, traffic_type: TrafficType) -> bool {
-        match self {
-            Self::Tcp(tcp) => tcp.max(traffic_type),
-            _ => false,
-        }
-    }
-
-    pub fn set_peering_endpoint(&self, address: SocketAddrV6) {
-        if let Self::Tcp(tcp) = self {
-            tcp.set_peering_endpoint(address);
-        }
-    }
-}
-
-impl Deref for ChannelEnum {
-    type Target = dyn Channel;
-
-    fn deref(&self) -> &Self::Target {
-        match &self {
-            ChannelEnum::Tcp(tcp) => tcp,
-        }
-    }
-}
-
-#[async_trait]
-impl AsyncBufferReader for ChannelEnum {
-    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
-        self.deref().read(buffer, count).await
-    }
-}
-
-#[async_trait]
-impl AsyncBufferReader for Arc<ChannelEnum> {
-    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
-        self.deref().read(buffer, count).await
-    }
 }

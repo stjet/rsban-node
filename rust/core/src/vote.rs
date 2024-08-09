@@ -1,7 +1,7 @@
 use super::{
     sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Stream},
-    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, RawKey, Signature,
+    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, Signature,
 };
 use crate::{utils::Serialize, Amount};
 use anyhow::Result;

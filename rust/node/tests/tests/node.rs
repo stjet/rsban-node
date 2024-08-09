@@ -2,7 +2,7 @@ use crate::tests::helpers::{
     assert_always_eq, assert_never, assert_timely_eq, assert_timely_msg, make_fake_channel, System,
 };
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair, RawKey,
+    utils::milliseconds_since_epoch, work::WorkPool, Amount, BlockEnum, BlockHash, KeyPair,
     SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};

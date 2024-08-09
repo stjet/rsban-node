@@ -1,5 +1,3 @@
-use std::{sync::Arc, time::Duration};
-
 use super::helpers::{assert_timely_eq, assert_timely_msg, System};
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
@@ -7,9 +5,10 @@ use rsnano_messages::ConfirmAck;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
     stats::{DetailType, Direction, StatType},
-    transport::ChannelEnum,
+    transport::ChannelTcp,
     wallets::WalletsExt,
 };
+use std::{sync::Arc, time::Duration};
 
 #[test]
 fn one() {
@@ -38,7 +37,7 @@ fn one() {
     let request = vec![(send1.hash(), send1.root())];
 
     // Not yet in the ledger
-    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    let dummy_channel = Arc::new(ChannelTcp::new_null());
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
     assert_timely_msg(
@@ -201,7 +200,7 @@ fn one_update() {
     node.process(receive1.clone()).unwrap();
     node.confirm(receive1.hash());
 
-    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    let dummy_channel = Arc::new(ChannelTcp::new_null());
 
     let request1 = vec![(send2.hash(), send2.root())];
     node.request_aggregator
@@ -349,7 +348,7 @@ fn two() {
         (send2.hash(), send2.root()),
         (receive1.hash(), receive1.root()),
     ];
-    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    let dummy_channel = Arc::new(ChannelTcp::new_null());
 
     // Process both blocks
     node.request_aggregator
@@ -487,7 +486,7 @@ fn split() {
     node.confirm(blocks.last().unwrap().hash());
     assert_eq!(node.ledger.cemented_count(), MAX_VBH as u64 + 2);
     assert_eq!(MAX_VBH + 1, request.len());
-    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    let dummy_channel = Arc::new(ChannelTcp::new_null());
     node.request_aggregator.request(request, dummy_channel);
     // In the ledger but no vote generated yet
     assert_timely_eq(
@@ -570,7 +569,7 @@ fn channel_max_queue() {
     node.process(send1.clone()).unwrap();
 
     let request = vec![(send1.hash(), send1.root())];
-    let channel = Arc::new(ChannelEnum::new_null());
+    let channel = Arc::new(ChannelTcp::new_null());
     node.request_aggregator
         .request(request.clone(), channel.clone());
     node.request_aggregator
@@ -630,7 +629,7 @@ fn cannot_vote() {
 
     // correct + incorrect
     let request = vec![(send2.hash(), send2.root()), (1.into(), send2.root())];
-    let dummy_channel = Arc::new(ChannelEnum::new_null());
+    let dummy_channel = Arc::new(ChannelTcp::new_null());
     node.request_aggregator
         .request(request.clone(), dummy_channel.clone());
 

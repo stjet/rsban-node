@@ -31,7 +31,7 @@ pub extern "C" fn rsn_vote_create() -> *mut VoteHandle {
 
 #[no_mangle]
 pub unsafe extern "C" fn rsn_vote_create2(
-    account: *const u8,
+    _account: *const u8,
     prv_key: *const u8,
     timestamp: u64,
     duration: u8,

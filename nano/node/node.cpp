@@ -196,7 +196,7 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	backlog{ rsnano::rsn_node_backlog_population (handle) },
 	websocket{ rsnano::rsn_node_websocket (handle) },
 	startup_time (std::chrono::steady_clock::now ()),
-	node_seq (seq),
+	node_seq (seq)
 {
 }
 

@@ -230,8 +230,10 @@ where
     }
 
     pub fn remove(&mut self, key: &Origin<S>) {
-        self.queues.remove(key);
-        self.current_queue_key = None;
+        if let Some(removed) = self.queues.remove(key) {
+            self.total_len -= removed.len();
+            self.current_queue_key = None;
+        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

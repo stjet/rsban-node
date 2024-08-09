@@ -27,7 +27,7 @@ fn check_signature() {
     ));
     node.process(send1.clone()).unwrap();
     let election1 = start_election(&node, &send1.hash());
-    assert_eq!(1, election1.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(1, election1.vote_count());
     let mut vote1 = Vote::new(
         *DEV_GENESIS_ACCOUNT,
         &DEV_GENESIS_KEY.private_key(),
@@ -126,22 +126,11 @@ fn add_old() {
         .time = SystemTime::now() - Duration::from_secs(20);
     node.vote_processor
         .vote_blocking(&vote2, channel.channel_id(), VoteSource::Live);
-    assert_eq!(2, election1.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(2, election1.vote_count());
     let votes = election1.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_ACCOUNT));
     assert_eq!(send1.hash(), votes.get(&DEV_GENESIS_ACCOUNT).unwrap().hash);
-    assert_eq!(
-        send1.hash(),
-        election1
-            .mutex
-            .lock()
-            .unwrap()
-            .status
-            .winner
-            .as_ref()
-            .unwrap()
-            .hash()
-    );
+    assert_eq!(send1.hash(), election1.winner_hash().unwrap());
 }
 
 // The voting cooldown is respected
@@ -196,20 +185,9 @@ fn add_cooldown() {
 
     node.vote_processor
         .vote_blocking(&vote2, channel.channel_id(), VoteSource::Live);
-    assert_eq!(2, election1.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(2, election1.vote_count());
     let votes = election1.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_ACCOUNT));
     assert_eq!(send1.hash(), votes.get(&DEV_GENESIS_ACCOUNT).unwrap().hash);
-    assert_eq!(
-        send1.hash(),
-        election1
-            .mutex
-            .lock()
-            .unwrap()
-            .status
-            .winner
-            .as_ref()
-            .unwrap()
-            .hash()
-    );
+    assert_eq!(send1.hash(), election1.winner_hash().unwrap());
 }

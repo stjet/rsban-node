@@ -99,24 +99,16 @@ fn invalid_signature() {
     let vote = Arc::new(vote);
     let vote_invalid = Arc::new(vote_invalid);
     let election = start_election(&node, &chain[0].hash());
-    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(1, election.vote_count());
     let channel_id = ChannelId::from(42);
 
     node.vote_processor_queue
         .vote(vote_invalid, channel_id, VoteSource::Live);
 
-    assert_timely_eq(
-        Duration::from_secs(5),
-        || election.mutex.lock().unwrap().last_votes.len(),
-        1,
-    );
+    assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 1);
 
     node.vote_processor_queue
         .vote(vote, channel_id, VoteSource::Live);
 
-    assert_timely_eq(
-        Duration::from_secs(5),
-        || election.mutex.lock().unwrap().last_votes.len(),
-        2,
-    );
+    assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2);
 }

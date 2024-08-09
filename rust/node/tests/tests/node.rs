@@ -299,18 +299,7 @@ fn fork_open() {
         || election.mutex.lock().unwrap().last_blocks.len(),
         2,
     );
-    assert_eq!(
-        open1.hash(),
-        election
-            .mutex
-            .lock()
-            .unwrap()
-            .status
-            .winner
-            .as_ref()
-            .unwrap()
-            .hash()
-    );
+    assert_eq!(open1.hash(), election.winner_hash().unwrap());
 
     // wait for a second and check that the election did not get confirmed
     sleep(Duration::from_millis(1000));
@@ -794,18 +783,7 @@ fn rollback_vote_self() {
         || election.mutex.lock().unwrap().last_blocks.len(),
         2,
     );
-    assert_eq!(
-        election
-            .mutex
-            .lock()
-            .unwrap()
-            .status
-            .winner
-            .as_ref()
-            .unwrap()
-            .hash(),
-        send2.hash()
-    );
+    assert_eq!(election.winner_hash().unwrap(), send2.hash());
 
     {
         // The write guard prevents the block processor from performing the rollback
@@ -822,18 +800,7 @@ fn rollback_vote_self() {
         );
         assert_eq!(1, node.active.votes_with_weight(&election).len());
         // The winner changed
-        assert_eq!(
-            election
-                .mutex
-                .lock()
-                .unwrap()
-                .status
-                .winner
-                .as_ref()
-                .unwrap()
-                .hash(),
-            fork.hash(),
-        );
+        assert_eq!(election.winner_hash().unwrap(), fork.hash(),);
 
         // Insert genesis key in the wallet
         node.wallets

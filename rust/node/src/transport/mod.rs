@@ -1,8 +1,8 @@
 mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
+mod channel;
 mod channel_container;
-mod channel_tcp;
 mod dead_channel_cleanup;
 mod fair_queue;
 mod handshake_process;
@@ -33,7 +33,7 @@ pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
 pub use block_deserializer::read_block;
-pub use channel_tcp::*;
+pub use channel::*;
 pub(crate) use dead_channel_cleanup::*;
 pub(crate) use fair_queue::*;
 pub(crate) use handshake_process::*;

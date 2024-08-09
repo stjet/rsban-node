@@ -122,8 +122,8 @@ impl VoteProcessor {
 
             let start = Instant::now();
 
-            for ((vote, source), origin) in &batch {
-                self.vote_blocking(vote, origin.channel_id, *source);
+            for ((_, channel_id), (vote, source)) in &batch {
+                self.vote_blocking(vote, *channel_id, *source);
             }
 
             self.total_processed

@@ -2,7 +2,7 @@ use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{
-        ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin,
+        ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue,
     },
 };
 use rsnano_core::{
@@ -162,13 +162,13 @@ impl BlockProcessor {
         stats: Arc<Stats>,
     ) -> Self {
         let config_l = config.clone();
-        let max_size_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
+        let max_size_query = Box::new(move |origin: &(BlockSource, ChannelId)| match origin.0 {
             BlockSource::Live | BlockSource::LiveOriginator => config_l.max_peer_queue,
             _ => config_l.max_system_queue,
         });
 
         let config_l = config.clone();
-        let priority_query = Box::new(move |origin: &Origin<BlockSource>| match origin.source {
+        let priority_query = Box::new(move |origin: &(BlockSource, ChannelId)| match origin.0 {
             BlockSource::Live | BlockSource::LiveOriginator => config.priority_live,
             BlockSource::Bootstrap | BlockSource::BootstrapLegacy | BlockSource::Unchecked => {
                 config_l.priority_bootstrap
@@ -327,7 +327,7 @@ impl BlockProcessorLoop {
                         guard.queue.len(),
                         guard
                             .queue
-                            .queue_len(&Origin::new(BlockSource::Forced, ChannelId::LOOPBACK))
+                            .queue_len(&(BlockSource::Forced, ChannelId::LOOPBACK))
                     );
                 }
 
@@ -466,7 +466,11 @@ impl BlockProcessorLoop {
     }
 
     pub fn queue_len(&self, source: BlockSource) -> usize {
-        self.mutex.lock().unwrap().queue.queue_len(&source.into())
+        self.mutex
+            .lock()
+            .unwrap()
+            .queue
+            .sum_queue_len((source, ChannelId::MIN)..=(source, ChannelId::MAX))
     }
 
     fn add_impl(
@@ -482,7 +486,7 @@ impl BlockProcessorLoop {
                 .as_ref()
                 .map(|c| c.channel_id())
                 .unwrap_or(ChannelId::LOOPBACK);
-            added = guard.queue.push(context, Origin::new(source, channel_id));
+            added = guard.queue.push((source, channel_id), context);
         }
         if added {
             self.condition.notify_all();
@@ -686,7 +690,9 @@ impl BlockProcessorLoop {
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "forced".to_owned(),
-                    count: guard.queue.queue_len(&BlockSource::Forced.into()),
+                    count: guard
+                        .queue
+                        .queue_len(&(BlockSource::Forced, ChannelId::LOOPBACK)),
                     sizeof_element: size_of::<Arc<BlockEnum>>(),
                 }),
                 guard.queue.collect_container_info("queue"),
@@ -702,7 +708,7 @@ impl DeadChannelCleanupTarget for Arc<BlockProcessor> {
 }
 
 struct BlockProcessorImpl {
-    pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
+    pub queue: FairQueue<(BlockSource, ChannelId), Arc<BlockProcessorContext>>,
     pub last_log: Option<Instant>,
     stopped: bool,
 }
@@ -711,8 +717,8 @@ impl BlockProcessorImpl {
     fn next(&mut self) -> Arc<BlockProcessorContext> {
         debug_assert!(!self.queue.is_empty()); // This should be checked before calling next
         if !self.queue.is_empty() {
-            let (request, origin) = self.queue.next().unwrap();
-            assert!(origin.source != BlockSource::Forced || request.source == BlockSource::Forced);
+            let ((source, _), request) = self.queue.next().unwrap();
+            assert!(source != BlockSource::Forced || request.source == BlockSource::Forced);
             return request;
         }
 
@@ -738,7 +744,7 @@ impl DeadChannelCleanupStep for BlockProcessorCleanup {
         let mut guard = self.0.mutex.lock().unwrap();
         for channel_id in dead_channel_ids {
             for source in BlockSource::iter() {
-                guard.queue.remove(&Origin::new(source, *channel_id))
+                guard.queue.remove(&(source, *channel_id))
             }
         }
     }

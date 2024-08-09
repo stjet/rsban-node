@@ -1,6 +1,6 @@
-use super::{ChannelEnum, InboundMessageQueue, Origin, RealtimeMessageHandler};
+use super::{ChannelEnum, ChannelId, InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
-use rsnano_core::{utils::TomlWriter, NoValue};
+use rsnano_core::utils::TomlWriter;
 use rsnano_messages::Message;
 use std::{
     cmp::{max, min},
@@ -124,10 +124,10 @@ impl State {
         }
     }
 
-    fn handle_batch(&self, batch: VecDeque<((Message, Arc<ChannelEnum>), Origin<NoValue>)>) {
+    fn handle_batch(&self, batch: VecDeque<(ChannelId, (Message, Arc<ChannelEnum>))>) {
         let start = Instant::now();
         let batch_size = batch.len();
-        for ((message, channel), _) in batch {
+        for (_, (message, channel)) in batch {
             self.realtime_handler.process(message, &channel);
         }
 

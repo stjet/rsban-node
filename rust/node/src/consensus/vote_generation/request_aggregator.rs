@@ -4,11 +4,11 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelEnum, ChannelId, DeadChannelCleanupStep, FairQueue, Origin, TrafficType},
+    transport::{ChannelEnum, ChannelId, DeadChannelCleanupStep, FairQueue, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
-    BlockHash, NoValue, Root,
+    BlockHash, Root,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -122,10 +122,11 @@ impl RequestAggregator {
         let request_len = request.len();
 
         let added = {
-            self.state.lock().unwrap().queue.push(
-                (request, channel.clone()),
-                Origin::new(NoValue {}, channel.channel_id()),
-            )
+            self.state
+                .lock()
+                .unwrap()
+                .queue
+                .push(channel.channel_id(), (request, channel.clone()))
         };
 
         if added {
@@ -201,7 +202,7 @@ type RequestType = Vec<(BlockHash, Root)>;
 type ValueType = (RequestType, Arc<ChannelEnum>);
 
 struct RequestAggregatorState {
-    queue: FairQueue<ValueType, NoValue>,
+    queue: FairQueue<ChannelId, ValueType>,
     stopped: bool,
 }
 
@@ -238,7 +239,7 @@ impl RequestAggregatorLoop {
 
         let mut tx = self.ledger.read_txn();
 
-        for ((request, channel), _) in &batch {
+        for (_, (request, channel)) in &batch {
             tx.refresh_if_needed();
 
             if !channel.max(TrafficType::Generic) {
@@ -308,7 +309,7 @@ impl DeadChannelCleanupStep for RequestAggregatorCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut guard = self.state.lock().unwrap();
         for channel_id in dead_channel_ids {
-            guard.queue.remove(&Origin::new(NoValue {}, *channel_id));
+            guard.queue.remove(channel_id);
         }
     }
 }

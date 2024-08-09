@@ -1,6 +1,6 @@
-use super::{ChannelEnum, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin};
+use super::{ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{utils::ContainerInfoComponent, NoValue};
+use rsnano_core::utils::ContainerInfoComponent;
 use rsnano_messages::Message;
 use std::{
     collections::VecDeque,
@@ -27,10 +27,12 @@ impl InboundMessageQueue {
 
     pub fn put(&self, message: Message, channel: Arc<ChannelEnum>) -> bool {
         let message_type = message.message_type();
-        let added = self.state.lock().unwrap().queue.push(
-            (message, channel.clone()),
-            Origin::new(NoValue {}, channel.channel_id()),
-        );
+        let added = self
+            .state
+            .lock()
+            .unwrap()
+            .queue
+            .push(channel.channel_id(), (message, channel.clone()));
 
         if added {
             self.stats
@@ -52,7 +54,7 @@ impl InboundMessageQueue {
     pub(crate) fn next_batch(
         &self,
         max_batch_size: usize,
-    ) -> VecDeque<((Message, Arc<ChannelEnum>), Origin<NoValue>)> {
+    ) -> VecDeque<(ChannelId, (Message, Arc<ChannelEnum>))> {
         self.state.lock().unwrap().queue.next_batch(max_batch_size)
     }
 
@@ -111,13 +113,13 @@ impl DeadChannelCleanupStep for InboundMessageQueueCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[super::ChannelId]) {
         let mut guard = self.0.state.lock().unwrap();
         for channel_id in dead_channel_ids {
-            guard.queue.remove(&Origin::new(NoValue {}, *channel_id));
+            guard.queue.remove(channel_id);
         }
     }
 }
 
 struct State {
-    queue: FairQueue<(Message, Arc<ChannelEnum>), NoValue>,
+    queue: FairQueue<ChannelId, (Message, Arc<ChannelEnum>)>,
     stopped: bool,
 }
 

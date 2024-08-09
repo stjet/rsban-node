@@ -2,10 +2,10 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         BufferDropPolicy, ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget,
-        FairQueue, Origin, TrafficType,
+        FairQueue, TrafficType,
     },
 };
-use rsnano_core::{utils::TomlWriter, BlockEnum, BlockHash, Frontier, NoValue};
+use rsnano_core::{utils::TomlWriter, BlockEnum, BlockHash, Frontier};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
@@ -151,10 +151,7 @@ impl BootstrapServer {
         let req_type = DetailType::from(&message.req_type);
         let added = {
             let mut guard = self.server_impl.queue.lock().unwrap();
-            guard.push(
-                (message, Arc::clone(&channel)),
-                Origin::new(NoValue {}, channel.channel_id()),
-            )
+            guard.push(channel.channel_id(), (message, Arc::clone(&channel)))
         };
 
         if added {
@@ -201,7 +198,7 @@ struct BootstrapServerImpl {
     on_response: Arc<Mutex<Option<Box<dyn Fn(&AscPullAck, &Arc<ChannelEnum>) + Send + Sync>>>>,
     stopped: AtomicBool,
     condition: Condvar,
-    queue: Mutex<FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>>,
+    queue: Mutex<FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>>,
     batch_size: usize,
 }
 
@@ -225,13 +222,13 @@ impl BootstrapServerImpl {
 
     fn run_batch<'a>(
         &'a self,
-        mut queue: MutexGuard<'a, FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>>,
-    ) -> MutexGuard<'a, FairQueue<(AscPullReq, Arc<ChannelEnum>), NoValue>> {
+        mut queue: MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>>,
+    ) -> MutexGuard<'a, FairQueue<ChannelId, (AscPullReq, Arc<ChannelEnum>)>> {
         let batch = queue.next_batch(self.batch_size);
         drop(queue);
 
         let mut tx = self.ledger.read_txn();
-        for ((request, channel), _) in batch {
+        for (_, (request, channel)) in batch {
             tx.refresh_if_needed();
 
             if !channel.max(TrafficType::Bootstrap) {
@@ -469,7 +466,7 @@ impl DeadChannelCleanupStep for BootstrapServerCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut queue = self.server.queue.lock().unwrap();
         for channel_id in dead_channel_ids {
-            queue.remove(&Origin::new(NoValue {}, *channel_id));
+            queue.remove(channel_id);
         }
     }
 }

@@ -1,7 +1,9 @@
 use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelEnum, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin},
+    transport::{
+        ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue,
+    },
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -29,11 +31,11 @@ impl VoteProcessorQueue {
             data: Mutex::new(VoteProcessorQueueData {
                 stopped: false,
                 queue: FairQueue::new(
-                    Box::new(move |origin| match origin.source {
+                    Box::new(move |(tier, _)| match tier {
                         RepTier::Tier1 | RepTier::Tier2 | RepTier::Tier3 => conf.max_pr_queue,
                         RepTier::None => conf.max_non_pr_queue,
                     }),
-                    Box::new(move |origin| match origin.source {
+                    Box::new(move |(tier, _)| match tier {
                         RepTier::Tier3 => conf.pr_priority * conf.pr_priority * conf.pr_priority,
                         RepTier::Tier2 => conf.pr_priority * conf.pr_priority,
                         RepTier::Tier1 => conf.pr_priority,
@@ -64,7 +66,7 @@ impl VoteProcessorQueue {
             let mut guard = self.data.lock().unwrap();
             guard
                 .queue
-                .push((vote, source), Origin::new(tier, channel.channel_id()))
+                .push((tier, channel.channel_id()), (vote, source))
         };
 
         if added {
@@ -83,7 +85,7 @@ impl VoteProcessorQueue {
     pub(crate) fn wait_for_votes(
         &self,
         max_batch_size: usize,
-    ) -> VecDeque<((Arc<Vote>, VoteSource), Origin<RepTier>)> {
+    ) -> VecDeque<((RepTier, ChannelId), (Arc<Vote>, VoteSource))> {
         let mut guard = self.data.lock().unwrap();
         loop {
             if guard.stopped {
@@ -143,7 +145,7 @@ impl DeadChannelCleanupStep for VoteProcessorQueueCleanup {
         let mut guard = self.0.data.lock().unwrap();
         for channel_id in dead_channel_ids {
             for tier in RepTier::iter() {
-                guard.queue.remove(&Origin::new(tier, *channel_id));
+                guard.queue.remove(&(tier, *channel_id));
             }
         }
     }
@@ -151,5 +153,5 @@ impl DeadChannelCleanupStep for VoteProcessorQueueCleanup {
 
 struct VoteProcessorQueueData {
     stopped: bool,
-    queue: FairQueue<(Arc<Vote>, VoteSource), RepTier>,
+    queue: FairQueue<(RepTier, ChannelId), (Arc<Vote>, VoteSource)>,
 }

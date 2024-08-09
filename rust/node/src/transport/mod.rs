@@ -76,6 +76,8 @@ pub struct ChannelId(usize);
 
 impl ChannelId {
     pub const LOOPBACK: Self = Self(0);
+    pub const MIN: Self = Self(usize::MIN);
+    pub const MAX: Self = Self(usize::MAX);
 
     pub fn as_usize(&self) -> usize {
         self.0

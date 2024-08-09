@@ -232,8 +232,7 @@ mod tests {
         let vote1a = Arc::new(Vote::null());
         let vote1b = Arc::new(Vote::null());
         let keys = KeyPair::new();
-        let account = Account::from(keys.public_key());
-        let vote2 = Arc::new(Vote::new(account, &keys.private_key(), 0, 0, Vec::new()));
+        let vote2 = Arc::new(Vote::new(&keys, 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);
         history.add(&root, &hash, &vote2);
@@ -253,11 +252,9 @@ mod tests {
         let vote1a = Arc::new(Vote::null());
         let vote1b = Arc::new(Vote::null());
         let keys1 = KeyPair::new();
-        let account1 = Account::from(keys1.public_key());
-        let vote2 = Arc::new(Vote::new(account1, &keys1.private_key(), 0, 0, Vec::new()));
+        let vote2 = Arc::new(Vote::new(&keys1, 0, 0, Vec::new()));
         let keys2 = KeyPair::new();
-        let account2 = Account::from(keys2.public_key());
-        let vote3 = Arc::new(Vote::new(account2, &keys2.private_key(), 0, 0, Vec::new()));
+        let vote3 = Arc::new(Vote::new(&keys2, 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);
         history.add(&root, &hash, &vote2);

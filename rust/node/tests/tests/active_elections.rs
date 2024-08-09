@@ -126,13 +126,7 @@ fn non_final() {
     ));
 
     // Non-final vote
-    let vote = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
-        0,
-        0,
-        vec![send.hash()],
-    ));
+    let vote = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![send.hash()]));
     node.vote_processor_queue
         .vote(vote, ChannelId::from(111), VoteSource::Live);
     assert_timely_eq(
@@ -280,13 +274,7 @@ fn inactive_votes_cache_existing_vote() {
     );
 
     // Insert vote
-    let vote1 = Arc::new(Vote::new(
-        key.public_key(),
-        &key.private_key(),
-        0,
-        0,
-        vec![send.hash()],
-    ));
+    let vote1 = Arc::new(Vote::new(&key, 0, 0, vec![send.hash()]));
     node.vote_processor_queue
         .vote(vote1.clone(), ChannelId::from(111), VoteSource::Live);
 
@@ -381,23 +369,11 @@ fn inactive_votes_cache_multiple_votes() {
     node.process(open.clone()).unwrap();
 
     // Process votes
-    let vote1 = Arc::new(Vote::new(
-        key.public_key(),
-        &key.private_key(),
-        0,
-        0,
-        vec![send1.hash()],
-    ));
+    let vote1 = Arc::new(Vote::new(&key, 0, 0, vec![send1.hash()]));
     node.vote_processor_queue
         .vote(vote1, ChannelId::from(111), VoteSource::Live);
 
-    let vote2 = Arc::new(Vote::new(
-        DEV_GENESIS_KEY.public_key(),
-        &DEV_GENESIS_KEY.private_key(),
-        0,
-        0,
-        vec![send1.hash()],
-    ));
+    let vote2 = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![send1.hash()]));
     node.vote_processor_queue
         .vote(vote2, ChannelId::from(222), VoteSource::Live);
 
@@ -501,8 +477,7 @@ fn inactive_votes_cache_election_start() {
 
     // Inactive votes
     let vote1 = Arc::new(Vote::new(
-        key1.public_key(),
-        &key1.private_key(),
+        &key1,
         0,
         0,
         vec![open1.hash(), open2.hash(), send4.hash()],
@@ -520,8 +495,7 @@ fn inactive_votes_cache_election_start() {
 
     // 2 votes are required to start election (dev network)
     let vote2 = Arc::new(Vote::new(
-        key2.public_key(),
-        &key2.private_key(),
+        &key2,
         0,
         0,
         vec![open1.hash(), open2.hash(), send4.hash()],

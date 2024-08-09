@@ -264,7 +264,7 @@ impl SharedState {
     {
         debug_assert_eq!(hashes.len(), roots.len());
         let mut votes = Vec::new();
-        self.wallets.foreach_representative(|pub_key, priv_key| {
+        self.wallets.foreach_representative(|keys| {
             let timestamp = if self.is_final {
                 Vote::TIMESTAMP_MAX
             } else {
@@ -276,8 +276,7 @@ impl SharedState {
                 0x9 /*8192ms*/
             };
             votes.push(Arc::new(Vote::new(
-                *pub_key,
-                priv_key,
+                keys,
                 timestamp,
                 duration,
                 hashes.clone(),

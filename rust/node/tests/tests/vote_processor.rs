@@ -22,8 +22,7 @@ fn codes() {
     let node = system.build_node().config(config).finish();
     let blocks = setup_chain(&node, 1, &DEV_GENESIS_KEY, false);
     let vote = Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN,
         0,
         vec![blocks[0].hash()],
@@ -93,13 +92,7 @@ fn invalid_signature() {
     let node = system.make_node();
     let chain = setup_chain(&node, 1, &DEV_GENESIS_KEY, false);
     let key = KeyPair::new();
-    let vote = Vote::new(
-        key.public_key(),
-        &key.private_key(),
-        Vote::TIMESTAMP_MIN,
-        0,
-        vec![chain[0].hash()],
-    );
+    let vote = Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![chain[0].hash()]);
     let mut vote_invalid = vote.clone();
     vote_invalid.signature = Signature::new();
 
@@ -130,8 +123,7 @@ fn overflow() {
     let node = system.build_node().flags(flags).finish();
     let key = KeyPair::new();
     let vote = Arc::new(Vote::new(
-        key.public_key(),
-        &key.private_key(),
+        &key,
         Vote::TIMESTAMP_MIN,
         0,
         vec![*DEV_GENESIS_HASH],

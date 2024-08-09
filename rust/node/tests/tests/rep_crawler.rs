@@ -33,13 +33,7 @@ fn ignore_rebroadcast() {
     );
 
     // Now we spam the vote for genesis, so it appears as a rebroadcasted vote
-    let vote = Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
-        0,
-        0,
-        vec![*DEV_GENESIS_HASH],
-    );
+    let vote = Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![*DEV_GENESIS_HASH]);
     node1
         .rep_crawler
         .force_query(*DEV_GENESIS_HASH, channel1to2.channel_id());
@@ -61,13 +55,7 @@ fn ignore_local() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let vote = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
-        0,
-        0,
-        vec![*DEV_GENESIS_HASH],
-    ));
+    let vote = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![*DEV_GENESIS_HASH]));
     node.rep_crawler.force_process(vote, ChannelId::LOOPBACK);
     assert_always_eq(
         Duration::from_millis(500),

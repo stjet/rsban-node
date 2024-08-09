@@ -186,8 +186,7 @@ fn fork_no_vote_quorum() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(block.hash().into()),
     ));
-    let key3 = RawKey::random();
-    let vote = Vote::new(key1, &key3, 0, 0, vec![send2.hash()]);
+    let vote = Vote::new(&KeyPair::new(), 0, 0, vec![send2.hash()]);
     let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
     let channel = node2
         .network
@@ -321,8 +320,7 @@ fn online_reps_rep_crawler() {
     flags.disable_rep_crawler = true;
     let node = system.build_node().flags(flags).finish();
     let vote = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         milliseconds_since_epoch(),
         0,
         vec![*DEV_GENESIS_HASH],
@@ -376,8 +374,7 @@ fn online_reps_election() {
 
     // Process vote for ongoing election
     let vote = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         milliseconds_since_epoch(),
         0,
         vec![send1.hash()],
@@ -923,13 +920,7 @@ fn rep_crawler_rep_remove() {
     let channel_rep1 = make_fake_channel(&searching_node);
 
     // Ensure Rep1 is found by the rep_crawler after receiving a vote from it
-    let vote_rep1 = Arc::new(Vote::new(
-        keys_rep1.public_key(),
-        &keys_rep1.private_key(),
-        0,
-        0,
-        vec![*DEV_GENESIS_HASH],
-    ));
+    let vote_rep1 = Arc::new(Vote::new(&keys_rep1, 0, 0, vec![*DEV_GENESIS_HASH]));
     searching_node
         .rep_crawler
         .force_process(vote_rep1, channel_rep1.channel_id());
@@ -981,13 +972,7 @@ fn rep_crawler_rep_remove() {
         .unwrap();
 
     // genesis_rep should be found as principal representative after receiving a vote from it
-    let vote_genesis_rep = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
-        0,
-        0,
-        vec![*DEV_GENESIS_HASH],
-    ));
+    let vote_genesis_rep = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![*DEV_GENESIS_HASH]));
     searching_node
         .rep_crawler
         .force_process(vote_genesis_rep, channel_genesis_rep.channel_id());
@@ -1024,13 +1009,7 @@ fn rep_crawler_rep_remove() {
         .unwrap();
 
     // Rep2 should be found as a principal representative after receiving a vote from it
-    let vote_rep2 = Arc::new(Vote::new(
-        keys_rep2.public_key(),
-        &keys_rep2.private_key(),
-        0,
-        0,
-        vec![*DEV_GENESIS_HASH],
-    ));
+    let vote_rep2 = Arc::new(Vote::new(&keys_rep2, 0, 0, vec![*DEV_GENESIS_HASH]));
     searching_node
         .rep_crawler
         .force_process(vote_rep2, channel_rep2.channel_id());

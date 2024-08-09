@@ -28,13 +28,7 @@ fn check_signature() {
     node.process(send1.clone()).unwrap();
     let election1 = start_election(&node, &send1.hash());
     assert_eq!(1, election1.vote_count());
-    let mut vote1 = Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
-        Vote::TIMESTAMP_MIN,
-        0,
-        vec![send1.hash()],
-    );
+    let mut vote1 = Vote::new(&DEV_GENESIS_KEY, Vote::TIMESTAMP_MIN, 0, vec![send1.hash()]);
     let good_signature = vote1.signature;
     vote1.signature = Signature::new();
     let channel = make_fake_channel(&node);
@@ -88,8 +82,7 @@ fn add_old() {
     });
     let election1 = node.active.election(&send1.qualified_root()).unwrap();
     let vote1 = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 2,
         0,
         vec![send1.hash()],
@@ -109,8 +102,7 @@ fn add_old() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
     let vote2 = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 1,
         0,
         vec![send2.hash()],
@@ -155,8 +147,7 @@ fn add_cooldown() {
     });
     let election1 = node.active.election(&send1.qualified_root()).unwrap();
     let vote1 = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 1,
         0,
         vec![send1.hash()],
@@ -176,8 +167,7 @@ fn add_cooldown() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
     let vote2 = Arc::new(Vote::new(
-        *DEV_GENESIS_ACCOUNT,
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 2,
         0,
         vec![send2.hash()],

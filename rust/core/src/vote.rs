@@ -65,43 +65,28 @@ impl Vote {
 
     pub fn new_final(key: &KeyPair, hashes: Vec<BlockHash>) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
-        Self::new(
-            key.public_key(),
-            &key.private_key(),
-            Self::TIMESTAMP_MAX,
-            Self::DURATION_MAX,
-            hashes,
-        )
+        Self::new(&key, Self::TIMESTAMP_MAX, Self::DURATION_MAX, hashes)
     }
 
-    pub fn new(
-        account: Account,
-        prv: &RawKey,
-        timestamp: u64,
-        duration: u8,
-        hashes: Vec<BlockHash>,
-    ) -> Self {
+    pub fn new(keys: &KeyPair, timestamp: u64, duration: u8, hashes: Vec<BlockHash>) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
         let mut result = Self {
-            voting_account: account,
+            voting_account: keys.public_key(),
             timestamp: packed_timestamp(timestamp, duration),
             signature: Signature::new(),
             hashes,
         };
-        result.signature = sign_message(prv, &result.voting_account, result.hash().as_bytes());
+        result.signature = sign_message(
+            &keys.private_key(),
+            &result.voting_account,
+            result.hash().as_bytes(),
+        );
         result
     }
 
     pub fn new_test_instance() -> Self {
         let key = KeyPair::from(42);
-
-        Self::new(
-            key.public_key(),
-            &key.private_key(),
-            1,
-            2,
-            vec![BlockHash::from(5)],
-        )
+        Self::new(&key, 1, 2, vec![BlockHash::from(5)])
     }
 
     /// Timestamp for final vote

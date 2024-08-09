@@ -1,9 +1,16 @@
 use super::helpers::{setup_chain, System};
 use crate::tests::helpers::{assert_timely, assert_timely_eq, start_election};
 use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_node::{config::FrontiersConfirmationMode, transport::ChannelId};
-use std::{sync::Arc, time::Duration};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_node::{
+    config::{FrontiersConfirmationMode, NodeFlags},
+    stats::{DetailType, Direction, StatType},
+    transport::ChannelId,
+};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[test]
 fn codes() {
@@ -111,4 +118,45 @@ fn invalid_signature() {
         .vote(vote, channel_id, VoteSource::Live);
 
     assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2);
+}
+
+#[test]
+fn overflow() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        vote_processor_capacity: 1,
+        ..Default::default()
+    };
+    let node = system.build_node().flags(flags).finish();
+    let key = KeyPair::new();
+    let vote = Arc::new(Vote::new(
+        key.public_key(),
+        &key.private_key(),
+        Vote::TIMESTAMP_MIN,
+        0,
+        vec![*DEV_GENESIS_HASH],
+    ));
+    let start_time = Instant::now();
+    // No way to lock the processor, but queueing votes in quick succession must result in overflow
+    let mut not_processed = 0;
+    const TOTAL: usize = 1000;
+    for _ in 0..TOTAL {
+        if !node
+            .vote_processor_queue
+            .vote(vote.clone(), ChannelId::from(42), VoteSource::Live)
+        {
+            not_processed += 1;
+        }
+    }
+
+    assert!(not_processed > 0);
+    assert!(not_processed < TOTAL);
+    assert_eq!(
+        not_processed as u64,
+        node.stats
+            .count(StatType::VoteProcessor, DetailType::Overfill, Direction::In)
+    );
+
+    // check that it did not timeout
+    assert!(start_time.elapsed() < Duration::from_secs(10));
 }

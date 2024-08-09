@@ -14,35 +14,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (vote_processor, overflow)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	node_flags.set_vote_processor_capacity (1);
-	auto & node (*system.add_node (node_flags));
-	nano::keypair key;
-	auto vote = nano::test::make_vote (key, { nano::dev::genesis }, nano::vote::timestamp_min * 1, 0);
-	auto channel (std::make_shared<nano::transport::inproc::channel> (node, node));
-	auto start_time = std::chrono::system_clock::now ();
-
-	// No way to lock the processor, but queueing votes in quick succession must result in overflow
-	size_t not_processed{ 0 };
-	size_t const total{ 1000 };
-	for (unsigned i = 0; i < total; ++i)
-	{
-		if (!node.vote_processor_queue.vote (vote, channel))
-		{
-			++not_processed;
-		}
-	}
-	ASSERT_GT (not_processed, 0);
-	ASSERT_LT (not_processed, total);
-	ASSERT_EQ (not_processed, node.stats->count (nano::stat::type::vote_processor, nano::stat::detail::overfill));
-
-	// check that it did not timeout
-	ASSERT_LT (std::chrono::system_clock::now () - start_time, 10s);
-}
-
 TEST (vote_processor, weights)
 {
 	nano::test::system system (4);

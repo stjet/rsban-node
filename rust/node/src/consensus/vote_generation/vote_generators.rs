@@ -1,6 +1,6 @@
 use super::{vote_generator::VoteGenerator, LocalVoteHistory};
 use crate::{
-    config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::ChannelTcp,
+    config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::Channel,
     wallets::Wallets, NetworkParams,
 };
 use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, Root};
@@ -69,7 +69,7 @@ impl VoteGenerators {
     pub(crate) fn generate_final_votes(
         &self,
         blocks: &[Arc<BlockEnum>],
-        channel: Arc<ChannelTcp>,
+        channel: Arc<Channel>,
     ) -> usize {
         self.final_vote_generator.generate(blocks, channel)
     }
@@ -81,7 +81,7 @@ impl VoteGenerators {
     pub fn generate_non_final_votes(
         &self,
         blocks: &[Arc<BlockEnum>],
-        channel: Arc<ChannelTcp>,
+        channel: Arc<Channel>,
     ) -> usize {
         self.non_final_vote_generator.generate(blocks, channel)
     }

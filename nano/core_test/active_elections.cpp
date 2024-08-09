@@ -231,7 +231,6 @@ TEST (active_elections, DISABLED_keep_local)
 	// ASSERT_EQ (1, node.scheduler.size ());
 }
 
-
 namespace nano
 {
 TEST (active_elections, vote_replays)

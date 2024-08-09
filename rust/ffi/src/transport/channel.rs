@@ -3,19 +3,19 @@ use rsnano_core::{
     utils::{system_time_as_nanoseconds, system_time_from_nanoseconds, NULL_ENDPOINT},
     Account,
 };
-use rsnano_node::transport::ChannelTcp;
+use rsnano_node::transport::Channel;
 use std::{ops::Deref, sync::Arc, time::SystemTime};
 
-pub struct ChannelHandle(Arc<ChannelTcp>);
+pub struct ChannelHandle(Arc<Channel>);
 
 impl ChannelHandle {
-    pub fn new(channel: Arc<ChannelTcp>) -> *mut Self {
+    pub fn new(channel: Arc<Channel>) -> *mut Self {
         Box::into_raw(Box::new(Self(channel)))
     }
 }
 
 impl Deref for ChannelHandle {
-    type Target = Arc<ChannelTcp>;
+    type Target = Arc<Channel>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

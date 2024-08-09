@@ -1,5 +1,5 @@
 use super::{
-    ChannelTcp, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
+    Channel, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
     MessageDeserializer, Network, NetworkFilter, SynCookies,
 };
 use crate::{
@@ -65,7 +65,7 @@ impl Default for TcpConfig {
 }
 
 pub struct ResponseServer {
-    channel: Arc<ChannelTcp>,
+    channel: Arc<Channel>,
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
@@ -98,7 +98,7 @@ impl ResponseServer {
     pub fn new(
         network: &Arc<Network>,
         inbound_queue: Arc<InboundMessageQueue>,
-        channel: Arc<ChannelTcp>,
+        channel: Arc<Channel>,
         publish_filter: Arc<NetworkFilter>,
         network_params: Arc<NetworkParams>,
         stats: Arc<Stats>,
@@ -148,7 +148,7 @@ impl ResponseServer {
         }
     }
 
-    pub fn channel(&self) -> &Arc<ChannelTcp> {
+    pub fn channel(&self) -> &Arc<Channel> {
         &self.channel
     }
 

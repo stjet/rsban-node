@@ -17,7 +17,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, ChannelTcp, Network, TrafficType},
+    transport::{BandwidthLimiter, BufferDropPolicy, Channel, Network, TrafficType},
 };
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
@@ -100,7 +100,7 @@ impl BootstrapAscending {
         }
     }
 
-    fn send(&self, channel: &Arc<ChannelTcp>, tag: AsyncTag) {
+    fn send(&self, channel: &Arc<Channel>, tag: AsyncTag) {
         debug_assert!(matches!(
             tag.query_type,
             QueryType::BlocksByHash | QueryType::BlocksByAccount
@@ -156,7 +156,7 @@ impl BootstrapAscending {
         }
     }
 
-    fn wait_available_channel(&self) -> Option<Arc<ChannelTcp>> {
+    fn wait_available_channel(&self) -> Option<Arc<Channel>> {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             let channel = guard.scoring.channel();
@@ -194,7 +194,7 @@ impl BootstrapAscending {
         Account::zero()
     }
 
-    fn request(&self, account: Account, channel: &Arc<ChannelTcp>) -> bool {
+    fn request(&self, account: Account, channel: &Arc<Channel>) -> bool {
         let info = {
             let tx = self.ledger.read_txn();
             self.ledger.store.account.get(&tx, &account)
@@ -292,7 +292,7 @@ impl BootstrapAscending {
     }
 
     /// Process `asc_pull_ack` message coming from network
-    pub fn process(&self, message: &AscPullAck, channel: &Arc<ChannelTcp>) {
+    pub fn process(&self, message: &AscPullAck, channel: &Arc<Channel>) {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag

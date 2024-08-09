@@ -124,4 +124,3 @@ std::string nano::network::to_string (nano::networks network)
 	rsnano::rsn_network_to_string (static_cast<uint16_t> (network), &result);
 	return rsnano::convert_dto_to_string (result);
 }
-

@@ -1,6 +1,6 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    ChannelDirection, ChannelId, ChannelMode, ChannelTcp, NetworkFilter, OutboundBandwidthLimiter,
+    Channel, ChannelDirection, ChannelId, ChannelMode, NetworkFilter, OutboundBandwidthLimiter,
     PeerExclusion, TcpConfig, TcpStream, TrafficType,
 };
 use crate::{
@@ -150,7 +150,7 @@ impl Network {
         &self,
         stream: TcpStream,
         direction: ChannelDirection,
-    ) -> anyhow::Result<Arc<ChannelTcp>> {
+    ) -> anyhow::Result<Arc<Channel>> {
         let remote_endpoint = stream
             .peer_addr()
             .map(into_ipv6_socket_address)
@@ -200,7 +200,7 @@ impl Network {
             );
         }
 
-        let channel = ChannelTcp::create(
+        let channel = Channel::create(
             self.get_next_channel_id(),
             stream,
             direction,
@@ -250,7 +250,7 @@ impl Network {
                 == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
     }
 
-    pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<ChannelTcp>) + Send + Sync>) {
+    pub fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<Channel>) + Send + Sync>) {
         self.state
             .lock()
             .unwrap()
@@ -266,7 +266,7 @@ impl Network {
         self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelTcp>> {
+    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
@@ -276,14 +276,14 @@ impl Network {
     pub fn find_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<ChannelTcp>> {
+    ) -> Option<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
             .find_channel_by_peering_addr(peering_addr)
     }
 
-    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelTcp>> {
+    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
@@ -294,7 +294,7 @@ impl Network {
         self.state.lock().unwrap().get_realtime_peers()
     }
 
-    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelTcp>> {
+    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<Channel>> {
         self.state.lock().unwrap().find_node_id(node_id)
     }
 
@@ -306,11 +306,11 @@ impl Network {
         self.state.lock().unwrap().random_fill(endpoints);
     }
 
-    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelTcp>> {
+    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<Channel>> {
         self.state.lock().unwrap().random_fanout(scale)
     }
 
-    pub fn random_list(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelTcp>> {
+    pub fn random_list(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
@@ -509,7 +509,7 @@ impl Network {
         self.state.lock().unwrap().bootstrap_peer()
     }
 
-    pub fn list_channels(&self, min_version: u8) -> Vec<Arc<ChannelTcp>> {
+    pub fn list_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
         let mut result = self.state.lock().unwrap().list_realtime(min_version);
         result.sort_by_key(|i| i.remote_addr());
         result
@@ -537,7 +537,7 @@ impl Network {
         self.state.lock().unwrap().is_excluded_ip(ip)
     }
 
-    pub fn peer_misbehaved(&self, channel: &Arc<ChannelTcp>) {
+    pub fn peer_misbehaved(&self, channel: &Arc<Channel>) {
         // Add to peer exclusion list
         self.state
             .lock()
@@ -623,7 +623,7 @@ struct State {
     attempts: AttemptContainer,
     channels: ChannelContainer,
     network_constants: NetworkConstants,
-    new_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelTcp>) + Send + Sync>>,
+    new_channel_observers: Vec<Arc<dyn Fn(Arc<Channel>) + Send + Sync>>,
     excluded_peers: PeerExclusion,
     stats: Arc<Stats>,
     node_flags: NodeFlags,
@@ -678,7 +678,7 @@ impl State {
         purged_channel_ids
     }
 
-    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelTcp>> {
+    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
         let mut channels = self.list_realtime(min_version);
         let mut rng = thread_rng();
         channels.shuffle(&mut rng);
@@ -688,7 +688,7 @@ impl State {
         channels
     }
 
-    pub fn list_realtime(&self, min_version: u8) -> Vec<Arc<ChannelTcp>> {
+    pub fn list_realtime(&self, min_version: u8) -> Vec<Arc<Channel>> {
         self.channels
             .iter()
             .filter(|c| {
@@ -700,7 +700,7 @@ impl State {
             .collect()
     }
 
-    pub fn keepalive_list(&self) -> Vec<Arc<ChannelTcp>> {
+    pub fn keepalive_list(&self) -> Vec<Arc<Channel>> {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
         for channel in self.channels.iter() {
@@ -712,7 +712,7 @@ impl State {
         result
     }
 
-    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelTcp>> {
+    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
         self.channels
             .get_by_remote_addr(endpoint)
             .map(|c| c.clone())
@@ -721,7 +721,7 @@ impl State {
     pub fn find_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<ChannelTcp>> {
+    ) -> Option<Arc<Channel>> {
         self.channels
             .get_by_peering_addr(peering_addr)
             .map(|c| c.clone())
@@ -737,11 +737,11 @@ impl State {
             .collect()
     }
 
-    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<ChannelTcp>> {
+    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<Channel>> {
         self.channels.get_by_node_id(node_id).map(|c| c.clone())
     }
 
-    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<ChannelTcp>> {
+    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<Channel>> {
         self.random_realtime_channels(self.fanout(scale), 0)
     }
 

@@ -1,5 +1,5 @@
 use super::{bootstrap_limits, BootstrapConnections};
-use crate::transport::ChannelTcp;
+use crate::transport::Channel;
 use std::{
     net::SocketAddrV6,
     sync::{
@@ -11,7 +11,7 @@ use std::{
 
 pub struct BootstrapClient {
     observer: Weak<BootstrapConnections>,
-    channel: Arc<ChannelTcp>,
+    channel: Arc<Channel>,
     block_count: AtomicU64,
     block_rate: AtomicU64,
     pending_stop: AtomicBool,
@@ -20,7 +20,7 @@ pub struct BootstrapClient {
 }
 
 impl BootstrapClient {
-    pub fn new(observer: &Arc<BootstrapConnections>, channel: Arc<ChannelTcp>) -> Self {
+    pub fn new(observer: &Arc<BootstrapConnections>, channel: Arc<Channel>) -> Self {
         Self {
             observer: Arc::downgrade(observer),
             channel,
@@ -56,7 +56,7 @@ impl BootstrapClient {
         *lock = Instant::now();
     }
 
-    pub fn get_channel(&self) -> &Arc<ChannelTcp> {
+    pub fn get_channel(&self) -> &Arc<Channel> {
         &self.channel
     }
 

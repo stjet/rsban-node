@@ -26,7 +26,7 @@ use std::{
 use tokio::time::sleep;
 use tracing::{debug, trace};
 
-pub struct TcpChannelData {
+pub struct ChannelData {
     last_bootstrap_attempt: SystemTime,
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
@@ -37,9 +37,9 @@ pub struct TcpChannelData {
 /// Default timeout in seconds
 const DEFAULT_TIMEOUT: u64 = 120;
 
-pub struct ChannelTcp {
+pub struct Channel {
     channel_id: ChannelId,
-    channel_mutex: Mutex<TcpChannelData>,
+    channel_mutex: Mutex<ChannelData>,
     network_version: AtomicU8,
     limiter: Arc<OutboundBandwidthLimiter>,
     message_serializer: Mutex<MessageSerializer>, // TODO remove mutex
@@ -72,7 +72,7 @@ pub struct ChannelTcp {
     ignore_closed_write_queue: bool,
 }
 
-impl ChannelTcp {
+impl Channel {
     const MAX_QUEUE_SIZE: usize = 128;
 
     fn new(
@@ -98,7 +98,7 @@ impl ChannelTcp {
         let now = SystemTime::now();
         let channel = Self {
             channel_id,
-            channel_mutex: Mutex::new(TcpChannelData {
+            channel_mutex: Mutex::new(ChannelData {
                 last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
                 last_packet_sent: now,
@@ -514,20 +514,20 @@ impl ChannelTcp {
     }
 }
 
-impl Display for ChannelTcp {
+impl Display for Channel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.remote.fmt(f)
     }
 }
 
-impl Drop for ChannelTcp {
+impl Drop for Channel {
     fn drop(&mut self) {
         self.close_internal();
     }
 }
 
 #[async_trait]
-impl AsyncBufferReader for Arc<ChannelTcp> {
+impl AsyncBufferReader for Arc<Channel> {
     async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
         self.read_raw(buffer, count).await
     }

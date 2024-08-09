@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelId, ChannelTcp, DeadChannelCleanupStep, FairQueue, TrafficType},
+    transport::{Channel, ChannelId, DeadChannelCleanupStep, FairQueue, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
@@ -114,7 +114,7 @@ impl RequestAggregator {
         }
     }
 
-    pub fn request(&self, request: RequestType, channel: Arc<ChannelTcp>) -> bool {
+    pub fn request(&self, request: RequestType, channel: Arc<Channel>) -> bool {
         if request.is_empty() {
             return false;
         }
@@ -199,7 +199,7 @@ impl Drop for RequestAggregator {
 }
 
 type RequestType = Vec<(BlockHash, Root)>;
-type ValueType = (RequestType, Arc<ChannelTcp>);
+type ValueType = (RequestType, Arc<Channel>);
 
 struct RequestAggregatorState {
     queue: FairQueue<ChannelId, ValueType>,
@@ -256,7 +256,7 @@ impl RequestAggregatorLoop {
         self.mutex.lock().unwrap()
     }
 
-    fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<ChannelTcp>) {
+    fn process(&self, tx: &LmdbReadTransaction, request: &RequestType, channel: &Arc<Channel>) {
         let remaining = self.aggregate(tx, request);
 
         if !remaining.remaining_normal.is_empty() {

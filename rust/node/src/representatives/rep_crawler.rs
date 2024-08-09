@@ -4,8 +4,7 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelId, ChannelTcp, Network, PeerConnector, PeerConnectorExt,
-        TrafficType,
+        BufferDropPolicy, Channel, ChannelId, Network, PeerConnector, PeerConnectorExt, TrafficType,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime},
     NetworkParams,
@@ -146,7 +145,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query(&self, target_channels: Vec<Arc<ChannelTcp>>) {
+    pub fn query(&self, target_channels: Vec<Arc<Channel>>) {
         let Some(hash_root) = self.prepare_query_target() else {
             debug!("No block to query");
             self.stats.inc_dir(
@@ -180,7 +179,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query_channel(&self, target_channel: Arc<ChannelTcp>) {
+    pub fn query_channel(&self, target_channel: Arc<Channel>) {
         self.query(vec![target_channel]);
     }
 
@@ -452,11 +451,7 @@ impl RepCrawlerImpl {
         }
     }
 
-    fn prepare_crawl_targets(
-        &self,
-        sufficient_weight: bool,
-        now: Duration,
-    ) -> Vec<Arc<ChannelTcp>> {
+    fn prepare_crawl_targets(&self, sufficient_weight: bool, now: Duration) -> Vec<Arc<Channel>> {
         // TODO: Make these values configurable
         const CONSERVATIVE_COUNT: usize = 160;
         const AGGRESSIVE_COUNT: usize = 160;
@@ -517,7 +512,7 @@ impl RepCrawlerImpl {
     fn track_rep_request(
         &mut self,
         hash_root: (BlockHash, Root),
-        channel: Arc<ChannelTcp>,
+        channel: Arc<Channel>,
         now: Duration,
     ) {
         self.queries.insert(QueryEntry {

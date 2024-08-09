@@ -6,9 +6,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        ChannelDirection, ChannelTcp, Network, OutboundBandwidthLimiter, TcpStreamFactory,
-    },
+    transport::{Channel, ChannelDirection, Network, OutboundBandwidthLimiter, TcpStreamFactory},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use ordered_float::OrderedFloat;
@@ -552,7 +550,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             let channel_id = self_l.network.get_next_channel_id();
             let protocol = self_l.config.protocol;
 
-            let channel = ChannelTcp::create(
+            let channel = Channel::create(
                 channel_id,
                 tcp_stream,
                 ChannelDirection::Outbound,

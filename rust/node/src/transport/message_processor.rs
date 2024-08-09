@@ -1,4 +1,4 @@
-use super::{ChannelId, ChannelTcp, InboundMessageQueue, RealtimeMessageHandler};
+use super::{Channel, ChannelId, InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
 use rsnano_core::utils::TomlWriter;
 use rsnano_messages::Message;
@@ -124,7 +124,7 @@ impl State {
         }
     }
 
-    fn handle_batch(&self, batch: VecDeque<(ChannelId, (Message, Arc<ChannelTcp>))>) {
+    fn handle_batch(&self, batch: VecDeque<(ChannelId, (Message, Arc<Channel>))>) {
         let start = Instant::now();
         let batch_size = batch.len();
         for (_, (message, channel)) in batch {

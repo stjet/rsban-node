@@ -5,7 +5,7 @@ use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::Election,
     node::{Node, NodeExt},
-    transport::{ChannelDirection, ChannelTcp, PeerConnectorExt, TcpStream},
+    transport::{Channel, ChannelDirection, PeerConnectorExt, TcpStream},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -263,7 +263,7 @@ fn init_tracing() {
     });
 }
 
-pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelTcp> {
+pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
@@ -282,7 +282,7 @@ pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelTcp> {
         .unwrap()
 }
 
-pub(crate) fn make_fake_channel(node: &Node) -> Arc<ChannelTcp> {
+pub(crate) fn make_fake_channel(node: &Node) -> Arc<Channel> {
     node.async_rt
         .tokio
         .block_on(

@@ -14,48 +14,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (vote_processor, codes)
-{
-	nano::test::system system;
-	auto node_config = system.default_config ();
-	// Disable all election schedulers
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	node_config.hinted_scheduler.enabled = false;
-	node_config.optimistic_scheduler.enabled = false;
-	auto & node = *system.add_node (node_config);
-
-	auto blocks = nano::test::setup_chain (system, node, 1, nano::dev::genesis_key, false);
-	auto vote = nano::test::make_vote (nano::dev::genesis_key, { blocks[0] }, nano::vote::timestamp_min * 1, 0);
-	auto vote_invalid = std::make_shared<nano::vote> (*vote);
-	vote_invalid->flip_signature_bit_0 ();
-	auto channel (std::make_shared<nano::transport::inproc::channel> (node, node));
-
-	// Invalid signature
-	ASSERT_EQ (nano::vote_code::invalid, node.vote_processor.vote_blocking (vote_invalid, channel));
-
-	// No ongoing election (vote goes to vote cache)
-	ASSERT_EQ (nano::vote_code::indeterminate, node.vote_processor.vote_blocking (vote, channel));
-
-	// Clear vote cache before starting election
-	node.vote_cache.clear ();
-
-	// First vote from an account for an ongoing election
-	node.start_election (blocks[0]);
-	std::shared_ptr<nano::election> election;
-	ASSERT_TIMELY (5s, election = node.active.election (blocks[0]->qualified_root ()));
-	ASSERT_EQ (nano::vote_code::vote, node.vote_processor.vote_blocking (vote, channel));
-
-	// Processing the same vote is a replay
-	ASSERT_EQ (nano::vote_code::replay, node.vote_processor.vote_blocking (vote, channel));
-
-	// Invalid takes precedence
-	ASSERT_EQ (nano::vote_code::invalid, node.vote_processor.vote_blocking (vote_invalid, channel));
-
-	// Once the election is removed (confirmed / dropped) the vote is again indeterminate
-	ASSERT_TRUE (node.active.erase (blocks[0]->qualified_root ()));
-	ASSERT_EQ (nano::vote_code::indeterminate, node.vote_processor.vote_blocking (vote, channel));
-}
-
 TEST (vote_processor, invalid_signature)
 {
 	nano::test::system system{ 1 };

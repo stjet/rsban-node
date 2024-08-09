@@ -1,4 +1,6 @@
-use rsnano_core::{work::WorkPoolImpl, Amount, BlockHash, Networks, WalletId};
+use rsnano_core::{
+    work::WorkPoolImpl, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock, WalletId,
+};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::Election,
@@ -308,4 +310,45 @@ pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     let election = node.active.election(&block.qualified_root()).unwrap();
     election.transition_active();
     election
+}
+
+pub(crate) fn setup_chain(
+    node: &Node,
+    count: usize,
+    target: &KeyPair,
+    confirm: bool,
+) -> Vec<BlockEnum> {
+    let mut latest = node.latest(&target.public_key());
+    let mut balance = node.balance(&target.public_key());
+
+    let mut blocks = Vec::new();
+
+    for _ in 0..count {
+        let throwaway = KeyPair::new();
+        balance = balance - Amount::raw(1);
+        let send = BlockEnum::State(StateBlock::new(
+            target.public_key(),
+            latest,
+            target.public_key(),
+            balance,
+            throwaway.public_key().into(),
+            &target,
+            node.work_generate_dev(latest.into()),
+        ));
+        latest = send.hash();
+        blocks.push(send);
+    }
+
+    for block in &blocks {
+        node.process(block.clone()).unwrap();
+    }
+
+    if confirm {
+        // Confirm whole chain at once
+        for block in &blocks {
+            node.confirm(block.hash());
+        }
+    }
+
+    blocks
 }

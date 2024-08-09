@@ -9,7 +9,6 @@
 #include <nano/lib/stats.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/node.hpp>
-#include <nano/node/transport/inproc.hpp>
 #include <nano/node/transport/tcp.hpp>
 
 #include <boost/format.hpp>
@@ -183,8 +182,6 @@ std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_cha
 	{
 		case nano::transport::transport_type::tcp:
 			return make_shared<nano::transport::channel_tcp> (handle);
-		case nano::transport::transport_type::loopback:
-			return make_shared<nano::transport::inproc::channel> (handle);
 		default:
 			throw std::runtime_error ("unknown transport type");
 	}

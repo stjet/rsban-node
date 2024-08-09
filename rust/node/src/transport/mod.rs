@@ -2,7 +2,6 @@ mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel_container;
-mod channel_inproc;
 mod channel_tcp;
 mod dead_channel_cleanup;
 mod fair_queue;
@@ -27,6 +26,7 @@ mod tcp_stream;
 mod tcp_stream_factory;
 mod token_bucket;
 mod tokio_socket_facade;
+mod vec_buffer_reader;
 mod write_queue;
 
 use async_trait::async_trait;
@@ -34,7 +34,6 @@ pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
 };
 pub use block_deserializer::read_block;
-pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
 pub(crate) use dead_channel_cleanup::*;
 pub(crate) use fair_queue::*;
@@ -68,6 +67,7 @@ pub use tcp_stream::TcpStream;
 pub use tcp_stream_factory::TcpStreamFactory;
 use token_bucket::TokenBucket;
 pub use tokio_socket_facade::*;
+pub use vec_buffer_reader::VecBufferReader;
 
 use crate::stats;
 
@@ -107,7 +107,6 @@ impl From<usize> for ChannelId {
 pub enum TransportType {
     Undefined = 0,
     Tcp = 1,
-    Loopback = 2,
 }
 
 /// Policy to affect at which stage a buffer can be dropped
@@ -198,7 +197,6 @@ pub enum TrafficType {
 
 pub enum ChannelEnum {
     Tcp(Arc<ChannelTcp>),
-    InProc(ChannelInProc),
 }
 
 impl ChannelEnum {
@@ -232,7 +230,6 @@ impl Deref for ChannelEnum {
     fn deref(&self) -> &Self::Target {
         match &self {
             ChannelEnum::Tcp(tcp) => tcp,
-            ChannelEnum::InProc(inproc) => inproc,
         }
     }
 }

@@ -11,7 +11,7 @@ use rsnano_core::{
 use rsnano_messages::DeserializedMessage;
 use rsnano_node::{
     config::NetworkConstants,
-    transport::{Channel, ChannelEnum, ChannelInProc, ChannelTcp},
+    transport::{Channel, ChannelEnum, ChannelTcp},
 };
 use std::{ffi::c_void, ops::Deref, sync::Arc, time::SystemTime};
 
@@ -28,13 +28,6 @@ impl Deref for ChannelHandle {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-pub unsafe fn as_inproc_channel(handle: *mut ChannelHandle) -> &'static ChannelInProc {
-    match (*handle).0.as_ref() {
-        ChannelEnum::InProc(inproc) => inproc,
-        _ => panic!("expected inproc channel"),
     }
 }
 
@@ -114,77 +107,4 @@ pub unsafe extern "C" fn rsn_channel_peering_endpoint(
     result: *mut EndpointDto,
 ) {
     (*result) = handle.peering_endpoint().unwrap_or(NULL_ENDPOINT).into()
-}
-
-pub type FfiInboundCallback =
-    unsafe extern "C" fn(*mut c_void, *mut MessageHandle, *mut ChannelHandle);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_inproc_create(
-    channel_id: usize,
-    network_constants: *const NetworkConstantsDto,
-    network_filter: *mut NetworkFilterHandle,
-    stats: *mut StatHandle,
-    limiter: *mut OutboundBandwidthLimiterHandle,
-    source_inbound_callback: FfiInboundCallback,
-    source_inbound_context: *mut c_void,
-    destination_inbound_callback: FfiInboundCallback,
-    destination_inbound_context: *mut c_void,
-    delete_context: VoidPointerCallback,
-    async_rt: &mut AsyncRuntimeHandle,
-    source_endpoint: *const EndpointDto,
-    destination_endpoint: *const EndpointDto,
-    source_node_id: *const u8,
-    destination_node_id: *const u8,
-) -> *mut ChannelHandle {
-    let network_constants = NetworkConstants::try_from(&*network_constants).unwrap();
-    let network_filter = (*network_filter).deref().clone();
-    let source_context = ContextWrapper::new(source_inbound_context, delete_context);
-    let source_inbound = Arc::new(move |msg: DeserializedMessage, channel| {
-        let context = source_context.get_context();
-        source_inbound_callback(
-            context,
-            MessageHandle::new(msg),
-            ChannelHandle::new(channel),
-        );
-    });
-    let destination_context = ContextWrapper::new(destination_inbound_context, delete_context);
-    let destination_inbound = Arc::new(move |msg: DeserializedMessage, channel| {
-        let context = destination_context.get_context();
-        destination_inbound_callback(
-            context,
-            MessageHandle::new(msg),
-            ChannelHandle::new(channel),
-        );
-    });
-    ChannelHandle::new(Arc::new(ChannelEnum::InProc(ChannelInProc::new(
-        channel_id.into(),
-        SystemTime::now(),
-        network_constants,
-        network_filter,
-        (*stats).0.clone(),
-        (*limiter).0.clone(),
-        source_inbound,
-        destination_inbound,
-        &async_rt.0,
-        (&*source_endpoint).into(),
-        (&*destination_endpoint).into(),
-        Account::from_ptr(source_node_id),
-        Account::from_ptr(destination_node_id),
-    ))))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_inproc_network_version(handle: *mut ChannelHandle) -> u8 {
-    let inproc = as_inproc_channel(handle);
-    inproc.network_version()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_inproc_endpoint(
-    handle: *mut ChannelHandle,
-    result: *mut EndpointDto,
-) {
-    let inproc = as_inproc_channel(handle);
-    (*result) = inproc.local_endpoint.into()
 }

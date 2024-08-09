@@ -197,7 +197,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	websocket{ rsnano::rsn_node_websocket (handle) },
 	startup_time (std::chrono::steady_clock::now ()),
 	node_seq (seq),
-	network_threads{ rsnano::rsn_node_network_threads (handle) }
 {
 }
 

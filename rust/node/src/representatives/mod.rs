@@ -2,6 +2,7 @@ mod online_reps;
 mod online_weight_sampler;
 mod rep_crawler;
 
+pub(crate) use online_reps::OnlineRepsCleanup;
 pub use online_reps::{
     InsertResult, OnlineReps, OnlineRepsBuilder, PeeredRep, DEFAULT_ONLINE_WEIGHT_MINIMUM,
 };

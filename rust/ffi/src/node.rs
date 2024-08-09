@@ -17,8 +17,8 @@ use crate::{
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
-        ChannelHandle, EndpointDto, NetworkFilterHandle, NetworkThreadsHandle,
-        OutboundBandwidthLimiterHandle, SynCookiesHandle, TcpChannelsHandle,
+        ChannelHandle, EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle,
+        SynCookiesHandle, TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -332,13 +332,6 @@ pub extern "C" fn rsn_node_request_aggregator(handle: &NodeHandle) -> *mut Reque
 pub extern "C" fn rsn_node_backlog_population(handle: &NodeHandle) -> *mut BacklogPopulationHandle {
     Box::into_raw(Box::new(BacklogPopulationHandle(Arc::clone(
         &handle.0.backlog_population,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_network_threads(handle: &NodeHandle) -> *mut NetworkThreadsHandle {
-    Box::into_raw(Box::new(NetworkThreadsHandle(Arc::clone(
-        &handle.0.network_threads,
     ))))
 }
 

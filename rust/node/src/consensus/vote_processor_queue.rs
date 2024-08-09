@@ -1,7 +1,7 @@
 use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelEnum, FairQueue, Origin},
+    transport::{ChannelEnum, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -12,6 +12,7 @@ use std::{
     mem::size_of,
     sync::{Arc, Condvar, Mutex},
 };
+use strum::IntoEnumIterator;
 
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,
@@ -126,6 +127,25 @@ impl VoteProcessorQueue {
                 guard.queue.collect_container_info("queue"),
             ],
         )
+    }
+}
+
+impl DeadChannelCleanupTarget for Arc<VoteProcessorQueue> {
+    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
+        Box::new(VoteProcessorQueueCleanup(self.clone()))
+    }
+}
+
+struct VoteProcessorQueueCleanup(Arc<VoteProcessorQueue>);
+
+impl DeadChannelCleanupStep for VoteProcessorQueueCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[crate::transport::ChannelId]) {
+        let mut guard = self.0.data.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            for tier in RepTier::iter() {
+                guard.queue.remove(&Origin::new2(tier, *channel_id));
+            }
+        }
     }
 }
 

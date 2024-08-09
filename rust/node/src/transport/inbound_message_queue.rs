@@ -1,4 +1,4 @@
-use super::{ChannelEnum, FairQueue, Origin};
+use super::{ChannelEnum, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{utils::ContainerInfoComponent, NoValue};
 use rsnano_messages::Message;
@@ -98,6 +98,23 @@ impl InboundMessageQueue {
 impl Default for InboundMessageQueue {
     fn default() -> Self {
         Self::new(64, Arc::new(Stats::default()))
+    }
+}
+
+impl DeadChannelCleanupTarget for Arc<InboundMessageQueue> {
+    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
+        Box::new(InboundMessageQueueCleanup(self.clone()))
+    }
+}
+
+struct InboundMessageQueueCleanup(Arc<InboundMessageQueue>);
+
+impl DeadChannelCleanupStep for InboundMessageQueueCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[super::ChannelId]) {
+        let mut guard = self.0.state.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            guard.queue.remove(&Origin::new2(NoValue {}, *channel_id));
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelEnum, FairQueue, Origin, TrafficType},
+    transport::{ChannelEnum, ChannelId, DeadChannelCleanupStep, FairQueue, Origin, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfoComponent, TomlWriter},
@@ -298,5 +298,18 @@ impl RequestAggregatorLoop {
         let mut aggregator = RequestAggregatorImpl::new(&self.ledger, &self.stats, tx);
         aggregator.add_votes(requests);
         aggregator.get_result()
+    }
+}
+
+pub(crate) struct RequestAggregatorCleanup {
+    state: Arc<Mutex<RequestAggregatorState>>,
+}
+
+impl DeadChannelCleanupStep for RequestAggregatorCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut guard = self.state.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            guard.queue.remove(&Origin::new2(NoValue {}, *channel_id));
+        }
     }
 }

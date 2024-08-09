@@ -4,6 +4,7 @@ mod block_deserializer;
 mod channel_container;
 mod channel_inproc;
 mod channel_tcp;
+mod dead_channel_cleanup;
 mod fair_queue;
 mod handshake_process;
 mod inbound_message_queue;
@@ -35,6 +36,7 @@ pub use bandwidth_limiter::{
 pub use block_deserializer::read_block;
 pub use channel_inproc::{ChannelInProc, InboundCallback, VecBufferReader};
 pub use channel_tcp::*;
+pub(crate) use dead_channel_cleanup::*;
 pub use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::InboundMessageQueue;
@@ -43,7 +45,7 @@ pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use message_processor::*;
 pub use network::*;
 pub use network_filter::NetworkFilter;
-pub use network_threads::*;
+pub(crate) use network_threads::*;
 pub use peer_cache_connector::*;
 pub use peer_cache_updater::*;
 pub use peer_connector::*;
@@ -201,6 +203,11 @@ impl ChannelEnum {
     #[allow(dead_code)]
     pub fn new_null() -> Self {
         Self::Tcp(Arc::new(ChannelTcp::new_null()))
+    }
+
+    #[allow(dead_code)]
+    pub fn new_null_with_id(id: impl Into<ChannelId>) -> Self {
+        Self::Tcp(Arc::new(ChannelTcp::new_null_with_id(id)))
     }
 
     pub fn max(&self, traffic_type: TrafficType) -> bool {

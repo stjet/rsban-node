@@ -125,22 +125,3 @@ std::string nano::network::to_string (nano::networks network)
 	return rsnano::convert_dto_to_string (result);
 }
 
-nano::network_threads::network_threads (rsnano::NetworkThreadsHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::network_threads::~network_threads ()
-{
-	rsnano::rsn_network_threads_destroy (handle);
-}
-
-void nano::network_threads::start ()
-{
-	rsnano::rsn_network_threads_start (handle);
-}
-
-void nano::network_threads::stop ()
-{
-	rsnano::rsn_network_threads_stop (handle);
-}

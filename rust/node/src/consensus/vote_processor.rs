@@ -123,7 +123,7 @@ impl VoteProcessor {
             let start = Instant::now();
 
             for ((vote, source), origin) in &batch {
-                self.vote_blocking(vote, origin.channel_id(), *source);
+                self.vote_blocking(vote, origin.channel_id, *source);
             }
 
             self.total_processed

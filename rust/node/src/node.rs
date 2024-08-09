@@ -1,7 +1,7 @@
 use crate::{
     block_processing::{
-        BacklogPopulation, BlockProcessor, BlockSource, LocalBlockBroadcaster,
-        LocalBlockBroadcasterExt, UncheckedMap,
+        BacklogPopulation, BlockProcessor, BlockProcessorCleanup, BlockSource,
+        LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
@@ -25,11 +25,11 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelId, InboundCallback, InboundMessageQueue,
-        KeepaliveFactory, LatestKeepalives, MessageProcessor, Network, NetworkFilter,
-        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
-        PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
-        TcpListener, TcpListenerExt, TrafficType,
+        BufferDropPolicy, ChannelEnum, ChannelId, DeadChannelCleanup, InboundCallback,
+        InboundMessageQueue, KeepaliveFactory, LatestKeepalives, MessageProcessor, Network,
+        NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
+        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
+        ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -93,7 +93,7 @@ pub struct Node {
     pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
-    pub online_weight_sampler: Arc<OnlineWeightSampler>,
+    online_weight_sampler: Arc<OnlineWeightSampler>,
     pub online_reps: Arc<Mutex<OnlineReps>>,
     pub rep_tiers: Arc<RepTiers>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
@@ -111,17 +111,16 @@ pub struct Node {
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
     pub rep_crawler: Arc<RepCrawler>,
     pub tcp_listener: Arc<TcpListener>,
-    pub hinted_scheduler: Arc<HintedScheduler>,
+    hinted_scheduler: Arc<HintedScheduler>,
     pub manual_scheduler: Arc<ManualScheduler>,
-    pub optimistic_scheduler: Arc<OptimisticScheduler>,
+    optimistic_scheduler: Arc<OptimisticScheduler>,
     pub priority_scheduler: Arc<PriorityScheduler>,
     pub request_aggregator: Arc<RequestAggregator>,
     pub backlog_population: Arc<BacklogPopulation>,
-    pub ascendboot: Arc<BootstrapAscending>,
+    ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
-    pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     message_processor: Mutex<MessageProcessor>,
-    pub network_threads: Arc<Mutex<NetworkThreads>>,
+    network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
     pub peer_connector: Arc<PeerConnector>,
     ongoing_bootstrap: Arc<OngoingBootstrap>,
@@ -224,11 +223,6 @@ impl Node {
             config.bootstrap_serving_threads as usize,
             "Bootstrap work",
         ));
-
-        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
-            config.message_processor.max_queue,
-            stats.clone(),
-        ));
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
@@ -241,6 +235,15 @@ impl Node {
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
         }));
+
+        let mut dead_channel_cleanup =
+            DeadChannelCleanup::new(network.clone(), network_params.network.cleanup_cutoff());
+
+        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
+            config.message_processor.max_queue,
+            stats.clone(),
+        ));
+        dead_channel_cleanup.add(&inbound_message_queue);
 
         let telemetry_config = TelementryConfig {
             enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
@@ -269,6 +272,7 @@ impl Node {
             stats.clone(),
             ledger.clone(),
         ));
+        dead_channel_cleanup.add(&bootstrap_server);
 
         let online_weight_sampler = Arc::new(OnlineWeightSampler::new(
             ledger.clone(),
@@ -287,6 +291,7 @@ impl Node {
                 .trended(online_weight_sampler.calculate_trend())
                 .finish(),
         ));
+        dead_channel_cleanup.add(&online_reps);
 
         let rep_tiers = Arc::new(RepTiers::new(
             rep_weights.clone(),
@@ -300,6 +305,7 @@ impl Node {
             stats.clone(),
             rep_tiers.clone(),
         ));
+        dead_channel_cleanup.add(&vote_processor_queue);
 
         let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
 
@@ -324,6 +330,7 @@ impl Node {
             unchecked.clone(),
             stats.clone(),
         ));
+        dead_channel_cleanup.add(&block_processor);
 
         let distributed_work =
             Arc::new(DistributedWorkFactory::new(work.clone(), async_rt.clone()));
@@ -481,6 +488,7 @@ impl Node {
         bootstrap_initiator.start();
 
         let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
+        dead_channel_cleanup.add(&latest_keepalives);
 
         let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
@@ -641,6 +649,7 @@ impl Node {
             network: network.clone(),
             config: config.clone(),
         });
+
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
             network.clone(),
             peer_connector.clone(),
@@ -649,8 +658,8 @@ impl Node {
             stats.clone(),
             syn_cookies.clone(),
             keepalive_factory.clone(),
-            online_reps.clone(),
             latest_keepalives.clone(),
+            dead_channel_cleanup,
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(
@@ -1068,7 +1077,6 @@ impl Node {
             backlog_population,
             ascendboot,
             local_block_broadcaster,
-            process_live_dispatcher,
             ledger_pruning,
             network_threads,
             message_processor,

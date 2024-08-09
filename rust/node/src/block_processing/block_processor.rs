@@ -1,7 +1,9 @@
 use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelEnum, FairQueue, Origin},
+    transport::{
+        ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Origin,
+    },
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -17,9 +19,11 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use tracing::{debug, error, info, trace};
 
-#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, EnumIter)]
 pub enum BlockSource {
     Unknown = 0,
     Live,
@@ -170,7 +174,7 @@ impl BlockProcessor {
                 config_l.priority_bootstrap
             }
             BlockSource::Local => config_l.priority_local,
-            _ => 1,
+            BlockSource::Forced | BlockSource::Unknown => 1,
         });
 
         Self {
@@ -688,6 +692,12 @@ impl BlockProcessorLoop {
     }
 }
 
+impl DeadChannelCleanupTarget for Arc<BlockProcessor> {
+    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
+        Box::new(BlockProcessorCleanup(self.processor_loop.clone()))
+    }
+}
+
 struct BlockProcessorImpl {
     pub queue: FairQueue<Arc<BlockProcessorContext>, BlockSource>,
     pub last_log: Option<Instant>,
@@ -718,11 +728,23 @@ impl BlockProcessorImpl {
     }
 }
 
+pub(crate) struct BlockProcessorCleanup(Arc<BlockProcessorLoop>);
+
+impl DeadChannelCleanupStep for BlockProcessorCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut guard = self.0.mutex.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            for source in BlockSource::iter() {
+                guard.queue.remove(&Origin::new2(source, *channel_id))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::stats::Direction;
-
     use super::*;
+    use crate::stats::Direction;
 
     #[test]
     fn insufficient_work() {

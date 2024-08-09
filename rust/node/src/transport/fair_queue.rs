@@ -18,6 +18,8 @@ where
 
     /// This can be null for some sources (eg. local RPC) to indicate that the source is not associated with a channel.
     pub channel: Option<Arc<ChannelEnum>>,
+
+    pub channel_id: ChannelId,
 }
 
 impl<S> Origin<S>
@@ -27,28 +29,28 @@ where
     pub fn new(source: S, channel: Arc<ChannelEnum>) -> Self {
         Self {
             source,
+            channel_id: channel.channel_id(),
             channel: Some(channel),
         }
     }
 
-    pub fn new_opt(source: S, channel: Option<Arc<ChannelEnum>>) -> Self {
-        Self { source, channel }
-    }
-
-    pub fn is_alive(&self) -> bool {
-        if let Some(channel) = &self.channel {
-            channel.is_alive()
-        } else {
-            // Some sources (eg. local RPC) don't have an associated channel, never remove their queue
-            true
+    pub fn new2(source: S, channel_id: ChannelId) -> Self {
+        Self {
+            source,
+            channel_id,
+            channel: None,
         }
     }
 
-    pub fn channel_id(&self) -> ChannelId {
-        self.channel
-            .as_ref()
-            .map(|c| c.channel_id())
-            .unwrap_or(ChannelId::LOOPBACK)
+    pub fn new_opt(source: S, channel: Option<Arc<ChannelEnum>>) -> Self {
+        Self {
+            source,
+            channel_id: channel
+                .as_ref()
+                .map(|c| c.channel_id())
+                .unwrap_or(ChannelId::LOOPBACK),
+            channel,
+        }
     }
 }
 
@@ -72,13 +74,7 @@ where
         if !matches!(source_ordering, std::cmp::Ordering::Equal) {
             return source_ordering;
         }
-
-        match (self.channel.as_ref(), other.channel.as_ref()) {
-            (None, None) => Ordering::Equal,
-            (Some(c1), Some(c2)) => Arc::as_ptr(c1).cmp(&Arc::as_ptr(c2)),
-            (Some(_), None) => Ordering::Greater,
-            (None, Some(_)) => Ordering::Less,
-        }
+        self.channel_id.cmp(&other.channel_id)
     }
 }
 
@@ -99,6 +95,7 @@ where
         Origin {
             source: value,
             channel: None,
+            channel_id: ChannelId::LOOPBACK,
         }
     }
 }
@@ -212,7 +209,6 @@ where
             return false; // Not updated
         }
         self.last_update = Instant::now();
-        self.cleanup();
         self.update();
         true // Updated
     }
@@ -273,6 +269,11 @@ where
         result
     }
 
+    pub fn remove(&mut self, key: &Origin<S>) {
+        self.queues.remove(key);
+        self.current_queue_key = None;
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -317,12 +318,6 @@ where
                 break;
             }
         }
-    }
-
-    fn cleanup(&mut self) {
-        self.current_queue_key = None;
-        // Only removing empty queues, no need to update the `total size` counter
-        self.queues.retain(|k, v| k.is_alive() || !v.is_empty());
     }
 
     fn update(&mut self) {
@@ -489,9 +484,9 @@ mod tests {
         let mut queue: FairQueue<i32, TestSource> =
             FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
 
-        let channel1 = Arc::new(ChannelEnum::new_null());
-        let channel2 = Arc::new(ChannelEnum::new_null());
-        let channel3 = Arc::new(ChannelEnum::new_null());
+        let channel1 = Arc::new(ChannelEnum::new_null_with_id(1));
+        let channel2 = Arc::new(ChannelEnum::new_null_with_id(2));
+        let channel3 = Arc::new(ChannelEnum::new_null_with_id(3));
 
         queue.push(6, Origin::new(TestSource::Live, Arc::clone(&channel1)));
         queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel2)));
@@ -513,35 +508,5 @@ mod tests {
             .iter()
             .filter(|i| Arc::ptr_eq(i.1.channel.as_ref().unwrap(), &channel1));
         assert!(queue.is_empty());
-    }
-
-    #[test]
-    fn cleanup() {
-        let mut queue: FairQueue<i32, TestSource> =
-            FairQueue::new(Box::new(|_| 999), Box::new(|_| 1));
-
-        let channel1 = Arc::new(ChannelEnum::new_null());
-        let channel2 = Arc::new(ChannelEnum::new_null());
-        let channel3 = Arc::new(ChannelEnum::new_null());
-
-        queue.push(7, Origin::new(TestSource::Live, Arc::clone(&channel1)));
-        queue.push(8, Origin::new(TestSource::Live, Arc::clone(&channel2)));
-        queue.push(9, Origin::new(TestSource::Live, Arc::clone(&channel3)));
-
-        // Only closing the channel should make it eligable for cleanup
-        channel1.close();
-        drop(channel2);
-
-        assert!(queue.periodic_update(Duration::ZERO));
-
-        // Until the queue is drained, the entries are still present
-        assert_eq!(queue.len(), 3);
-        assert_eq!(queue.queues_len(), 3);
-
-        queue.next_batch(999);
-        assert!(queue.periodic_update(Duration::ZERO));
-
-        assert!(queue.is_empty());
-        assert_eq!(queue.queues_len(), 2);
     }
 }

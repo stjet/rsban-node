@@ -125,8 +125,12 @@ impl ChannelTcp {
     }
 
     pub fn new_null() -> Self {
+        Self::new_null_with_id(42)
+    }
+
+    pub fn new_null_with_id(id: impl Into<ChannelId>) -> Self {
         let (mut channel, _receiver) = Self::new(
-            ChannelId::from(42),
+            id.into(),
             Arc::new(TcpStream::new_null()),
             ChannelDirection::Inbound,
             ProtocolInfo::default(),

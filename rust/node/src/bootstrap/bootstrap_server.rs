@@ -1,6 +1,9 @@
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, FairQueue, Origin, TrafficType},
+    transport::{
+        BufferDropPolicy, ChannelEnum, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget,
+        FairQueue, Origin, TrafficType,
+    },
 };
 use rsnano_core::{utils::TomlWriter, BlockEnum, BlockHash, Frontier, NoValue};
 use rsnano_ledger::Ledger;
@@ -126,9 +129,7 @@ impl BootstrapServer {
     ) {
         *self.server_impl.on_response.lock().unwrap() = Some(cb);
     }
-}
 
-impl BootstrapServer {
     pub fn request(&self, message: AscPullReq, channel: Arc<ChannelEnum>) -> bool {
         if !self.verify(&message) {
             self.stats
@@ -183,6 +184,14 @@ impl BootstrapServer {
 impl Drop for BootstrapServer {
     fn drop(&mut self) {
         debug_assert!(self.threads.lock().unwrap().is_empty());
+    }
+}
+
+impl DeadChannelCleanupTarget for Arc<BootstrapServer> {
+    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
+        Box::new(BootstrapServerCleanup {
+            server: self.server_impl.clone(),
+        })
     }
 }
 
@@ -448,6 +457,19 @@ impl From<&AscPullReqType> for DetailType {
             AscPullReqType::Blocks(_) => DetailType::Blocks,
             AscPullReqType::AccountInfo(_) => DetailType::AccountInfo,
             AscPullReqType::Frontiers(_) => DetailType::Frontiers,
+        }
+    }
+}
+
+pub(crate) struct BootstrapServerCleanup {
+    server: Arc<BootstrapServerImpl>,
+}
+
+impl DeadChannelCleanupStep for BootstrapServerCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut queue = self.server.queue.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            queue.remove(&Origin::new2(NoValue {}, *channel_id));
         }
     }
 }

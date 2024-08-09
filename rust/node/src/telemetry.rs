@@ -208,7 +208,6 @@ impl Telemetry {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             self.stats.inc(StatType::Telemetry, DetailType::Loop);
-
             self.cleanup(&mut guard);
 
             if self.request_predicate(&guard) {

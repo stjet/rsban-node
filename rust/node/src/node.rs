@@ -1,7 +1,7 @@
 use crate::{
     block_processing::{
-        BacklogPopulation, BlockProcessor, BlockProcessorCleanup, BlockSource,
-        LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
+        BacklogPopulation, BlockProcessor, BlockSource, LocalBlockBroadcaster,
+        LocalBlockBroadcasterExt, UncheckedMap,
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,

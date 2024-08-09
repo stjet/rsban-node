@@ -3,7 +3,6 @@ use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeMap, VecDeque},
-    time::{Duration, Instant},
 };
 
 /// Holds user supplied source type(s) and an optional channel.
@@ -113,7 +112,6 @@ where
     S: Ord + Copy,
 {
     queues: BTreeMap<Origin<S>, Entry<R>>,
-    last_update: Instant,
     current_queue_key: Option<Origin<S>>,
     max_size_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
     priority_query: Box<dyn Fn(&Origin<S>) -> usize + Send + Sync>,
@@ -131,7 +129,6 @@ where
     ) -> Self {
         Self {
             queues: BTreeMap::new(),
-            last_update: Instant::now(),
             current_queue_key: None,
             counter: 0,
             total_len: 0,
@@ -175,16 +172,6 @@ where
 
     pub fn clear(&mut self) {
         self.queues.clear();
-    }
-
-    /// Should be called periodically to clean up stale channels and update queue priorities and max sizes
-    pub fn periodic_update(&mut self, interval: Duration) -> bool {
-        if self.last_update.elapsed() < interval {
-            return false; // Not updated
-        }
-        self.last_update = Instant::now();
-        self.update();
-        true // Updated
     }
 
     /// Push a request to the appropriate queue based on the source
@@ -233,7 +220,6 @@ where
     }
 
     pub fn next_batch(&mut self, max_count: usize) -> VecDeque<(R, Origin<S>)> {
-        self.periodic_update(Duration::from_secs(30));
         let count = min(self.len(), max_count);
 
         let mut result = VecDeque::new();
@@ -291,13 +277,6 @@ where
             {
                 break;
             }
-        }
-    }
-
-    fn update(&mut self) {
-        for (source, queue) in self.queues.iter_mut() {
-            queue.max_size = (self.max_size_query)(source);
-            queue.priority = (self.priority_query)(source);
         }
     }
 }

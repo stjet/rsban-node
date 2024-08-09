@@ -504,7 +504,6 @@ impl BlockProcessorLoop {
         data: &mut BlockProcessorImpl,
         max_count: usize,
     ) -> VecDeque<Arc<BlockProcessorContext>> {
-        data.queue.periodic_update(Duration::from_secs(30));
         let mut results = VecDeque::new();
         while !data.queue.is_empty() && results.len() < max_count {
             results.push_back(data.next());

@@ -4,12 +4,8 @@ mod online_container;
 mod peered_container;
 mod peered_rep;
 
-use crate::{
-    stats::{DetailType, Direction, StatType},
-    transport::ChannelId,
-};
+use crate::transport::ChannelId;
 pub use builder::{OnlineRepsBuilder, DEFAULT_ONLINE_WEIGHT_MINIMUM};
-pub(crate) use cleanup::*;
 pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 use primitive_types::U256;
@@ -19,7 +15,6 @@ use rsnano_core::{
 };
 use rsnano_ledger::RepWeightCache;
 use std::{cmp::max, sync::Arc, time::Duration};
-use tracing::info;
 use {online_container::OnlineContainer, peered_container::PeeredContainer};
 
 const ONLINE_WEIGHT_QUORUM: u8 = 67;

@@ -8,6 +8,7 @@ use rsnano_node::{
     utils::AsyncRuntime,
     NetworkParams,
 };
+use rsnano_rpc::run_rpc_server;
 use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
@@ -110,7 +111,7 @@ pub(crate) struct RunDaemonArgs {
 }
 
 impl RunDaemonArgs {
-    pub(crate) fn run_daemon(&self) -> Result<()> {
+    pub(crate) async fn run_daemon(&self) -> Result<()> {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));
@@ -154,10 +155,13 @@ impl RunDaemonArgs {
 
         node.start();
 
+        let rpc_server = tokio::spawn(run_rpc_server(node.clone()));
+
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let finished_clone = finished.clone();
 
         ctrlc::set_handler(move || {
+            rpc_server.abort();
             node.stop();
             *finished_clone.0.lock().unwrap() = true;
             finished_clone.1.notify_all();

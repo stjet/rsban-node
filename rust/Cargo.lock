@@ -1976,9 +1976,24 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",
+ "rsnano_rpc",
  "rsnano_store_lmdb",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "rsnano_rpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "rsnano_core",
+ "rsnano_node",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -1,6 +1,5 @@
 use super::{
-    DeadChannelCleanup, LatestKeepalives, Network, NetworkExt, PeerConnector, PeerConnectorExt,
-    SynCookies,
+    DeadChannelCleanup, LatestKeepalives, Network, PeerConnector, PeerConnectorExt, SynCookies,
 };
 use crate::{
     config::{NodeConfig, NodeFlags},

@@ -475,14 +475,6 @@ impl Network {
         guard.purge(cutoff)
     }
 
-    fn erase_channel_by_endpoint(&self, endpoint: &SocketAddrV6) {
-        self.state
-            .lock()
-            .unwrap()
-            .channels
-            .remove_by_endpoint(endpoint);
-    }
-
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.state.lock().unwrap().channels.count_by_mode(mode)
     }
@@ -523,18 +515,29 @@ impl Network {
         self.state
             .lock()
             .unwrap()
+            .excluded_peers
             .is_excluded(addr, self.clock.now())
     }
 
     pub(crate) fn peer_misbehaved(&self, channel: &Arc<Channel>) {
-        // Add to peer exclusion list
+        {
+            // Add to peer exclusion list
+            self.state
+                .lock()
+                .unwrap()
+                .excluded_peers
+                .peer_misbehaved(&channel.remote_addr(), self.clock.now());
+        }
+
+        channel.close();
+    }
+
+    pub(crate) fn perma_ban(&self, remote_addr: SocketAddrV6) {
         self.state
             .lock()
             .unwrap()
-            .peer_misbehaved(&channel.remote_addr(), self.clock.now());
-
-        // Disconnect
-        self.erase_channel_by_endpoint(&channel.remote_addr())
+            .excluded_peers
+            .perma_ban(remote_addr);
     }
 }
 
@@ -752,21 +755,13 @@ impl State {
         (self.len_sqrt() * scale).ceil() as usize
     }
 
-    pub fn is_excluded(&mut self, endpoint: &SocketAddrV6, now: Timestamp) -> bool {
-        self.excluded_peers.is_excluded(endpoint, now)
-    }
-
-    pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6, now: Timestamp) {
-        self.excluded_peers.peer_misbehaved(addr, now);
-    }
-
     pub fn check_limits(
         &mut self,
         peer: &SocketAddrV6,
         direction: ChannelDirection,
         now: Timestamp,
     ) -> AcceptResult {
-        if self.is_excluded(peer, now) {
+        if self.excluded_peers.is_excluded(peer, now) {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
                 DetailType::Excluded,

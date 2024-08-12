@@ -129,7 +129,7 @@ impl RunDaemonArgs {
 
         let mut daemon_config = DaemonConfig::default();
 
-        daemon_config.rpc_enable = true;
+        //daemon_config.rpc_enable = true;
 
         let node_config = daemon_config.node;
 

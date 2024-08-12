@@ -10,7 +10,7 @@ use rsnano_node::{
 };
 use rsnano_rpc::{run_rpc_server, RpcConfig, RpcToml};
 use std::{
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     str::FromStr,
     fs,
     sync::{Arc, Condvar, Mutex},
@@ -180,8 +180,8 @@ impl RunDaemonArgs {
         node.start();
 
         let rpc_server = if daemon_config.rpc_enable {
-            let address_str = format!("[{}]:{}", rpc_config.address, rpc_config.port);
-            let socket_addr = SocketAddr::from_str(&address_str)?;
+            let ip_addr = IpAddr::from_str(&rpc_config.address)?;
+            let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
             Some(tokio::spawn(run_rpc_server(node.clone(), socket_addr)))
         } else {
             None

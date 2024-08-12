@@ -138,7 +138,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 let tcp_stream = TcpStream::new(stream);
                 match self
                     .network
-                    .add(tcp_stream, ChannelDirection::Inbound)
+                    .add(tcp_stream, ChannelDirection::Inbound, ChannelMode::Realtime)
                     .await
                 {
                     Ok(channel) => {

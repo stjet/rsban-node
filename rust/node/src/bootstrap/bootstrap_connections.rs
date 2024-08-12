@@ -6,7 +6,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{AcceptResult, ChannelDirection, Network, TcpStreamFactory},
+    transport::{AcceptResult, ChannelDirection, ChannelMode, Network, TcpStreamFactory},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use ordered_float::OrderedFloat;
@@ -546,10 +546,13 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         }
                     };
 
-                    debug!("Connection established to: {}", endpoint);
-                    let Ok(channel) = self_l.network.add(tcp_stream, ChannelDirection::Outbound).await else {
+                    let Ok(channel) = self_l.network.add(tcp_stream, ChannelDirection::Outbound, ChannelMode::Bootstrap).await else {
+                        debug!(remote_addr = ?endpoint, "Bootstrap connection rejected");
                         return;
                     };
+                    debug!("Bootstrap connection established to: {}", endpoint);
+
+                    channel.set_mode(ChannelMode::Bootstrap);
 
                     let client = Arc::new(BootstrapClient::new(&self_l, channel));
                     self_l.pool_connection(client, true, push_front);

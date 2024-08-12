@@ -218,7 +218,6 @@ impl ResponseServer {
     }
 
     fn queue_realtime(&self, message: Message) {
-        self.channel.set_last_packet_received(SystemTime::now());
         self.inbound_queue.put(message, self.channel.clone());
         // TODO: Throttle if not added
     }
@@ -283,10 +282,8 @@ impl ResponseServerExt for Arc<ResponseServer> {
             return false;
         }
 
-        let remote = self.channel.remote_addr();
-
         self.network
-            .upgrade_to_realtime_connection(&remote, *node_id)
+            .upgrade_to_realtime_connection(self.channel.channel_id(), *node_id)
     }
 
     async fn run(&self) {

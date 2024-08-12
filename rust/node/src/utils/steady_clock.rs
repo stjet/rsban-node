@@ -47,6 +47,8 @@ const DEFAULT_STUB_DURATION: Duration = Duration::from_secs(60 * 60 * 24 * 365);
 pub struct Timestamp(Duration);
 
 impl Timestamp {
+    pub const MAX: Self = Self(Duration::MAX);
+
     pub const fn new_test_instance() -> Self {
         Self(DEFAULT_STUB_DURATION)
     }

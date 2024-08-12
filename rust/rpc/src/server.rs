@@ -1,6 +1,6 @@
 use crate::format_error_message;
-use crate::request::RpcRequest;
-use crate::response::account_balance;
+use crate::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
+use crate::response::{account_balance, account_create};
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -36,11 +36,19 @@ async fn handle_rpc(
     Json(rpc_request): Json<RpcRequest>,
 ) -> Response {
     let response = match rpc_request {
-        RpcRequest::AccountBalance {
-            account,
-            only_confirmed,
-        } => account_balance(node, account, only_confirmed).await,
-        RpcRequest::UnknownCommand => format_error_message("Unknown command"),
+        RpcRequest::Node(node_request) => match node_request {
+            NodeRpcRequest::AccountBalance {
+                account,
+                only_confirmed,
+            } => account_balance(node.clone(), account, only_confirmed).await,
+            NodeRpcRequest::UnknownCommand => format_error_message("Unknown command"),
+        },
+        RpcRequest::Wallet(wallet_request) => match wallet_request {
+            WalletRpcRequest::AccountCreate { wallet, index } => {
+                account_create(node.clone(), wallet, index).await
+            }
+            WalletRpcRequest::UnknownCommand => format_error_message("Unknown command"),
+        },
     };
 
     (StatusCode::OK, response).into_response()

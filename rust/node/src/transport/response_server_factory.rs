@@ -1,6 +1,6 @@
 use super::{
-    Channel, InboundMessageQueue, LatestKeepalives, Network, OutboundBandwidthLimiter,
-    ResponseServer, ResponseServerExt, SynCookies,
+    Channel, InboundMessageQueue, LatestKeepalives, Network, ResponseServer, ResponseServerExt,
+    SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -56,7 +56,6 @@ impl ResponseServerFactory {
                 workers,
                 network_params.clone(),
                 stats,
-                Arc::new(OutboundBandwidthLimiter::default()),
                 block_processor,
                 None,
                 ledger,

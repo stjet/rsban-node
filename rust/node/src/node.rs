@@ -458,7 +458,6 @@ impl Node {
             bootstrap_workers.clone(),
             network_params.clone(),
             stats.clone(),
-            outbound_limiter.clone(),
             block_processor.clone(),
             websocket.clone(),
             ledger.clone(),
@@ -604,7 +603,6 @@ impl Node {
         let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
             network.clone(),
-            peer_connector.clone(),
             block_processor.clone(),
             config.clone(),
             flags.clone(),

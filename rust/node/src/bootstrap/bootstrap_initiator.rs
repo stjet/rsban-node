@@ -8,7 +8,7 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Network, OutboundBandwidthLimiter},
+    transport::Network,
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
@@ -114,7 +114,6 @@ impl BootstrapInitiator {
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
         stats: Arc<Stats>,
-        outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
         websocket: Option<Arc<WebsocketListener>>,
         ledger: Arc<Ledger>,
@@ -147,7 +146,6 @@ impl BootstrapInitiator {
                 runtime,
                 workers,
                 stats,
-                outbound_limiter,
                 block_processor,
                 cache,
             )),
@@ -372,7 +370,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
         }
     }
 
-    fn bootstrap2(&self, endpoint_a: SocketAddrV6, id_a: String) {
+    fn bootstrap2(&self, remote_addr: SocketAddrV6, id_a: String) {
         if !self.stopped.load(Ordering::SeqCst) {
             self.stop_attempts();
             self.stats
@@ -403,8 +401,8 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .attempts_list
                 .insert(incremental_id, Arc::clone(&attempt));
             self.attempts.lock().unwrap().add(attempt);
-            if !self.network.is_excluded(&endpoint_a) {
-                self.connections.add_connection(endpoint_a);
+            if !self.network.is_excluded(&remote_addr) {
+                self.connections.add_connection(remote_addr);
             }
         }
         self.condition.notify_all();

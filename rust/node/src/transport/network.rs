@@ -89,7 +89,7 @@ impl Network {
                 attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
-                new_channel_observers: Vec::new(),
+                new_realtime_channel_observers: Vec::new(),
                 excluded_peers: PeerExclusion::new(),
                 stats: options.stats.clone(),
                 node_flags: options.flags.clone(),
@@ -234,11 +234,14 @@ impl Network {
                 == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
     }
 
-    pub(crate) fn on_new_channel(&self, callback: Arc<dyn Fn(Arc<Channel>) + Send + Sync>) {
+    pub(crate) fn on_new_realtime_channel(
+        &self,
+        callback: Arc<dyn Fn(Arc<Channel>) + Send + Sync>,
+    ) {
         self.state
             .lock()
             .unwrap()
-            .new_channel_observers
+            .new_realtime_channel_observers
             .push(callback);
     }
 
@@ -410,16 +413,20 @@ impl Network {
             return false;
         }
 
-        // Don't connect to nodes that already sent us something
-        if state.find_channel_by_remote_addr(peer).is_some() {
-            return false;
-        }
-        if state.find_channel_by_peering_addr(peer).is_some() {
+        if state.attempts.contains(peer) {
             return false;
         }
 
-        if state.attempts.contains(peer) {
-            return false;
+        // Don't connect to nodes that already sent us something
+        if let Some(channel) = state.find_channel_by_remote_addr(peer) {
+            if channel.mode() == ChannelMode::Realtime {
+                return false;
+            }
+        }
+        if let Some(channel) = state.find_channel_by_peering_addr(peer) {
+            if channel.mode() == ChannelMode::Realtime {
+                return false;
+            }
         }
 
         let count = state.attempts.count_by_address(peer.ip());
@@ -429,10 +436,7 @@ impl Network {
                 DetailType::MaxAttemptsPerIp,
                 Direction::Out,
             );
-            debug!(
-                        "Connection attempt already in progress ({}), unable to initiate new connection: {}",
-                        count, peer.ip()
-                    );
+            debug!("Connection attempt already in progress ({}), unable to initiate new connection: {}", count, peer.ip());
             return false; // Rejected
         }
 
@@ -539,64 +543,64 @@ impl Network {
             .excluded_peers
             .perma_ban(remote_addr);
     }
-}
 
-pub trait NetworkExt {
-    fn upgrade_to_realtime_connection(&self, remote_endpoint: &SocketAddrV6, node_id: Account);
-    fn keepalive(&self);
-}
-
-impl NetworkExt for Arc<Network> {
-    fn upgrade_to_realtime_connection(&self, remote_addr: &SocketAddrV6, node_id: Account) {
+    pub(crate) fn upgrade_to_realtime_connection(
+        &self,
+        remote_addr: &SocketAddrV6,
+        node_id: Account,
+    ) -> bool {
         let (observers, channel) = {
-            let mut state = self.state.lock().unwrap();
+            let state = self.state.lock().unwrap();
 
             if self.stopped.load(Ordering::SeqCst) {
-                return;
+                return false;
             }
 
-            let Some(entry) = state.channels.get_by_remote_addr(remote_addr) else {
-                return;
+            let Some(channel) = state.channels.get_by_remote_addr(remote_addr) else {
+                return false;
             };
 
             if let Some(other) = state.channels.get_by_node_id(&node_id) {
-                if other.ipv4_address_or_ipv6_subnet() == entry.ipv4_address_or_ipv6_subnet() {
+                if other.ipv4_address_or_ipv6_subnet() == channel.ipv4_address_or_ipv6_subnet() {
                     // We already have a connection to that node. We allow duplicate node ids, but
                     // only if they come from different IP addresses
-                    let endpoint = entry.remote_addr();
-                    state.channels.remove_by_endpoint(&endpoint);
-                    drop(state);
+                    let endpoint = channel.remote_addr();
                     debug!(
                         node_id = node_id.to_node_id(),
                         remote = %endpoint,
-                        "Dropping channel, because another channel for the same node ID was found"
+                        "Could not upgrade channel {} to realtime connection, because another channel for the same node ID was found",
+                        channel.channel_id(),
                     );
-                    return;
+                    drop(state);
+                    return false;
                 }
             }
 
-            entry.set_node_id(node_id);
-            entry.set_mode(ChannelMode::Realtime);
+            channel.set_node_id(node_id);
+            channel.set_mode(ChannelMode::Realtime);
 
-            let observers = state.new_channel_observers.clone();
-            let channel = entry.clone();
+            let observers = state.new_realtime_channel_observers.clone();
+            let channel = channel.clone();
             (observers, channel)
         };
 
         self.stats
             .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
+
         debug!(
-            "Accepted new channel from: {} ({})",
-            remote_addr,
+            "Switched to realtime mode (addr: {}, node_id: {})",
+            channel.remote_addr(),
             node_id.to_node_id()
         );
 
         for observer in observers {
             observer(channel.clone());
         }
+
+        true
     }
 
-    fn keepalive(&self) {
+    pub(crate) fn keepalive(&self) {
         let message = self.create_keepalive_message();
 
         // Wake up channels
@@ -615,7 +619,7 @@ struct State {
     attempts: AttemptContainer,
     channels: ChannelContainer,
     network_constants: NetworkConstants,
-    new_channel_observers: Vec<Arc<dyn Fn(Arc<Channel>) + Send + Sync>>,
+    new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<Channel>) + Send + Sync>>,
     excluded_peers: PeerExclusion,
     stats: Arc<Stats>,
     node_flags: NodeFlags,

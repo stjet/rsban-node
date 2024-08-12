@@ -1181,3 +1181,12 @@ fn epoch_conflict_confirm() {
         node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
     });
 }
+
+#[test]
+#[ignore = "wip"]
+fn wip() {
+    let mut system = System::new();
+    let _node0 = system.make_node();
+    let _node1 = system.make_node();
+    sleep(Duration::from_secs(15));
+}

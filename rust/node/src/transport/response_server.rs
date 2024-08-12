@@ -10,7 +10,7 @@ use crate::{
     },
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelMode, NetworkExt},
+    transport::ChannelMode,
     utils::{AsyncRuntime, ThreadPool},
     NetworkParams,
 };
@@ -286,9 +286,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
         let remote = self.channel.remote_addr();
 
         self.network
-            .upgrade_to_realtime_connection(&remote, *node_id);
-        debug!("Switched to realtime mode ({})", self.remote_endpoint());
-        return true;
+            .upgrade_to_realtime_connection(&remote, *node_id)
     }
 
     async fn run(&self) {

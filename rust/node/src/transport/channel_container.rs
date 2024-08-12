@@ -73,7 +73,7 @@ impl ChannelContainer {
             .count()
     }
 
-    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
+    fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
         if let Some(channel) = self.by_endpoint.remove(endpoint) {
             self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
 

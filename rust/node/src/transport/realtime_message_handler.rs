@@ -76,10 +76,8 @@ impl RealtimeMessageHandler {
                 // Check for special node port data
                 let peer0 = keepalive.peers[0];
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
-                    // TODO: Remove this as we do not need to establish a second connection to the same peer
                     let new_endpoint =
                         SocketAddrV6::new(*channel.remote_addr().ip(), peer0.port(), 0, 0);
-                    self.peer_connector.connect_to(new_endpoint);
 
                     // Remember this for future forwarding to other peers
                     channel.set_peering_endpoint(new_endpoint);

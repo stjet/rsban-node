@@ -661,7 +661,7 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         if !flags.disable_rep_crawler {
-            network.on_new_channel(Arc::new(move |channel| {
+            network.on_new_realtime_channel(Arc::new(move |channel| {
                 if let Some(crawler) = rep_crawler_w.upgrade() {
                     crawler.query_channel(channel);
                 }
@@ -764,7 +764,7 @@ impl Node {
         });
 
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
-        network.on_new_channel(Arc::new(move |channel| {
+        network.on_new_realtime_channel(Arc::new(move |channel| {
             let Some(factory) = keepalive_factory_w.upgrade() else {
                 return;
             };

@@ -8,7 +8,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
         into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
-        map_address_to_subnetwork, reserved_address,
+        map_address_to_subnetwork, reserved_address, SteadyClock, Timestamp,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
@@ -37,6 +37,7 @@ pub struct NetworkOptions {
     pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
+    pub clock: Arc<SteadyClock>,
 }
 
 impl NetworkOptions {
@@ -50,6 +51,7 @@ impl NetworkOptions {
             port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
+            clock: Arc::new(SteadyClock::new_null()),
         }
     }
 }
@@ -66,6 +68,7 @@ pub struct Network {
     limiter: Arc<OutboundBandwidthLimiter>,
     tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
+    clock: Arc<SteadyClock>,
 }
 
 impl Drop for Network {
@@ -99,6 +102,7 @@ impl Network {
             network_params: network,
             limiter: options.limiter,
             publish_filter: options.publish_filter,
+            clock: options.clock,
         }
     }
 
@@ -242,7 +246,10 @@ impl Network {
     }
 
     pub(crate) fn check_limits(&self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
-        self.state.lock().unwrap().check_limits(ip, direction)
+        self.state
+            .lock()
+            .unwrap()
+            .check_limits(ip, direction, self.clock.now())
     }
 
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
@@ -398,7 +405,7 @@ impl Network {
         }
 
         let mut state = self.state.lock().unwrap();
-        if state.excluded_peers.is_excluded(endpoint) {
+        if state.excluded_peers.is_excluded(endpoint, self.clock.now()) {
             return false;
         }
 
@@ -428,7 +435,9 @@ impl Network {
             return false; // Rejected
         }
 
-        if state.check_limits(endpoint.ip(), ChannelDirection::Outbound) != AcceptResult::Accepted {
+        if state.check_limits(endpoint.ip(), ChannelDirection::Outbound, self.clock.now())
+            != AcceptResult::Accepted
+        {
             self.stats.inc_dir(
                 StatType::TcpListener,
                 DetailType::ConnectRejected,
@@ -510,7 +519,10 @@ impl Network {
     }
 
     pub(crate) fn is_excluded(&self, addr: &SocketAddrV6) -> bool {
-        self.state.lock().unwrap().is_excluded(addr)
+        self.state
+            .lock()
+            .unwrap()
+            .is_excluded(addr, self.clock.now())
     }
 
     pub(crate) fn peer_misbehaved(&self, channel: &Arc<Channel>) {
@@ -518,7 +530,7 @@ impl Network {
         self.state
             .lock()
             .unwrap()
-            .peer_misbehaved(&channel.remote_addr());
+            .peer_misbehaved(&channel.remote_addr(), self.clock.now());
 
         // Disconnect
         self.erase_channel_by_endpoint(&channel.remote_addr())
@@ -739,20 +751,25 @@ impl State {
         (self.len_sqrt() * scale).ceil() as usize
     }
 
-    pub fn is_excluded(&mut self, endpoint: &SocketAddrV6) -> bool {
-        self.excluded_peers.is_excluded(endpoint)
+    pub fn is_excluded(&mut self, endpoint: &SocketAddrV6, now: Timestamp) -> bool {
+        self.excluded_peers.is_excluded(endpoint, now)
     }
 
-    pub fn is_excluded_ip(&mut self, ip: &Ipv6Addr) -> bool {
-        self.excluded_peers.is_excluded_ip(ip)
+    pub fn is_excluded_ip(&mut self, ip: &Ipv6Addr, now: Timestamp) -> bool {
+        self.excluded_peers.is_excluded_ip(ip, now)
     }
 
-    pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6) {
-        self.excluded_peers.peer_misbehaved(addr);
+    pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6, now: Timestamp) {
+        self.excluded_peers.peer_misbehaved(addr, now);
     }
 
-    pub fn check_limits(&mut self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
-        if self.is_excluded_ip(ip) {
+    pub fn check_limits(
+        &mut self,
+        ip: &Ipv6Addr,
+        direction: ChannelDirection,
+        now: Timestamp,
+    ) -> AcceptResult {
+        if self.is_excluded_ip(ip, now) {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
                 DetailType::Excluded,

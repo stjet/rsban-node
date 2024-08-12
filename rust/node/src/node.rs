@@ -143,6 +143,10 @@ impl Node {
         account_balance_changed: AccountBalanceChangedCallback,
         on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
     ) -> Self {
+        // Time relative to the start of the node. This makes time exlicit and enables us to
+        // write time relevant unit tests with ease.
+        let steady_clock = Arc::new(SteadyClock::default());
+
         let network_label = network_params.network.get_current_network_as_string();
         let global_config = GlobalConfig {
             node_config: config.clone(),
@@ -234,6 +238,7 @@ impl Node {
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
+            clock: steady_clock.clone(),
         }));
 
         let mut dead_channel_cleanup =
@@ -278,10 +283,6 @@ impl Node {
             ledger.clone(),
             network_params.node.max_weight_samples as usize,
         ));
-
-        // Time relative to the start of the node. This makes time exlicit and enables us to
-        // write time relevant unit tests with ease.
-        let steady_clock = Arc::new(SteadyClock::default());
 
         let online_reps = Arc::new(Mutex::new(
             OnlineReps::builder()

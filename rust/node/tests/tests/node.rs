@@ -1176,8 +1176,8 @@ fn epoch_conflict_confirm() {
         sleep(Duration::from_secs(1));
     }
 
-    //// Ensure both conflicting blocks were successfully processed and confirmed
-    //assert_timely(Duration::from_secs(15), || {
-    //    node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
-    //});
+    // Ensure both conflicting blocks were successfully processed and confirmed
+    assert_timely(Duration::from_secs(15), || {
+        node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
+    });
 }

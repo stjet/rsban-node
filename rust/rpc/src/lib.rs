@@ -1,7 +1,10 @@
+mod config;
 mod request;
 mod response;
 mod server;
+mod toml;
 
+pub use config::*;
 use serde_json::{json, to_string_pretty};
 pub use server::run_rpc_server;
 

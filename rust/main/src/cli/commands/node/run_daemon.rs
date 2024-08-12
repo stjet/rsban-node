@@ -8,7 +8,7 @@ use rsnano_node::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_rpc::run_rpc_server;
+use rsnano_rpc::{run_rpc_server, RpcConfig};
 use std::{
     net::{Ipv4Addr, SocketAddr},
     str::FromStr,

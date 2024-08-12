@@ -34,6 +34,22 @@ pub fn get_rpc_toml_config_path(data_path: &Path) -> PathBuf {
     rpc_toml
 }
 
+pub fn get_default_rpc_filepath() -> Result<PathBuf> {
+    Ok(get_default_rpc_filepath_from(
+        std::env::current_exe()?.as_path(),
+    ))
+}
+
+pub fn get_default_rpc_filepath_from(node_exe_path: &Path) -> PathBuf {
+    let mut result = node_exe_path.to_path_buf();
+    result.pop();
+    result.push("nano_rpc");
+    if let Some(ext) = node_exe_path.extension() {
+        result.set_extension(ext);
+    }
+    result
+}
+
 pub fn force_nano_dev_network() {
     NetworkConstants::set_active_network(Networks::NanoDevNetwork);
 }

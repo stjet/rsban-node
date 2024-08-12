@@ -3,13 +3,15 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
-    config::{DaemonConfig, NetworkConstants, NodeFlags},
+    config::{DaemonConfig, NetworkConstants, NodeFlags, RpcConfig},
     node::{Node, NodeExt},
     utils::AsyncRuntime,
     NetworkParams,
 };
 use rsnano_rpc::run_rpc_server;
 use std::{
+    net::{Ipv4Addr, SocketAddr},
+    str::FromStr,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
@@ -128,6 +130,8 @@ impl RunDaemonArgs {
 
         let node_config = daemon_config.node;
 
+        let rpc_config = RpcConfig::new(&network_params.network, get_cpu_count());
+
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
 
@@ -153,13 +157,21 @@ impl RunDaemonArgs {
 
         node.start();
 
-        let rpc_server = tokio::spawn(run_rpc_server(node.clone()));
+        let rpc_server = if daemon_config.rpc_enable {
+            let address_str = format!("{}:{}", Ipv4Addr::LOCALHOST, rpc_config.port);
+            let socket_addr = SocketAddr::from_str(&address_str)?;
+            Some(tokio::spawn(run_rpc_server(node.clone(), socket_addr)))
+        } else {
+            None
+        };
 
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let finished_clone = finished.clone();
 
         ctrlc::set_handler(move || {
-            rpc_server.abort();
+            if let Some(server) = rpc_server.as_ref() {
+                server.abort();
+            }
             node.stop();
             *finished_clone.0.lock().unwrap() = true;
             finished_clone.1.notify_all();

@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
-    consensus::Election,
+    consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
     transport::{Channel, ChannelDirection, PeerConnectorExt, TcpStream},
     unique_path,
@@ -310,6 +310,22 @@ pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     let election = node.active.election(&block.qualified_root()).unwrap();
     election.transition_active();
     election
+}
+
+pub(crate) fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
+    for hash in hashes {
+        let election = start_election(node, hash);
+        if forced {
+            node.active.force_confirm(&election);
+        }
+    }
+}
+
+pub(crate) fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
+    for hash in hashes {
+        let block = node.block(hash).unwrap();
+        node.manual_scheduler.push(Arc::new(block), None);
+    }
 }
 
 pub(crate) fn setup_chain(

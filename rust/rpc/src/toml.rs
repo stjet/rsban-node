@@ -144,7 +144,8 @@ mod tests {
 
     use crate::{RpcConfig, RpcToml};
 
-    static DEFAULT_TOML_STR: &str = r#"address = "::1"
+    static DEFAULT_TOML_STR: &str = r#"
+        address = "::1"
         enable_control = false
     	max_json_depth = 20
     	max_request_size = 33554432
@@ -159,11 +160,16 @@ mod tests {
     	ipc_port = 56000
     	num_ipc_connections = 4"#;
 
-    static MODIFIED_TOML_STR: &str = r#"address = "0:0:0:0:0:ffff:7f01:101"
+    static MODIFIED_TOML_STR: &str = r#"
+        address = "0:0:0:0:0:ffff:7f01:101"
     	enable_control = true
     	max_json_depth = 9
     	max_request_size = 999
     	port = 999
+
+        [logging]
+        log_rpc = false
+
     	[process]
     	io_threads = 999
     	ipc_address = "0:0:0:0:0:ffff:7f01:101"
@@ -196,7 +202,42 @@ mod tests {
 
         let default_rpc_config = RpcConfig::default();
 
-        assert_ne!(&deserialized_rpc_config, &default_rpc_config);
+        assert_ne!(deserialized_rpc_config.address, default_rpc_config.address);
+        assert_ne!(
+            deserialized_rpc_config.enable_control,
+            default_rpc_config.enable_control
+        );
+        assert_ne!(
+            deserialized_rpc_config.max_json_depth,
+            default_rpc_config.max_json_depth
+        );
+        assert_ne!(
+            deserialized_rpc_config.max_request_size,
+            default_rpc_config.max_request_size
+        );
+        assert_ne!(deserialized_rpc_config.port, default_rpc_config.port);
+
+        assert_ne!(
+            deserialized_rpc_config.rpc_logging.log_rpc,
+            default_rpc_config.rpc_logging.log_rpc
+        );
+
+        assert_ne!(
+            deserialized_rpc_config.rpc_process.io_threads,
+            default_rpc_config.rpc_process.io_threads
+        );
+        assert_ne!(
+            deserialized_rpc_config.rpc_process.ipc_address,
+            default_rpc_config.rpc_process.ipc_address
+        );
+        assert_ne!(
+            deserialized_rpc_config.rpc_process.ipc_port,
+            default_rpc_config.rpc_process.ipc_port
+        );
+        assert_ne!(
+            deserialized_rpc_config.rpc_process.num_ipc_connections,
+            default_rpc_config.rpc_process.num_ipc_connections
+        );
     }
 
     #[test]
@@ -249,18 +290,19 @@ mod tests {
 
         let default_toml_str_trimmed: String = DEFAULT_TOML_STR
             .lines()
-            .map(str::trim)
+            .map(|line| line.trim())
             .collect::<Vec<&str>>()
-            .join("\n");
+            .join("\n")
+            .trim()
+            .to_string();
 
         let serialized_toml_trimmed: String = serialized_toml
             .lines()
-            .map(str::trim)
+            .map(|line| line.trim())
             .collect::<Vec<&str>>()
-            .join("\n");
-
-        println!("{}", &serialized_toml_trimmed);
-        println!("{}", &default_toml_str_trimmed);
+            .join("\n")
+            .trim()
+            .to_string();
 
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
     }

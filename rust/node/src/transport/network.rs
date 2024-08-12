@@ -7,7 +7,7 @@ use crate::{
     config::{NetworkConstants, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
-        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_or_v4_mapped_address,
+        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_mapped,
         map_address_to_subnetwork, reserved_address, SteadyClock, Timestamp,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
@@ -138,12 +138,12 @@ impl Network {
         stream: TcpStream,
         direction: ChannelDirection,
     ) -> anyhow::Result<Arc<Channel>> {
-        let remote_endpoint = stream
+        let peer_addr = stream
             .peer_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let result = self.check_limits(remote_endpoint.ip(), direction);
+        let result = self.check_limits(&peer_addr, direction);
 
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
@@ -158,10 +158,7 @@ impl Network {
                     Direction::Out,
                 );
             }
-            debug!(
-                "Rejected connection from: {} ({:?})",
-                remote_endpoint, direction
-            );
+            debug!("Rejected connection from: {} ({:?})", peer_addr, direction);
             if direction == ChannelDirection::Inbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -198,7 +195,7 @@ impl Network {
         .await;
         self.state.lock().unwrap().channels.insert(channel.clone());
 
-        debug!("Accepted connection: {} ({:?})", remote_endpoint, direction);
+        debug!("Accepted connection: {} ({:?})", peer_addr, direction);
 
         Ok(channel)
     }
@@ -245,7 +242,11 @@ impl Network {
             .push(callback);
     }
 
-    pub(crate) fn check_limits(&self, ip: &Ipv6Addr, direction: ChannelDirection) -> AcceptResult {
+    pub(crate) fn check_limits(
+        &self,
+        ip: &SocketAddrV6,
+        direction: ChannelDirection,
+    ) -> AcceptResult {
         self.state
             .lock()
             .unwrap()
@@ -389,39 +390,39 @@ impl Network {
         is_max
     }
 
-    pub(crate) fn track_connection_attempt(&self, endpoint: &SocketAddrV6) -> bool {
+    pub(crate) fn track_connection_attempt(&self, peer: &SocketAddrV6) -> bool {
         if self.flags.disable_tcp_realtime {
             return false;
         }
 
         // Don't contact invalid IPs
-        if self.not_a_peer(endpoint, self.allow_local_peers) {
+        if self.not_a_peer(peer, self.allow_local_peers) {
             return false;
         }
 
         // Don't overload single IP
-        if self.max_ip_or_subnetwork_connections(endpoint) {
+        if self.max_ip_or_subnetwork_connections(peer) {
             return false;
         }
 
         let mut state = self.state.lock().unwrap();
-        if state.excluded_peers.is_excluded(endpoint, self.clock.now()) {
+        if state.excluded_peers.is_excluded(peer, self.clock.now()) {
             return false;
         }
 
         // Don't connect to nodes that already sent us something
-        if state.find_channel_by_remote_addr(endpoint).is_some() {
+        if state.find_channel_by_remote_addr(peer).is_some() {
             return false;
         }
-        if state.find_channel_by_peering_addr(endpoint).is_some() {
-            return false;
-        }
-
-        if state.attempts.contains(endpoint) {
+        if state.find_channel_by_peering_addr(peer).is_some() {
             return false;
         }
 
-        let count = state.attempts.count_by_address(endpoint.ip());
+        if state.attempts.contains(peer) {
+            return false;
+        }
+
+        let count = state.attempts.count_by_address(peer.ip());
         if count >= self.tcp_config.max_attempts_per_ip {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
@@ -430,12 +431,12 @@ impl Network {
             );
             debug!(
                         "Connection attempt already in progress ({}), unable to initiate new connection: {}",
-                        count, endpoint.ip()
+                        count, peer.ip()
                     );
             return false; // Rejected
         }
 
-        if state.check_limits(endpoint.ip(), ChannelDirection::Outbound, self.clock.now())
+        if state.check_limits(peer, ChannelDirection::Outbound, self.clock.now())
             != AcceptResult::Accepted
         {
             self.stats.inc_dir(
@@ -453,9 +454,9 @@ impl Network {
             DetailType::ConnectInitiate,
             Direction::Out,
         );
-        debug!("Initiate outgoing connection to: {}", endpoint);
+        debug!("Initiate outgoing connection to: {}", peer);
 
-        state.attempts.insert(*endpoint, ChannelDirection::Outbound);
+        state.attempts.insert(*peer, ChannelDirection::Outbound);
         true
     }
 
@@ -755,33 +756,29 @@ impl State {
         self.excluded_peers.is_excluded(endpoint, now)
     }
 
-    pub fn is_excluded_ip(&mut self, ip: &Ipv6Addr, now: Timestamp) -> bool {
-        self.excluded_peers.is_excluded_ip(ip, now)
-    }
-
     pub fn peer_misbehaved(&mut self, addr: &SocketAddrV6, now: Timestamp) {
         self.excluded_peers.peer_misbehaved(addr, now);
     }
 
     pub fn check_limits(
         &mut self,
-        ip: &Ipv6Addr,
+        peer: &SocketAddrV6,
         direction: ChannelDirection,
         now: Timestamp,
     ) -> AcceptResult {
-        if self.is_excluded_ip(ip, now) {
+        if self.is_excluded(peer, now) {
             self.stats.inc_dir(
                 StatType::TcpListenerRejected,
                 DetailType::Excluded,
                 direction.into(),
             );
 
-            debug!("Rejected connection from excluded peer: {}", ip);
+            debug!("Rejected connection from excluded peer: {}", peer);
             return AcceptResult::Rejected;
         }
 
         if !self.node_flags.disable_max_peers_per_ip {
-            let count = self.channels.count_by_ip(ip);
+            let count = self.channels.count_by_ip(peer.ip());
             if count >= self.network_constants.max_peers_per_ip {
                 self.stats.inc_dir(
                     StatType::TcpListenerRejected,
@@ -790,17 +787,16 @@ impl State {
                 );
                 debug!(
                     "Max connections per IP reached ({}, count: {}), unable to open new connection",
-                    ip, count
+                    peer.ip(),
+                    count
                 );
                 return AcceptResult::Rejected;
             }
         }
 
         // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
-        if !self.node_flags.disable_max_peers_per_subnetwork
-            && !is_ipv4_or_v4_mapped_address(&(*ip).into())
-        {
-            let subnet = map_address_to_subnetwork(ip);
+        if !self.node_flags.disable_max_peers_per_subnetwork && !is_ipv4_mapped(&peer.ip()) {
+            let subnet = map_address_to_subnetwork(&peer.ip());
             let count = self.channels.count_by_subnet(&subnet);
             if count >= self.network_constants.max_peers_per_subnetwork {
                 self.stats.inc_dir(
@@ -810,7 +806,7 @@ impl State {
                 );
                 debug!(
                     "Max connections per subnetwork reached ({}), unable to open new connection",
-                    ip
+                    peer.ip()
                 );
                 return AcceptResult::Rejected;
             }
@@ -828,7 +824,8 @@ impl State {
                     );
                     debug!(
                         "Max inbound connections reached ({}), unable to accept new connection: {}",
-                        count, ip
+                        count,
+                        peer.ip()
                     );
                     return AcceptResult::Rejected;
                 }
@@ -844,7 +841,7 @@ impl State {
                     );
                     debug!(
                         "Max outbound connections reached ({}), unable to initiate new connection: {}",
-                        count, ip
+                        count, peer.ip()
                     );
                     return AcceptResult::Rejected;
                 }

@@ -1,11 +1,11 @@
+use crate::utils::Timestamp;
 use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     collections::{BTreeMap, HashMap},
+    mem::size_of,
     net::{Ipv6Addr, SocketAddrV6},
     time::Duration,
 };
-
-use crate::utils::Timestamp;
 
 /// Manages excluded peers.
 /// Peers are excluded for a while if they behave badly
@@ -61,12 +61,8 @@ impl PeerExclusion {
     }
 
     /// Checks if an endpoint is currently excluded.
-    pub(crate) fn is_excluded(&mut self, endpoint: &SocketAddrV6, now: Timestamp) -> bool {
-        self.is_excluded_ip(endpoint.ip(), now)
-    }
-
-    pub(crate) fn is_excluded_ip(&mut self, ip: &Ipv6Addr, now: Timestamp) -> bool {
-        if let Some(peer) = self.by_ip.get(ip).cloned() {
+    pub(crate) fn is_excluded(&mut self, peer_addr: &SocketAddrV6, now: Timestamp) -> bool {
+        if let Some(peer) = self.by_ip.get(&peer_addr.ip()).cloned() {
             if peer.has_expired(now) {
                 self.remove(&peer.address);
             }
@@ -85,10 +81,6 @@ impl PeerExclusion {
 
     pub(crate) fn len(&self) -> usize {
         self.by_ip.len()
-    }
-
-    fn element_size() -> usize {
-        std::mem::size_of::<Peer>()
     }
 
     fn clean_old_peers(&mut self) {
@@ -110,7 +102,7 @@ impl PeerExclusion {
             vec![ContainerInfoComponent::Leaf(ContainerInfo {
                 name: "peers".to_string(),
                 count: self.len(),
-                sizeof_element: Self::element_size(),
+                sizeof_element: size_of::<Peer>(),
             })],
         )
     }
@@ -215,90 +207,100 @@ mod tests {
 
     #[test]
     fn new_excluded_peers_excludes_nothing() {
-        let mut excluded_peers = PeerExclusion::new();
-        let now = Timestamp::new_test_instance();
-        assert_eq!(excluded_peers.is_excluded(&test_endpoint(1), now), false);
-        assert_eq!(excluded_peers.is_excluded(&test_endpoint(2), now), false);
+        let mut peers = PeerExclusion::new();
+        assert_eq!(peers.is_excluded(&test_endpoint(1), NOW), false);
+        assert_eq!(peers.is_excluded(&test_endpoint(2), NOW), false);
     }
 
-    #[test]
-    fn misbehaving_once_is_allowed() {
-        let mut excluded_peers = PeerExclusion::new();
-        let now = Timestamp::new_test_instance();
-        let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        assert_eq!(excluded_peers.is_excluded(&endpoint, now), false);
-    }
+    mod misbehavior {
+        use super::*;
 
-    #[test]
-    fn misbehaving_twice_leads_to_a_ban() {
-        let mut excluded_peers = PeerExclusion::new();
-        let now = Timestamp::new_test_instance();
-        let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        assert_eq!(excluded_peers.is_excluded(&endpoint, now), true);
-        assert_eq!(
-            excluded_peers.excluded_until(&endpoint),
-            Some(now + Peer::EXCLUDE_TIME)
-        );
-    }
-
-    #[test]
-    fn misbehaving_more_than_twice_increases_exclusion_time() {
-        let mut excluded_peers = PeerExclusion::new();
-        let now = Timestamp::new_test_instance();
-        let endpoint = test_endpoint(1);
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        assert_eq!(
-            excluded_peers.excluded_until(&endpoint),
-            Some(now + Peer::EXCLUDE_TIME)
-        );
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        assert_eq!(
-            excluded_peers.excluded_until(&endpoint),
-            Some(now + Peer::EXCLUDE_TIME * 6)
-        );
-        excluded_peers.peer_misbehaved(&endpoint, now);
-        assert_eq!(
-            excluded_peers.excluded_until(&endpoint),
-            Some(now + Peer::EXCLUDE_TIME * 8)
-        );
-    }
-
-    #[test]
-    fn remove_oldest_entry() {
-        let mut excluded_peers = PeerExclusion::with_max_size(6);
-        let now = Timestamp::new_test_instance();
-        for i in 0..6 {
-            excluded_peers
-                .peer_misbehaved(&test_endpoint(i), now + Duration::from_millis(i as u64));
-        }
-        assert_eq!(excluded_peers.len(), 6);
-        excluded_peers.peer_misbehaved(&test_endpoint(6), now + Duration::from_millis(6));
-        assert_eq!(excluded_peers.len(), 6);
-        assert_eq!(excluded_peers.contains(&test_endpoint(0)), false);
-        assert_eq!(excluded_peers.contains(&test_endpoint(1)), true);
-    }
-
-    #[test]
-    fn remove_many_old_entries() {
-        let mut excluded_peers = PeerExclusion::with_max_size(2);
-        let now = Timestamp::new_test_instance();
-        for i in 0..6 {
-            excluded_peers
-                .peer_misbehaved(&test_endpoint(i), now + Duration::from_millis(i as u64));
+        #[test]
+        fn misbehaving_once_is_allowed() {
+            let mut peers = PeerExclusion::new();
+            let endpoint = test_endpoint(1);
+            peers.peer_misbehaved(&endpoint, NOW);
+            assert_eq!(peers.is_excluded(&endpoint, NOW), false);
         }
 
-        excluded_peers.peer_misbehaved(&test_endpoint(6), now + Duration::from_millis(6));
-        assert_eq!(excluded_peers.len(), 2);
-        assert_eq!(excluded_peers.contains(&test_endpoint(4)), false);
-        assert_eq!(excluded_peers.contains(&test_endpoint(5)), true);
-        assert_eq!(excluded_peers.contains(&test_endpoint(6)), true);
+        #[test]
+        fn misbehaving_twice_leads_to_a_ban() {
+            let mut peers = PeerExclusion::new();
+            let endpoint = test_endpoint(1);
+            peers.peer_misbehaved(&endpoint, NOW);
+            peers.peer_misbehaved(&endpoint, NOW);
+            assert_eq!(peers.is_excluded(&endpoint, NOW), true);
+            assert_eq!(
+                peers.excluded_until(&endpoint),
+                Some(NOW + Peer::EXCLUDE_TIME)
+            );
+        }
+
+        #[test]
+        fn misbehaving_more_than_twice_increases_exclusion_time() {
+            let mut peers = PeerExclusion::new();
+            let endpoint = test_endpoint(1);
+            peers.peer_misbehaved(&endpoint, NOW);
+            peers.peer_misbehaved(&endpoint, NOW);
+            peers.peer_misbehaved(&endpoint, NOW);
+            assert_eq!(
+                peers.excluded_until(&endpoint),
+                Some(NOW + Peer::EXCLUDE_TIME * 6)
+            );
+            peers.peer_misbehaved(&endpoint, NOW);
+            assert_eq!(
+                peers.excluded_until(&endpoint),
+                Some(NOW + Peer::EXCLUDE_TIME * 8)
+            );
+        }
+
+        #[test]
+        fn peer_misbehavior_ignores_port() {
+            let mut endpoint1 = test_endpoint(1);
+            let mut endpoint2 = endpoint1.clone();
+            endpoint1.set_port(100);
+            endpoint2.set_port(200);
+
+            let mut peers = PeerExclusion::new();
+            peers.peer_misbehaved(&endpoint1, NOW);
+            peers.peer_misbehaved(&endpoint2, NOW);
+
+            assert!(peers.is_excluded(&endpoint1, NOW));
+            assert!(peers.is_excluded(&endpoint2, NOW));
+        }
+    }
+
+    mod max_size {
+        use super::*;
+
+        #[test]
+        fn remove_oldest_entry_when_size_limit_reached() {
+            let mut peers = PeerExclusion::with_max_size(6);
+            for i in 0..7 {
+                peers.peer_misbehaved(&test_endpoint(i), NOW + Duration::from_millis(i as u64));
+            }
+            assert_eq!(peers.len(), 6);
+            assert_eq!(peers.contains(&test_endpoint(0)), false);
+            assert_eq!(peers.contains(&test_endpoint(1)), true);
+        }
+
+        #[test]
+        fn remove_many_old_entries() {
+            let mut peers = PeerExclusion::with_max_size(2);
+            for i in 0..7 {
+                peers.peer_misbehaved(&test_endpoint(i), NOW + Duration::from_millis(i as u64));
+            }
+
+            assert_eq!(peers.len(), 2);
+            assert_eq!(peers.contains(&test_endpoint(4)), false);
+            assert_eq!(peers.contains(&test_endpoint(5)), true);
+            assert_eq!(peers.contains(&test_endpoint(6)), true);
+        }
     }
 
     fn test_endpoint(i: usize) -> SocketAddrV6 {
         SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, i as u16), 0, 0, 0)
     }
+
+    const NOW: Timestamp = Timestamp::new_test_instance();
 }

@@ -3,12 +3,12 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
-    config::{DaemonConfig, NetworkConstants, NodeFlags, RpcConfig},
+    config::{DaemonConfig, NetworkConstants, NodeFlags},
     node::{Node, NodeExt},
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_rpc::run_rpc_server;
+use rsnano_rpc::{run_rpc_server, RpcConfig};
 use std::{
     net::{Ipv4Addr, SocketAddr},
     str::FromStr,
@@ -128,7 +128,7 @@ impl RunDaemonArgs {
 
         let mut daemon_config = DaemonConfig::new(&network_params, get_cpu_count())?;
 
-        //daemon_config.rpc_enable = true;
+        daemon_config.rpc_enable = true;
 
         let node_config = daemon_config.node;
 

@@ -1,26 +1,7 @@
-use super::NetworkConstants;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
-use std::{
-    net::Ipv6Addr,
-    path::{Path, PathBuf},
-};
-
-pub fn get_default_rpc_filepath() -> Result<PathBuf> {
-    Ok(get_default_rpc_filepath_from(
-        std::env::current_exe()?.as_path(),
-    ))
-}
-
-fn get_default_rpc_filepath_from(node_exe_path: &Path) -> PathBuf {
-    let mut result = node_exe_path.to_path_buf();
-    result.pop();
-    result.push("nano_rpc");
-    if let Some(ext) = node_exe_path.extension() {
-        result.set_extension(ext);
-    }
-    result
-}
+use rsnano_node::config::NetworkConstants;
+use std::net::Ipv6Addr;
 
 pub struct RpcConfig {
     pub address: String,
@@ -166,7 +147,10 @@ impl RpcProcessConfig {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_node::config::get_default_rpc_filepath_from;
+
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn default_rpc_filepath() -> Result<()> {

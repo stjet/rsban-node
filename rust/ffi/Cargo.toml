@@ -16,15 +16,16 @@ rsnano_messages = { path = "../messages" }
 rsnano_store_lmdb = { path = "../store_lmdb" }
 rsnano_ledger = { path = "../ledger" }
 rsnano_node = { path = "../node" }
+rsnano_rpc = { path = "../rpc" }
 anyhow = "1"
 num = "0"
 num-traits = "0"
 num-derive = "0"
 rand = "0"
 bounded-vec-deque = "0.1.1"
-tokio = {version = "1", features=["rt-multi-thread"]}
+tokio = { version = "1", features = ["rt-multi-thread"] }
 tracing = "0.1"
-tracing-subscriber = {version="0.3.18", features=["env-filter", "json"]}
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 
 [build-dependencies]
 cbindgen = "0.24.3"

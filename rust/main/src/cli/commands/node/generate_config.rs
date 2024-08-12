@@ -2,10 +2,11 @@ use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::work::WorkThresholds;
 use rsnano_node::{
-    config::{DaemonConfig, NetworkConstants, RpcConfig},
+    config::{DaemonConfig, NetworkConstants},
     utils::TomlConfig,
     NetworkParams,
 };
+use rsnano_rpc::RpcConfig;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input1")

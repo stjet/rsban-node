@@ -1,7 +1,8 @@
-use super::get_default_rpc_filepath;
 use anyhow::Result;
 use rsnano_core::utils::TomlWriter;
 use std::path::PathBuf;
+
+use super::get_default_rpc_filepath;
 
 pub struct RpcChildProcessConfig {
     pub enable: bool,

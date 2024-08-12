@@ -11,7 +11,7 @@ use crate::{
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{BufferDropPolicy, Network},
-    utils::HardenedConstants,
+    utils::{HardenedConstants, SteadyClock},
     wallets::Wallets,
     NetworkParams,
 };
@@ -91,7 +91,7 @@ impl Default for ActiveElectionsConfig {
 }
 
 pub struct ActiveElections {
-    relative_time: Instant,
+    steady_clock: Arc<SteadyClock>,
     pub mutex: Mutex<ActiveElectionsState>,
     pub condition: Condvar,
     network_params: NetworkParams,
@@ -142,7 +142,7 @@ impl ActiveElections {
         vote_applier: Arc<VoteApplier>,
         vote_router: Arc<VoteRouter>,
         vote_cache_processor: Arc<VoteCacheProcessor>,
-        relative_time: Instant,
+        steady_clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveElectionsState {
@@ -181,7 +181,7 @@ impl ActiveElections {
             vote_applier,
             vote_router,
             vote_cache_processor,
-            relative_time,
+            steady_clock,
         }
     }
 
@@ -1291,13 +1291,10 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
                 let online_reps = self.online_reps.clone();
-                let relative_time = self.relative_time;
+                let clock = self.steady_clock.clone();
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    online_reps
-                        .lock()
-                        .unwrap()
-                        .vote_observed(rep, relative_time.elapsed());
+                    online_reps.lock().unwrap().vote_observed(rep, clock.now());
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);

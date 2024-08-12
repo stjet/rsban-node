@@ -868,11 +868,7 @@ impl State {
                     count: self.attempts.len(),
                     sizeof_element: AttemptContainer::ELEMENT_SIZE,
                 }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "peers".to_string(),
-                    count: self.excluded_peers.size(),
-                    sizeof_element: PeerExclusion::element_size(),
-                }),
+                self.excluded_peers.collect_container_info("excluded_peers"),
             ],
         )
     }

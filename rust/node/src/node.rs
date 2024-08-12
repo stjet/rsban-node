@@ -31,8 +31,8 @@ use crate::{
         TrafficType,
     },
     utils::{
-        AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
-        TxnTrackingConfig,
+        AsyncRuntime, LongRunningTransactionLogger, SteadyClock, ThreadPool, ThreadPoolImpl,
+        TimerThread, TxnTrackingConfig,
     },
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
@@ -65,14 +65,14 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
     pub application_path: PathBuf,
-    pub relative_time: Instant,
+    pub steady_clock: Arc<SteadyClock>,
     pub node_id: KeyPair,
     pub config: NodeConfig,
     pub network_params: NetworkParams,
@@ -281,7 +281,7 @@ impl Node {
 
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.
-        let relative_time = Instant::now();
+        let steady_clock = Arc::new(SteadyClock::default());
 
         let online_reps = Arc::new(Mutex::new(
             OnlineReps::builder()
@@ -436,7 +436,7 @@ impl Node {
             vote_applier,
             vote_router.clone(),
             vote_cache_processor.clone(),
-            relative_time,
+            steady_clock.clone(),
         ));
 
         active_elections.initialize();
@@ -503,7 +503,7 @@ impl Node {
             ledger.clone(),
             active_elections.clone(),
             peer_connector.clone(),
-            relative_time,
+            steady_clock.clone(),
         ));
 
         // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -774,6 +774,7 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let reps_w = Arc::downgrade(&online_reps);
+        let clock = steady_clock.clone();
         vote_processor.add_vote_processed_callback(Box::new(
             move |vote, channel_id, source, code| {
                 debug_assert!(code != VoteCode::Invalid);
@@ -793,7 +794,7 @@ impl Node {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
                     reps.lock()
                         .unwrap()
-                        .vote_observed(vote.voting_account, relative_time.elapsed());
+                        .vote_observed(vote.voting_account, clock.now());
                 }
             },
         ));
@@ -992,7 +993,7 @@ impl Node {
         );
 
         Self {
-            relative_time,
+            steady_clock,
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
                 "Net reachout",

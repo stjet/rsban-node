@@ -3,6 +3,7 @@ use rsnano_core::utils::{get_cpu_count, TomlWriter};
 use rsnano_node::config::NetworkConstants;
 use std::net::Ipv6Addr;
 
+#[derive(Debug, PartialEq)]
 pub struct RpcConfig {
     pub address: String,
     pub port: u16,
@@ -105,6 +106,7 @@ impl RpcConfig {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct RpcLoggingConfig {
     pub log_rpc: bool,
 }
@@ -121,6 +123,7 @@ impl RpcLoggingConfig {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct RpcProcessConfig {
     pub io_threads: u32,
     pub ipc_address: String,

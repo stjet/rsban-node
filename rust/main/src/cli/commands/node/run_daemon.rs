@@ -1,4 +1,4 @@
-use crate::cli::{get_path, init_tracing};
+use crate::cli::{commands::read_toml, get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::work::WorkPoolImpl;
@@ -8,9 +8,9 @@ use rsnano_node::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_rpc::{run_rpc_server, RpcConfig};
+use rsnano_rpc::{run_rpc_server, RpcConfig, RpcToml};
 use std::{
-    net::{Ipv4Addr, SocketAddr},
+    net::SocketAddr,
     str::FromStr,
     fs,
     sync::{Arc, Condvar, Mutex},
@@ -142,7 +142,17 @@ impl RunDaemonArgs {
 
         let node_config = daemon_config.node;
 
-        let rpc_config = RpcConfig::new(&network_params.network, get_cpu_count());
+        let rpc_toml_config_path = get_rpc_toml_config_path(&path);
+
+        let rpc_config = if rpc_toml_config_path.exists() {
+            let toml_str = read_toml(&rpc_toml_config_path)?;
+
+            let rpc_toml: RpcToml = from_str(&toml_str)?;
+
+            (&rpc_toml).into()
+        } else {
+            RpcConfig::default()
+        };
 
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
@@ -170,7 +180,7 @@ impl RunDaemonArgs {
         node.start();
 
         let rpc_server = if daemon_config.rpc_enable {
-            let address_str = format!("{}:{}", Ipv4Addr::LOCALHOST, rpc_config.port);
+            let address_str = format!("[{}]:{}", rpc_config.address, rpc_config.port);
             let socket_addr = SocketAddr::from_str(&address_str)?;
             Some(tokio::spawn(run_rpc_server(node.clone(), socket_addr)))
         } else {

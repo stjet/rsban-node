@@ -11,17 +11,14 @@ use axum::{
 };
 use rsnano_node::node::Node;
 use std::net::SocketAddr;
-use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
-pub async fn run_rpc_server(node: Arc<Node>) -> Result<()> {
+pub async fn run_rpc_server(node: Arc<Node>, server_addr: SocketAddr) -> Result<()> {
     let app = Router::new()
         .route("/", post(handle_rpc))
         .layer(map_request(set_header))
         .with_state(node);
-
-    let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 7076);
 
     let listener = TcpListener::bind(server_addr)
         .await

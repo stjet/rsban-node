@@ -11,3 +11,4 @@ anyhow = "1.0.40"
 rsnano_node = { path = "../node" }
 axum = "0.7.5"
 rsnano_core = { path = "../core" }
+toml = "0.8.15"

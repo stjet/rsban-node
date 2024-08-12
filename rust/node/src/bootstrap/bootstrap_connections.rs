@@ -6,7 +6,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Channel, ChannelDirection, Network, OutboundBandwidthLimiter, TcpStreamFactory},
+    transport::{AcceptResult, ChannelDirection, Network, TcpStreamFactory},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use ordered_float::OrderedFloat;
@@ -40,7 +40,6 @@ pub struct BootstrapConnections {
     runtime: Arc<AsyncRuntime>,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
-    outbound_limiter: Arc<OutboundBandwidthLimiter>,
     bootstrap_initiator: Mutex<Option<Weak<BootstrapInitiator>>>,
     pulls_cache: Arc<Mutex<PullsCache>>,
 }
@@ -53,7 +52,6 @@ impl BootstrapConnections {
         async_rt: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         stats: Arc<Stats>,
-        outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
         pulls_cache: Arc<Mutex<PullsCache>>,
     ) -> Self {
@@ -74,7 +72,6 @@ impl BootstrapConnections {
             workers,
             runtime: async_rt,
             stats,
-            outbound_limiter,
             block_processor,
             pulls_cache,
             bootstrap_initiator: Mutex::new(None),
@@ -96,7 +93,6 @@ impl BootstrapConnections {
             runtime: Arc::new(AsyncRuntime::default()),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
-            outbound_limiter: Arc::new(OutboundBandwidthLimiter::default()),
             bootstrap_initiator: Mutex::new(None),
             pulls_cache: Arc::new(Mutex::new(PullsCache::new())),
         }
@@ -522,46 +518,47 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         let self_l = Arc::clone(self);
 
         self.runtime.tokio.spawn(async move {
-            let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
-            let tcp_stream = match tokio::time::timeout(
-                self_l.config.tcp_io_timeout,
-                tcp_stream_factory.connect(endpoint),
-            )
-            .await
+            match self_l
+                .network
+                .check_limits(&endpoint, ChannelDirection::Outbound)
             {
-                Ok(Ok(stream)) => stream,
-                Ok(Err(e)) => {
-                    debug!(
-                        "Error initiating bootstrap connection to: {} ({:?})",
-                        endpoint, e
-                    );
-                    self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
-                    return;
-                }
-                Err(_) => {
-                    debug!("Timeout connecting to: {}", endpoint);
-                    self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
-                    return;
-                }
-            };
+                AcceptResult::Accepted => {
+                    let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
+                    let tcp_stream = match tokio::time::timeout(
+                        self_l.config.tcp_io_timeout,
+                        tcp_stream_factory.connect(endpoint),
+                    )
+                    .await
+                    {
+                        Ok(Ok(stream)) => stream,
+                        Ok(Err(e)) => {
+                            debug!(
+                                "Error initiating bootstrap connection to: {} ({:?})",
+                                endpoint, e
+                            );
+                            self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
+                            return;
+                        }
+                        Err(_) => {
+                            debug!("Timeout connecting to: {}", endpoint);
+                            self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
+                            return;
+                        }
+                    };
 
-            debug!("Connection established to: {}", endpoint);
+                    debug!("Connection established to: {}", endpoint);
+                    let Ok(channel) = self_l.network.add(tcp_stream, ChannelDirection::Outbound).await else {
+                        return;
+                    };
 
-            let channel_id = self_l.network.get_next_channel_id();
-            let protocol = self_l.config.protocol;
-
-            let channel = Channel::create(
-                channel_id,
-                tcp_stream,
-                ChannelDirection::Outbound,
-                protocol,
-                self_l.stats.clone(),
-                self_l.outbound_limiter.clone(),
-            )
-            .await;
-
-            let client = Arc::new(BootstrapClient::new(&self_l, channel));
-            self_l.pool_connection(client, true, push_front);
+                    let client = Arc::new(BootstrapClient::new(&self_l, channel));
+                    self_l.pool_connection(client, true, push_front);
+                },
+                __ => debug!(
+                    "Could not create outbound bootstrap connection to {}, because of failed limit check",
+                    endpoint
+                ),
+            }
         });
     }
 

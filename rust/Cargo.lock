@@ -1981,6 +1981,7 @@ dependencies = [
  "rsnano_rpc",
  "rsnano_store_lmdb",
  "tokio",
+ "toml 0.8.15",
  "tracing",
  "tracing-subscriber",
 ]

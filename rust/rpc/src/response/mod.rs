@@ -1,3 +1,5 @@
-mod account_balance;
+mod node;
+mod wallet;
 
-pub(crate) use account_balance::*;
+pub(crate) use node::*;
+pub(crate) use wallet::*;

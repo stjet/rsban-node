@@ -126,7 +126,9 @@ impl RunDaemonArgs {
 
         std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
-        let daemon_config = DaemonConfig::new(&network_params, get_cpu_count())?;
+        let mut daemon_config = DaemonConfig::new(&network_params, get_cpu_count())?;
+
+        //daemon_config.rpc_enable = true;
 
         let node_config = daemon_config.node;
 

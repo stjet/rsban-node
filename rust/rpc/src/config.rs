@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rsnano_core::utils::TomlWriter;
+use rsnano_core::utils::{get_cpu_count, TomlWriter};
 use rsnano_node::config::NetworkConstants;
 use std::net::Ipv6Addr;
 
@@ -11,6 +11,12 @@ pub struct RpcConfig {
     pub max_request_size: u64,
     pub rpc_logging: RpcLoggingConfig,
     pub rpc_process: RpcProcessConfig,
+}
+
+impl Default for RpcConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
+    }
 }
 
 impl RpcConfig {
@@ -126,6 +132,12 @@ pub struct RpcProcessConfig {
     pub ipc_address: String,
     pub ipc_port: u16,
     pub num_ipc_connections: u32,
+}
+
+impl Default for RpcProcessConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
+    }
 }
 
 impl RpcProcessConfig {

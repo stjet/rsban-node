@@ -128,7 +128,7 @@ impl RunDaemonArgs {
 
         let mut daemon_config = DaemonConfig::new(&network_params, get_cpu_count())?;
 
-        daemon_config.rpc_enable = true;
+        //daemon_config.rpc_enable = true;
 
         let node_config = daemon_config.node;
 

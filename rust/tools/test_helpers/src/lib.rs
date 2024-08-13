@@ -1,3 +1,6 @@
+pub mod rpc_client;
+
+pub use rpc_client::*;
 use rsnano_core::{
     work::WorkPoolImpl, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock, WalletId,
 };
@@ -22,7 +25,7 @@ use std::{
 };
 use tracing_subscriber::EnvFilter;
 
-pub(crate) struct System {
+pub struct System {
     runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
@@ -30,7 +33,7 @@ pub(crate) struct System {
 }
 
 impl System {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         init_tracing();
         let network_params = NetworkParams::new(Networks::NanoDevNetwork);
 
@@ -46,7 +49,7 @@ impl System {
         }
     }
 
-    pub(crate) fn default_config() -> NodeConfig {
+    pub fn default_config() -> NodeConfig {
         let network_params = NetworkParams::new(Networks::NanoDevNetwork);
         let port = get_available_port();
         let mut config = NodeConfig::new(Some(port), &network_params, 1);
@@ -54,7 +57,7 @@ impl System {
         config
     }
 
-    pub(crate) fn build_node<'a>(&'a mut self) -> NodeBuilder<'a> {
+    pub fn build_node<'a>(&'a mut self) -> NodeBuilder<'a> {
         NodeBuilder {
             system: self,
             config: None,
@@ -63,11 +66,11 @@ impl System {
         }
     }
 
-    pub(crate) fn make_disconnected_node(&mut self) -> Arc<Node> {
+    pub fn make_disconnected_node(&mut self) -> Arc<Node> {
         self.build_node().disconnected().finish()
     }
 
-    pub(crate) fn make_node(&mut self) -> Arc<Node> {
+    pub fn make_node(&mut self) -> Arc<Node> {
         self.build_node().finish()
     }
 
@@ -143,7 +146,7 @@ impl Drop for System {
     }
 }
 
-pub(crate) struct NodeBuilder<'a> {
+pub struct NodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
     flags: Option<NodeFlags>,
@@ -151,22 +154,22 @@ pub(crate) struct NodeBuilder<'a> {
 }
 
 impl<'a> NodeBuilder<'a> {
-    pub(crate) fn config(mut self, cfg: NodeConfig) -> Self {
+    pub fn config(mut self, cfg: NodeConfig) -> Self {
         self.config = Some(cfg);
         self
     }
 
-    pub(crate) fn flags(mut self, flags: NodeFlags) -> Self {
+    pub fn flags(mut self, flags: NodeFlags) -> Self {
         self.flags = Some(flags);
         self
     }
 
-    pub(crate) fn disconnected(mut self) -> Self {
+    pub fn disconnected(mut self) -> Self {
         self.disconnected = true;
         self
     }
 
-    pub(crate) fn finish(self) -> Arc<Node> {
+    pub fn finish(self) -> Arc<Node> {
         let config = self.config.unwrap_or_else(|| System::default_config());
         let flags = self.flags.unwrap_or_default();
         self.system.make_node_with(config, flags, self.disconnected)
@@ -175,7 +178,7 @@ impl<'a> NodeBuilder<'a> {
 
 static START_PORT: AtomicU16 = AtomicU16::new(1025);
 
-pub(crate) fn get_available_port() -> u16 {
+pub fn get_available_port() -> u16 {
     let start = START_PORT.fetch_add(1, Ordering::SeqCst);
     (start..65535)
         .find(|port| is_port_available(*port))
@@ -189,7 +192,7 @@ fn is_port_available(port: u16) -> bool {
     }
 }
 
-pub(crate) fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) {
+pub fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) {
     let start = Instant::now();
     while start.elapsed() < duration {
         if check() {
@@ -199,14 +202,14 @@ pub(crate) fn assert_never(duration: Duration, mut check: impl FnMut() -> bool) 
     }
 }
 
-pub(crate) fn assert_timely<F>(timeout: Duration, check: F)
+pub fn assert_timely<F>(timeout: Duration, check: F)
 where
     F: FnMut() -> bool,
 {
     assert_timely_msg(timeout, check, "timeout");
 }
 
-pub(crate) fn assert_timely_msg<F>(timeout: Duration, mut check: F, error_message: &str)
+pub fn assert_timely_msg<F>(timeout: Duration, mut check: F, error_message: &str)
 where
     F: FnMut() -> bool,
 {
@@ -220,7 +223,7 @@ where
     panic!("{}", error_message);
 }
 
-pub(crate) fn assert_timely_eq<T, F>(timeout: Duration, mut check: F, expected: T)
+pub fn assert_timely_eq<T, F>(timeout: Duration, mut check: F, expected: T)
 where
     T: PartialEq + std::fmt::Debug + Clone,
     F: FnMut() -> T,
@@ -237,7 +240,7 @@ where
     panic!("timeout. expected: {expected:?}, actual: {actual:?}");
 }
 
-pub(crate) fn assert_always_eq<T, F>(time: Duration, mut condition: F, expected: T)
+pub fn assert_always_eq<T, F>(time: Duration, mut condition: F, expected: T)
 where
     T: PartialEq + std::fmt::Debug,
     F: FnMut() -> T,
@@ -263,7 +266,7 @@ fn init_tracing() {
     });
 }
 
-pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
+pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
@@ -282,7 +285,7 @@ pub(crate) fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
         .unwrap()
 }
 
-pub(crate) fn make_fake_channel(node: &Node) -> Arc<Channel> {
+pub fn make_fake_channel(node: &Node) -> Arc<Channel> {
     node.async_rt
         .tokio
         .block_on(node.network.add(
@@ -293,7 +296,7 @@ pub(crate) fn make_fake_channel(node: &Node) -> Arc<Channel> {
         .unwrap()
 }
 
-pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
+pub fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     assert_timely_msg(
         Duration::from_secs(5),
         || node.block_exists(hash),
@@ -313,7 +316,7 @@ pub(crate) fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     election
 }
 
-pub(crate) fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
+pub fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
     for hash in hashes {
         let election = start_election(node, hash);
         if forced {
@@ -322,19 +325,14 @@ pub(crate) fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
     }
 }
 
-pub(crate) fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
+pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     for hash in hashes {
         let block = node.block(hash).unwrap();
         node.manual_scheduler.push(Arc::new(block), None);
     }
 }
 
-pub(crate) fn setup_chain(
-    node: &Node,
-    count: usize,
-    target: &KeyPair,
-    confirm: bool,
-) -> Vec<BlockEnum> {
+pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -> Vec<BlockEnum> {
     let mut latest = node.latest(&target.public_key());
     let mut balance = node.balance(&target.public_key());
 

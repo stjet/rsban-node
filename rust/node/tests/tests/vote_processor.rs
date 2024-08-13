@@ -1,5 +1,3 @@
-use super::helpers::{setup_chain, System};
-use crate::tests::helpers::{assert_timely, assert_timely_eq, start_election};
 use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_node::{
@@ -11,6 +9,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use test_helpers::{assert_timely, assert_timely_eq, setup_chain, start_election, System};
 
 #[test]
 fn codes() {

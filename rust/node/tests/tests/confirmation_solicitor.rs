@@ -10,8 +10,7 @@ use rsnano_node::{
     DEV_NETWORK_PARAMS,
 };
 use std::sync::Arc;
-
-use super::helpers::{establish_tcp, System};
+use test_helpers::{establish_tcp, System};
 
 #[test]
 fn batches() {

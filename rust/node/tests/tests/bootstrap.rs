@@ -1,5 +1,3 @@
-use super::helpers::{assert_timely_eq, assert_timely_msg, establish_tcp, System};
-use crate::tests::helpers::get_available_port;
 use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
@@ -20,6 +18,9 @@ use rsnano_node::{
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use test_helpers::{
+    assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, System,
+};
 
 mod bootstrap_processor {
     use super::*;

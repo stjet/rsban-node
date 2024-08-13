@@ -278,7 +278,12 @@ impl Node {
         ));
         dead_channel_cleanup.add(&online_reps);
 
-        let message_publisher = MessagePublisher::new(online_reps.clone(), network.clone());
+        let message_publisher = MessagePublisher::new(
+            online_reps.clone(),
+            network.clone(),
+            stats.clone(),
+            network_params.network.protocol_info(),
+        );
 
         let telemetry = Arc::new(Telemetry::new(
             telemetry_config,
@@ -378,6 +383,7 @@ impl Node {
             online_reps.clone(),
             network.clone(),
             vote_processor_queue.clone(),
+            message_publisher.clone(),
         ));
 
         let vote_generators = Arc::new(VoteGenerators::new(
@@ -445,6 +451,7 @@ impl Node {
             vote_router.clone(),
             vote_cache_processor.clone(),
             steady_clock.clone(),
+            message_publisher.clone(),
         ));
 
         active_elections.initialize();

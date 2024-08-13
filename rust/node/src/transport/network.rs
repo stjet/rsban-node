@@ -383,6 +383,20 @@ impl Network {
         }
     }
 
+    pub(crate) fn try_send_buffer(
+        &self,
+        channel_id: ChannelId,
+        buffer: &[u8],
+        drop_policy: DropPolicy,
+        traffic_type: TrafficType,
+    ) -> bool {
+        if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
+            channel.try_send_buffer(buffer, drop_policy, traffic_type)
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn flood_message2(&self, message: &Message, drop_policy: DropPolicy, scale: f32) {
         let channels = self.random_fanout_realtime(scale);
         for channel in channels {

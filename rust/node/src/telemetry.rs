@@ -277,7 +277,7 @@ impl Telemetry {
             message,
             DropPolicy::CanDrop,
             TrafficType::Generic,
-        )
+        );
     }
 
     fn cleanup(&self, data: &mut TelemetryImpl) {

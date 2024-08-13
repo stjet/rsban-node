@@ -133,18 +133,35 @@ impl Network {
         }
     }
 
+    pub fn can_add_connection(
+        &self,
+        peer_addr: &SocketAddrV6,
+        direction: ChannelDirection,
+        mode: ChannelMode,
+    ) -> AcceptResult {
+        if direction == ChannelDirection::Outbound {
+            if self.can_add_outbound_connection(&peer_addr, mode) {
+                AcceptResult::Accepted
+            } else {
+                AcceptResult::Rejected
+            }
+        } else {
+            self.check_limits(&peer_addr, direction)
+        }
+    }
+
     pub async fn add(
         &self,
         stream: TcpStream,
         direction: ChannelDirection,
+        mode: ChannelMode,
     ) -> anyhow::Result<Arc<Channel>> {
         let peer_addr = stream
             .peer_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let result = self.check_limits(&peer_addr, direction);
-
+        let result = self.can_add_connection(&peer_addr, direction, mode);
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
@@ -158,7 +175,7 @@ impl Network {
                     Direction::Out,
                 );
             }
-            debug!("Rejected connection from: {} ({:?})", peer_addr, direction);
+            debug!(?peer_addr, ?direction, ?mode, "Rejected connection");
             if direction == ChannelDirection::Inbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -195,7 +212,7 @@ impl Network {
         .await;
         self.state.lock().unwrap().channels.insert(channel.clone());
 
-        debug!("Accepted connection: {} ({:?})", peer_addr, direction);
+        debug!(?peer_addr, ?direction, ?mode, "Accepted connection");
 
         Ok(channel)
     }
@@ -256,28 +273,65 @@ impl Network {
             .check_limits(ip, direction, self.clock.now())
     }
 
+    pub(crate) fn add_attempt(&self, remote: SocketAddrV6) -> bool {
+        let mut guard = self.state.lock().unwrap();
+
+        let count = guard.attempts.count_by_address(remote.ip());
+        if count >= self.tcp_config.max_attempts_per_ip {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttemptsPerIp,
+                Direction::Out,
+            );
+            debug!("Connection attempt already in progress ({}), unable to initiate new connection: {}", count, remote.ip());
+            return false; // Rejected
+        }
+
+        guard.attempts.insert(remote, ChannelDirection::Outbound)
+    }
+
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
         self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
+    pub fn find_channels_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Vec<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
-            .find_channel_by_remote_addr(endpoint)
+            .find_channels_by_remote_addr(endpoint)
     }
 
-    pub(crate) fn find_channel_by_peering_addr(
+    pub fn find_realtime_channel_by_remote_addr(
+        &self,
+        endpoint: &SocketAddrV6,
+    ) -> Option<Arc<Channel>> {
+        self.state
+            .lock()
+            .unwrap()
+            .find_realtime_channel_by_remote_addr(endpoint)
+    }
+
+    pub(crate) fn find_channels_by_peering_addr(
+        &self,
+        peering_addr: &SocketAddrV6,
+    ) -> Vec<Arc<Channel>> {
+        self.state
+            .lock()
+            .unwrap()
+            .find_channels_by_peering_addr(peering_addr)
+    }
+
+    pub(crate) fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
     ) -> Option<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
-            .find_channel_by_peering_addr(peering_addr)
+            .find_realtime_channel_by_peering_addr(peering_addr)
     }
 
-    pub fn random_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
+    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
@@ -292,15 +346,15 @@ impl Network {
         self.state.lock().unwrap().collect_container_info(name)
     }
 
-    pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
-        self.state.lock().unwrap().random_fill(endpoints);
+    pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
+        self.state.lock().unwrap().random_fill_realtime(endpoints);
     }
 
-    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<Channel>> {
-        self.state.lock().unwrap().random_fanout(scale)
+    pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<Channel>> {
+        self.state.lock().unwrap().random_fanout_realtime(scale)
     }
 
-    pub(crate) fn random_list(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
+    pub(crate) fn random_list_realtime(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
         self.state
             .lock()
             .unwrap()
@@ -335,14 +389,14 @@ impl Network {
         drop_policy: BufferDropPolicy,
         scale: f32,
     ) {
-        let channels = self.random_fanout(scale);
+        let channels = self.random_fanout_realtime(scale);
         for channel in channels {
             channel.try_send(message, drop_policy, TrafficType::Generic)
         }
     }
 
     pub fn flood_message(&self, message: &Message, scale: f32) {
-        let channels = self.random_fanout(scale);
+        let channels = self.random_fanout_realtime(scale);
         for channel in channels {
             channel.try_send(message, BufferDropPolicy::Limiter, TrafficType::Generic)
         }
@@ -393,7 +447,7 @@ impl Network {
         is_max
     }
 
-    pub(crate) fn track_connection_attempt(&self, peer: &SocketAddrV6) -> bool {
+    fn can_add_outbound_connection(&self, peer: &SocketAddrV6, mode: ChannelMode) -> bool {
         if self.flags.disable_tcp_realtime {
             return false;
         }
@@ -413,31 +467,20 @@ impl Network {
             return false;
         }
 
-        if state.attempts.contains(peer) {
+        // Don't connect to nodes that already sent us something
+        if state
+            .find_channels_by_remote_addr(peer)
+            .iter()
+            .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
+        {
             return false;
         }
-
-        // Don't connect to nodes that already sent us something
-        if let Some(channel) = state.find_channel_by_remote_addr(peer) {
-            if channel.mode() == ChannelMode::Realtime {
-                return false;
-            }
-        }
-        if let Some(channel) = state.find_channel_by_peering_addr(peer) {
-            if channel.mode() == ChannelMode::Realtime {
-                return false;
-            }
-        }
-
-        let count = state.attempts.count_by_address(peer.ip());
-        if count >= self.tcp_config.max_attempts_per_ip {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttemptsPerIp,
-                Direction::Out,
-            );
-            debug!("Connection attempt already in progress ({}), unable to initiate new connection: {}", count, peer.ip());
-            return false; // Rejected
+        if state
+            .find_channels_by_peering_addr(peer)
+            .iter()
+            .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
+        {
+            return false;
         }
 
         if state.check_limits(peer, ChannelDirection::Outbound, self.clock.now())
@@ -460,7 +503,6 @@ impl Network {
         );
         debug!("Initiate outgoing connection to: {}", peer);
 
-        state.attempts.insert(*peer, ChannelDirection::Outbound);
         true
     }
 
@@ -495,7 +537,7 @@ impl Network {
         self.state.lock().unwrap().bootstrap_peer()
     }
 
-    pub(crate) fn list_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
+    pub(crate) fn list_realtime_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
         let mut result = self.state.lock().unwrap().list_realtime(min_version);
         result.sort_by_key(|i| i.remote_addr());
         result
@@ -511,7 +553,7 @@ impl Network {
 
     pub(crate) fn create_keepalive_message(&self) -> Message {
         let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
-        self.random_fill(&mut peers);
+        self.random_fill_realtime(&mut peers);
         Message::Keepalive(Keepalive { peers })
     }
 
@@ -533,6 +575,7 @@ impl Network {
                 .peer_misbehaved(&channel.remote_addr(), self.clock.now());
         }
 
+        warn!(peer_addr = ?channel.remote_addr(), mode = ?channel.mode(), direction = ?channel.direction(), "Peer misbehaved!");
         channel.close();
     }
 
@@ -546,7 +589,7 @@ impl Network {
 
     pub(crate) fn upgrade_to_realtime_connection(
         &self,
-        remote_addr: &SocketAddrV6,
+        channle_id: ChannelId,
         node_id: Account,
     ) -> bool {
         let (observers, channel) = {
@@ -556,7 +599,7 @@ impl Network {
                 return false;
             }
 
-            let Some(channel) = state.channels.get_by_remote_addr(remote_addr) else {
+            let Some(channel) = state.channels.get_by_id(channle_id) else {
                 return false;
             };
 
@@ -628,24 +671,24 @@ struct State {
 
 impl State {
     pub fn bootstrap_peer(&mut self) -> SocketAddrV6 {
-        let mut channel_endpoint = None;
         let mut peering_endpoint = None;
+        let mut channel_id = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
             if channel.mode() == ChannelMode::Realtime
                 && channel.network_version() >= self.network_constants.protocol_version_min
             {
                 if let Some(peering) = channel.peering_endpoint() {
-                    channel_endpoint = Some(channel.remote_addr());
+                    channel_id = Some(channel.channel_id());
                     peering_endpoint = Some(peering);
                     break;
                 }
             }
         }
 
-        match (channel_endpoint, peering_endpoint) {
-            (Some(ep), Some(peering)) => {
+        match (channel_id, peering_endpoint) {
+            (Some(id), Some(peering)) => {
                 self.channels
-                    .set_last_bootstrap_attempt(&ep, SystemTime::now());
+                    .set_last_bootstrap_attempt(id, SystemTime::now());
                 peering
             }
             _ => SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
@@ -708,30 +751,63 @@ impl State {
         result
     }
 
-    pub fn find_channel_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Option<Arc<Channel>> {
+    pub(crate) fn find_channels_by_remote_addr(
+        &self,
+        remote_addr: &SocketAddrV6,
+    ) -> Vec<Arc<Channel>> {
         self.channels
-            .get_by_remote_addr(endpoint)
-            .map(|c| c.clone())
+            .get_by_remote_addr(remote_addr)
+            .iter()
+            .filter(|c| c.is_alive())
+            .map(|&c| c.clone())
+            .collect()
     }
 
-    pub fn find_channel_by_peering_addr(
+    pub fn find_realtime_channel_by_remote_addr(
+        &self,
+        endpoint: &SocketAddrV6,
+    ) -> Option<Arc<Channel>> {
+        self.channels
+            .get_by_remote_addr(endpoint)
+            .drain(..)
+            .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
+            .next()
+            .cloned()
+    }
+
+    pub fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
     ) -> Option<Arc<Channel>> {
         self.channels
             .get_by_peering_addr(peering_addr)
-            .map(|c| c.clone())
+            .drain(..)
+            .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
+            .next()
+            .cloned()
+    }
+
+    pub(crate) fn find_channels_by_peering_addr(
+        &self,
+        peering_addr: &SocketAddrV6,
+    ) -> Vec<Arc<Channel>> {
+        self.channels
+            .get_by_peering_addr(peering_addr)
+            .iter()
+            .filter(|c| c.is_alive())
+            .map(|&c| c.clone())
+            .collect()
     }
 
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<Channel>> {
         self.channels.get_by_node_id(node_id).map(|c| c.clone())
     }
 
-    pub fn random_fanout(&self, scale: f32) -> Vec<Arc<Channel>> {
+    pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<Channel>> {
         self.random_realtime_channels(self.fanout(scale), 0)
     }
 
-    pub fn random_fill(&self, endpoints: &mut [SocketAddrV6]) {
+    pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
         let mut peers = self.list_realtime(0);
         // Don't include channels with ephemeral remote ports
         peers.retain(|c| c.peering_endpoint().is_some());

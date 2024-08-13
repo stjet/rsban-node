@@ -16,7 +16,6 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
-use tracing::error;
 
 use super::helpers::{activate_hashes, assert_timely, start_election, start_elections};
 
@@ -75,11 +74,6 @@ fn local_block_broadcast() {
     assert_never(Duration::from_millis(500), || {
         node2.block(&send_hash).is_some()
     });
-
-    error!(
-        "node2 local addr is {:?}",
-        node2.tcp_listener.local_address()
-    );
 
     // Connect the nodes and check that the block is propagated
     node1
@@ -1142,7 +1136,6 @@ fn epoch_conflict_confirm() {
         node0.vote_router.active(&change.hash()) && node0.vote_router.active(&epoch_open.hash())
     });
 
-    tracing::error!("making node1 a pr");
     // Make node1 a representative
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
@@ -1150,43 +1143,8 @@ fn epoch_conflict_confirm() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    for _ in 0..5 {
-        {
-            let guard = node0.online_reps.lock().unwrap();
-            tracing::error!(
-                "node0   online: {}, peered: {}, trended: {}",
-                guard.online_weight().format_balance(0),
-                guard.peered_weight().format_balance(0),
-                guard
-                    .trended_weight_or_minimum_online_weight()
-                    .format_balance(0),
-            );
-        }
-        {
-            let guard = node1.online_reps.lock().unwrap();
-            tracing::error!(
-                "node1   online: {}, peered: {}, trended: {}",
-                guard.online_weight().format_balance(0),
-                guard.peered_weight().format_balance(0),
-                guard
-                    .trended_weight_or_minimum_online_weight()
-                    .format_balance(0),
-            );
-        }
-        sleep(Duration::from_secs(1));
-    }
-
     // Ensure both conflicting blocks were successfully processed and confirmed
     assert_timely(Duration::from_secs(15), || {
         node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
     });
-}
-
-#[test]
-#[ignore = "wip"]
-fn wip() {
-    let mut system = System::new();
-    let _node0 = system.make_node();
-    let _node1 = system.make_node();
-    sleep(Duration::from_secs(15));
 }

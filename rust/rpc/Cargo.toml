@@ -12,3 +12,13 @@ rsnano_node = { path = "../node" }
 axum = "0.7.5"
 rsnano_core = { path = "../core" }
 toml = "0.8.15"
+tracing = "0.1"
+
+[dev-dependencies]
+rsnano_node = { path = "../node", features = ["output_tracking"] }
+mock_instant = "0.2.1"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+axum = "0.7.5"
+tracing-test = "0.2.4"
+reqwest = { version = "0.11.7", default-features = false, features = ["json"] }
+rsnano_ledger = { path = "../ledger" }

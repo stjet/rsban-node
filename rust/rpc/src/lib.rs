@@ -5,6 +5,8 @@ mod server;
 mod toml;
 
 pub use config::*;
+pub use request::*;
+pub use response::*;
 use serde_json::{json, to_string_pretty};
 pub use server::run_rpc_server;
 pub use toml::*;

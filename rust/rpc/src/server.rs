@@ -13,6 +13,7 @@ use rsnano_node::node::Node;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tracing::info;
 
 #[derive(Clone)]
 struct Service {
@@ -42,6 +43,8 @@ pub async fn run_rpc_server(
     axum::serve(listener, app)
         .await
         .context("Failed to run the server")?;
+
+    info!("RPC listening address: {}", server_addr);
 
     Ok(())
 }

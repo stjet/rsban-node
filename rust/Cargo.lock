@@ -1992,12 +1992,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "mock_instant",
+ "reqwest 0.11.27",
  "rsnano_core",
+ "rsnano_ledger",
  "rsnano_node",
  "serde",
  "serde_json",
  "tokio",
  "toml 0.8.15",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
 ]
 
 [[package]]

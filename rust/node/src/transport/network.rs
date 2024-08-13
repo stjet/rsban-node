@@ -371,18 +371,6 @@ impl Network {
             .unwrap_or(true)
     }
 
-    pub(crate) fn try_send(
-        &self,
-        channel_id: ChannelId,
-        message: &Message,
-        drop_policy: DropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
-            channel.try_send(message, drop_policy, traffic_type);
-        }
-    }
-
     pub(crate) fn try_send_buffer(
         &self,
         channel_id: ChannelId,
@@ -654,18 +642,9 @@ impl Network {
         true
     }
 
-    pub(crate) fn keepalive(&self) {
-        let message = self.create_keepalive_message();
-
-        // Wake up channels
-        let to_wake_up = {
-            let guard = self.state.lock().unwrap();
-            guard.keepalive_list()
-        };
-
-        for channel in to_wake_up {
-            channel.try_send(&message, DropPolicy::CanDrop, TrafficType::Generic);
-        }
+    pub(crate) fn keepalive_list(&self) -> Vec<ChannelId> {
+        let guard = self.state.lock().unwrap();
+        guard.keepalive_list()
     }
 }
 
@@ -750,12 +729,12 @@ impl State {
             .collect()
     }
 
-    pub fn keepalive_list(&self) -> Vec<Arc<Channel>> {
+    pub fn keepalive_list(&self) -> Vec<ChannelId> {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
         for channel in self.channels.iter() {
             if channel.mode() == ChannelMode::Realtime && channel.get_last_packet_sent() < cutoff {
-                result.push(channel.clone());
+                result.push(channel.channel_id());
             }
         }
 

@@ -645,6 +645,7 @@ impl Node {
             keepalive_factory.clone(),
             latest_keepalives.clone(),
             dead_channel_cleanup,
+            message_publisher.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(

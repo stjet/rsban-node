@@ -182,7 +182,11 @@ impl RunDaemonArgs {
         let rpc_server = if daemon_config.rpc_enable {
             let ip_addr = IpAddr::from_str(&rpc_config.address)?;
             let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
-            Some(tokio::spawn(run_rpc_server(node.clone(), socket_addr)))
+            Some(tokio::spawn(run_rpc_server(
+                node.clone(),
+                socket_addr,
+                rpc_config.enable_control,
+            )))
         } else {
             None
         };

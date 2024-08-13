@@ -14,11 +14,26 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
-pub async fn run_rpc_server(node: Arc<Node>, server_addr: SocketAddr) -> Result<()> {
+#[derive(Clone)]
+struct Service {
+    node: Arc<Node>,
+    enable_control: bool,
+}
+
+pub async fn run_rpc_server(
+    node: Arc<Node>,
+    server_addr: SocketAddr,
+    enable_control: bool,
+) -> Result<()> {
+    let service = Service {
+        node,
+        enable_control,
+    };
+
     let app = Router::new()
         .route("/", post(handle_rpc))
         .layer(map_request(set_header))
-        .with_state(node);
+        .with_state(service);
 
     let listener = TcpListener::bind(server_addr)
         .await
@@ -32,7 +47,7 @@ pub async fn run_rpc_server(node: Arc<Node>, server_addr: SocketAddr) -> Result<
 }
 
 async fn handle_rpc(
-    State(node): State<Arc<Node>>,
+    State(service): State<Service>,
     Json(rpc_request): Json<RpcRequest>,
 ) -> Response {
     let response = match rpc_request {
@@ -40,12 +55,15 @@ async fn handle_rpc(
             NodeRpcRequest::AccountBalance {
                 account,
                 only_confirmed,
-            } => account_balance(node.clone(), account, only_confirmed).await,
-            NodeRpcRequest::UnknownCommand => format_error_message("Unknown command"),
+            } => account_balance(service.node, account, only_confirmed).await,
         },
         RpcRequest::Wallet(wallet_request) => match wallet_request {
             WalletRpcRequest::AccountCreate { wallet, index } => {
-                account_create(node.clone(), wallet, index).await
+                if service.enable_control {
+                    account_create(service.node, wallet, index).await
+                } else {
+                    format_error_message("Enable control is disabled")
+                }
             }
             WalletRpcRequest::UnknownCommand => format_error_message("Unknown command"),
         },

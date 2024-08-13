@@ -8,6 +8,4 @@ pub(crate) enum NodeRpcRequest {
         account: String,
         only_confirmed: Option<bool>,
     },
-    #[serde(other)]
-    UnknownCommand,
 }

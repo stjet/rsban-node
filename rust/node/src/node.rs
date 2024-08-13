@@ -25,10 +25,10 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
-        LatestKeepalives, MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
-        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
-        TrafficType,
+        LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter,
+        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
+        TcpListener, TcpListenerExt, TrafficType,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, SteadyClock, ThreadPool, ThreadPoolImpl,
@@ -582,14 +582,15 @@ impl Node {
             global_config.into(),
         ));
 
+        let message_publisher = MessagePublisher::new(online_reps.clone(), network.clone());
+
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(
             config.local_block_broadcaster.clone(),
             block_processor.clone(),
             stats.clone(),
-            network.clone(),
-            online_reps.clone(),
             ledger.clone(),
             confirming_set.clone(),
+            message_publisher,
             !flags.disable_block_processor_republishing,
         ));
         local_block_broadcaster.initialize();

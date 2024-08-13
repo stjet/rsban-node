@@ -1,11 +1,10 @@
-use rsnano_messages::Message;
-
+use super::{Channel, ChannelId, DropPolicy, Network, TrafficType};
 use crate::representatives::OnlineReps;
+use rsnano_messages::Message;
 use std::sync::{Arc, Mutex};
 
-use super::{Channel, DropPolicy, Network, TrafficType};
-
 /// Publishes messages to peered nodes
+#[derive(Clone)]
 pub(crate) struct MessagePublisher {
     online_reps: Arc<Mutex<OnlineReps>>,
     network: Arc<Network>,
@@ -17,6 +16,17 @@ impl MessagePublisher {
             online_reps,
             network,
         }
+    }
+
+    pub(crate) fn try_send(
+        &self,
+        channel_id: ChannelId,
+        message: &Message,
+        drop_policy: DropPolicy,
+        traffic_type: TrafficType,
+    ) {
+        self.network
+            .try_send(channel_id, message, drop_policy, traffic_type)
     }
 
     pub(crate) fn flood_prs_and_some_non_prs(

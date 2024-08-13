@@ -304,11 +304,12 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
+            self.set_last_packet_sent(SystemTime::now());
         } else if write_error {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
             self.close();
-            debug!("Closing socket after write error: {}", self.remote);
+            debug!(peer_addr = ?self.remote, channel_id = %self.channel_id(), mode = ?self.mode(), "Closing socket after write error");
         }
     }
 
@@ -341,10 +342,11 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
+            self.set_last_packet_sent(SystemTime::now());
         } else {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
-            debug!("Closing socket after write error: {}", self.remote);
+            debug!(channel_id = %self.channel_id(), remote_addr = ?self.remote_addr(), "Closing channel after write error");
             self.close();
         }
 
@@ -413,8 +415,10 @@ impl Channel {
             sleep(Duration::from_secs(2)).await;
             // If the socket is already dead, close just in case, and stop doing checkups
             if !self.is_alive() {
-                debug!("Closing socket because it was dead ({})", self.remote);
-                self.close();
+                debug!(
+                    remote_addr = ?self.remote,
+                    "Stopping checkup for dead channel"
+                );
                 return;
             }
 
@@ -438,7 +442,7 @@ impl Channel {
             }
 
             if condition_to_disconnect {
-                debug!("Closing socket due to timeout ({})", self.remote);
+                debug!(channel_id = %self.channel_id(), remote_addr = ?self.remote_addr(), mode = ?self.mode(), direction = ?self.direction(), "Closing channel due to timeout");
                 self.timed_out.store(true, Ordering::SeqCst);
                 self.close();
             }
@@ -492,6 +496,7 @@ impl AsyncBufferReader for Arc<Channel> {
                                     count as u64,
                                 );
                                 self.update_last_activity();
+                                self.set_last_packet_received(SystemTime::now());
                                 return Ok(());
                             }
                         }

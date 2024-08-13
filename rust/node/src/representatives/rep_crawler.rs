@@ -375,7 +375,7 @@ impl RepCrawler {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match network.find_channel_by_peering_addr(&endpoint) {
+                        match network.find_realtime_channel_by_peering_addr(&endpoint) {
                             Some(channel) => {
                                 let keepalive = network.create_keepalive_message();
                                 channel.try_send(
@@ -477,7 +477,9 @@ impl RepCrawlerImpl {
         };
 
         /* include channels with ephemeral remote ports */
-        let mut random_peers = self.network.random_channels(required_peer_count, 0);
+        let mut random_peers = self
+            .network
+            .random_realtime_channels(required_peer_count, 0);
 
         random_peers.retain(|channel| {
             match self

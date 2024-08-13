@@ -22,7 +22,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 mod bootstrap_processor {
-    use rsnano_node::{config::NodeConfig, transport::PeerConnectorExt};
+    use rsnano_node::{
+        config::NodeConfig,
+        transport::{ChannelMode, PeerConnectorExt},
+    };
 
     use crate::tests::helpers::assert_timely;
 
@@ -664,6 +667,11 @@ mod bootstrap_processor {
         node1
             .peer_connector
             .connect_to(node2.tcp_listener.local_address());
+        assert_timely_eq(
+            Duration::from_secs(5),
+            || node2.network.count_by_mode(ChannelMode::Realtime),
+            1,
+        );
         node1
             .bootstrap_initiator
             .bootstrap2(node2.tcp_listener.local_address(), "".to_string());

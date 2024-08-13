@@ -24,7 +24,7 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelId, DeadChannelCleanup, InboundMessageQueue, KeepaliveFactory,
+        ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
         LatestKeepalives, MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
         OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
         RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
@@ -768,7 +768,7 @@ impl Node {
             };
             let keepalive = factory.create_keepalive_self();
             let msg = Message::Keepalive(keepalive);
-            channel.try_send(&msg, BufferDropPolicy::Limiter, TrafficType::Generic);
+            channel.try_send(&msg, DropPolicy::CanDrop, TrafficType::Generic);
         }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);

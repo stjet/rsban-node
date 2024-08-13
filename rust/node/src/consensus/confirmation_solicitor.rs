@@ -1,7 +1,7 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::PeeredRep,
-    transport::{BufferDropPolicy, ChannelId, Network, TrafficType},
+    transport::{ChannelId, DropPolicy, Network, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
@@ -87,14 +87,14 @@ impl<'a> ConfirmationSolicitor<'a> {
                 self.network.try_send(
                     i.channel_id,
                     &winner,
-                    BufferDropPolicy::Limiter,
+                    DropPolicy::CanDrop,
                     TrafficType::Generic,
                 )
             }
         }
         // Random flood for block propagation
         self.network
-            .flood_message2(&winner, BufferDropPolicy::Limiter, 0.5);
+            .flood_message2(&winner, DropPolicy::CanDrop, 0.5);
         Ok(())
     }
 
@@ -162,7 +162,7 @@ impl<'a> ConfirmationSolicitor<'a> {
                         self.network.try_send(
                             *channel_id,
                             &req,
-                            BufferDropPolicy::Limiter,
+                            DropPolicy::CanDrop,
                             TrafficType::Generic,
                         );
                         roots_hashes = Vec::new();
@@ -171,12 +171,8 @@ impl<'a> ConfirmationSolicitor<'a> {
             }
             if !roots_hashes.is_empty() {
                 let req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
-                self.network.try_send(
-                    *channel_id,
-                    &req,
-                    BufferDropPolicy::Limiter,
-                    TrafficType::Generic,
-                );
+                self.network
+                    .try_send(*channel_id, &req, DropPolicy::CanDrop, TrafficType::Generic);
             }
         }
         self.prepared = false;

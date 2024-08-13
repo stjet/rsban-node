@@ -2,7 +2,7 @@ use super::{LocalVoteHistory, VoteSpacing};
 use crate::{
     consensus::VoteBroadcaster,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, Channel, TrafficType},
+    transport::{Channel, DropPolicy, TrafficType},
     utils::ProcessingQueue,
     wallets::Wallets,
 };
@@ -327,7 +327,7 @@ impl SharedState {
                     let channel = &request.1;
                     let confirm =
                         Message::ConfirmAck(ConfirmAck::new_with_own_vote((*vote).clone()));
-                    channel.try_send(&confirm, BufferDropPolicy::Limiter, TrafficType::Generic);
+                    channel.try_send(&confirm, DropPolicy::CanDrop, TrafficType::Generic);
                     self.stats.inc_dir(
                         StatType::Requests,
                         DetailType::RequestsGeneratedVotes,

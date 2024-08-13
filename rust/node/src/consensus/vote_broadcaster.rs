@@ -1,7 +1,7 @@
 use super::VoteProcessorQueue;
 use crate::{
     representatives::OnlineReps,
-    transport::{BufferDropPolicy, ChannelId, Network, TrafficType},
+    transport::{ChannelId, DropPolicy, Network, TrafficType},
 };
 use rsnano_core::{Vote, VoteSource};
 use rsnano_messages::{ConfirmAck, Message};
@@ -47,7 +47,7 @@ impl VoteBroadcaster {
             self.network.try_send(
                 rep.channel_id,
                 &message,
-                BufferDropPolicy::NoLimiterDrop,
+                DropPolicy::ShouldNotDrop,
                 TrafficType::Generic,
             )
         }

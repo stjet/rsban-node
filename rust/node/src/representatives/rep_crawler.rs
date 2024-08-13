@@ -4,7 +4,7 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BufferDropPolicy, Channel, ChannelId, Network, PeerConnector, PeerConnectorExt, TrafficType,
+        Channel, ChannelId, DropPolicy, Network, PeerConnector, PeerConnectorExt, TrafficType,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, SteadyClock, Timestamp},
     NetworkParams,
@@ -170,7 +170,7 @@ impl RepCrawler {
 
             let req = Message::ConfirmReq(ConfirmReq::new(vec![hash_root]));
 
-            channel.try_send(&req, BufferDropPolicy::NoSocketDrop, TrafficType::Generic)
+            channel.try_send(&req, DropPolicy::ShouldNotDrop, TrafficType::Generic)
         }
     }
 
@@ -380,7 +380,7 @@ impl RepCrawler {
                                 let keepalive = network.create_keepalive_message();
                                 channel.try_send(
                                     &keepalive,
-                                    BufferDropPolicy::Limiter,
+                                    DropPolicy::CanDrop,
                                     TrafficType::Generic,
                                 )
                             }

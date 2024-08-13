@@ -17,7 +17,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, Channel, ChannelId, Network, TrafficType},
+    transport::{BandwidthLimiter, Channel, ChannelId, DropPolicy, Network, TrafficType},
 };
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
@@ -127,7 +127,7 @@ impl BootstrapAscending {
         );
 
         // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        channel.try_send(&request, BufferDropPolicy::Limiter, TrafficType::Bootstrap);
+        channel.try_send(&request, DropPolicy::CanDrop, TrafficType::Bootstrap);
     }
 
     pub fn priority_len(&self) -> usize {

@@ -1,6 +1,6 @@
 use super::{
-    attempt_container::AttemptContainer, channel_container::ChannelContainer, BufferDropPolicy,
-    Channel, ChannelDirection, ChannelId, ChannelMode, NetworkFilter, OutboundBandwidthLimiter,
+    attempt_container::AttemptContainer, channel_container::ChannelContainer, Channel,
+    ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkFilter, OutboundBandwidthLimiter,
     PeerExclusion, TcpConfig, TcpStream, TrafficType,
 };
 use crate::{
@@ -375,7 +375,7 @@ impl Network {
         &self,
         channel_id: ChannelId,
         message: &Message,
-        drop_policy: BufferDropPolicy,
+        drop_policy: DropPolicy,
         traffic_type: TrafficType,
     ) {
         if let Some(channel) = self.state.lock().unwrap().channels.get_by_id(channel_id) {
@@ -383,12 +383,7 @@ impl Network {
         }
     }
 
-    pub(crate) fn flood_message2(
-        &self,
-        message: &Message,
-        drop_policy: BufferDropPolicy,
-        scale: f32,
-    ) {
+    pub(crate) fn flood_message2(&self, message: &Message, drop_policy: DropPolicy, scale: f32) {
         let channels = self.random_fanout_realtime(scale);
         for channel in channels {
             channel.try_send(message, drop_policy, TrafficType::Generic)
@@ -398,7 +393,7 @@ impl Network {
     pub fn flood_message(&self, message: &Message, scale: f32) {
         let channels = self.random_fanout_realtime(scale);
         for channel in channels {
-            channel.try_send(message, BufferDropPolicy::Limiter, TrafficType::Generic)
+            channel.try_send(message, DropPolicy::CanDrop, TrafficType::Generic)
         }
     }
 
@@ -655,7 +650,7 @@ impl Network {
         };
 
         for channel in to_wake_up {
-            channel.try_send(&message, BufferDropPolicy::Limiter, TrafficType::Generic);
+            channel.try_send(&message, DropPolicy::CanDrop, TrafficType::Generic);
         }
     }
 }

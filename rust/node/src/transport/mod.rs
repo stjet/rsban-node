@@ -95,13 +95,12 @@ impl From<usize> for ChannelId {
 
 /// Policy to affect at which stage a buffer can be dropped
 #[derive(PartialEq, Eq, FromPrimitive, Debug, Clone, Copy)]
-pub enum BufferDropPolicy {
+pub enum DropPolicy {
     /// Can be dropped by bandwidth limiter (default)
-    Limiter,
-    /// Should not be dropped by bandwidth limiter
-    NoLimiterDrop,
-    /// Should not be dropped by bandwidth limiter or socket write queue limiter
-    NoSocketDrop,
+    CanDrop,
+    /// Should not be dropped by bandwidth limiter,
+    /// but it can still be dropped if the write queue is full
+    ShouldNotDrop,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]

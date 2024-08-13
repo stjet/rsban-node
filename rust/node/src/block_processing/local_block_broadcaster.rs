@@ -3,7 +3,7 @@ use crate::{
     cementation::ConfirmingSet,
     representatives::OnlineReps,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, Channel, Network, TrafficType},
+    transport::{BandwidthLimiter, Channel, DropPolicy, Network, TrafficType},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -267,17 +267,13 @@ impl LocalBlockBroadcaster {
             self.network.try_send(
                 rep.channel_id,
                 &message,
-                BufferDropPolicy::NoLimiterDrop,
+                DropPolicy::ShouldNotDrop,
                 TrafficType::Generic,
             )
         }
 
         for peer in self.list_no_pr(self.network.fanout(1.0)) {
-            peer.try_send(
-                &message,
-                BufferDropPolicy::NoLimiterDrop,
-                TrafficType::Generic,
-            )
+            peer.try_send(&message, DropPolicy::ShouldNotDrop, TrafficType::Generic)
         }
     }
 

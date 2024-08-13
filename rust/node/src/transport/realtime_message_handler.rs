@@ -5,7 +5,7 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::{RequestAggregator, VoteProcessorQueue},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, TrafficType},
+    transport::{DropPolicy, TrafficType},
     wallets::Wallets,
     Telemetry,
 };
@@ -134,7 +134,7 @@ impl RealtimeMessageHandler {
                 };
 
                 let msg = Message::TelemetryAck(TelemetryAck(data));
-                channel.try_send(&msg, BufferDropPolicy::NoSocketDrop, TrafficType::Generic);
+                channel.try_send(&msg, DropPolicy::ShouldNotDrop, TrafficType::Generic);
             }
             Message::TelemetryAck(ack) => self.telemetry.process(&ack, channel),
             Message::AscPullReq(req) => {

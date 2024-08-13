@@ -10,7 +10,7 @@ use crate::{
     consensus::VoteApplierExt,
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BufferDropPolicy, Network},
+    transport::{DropPolicy, Network},
     utils::{HardenedConstants, SteadyClock},
     wallets::Wallets,
     NetworkParams,
@@ -517,7 +517,7 @@ impl ActiveElections {
                     election_guard.status.winner = Some(Arc::clone(block));
                     let message = Message::Publish(Publish::new_forward(block.as_ref().clone()));
                     self.network
-                        .flood_message2(&message, BufferDropPolicy::NoLimiterDrop, 1.0);
+                        .flood_message2(&message, DropPolicy::ShouldNotDrop, 1.0);
                 }
             } else {
                 election_guard

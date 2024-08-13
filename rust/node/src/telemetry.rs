@@ -18,7 +18,7 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{BufferDropPolicy, Channel, ChannelMode, Network, TrafficType},
+    transport::{Channel, ChannelMode, DropPolicy, Network, TrafficType},
     NetworkParams,
 };
 
@@ -252,7 +252,7 @@ impl Telemetry {
         self.stats.inc(StatType::Telemetry, DetailType::Request);
         channel.try_send(
             &Message::TelemetryReq,
-            BufferDropPolicy::Limiter,
+            DropPolicy::CanDrop,
             TrafficType::Generic,
         );
     }
@@ -268,7 +268,7 @@ impl Telemetry {
 
     fn broadcast(&self, channel: &Channel, message: &Message) {
         self.stats.inc(StatType::Telemetry, DetailType::Broadcast);
-        channel.try_send(message, BufferDropPolicy::Limiter, TrafficType::Generic)
+        channel.try_send(message, DropPolicy::CanDrop, TrafficType::Generic)
     }
 
     fn cleanup(&self, data: &mut TelemetryImpl) {

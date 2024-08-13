@@ -1,7 +1,7 @@
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        BufferDropPolicy, Channel, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget,
+        Channel, ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, DropPolicy,
         FairQueue, TrafficType,
     },
 };
@@ -431,7 +431,7 @@ impl BootstrapServerImpl {
         }
 
         let msg = Message::AscPullAck(response);
-        channel.try_send(&msg, BufferDropPolicy::Limiter, TrafficType::Bootstrap);
+        channel.try_send(&msg, DropPolicy::CanDrop, TrafficType::Bootstrap);
     }
 }
 

@@ -53,3 +53,48 @@ pub(crate) async fn account_balance(
 
     to_string_pretty(&account_balance).unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{run_rpc_server, RpcConfig};
+    use anyhow::Result;
+    use reqwest::Url;
+    use rsnano_core::DEV_GENESIS_KEY;
+    use std::{
+        net::{IpAddr, SocketAddr},
+        str::FromStr,
+        sync::Arc,
+        time::Duration,
+    };
+    use test_helpers::{RpcClient, System};
+    use tokio::time::sleep;
+
+    #[tokio::test]
+    async fn account_balance_test() -> Result<()> {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let rpc_config = RpcConfig::default();
+
+        let ip_addr = IpAddr::from_str(&rpc_config.address)?;
+        let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
+
+        tokio::spawn(run_rpc_server(node.clone(), socket_addr, false));
+
+        sleep(Duration::from_millis(10)).await;
+
+        let node_url = format!("http://[::1]:{}/", rpc_config.port);
+        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url)?));
+
+        let result = node_client
+            .account_balance(&DEV_GENESIS_KEY.public_key().encode_account())
+            .await?;
+
+        assert_eq!(
+            result.get("balance").unwrap().as_str().unwrap(),
+            String::from("340282366920938463463374607431768211455")
+        );
+
+        Ok(())
+    }
+}

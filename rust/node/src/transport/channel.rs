@@ -290,6 +290,11 @@ impl Channel {
         buffer: &[u8],
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
+        while self.max(traffic_type) {
+            // TODO: better implementation
+            sleep(Duration::from_millis(20)).await;
+        }
+
         while !self.limiter.should_pass(buffer.len(), traffic_type.into()) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
@@ -373,6 +378,7 @@ impl Channel {
         inserted
     }
 
+    // TODO extract into MessagePublisher
     pub fn try_send(&self, message: &Message, drop_policy: DropPolicy, traffic_type: TrafficType) {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
@@ -391,11 +397,11 @@ impl Channel {
         }
     }
 
+    // TODO extract into MessagePublisher
     pub async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();
-            let buffer = serializer.serialize(message);
-            Arc::new(Vec::from(buffer)) // TODO don't copy into vec. Split into fixed size packets
+            serializer.serialize(message).to_vec()
         };
         self.send_buffer(&buffer, traffic_type).await?;
         self.stats

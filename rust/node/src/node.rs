@@ -129,8 +129,8 @@ pub struct Node {
     pub inbound_message_queue: Arc<InboundMessageQueue>,
     monitor: TimerThread<Monitor>,
     stopped: AtomicBool,
-    message_publisher_l: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
-                                                       // to keep the weak pointer alive
+    pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
+                                                         // to keep the weak pointer alive
 }
 
 impl Node {
@@ -620,6 +620,7 @@ impl Node {
             telemetry.clone(),
             bootstrap_server.clone(),
             ascendboot.clone(),
+            message_publisher.clone(),
         ));
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
@@ -1071,7 +1072,7 @@ impl Node {
             message_processor,
             inbound_message_queue,
             monitor,
-            message_publisher_l,
+            message_publisher: message_publisher_l,
             stopped: AtomicBool::new(false),
         }
     }

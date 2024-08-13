@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 /// Publishes messages to peered nodes
 #[derive(Clone)]
-pub(crate) struct MessagePublisher {
+pub struct MessagePublisher {
     online_reps: Arc<Mutex<OnlineReps>>,
     network: Arc<Network>,
 }
@@ -18,7 +18,7 @@ impl MessagePublisher {
         }
     }
 
-    pub(crate) fn try_send(
+    pub fn try_send(
         &self,
         channel_id: ChannelId,
         message: &Message,

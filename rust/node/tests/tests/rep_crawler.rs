@@ -39,7 +39,12 @@ fn ignore_rebroadcast() {
 
     let tick = || {
         let msg = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(vote.clone()));
-        channel2to1.try_send(&msg, DropPolicy::ShouldNotDrop, TrafficType::Generic);
+        node2.message_publisher.lock().unwrap().try_send(
+            channel2to1.channel_id(),
+            &msg,
+            DropPolicy::ShouldNotDrop,
+            TrafficType::Generic,
+        );
         false
     };
 

@@ -42,7 +42,7 @@ pub use inbound_message_queue::InboundMessageQueue;
 pub use latest_keepalives::*;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use message_processor::*;
-pub(crate) use message_publisher::*;
+pub use message_publisher::*;
 pub use network::*;
 pub use network_filter::NetworkFilter;
 pub(crate) use network_threads::*;

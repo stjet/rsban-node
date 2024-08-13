@@ -187,7 +187,12 @@ fn fork_no_vote_quorum() {
         .network
         .find_node_id(&node3.node_id.public_key())
         .unwrap();
-    channel.try_send(&confirm, DropPolicy::ShouldNotDrop, TrafficType::Generic);
+    node2.message_publisher.lock().unwrap().try_send(
+        channel.channel_id(),
+        &confirm,
+        DropPolicy::ShouldNotDrop,
+        TrafficType::Generic,
+    );
 
     assert_timely_msg(
         Duration::from_secs(10),

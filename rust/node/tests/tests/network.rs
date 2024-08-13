@@ -61,9 +61,25 @@ fn last_contacted() {
     // and we need one more keepalive to handle the possibility that there is a keepalive already in flight when we start the crucial part of the test
     // it is possible that there could be multiple keepalives in flight but we assume here that there will be no more than one in flight for the purposes of this test
     let keepalive = Message::Keepalive(Keepalive::default());
-    channel1.try_send(&keepalive, DropPolicy::ShouldNotDrop, TrafficType::Generic);
-    channel1.try_send(&keepalive, DropPolicy::ShouldNotDrop, TrafficType::Generic);
-    channel1.try_send(&keepalive, DropPolicy::ShouldNotDrop, TrafficType::Generic);
+    let publisher = node0.message_publisher.lock().unwrap();
+    publisher.try_send(
+        channel1.channel_id(),
+        &keepalive,
+        DropPolicy::ShouldNotDrop,
+        TrafficType::Generic,
+    );
+    publisher.try_send(
+        channel1.channel_id(),
+        &keepalive,
+        DropPolicy::ShouldNotDrop,
+        TrafficType::Generic,
+    );
+    publisher.try_send(
+        channel1.channel_id(),
+        &keepalive,
+        DropPolicy::ShouldNotDrop,
+        TrafficType::Generic,
+    );
 
     assert_timely_msg(
         Duration::from_secs(3),

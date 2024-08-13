@@ -1,13 +1,13 @@
 mod node;
 mod wallet;
 
-pub(crate) use node::*;
+pub use node::*;
 use serde::Deserialize;
-pub(crate) use wallet::*;
+pub use wallet::*;
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-pub(crate) enum RpcRequest {
+pub enum RpcRequest {
     Node(NodeRpcRequest),
     Wallet(WalletRpcRequest),
 }

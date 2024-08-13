@@ -1,4 +1,4 @@
-use crate::format_error_message;
+use crate::server::service::format_error_message;
 use rsnano_core::{Account, WalletId};
 use rsnano_node::{node::Node, wallets::WalletsExt};
 use serde::Serialize;

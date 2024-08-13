@@ -408,7 +408,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
         self.condition.notify_all();
     }
 
-    fn bootstrap_lazy(&self, hash_or_account_a: HashOrAccount, force: bool, id_a: String) -> bool {
+    fn bootstrap_lazy(&self, hash_or_account: HashOrAccount, force: bool, id: String) -> bool {
         let mut key_inserted = false;
         let lazy_attempt = self.current_lazy_attempt();
         if lazy_attempt.is_none() || force {
@@ -425,22 +425,26 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 && guard.find_attempt(BootstrapMode::Lazy).is_none()
             {
                 let incremental_id = self.attempts.lock().unwrap().get_incremental_id();
+
+                let bootstrap_id = if id.is_empty() {
+                    hash_or_account.to_string()
+                } else {
+                    id
+                };
+
                 let lazy_attempt = BootstrapAttemptLazy::new(
                     self.websocket.clone(),
-                    Arc::clone(&self.block_processor),
+                    self.block_processor.clone(),
                     Arc::downgrade(self),
-                    Arc::clone(&self.ledger),
-                    if id_a.is_empty() {
-                        hash_or_account_a.to_string()
-                    } else {
-                        id_a
-                    },
+                    self.ledger.clone(),
+                    bootstrap_id,
                     incremental_id as u64,
                     self.flags.clone(),
-                    Arc::clone(&self.connections),
+                    self.connections.clone(),
                     self.network_params.clone(),
                 )
                 .unwrap();
+
                 let attempt = Arc::new(BootstrapStrategy::Lazy(lazy_attempt));
                 guard
                     .attempts_list
@@ -450,14 +454,14 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 let BootstrapStrategy::Lazy(lazy) = &*attempt else {
                     unreachable!()
                 };
-                key_inserted = lazy.lazy_start(&hash_or_account_a);
+                key_inserted = lazy.lazy_start(&hash_or_account);
             }
         } else {
             let lazy_attempt = lazy_attempt.unwrap();
             let BootstrapStrategy::Lazy(lazy) = &*lazy_attempt else {
                 unreachable!()
             };
-            key_inserted = lazy.lazy_start(&hash_or_account_a);
+            key_inserted = lazy.lazy_start(&hash_or_account);
         }
         self.condition.notify_all();
         key_inserted

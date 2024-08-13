@@ -513,55 +513,69 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         self.connect_client(endpoint, true);
     }
 
-    fn connect_client(&self, endpoint: SocketAddrV6, push_front: bool) {
-        self.connections_count.fetch_add(1, Ordering::SeqCst);
+    fn connect_client(&self, peer_addr: SocketAddrV6, push_front: bool) {
+        if !self.network.add_attempt(peer_addr) {
+            return;
+        }
+
         let self_l = Arc::clone(self);
+        if self_l.network.can_add_connection(
+            &peer_addr,
+            ChannelDirection::Outbound,
+            ChannelMode::Bootstrap,
+        ) != AcceptResult::Accepted
+        {
+            debug!(
+                    "Could not create outbound bootstrap connection to {}, because of failed limit check",
+                    peer_addr);
+            self.network.remove_attempt(&peer_addr);
+            return;
+        }
 
         self.runtime.tokio.spawn(async move {
-            match self_l
-                .network
-                .check_limits(&endpoint, ChannelDirection::Outbound)
+            let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
+            let tcp_stream = match tokio::time::timeout(
+                self_l.config.tcp_io_timeout,
+                tcp_stream_factory.connect(peer_addr),
+            )
+            .await
             {
-                AcceptResult::Accepted => {
-                    let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
-                    let tcp_stream = match tokio::time::timeout(
-                        self_l.config.tcp_io_timeout,
-                        tcp_stream_factory.connect(endpoint),
-                    )
-                    .await
-                    {
-                        Ok(Ok(stream)) => stream,
-                        Ok(Err(e)) => {
-                            debug!(
-                                "Error initiating bootstrap connection to: {} ({:?})",
-                                endpoint, e
-                            );
-                            self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
-                            return;
-                        }
-                        Err(_) => {
-                            debug!("Timeout connecting to: {}", endpoint);
-                            self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
-                            return;
-                        }
-                    };
+                Ok(Ok(stream)) => stream,
+                Ok(Err(e)) => {
+                    debug!(
+                        "Error initiating bootstrap connection to: {} ({:?})",
+                        peer_addr, e
+                    );
+                    self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
+                    return;
+                }
+                Err(_) => {
+                    debug!("Timeout connecting to: {}", peer_addr);
+                    self_l.connections_count.fetch_sub(1, Ordering::SeqCst);
+                    return;
+                }
+            };
 
-                    let Ok(channel) = self_l.network.add(tcp_stream, ChannelDirection::Outbound, ChannelMode::Bootstrap).await else {
-                        debug!(remote_addr = ?endpoint, "Bootstrap connection rejected");
-                        return;
-                    };
-                    debug!("Bootstrap connection established to: {}", endpoint);
+            let Ok(channel) = self_l
+                .network
+                .add(
+                    tcp_stream,
+                    ChannelDirection::Outbound,
+                    ChannelMode::Bootstrap,
+                )
+                .await
+            else {
+                debug!(remote_addr = ?peer_addr, "Bootstrap connection rejected");
+                return;
+            };
+            debug!("Bootstrap connection established to: {}", peer_addr);
 
-                    channel.set_mode(ChannelMode::Bootstrap);
+            channel.set_mode(ChannelMode::Bootstrap);
 
-                    let client = Arc::new(BootstrapClient::new(&self_l, channel));
-                    self_l.pool_connection(client, true, push_front);
-                },
-                __ => debug!(
-                    "Could not create outbound bootstrap connection to {}, because of failed limit check",
-                    endpoint
-                ),
-            }
+            let client = Arc::new(BootstrapClient::new(&self_l, channel));
+            self_l.connections_count.fetch_add(1, Ordering::SeqCst);
+            self_l.network.remove_attempt(&peer_addr);
+            self_l.pool_connection(client, true, push_front);
         });
     }
 

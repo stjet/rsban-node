@@ -133,6 +133,23 @@ impl Network {
         }
     }
 
+    pub fn can_add_connection(
+        &self,
+        peer_addr: &SocketAddrV6,
+        direction: ChannelDirection,
+        mode: ChannelMode,
+    ) -> AcceptResult {
+        if direction == ChannelDirection::Outbound {
+            if self.can_add_outbound_connection(&peer_addr, mode) {
+                AcceptResult::Accepted
+            } else {
+                AcceptResult::Rejected
+            }
+        } else {
+            self.check_limits(&peer_addr, direction)
+        }
+    }
+
     pub async fn add(
         &self,
         stream: TcpStream,
@@ -144,16 +161,7 @@ impl Network {
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let result = if direction == ChannelDirection::Outbound {
-            if self.can_add_outbound_connection(&peer_addr, mode) {
-                AcceptResult::Accepted
-            } else {
-                AcceptResult::Rejected
-            }
-        } else {
-            self.check_limits(&peer_addr, direction)
-        };
-
+        let result = self.can_add_connection(&peer_addr, direction, mode);
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
@@ -167,7 +175,7 @@ impl Network {
                     Direction::Out,
                 );
             }
-            debug!(?peer_addr, ?direction, "Rejected connection");
+            debug!(?peer_addr, ?direction, ?mode, "Rejected connection");
             if direction == ChannelDirection::Inbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -439,11 +447,7 @@ impl Network {
         is_max
     }
 
-    pub(crate) fn can_add_outbound_connection(
-        &self,
-        peer: &SocketAddrV6,
-        mode: ChannelMode,
-    ) -> bool {
+    fn can_add_outbound_connection(&self, peer: &SocketAddrV6, mode: ChannelMode) -> bool {
         if self.flags.disable_tcp_realtime {
             return false;
         }

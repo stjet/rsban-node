@@ -1,4 +1,4 @@
-use super::{ChannelDirection, Network, ResponseServerFactory, TcpConfig};
+use super::{AcceptResult, ChannelDirection, Network, ResponseServerFactory, TcpConfig};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{ChannelMode, TcpStream},
@@ -95,9 +95,10 @@ impl PeerConnectorExt for Arc<PeerConnector> {
             return false;
         }
 
-        if !self
+        if self
             .network
-            .can_add_outbound_connection(&peer, ChannelMode::Realtime)
+            .can_add_connection(&peer, ChannelDirection::Outbound, ChannelMode::Realtime)
+            != AcceptResult::Accepted
         {
             self.network.remove_attempt(&peer);
             return false;

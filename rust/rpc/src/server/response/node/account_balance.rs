@@ -1,4 +1,4 @@
-use crate::format_error_message;
+use crate::server::service::format_error_message;
 use rsnano_core::Account;
 use rsnano_node::node::Node;
 use serde::Serialize;

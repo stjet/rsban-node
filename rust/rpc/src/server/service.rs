@@ -1,6 +1,3 @@
-use crate::format_error_message;
-use crate::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
-use crate::response::{account_balance, account_create};
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -10,10 +7,14 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
+use serde_json::{json, to_string_pretty};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
+use super::response::{account_balance, account_create};
 
 #[derive(Clone)]
 struct Service {
@@ -80,4 +81,9 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .headers_mut()
         .insert("Content-Type", "application/json".parse().unwrap());
     request
+}
+
+pub(crate) fn format_error_message(error: &str) -> String {
+    let json_value = json!({ "error": error });
+    to_string_pretty(&json_value).unwrap()
 }

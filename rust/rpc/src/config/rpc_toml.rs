@@ -1,4 +1,4 @@
-use crate::{RpcConfig, RpcLoggingConfig, RpcProcessConfig};
+use super::rpc_config::{RpcConfig, RpcLoggingConfig, RpcProcessConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

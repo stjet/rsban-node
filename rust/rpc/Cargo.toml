@@ -18,8 +18,6 @@ tracing = "0.1"
 rsnano_node = { path = "../node", features = ["output_tracking"] }
 mock_instant = "0.2.1"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-axum = "0.7.5"
 tracing-test = "0.2.4"
 reqwest = { version = "0.11.7", default-features = false, features = ["json"] }
-rsnano_ledger = { path = "../ledger" }
 test_helpers = { path = "../tools/test_helpers" }

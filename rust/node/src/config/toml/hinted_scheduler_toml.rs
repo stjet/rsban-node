@@ -33,7 +33,7 @@ impl From<&HintedSchedulerToml> for HintedSchedulerConfig {
             config.check_interval = Duration::from_millis(check_interval);
         }
         if let Some(hinting_threshold) = toml.hinting_threshold {
-            config.hinting_theshold_percent = hinting_threshold;
+            config.hinting_threshold_percent = hinting_threshold;
         }
         if let Some(vacancy_threshold) = toml.vacancy_threshold {
             config.vacancy_threshold_percent = vacancy_threshold;
@@ -46,7 +46,7 @@ impl From<&HintedSchedulerConfig> for HintedSchedulerToml {
     fn from(config: &HintedSchedulerConfig) -> Self {
         Self {
             enable: Some(config.enabled),
-            hinting_threshold: Some(config.hinting_theshold_percent),
+            hinting_threshold: Some(config.hinting_threshold_percent),
             check_interval: Some(config.check_interval.as_millis() as u64),
             block_cooldown: Some(config.block_cooldown.as_millis() as u64),
             vacancy_threshold: Some(config.vacancy_threshold_percent),

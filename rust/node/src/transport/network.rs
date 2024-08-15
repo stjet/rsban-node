@@ -294,13 +294,6 @@ impl Network {
         self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    pub fn find_channels_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_channels_by_remote_addr(endpoint)
-    }
-
     pub fn find_realtime_channel_by_remote_addr(
         &self,
         endpoint: &SocketAddrV6,
@@ -309,16 +302,6 @@ impl Network {
             .lock()
             .unwrap()
             .find_realtime_channel_by_remote_addr(endpoint)
-    }
-
-    pub(crate) fn find_channels_by_peering_addr(
-        &self,
-        peering_addr: &SocketAddrV6,
-    ) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_channels_by_peering_addr(peering_addr)
     }
 
     pub(crate) fn find_realtime_channel_by_peering_addr(
@@ -382,13 +365,6 @@ impl Network {
             channel.try_send_buffer(buffer, drop_policy, traffic_type)
         } else {
             false
-        }
-    }
-
-    pub(crate) fn flood_message2(&self, message: &Message, drop_policy: DropPolicy, scale: f32) {
-        let channels = self.random_fanout_realtime(scale);
-        for channel in channels {
-            channel.try_send(message, drop_policy, TrafficType::Generic)
         }
     }
 

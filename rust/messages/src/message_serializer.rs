@@ -4,7 +4,7 @@ use rsnano_core::utils::MutStreamAdapter;
 #[derive(Clone)]
 pub struct MessageSerializer {
     protocol: ProtocolInfo,
-    buffer: [u8; Self::BUFFER_SIZE],
+    buffer: Vec<u8>,
 }
 
 impl MessageSerializer {
@@ -12,7 +12,7 @@ impl MessageSerializer {
     pub fn new(protocol: ProtocolInfo) -> Self {
         Self {
             protocol,
-            buffer: [0; Self::BUFFER_SIZE],
+            buffer: vec![0; Self::BUFFER_SIZE],
         }
     }
 

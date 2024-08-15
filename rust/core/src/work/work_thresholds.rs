@@ -1,6 +1,6 @@
 use crate::{
-    BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Root, StubDifficulty,
-    WorkVersion,
+    BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root,
+    StubDifficulty, WorkVersion, ACTIVE_NETWORK,
 };
 use once_cell::sync::Lazy;
 use serde::{ser::SerializeStruct, Serializer};
@@ -284,7 +284,15 @@ impl WorkThresholds {
 
 impl Default for WorkThresholds {
     fn default() -> Self {
-        PUBLISH_FULL.clone()
+        match ACTIVE_NETWORK.lock().unwrap().clone() {
+            Networks::NanoDevNetwork => Self::publish_dev().clone(),
+            Networks::NanoBetaNetwork => Self::publish_beta().clone(),
+            Networks::NanoLiveNetwork => Self::publish_full().clone(),
+            Networks::NanoTestNetwork => Self::publish_test().clone(),
+            Networks::Invalid => {
+                panic!("no default network set")
+            }
+        }
     }
 }
 
@@ -303,7 +311,7 @@ mod tests {
     fn difficulty_block() {
         let block = BlockEnum::new_test_instance();
         assert_eq!(
-            WorkThresholds::default().difficulty_block(&block),
+            WorkThresholds::publish_full().difficulty_block(&block),
             9665579333895977632
         );
     }
@@ -311,7 +319,7 @@ mod tests {
     #[test]
     fn threshold_epoch0_send() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch0,
@@ -327,7 +335,7 @@ mod tests {
     #[test]
     fn threshold_epoch0_receive() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch0,
@@ -343,7 +351,7 @@ mod tests {
     #[test]
     fn threshold_epoch1_send() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch1,
@@ -359,7 +367,7 @@ mod tests {
     #[test]
     fn threshold_epoch1_receive() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch1,
@@ -375,7 +383,7 @@ mod tests {
     #[test]
     fn threshold_epoch2_send() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch2,
@@ -391,7 +399,7 @@ mod tests {
     #[test]
     fn threshold_epoch2_receive() {
         assert_eq!(
-            WorkThresholds::default().threshold2(
+            WorkThresholds::publish_full().threshold2(
                 WorkVersion::Work1,
                 &BlockDetails {
                     epoch: Epoch::Epoch2,

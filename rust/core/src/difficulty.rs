@@ -34,12 +34,12 @@ impl TryFrom<u8> for WorkVersion {
     }
 }
 
-pub trait Difficulty: Send + Sync + std::fmt::Debug {
+pub trait Difficulty: Send + Sync {
     fn get_difficulty(&self, root: &Root, work: u64) -> u64;
     fn clone(&self) -> Box<dyn Difficulty>;
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct DifficultyV1 {}
 impl DifficultyV1 {
     pub fn to_multiplier(difficulty: u64, base_difficulty: u64) -> f64 {
@@ -76,7 +76,7 @@ impl Difficulty for DifficultyV1 {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct StubDifficulty {
     preset_difficulties: HashMap<(Root, u64), u64>,
 }

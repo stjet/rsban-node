@@ -3,11 +3,11 @@ use crate::{
     WorkVersion,
 };
 use once_cell::sync::Lazy;
+use serde::{ser::SerializeStruct, Serializer};
 use std::cmp::{max, min};
 
 pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| WorkThresholds::new_stub());
 
-#[derive(Debug)]
 pub struct WorkThresholds {
     pub epoch_1: u64,
     pub epoch_2: u64,
@@ -43,6 +43,18 @@ impl PartialEq for WorkThresholds {
             && self.entry == other.entry
             && self.difficulty.get_difficulty(&Root::default(), 0)
                 == other.difficulty.get_difficulty(&Root::default(), 0)
+    }
+}
+
+impl std::fmt::Debug for WorkThresholds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut x = f.serialize_struct("WorkThresholds", 5)?;
+        x.serialize_field("epoch_1", &self.epoch_1)?;
+        x.serialize_field("epoch_2", &self.epoch_2)?;
+        x.serialize_field("epoch_2_receive", &self.epoch_2_receive)?;
+        x.serialize_field("base", &self.base)?;
+        x.serialize_field("entry", &self.entry)?;
+        x.end()
     }
 }
 

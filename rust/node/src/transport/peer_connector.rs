@@ -69,7 +69,7 @@ impl PeerConnector {
             .add(
                 raw_stream,
                 ChannelDirection::Outbound,
-                ChannelMode::Realtime,
+                ChannelMode::Undefined,
             )
             .await?;
         let response_server = self.response_server_factory.start_response_server(channel);

@@ -99,8 +99,8 @@ impl<'a> ConfirmationSolicitor<'a> {
             }
         }
         // Random flood for block propagation
-        self.network
-            .flood_message2(&winner, DropPolicy::CanDrop, 0.5);
+        self.message_publisher
+            .flood_message(&winner, DropPolicy::CanDrop, 0.5);
         Ok(())
     }
 

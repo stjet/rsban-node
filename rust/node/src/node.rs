@@ -372,8 +372,8 @@ impl Node {
                 workers.clone(),
                 block_processor.clone(),
                 online_reps.clone(),
-                network.clone(),
                 confirming_set.clone(),
+                message_publisher.clone(),
             )
             .expect("Could not create wallet"),
         );

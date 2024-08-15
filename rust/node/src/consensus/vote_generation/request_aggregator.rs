@@ -4,10 +4,10 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Channel, ChannelId, DeadChannelCleanupStep, FairQueue, Network, TrafficType},
+    transport::{ChannelId, DeadChannelCleanupStep, FairQueue, Network, TrafficType},
 };
 use rsnano_core::{
-    utils::{ContainerInfoComponent, TomlWriter},
+    utils::{get_cpu_count, ContainerInfoComponent, TomlWriter},
     BlockHash, Root,
 };
 use rsnano_ledger::Ledger;

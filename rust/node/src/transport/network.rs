@@ -454,22 +454,20 @@ impl Network {
             return false;
         }
 
-        if mode != ChannelMode::Bootstrap {
-            // Don't connect to nodes that already sent us something
-            if state
-                .find_channels_by_remote_addr(peer)
-                .iter()
-                .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
-            {
-                return false;
-            }
-            if state
-                .find_channels_by_peering_addr(peer)
-                .iter()
-                .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
-            {
-                return false;
-            }
+        // Don't connect to nodes that already sent us something
+        if state
+            .find_channels_by_remote_addr(peer)
+            .iter()
+            .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
+        {
+            return false;
+        }
+        if state
+            .find_channels_by_peering_addr(peer)
+            .iter()
+            .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
+        {
+            return false;
         }
 
         if state.check_limits(peer, ChannelDirection::Outbound, self.clock.now())

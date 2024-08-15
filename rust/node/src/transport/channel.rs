@@ -379,25 +379,6 @@ impl Channel {
     }
 
     // TODO extract into MessagePublisher
-    pub fn try_send(&self, message: &Message, drop_policy: DropPolicy, traffic_type: TrafficType) {
-        let buffer = {
-            let mut serializer = self.message_serializer.lock().unwrap();
-            serializer.serialize(message).to_vec()
-        };
-
-        if self.try_send_buffer(&buffer, drop_policy, traffic_type) {
-            self.stats
-                .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
-            trace!(channel_id = %self.channel_id, message = ?message, "Message sent");
-        } else {
-            let detail_type = message.into();
-            self.stats
-                .inc_dir_aggregate(StatType::Drop, detail_type, Direction::Out);
-            trace!(channel_id = %self.channel_id, message = ?message, "Message dropped");
-        }
-    }
-
-    // TODO extract into MessagePublisher
     pub async fn send(&self, message: &Message, traffic_type: TrafficType) -> anyhow::Result<()> {
         let buffer = {
             let mut serializer = self.message_serializer.lock().unwrap();

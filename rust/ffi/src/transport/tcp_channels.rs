@@ -1,5 +1,4 @@
 use super::{ChannelHandle, EndpointDto};
-use crate::messages::MessageHandle;
 use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
 use rsnano_node::transport::{Channel, ChannelMode, Network};
 use std::{

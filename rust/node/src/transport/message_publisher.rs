@@ -31,6 +31,21 @@ impl MessagePublisher {
         }
     }
 
+    pub fn new_with_buffer_size(
+        online_reps: Arc<Mutex<OnlineReps>>,
+        network: Arc<Network>,
+        stats: Arc<Stats>,
+        protocol_info: ProtocolInfo,
+        buffer_size: usize,
+    ) -> Self {
+        Self {
+            online_reps,
+            network,
+            stats,
+            message_serializer: MessageSerializer::new(protocol_info),
+        }
+    }
+
     pub(crate) fn new_null() -> Self {
         Self::new(
             Arc::new(Mutex::new(OnlineReps::default())),
@@ -57,6 +72,22 @@ impl MessagePublisher {
             drop_policy,
             traffic_type,
         )
+    }
+
+    pub async fn send(
+        &mut self,
+        channel_id: ChannelId,
+        message: &Message,
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        let buffer = self.message_serializer.serialize(message);
+        self.network
+            .send_buffer(channel_id, &buffer, traffic_type)
+            .await?;
+        self.stats
+            .inc_dir_aggregate(StatType::Message, message.into(), Direction::Out);
+        trace!(%channel_id, message = ?message, "Message sent");
+        Ok(())
     }
 
     pub(crate) fn flood_prs_and_some_non_prs(
@@ -86,7 +117,7 @@ impl MessagePublisher {
         channels
     }
 
-    pub(crate) fn flood_message(&mut self, message: &Message, drop_policy: DropPolicy, scale: f32) {
+    pub fn flood_message(&mut self, message: &Message, drop_policy: DropPolicy, scale: f32) {
         let buffer = self.message_serializer.serialize(message);
         let channels = self.network.random_fanout_realtime(scale);
         for channel in channels {

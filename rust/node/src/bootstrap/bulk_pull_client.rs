@@ -157,8 +157,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         self.runtime.tokio.spawn(async move {
             match self_clone
                 .connection
-                .get_channel()
-                .send(&Message::BulkPull(payload), TrafficType::Generic)
+                .send(&Message::BulkPull(payload))
                 .await
             {
                 Ok(()) => {

@@ -16,6 +16,13 @@ impl MessageSerializer {
         }
     }
 
+    pub fn new_with_buffer_size(protocol: ProtocolInfo, buffer_size: usize) -> Self {
+        Self {
+            protocol,
+            buffer: vec![0; buffer_size],
+        }
+    }
+
     pub fn serialize(&'_ mut self, message: &Message) -> &'_ [u8] {
         let payload_len;
         {

@@ -368,10 +368,24 @@ impl Network {
         }
     }
 
-    pub fn flood_message(&self, message: &Message, scale: f32) {
-        let channels = self.random_fanout_realtime(scale);
-        for channel in channels {
-            channel.try_send(message, DropPolicy::CanDrop, TrafficType::Generic)
+    pub async fn send_buffer(
+        &self,
+        channel_id: ChannelId,
+        buffer: &[u8],
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        let channel = self
+            .state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .cloned();
+
+        if let Some(channel) = channel {
+            channel.send_buffer(buffer, traffic_type).await
+        } else {
+            Err(anyhow!("Channel not found"))
         }
     }
 

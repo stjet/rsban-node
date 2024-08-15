@@ -27,7 +27,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use tracing::{debug, info};
 

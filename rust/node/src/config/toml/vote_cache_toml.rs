@@ -27,7 +27,7 @@ impl From<&VoteCacheToml> for VoteCacheConfig {
             config.max_voters = max_voters;
         }
         if let Some(age_cutoff) = &toml.age_cutoff {
-            config.age_cutoff = Duration::from_millis(*age_cutoff);
+            config.age_cutoff = Duration::from_secs(*age_cutoff);
         }
         config
     }
@@ -38,7 +38,7 @@ impl From<&VoteCacheConfig> for VoteCacheToml {
         Self {
             max_size: Some(config.max_size),
             max_voters: Some(config.max_voters),
-            age_cutoff: Some(config.age_cutoff.as_millis() as u64),
+            age_cutoff: Some(config.age_cutoff.as_secs() as u64),
         }
     }
 }

@@ -74,11 +74,14 @@ impl Default for DaemonToml {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use rsnano_core::Networks;
+
     use crate::{
         config::{DaemonConfig, DaemonToml},
-        nullable_fs::NullableFilesystem,
+        NetworkParams,
     };
-    use std::path::PathBuf;
 
     static DEFAULT_TOML_STR: &str = r#"[node]
         allow_local_peers = true
@@ -273,7 +276,7 @@ mod tests {
 
         [rpc.child_process]
         enable = false
-        rpc_path = "/Users/ruimorais/rsnano/rust/../build/cargo/debug/deps/nano_rpc""#;
+        rpc_path = "/home/foo/nano_rpc""#;
 
     static MODIFIED_TOML_STR: &str = r#"[node]
         allow_local_peers = false
@@ -473,8 +476,8 @@ mod tests {
     #[test]
     fn deserialize_defaults() {
         let deserialized_toml: DaemonToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
+        let default_daemon_config = create_default_daemon_config();
 
-        let default_daemon_config = DaemonConfig::default();
         let deserialized_daemon_config: DaemonConfig = (&deserialized_toml).into();
 
         assert_eq!(&deserialized_daemon_config, &default_daemon_config);
@@ -482,16 +485,8 @@ mod tests {
 
     #[test]
     fn deserialize_no_defaults() {
-        let path: PathBuf = "node-config.toml".into();
-
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, MODIFIED_TOML_STR.to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
         let daemon_toml: DaemonToml =
-            toml::from_str(&toml_read).expect("Failed to deserialize TOML");
+            toml::from_str(MODIFIED_TOML_STR).expect("Failed to deserialize TOML");
 
         let deserialized_daemon_config: DaemonConfig = (&daemon_toml).into();
 
@@ -501,17 +496,10 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_commented() {
-        let path: PathBuf = "node-config.toml".into();
+    fn deserialize_empty() {
+        let toml_str = "";
 
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, comment_fields(MODIFIED_TOML_STR).to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
-        let daemon_toml: DaemonToml =
-            toml::from_str(&toml_read).expect("Failed to deserialize TOML");
+        let daemon_toml: DaemonToml = toml::from_str(toml_str).expect("Failed to deserialize TOML");
 
         let deserialized_daemon_config: DaemonConfig = (&daemon_toml).into();
 
@@ -520,32 +508,15 @@ mod tests {
         assert_eq!(&deserialized_daemon_config, &default_daemon_config);
     }
 
-    #[test]
-    fn deserialize_empty() {
-        let path: PathBuf = "node-config.toml".into();
-
-        let toml_str = r#""#;
-
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, toml_str.to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
-        let daemon_toml: DaemonToml =
-            toml::from_str(&toml_read).expect("Failed to deserialize TOML");
-
-        let deserialized_daemon_config: DaemonConfig = (&daemon_toml).into();
-
-        let default_daemon_config = DaemonConfig::default();
-
-        assert_eq!(&deserialized_daemon_config, &default_daemon_config);
+    fn create_default_daemon_config() -> DaemonConfig {
+        let mut config = DaemonConfig::new(&NetworkParams::new(Networks::NanoBetaNetwork), 8);
+        config.rpc.child_process.rpc_path = PathBuf::from("/home/foo/nano_rpc");
+        config
     }
 
     #[test]
     fn serialize_defaults() {
-        let default_daemon_config = DaemonConfig::default();
-
+        let default_daemon_config = create_default_daemon_config();
         let default_daemon_toml: DaemonToml = (&default_daemon_config).into();
 
         let serialized_toml = toml::to_string(&default_daemon_toml).unwrap();
@@ -563,34 +534,5 @@ mod tests {
             .join("\n");
 
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
-    }
-
-    fn comment_fields(toml_str: &str) -> String {
-        let mut result = String::new();
-        let mut in_header = false;
-
-        for line in toml_str.lines() {
-            if line.trim().is_empty() {
-                result.push_str("\n");
-                continue;
-            }
-
-            if line.trim().starts_with("[") && line.trim().ends_with("]") {
-                if in_header {
-                    result.push_str("\n");
-                }
-                result.push_str(line);
-                result.push_str("\n");
-                in_header = true;
-            } else {
-                if in_header {
-                    result.push_str("# ");
-                    result.push_str(line);
-                    result.push_str("\n");
-                }
-            }
-        }
-
-        result
     }
 }

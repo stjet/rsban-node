@@ -574,6 +574,14 @@ impl Network {
             .perma_ban(remote_addr);
     }
 
+    pub(crate) fn set_protocol_version(&self, channel_id: ChannelId, protocol_version: u8) {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .set_protocol_version(channel_id, protocol_version);
+    }
+
     pub(crate) fn upgrade_to_realtime_connection(
         &self,
         channel_id: ChannelId,

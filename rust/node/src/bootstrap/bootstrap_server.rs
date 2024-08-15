@@ -21,7 +21,7 @@ use std::{
     thread::JoinHandle,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BootstrapServerConfig {
     pub max_queue: usize,
     pub threads: usize,

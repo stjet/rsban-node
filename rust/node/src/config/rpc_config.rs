@@ -1,15 +1,13 @@
 use super::NetworkConstants;
 use anyhow::Result;
-use rsnano_core::utils::TomlWriter;
+use rsnano_core::utils::{get_cpu_count, TomlWriter};
 use std::{
     net::Ipv6Addr,
     path::{Path, PathBuf},
 };
 
-pub fn get_default_rpc_filepath() -> Result<PathBuf> {
-    Ok(get_default_rpc_filepath_from(
-        std::env::current_exe()?.as_path(),
-    ))
+pub fn get_default_rpc_filepath() -> PathBuf {
+    get_default_rpc_filepath_from(std::env::current_exe().unwrap_or_default().as_path())
 }
 
 fn get_default_rpc_filepath_from(node_exe_path: &Path) -> PathBuf {
@@ -115,6 +113,12 @@ impl RpcConfig {
             Ok(())
         })?;
         Ok(())
+    }
+}
+
+impl Default for RpcConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
     }
 }
 

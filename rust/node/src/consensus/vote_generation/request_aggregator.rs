@@ -4,10 +4,10 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Channel, ChannelId, DeadChannelCleanupStep, FairQueue, Network, TrafficType},
+    transport::{ChannelId, DeadChannelCleanupStep, FairQueue, Network, TrafficType},
 };
 use rsnano_core::{
-    utils::{ContainerInfoComponent, TomlWriter},
+    utils::{get_cpu_count, ContainerInfoComponent, TomlWriter},
     BlockHash, Root,
 };
 use rsnano_ledger::Ledger;
@@ -18,7 +18,7 @@ use std::{
     thread::JoinHandle,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RequestAggregatorConfig {
     pub threads: usize,
     pub max_queue: usize,
@@ -50,6 +50,12 @@ impl RequestAggregatorConfig {
             self.batch_size,
             "Number of requests to process in a single batch. \ntype:uint64",
         )
+    }
+}
+
+impl Default for RequestAggregatorConfig {
+    fn default() -> Self {
+        Self::new(get_cpu_count())
     }
 }
 

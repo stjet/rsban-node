@@ -148,6 +148,13 @@ impl Default for BlockProcessorConfig {
 }
 
 impl BlockProcessorConfig {
+    pub fn new(work_thresholds: WorkThresholds) -> Self {
+        Self {
+            work_thresholds,
+            ..Default::default()
+        }
+    }
+
     pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
         toml.put_usize(
             "max_peer_queue",

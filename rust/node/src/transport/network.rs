@@ -307,7 +307,7 @@ impl Network {
     pub(crate) fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
+    ) -> Option<ChannelId> {
         self.state
             .lock()
             .unwrap()
@@ -758,13 +758,13 @@ impl State {
     pub fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
+    ) -> Option<ChannelId> {
         self.channels
             .get_by_peering_addr(peering_addr)
             .drain(..)
             .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
             .next()
-            .cloned()
+            .map(|c| c.channel_id())
     }
 
     pub(crate) fn find_channels_by_peering_addr(

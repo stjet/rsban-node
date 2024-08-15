@@ -645,11 +645,10 @@ impl Wallets {
         if let Some(block) = &block {
             cached_block = true;
             let msg = Message::Publish(Publish::new_forward(block.clone()));
-            self.message_publisher.lock().unwrap().flood_message(
-                &msg,
-                DropPolicy::ShouldNotDrop,
-                1.0,
-            );
+            self.message_publisher
+                .lock()
+                .unwrap()
+                .flood(&msg, DropPolicy::ShouldNotDrop, 1.0);
         } else {
             cached_block = false;
             if wallet.store.valid_password(tx) {

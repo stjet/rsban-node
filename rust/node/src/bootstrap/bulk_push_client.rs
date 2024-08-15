@@ -112,7 +112,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
             let _ = this_l
                 .connection
                 .get_channel()
-                .send_buffer(&buffer, TrafficType::Generic)
+                .send_buffer(&buffer, TrafficType::Bootstrap)
                 .await;
             this_l.set_result(false);
         });
@@ -173,7 +173,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
             match this_l
                 .connection
                 .get_channel()
-                .send_buffer(&buffer, TrafficType::Generic)
+                .send_buffer(&buffer, TrafficType::Bootstrap)
                 .await
             {
                 Ok(()) => {

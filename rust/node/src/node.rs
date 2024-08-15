@@ -584,6 +584,7 @@ impl Node {
             stats.clone(),
             vote_generators.clone(),
             ledger.clone(),
+            network.clone(),
         ));
 
         let backlog_population = Arc::new(BacklogPopulation::new(
@@ -758,7 +759,7 @@ impl Node {
                     publisher_l
                         .lock()
                         .unwrap()
-                        .flood_message(&ack, DropPolicy::CanDrop, 0.5);
+                        .flood(&ack, DropPolicy::CanDrop, 0.5);
                 }
             }
         }));
@@ -1513,11 +1514,10 @@ impl NodeExt for Arc<Node> {
     ) {
         if let Some(block) = blocks.pop_front() {
             let publish = Message::Publish(Publish::new_forward(block));
-            self.message_publisher.lock().unwrap().flood_message(
-                &publish,
-                DropPolicy::CanDrop,
-                1.0,
-            );
+            self.message_publisher
+                .lock()
+                .unwrap()
+                .flood(&publish, DropPolicy::CanDrop, 1.0);
             if blocks.is_empty() {
                 callback()
             } else {

@@ -520,7 +520,7 @@ impl ActiveElections {
                     election_guard.status.winner = Some(Arc::clone(block));
                     let message = Message::Publish(Publish::new_forward(block.as_ref().clone()));
                     let mut publisher = self.message_publisher.lock().unwrap();
-                    publisher.flood_message(&message, DropPolicy::ShouldNotDrop, 1.0);
+                    publisher.flood(&message, DropPolicy::ShouldNotDrop, 1.0);
                 }
             } else {
                 election_guard

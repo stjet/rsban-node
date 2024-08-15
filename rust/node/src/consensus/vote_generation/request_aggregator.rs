@@ -240,7 +240,10 @@ impl RequestAggregatorLoop {
         for (channel_id, request) in &batch {
             tx.refresh_if_needed();
 
-            if !self.network.max(*channel_id, TrafficType::Generic) {
+            if !self
+                .network
+                .is_queue_full(*channel_id, TrafficType::Generic)
+            {
                 self.process(&tx, request, *channel_id);
             } else {
                 self.stats.inc_dir(

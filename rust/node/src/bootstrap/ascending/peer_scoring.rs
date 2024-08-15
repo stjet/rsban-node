@@ -43,7 +43,7 @@ impl PeerScoring {
     fn get_next_channel(&self) -> Option<Arc<Channel>> {
         self.scoring.iter_by_outstanding().find_map(|score| {
             if let Some(channel) = score.channel.upgrade() {
-                if !channel.max(TrafficType::Generic)
+                if !channel.is_queue_full(TrafficType::Generic)
                     && score.outstanding < self.config.requests_limit
                 {
                     return Some(channel);
@@ -66,7 +66,7 @@ impl PeerScoring {
         for channel in channels {
             if channel.protocol_version() >= self.config.min_protocol_version {
                 if !self.scoring.contains(channel.channel_id()) {
-                    if !channel.max(TrafficType::Bootstrap) {
+                    if !channel.is_queue_full(TrafficType::Bootstrap) {
                         self.scoring.insert(PeerScore::new(channel));
                     }
                 }

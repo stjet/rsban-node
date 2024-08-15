@@ -344,13 +344,13 @@ impl Network {
             .random_realtime_channels(count, min_version)
     }
 
-    pub(crate) fn max(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
+    pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
         self.state
             .lock()
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|c| c.max(traffic_type))
+            .map(|c| c.is_queue_full(traffic_type))
             .unwrap_or(true)
     }
 

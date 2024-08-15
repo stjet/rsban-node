@@ -198,7 +198,7 @@ impl Channel {
         lock.peering_endpoint = Some(address);
     }
 
-    pub(crate) fn max(&self, traffic_type: TrafficType) -> bool {
+    pub(crate) fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
         self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
     }
 
@@ -297,7 +297,7 @@ impl Channel {
         buffer: &[u8],
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
-        while self.max(traffic_type) {
+        while self.is_queue_full(traffic_type) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
         }
@@ -350,7 +350,7 @@ impl Channel {
             return false;
         }
 
-        if drop_policy == DropPolicy::CanDrop && self.max(traffic_type) {
+        if drop_policy == DropPolicy::CanDrop && self.is_queue_full(traffic_type) {
             return false;
         }
 

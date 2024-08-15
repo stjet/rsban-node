@@ -14,7 +14,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{read_block, TrafficType},
+    transport::read_block,
     utils::{AsyncRuntime, ThreadPool},
 };
 use async_trait::async_trait;

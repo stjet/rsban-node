@@ -5,7 +5,7 @@ use crate::{
     config::{NetworkConstants, NodeConfig},
     representatives::OnlineReps,
     stats::Stats,
-    transport::{DropPolicy, MessagePublisher, Network},
+    transport::{DropPolicy, MessagePublisher},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     work::DistributedWorkFactory,
     NetworkParams,

@@ -42,7 +42,7 @@ impl MessagePublisher {
             online_reps,
             network,
             stats,
-            message_serializer: MessageSerializer::new(protocol_info),
+            message_serializer: MessageSerializer::new_with_buffer_size(protocol_info, buffer_size),
         }
     }
 

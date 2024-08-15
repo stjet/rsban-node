@@ -90,12 +90,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
         let this_l = Arc::clone(self);
 
         self.runtime.tokio.spawn(async move {
-            match this_l
-                .connection
-                .get_channel()
-                .send(&message, TrafficType::Generic)
-                .await
-            {
+            match this_l.connection.send(&message).await {
                 Ok(()) => {
                     let workers = this_l.workers.clone();
                     workers.push_task(Box::new(move || {

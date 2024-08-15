@@ -1,4 +1,4 @@
-use super::{message_publisher, Channel, MessagePublisher, Network};
+use super::{Channel, MessagePublisher, Network};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::{BootstrapAscending, BootstrapServer},

@@ -205,7 +205,7 @@ impl Network {
             self.get_next_channel_id(),
             stream,
             direction,
-            self.network_params.network.protocol_info(),
+            self.network_params.network.protocol_info().version_using,
             self.stats.clone(),
             self.limiter.clone(),
         )
@@ -655,7 +655,7 @@ impl State {
         let mut channel_id = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
             if channel.mode() == ChannelMode::Realtime
-                && channel.network_version() >= self.network_constants.protocol_version_min
+                && channel.protocol_version() >= self.network_constants.protocol_version_min
             {
                 if let Some(peering) = channel.peering_endpoint() {
                     channel_id = Some(channel.channel_id());
@@ -711,7 +711,7 @@ impl State {
         self.channels
             .iter()
             .filter(|c| {
-                c.network_version() >= min_version
+                c.protocol_version() >= min_version
                     && c.is_alive()
                     && c.mode() == ChannelMode::Realtime
             })

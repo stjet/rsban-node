@@ -380,8 +380,6 @@ impl Node {
         wallets.initialize2();
 
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
-            online_reps.clone(),
-            network.clone(),
             vote_processor_queue.clone(),
             message_publisher.clone(),
         ));

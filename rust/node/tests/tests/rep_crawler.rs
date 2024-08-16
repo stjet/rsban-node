@@ -1,8 +1,7 @@
-use crate::tests::helpers::assert_timely_eq;
-
 use super::helpers::{assert_always_eq, assert_never, System};
+use crate::tests::helpers::assert_timely_eq;
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{ConfirmAck, Message};
 use rsnano_node::transport::{ChannelId, ChannelMode, DropPolicy, TrafficType};
 use std::{sync::Arc, time::Duration};
@@ -176,5 +175,26 @@ fn rep_weight() {
             .unwrap()
             .is_pr(channel3.channel_id()),
         true
+    );
+}
+
+// This test checks that if a block is in the recently_confirmed list then the repcrawler will not send a request for it.
+// The behaviour of this test previously was the opposite, that the repcrawler eventually send out such a block and deleted the block
+// from the recently confirmed list to try to make ammends for sending it, which is bad behaviour.
+// In the long term, we should have a better way to check for reps and this test should become redundant
+#[test]
+fn recently_confirmed() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    node1.active.insert_recently_confirmed(&DEV_GENESIS);
+
+    let node2 = system.make_node();
+    node2.insert_into_wallet(&DEV_GENESIS_KEY);
+    let channel = node1.network.find_node_id(&node2.get_node_id()).unwrap();
+    node1.rep_crawler.query_channel(channel); // this query should be dropped due to the recently_confirmed entry
+    assert_always_eq(
+        Duration::from_millis(500),
+        || node1.online_reps.lock().unwrap().peered_reps_count(),
+        0,
     );
 }

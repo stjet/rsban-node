@@ -28,7 +28,8 @@ use crate::{
     VoidPointerCallback,
 };
 use rsnano_core::{
-    utils::NULL_ENDPOINT, Account, Amount, BlockEnum, BlockHash, Root, Vote, VoteCode, VoteSource,
+    utils::NULL_ENDPOINT, Account, Amount, BlockEnum, BlockHash, PublicKey, Root, Vote, VoteCode,
+    VoteSource,
 };
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
@@ -588,4 +589,19 @@ pub extern "C" fn rsn_node_is_connected_to(handle: &NodeHandle, peer: &EndpointD
         .network
         .find_realtime_channel_by_remote_addr(&peer.into())
         .is_some()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_find_endpoint_for_node_id(
+    handle: &NodeHandle,
+    node_id: *const u8,
+    result: &mut EndpointDto,
+) -> bool {
+    match handle.0.network.find_node_id(&PublicKey::from_ptr(node_id)) {
+        Some(channel) => {
+            *result = channel.remote_addr().into();
+            true
+        }
+        None => false,
+    }
 }

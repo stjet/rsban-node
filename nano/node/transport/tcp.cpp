@@ -99,21 +99,6 @@ std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_chann
 	return result;
 }
 
-std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_fanout (float scale)
-{
-	auto list_handle = rsnano::rsn_tcp_channels_random_fanout (handle, scale);
-	auto vec = into_channel_vector (list_handle);
-	std::deque<std::shared_ptr<nano::transport::channel>> result;
-	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
-	return result;
-}
-
-std::vector<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::random_channels (std::size_t count_a, uint8_t min_version) const
-{
-	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, min_version);
-	return into_channel_vector (list_handle);
-}
-
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
 {
 	std::array<rsnano::EndpointDto, 8> dtos;
@@ -133,17 +118,6 @@ uint16_t nano::transport::tcp_channels::port () const
 std::size_t nano::transport::tcp_channels::get_next_channel_id ()
 {
 	return rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-}
-
-std::shared_ptr<nano::transport::channel_tcp> nano::transport::tcp_channels::find_node_id (nano::account const & node_id_a)
-{
-	std::shared_ptr<nano::transport::channel_tcp> result;
-	auto channel_handle = rsnano::rsn_tcp_channels_find_node_id (handle, node_id_a.bytes.data ());
-	if (channel_handle)
-	{
-		result = std::make_shared<nano::transport::channel_tcp> (channel_handle);
-	}
-	return result;
 }
 
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)

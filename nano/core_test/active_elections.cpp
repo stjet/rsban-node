@@ -18,63 +18,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (active_elections, confirm_frontier)
-{
-	nano::test::system system;
-
-	// send 100 raw from genesis to a random account
-	nano::state_block_builder builder;
-	auto send = builder
-				.account (nano::dev::genesis_key.pub)
-				.previous (nano::dev::genesis->hash ())
-				.representative (nano::dev::genesis_key.pub)
-				.balance (nano::dev::constants.genesis_amount - 100)
-				.link (nano::public_key ())
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (nano::dev::genesis->hash ()))
-				.build ();
-
-	{
-		// Voting node
-		nano::node_flags node_flags;
-		node_flags.set_disable_request_loop (true);
-		node_flags.set_disable_ongoing_bootstrap (true);
-		node_flags.set_disable_ascending_bootstrap (true);
-		auto & node1 = *system.add_node (node_flags);
-		auto wallet_id = node1.wallets.first_wallet_id ();
-		(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-
-		// we cannot use the same block instance on 2 different nodes, so make a copy
-		auto send_copy = builder.make_block ().from (*send).build ();
-		ASSERT_TRUE (nano::test::process (node1, { send_copy }));
-		nano::test::confirm (node1.ledger, send_copy);
-	}
-
-	// The rep crawler would otherwise request confirmations in order to find representatives
-	nano::node_flags node_flags2;
-	node_flags2.set_disable_ongoing_bootstrap (true);
-	node_flags2.set_disable_ascending_bootstrap (true);
-	node_flags2.set_disable_rep_crawler (true);
-	// start node2 later so that we do not get the gossip traffic
-	auto & node2 = *system.add_node (node_flags2);
-
-	// Add representative to disabled rep crawler
-	auto peers (node2.network->random_channels (1));
-	ASSERT_FALSE (peers.empty ());
-	node2.rep_crawler.force_add_rep (nano::dev::genesis_key.pub, *peers.begin ());
-
-	ASSERT_EQ (nano::block_status::progress, node2.process (send));
-	ASSERT_TIMELY (5s, !node2.active.empty ());
-
-	// Save election to check request count afterwards
-	std::shared_ptr<nano::election> election2;
-	ASSERT_TIMELY (5s, election2 = node2.active.election (send->qualified_root ()));
-	ASSERT_TIMELY (5s, nano::test::confirmed (node2, { send }));
-	ASSERT_TIMELY_EQ (5s, node2.ledger.cemented_count (), 2);
-	ASSERT_TIMELY (5s, node2.active.empty ());
-	ASSERT_GT (election2->get_confirmation_request_count (), 0u);
-}
-
 namespace nano
 {
 TEST (active_elections, vote_replays)

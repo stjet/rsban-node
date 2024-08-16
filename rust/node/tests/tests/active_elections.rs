@@ -1,5 +1,6 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
@@ -726,4 +727,75 @@ fn confirm_election_by_request() {
     assert_timely(Duration::from_secs(5), || {
         node2.block_confirmed(&send1.hash())
     });
+}
+
+#[test]
+fn confirm_frontier() {
+    let mut system = System::new();
+
+    // send 100 raw from genesis to a random account
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(100),
+        1.into(),
+        &DEV_GENESIS_KEY,
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    // Voting node
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        disable_ongoing_bootstrap: true,
+        disable_ascending_bootstrap: true,
+        ..Default::default()
+    };
+    let node1 = system.build_node().flags(flags).finish();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    node1.process(send.clone()).unwrap();
+    node1.confirm(send.hash());
+
+    // The rep crawler would otherwise request confirmations in order to find representatives
+    let flags2 = NodeFlags {
+        disable_ongoing_bootstrap: true,
+        disable_ascending_bootstrap: true,
+        disable_rep_crawler: true,
+        ..Default::default()
+    };
+    // start node2 later so that we do not get the gossip traffic
+    let node2 = system.build_node().flags(flags2).finish();
+
+    // Add representative to disabled rep crawler
+    let peers = node2.network.random_realtime_channels(1, 0);
+    assert!(!peers.is_empty());
+    node2.online_reps.lock().unwrap().vote_observed_directly(
+        *DEV_GENESIS_ACCOUNT,
+        peers[0].channel_id(),
+        node2.steady_clock.now(),
+    );
+
+    node2.process(send.clone()).unwrap();
+    assert_timely(Duration::from_secs(5), || node2.active.len() > 0);
+
+    // Save election to check request count afterwards
+    assert_timely(Duration::from_secs(5), || {
+        node2.active.election(&send.qualified_root()).is_some()
+    });
+    let election2 = node2.active.election(&send.qualified_root()).unwrap();
+
+    assert_timely(Duration::from_secs(5), || {
+        node2.block_confirmed(&send.hash())
+    });
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 2);
+    assert_timely(Duration::from_secs(5), || node2.active.len() == 0);
+    assert!(election2.confirmation_request_count.load(Ordering::SeqCst) > 0);
 }

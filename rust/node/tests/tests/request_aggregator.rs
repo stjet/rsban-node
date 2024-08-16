@@ -7,7 +7,7 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, time::Duration};
-use test_helpers::{assert_timely_eq, assert_timely_msg, System};
+use test_helpers::{assert_timely_eq, assert_timely_msg, make_fake_channel, System};
 
 #[test]
 fn one() {

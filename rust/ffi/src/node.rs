@@ -605,3 +605,59 @@ pub unsafe extern "C" fn rsn_node_find_endpoint_for_node_id(
         None => false,
     }
 }
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct PeerInfoDto {
+    pub has_node_id: bool,
+    pub node_id: [u8; 32],
+    pub protocol_version: u8,
+    pub remote_endpoint: EndpointDto,
+    pub peering_endpoint: EndpointDto,
+}
+
+pub struct PeerInfoListHandle(Vec<PeerInfoDto>);
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_node_get_peers(handle: &NodeHandle) -> *mut PeerInfoListHandle {
+    let mut peers: Vec<_> = handle
+        .0
+        .network
+        .random_realtime_channels(usize::MAX, 0)
+        .iter()
+        .map(|c| PeerInfoDto {
+            has_node_id: c.get_node_id().is_some(),
+            node_id: *c.get_node_id().unwrap_or_default().as_bytes(),
+            protocol_version: c.protocol_version(),
+            remote_endpoint: c.remote_addr().into(),
+            peering_endpoint: c
+                .peering_endpoint()
+                .unwrap_or_else(|| c.remote_addr())
+                .into(),
+        })
+        .collect();
+    peers.sort_by(|a, b| {
+        (a.remote_endpoint.bytes, a.remote_endpoint.port)
+            .cmp(&(b.remote_endpoint.bytes, b.remote_endpoint.port))
+    });
+    Box::into_raw(Box::new(PeerInfoListHandle(peers)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_peer_info_list_destroy(handle: *mut PeerInfoListHandle) {
+    drop(Box::from_raw(handle));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_peer_info_list_len(handle: &PeerInfoListHandle) -> usize {
+    handle.0.len()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rsn_peer_info_list_get(
+    handle: &PeerInfoListHandle,
+    index: usize,
+    result: &mut PeerInfoDto,
+) {
+    *result = handle.0[index].clone();
+}

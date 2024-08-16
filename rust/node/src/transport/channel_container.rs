@@ -36,7 +36,7 @@ impl ChannelContainer {
             .or_default()
             .push(id);
         self.by_network_version
-            .entry(channel.network_version())
+            .entry(channel.protocol_version())
             .or_default()
             .push(id);
         self.by_ip_address
@@ -86,7 +86,11 @@ impl ChannelContainer {
                 &channel.get_last_bootstrap_attempt(),
                 id,
             );
-            remove_from_btree(&mut self.by_network_version, &channel.network_version(), id);
+            remove_from_btree(
+                &mut self.by_network_version,
+                &channel.protocol_version(),
+                id,
+            );
             remove_from_hashmap(&mut self.by_endpoint, &channel.remote_addr(), id);
             remove_from_hashmap(
                 &mut self.by_ip_address,
@@ -129,6 +133,21 @@ impl ChannelContainer {
             .values()
             .filter(|c| c.get_node_id() == Some(*node_id) && c.is_alive())
             .next()
+    }
+
+    pub fn set_protocol_version(&mut self, channel_id: ChannelId, protocol_version: u8) {
+        if let Some(channel) = self.by_channel_id.get(&channel_id) {
+            let old_version = channel.protocol_version();
+            channel.set_protocol_version(protocol_version);
+            if old_version == protocol_version {
+                return;
+            }
+            remove_from_btree(&mut self.by_network_version, &old_version, channel_id);
+            self.by_network_version
+                .entry(protocol_version)
+                .or_default()
+                .push(channel_id);
+        }
     }
 
     pub fn set_last_bootstrap_attempt(&mut self, channel_id: ChannelId, attempt_time: SystemTime) {

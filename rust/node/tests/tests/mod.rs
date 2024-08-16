@@ -4,6 +4,7 @@ mod confirmation_solicitor;
 mod election_scheduler;
 mod network;
 mod node;
+mod peer_container;
 mod rep_crawler;
 mod request_aggregator;
 mod telemetry;

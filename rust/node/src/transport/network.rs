@@ -137,10 +137,10 @@ impl Network {
         &self,
         peer_addr: &SocketAddrV6,
         direction: ChannelDirection,
-        mode: ChannelMode,
+        planned_mode: ChannelMode,
     ) -> AcceptResult {
         if direction == ChannelDirection::Outbound {
-            if self.can_add_outbound_connection(&peer_addr, mode) {
+            if self.can_add_outbound_connection(&peer_addr, planned_mode) {
                 AcceptResult::Accepted
             } else {
                 AcceptResult::Rejected
@@ -154,14 +154,14 @@ impl Network {
         &self,
         stream: TcpStream,
         direction: ChannelDirection,
-        mode: ChannelMode,
+        planned_mode: ChannelMode,
     ) -> anyhow::Result<Arc<Channel>> {
         let peer_addr = stream
             .peer_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let result = self.can_add_connection(&peer_addr, direction, mode);
+        let result = self.can_add_connection(&peer_addr, direction, planned_mode);
         if result != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
@@ -175,7 +175,7 @@ impl Network {
                     Direction::Out,
                 );
             }
-            debug!(?peer_addr, ?direction, ?mode, "Rejected connection");
+            debug!(?peer_addr, ?direction, "Rejected connection");
             if direction == ChannelDirection::Inbound {
                 self.stats.inc_dir(
                     StatType::TcpListener,
@@ -205,14 +205,14 @@ impl Network {
             self.get_next_channel_id(),
             stream,
             direction,
-            self.network_params.network.protocol_info(),
+            self.network_params.network.protocol_info().version_using,
             self.stats.clone(),
             self.limiter.clone(),
         )
         .await;
         self.state.lock().unwrap().channels.insert(channel.clone());
 
-        debug!(?peer_addr, ?direction, ?mode, "Accepted connection");
+        debug!(?peer_addr, ?direction, "Accepted connection");
 
         Ok(channel)
     }
@@ -294,13 +294,6 @@ impl Network {
         self.state.lock().unwrap().attempts.remove(&remote);
     }
 
-    pub fn find_channels_by_remote_addr(&self, endpoint: &SocketAddrV6) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_channels_by_remote_addr(endpoint)
-    }
-
     pub fn find_realtime_channel_by_remote_addr(
         &self,
         endpoint: &SocketAddrV6,
@@ -311,20 +304,10 @@ impl Network {
             .find_realtime_channel_by_remote_addr(endpoint)
     }
 
-    pub(crate) fn find_channels_by_peering_addr(
-        &self,
-        peering_addr: &SocketAddrV6,
-    ) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_channels_by_peering_addr(peering_addr)
-    }
-
     pub(crate) fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
+    ) -> Option<ChannelId> {
         self.state
             .lock()
             .unwrap()
@@ -361,13 +344,13 @@ impl Network {
             .random_realtime_channels(count, min_version)
     }
 
-    pub(crate) fn max(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
+    pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
         self.state
             .lock()
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|c| c.max(traffic_type))
+            .map(|c| c.is_queue_full(traffic_type))
             .unwrap_or(true)
     }
 
@@ -385,17 +368,24 @@ impl Network {
         }
     }
 
-    pub(crate) fn flood_message2(&self, message: &Message, drop_policy: DropPolicy, scale: f32) {
-        let channels = self.random_fanout_realtime(scale);
-        for channel in channels {
-            channel.try_send(message, drop_policy, TrafficType::Generic)
-        }
-    }
+    pub async fn send_buffer(
+        &self,
+        channel_id: ChannelId,
+        buffer: &[u8],
+        traffic_type: TrafficType,
+    ) -> anyhow::Result<()> {
+        let channel = self
+            .state
+            .lock()
+            .unwrap()
+            .channels
+            .get_by_id(channel_id)
+            .cloned();
 
-    pub fn flood_message(&self, message: &Message, scale: f32) {
-        let channels = self.random_fanout_realtime(scale);
-        for channel in channels {
-            channel.try_send(message, DropPolicy::CanDrop, TrafficType::Generic)
+        if let Some(channel) = channel {
+            channel.send_buffer(buffer, traffic_type).await
+        } else {
+            Err(anyhow!("Channel not found"))
         }
     }
 
@@ -444,7 +434,7 @@ impl Network {
         is_max
     }
 
-    fn can_add_outbound_connection(&self, peer: &SocketAddrV6, mode: ChannelMode) -> bool {
+    fn can_add_outbound_connection(&self, peer: &SocketAddrV6, planned_mode: ChannelMode) -> bool {
         if self.flags.disable_tcp_realtime {
             return false;
         }
@@ -464,22 +454,20 @@ impl Network {
             return false;
         }
 
-        if mode != ChannelMode::Bootstrap {
-            // Don't connect to nodes that already sent us something
-            if state
-                .find_channels_by_remote_addr(peer)
-                .iter()
-                .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
-            {
-                return false;
-            }
-            if state
-                .find_channels_by_peering_addr(peer)
-                .iter()
-                .any(|c| c.mode() == mode || c.mode() == ChannelMode::Undefined)
-            {
-                return false;
-            }
+        // Don't connect to nodes that already sent us something
+        if state
+            .find_channels_by_remote_addr(peer)
+            .iter()
+            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+        {
+            return false;
+        }
+        if state
+            .find_channels_by_peering_addr(peer)
+            .iter()
+            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+        {
+            return false;
         }
 
         if state.check_limits(peer, ChannelDirection::Outbound, self.clock.now())
@@ -586,9 +574,17 @@ impl Network {
             .perma_ban(remote_addr);
     }
 
+    pub(crate) fn set_protocol_version(&self, channel_id: ChannelId, protocol_version: u8) {
+        self.state
+            .lock()
+            .unwrap()
+            .channels
+            .set_protocol_version(channel_id, protocol_version);
+    }
+
     pub(crate) fn upgrade_to_realtime_connection(
         &self,
-        channle_id: ChannelId,
+        channel_id: ChannelId,
         node_id: Account,
     ) -> bool {
         let (observers, channel) = {
@@ -598,7 +594,7 @@ impl Network {
                 return false;
             }
 
-            let Some(channel) = state.channels.get_by_id(channle_id) else {
+            let Some(channel) = state.channels.get_by_id(channel_id) else {
                 return false;
             };
 
@@ -665,7 +661,7 @@ impl State {
         let mut channel_id = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
             if channel.mode() == ChannelMode::Realtime
-                && channel.network_version() >= self.network_constants.protocol_version_min
+                && channel.protocol_version() >= self.network_constants.protocol_version_min
             {
                 if let Some(peering) = channel.peering_endpoint() {
                     channel_id = Some(channel.channel_id());
@@ -721,7 +717,7 @@ impl State {
         self.channels
             .iter()
             .filter(|c| {
-                c.network_version() >= min_version
+                c.protocol_version() >= min_version
                     && c.is_alive()
                     && c.mode() == ChannelMode::Realtime
             })
@@ -768,13 +764,13 @@ impl State {
     pub fn find_realtime_channel_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
+    ) -> Option<ChannelId> {
         self.channels
             .get_by_peering_addr(peering_addr)
             .drain(..)
             .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
             .next()
-            .cloned()
+            .map(|c| c.channel_id())
     }
 
     pub(crate) fn find_channels_by_peering_addr(
@@ -968,4 +964,39 @@ pub(crate) struct ChannelsInfo {
     pub bootstrap: usize,
     pub inbound: usize,
     pub outbound: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn newly_added_channel_is_not_a_realtime_channel() {
+        let network = Network::new(NetworkOptions::new_test_instance());
+        network
+            .add(
+                TcpStream::new_null(),
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+            )
+            .await
+            .unwrap();
+        assert_eq!(network.list_realtime_channels(0).len(), 0);
+    }
+
+    #[tokio::test]
+    async fn upgrade_channel_to_realtime_channel() {
+        let network = Network::new(NetworkOptions::new_test_instance());
+        let channel = network
+            .add(
+                TcpStream::new_null(),
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+            )
+            .await
+            .unwrap();
+
+        assert!(network.upgrade_to_realtime_connection(channel.channel_id(), PublicKey::from(456)));
+        assert_eq!(network.list_realtime_channels(0).len(), 1);
+    }
 }

@@ -64,7 +64,6 @@ namespace transport
 		std::size_t fanout (float scale = 1.0f) const;
 		bool not_a_peer (nano::endpoint const &, bool);
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
-		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0);
 
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		uint16_t port () const;

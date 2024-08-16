@@ -25,23 +25,6 @@
  * channel_tcp
  */
 
-namespace
-{
-std::vector<std::shared_ptr<nano::transport::channel>> into_channel_vector (rsnano::ChannelListHandle * list_handle)
-{
-	auto len = rsnano::rsn_channel_list_len (list_handle);
-	std::vector<std::shared_ptr<nano::transport::channel>> result;
-	result.reserve (len);
-	for (auto i = 0; i < len; ++i)
-	{
-		auto channel_handle = rsnano::rsn_channel_list_get (list_handle, i);
-		result.push_back (std::make_shared<nano::transport::channel_tcp> (channel_handle));
-	}
-	rsnano::rsn_channel_list_destroy (list_handle);
-	return result;
-}
-}
-
 uint8_t nano::transport::channel_tcp::get_network_version () const
 {
 	return rsnano::rsn_channel_tcp_network_version (handle);
@@ -88,15 +71,6 @@ float nano::transport::tcp_channels::size_sqrt () const
 std::size_t nano::transport::tcp_channels::fanout (float scale) const
 {
 	return rsnano::rsn_tcp_channels_fanout (handle, scale);
-}
-
-std::deque<std::shared_ptr<nano::transport::channel>> nano::transport::tcp_channels::list (std::size_t count_a, uint8_t minimum_version_a)
-{
-	auto list_handle = rsnano::rsn_tcp_channels_random_channels (handle, count_a, minimum_version_a);
-	auto vec = into_channel_vector (list_handle);
-	std::deque<std::shared_ptr<nano::transport::channel>> result;
-	std::move (std::begin (vec), std::end (vec), std::back_inserter (result));
-	return result;
 }
 
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const

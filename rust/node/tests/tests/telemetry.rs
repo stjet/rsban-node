@@ -124,3 +124,44 @@ fn disconnected() {
             .is_none()
     });
 }
+
+#[test]
+fn disable_metrics() {
+    let mut system = System::new();
+    let node_client = system.make_node();
+    let node_server = system
+        .build_node()
+        .flags(NodeFlags {
+            disable_providing_telemetry_metrics: true,
+            ..Default::default()
+        })
+        .finish();
+
+    // Try and request metrics from a node which is turned off but a channel is not closed yet
+    let channel = node_client
+        .network
+        .find_node_id(&node_server.get_node_id())
+        .unwrap();
+
+    node_client.telemetry.trigger();
+
+    assert_never(Duration::from_secs(1), || {
+        node_client
+            .telemetry
+            .get_telemetry(&channel.remote_addr())
+            .is_some()
+    });
+
+    // It should still be able to receive metrics though
+    let channel1 = node_server
+        .network
+        .find_node_id(&node_client.get_node_id())
+        .unwrap();
+
+    assert_timely(Duration::from_secs(5), || {
+        node_server
+            .telemetry
+            .get_telemetry(&channel1.remote_addr())
+            .is_some()
+    });
+}

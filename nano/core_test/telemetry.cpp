@@ -37,34 +37,6 @@ TEST (telemetry, DISABLED_dos_tcp)
 	// TODO reimplement in Rust
 }
 
-TEST (telemetry, disable_metrics)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node_client = system.add_node (node_flags);
-	node_flags.set_disable_providing_telemetry_metrics (true);
-	auto node_server = system.add_node (node_flags);
-
-	nano::test::wait_peer_connections (system);
-
-	// Try and request metrics from a node which is turned off but a channel is not closed yet
-	auto channel = node_client->network->find_node_id (node_server->get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	node_client->telemetry->trigger ();
-
-	ASSERT_NEVER (1s, node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-
-	// It should still be able to receive metrics though
-	auto channel1 = node_server->network->find_node_id (node_client->get_node_id ());
-	ASSERT_NE (nullptr, channel1);
-
-	std::optional<nano::telemetry_data> telemetry_data;
-	ASSERT_TIMELY (5s, telemetry_data = node_server->telemetry->get_telemetry (channel1->get_remote_endpoint ()));
-
-	ASSERT_TRUE (nano::test::compare_telemetry (*telemetry_data, *node_client));
-}
-
 TEST (telemetry, mismatched_node_id)
 {
 	nano::test::system system;

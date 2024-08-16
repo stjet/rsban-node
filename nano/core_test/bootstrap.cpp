@@ -199,7 +199,7 @@ TEST (bootstrap_processor, pull_diamond)
 }
 
 // TODO Gustav: I've disabled this test because it fails I haven't found out why yet.
-// Legacy bootstrap will be removed soon and pruning is no priority currently 
+// Legacy bootstrap will be removed soon and pruning is no priority currently
 TEST (bootstrap_processor, DISABLED_push_diamond_pruning)
 {
 	nano::test::system system;

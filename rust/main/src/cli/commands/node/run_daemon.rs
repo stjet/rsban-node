@@ -1,7 +1,7 @@
 use crate::cli::{commands::read_toml, get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
+use rsnano_core::work::WorkPoolImpl;
 use rsnano_node::{
     config::{get_rpc_toml_config_path, DaemonConfig, NetworkConstants, NodeFlags},
     node::{Node, NodeExt},
@@ -127,7 +127,7 @@ impl RunDaemonArgs {
 
         std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
-        let mut daemon_config = DaemonConfig::new(&network_params, get_cpu_count())?;
+        let mut daemon_config = DaemonConfig::default();
 
         daemon_config.rpc_enable = true;
 

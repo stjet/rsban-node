@@ -2,7 +2,7 @@ use rsnano_core::{
     work::WorkPoolImpl, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock, WalletId,
 };
 use rsnano_node::{
-    config::{NetworkConstants, NodeConfig, NodeFlags},
+    config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
     transport::{Channel, ChannelDirection, ChannelMode, PeerConnectorExt, TcpStream},

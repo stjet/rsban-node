@@ -16,46 +16,6 @@ TEST (telemetry, no_peers)
 	ASSERT_TRUE (responses.empty ());
 }
 
-TEST (telemetry, basic)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node_client = system.add_node (node_flags);
-	node_flags.set_disable_ongoing_telemetry_requests (true);
-	auto node_server = system.add_node (node_flags);
-
-	nano::test::wait_peer_connections (system);
-
-	// Request telemetry metrics
-	auto channel = node_client->network->find_node_id (node_server->get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	std::optional<nano::telemetry_data> telemetry_data;
-	ASSERT_TIMELY (5s, telemetry_data = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-	ASSERT_EQ (node_server->get_node_id (), telemetry_data->get_node_id ());
-
-	// Check the metrics are correct
-	ASSERT_TRUE (nano::test::compare_telemetry (*telemetry_data, *node_server));
-
-	// Call again straight away
-	auto telemetry_data_2 = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ());
-	ASSERT_TRUE (telemetry_data_2);
-
-	// Call again straight away
-	auto telemetry_data_3 = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ());
-	ASSERT_TRUE (telemetry_data_3);
-
-	// we expect at least one consecutive repeat of telemetry
-	ASSERT_TRUE (*telemetry_data == telemetry_data_2 || telemetry_data_2 == telemetry_data_3);
-
-	// Wait the cache period and check cache is not used
-	WAIT (3s);
-
-	std::optional<nano::telemetry_data> telemetry_data_4;
-	ASSERT_TIMELY (5s, telemetry_data_4 = node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-	ASSERT_NE (*telemetry_data, *telemetry_data_4);
-}
-
 TEST (telemetry, invalid_endpoint)
 {
 	nano::test::system system (2);

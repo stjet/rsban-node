@@ -1,6 +1,7 @@
 use rsnano_messages::{Message, TelemetryAck};
 use rsnano_node::{
     config::NodeFlags,
+    node::NodeExt,
     stats::{DetailType, Direction, StatType},
 };
 use std::{thread::sleep, time::Duration};
@@ -92,4 +93,34 @@ fn basic() {
         .unwrap();
 
     assert_ne!(telemetry_data, telemetry_data4);
+}
+
+#[test]
+fn disconnected() {
+    let mut system = System::new();
+    let node_client = system.make_node();
+    let node_server = system.make_node();
+
+    // Request telemetry metrics
+    let channel = node_client
+        .network
+        .find_node_id(&node_server.get_node_id())
+        .unwrap();
+
+    // Ensure telemetry is available before disconnecting
+    assert_timely(Duration::from_secs(5), || {
+        node_client
+            .telemetry
+            .get_telemetry(&channel.remote_addr())
+            .is_some()
+    });
+    node_server.stop();
+
+    // Ensure telemetry from disconnected peer is removed
+    assert_timely(Duration::from_secs(5), || {
+        node_client
+            .telemetry
+            .get_telemetry(&channel.remote_addr())
+            .is_none()
+    });
 }

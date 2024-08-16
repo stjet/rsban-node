@@ -32,26 +32,6 @@ TEST (telemetry, invalid_endpoint)
 	ASSERT_FALSE (node_client->telemetry->get_telemetry (endpoint));
 }
 
-TEST (telemetry, disconnected)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node_client = system.add_node (node_flags);
-	auto node_server = system.add_node (node_flags);
-	nano::test::wait_peer_connections (system);
-	auto channel = node_client->network->find_node_id (node_server->get_node_id ());
-	ASSERT_NE (nullptr, channel);
-
-	// Ensure telemetry is available before disconnecting
-	ASSERT_TIMELY (5s, node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-
-	system.stop_node (*node_server);
-	ASSERT_TRUE (channel);
-
-	// Ensure telemetry from disconnected peer is removed
-	ASSERT_TIMELY (5s, !node_client->telemetry->get_telemetry (channel->get_remote_endpoint ()));
-}
-
 TEST (telemetry, DISABLED_dos_tcp)
 {
 	// TODO reimplement in Rust

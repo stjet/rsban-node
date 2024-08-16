@@ -3,11 +3,17 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::{
-    config::FrontiersConfirmationMode,
+    config::{FrontiersConfirmationMode, NodeFlags},
     stats::{DetailType, Direction, StatType},
     transport::ChannelId,
+    wallets::WalletsExt,
 };
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{atomic::Ordering, Arc},
+    thread::sleep,
+    time::Duration,
+};
 
 use super::helpers::{
     assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, start_election, System,
@@ -617,5 +623,107 @@ fn republish_winner() {
 
     assert_timely(Duration::from_secs(5), || {
         node2.block_confirmed(&fork.hash())
+    });
+}
+
+/*
+ * Tests that an election can be confirmed as the result of a confirmation request
+ *
+ * Set-up:
+ * - node1 with:
+ * 		- enabled frontiers_confirmation (default) -> allows it to confirm blocks and subsequently generates votes
+ * - node2 with:
+ * 		- disabled rep crawler -> this inhibits node2 from learning that node1 is a rep
+ */
+#[test]
+fn confirm_election_by_request() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(100),
+        1.into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    // Process send1 locally on node1
+    node1.process(send1.clone()).unwrap();
+
+    // Add rep key to node1
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    // Ensure election on node1 is already confirmed before connecting with node2
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+
+    // Wait for the election to be removed and give time for any in-flight vote broadcasts to settle
+    assert_timely(Duration::from_secs(5), || node1.active.len() == 0);
+    sleep(Duration::from_secs(1));
+
+    // At this point node1 should not generate votes for send1 block unless it receives a request
+
+    // Create a second node
+    let flags = NodeFlags {
+        disable_rep_crawler: true,
+        ..Default::default()
+    };
+    let node2 = system.build_node().flags(flags).finish();
+
+    // Process send1 block as live block on node2, this should start an election
+    node2.process_active(send1.clone());
+
+    // Ensure election is started on node2
+    assert_timely(Duration::from_secs(5), || {
+        node2.active.election(&send1.qualified_root()).is_some()
+    });
+
+    let election = node2.active.election(&send1.qualified_root()).unwrap();
+
+    // Ensure election on node2 did not get confirmed without us requesting votes
+    sleep(Duration::from_secs(1));
+    assert_eq!(node2.active.confirmed(&election), false);
+
+    // Expect that node2 has nobody to send a confirmation_request to (no reps)
+    assert_eq!(
+        election.confirmation_request_count.load(Ordering::SeqCst),
+        0
+    );
+
+    // Get random peer list (of size 1) from node2 -- so basically just node2
+    let peers = node2.network.random_realtime_channels(1, 0);
+    assert_eq!(peers.is_empty(), false);
+
+    // Add representative (node1) to disabled rep crawler of node2
+    node2.online_reps.lock().unwrap().vote_observed_directly(
+        *DEV_GENESIS_ACCOUNT,
+        peers[0].channel_id(),
+        node2.steady_clock.now(),
+    );
+
+    // Expect a vote to come back
+    assert_timely(Duration::from_secs(5), || election.vote_count() >= 1);
+
+    // There needs to be at least one request to get the election confirmed,
+    // Rep has this block already confirmed so should reply with final vote only
+    assert_timely(Duration::from_secs(5), || {
+        election.confirmation_request_count.load(Ordering::SeqCst) >= 1
+    });
+
+    // Expect election was confirmed
+    assert_timely(Duration::from_secs(5), || node2.active.confirmed(&election));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node2.block_confirmed(&send1.hash())
     });
 }

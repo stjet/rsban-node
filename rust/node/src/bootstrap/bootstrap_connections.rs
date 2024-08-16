@@ -492,13 +492,15 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         || !endpoints.contains(&endpoint))
                     && !self.network.is_excluded(&endpoint)
                 {
-                    let self_l = Arc::clone(self);
-                    self.runtime.tokio.spawn(async move {
-                        self_l.connect_client(endpoint, false).await;
-                    });
-                    endpoints.insert(endpoint);
-                    let _guard = self.mutex.lock().unwrap();
-                    self.new_connections_empty.store(false, Ordering::SeqCst);
+                    let success = self
+                        .runtime
+                        .tokio
+                        .block_on(self.connect_client(endpoint, false));
+                    if success {
+                        endpoints.insert(endpoint);
+                        let _guard = self.mutex.lock().unwrap();
+                        self.new_connections_empty.store(false, Ordering::SeqCst);
+                    }
                 } else if self.connections_count.load(Ordering::SeqCst) == 0 {
                     {
                         let _guard = self.mutex.lock().unwrap();

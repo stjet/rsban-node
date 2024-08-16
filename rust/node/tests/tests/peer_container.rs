@@ -1,8 +1,6 @@
-use std::time::Duration;
-
 use rsnano_node::transport::{ChannelMode, PeerConnectorExt};
-
-use super::helpers::{assert_never, System};
+use std::time::Duration;
+use test_helpers::{assert_never, System};
 
 // Test a node cannot connect to its own endpoint.
 #[test]

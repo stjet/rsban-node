@@ -1,6 +1,3 @@
-use std::{sync::Arc, time::Duration};
-
-use super::helpers::{assert_timely, assert_timely_eq, get_available_port, System};
 use rsnano_core::{
     Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
@@ -9,6 +6,8 @@ use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig},
     wallets::WalletsExt,
 };
+use std::{sync::Arc, time::Duration};
+use test_helpers::{assert_timely, assert_timely_eq, get_available_port, System};
 
 // FIXME: this test fails on rare occasions. It needs a review.
 #[test]

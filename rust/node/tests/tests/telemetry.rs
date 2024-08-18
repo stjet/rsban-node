@@ -1,6 +1,10 @@
 use rsnano_messages::{Message, TelemetryAck};
-use rsnano_node::stats::{DetailType, Direction, StatType};
-use std::time::Duration;
+use rsnano_node::{
+    config::NodeFlags,
+    node::NodeExt,
+    stats::{DetailType, Direction, StatType},
+};
+use std::{thread::sleep, time::Duration};
 use test_helpers::{assert_never, assert_timely, make_fake_channel, System};
 
 #[test]

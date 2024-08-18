@@ -40,8 +40,6 @@ public:
 	void flood_block_many (std::deque<std::shared_ptr<nano::block>>, std::function<void ()> = nullptr, unsigned = broadcast_interval_ms);
 	void merge_peers (std::array<nano::endpoint, 8> const &);
 	void merge_peer (nano::endpoint const &);
-	std::shared_ptr<nano::transport::channel> find_node_id (nano::account const &);
-	std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t count_a, uint8_t min_version_a = 0) const;
 	nano::endpoint endpoint () const;
 	void cleanup (std::chrono::system_clock::time_point const & cutoff);
 	std::size_t size () const;

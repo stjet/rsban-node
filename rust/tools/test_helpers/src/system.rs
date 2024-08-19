@@ -1,5 +1,6 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock, WalletId,
+    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
+    WalletId,
 };
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -363,4 +364,57 @@ pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -
     }
 
     blocks
+}
+
+pub fn setup_chains(
+    node: &Node,
+    chain_count: usize,
+    block_count: usize,
+    source: &KeyPair,
+    confirm: bool,
+) -> Vec<(Account, Vec<BlockEnum>)> {
+    let mut latest = node.latest(&source.public_key());
+    let mut balance = node.balance(&source.public_key());
+
+    let mut chains = Vec::new();
+    for _ in 0..chain_count {
+        let key = KeyPair::new();
+        let amount_sent = Amount::raw(block_count as u128 * 2);
+        balance = balance - amount_sent; // Send enough to later create `block_count` blocks
+        let send = BlockEnum::State(StateBlock::new(
+            source.public_key(),
+            latest,
+            source.public_key(),
+            balance,
+            key.public_key().into(),
+            source,
+            node.work_generate_dev(latest.into()),
+        ));
+
+        let open = BlockEnum::State(StateBlock::new(
+            key.public_key(),
+            BlockHash::zero(),
+            key.public_key(),
+            amount_sent,
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(key.public_key().into()),
+        ));
+
+        latest = send.hash();
+        node.process(send.clone()).unwrap();
+        node.process(open.clone()).unwrap();
+
+        if confirm {
+            node.confirm(send.hash());
+            node.confirm(open.hash());
+        }
+
+        let mut blocks = setup_chain(node, block_count, &key, confirm);
+        blocks.insert(0, open);
+
+        chains.push((key.public_key(), blocks));
+    }
+
+    chains
 }

@@ -163,8 +163,6 @@ impl RpcProcessConfig {
 #[cfg(test)]
 mod tests {
     use rsnano_node::config::get_default_rpc_filepath_from;
-
-    use super::*;
     use std::path::Path;
 
     #[test]

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_node::config::DaemonToml;
+use rsnano_rpc::RpcToml;
 use std::io::BufRead;
 
 #[derive(Parser)]
@@ -25,9 +26,8 @@ impl GenerateConfigArgs {
             let daemon_toml = DaemonToml::default();
             (toml::to_string(&daemon_toml)?, "node")
         } else {
-            //let rpc_toml = RpcToml::default();
-            //(toml::to_string(&rpc_toml)?, "rpc")
-            (String::new(), "rpc")
+            let rpc_toml = RpcToml::default();
+            (toml::to_string(&rpc_toml)?, "rpc")
         };
 
         println!("# This is an example configuration file for Nano. Visit https://docs.nano.org/running-a-node/configuration/ for more information.");

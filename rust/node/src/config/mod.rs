@@ -18,7 +18,7 @@ pub use node_rpc_config::*;
 pub use opencl_config::*;
 pub use rsnano_core::Networks;
 use std::path::{Path, PathBuf};
-pub use toml::*;
+pub use toml::DaemonToml;
 
 pub fn get_node_toml_config_path(data_path: &Path) -> PathBuf {
     let mut node_toml = data_path.to_owned();

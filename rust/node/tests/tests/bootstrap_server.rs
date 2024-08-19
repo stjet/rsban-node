@@ -1,6 +1,6 @@
 use super::helpers::{assert_timely_eq, make_fake_channel, setup_chains, System};
 use crate::tests::helpers::assert_always_eq;
-use rsnano_core::{BlockEnum, HashOrAccount, DEV_GENESIS_KEY};
+use rsnano_core::{Account, BlockEnum, BlockHash, HashOrAccount, DEV_GENESIS_KEY};
 use rsnano_messages::{
     AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq, AscPullReqType,
     BlocksReqPayload, HashType, Message,
@@ -10,6 +10,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use tokio_tungstenite::tungstenite::util::NonBlockingError;
 
 #[test]
 fn serve_account_blocks() {
@@ -305,6 +306,48 @@ fn serve_account_info() {
         blocks.last().unwrap().hash()
     );
     assert_eq!(response_payload.account_conf_height as usize, blocks.len());
+
+    // Ensure we don't get any unexpected responses
+    assert_always_eq(Duration::from_secs(1), || responses.len(), 1);
+}
+
+#[test]
+fn serve_account_info_missing() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    setup_chains(&node, 1, 128, &DEV_GENESIS_KEY, true);
+
+    // Request blocks from account root
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
+            target: HashOrAccount::from(42), // unknown account
+            target_type: HashType::Account,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::AccountInfo(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.account, Account::from(42));
+    assert_eq!(response_payload.account_open, BlockHash::zero());
+    assert_eq!(response_payload.account_head, BlockHash::zero());
+    assert_eq!(response_payload.account_block_count, 0);
+    assert_eq!(response_payload.account_conf_frontier, BlockHash::zero());
+    assert_eq!(response_payload.account_conf_height, 0);
 
     // Ensure we don't get any unexpected responses
     assert_always_eq(Duration::from_secs(1), || responses.len(), 1);

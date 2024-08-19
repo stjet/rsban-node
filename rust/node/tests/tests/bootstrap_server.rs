@@ -1,6 +1,6 @@
 use super::helpers::{assert_timely_eq, make_fake_channel, setup_chains, System};
 use crate::tests::helpers::assert_always_eq;
-use rsnano_core::{BlockEnum, DEV_GENESIS_KEY};
+use rsnano_core::{BlockEnum, HashOrAccount, DEV_GENESIS_KEY};
 use rsnano_messages::{
     AscPullAck, AscPullAckType, AscPullReq, AscPullReqType, BlocksReqPayload, HashType, Message,
 };
@@ -172,6 +172,42 @@ fn serve_end_of_chain() {
         response_payload.blocks()[0].hash(),
         blocks.last().unwrap().hash()
     );
+}
+
+#[test]
+fn serve_missing() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    setup_chains(&node, 1, 128, &DEV_GENESIS_KEY, true);
+
+    // Request blocks from account frontier
+    //
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::Blocks(BlocksReqPayload {
+            start_type: HashType::Block,
+            start: HashOrAccount::from(42),
+            count: BootstrapServer::MAX_BLOCKS as u8,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::Blocks(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.blocks().len(), 0);
 }
 
 struct ResponseHelper {

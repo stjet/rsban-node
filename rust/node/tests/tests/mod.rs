@@ -13,3 +13,4 @@ mod request_aggregator;
 mod telemetry;
 mod vote_processor;
 mod votes;
+mod websocket;

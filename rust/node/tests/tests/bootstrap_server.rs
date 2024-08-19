@@ -413,7 +413,7 @@ fn serve_frontiers_invalid_count() {
     let responses = ResponseHelper::new();
     responses.connect(&node);
 
-    let chains = setup_chains(&node, 4, 4, &DEV_GENESIS_KEY, true);
+    setup_chains(&node, 4, 4, &DEV_GENESIS_KEY, true);
 
     // Zero count
     {

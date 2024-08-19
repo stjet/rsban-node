@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt::Debug, hash::Hash, time::Duration};
 
-#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash, Serialize, Debug)]
+#[derive(Clone, Copy, FromPrimitive, PartialEq, Eq, Hash, Serialize, Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Topic {
     Invalid = 0,
@@ -43,7 +43,7 @@ pub struct IncomingMessage<'a> {
     pub accounts_del: Vec<&'a str>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, Deserialize)]
 pub struct OutgoingMessageEnvelope {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,

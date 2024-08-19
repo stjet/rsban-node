@@ -2,7 +2,8 @@ use super::helpers::{assert_timely_eq, make_fake_channel, setup_chains, System};
 use crate::tests::helpers::assert_always_eq;
 use rsnano_core::{BlockEnum, HashOrAccount, DEV_GENESIS_KEY};
 use rsnano_messages::{
-    AscPullAck, AscPullAckType, AscPullReq, AscPullReqType, BlocksReqPayload, HashType, Message,
+    AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq, AscPullReqType,
+    BlocksReqPayload, HashType, Message,
 };
 use rsnano_node::{bootstrap::BootstrapServer, node::Node};
 use std::{
@@ -261,6 +262,52 @@ fn serve_multiple() {
             next_id += 1;
         }
     }
+}
+
+#[test]
+fn serve_account_info() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let mut chains = setup_chains(&node, 1, 128, &DEV_GENESIS_KEY, true);
+    let (account, blocks) = chains.pop().unwrap();
+
+    // Request blocks from account root
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::AccountInfo(AccountInfoReqPayload {
+            target: account.into(),
+            target_type: HashType::Account,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::AccountInfo(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.account, account);
+    assert_eq!(response_payload.account_open, blocks[0].hash());
+    assert_eq!(response_payload.account_head, blocks.last().unwrap().hash());
+    assert_eq!(response_payload.account_block_count as usize, blocks.len());
+    assert_eq!(
+        response_payload.account_conf_frontier,
+        blocks.last().unwrap().hash()
+    );
+    assert_eq!(response_payload.account_conf_height as usize, blocks.len());
+
+    // Ensure we don't get any unexpected responses
+    assert_always_eq(Duration::from_secs(1), || responses.len(), 1);
 }
 
 struct ResponseHelper {

@@ -67,46 +67,6 @@ bool compare_blocks (std::vector<std::shared_ptr<nano::block>> blocks_a, std::ve
 }
 }
 
-TEST (bootstrap_server, serve_account_info)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	responses_helper responses;
-	responses.connect (node.bootstrap_server);
-
-	auto chains = nano::test::setup_chains (system, node, 1, 128);
-	auto [account, blocks] = chains.front ();
-
-	// Request blocks from account root
-	nano::asc_pull_req::account_info_payload request_payload{};
-	request_payload.target = account;
-	request_payload.target_type = nano::asc_pull_req::hash_type::account;
-	nano::asc_pull_req request{ node.network_params.network, 7, request_payload };
-
-	node.network->inbound (request, nano::test::fake_channel (node));
-
-	ASSERT_TIMELY_EQ (5s, responses.size (), 1);
-
-	auto response = responses.get ().front ();
-	// Ensure we got response exactly for what we asked for
-	ASSERT_EQ (response.id (), 7);
-	ASSERT_EQ (response.pull_type (), nano::asc_pull_type::account_info);
-
-	nano::asc_pull_ack::account_info_payload response_payload;
-	ASSERT_NO_THROW (response_payload = std::get<nano::asc_pull_ack::account_info_payload> (response.payload ()));
-
-	ASSERT_EQ (response_payload.account, account);
-	ASSERT_EQ (response_payload.account_open, blocks.front ()->hash ());
-	ASSERT_EQ (response_payload.account_head, blocks.back ()->hash ());
-	ASSERT_EQ (response_payload.account_block_count, blocks.size ());
-	ASSERT_EQ (response_payload.account_conf_frontier, blocks.back ()->hash ());
-	ASSERT_EQ (response_payload.account_conf_height, blocks.size ());
-
-	// Ensure we don't get any unexpected responses
-	ASSERT_ALWAYS (1s, responses.size () == 1);
-}
-
 TEST (bootstrap_server, serve_account_info_missing)
 {
 	nano::test::system system{};

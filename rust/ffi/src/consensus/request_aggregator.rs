@@ -1,25 +1,4 @@
-use rsnano_node::consensus::{RequestAggregator, RequestAggregatorConfig};
-use std::{ops::Deref, sync::Arc};
-
-pub struct RequestAggregatorHandle(pub Arc<RequestAggregator>);
-
-impl Deref for RequestAggregatorHandle {
-    type Target = Arc<RequestAggregator>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_request_aggregator_destroy(handle: *mut RequestAggregatorHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_request_aggregator_len(handle: &RequestAggregatorHandle) -> usize {
-    handle.0.len()
-}
+use rsnano_node::consensus::RequestAggregatorConfig;
 
 #[repr(C)]
 pub struct RequestAggregatorConfigDto {

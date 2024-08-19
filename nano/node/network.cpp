@@ -16,9 +16,8 @@ using namespace std::chrono_literals;
  * network
  */
 
-nano::network::network (nano::node & node, uint16_t port, rsnano::SynCookiesHandle * syn_cookies_handle, rsnano::TcpChannelsHandle * channels_handle, rsnano::NetworkFilterHandle * filter_handle) :
+nano::network::network (nano::node & node, uint16_t port, rsnano::TcpChannelsHandle * channels_handle, rsnano::NetworkFilterHandle * filter_handle) :
 	node{ node },
-	syn_cookies{ make_shared<nano::syn_cookies> (syn_cookies_handle) },
 	tcp_channels{ make_shared<nano::transport::tcp_channels> (channels_handle, filter_handle) }
 {
 }
@@ -88,25 +87,6 @@ std::size_t nano::network::size () const
 bool nano::network::empty () const
 {
 	return size () == 0;
-}
-
-/*
- * syn_cookies
- */
-
-nano::syn_cookies::syn_cookies (rsnano::SynCookiesHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::syn_cookies::~syn_cookies ()
-{
-	rsnano::rsn_syn_cookies_destroy (handle);
-}
-
-std::size_t nano::syn_cookies::cookies_size ()
-{
-	return rsnano::rsn_syn_cookies_cookies_count (handle);
 }
 
 std::string nano::network::to_string (nano::networks network)

@@ -31,11 +31,6 @@ pub unsafe extern "C" fn rsn_telemetry_trigger(handle: &TelemetryHandle) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_telemetry_len(handle: &TelemetryHandle) -> usize {
-    handle.0.len()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_telemetry_get_telemetry(
     handle: &TelemetryHandle,
     endpoint: &EndpointDto,

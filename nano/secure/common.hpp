@@ -248,8 +248,6 @@ public:
 	static std::string const hash_prefix;
 };
 
-std::vector<std::shared_ptr<nano::vote>> into_vote_vec (rsnano::VoteVecHandle * handle);
-
 enum class vote_code
 {
 	invalid, // Vote is not signed correctly

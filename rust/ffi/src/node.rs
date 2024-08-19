@@ -5,8 +5,8 @@ use crate::{
     consensus::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
         ElectionStatusHandle, FfiAccountBalanceCallback, LocalVoteHistoryHandle,
-        ManualSchedulerHandle, RepTiersHandle, RequestAggregatorHandle, VoteCacheHandle,
-        VoteHandle, VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
+        ManualSchedulerHandle, RepTiersHandle, VoteHandle, VoteProcessorVoteProcessedCallback,
+        VoteWithWeightInfoVecHandle,
     },
     core::BlockVecHandle,
     fill_node_config_dto,
@@ -14,10 +14,7 @@ use crate::{
     representatives::{RepCrawlerHandle, RepresentativeRegisterHandle},
     telemetry::TelemetryHandle,
     to_rust_string,
-    transport::{
-        EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle, SynCookiesHandle,
-        TcpChannelsHandle,
-    },
+    transport::{EndpointDto, NetworkFilterHandle, TcpChannelsHandle},
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
     websocket::WebsocketListenerHandle,
@@ -158,13 +155,6 @@ pub extern "C" fn rsn_node_unchecked(handle: &NodeHandle) -> *mut UncheckedMapHa
 #[no_mangle]
 pub extern "C" fn rsn_node_ledger(handle: &NodeHandle) -> *mut LedgerHandle {
     Box::into_raw(Box::new(LedgerHandle(Arc::clone(&handle.0.ledger))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_syn_cookies(handle: &NodeHandle) -> *mut SynCookiesHandle {
-    Box::into_raw(Box::new(SynCookiesHandle(Arc::clone(
-        &handle.0.syn_cookies,
-    ))))
 }
 
 #[no_mangle]

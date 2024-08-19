@@ -15,7 +15,6 @@ class bootstrap_server;
 class node_config;
 class node_flags;
 class network;
-class syn_cookies;
 class logger;
 
 namespace transport

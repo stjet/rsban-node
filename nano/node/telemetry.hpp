@@ -53,8 +53,6 @@ public:
 
 	nano::telemetry_data local_telemetry () const;
 
-	std::size_t size () const;
-
 	/**
 	 * Returns telemetry for selected endpoint
 	 */
@@ -67,6 +65,4 @@ public:
 
 	rsnano::TelemetryHandle * handle;
 };
-
-nano::telemetry_data consolidate_telemetry_data (std::vector<telemetry_data> const & telemetry_data);
 }

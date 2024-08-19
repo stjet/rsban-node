@@ -6,7 +6,6 @@ mod logging;
 mod stream;
 mod thread_pool;
 mod timer;
-mod toml;
 
 use crate::{transport::EndpointDto, VoidPointerCallback};
 pub use async_runtime::AsyncRuntimeHandle;

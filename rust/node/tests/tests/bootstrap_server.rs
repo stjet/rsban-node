@@ -59,7 +59,7 @@ fn serve_hash() {
     responses.connect(&node);
 
     let mut chains = setup_chains(&node, 1, 256, &DEV_GENESIS_KEY, true);
-    let (account, blocks) = chains.pop().unwrap();
+    let (_, blocks) = chains.pop().unwrap();
 
     // Skip a few blocks to request hash in the middle of the chain
     let blocks = &blocks[9..];
@@ -91,6 +91,46 @@ fn serve_hash() {
 
     // Ensure we don't get any unexpected responses
     assert_always_eq(Duration::from_secs(1), || responses.len(), 1);
+}
+
+#[test]
+fn serve_hash_one() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let mut chains = setup_chains(&node, 1, 256, &DEV_GENESIS_KEY, true);
+    let (_account, blocks) = chains.pop().unwrap();
+
+    // Skip a few blocks to request hash in the middle of the chain
+    let blocks = &blocks[9..];
+
+    // Request blocks from the middle of the chain
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::Blocks(BlocksReqPayload {
+            start_type: HashType::Block,
+            start: blocks[0].hash().into(),
+            count: 1,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::Blocks(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.blocks().len(), 1);
+    assert_eq!(response_payload.blocks()[0].hash(), blocks[0].hash());
 }
 
 struct ResponseHelper {

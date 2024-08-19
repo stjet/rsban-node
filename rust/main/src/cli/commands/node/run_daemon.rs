@@ -3,13 +3,17 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::work::WorkPoolImpl;
 use rsnano_node::{
-    config::{get_node_toml_config_path, DaemonConfig, DaemonToml, NetworkConstants, NodeFlags},
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants, NodeFlags,
+    },
     node::{Node, NodeExt},
     utils::AsyncRuntime,
     NetworkParams,
 };
+use rsnano_rpc::{RpcConfig, RpcToml};
 use std::{
-    fs,
+    fs::read_to_string,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
@@ -128,9 +132,9 @@ impl RunDaemonArgs {
         let node_toml_config_path = get_node_toml_config_path(&path);
 
         let daemon_config = if node_toml_config_path.exists() {
-            let toml_str = fs::read_to_string(node_toml_config_path)?;
+            let daemon_toml_str = read_to_string(node_toml_config_path)?;
 
-            let daemon_toml: DaemonToml = from_str(&toml_str)?;
+            let daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
 
             (&daemon_toml).into()
         } else {
@@ -138,6 +142,18 @@ impl RunDaemonArgs {
         };
 
         let node_config = daemon_config.node;
+
+        let rpc_toml_config_path = get_rpc_toml_config_path(&path);
+
+        let rpc_config = if rpc_toml_config_path.exists() {
+            let rpc_toml_str = read_to_string(rpc_toml_config_path)?;
+
+            let rpc_toml: RpcToml = from_str(&rpc_toml_str)?;
+
+            (&rpc_toml).into()
+        } else {
+            RpcConfig::default()
+        };
 
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);

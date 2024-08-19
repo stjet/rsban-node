@@ -74,14 +74,12 @@ impl Default for DaemonToml {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use rsnano_core::Networks;
-
     use crate::{
         config::{DaemonConfig, DaemonToml},
         NetworkParams,
     };
+    use rsnano_core::Networks;
+    use std::path::PathBuf;
 
     static DEFAULT_TOML_STR: &str = r#"[node]
         allow_local_peers = true

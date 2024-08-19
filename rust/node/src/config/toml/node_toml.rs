@@ -1,10 +1,10 @@
 use super::{
-    ActiveElectionsToml, BlockProcessorToml, BootstrapServerToml, DiagnosticsToml,
-    ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
+    ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
+    DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
     MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
     RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
-use crate::config::{BootstrapAscendingToml, FrontiersConfirmationMode, NodeConfig, Peer};
+use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};

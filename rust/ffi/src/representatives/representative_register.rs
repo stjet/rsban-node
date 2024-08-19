@@ -1,9 +1,5 @@
-use crate::transport::ChannelHandle;
-use rsnano_core::{Account, Amount};
-use rsnano_node::{
-    representatives::{OnlineReps, PeeredRep},
-    utils::Timestamp,
-};
+use rsnano_core::Amount;
+use rsnano_node::representatives::{OnlineReps, PeeredRep};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -26,29 +22,6 @@ pub unsafe extern "C" fn rsn_representative_register_destroy(
     handle: *mut RepresentativeRegisterHandle,
 ) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_representative_register_update_or_insert(
-    handle: &mut RepresentativeRegisterHandle,
-    account: *const u8,
-    channel: &ChannelHandle,
-) {
-    let account = Account::from_ptr(account);
-    let mut guard = handle.0.lock().unwrap();
-    guard.vote_observed_directly(
-        account,
-        channel.channel_id(),
-        Timestamp::new_test_instance(),
-    );
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_representative_register_is_pr(
-    handle: &RepresentativeRegisterHandle,
-    channel: &ChannelHandle,
-) -> bool {
-    handle.0.lock().unwrap().is_pr(channel.channel_id())
 }
 
 #[no_mangle]

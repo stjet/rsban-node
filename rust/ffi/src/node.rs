@@ -6,19 +6,17 @@ use crate::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
         ElectionStatusHandle, FfiAccountBalanceCallback, LocalVoteHistoryHandle,
         ManualSchedulerHandle, RepTiersHandle, RequestAggregatorHandle, VoteCacheHandle,
-        VoteHandle, VoteProcessorHandle, VoteProcessorQueueHandle,
-        VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
+        VoteHandle, VoteProcessorVoteProcessedCallback, VoteWithWeightInfoVecHandle,
     },
     core::BlockVecHandle,
     fill_node_config_dto,
     ledger::datastore::{lmdb::LmdbStoreHandle, LedgerHandle},
-    messages::MessageHandle,
     representatives::{RepCrawlerHandle, RepresentativeRegisterHandle},
     telemetry::TelemetryHandle,
     to_rust_string,
     transport::{
-        ChannelHandle, EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle,
-        SynCookiesHandle, TcpChannelsHandle,
+        EndpointDto, NetworkFilterHandle, OutboundBandwidthLimiterHandle, SynCookiesHandle,
+        TcpChannelsHandle,
     },
     utils::{AsyncRuntimeHandle, ContainerInfoComponentHandle, ContextWrapper, ThreadPoolHandle},
     wallets::LmdbWalletsHandle,
@@ -217,15 +215,6 @@ pub extern "C" fn rsn_node_rep_tiers(handle: &NodeHandle) -> *mut RepTiersHandle
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_vote_processor_queue(
-    handle: &NodeHandle,
-) -> *mut VoteProcessorQueueHandle {
-    Box::into_raw(Box::new(VoteProcessorQueueHandle(Arc::clone(
-        &handle.0.vote_processor_queue,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_history(handle: &NodeHandle) -> *mut LocalVoteHistoryHandle {
     Box::into_raw(Box::new(LocalVoteHistoryHandle(Arc::clone(
         &handle.0.history,
@@ -260,13 +249,6 @@ pub extern "C" fn rsn_node_wallets(handle: &NodeHandle) -> *mut LmdbWalletsHandl
 pub extern "C" fn rsn_node_active(handle: &NodeHandle) -> *mut ActiveTransactionsHandle {
     Box::into_raw(Box::new(ActiveTransactionsHandle(Arc::clone(
         &handle.0.active,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_vote_processor(handle: &NodeHandle) -> *mut VoteProcessorHandle {
-    Box::into_raw(Box::new(VoteProcessorHandle(Arc::clone(
-        &handle.0.vote_processor,
     ))))
 }
 
@@ -393,18 +375,6 @@ pub unsafe extern "C" fn rsn_node_enqueue_vote_request(
         .0
         .vote_generators
         .generate_non_final_vote(&Root::from_ptr(root), &BlockHash::from_ptr(hash));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_node_inbound(
-    handle: &NodeHandle,
-    message: &MessageHandle,
-    channel: &ChannelHandle,
-) {
-    handle
-        .0
-        .inbound_message_queue
-        .put(message.0.message.clone(), (**channel).clone());
 }
 
 #[no_mangle]

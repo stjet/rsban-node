@@ -12,7 +12,6 @@ mod request_aggregator;
 mod vote;
 mod vote_cache;
 mod vote_processor;
-mod vote_processor_queue;
 mod vote_spacing;
 mod vote_with_weight_info;
 
@@ -29,8 +28,5 @@ pub use request_aggregator::{RequestAggregatorConfigDto, RequestAggregatorHandle
 pub use vote::VoteHandle;
 pub use vote_cache::VoteCacheConfigDto;
 pub use vote_cache::VoteCacheHandle;
-pub use vote_processor::{
-    VoteProcessorConfigDto, VoteProcessorHandle, VoteProcessorVoteProcessedCallback,
-};
-pub use vote_processor_queue::VoteProcessorQueueHandle;
+pub use vote_processor::{VoteProcessorConfigDto, VoteProcessorVoteProcessedCallback};
 pub use vote_with_weight_info::VoteWithWeightInfoVecHandle;

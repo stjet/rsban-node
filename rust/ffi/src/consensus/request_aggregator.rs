@@ -1,4 +1,3 @@
-use crate::transport::ChannelHandle;
 use rsnano_core::{BlockHash, Root};
 use rsnano_node::consensus::{RequestAggregator, RequestAggregatorConfig};
 use std::{ops::Deref, sync::Arc};
@@ -16,17 +15,6 @@ impl Deref for RequestAggregatorHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_request_aggregator_destroy(handle: *mut RequestAggregatorHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_request_aggregator_add(
-    handle: &RequestAggregatorHandle,
-    channel: &ChannelHandle,
-    hashes_roots: &HashesRootsVecHandle,
-) -> bool {
-    handle
-        .0
-        .request(hashes_roots.0.clone(), channel.channel_id())
 }
 
 #[no_mangle]

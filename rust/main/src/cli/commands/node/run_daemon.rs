@@ -3,16 +3,19 @@ use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::work::WorkPoolImpl;
 use rsnano_node::{
-    config::{RpcConfig, get_node_toml_config_path, DaemonConfig, DaemonToml, NetworkConstants, NodeFlags},
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants, NodeFlags,
+    },
     node::{Node, NodeExt},
     utils::AsyncRuntime,
     NetworkParams,
 };
 use rsnano_rpc::{run_rpc_server, RpcConfig, RpcToml};
 use std::{
+    fs,
     net::{IpAddr, SocketAddr},
     str::FromStr,
-    fs,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };

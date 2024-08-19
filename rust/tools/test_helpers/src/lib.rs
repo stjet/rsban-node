@@ -370,7 +370,7 @@ pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -
     blocks
 }
 
-pub(crate) fn setup_chains(
+pub fn setup_chains(
     node: &Node,
     chain_count: usize,
     block_count: usize,

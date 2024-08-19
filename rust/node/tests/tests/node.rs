@@ -13,9 +13,9 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
-use test_helpers::{activate_hashes, assert_timely, start_election, start_elections};
 use test_helpers::{
-    assert_always_eq, assert_never, assert_timely_eq, assert_timely_msg, make_fake_channel, System,
+    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq,
+    assert_timely_msg, make_fake_channel, start_election, start_elections, System,
 };
 
 #[test]

@@ -5,7 +5,7 @@ use rsnano_node::{
     stats::{DetailType, Direction, StatType},
 };
 use std::{thread::sleep, time::Duration};
-use test_helpers::{assert_never, assert_timely, make_fake_channel, System};
+use test_helpers::{assert_always_eq, assert_never, assert_timely, make_fake_channel, System};
 
 #[test]
 fn invalid_signature() {

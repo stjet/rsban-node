@@ -41,4 +41,3 @@ TEST (rep_crawler, rep_connection_close)
 	// Remove representative with closed channel
 	ASSERT_TIMELY_EQ (10s, node1.rep_crawler.representative_count (), 0);
 }
-

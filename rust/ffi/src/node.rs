@@ -1,6 +1,6 @@
 use crate::{
     block_processing::{BacklogPopulationHandle, BlockProcessorHandle, UncheckedMapHandle},
-    bootstrap::{BootstrapInitiatorHandle, BootstrapServerHandle, TcpListenerHandle},
+    bootstrap::{BootstrapInitiatorHandle, TcpListenerHandle},
     cementation::ConfirmingSetHandle,
     consensus::{
         ActiveTransactionsHandle, ElectionEndedCallback, ElectionSchedulerHandle,
@@ -200,13 +200,6 @@ pub extern "C" fn rsn_node_network_filter(handle: &NodeHandle) -> *mut NetworkFi
 #[no_mangle]
 pub extern "C" fn rsn_node_telemetry(handle: &NodeHandle) -> *mut TelemetryHandle {
     Box::into_raw(Box::new(TelemetryHandle(Arc::clone(&handle.0.telemetry))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_bootstrap_server(handle: &NodeHandle) -> *mut BootstrapServerHandle {
-    Box::into_raw(Box::new(BootstrapServerHandle(Arc::clone(
-        &handle.0.bootstrap_server,
-    ))))
 }
 
 #[no_mangle]

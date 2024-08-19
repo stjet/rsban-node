@@ -2950,20 +2950,20 @@ void nano::json_handler::peers ()
 {
 	boost::property_tree::ptree peers_l;
 	bool const peer_details = request.get<bool> ("peer_details", false);
-	auto peers_handle = rsnano::rsn_node_get_peers(node.handle);
-	auto len = rsnano::rsn_peer_info_list_len(peers_handle);
-	for (auto i = 0; i < len; ++i) 
+	auto peers_handle = rsnano::rsn_node_get_peers (node.handle);
+	auto len = rsnano::rsn_peer_info_list_len (peers_handle);
+	for (auto i = 0; i < len; ++i)
 	{
 		rsnano::PeerInfoDto dto;
-		rsnano::rsn_peer_info_list_get(peers_handle, i, &dto);
-		auto remote_addr = rsnano::dto_to_endpoint(dto.remote_endpoint); 
+		rsnano::rsn_peer_info_list_get (peers_handle, i, &dto);
+		auto remote_addr = rsnano::dto_to_endpoint (dto.remote_endpoint);
 		std::stringstream text;
 		text << remote_addr;
 		if (peer_details)
 		{
 			boost::property_tree::ptree pending_tree;
 			pending_tree.put ("protocol_version", std::to_string (dto.protocol_version));
-			auto node_id_l { nano::public_key::from_bytes(&dto.node_id[0])};
+			auto node_id_l{ nano::public_key::from_bytes (&dto.node_id[0]) };
 			if (dto.has_node_id)
 			{
 				pending_tree.put ("node_id", node_id_l.to_node_id ());
@@ -2974,7 +2974,7 @@ void nano::json_handler::peers ()
 			}
 			pending_tree.put ("type", "tcp");
 
-			auto peering_endpoint = rsnano::dto_to_endpoint(dto.peering_endpoint);
+			auto peering_endpoint = rsnano::dto_to_endpoint (dto.peering_endpoint);
 			pending_tree.put ("peering", boost::lexical_cast<std::string> (peering_endpoint));
 
 			peers_l.push_back (boost::property_tree::ptree::value_type (text.str (), pending_tree));
@@ -2984,7 +2984,7 @@ void nano::json_handler::peers ()
 			peers_l.push_back (boost::property_tree::ptree::value_type (text.str (), boost::property_tree::ptree (std::to_string (dto.protocol_version))));
 		}
 	}
-	rsnano::rsn_peer_info_list_destroy(peers_handle);
+	rsnano::rsn_peer_info_list_destroy (peers_handle);
 	response_l.add_child ("peers", peers_l);
 	response_errors ();
 }

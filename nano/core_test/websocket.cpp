@@ -1005,9 +1005,9 @@ TEST (websocket, telemetry)
 
 	ASSERT_TIMELY (10s, done);
 
-	auto remote = node1->find_endpoint_for_node_id(node2->get_node_id());
-	ASSERT_TRUE (remote.has_value());
-	ASSERT_TIMELY (5s, node1->telemetry->get_telemetry (remote.value()));
+	auto remote = node1->find_endpoint_for_node_id (node2->get_node_id ());
+	ASSERT_TRUE (remote.has_value ());
+	ASSERT_TIMELY (5s, node1->telemetry->get_telemetry (remote.value ()));
 
 	ASSERT_TIMELY_EQ (10s, future.wait_for (0s), std::future_status::ready);
 

@@ -16,7 +16,6 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio_tungstenite::tungstenite::util::NonBlockingError;
 
 #[test]
 fn serve_account_blocks() {

@@ -168,7 +168,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
 	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator (handle)),
-	bootstrap_server{ rsnano::rsn_node_bootstrap_server (handle) },
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
 	//         a peering port and wants the OS to pick one, the picking happens when `network` gets initialized
 	//         (if UDP is active, otherwise it happens when `bootstrap` gets initialized), so then for TCP traffic
@@ -522,14 +521,14 @@ nano::ConfirmationQuorum nano::node::quorum () const
 	return result;
 }
 
-std::optional<nano::endpoint> nano::node::find_endpoint_for_node_id(nano::account const & node_id)
+std::optional<nano::endpoint> nano::node::find_endpoint_for_node_id (nano::account const & node_id)
 {
 	rsnano::EndpointDto dto;
-	auto found = rsnano::rsn_node_find_endpoint_for_node_id(handle, node_id.bytes.data(), &dto);
+	auto found = rsnano::rsn_node_find_endpoint_for_node_id (handle, node_id.bytes.data (), &dto);
 	if (found)
 	{
-		return rsnano::dto_to_udp_endpoint(dto);
-	} 
+		return rsnano::dto_to_udp_endpoint (dto);
+	}
 	else
 	{
 		return std::nullopt;

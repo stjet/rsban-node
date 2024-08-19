@@ -1,4 +1,5 @@
 #include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/lib/config.hpp>
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
@@ -38,7 +39,7 @@ std::string nano::daemon_config::serialize_toml ()
 {
 	auto dto{ to_daemon_config_dto (*this) };
 	auto string_dto = rsnano::rsn_daemon_config_serialize_toml (&dto);
-	return rsnano::convert_dto_to_string(string_dto);
+	return rsnano::convert_dto_to_string (string_dto);
 }
 
 nano::error nano::daemon_config::deserialize_toml (nano::tomlconfig & toml)

@@ -7,5 +7,5 @@ mod pulls_cache;
 mod tcp_listener;
 
 pub use bootstrap_initiator::BootstrapInitiatorHandle;
-pub use bootstrap_server::{BootstrapServerConfigDto, BootstrapServerHandle};
+pub use bootstrap_server::BootstrapServerConfigDto;
 pub use tcp_listener::TcpListenerHandle;

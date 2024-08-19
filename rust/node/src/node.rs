@@ -25,7 +25,7 @@ use crate::{
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
         ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
-        LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter,
+        LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkInfo,
         NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
         PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
         TcpListener, TcpListenerExt, TrafficType,
@@ -63,7 +63,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     time::{Duration, SystemTime},
 };
@@ -89,6 +89,7 @@ pub struct Node {
     pub ledger: Arc<Ledger>,
     pub outbound_limiter: Arc<OutboundBandwidthLimiter>,
     pub syn_cookies: Arc<SynCookies>,
+    pub network_info: Arc<RwLock<NetworkInfo>>,
     pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
@@ -229,6 +230,9 @@ impl Node {
             config.bootstrap_serving_threads as usize,
             "Bootstrap work",
         ));
+
+        let network_info = Arc::new(RwLock::new(NetworkInfo::new()));
+
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
@@ -241,6 +245,7 @@ impl Node {
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
             clock: steady_clock.clone(),
+            network_info: network_info.clone(),
         }));
 
         let mut dead_channel_cleanup =
@@ -1045,6 +1050,7 @@ impl Node {
             outbound_limiter,
             syn_cookies,
             network,
+            network_info,
             ledger,
             store,
             stats,

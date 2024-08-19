@@ -1400,6 +1400,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.network_params.network.protocol_info().version_using,
         node.stats.clone(),
         node.outbound_limiter.clone(),
+        node.network_info.clone(),
     ));
 
     Arc::new(ResponseServer::new(

@@ -1,6 +1,6 @@
 use super::{
     write_queue::{WriteQueue, WriteQueueReceiver},
-    AsyncBufferReader, ChannelDirection, ChannelId, ChannelMode, DropPolicy,
+    AsyncBufferReader, ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkInfo,
     OutboundBandwidthLimiter, TcpStream, TrafficType,
 };
 use crate::{
@@ -18,7 +18,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -38,6 +38,7 @@ const DEFAULT_TIMEOUT: u64 = 120;
 
 pub struct Channel {
     channel_id: ChannelId,
+    network_info: Arc<RwLock<NetworkInfo>>,
     channel_mutex: Mutex<ChannelData>,
     protocol_version: AtomicU8,
     limiter: Arc<OutboundBandwidthLimiter>,
@@ -75,6 +76,7 @@ impl Channel {
 
     fn new(
         channel_id: ChannelId,
+        network_info: Arc<RwLock<NetworkInfo>>,
         stream: Arc<TcpStream>,
         direction: ChannelDirection,
         protocol_version: u8,
@@ -96,6 +98,7 @@ impl Channel {
         let now = SystemTime::now();
         let channel = Self {
             channel_id,
+            network_info,
             channel_mutex: Mutex::new(ChannelData {
                 last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
@@ -128,6 +131,7 @@ impl Channel {
     pub fn new_null_with_id(id: impl Into<ChannelId>) -> Self {
         let (mut channel, _receiver) = Self::new(
             id.into(),
+            Arc::new(RwLock::new(NetworkInfo::new())),
             Arc::new(TcpStream::new_null()),
             ChannelDirection::Inbound,
             200,
@@ -146,11 +150,13 @@ impl Channel {
         protocol_version: u8,
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
+        network_info: Arc<RwLock<NetworkInfo>>,
     ) -> Arc<Self> {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
         let (channel, mut receiver) = Self::new(
             channel_id,
+            network_info,
             stream,
             direction,
             protocol_version,

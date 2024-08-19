@@ -1,7 +1,7 @@
 use super::{
     attempt_container::AttemptContainer, channel_container::ChannelContainer, Channel,
-    ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkFilter, OutboundBandwidthLimiter,
-    PeerExclusion, TcpConfig, TcpStream, TrafficType,
+    ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkFilter, NetworkInfo,
+    OutboundBandwidthLimiter, PeerExclusion, TcpConfig, TcpStream, TrafficType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
@@ -22,7 +22,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -38,6 +38,7 @@ pub struct NetworkOptions {
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub clock: Arc<SteadyClock>,
+    pub network_info: Arc<RwLock<NetworkInfo>>,
 }
 
 impl NetworkOptions {
@@ -52,12 +53,14 @@ impl NetworkOptions {
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
             clock: Arc::new(SteadyClock::new_null()),
+            network_info: Arc::new(RwLock::new(NetworkInfo::new())),
         }
     }
 }
 
 pub struct Network {
     state: Mutex<State>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     port: AtomicU16,
     stopped: AtomicBool,
     allow_local_peers: bool,
@@ -103,6 +106,7 @@ impl Network {
             limiter: options.limiter,
             publish_filter: options.publish_filter,
             clock: options.clock,
+            network_info: options.network_info,
         }
     }
 
@@ -201,13 +205,15 @@ impl Network {
             );
         }
 
+        let channel_id = self.get_next_channel_id();
         let channel = Channel::create(
-            self.get_next_channel_id(),
+            channel_id,
             stream,
             direction,
             self.network_params.network.protocol_info().version_using,
             self.stats.clone(),
             self.limiter.clone(),
+            self.network_info.clone(),
         )
         .await;
         self.state.lock().unwrap().channels.insert(channel.clone());

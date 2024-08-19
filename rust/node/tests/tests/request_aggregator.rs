@@ -1,4 +1,3 @@
-use super::helpers::{assert_timely_eq, assert_timely_msg, make_fake_channel, System};
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::ConfirmAck;
@@ -8,6 +7,7 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, time::Duration};
+use test_helpers::{assert_timely_eq, assert_timely_msg, make_fake_channel, System};
 
 #[test]
 fn one() {

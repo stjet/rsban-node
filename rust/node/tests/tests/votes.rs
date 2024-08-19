@@ -1,5 +1,3 @@
-use super::helpers::{assert_timely, start_election, System};
-use crate::tests::helpers::make_fake_channel;
 use rsnano_core::{
     Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
@@ -8,6 +6,7 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
+use test_helpers::{assert_timely, make_fake_channel, start_election, System};
 
 #[test]
 fn check_signature() {

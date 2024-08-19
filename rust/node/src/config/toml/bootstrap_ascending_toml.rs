@@ -88,6 +88,17 @@ impl Default for AccountSetsToml {
     }
 }
 
+impl From<&AccountSetsConfig> for AccountSetsToml {
+    fn from(value: &AccountSetsConfig) -> Self {
+        Self {
+            consideration_count: Some(value.consideration_count),
+            priorities_max: Some(value.priorities_max),
+            blocking_max: Some(value.blocking_max),
+            cooldown: Some(value.cooldown.as_millis() as u64),
+        }
+    }
+}
+
 impl From<&AccountSetsToml> for AccountSetsConfig {
     fn from(toml: &AccountSetsToml) -> Self {
         let mut config = AccountSetsConfig::default();
@@ -105,16 +116,5 @@ impl From<&AccountSetsToml> for AccountSetsConfig {
             config.cooldown = Duration::from_millis(*cooldown);
         }
         config
-    }
-}
-
-impl From<&AccountSetsConfig> for AccountSetsToml {
-    fn from(value: &AccountSetsConfig) -> Self {
-        Self {
-            consideration_count: Some(value.consideration_count),
-            priorities_max: Some(value.priorities_max),
-            blocking_max: Some(value.blocking_max),
-            cooldown: Some(value.cooldown.as_millis() as u64),
-        }
     }
 }

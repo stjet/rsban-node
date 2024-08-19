@@ -1242,6 +1242,7 @@ dependencies = [
  "rsnano_rpc",
  "serde_json",
  "tokio",
+ "toml 0.8.15",
 ]
 
 [[package]]

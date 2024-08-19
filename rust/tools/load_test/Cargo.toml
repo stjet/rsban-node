@@ -16,3 +16,4 @@ rsnano_ledger = { path = "../../ledger" }
 rsnano_rpc = { path = "../../rpc" }
 serde_json = "1.0.72"
 tokio = { version = "1.14.0", features = ["full"] }
+toml = "0.8.15"

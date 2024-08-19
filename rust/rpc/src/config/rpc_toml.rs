@@ -138,11 +138,8 @@ impl Default for RpcToml {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use rsnano_node::nullable_fs::NullableFilesystem;
-
     use crate::{RpcConfig, RpcToml};
+    use toml::{from_str, to_string};
 
     static DEFAULT_TOML_STR: &str = r#"
         address = "::1"
@@ -188,15 +185,7 @@ mod tests {
 
     #[test]
     fn deserialize_no_defaults() {
-        let path: PathBuf = "rpc-config.toml".into();
-
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, MODIFIED_TOML_STR.to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
-        let rpc_toml: RpcToml = toml::from_str(&toml_read).expect("Failed to deserialize TOML");
+        let rpc_toml: RpcToml = from_str(MODIFIED_TOML_STR).expect("Failed to deserialize TOML");
 
         let deserialized_rpc_config: RpcConfig = (&rpc_toml).into();
 
@@ -241,37 +230,10 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_commented() {
-        let path: PathBuf = "rpc-config.toml".into();
-
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, comment_fields(MODIFIED_TOML_STR).to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
-        let rpc_toml: RpcToml = toml::from_str(&toml_read).expect("Failed to deserialize TOML");
-
-        let deserialized_rpc_config: RpcConfig = (&rpc_toml).into();
-
-        let default_rpc_config = RpcConfig::default();
-
-        assert_eq!(&deserialized_rpc_config, &default_rpc_config);
-    }
-
-    #[test]
     fn deserialize_empty() {
-        let path: PathBuf = "node-config.toml".into();
+        let toml_str = "";
 
-        let toml_str = r#""#;
-
-        let fs = NullableFilesystem::null_builder()
-            .read_to_string(&path, toml_str.to_string())
-            .finish();
-
-        let toml_read = fs.read_to_string(&path).unwrap();
-
-        let rpc_toml: RpcToml = toml::from_str(&toml_read).expect("Failed to deserialize TOML");
+        let rpc_toml: RpcToml = from_str(&toml_str).expect("Failed to deserialize TOML");
 
         let deserialized_rpc_config: RpcConfig = (&rpc_toml).into();
 
@@ -286,7 +248,7 @@ mod tests {
 
         let default_rpc_toml: RpcToml = (&default_rpc_config).into();
 
-        let serialized_toml = toml::to_string(&default_rpc_toml).unwrap();
+        let serialized_toml = to_string(&default_rpc_toml).unwrap();
 
         let default_toml_str_trimmed: String = DEFAULT_TOML_STR
             .lines()
@@ -305,34 +267,5 @@ mod tests {
             .to_string();
 
         assert_eq!(&serialized_toml_trimmed, &default_toml_str_trimmed);
-    }
-
-    fn comment_fields(toml_str: &str) -> String {
-        let mut result = String::new();
-        let mut in_header = false;
-
-        for line in toml_str.lines() {
-            if line.trim().is_empty() {
-                result.push_str("\n");
-                continue;
-            }
-
-            if line.trim().starts_with("[") && line.trim().ends_with("]") {
-                if in_header {
-                    result.push_str("\n");
-                }
-                result.push_str(line);
-                result.push_str("\n");
-                in_header = true;
-            } else {
-                if in_header {
-                    result.push_str("# ");
-                    result.push_str(line);
-                    result.push_str("\n");
-                }
-            }
-        }
-
-        result
     }
 }

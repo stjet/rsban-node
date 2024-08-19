@@ -1,9 +1,9 @@
 use super::NetworkConstantsDto;
-use crate::utils::FfiToml;
+use crate::StringDto;
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::config::NetworkConstants;
-use rsnano_rpc::{RpcConfig, RpcLoggingConfig, RpcProcessConfig};
-use std::{convert::TryFrom, ffi::c_void};
+use rsnano_rpc::{RpcConfig, RpcLoggingConfig, RpcProcessConfig, RpcToml};
+use std::{convert::TryFrom, ptr};
 
 #[repr(C)]
 pub struct RpcConfigDto {
@@ -76,16 +76,29 @@ fn fill_rpc_config_dto(dto: &mut RpcConfigDto, cfg: &RpcConfig) {
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_rpc_config_serialize_toml(dto: &RpcConfigDto, toml: *mut c_void) -> i32 {
+pub extern "C" fn rsn_rpc_config_serialize_toml(dto: &RpcConfigDto) -> StringDto {
     let cfg = match RpcConfig::try_from(dto) {
-        Ok(c) => c,
-        Err(_) => return -1,
+        Ok(d) => d,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
     };
-    let mut toml = FfiToml::new(toml);
-    match cfg.serialize_toml(&mut toml) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    }
+
+    let toml: RpcToml = (&cfg).into();
+    let toml_str = match toml::to_string(&toml) {
+        Ok(t) => t,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
+    };
+
+    toml_str.into()
 }
 
 impl TryFrom<&RpcConfigDto> for RpcConfig {

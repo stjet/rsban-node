@@ -167,7 +167,7 @@ impl RepCrawler {
             debug!(
                 "Sending query for block: {} to: {}",
                 hash_root.0,
-                channel.remote_addr()
+                channel.peer_addr()
             );
             self.stats
                 .inc_dir(StatType::RepCrawler, DetailType::QuerySent, Direction::In);

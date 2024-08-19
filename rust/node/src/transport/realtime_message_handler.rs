@@ -78,7 +78,7 @@ impl RealtimeMessageHandler {
                 let peer0 = keepalive.peers[0];
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
                     let new_endpoint =
-                        SocketAddrV6::new(*channel.remote_addr().ip(), peer0.port(), 0, 0);
+                        SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
                     channel.set_peering_endpoint(new_endpoint);

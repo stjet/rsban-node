@@ -508,7 +508,7 @@ pub unsafe extern "C" fn rsn_node_find_endpoint_for_node_id(
 ) -> bool {
     match handle.0.network.find_node_id(&PublicKey::from_ptr(node_id)) {
         Some(channel) => {
-            *result = channel.remote_addr().into();
+            *result = channel.peer_addr().into();
             true
         }
         None => false,
@@ -538,11 +538,8 @@ pub unsafe extern "C" fn rsn_node_get_peers(handle: &NodeHandle) -> *mut PeerInf
             has_node_id: c.get_node_id().is_some(),
             node_id: *c.get_node_id().unwrap_or_default().as_bytes(),
             protocol_version: c.protocol_version(),
-            remote_endpoint: c.remote_addr().into(),
-            peering_endpoint: c
-                .peering_endpoint()
-                .unwrap_or_else(|| c.remote_addr())
-                .into(),
+            remote_endpoint: c.peer_addr().into(),
+            peering_endpoint: c.peering_endpoint().unwrap_or_else(|| c.peer_addr()).into(),
         })
         .collect();
     peers.sort_by(|a, b| {

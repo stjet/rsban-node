@@ -114,7 +114,7 @@ impl ResponseServer {
         latest_keepalives: Arc<Mutex<LatestKeepalives>>,
     ) -> Self {
         let network_constants = network_params.network.clone();
-        let remote_endpoint = channel.remote_addr();
+        let remote_endpoint = channel.peer_addr();
         Self {
             network,
             inbound_queue,
@@ -291,7 +291,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
         {
             let mut guard = self.remote_endpoint.lock().unwrap();
             if guard.port() == 0 {
-                *guard = self.channel.remote_addr();
+                *guard = self.channel.peer_addr();
             }
             debug!("Starting response server for peer: {}", *guard);
         }

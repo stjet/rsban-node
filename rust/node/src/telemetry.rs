@@ -120,7 +120,7 @@ impl Telemetry {
         }
 
         if data.genesis_block != self.network_params.ledger.genesis.hash() {
-            self.network.peer_misbehaved(channel);
+            self.network.peer_misbehaved(channel.channel_id());
 
             self.stats
                 .inc(StatType::Telemetry, DetailType::GenesisMismatch);
@@ -138,16 +138,16 @@ impl Telemetry {
         let data = telemetry.0.as_ref().unwrap();
 
         let mut guard = self.mutex.lock().unwrap();
-        let endpoint = channel.remote_addr();
+        let peer_addr = channel.peer_addr();
 
-        if let Some(entry) = guard.telemetries.get_mut(&endpoint) {
+        if let Some(entry) = guard.telemetries.get_mut(&peer_addr) {
             self.stats.inc(StatType::Telemetry, DetailType::Update);
             entry.data = data.clone();
             entry.last_updated = Instant::now();
         } else {
             self.stats.inc(StatType::Telemetry, DetailType::Insert);
             guard.telemetries.push_back(Entry {
-                endpoint,
+                endpoint: peer_addr,
                 data: data.clone(),
                 last_updated: Instant::now(),
             });

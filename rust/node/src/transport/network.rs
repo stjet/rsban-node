@@ -241,7 +241,7 @@ impl Network {
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|e| e.remote_addr())
+            .map(|e| e.peer_addr())
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -526,7 +526,7 @@ impl Network {
 
     pub(crate) fn list_realtime_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
         let mut result = self.state.lock().unwrap().list_realtime(min_version);
-        result.sort_by_key(|i| i.remote_addr());
+        result.sort_by_key(|i| i.peer_addr());
         result
     }
 
@@ -552,18 +552,28 @@ impl Network {
             .is_excluded(addr, self.clock.now())
     }
 
-    pub(crate) fn peer_misbehaved(&self, channel: &Arc<Channel>) {
-        {
-            // Add to peer exclusion list
-            self.state
-                .lock()
-                .unwrap()
-                .excluded_peers
-                .peer_misbehaved(&channel.remote_addr(), self.clock.now());
-        }
+    pub(crate) fn peer_misbehaved(&self, channel_id: ChannelId) {
+        let mut guard = self.state.lock().unwrap();
 
-        warn!(peer_addr = ?channel.remote_addr(), mode = ?channel.mode(), direction = ?channel.direction(), "Peer misbehaved!");
+        let Some(channel) = guard.channels.get_by_id(channel_id) else {
+            return;
+        };
+        let channel = channel.clone();
+
+        // Add to peer exclusion list
+
+        guard
+            .excluded_peers
+            .peer_misbehaved(&channel.peer_addr(), self.clock.now());
+
+        let peer_addr = channel.peer_addr();
+        let mode = channel.mode();
+        let direction = channel.direction();
+
         channel.close();
+        drop(guard);
+
+        warn!(?peer_addr, ?mode, ?direction, "Peer misbehaved!");
     }
 
     pub(crate) fn perma_ban(&self, remote_addr: SocketAddrV6) {
@@ -602,7 +612,7 @@ impl Network {
                 if other.ipv4_address_or_ipv6_subnet() == channel.ipv4_address_or_ipv6_subnet() {
                     // We already have a connection to that node. We allow duplicate node ids, but
                     // only if they come from different IP addresses
-                    let endpoint = channel.remote_addr();
+                    let endpoint = channel.peer_addr();
                     debug!(
                         node_id = node_id.to_node_id(),
                         remote = %endpoint,
@@ -627,7 +637,7 @@ impl Network {
 
         debug!(
             "Switched to realtime mode (addr: {}, node_id: {})",
-            channel.remote_addr(),
+            channel.peer_addr(),
             node_id.to_node_id()
         );
 

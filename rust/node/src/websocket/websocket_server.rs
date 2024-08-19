@@ -91,7 +91,7 @@ pub fn create_websocket_server(
     telemetry.add_callback(Box::new(move |data, channel| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Telemetry) {
-                let endpoint = channel.peering_endpoint().unwrap_or(channel.remote_addr());
+                let endpoint = channel.peering_endpoint().unwrap_or(channel.peer_addr());
                 server.broadcast(&telemetry_received(data, endpoint));
             }
         }

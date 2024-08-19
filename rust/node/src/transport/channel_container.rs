@@ -48,7 +48,7 @@ impl ChannelContainer {
             .or_default()
             .push(id);
         self.by_endpoint
-            .entry(channel.remote_addr())
+            .entry(channel.peer_addr())
             .or_default()
             .push(id);
         self.by_channel_id.insert(id, channel);
@@ -91,7 +91,7 @@ impl ChannelContainer {
                 &channel.protocol_version(),
                 id,
             );
-            remove_from_hashmap(&mut self.by_endpoint, &channel.remote_addr(), id);
+            remove_from_hashmap(&mut self.by_endpoint, &channel.peer_addr(), id);
             remove_from_hashmap(
                 &mut self.by_ip_address,
                 &channel.ipv4_address_or_ipv6_subnet(),
@@ -196,7 +196,7 @@ impl ChannelContainer {
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
             if entry.get_last_packet_sent() < cutoff {
-                debug!(remote_addr = ?entry.remote_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
+                debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
                 entry.close();
             }
         }
@@ -212,7 +212,7 @@ impl ChannelContainer {
             .collect();
 
         for channel in &dead_channels {
-            debug!("Removing dead channel: {}", channel.remote_addr());
+            debug!("Removing dead channel: {}", channel.peer_addr());
             self.remove_by_id(channel.channel_id());
         }
 
@@ -224,7 +224,7 @@ impl ChannelContainer {
             if *version < min_version {
                 for id in channel_ids {
                     if let Some(channel) = self.by_channel_id.get(id) {
-                        debug!(channel_id = %id, peer_addr = ?channel.remote_addr(), version, min_version,
+                        debug!(channel_id = %id, peer_addr = ?channel.peer_addr(), version, min_version,
                             "Closing channel with old protocol version",
                         );
                         channel.close();

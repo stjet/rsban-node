@@ -44,7 +44,7 @@ pub struct Channel {
     stats: Arc<Stats>,
 
     /// The other end of the connection
-    remote: SocketAddrV6,
+    peer_addr: SocketAddrV6,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     last_activity: AtomicU64,
@@ -81,7 +81,7 @@ impl Channel {
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
     ) -> (Self, WriteQueueReceiver) {
-        let remote = stream
+        let peer_addr = stream
             .peer_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
@@ -90,7 +90,7 @@ impl Channel {
 
         let peering_endpoint = match direction {
             ChannelDirection::Inbound => None,
-            ChannelDirection::Outbound => Some(remote),
+            ChannelDirection::Outbound => Some(peer_addr),
         };
 
         let now = SystemTime::now();
@@ -106,7 +106,7 @@ impl Channel {
             protocol_version: AtomicU8::new(protocol_version),
             limiter,
             stats,
-            remote,
+            peer_addr,
             last_activity: AtomicU64::new(seconds_since_epoch()),
             timeout_seconds: AtomicU64::new(DEFAULT_TIMEOUT),
             direction,
@@ -259,8 +259,8 @@ impl Channel {
             .unwrap_or(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
     }
 
-    pub fn remote_addr(&self) -> SocketAddrV6 {
-        self.remote
+    pub fn peer_addr(&self) -> SocketAddrV6 {
+        self.peer_addr
     }
 
     pub fn peering_endpoint(&self) -> Option<SocketAddrV6> {
@@ -330,7 +330,7 @@ impl Channel {
         } else {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
-            debug!(channel_id = %self.channel_id(), remote_addr = ?self.remote_addr(), "Closing channel after write error");
+            debug!(channel_id = %self.channel_id(), remote_addr = ?self.peer_addr(), "Closing channel after write error");
             self.close();
         }
 
@@ -380,7 +380,7 @@ impl Channel {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
             self.close();
-            debug!(peer_addr = ?self.remote, channel_id = %self.channel_id(), mode = ?self.mode(), "Closing socket after write error");
+            debug!(peer_addr = ?self.peer_addr, channel_id = %self.channel_id(), mode = ?self.mode(), "Closing socket after write error");
         }
         inserted
     }
@@ -392,11 +392,11 @@ impl Channel {
     }
 
     pub fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
-        ipv4_address_or_ipv6_subnet(&self.remote_addr().ip())
+        ipv4_address_or_ipv6_subnet(&self.peer_addr().ip())
     }
 
     pub fn subnetwork(&self) -> Ipv6Addr {
-        map_address_to_subnetwork(self.remote_addr().ip())
+        map_address_to_subnetwork(self.peer_addr().ip())
     }
 
     async fn ongoing_checkup(&self) {
@@ -405,7 +405,7 @@ impl Channel {
             // If the socket is already dead, close just in case, and stop doing checkups
             if !self.is_alive() {
                 debug!(
-                    remote_addr = ?self.remote,
+                    remote_addr = ?self.peer_addr,
                     "Stopping checkup for dead channel"
                 );
                 return;
@@ -431,7 +431,7 @@ impl Channel {
             }
 
             if condition_to_disconnect {
-                debug!(channel_id = %self.channel_id(), remote_addr = ?self.remote_addr(), mode = ?self.mode(), direction = ?self.direction(), "Closing channel due to timeout");
+                debug!(channel_id = %self.channel_id(), remote_addr = ?self.peer_addr(), mode = ?self.mode(), direction = ?self.direction(), "Closing channel due to timeout");
                 self.timed_out.store(true, Ordering::SeqCst);
                 self.close();
             }
@@ -441,7 +441,7 @@ impl Channel {
 
 impl Display for Channel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.remote.fmt(f)
+        self.peer_addr.fmt(f)
     }
 }
 

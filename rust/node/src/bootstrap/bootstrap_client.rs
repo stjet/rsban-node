@@ -112,7 +112,7 @@ impl BootstrapClient {
     }
 
     pub fn remote_addr(&self) -> SocketAddrV6 {
-        self.channel.remote_addr()
+        self.channel.peer_addr()
     }
 
     pub fn channel_string(&self) -> String {

@@ -4,10 +4,6 @@
 #include <nano/lib/thread_roles.hpp>
 #include <nano/lib/threading.hpp>
 #include <nano/lib/work.hpp>
-#include <nano/node/xorshift.hpp>
-
-#include <future>
-#include <thread>
 
 nano::work_ticket::work_ticket () :
 	handle{ rsnano::rsn_work_ticket_create () }

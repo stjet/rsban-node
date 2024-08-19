@@ -111,8 +111,7 @@ add_library(
   websocketconfig.hpp
   websocketconfig.cpp
   messages.hpp
-  messages.cpp
-  xorshift.hpp)
+  messages.cpp)
 
 target_link_libraries(
   node

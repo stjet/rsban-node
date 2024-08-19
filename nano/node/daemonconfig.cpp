@@ -1,9 +1,11 @@
+#include "nano/lib/rsnanoutils.hpp"
 #include <nano/lib/config.hpp>
 #include <nano/lib/jsonconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/daemonconfig.hpp>
 
 #include <sstream>
+#include <string>
 #include <vector>
 
 nano::daemon_config::daemon_config (std::filesystem::path const & data_path_a, nano::network_params & network_params) :
@@ -32,13 +34,11 @@ rsnano::DaemonConfigDto to_daemon_config_dto (nano::daemon_config const & config
 	return dto;
 }
 
-nano::error nano::daemon_config::serialize_toml (nano::tomlconfig & toml)
+std::string nano::daemon_config::serialize_toml ()
 {
 	auto dto{ to_daemon_config_dto (*this) };
-	if (rsnano::rsn_daemon_config_serialize_toml (&dto, &toml) < 0)
-		return nano::error ("could not TOML serialize daemon_config");
-
-	return toml.get_error ();
+	auto string_dto = rsnano::rsn_daemon_config_serialize_toml (&dto);
+	return rsnano::convert_dto_to_string(string_dto);
 }
 
 nano::error nano::daemon_config::deserialize_toml (nano::tomlconfig & toml)

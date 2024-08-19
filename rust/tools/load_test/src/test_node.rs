@@ -187,8 +187,7 @@ fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkPar
         .enabled = true;
     daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
     daemon_config.node.use_memory_pools = (index % 2) == 0;
-    let mut toml = TomlConfig::new();
-    daemon_config.serialize_toml(&mut toml)?;
+    let toml = TomlConfig::new();
     toml.write(get_node_toml_config_path(data_path))?;
     Ok(())
 }

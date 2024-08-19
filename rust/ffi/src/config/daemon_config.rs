@@ -2,12 +2,15 @@ use super::{
     fill_node_config_dto, fill_node_rpc_config_dto, fill_opencl_config_dto, NodeConfigDto,
     NodeRpcConfigDto, OpenclConfigDto,
 };
-use crate::{secure::NetworkParamsDto, utils::FfiToml};
+use crate::{secure::NetworkParamsDto, StringDto};
 use rsnano_core::utils::get_cpu_count;
-use rsnano_node::{config::DaemonConfig, NetworkParams};
+use rsnano_node::{
+    config::{DaemonConfig, DaemonToml},
+    NetworkParams,
+};
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::c_void,
+    ptr::{self},
 };
 
 #[repr(C)]
@@ -39,19 +42,29 @@ pub unsafe extern "C" fn rsn_daemon_config_create(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_daemon_config_serialize_toml(
-    dto: &DaemonConfigDto,
-    toml: *mut c_void,
-) -> i32 {
-    let mut toml = FfiToml::new(toml);
+pub extern "C" fn rsn_daemon_config_serialize_toml(dto: &DaemonConfigDto) -> StringDto {
     let cfg = match DaemonConfig::try_from(dto) {
         Ok(d) => d,
-        Err(_) => return -1,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
     };
-    match cfg.serialize_toml(&mut toml) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    }
+
+    let toml: DaemonToml = (&cfg).into();
+    let toml_str = match toml::to_string(&toml) {
+        Ok(t) => t,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
+    };
+
+    toml_str.into()
 }
 
 impl TryFrom<&DaemonConfigDto> for DaemonConfig {

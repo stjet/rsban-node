@@ -1,6 +1,6 @@
 use super::{Channel, ChannelId, InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
-use rsnano_core::utils::{get_cpu_count, TomlWriter};
+use rsnano_core::utils::get_cpu_count;
 use rsnano_messages::Message;
 use std::{
     cmp::{max, min},
@@ -26,22 +26,6 @@ impl MessageProcessorConfig {
             threads: min(2, max(parallelism / 4, 1)),
             max_queue: 64,
         }
-    }
-}
-
-impl MessageProcessorConfig {
-    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> anyhow::Result<()> {
-        toml.put_usize(
-            "threads",
-            self.threads,
-            "Number of threads to use for message processing. \ntype:uint64",
-        )?;
-
-        toml.put_usize(
-            "max_queue",
-            self.max_queue,
-            "Maximum number of messages per peer to queue for processing. \ntype:uint64",
-        )
     }
 }
 

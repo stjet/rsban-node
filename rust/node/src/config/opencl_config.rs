@@ -1,6 +1,3 @@
-use anyhow::Result;
-use rsnano_core::utils::TomlWriter;
-
 #[derive(Debug, PartialEq)]
 pub struct OpenclConfig {
     pub platform: u32,
@@ -11,13 +8,6 @@ pub struct OpenclConfig {
 impl OpenclConfig {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn serialize_toml(&self, toml: &mut dyn TomlWriter) -> Result<()> {
-        toml.put_u32("platform", self.platform, "OpenCL platform identifier")?;
-        toml.put_u32("device", self.device, "OpenCL device identifier")?;
-        toml.put_u32("threads", self.threads, "OpenCL thread count")?;
-        Ok(())
     }
 }
 

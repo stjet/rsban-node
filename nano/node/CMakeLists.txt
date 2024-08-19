@@ -5,8 +5,6 @@ add_library(
   active_elections.cpp
   backlog_population.hpp
   backlog_population.cpp
-  bandwidth_limiter.hpp
-  bandwidth_limiter.cpp
   blockprocessor.hpp
   blockprocessor.cpp
   bootstrap/bootstrap_bulk_pull.hpp

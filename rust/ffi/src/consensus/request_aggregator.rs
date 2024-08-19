@@ -1,4 +1,3 @@
-use rsnano_core::{BlockHash, Root};
 use rsnano_node::consensus::{RequestAggregator, RequestAggregatorConfig};
 use std::{ops::Deref, sync::Arc};
 
@@ -20,29 +19,6 @@ pub unsafe extern "C" fn rsn_request_aggregator_destroy(handle: *mut RequestAggr
 #[no_mangle]
 pub extern "C" fn rsn_request_aggregator_len(handle: &RequestAggregatorHandle) -> usize {
     handle.0.len()
-}
-
-pub struct HashesRootsVecHandle(Vec<(BlockHash, Root)>);
-
-#[no_mangle]
-pub extern "C" fn rsn_hashes_roots_vec_create() -> *mut HashesRootsVecHandle {
-    Box::into_raw(Box::new(HashesRootsVecHandle(Vec::new())))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hashes_roots_vec_destroy(handle: *mut HashesRootsVecHandle) {
-    drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_hashes_roots_vec_push(
-    handle: &mut HashesRootsVecHandle,
-    hash: *const u8,
-    root: *const u8,
-) {
-    handle
-        .0
-        .push((BlockHash::from_ptr(hash), Root::from_ptr(root)))
 }
 
 #[repr(C)]

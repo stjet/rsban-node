@@ -1,4 +1,4 @@
-use rsnano_node::representatives::{RepCrawler, RepCrawlerExt};
+use rsnano_node::representatives::RepCrawler;
 use std::{
     ffi::{c_char, CStr},
     ops::Deref,
@@ -18,16 +18,6 @@ impl Deref for RepCrawlerHandle {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_rep_crawler_destroy(handle: *mut RepCrawlerHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_rep_crawler_start(handle: &RepCrawlerHandle) {
-    handle.start();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_rep_crawler_stop(handle: &RepCrawlerHandle) {
-    handle.stop();
 }
 
 #[no_mangle]

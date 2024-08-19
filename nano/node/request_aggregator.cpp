@@ -13,26 +13,6 @@
 #include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
 
-nano::request_aggregator::request_aggregator (rsnano::RequestAggregatorHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::request_aggregator::~request_aggregator ()
-{
-	rsnano::rsn_request_aggregator_destroy (handle);
-}
-
-std::size_t nano::request_aggregator::size () const
-{
-	return rsnano::rsn_request_aggregator_len (handle);
-}
-
-bool nano::request_aggregator::empty () const
-{
-	return rsnano::rsn_request_aggregator_len (handle) == 0;
-}
-
 /*
  * request_aggregator_config
  */

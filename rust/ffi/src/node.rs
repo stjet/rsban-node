@@ -135,13 +135,6 @@ pub extern "C" fn rsn_node_workers(handle: &NodeHandle) -> *mut ThreadPoolHandle
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_node_bootstrap_workers(handle: &NodeHandle) -> *mut ThreadPoolHandle {
-    Box::into_raw(Box::new(ThreadPoolHandle(Arc::clone(
-        &handle.0.bootstrap_workers,
-    ))))
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_node_distributed_work(
     handle: &NodeHandle,
 ) -> *mut DistributedWorkFactoryHandle {
@@ -165,15 +158,6 @@ pub extern "C" fn rsn_node_unchecked(handle: &NodeHandle) -> *mut UncheckedMapHa
 #[no_mangle]
 pub extern "C" fn rsn_node_ledger(handle: &NodeHandle) -> *mut LedgerHandle {
     Box::into_raw(Box::new(LedgerHandle(Arc::clone(&handle.0.ledger))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_outbound_bandwidth_limiter(
-    handle: &NodeHandle,
-) -> *mut OutboundBandwidthLimiterHandle {
-    Box::into_raw(Box::new(OutboundBandwidthLimiterHandle(Arc::clone(
-        &handle.0.outbound_limiter,
-    ))))
 }
 
 #[no_mangle]
@@ -226,11 +210,6 @@ pub extern "C" fn rsn_node_confirming_set(handle: &NodeHandle) -> *mut Confirmin
     Box::into_raw(Box::new(ConfirmingSetHandle(Arc::clone(
         &handle.0.confirming_set,
     ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_vote_cache(handle: &NodeHandle) -> *mut VoteCacheHandle {
-    Box::into_raw(Box::new(VoteCacheHandle(Arc::clone(&handle.0.vote_cache))))
 }
 
 #[no_mangle]
@@ -294,13 +273,6 @@ pub extern "C" fn rsn_node_manual(handle: &NodeHandle) -> *mut ManualSchedulerHa
 pub extern "C" fn rsn_node_priority(handle: &NodeHandle) -> *mut ElectionSchedulerHandle {
     Box::into_raw(Box::new(ElectionSchedulerHandle(Arc::clone(
         &handle.0.priority_scheduler,
-    ))))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_request_aggregator(handle: &NodeHandle) -> *mut RequestAggregatorHandle {
-    Box::into_raw(Box::new(RequestAggregatorHandle(Arc::clone(
-        &handle.0.request_aggregator,
     ))))
 }
 

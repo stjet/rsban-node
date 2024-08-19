@@ -51,7 +51,7 @@ pub struct BootstrapServer {
 impl BootstrapServer {
     /** Maximum number of blocks to send in a single response, cannot be higher than capacity of a single `asc_pull_ack` message */
     pub const MAX_BLOCKS: usize = BlocksAckPayload::MAX_BLOCKS;
-    const MAX_FRONTIERS: usize = AscPullAck::MAX_FRONTIERS;
+    pub const MAX_FRONTIERS: usize = AscPullAck::MAX_FRONTIERS;
 
     pub(crate) fn new(
         config: BootstrapServerConfig,

@@ -1,12 +1,14 @@
 use super::helpers::{assert_timely_eq, make_fake_channel, setup_chains, System};
 use crate::tests::helpers::assert_always_eq;
 use rsnano_core::{Account, BlockEnum, BlockHash, HashOrAccount, DEV_GENESIS_KEY};
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_messages::{
     AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq, AscPullReqType,
-    BlocksReqPayload, HashType, Message,
+    BlocksReqPayload, FrontiersReqPayload, HashType, Message,
 };
 use rsnano_node::{bootstrap::BootstrapServer, node::Node};
 use std::{
+    collections::HashMap,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -351,6 +353,53 @@ fn serve_account_info_missing() {
 
     // Ensure we don't get any unexpected responses
     assert_always_eq(Duration::from_secs(1), || responses.len(), 1);
+}
+
+#[test]
+fn serve_frontiers() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let chains = setup_chains(&node, 32, 4, &DEV_GENESIS_KEY, true);
+
+    // Request all frontiers
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::Frontiers(FrontiersReqPayload {
+            start: Account::zero(),
+            count: BootstrapServer::MAX_FRONTIERS as u16,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::Frontiers(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.len(), chains.len() + 1); // +1 for genesis
+
+    // Ensure frontiers match what we expect
+    let mut expected_frontiers: HashMap<Account, BlockHash> = chains
+        .iter()
+        .map(|(account, blocks)| (*account, blocks.last().unwrap().hash()))
+        .collect();
+    expected_frontiers.insert(*DEV_GENESIS_ACCOUNT, node.latest(&DEV_GENESIS_ACCOUNT));
+
+    for frontier in response_payload {
+        assert_eq!(frontier.hash, expected_frontiers[&frontier.account]);
+        expected_frontiers.remove(&frontier.account);
+    }
+    assert!(expected_frontiers.is_empty());
 }
 
 struct ResponseHelper {

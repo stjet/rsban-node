@@ -67,52 +67,6 @@ bool compare_blocks (std::vector<std::shared_ptr<nano::block>> blocks_a, std::ve
 }
 }
 
-TEST (bootstrap_server, serve_frontiers)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	responses_helper responses;
-	responses.connect (node.bootstrap_server);
-
-	auto chains = nano::test::setup_chains (system, node, /* chain count */ 32, /* block count */ 4);
-
-	// Request all frontiers
-	nano::asc_pull_req::frontiers_payload request_payload{};
-	request_payload.count = nano::bootstrap_server::max_frontiers;
-	request_payload.start = 0;
-	nano::asc_pull_req request{ node.network_params.network, 7, request_payload };
-
-	node.network->inbound (request, nano::test::fake_channel (node));
-
-	ASSERT_TIMELY_EQ (5s, responses.size (), 1);
-
-	auto response = responses.get ().front ();
-	// Ensure we got response exactly for what we asked for
-	ASSERT_EQ (response.id (), 7);
-	ASSERT_EQ (response.pull_type (), nano::asc_pull_type::frontiers);
-
-	nano::asc_pull_ack::frontiers_payload response_payload;
-	ASSERT_NO_THROW (response_payload = std::get<nano::asc_pull_ack::frontiers_payload> (response.payload ()));
-
-	ASSERT_EQ (response_payload.frontiers.size (), chains.size () + 1); // +1 for genesis
-
-	// Ensure frontiers match what we expect
-	std::map<nano::account, nano::block_hash> expected_frontiers;
-	for (auto & [account, blocks] : chains)
-	{
-		expected_frontiers[account] = blocks.back ()->hash ();
-	}
-	expected_frontiers[nano::dev::genesis_key.pub] = node.latest (nano::dev::genesis_key.pub);
-
-	for (auto & [account, frontier] : response_payload.frontiers)
-	{
-		ASSERT_EQ (frontier, expected_frontiers[account]);
-		expected_frontiers.erase (account);
-	}
-	ASSERT_TRUE (expected_frontiers.empty ());
-}
-
 TEST (bootstrap_server, serve_frontiers_invalid_count)
 {
 	nano::test::system system{};

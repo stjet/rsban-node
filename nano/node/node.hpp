@@ -145,14 +145,12 @@ public:
 	std::filesystem::path application_path;
 	nano::representative_register representative_register;
 	nano::rep_tiers rep_tiers;
-	nano::vote_processor_queue vote_processor_queue;
 	nano::local_vote_history history;
 	nano::confirming_set confirming_set;
 	nano::vote_cache vote_cache;
 	nano::block_processor block_processor;
 	nano::wallets wallets;
 	nano::active_elections active;
-	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;
 	nano::bootstrap_initiator bootstrap_initiator;
 	nano::rep_crawler rep_crawler;

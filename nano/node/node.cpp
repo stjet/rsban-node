@@ -180,10 +180,6 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	representative_register (rsnano::rsn_node_representative_register (handle)),
 	rep_crawler (rsnano::rsn_node_rep_crawler (handle), *this),
 	rep_tiers{ rsnano::rsn_node_rep_tiers (handle) },
-	vote_processor_queue{
-		rsnano::rsn_node_vote_processor_queue (handle)
-	},
-	vote_processor (rsnano::rsn_node_vote_processor (handle)),
 	block_processor (rsnano::rsn_node_block_processor (handle)),
 	history{ rsnano::rsn_node_history (handle) },
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),

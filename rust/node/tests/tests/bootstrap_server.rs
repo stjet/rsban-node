@@ -133,6 +133,47 @@ fn serve_hash_one() {
     assert_eq!(response_payload.blocks()[0].hash(), blocks[0].hash());
 }
 
+#[test]
+fn serve_end_of_chain() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let mut chains = setup_chains(&node, 1, 128, &DEV_GENESIS_KEY, true);
+    let (_account, blocks) = chains.pop().unwrap();
+
+    // Request blocks from account frontier
+    //
+    let request = Message::AscPullReq(AscPullReq {
+        id: 7,
+        req_type: AscPullReqType::Blocks(BlocksReqPayload {
+            start_type: HashType::Block,
+            start: blocks.last().unwrap().hash().into(),
+            count: BootstrapServer::MAX_BLOCKS as u8,
+        }),
+    });
+
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(request, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || responses.len(), 1);
+
+    let response = responses.get().pop().unwrap();
+    // Ensure we got response exactly for what we asked for
+    assert_eq!(response.id, 7);
+    let AscPullAckType::Blocks(response_payload) = response.pull_type else {
+        panic!("wrong ack type")
+    };
+
+    assert_eq!(response_payload.blocks().len(), 1);
+    assert_eq!(
+        response_payload.blocks()[0].hash(),
+        blocks.last().unwrap().hash()
+    );
+}
+
 struct ResponseHelper {
     responses: Arc<Mutex<Vec<AscPullAck>>>,
 }

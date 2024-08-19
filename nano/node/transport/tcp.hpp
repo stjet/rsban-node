@@ -2,7 +2,6 @@
 
 #include "nano/lib/rsnano.hpp"
 #include <nano/node/common.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <chrono>

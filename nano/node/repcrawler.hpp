@@ -4,7 +4,6 @@
 #include "nano/node/common.hpp"
 
 #include <nano/lib/locks.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <chrono>

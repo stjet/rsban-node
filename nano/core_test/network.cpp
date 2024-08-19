@@ -111,9 +111,8 @@ TEST (network, multi_keepalive)
 
 TEST (network, send_valid_confirm_ack)
 {
-	auto type = nano::transport::transport_type::tcp;
 	nano::node_flags node_flags;
-	nano::test::system system (2, type, node_flags);
+	nano::test::system system (2, node_flags);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
@@ -141,9 +140,8 @@ TEST (network, send_valid_confirm_ack)
 
 TEST (network, send_valid_publish)
 {
-	auto type = nano::transport::transport_type::tcp;
 	nano::node_flags node_flags;
-	nano::test::system system (2, type, node_flags);
+	nano::test::system system (2, node_flags);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
@@ -174,9 +172,8 @@ TEST (network, send_valid_publish)
 
 TEST (receivable_processor, send_with_receive)
 {
-	auto type = nano::transport::transport_type::tcp;
 	nano::node_flags node_flags;
-	nano::test::system system (2, type, node_flags);
+	nano::test::system system (2, node_flags);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();

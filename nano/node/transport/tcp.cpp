@@ -1,7 +1,6 @@
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 #include "nano/node/messages.hpp"
-#include "nano/node/transport/channel.hpp"
 #include "nano/secure/network_filter.hpp"
 
 #include <nano/crypto_lib/random_pool_shuffle.hpp>

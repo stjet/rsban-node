@@ -91,8 +91,6 @@ add_library(
   scheduler/priority.cpp
   telemetry.hpp
   telemetry.cpp
-  transport/channel.hpp
-  transport/channel.cpp
   transport/tcp.hpp
   transport/tcp.cpp
   transport/tcp_listener.hpp

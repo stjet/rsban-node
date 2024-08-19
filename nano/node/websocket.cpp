@@ -11,7 +11,6 @@
 #include <nano/node/election_status.hpp>
 #include <nano/node/node_observers.hpp>
 #include <nano/node/telemetry.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 #include <nano/node/vote_processor.hpp>
 #include <nano/node/wallet.hpp>

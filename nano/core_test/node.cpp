@@ -592,15 +592,14 @@ TEST (node, fork_keep)
 // Test that more than one block can be rolled back
 TEST (node, fork_multi_flip)
 {
-	auto type = nano::transport::transport_type::tcp;
 	nano::test::system system;
 	nano::node_flags node_flags;
 	nano::node_config node_config (system.get_available_port ());
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node1 (*system.add_node (node_config, node_flags, type));
+	auto & node1 (*system.add_node (node_config, node_flags));
 	auto wallet_id1 = node1.wallets.first_wallet_id ();
 	node_config.peering_port = system.get_available_port ();
-	auto & node2 (*system.add_node (node_config, node_flags, type));
+	auto & node2 (*system.add_node (node_config, node_flags));
 	ASSERT_EQ (1, node1.network->size ());
 	nano::keypair key1;
 	nano::send_block_builder builder;
@@ -1109,9 +1108,8 @@ TEST (node, bootstrap_connection_scaling)
 
 TEST (node, block_confirm)
 {
-	auto type = nano::transport::transport_type::tcp;
 	nano::node_flags node_flags;
-	nano::test::system system (2, type, node_flags);
+	nano::test::system system (2, node_flags);
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	auto wallet_id1 = node1.wallets.first_wallet_id ();

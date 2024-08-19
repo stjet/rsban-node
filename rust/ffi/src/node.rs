@@ -539,7 +539,7 @@ pub unsafe extern "C" fn rsn_node_get_peers(handle: &NodeHandle) -> *mut PeerInf
             node_id: *c.get_node_id().unwrap_or_default().as_bytes(),
             protocol_version: c.protocol_version(),
             remote_endpoint: c.peer_addr().into(),
-            peering_endpoint: c.peering_endpoint().unwrap_or_else(|| c.peer_addr()).into(),
+            peering_endpoint: c.peering_addr().unwrap_or_else(|| c.peer_addr()).into(),
         })
         .collect();
     peers.sort_by(|a, b| {

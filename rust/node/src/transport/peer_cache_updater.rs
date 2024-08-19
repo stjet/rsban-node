@@ -44,7 +44,7 @@ impl PeerCacheUpdater {
     }
 
     fn save_peer(&self, tx: &mut LmdbWriteTransaction, channel: &Channel) {
-        let Some(endpoint) = channel.peering_endpoint() else {
+        let Some(endpoint) = channel.peering_addr() else {
             return;
         };
         let exists = self.ledger.store.peer.exists(tx, endpoint);

@@ -30,7 +30,7 @@ pub struct ChannelData {
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
     node_id: Option<Account>,
-    peering_endpoint: Option<SocketAddrV6>,
+    peering_addr: Option<SocketAddrV6>,
 }
 
 /// Default timeout in seconds
@@ -88,7 +88,7 @@ impl Channel {
 
         let (write_queue, receiver) = WriteQueue::new(Self::MAX_QUEUE_SIZE);
 
-        let peering_endpoint = match direction {
+        let peering_addr = match direction {
             ChannelDirection::Inbound => None,
             ChannelDirection::Outbound => Some(peer_addr),
         };
@@ -101,7 +101,7 @@ impl Channel {
                 last_packet_received: now,
                 last_packet_sent: now,
                 node_id: None,
-                peering_endpoint,
+                peering_addr,
             }),
             protocol_version: AtomicU8::new(protocol_version),
             limiter,
@@ -193,9 +193,9 @@ impl Channel {
         channel
     }
 
-    pub(crate) fn set_peering_endpoint(&self, address: SocketAddrV6) {
+    pub(crate) fn set_peering_addr(&self, address: SocketAddrV6) {
         let mut lock = self.channel_mutex.lock().unwrap();
-        lock.peering_endpoint = Some(address);
+        lock.peering_addr = Some(address);
     }
 
     pub(crate) fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
@@ -263,8 +263,8 @@ impl Channel {
         self.peer_addr
     }
 
-    pub fn peering_endpoint(&self) -> Option<SocketAddrV6> {
-        self.channel_mutex.lock().unwrap().peering_endpoint
+    pub fn peering_addr(&self) -> Option<SocketAddrV6> {
+        self.channel_mutex.lock().unwrap().peering_addr
     }
 
     pub fn protocol_version(&self) -> u8 {

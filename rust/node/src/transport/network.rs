@@ -673,7 +673,7 @@ impl State {
             if channel.mode() == ChannelMode::Realtime
                 && channel.protocol_version() >= self.network_constants.protocol_version_min
             {
-                if let Some(peering) = channel.peering_endpoint() {
+                if let Some(peering) = channel.peering_addr() {
                     channel_id = Some(channel.channel_id());
                     peering_endpoint = Some(peering);
                     break;
@@ -806,7 +806,7 @@ impl State {
     pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
         let mut peers = self.list_realtime(0);
         // Don't include channels with ephemeral remote ports
-        peers.retain(|c| c.peering_endpoint().is_some());
+        peers.retain(|c| c.peering_addr().is_some());
         let mut rng = thread_rng();
         peers.shuffle(&mut rng);
         peers.truncate(endpoints.len());
@@ -815,7 +815,7 @@ impl State {
 
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
-                peers[i].peering_endpoint().unwrap_or(null_endpoint)
+                peers[i].peering_addr().unwrap_or(null_endpoint)
             } else {
                 null_endpoint
             };
@@ -1054,7 +1054,7 @@ mod tests {
             )
             .await
             .unwrap();
-        channel.set_peering_endpoint(peering_addr);
+        channel.set_peering_addr(peering_addr);
         network.upgrade_to_realtime_connection(
             channel.channel_id(),
             PublicKey::from(peering_addr.ip().to_bits()),

@@ -81,7 +81,7 @@ impl RealtimeMessageHandler {
                         SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
-                    channel.set_peering_endpoint(new_endpoint);
+                    channel.set_peering_addr(new_endpoint);
                 }
             }
             Message::Publish(publish) => {

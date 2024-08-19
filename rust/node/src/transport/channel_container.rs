@@ -120,7 +120,7 @@ impl ChannelContainer {
         // TODO use a hashmap?
         self.by_channel_id
             .values()
-            .filter(|c| c.peering_endpoint().as_ref() == Some(peering_addr) && c.is_alive())
+            .filter(|c| c.peering_addr().as_ref() == Some(peering_addr) && c.is_alive())
             .collect()
     }
 

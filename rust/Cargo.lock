@@ -1940,7 +1940,6 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",
- "rsnano_node",
  "rsnano_store_lmdb",
  "scoped_threadpool",
  "serde",
@@ -1951,6 +1950,7 @@ dependencies = [
  "static_assertions",
  "strum",
  "strum_macros",
+ "test_helpers",
  "threadpool",
  "timer",
  "tokio",
@@ -1959,7 +1959,6 @@ dependencies = [
  "toml 0.8.15",
  "toml_edit 0.15.0",
  "tracing",
- "tracing-subscriber",
  "tracing-test",
  "uuid 1.10.0",
 ]
@@ -2352,6 +2351,18 @@ name = "termtree"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
+
+[[package]]
+name = "test_helpers"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "mock_instant",
+ "rsnano_core",
+ "rsnano_node",
+ "tracing-subscriber",
+ "tracing-test",
+]
 
 [[package]]
 name = "textwrap"

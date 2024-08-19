@@ -1,6 +1,6 @@
-use super::helpers::System;
 use rsnano_core::Amount;
 use rsnano_node::consensus::{Bucket, PriorityBucketConfig};
+use test_helpers::System;
 
 mod bucket {
     use super::*;

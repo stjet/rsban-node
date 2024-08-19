@@ -5,7 +5,6 @@ mod output_tracker_mt;
 mod rng;
 mod stream;
 mod system_time_factory;
-mod toml;
 
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
 pub use json::*;
@@ -19,7 +18,6 @@ use std::{
 };
 pub use stream::*;
 pub use system_time_factory::*;
-pub use toml::*;
 
 pub trait Serialize {
     fn serialize(&self, stream: &mut dyn BufferWriter);

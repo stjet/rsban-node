@@ -6,7 +6,11 @@ use rsnano_messages::{
     AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq, AscPullReqType,
     BlocksReqPayload, FrontiersReqPayload, HashType, Message,
 };
-use rsnano_node::{bootstrap::BootstrapServer, node::Node};
+use rsnano_node::{
+    bootstrap::BootstrapServer,
+    node::Node,
+    stats::{DetailType, Direction, StatType},
+};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -400,6 +404,95 @@ fn serve_frontiers() {
         expected_frontiers.remove(&frontier.account);
     }
     assert!(expected_frontiers.is_empty());
+}
+
+#[test]
+fn serve_frontiers_invalid_count() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let chains = setup_chains(&node, 4, 4, &DEV_GENESIS_KEY, true);
+
+    // Zero count
+    {
+        let request = Message::AscPullReq(AscPullReq {
+            id: 7,
+            req_type: AscPullReqType::Frontiers(FrontiersReqPayload {
+                start: Account::zero(),
+                count: 0,
+            }),
+        });
+
+        let channel = make_fake_channel(&node);
+        node.inbound_message_queue.put(request, channel);
+    }
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::BootstrapServer,
+                DetailType::Invalid,
+                Direction::In,
+            )
+        },
+        1,
+    );
+
+    // Count larger than allowed
+    {
+        let request = Message::AscPullReq(AscPullReq {
+            id: 7,
+            req_type: AscPullReqType::Frontiers(FrontiersReqPayload {
+                start: Account::zero(),
+                count: BootstrapServer::MAX_FRONTIERS as u16 + 1,
+            }),
+        });
+
+        let channel = make_fake_channel(&node);
+        node.inbound_message_queue.put(request, channel);
+    }
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::BootstrapServer,
+                DetailType::Invalid,
+                Direction::In,
+            )
+        },
+        2,
+    );
+
+    // Max numeric value
+    {
+        let request = Message::AscPullReq(AscPullReq {
+            id: 7,
+            req_type: AscPullReqType::Frontiers(FrontiersReqPayload {
+                start: Account::zero(),
+                count: u16::MAX,
+            }),
+        });
+
+        let channel = make_fake_channel(&node);
+        node.inbound_message_queue.put(request, channel);
+    }
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::BootstrapServer,
+                DetailType::Invalid,
+                Direction::In,
+            )
+        },
+        3,
+    );
 }
 
 struct ResponseHelper {

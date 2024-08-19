@@ -9,7 +9,6 @@ add_executable(
   blockprocessor.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp
-  bootstrap_server.cpp
   cli.cpp
   confirming_set.cpp
   conflicts.cpp

@@ -76,12 +76,14 @@ impl RealtimeMessageHandler {
             Message::Keepalive(keepalive) => {
                 // Check for special node port data
                 let peer0 = keepalive.peers[0];
+                // The first entry is used to inform us of the peering address of the sending node
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
-                    let new_endpoint =
+                    let peering_addr =
                         SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
-                    channel.set_peering_addr(new_endpoint);
+                    self.network
+                        .set_peering_addr(channel.channel_id(), peering_addr);
                 }
             }
             Message::Publish(publish) => {

@@ -161,7 +161,7 @@ fn disable_metrics() {
     assert_timely(Duration::from_secs(5), || {
         node_server
             .telemetry
-            .get_telemetry(&channel1.peer_addr())
+            .get_telemetry(&channel1.peering_addr().unwrap())
             .is_some()
     });
 }

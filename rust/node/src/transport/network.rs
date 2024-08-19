@@ -344,6 +344,16 @@ impl Network {
             .random_realtime_channels(count, min_version)
     }
 
+    pub(crate) fn random_list_realtime_ids(&self) -> Vec<ChannelId> {
+        self.state
+            .lock()
+            .unwrap()
+            .random_realtime_channels(usize::MAX, 0)
+            .iter()
+            .map(|c| c.channel_id())
+            .collect()
+    }
+
     pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
         self.state
             .lock()
@@ -536,6 +546,13 @@ impl Network {
 
     pub(crate) fn set_port(&self, port: u16) {
         self.port.store(port, Ordering::SeqCst);
+    }
+
+    pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
+        let guard = self.state.lock().unwrap();
+        if let Some(channel) = guard.channels.get_by_id(channel_id) {
+            channel.set_peering_addr(peering_addr);
+        }
     }
 
     pub(crate) fn create_keepalive_message(&self) -> Message {

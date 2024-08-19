@@ -391,10 +391,6 @@ namespace test
 	 */
 	std::vector<nano::block_hash> blocks_to_hashes (std::vector<std::shared_ptr<nano::block>> blocks);
 	/*
-	 * Creates a new fake channel associated with `node`
-	 */
-	std::shared_ptr<nano::transport::channel> fake_channel (nano::node & node, nano::account node_id = { 0 });
-	/*
 	 * Start an election on system system_a, node node_a and hash hash_a by reading the block
 	 * out of the ledger and adding it to the manual election scheduler queue.
 	 * It waits up to 5 seconds for the block to appear in the ledger and the election to start

@@ -16,31 +16,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <iterator>
 #include <memory>
-#include <stdexcept>
-#include <unordered_set>
-
-/*
- * channel_tcp
- */
-
-uint8_t nano::transport::channel_tcp::get_network_version () const
-{
-	return rsnano::rsn_channel_tcp_network_version (handle);
-}
-
-nano::tcp_endpoint nano::transport::channel_tcp::get_tcp_remote_endpoint () const
-{
-	rsnano::EndpointDto ep_dto{};
-	rsnano::rsn_channel_tcp_remote_endpoint (handle, &ep_dto);
-	return rsnano::dto_to_endpoint (ep_dto);
-}
-
-std::string nano::transport::channel_tcp::to_string () const
-{
-	return boost::str (boost::format ("%1%") % get_tcp_remote_endpoint ());
-}
 
 /*
  * tcp_channels
@@ -106,7 +82,3 @@ void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point
 	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
 }
 
-std::shared_ptr<nano::transport::channel> nano::transport::channel_handle_to_channel (rsnano::ChannelHandle * handle)
-{
-	return make_shared<nano::transport::channel_tcp> (handle);
-}

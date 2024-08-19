@@ -1,8 +1,6 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include "nano/node/election.hpp"
-
 #include <nano/node/common.hpp>
 #include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
@@ -23,36 +21,8 @@ class logger;
 
 namespace transport
 {
-	class tcp_channels;
-
-	class channel_tcp : public nano::transport::channel
-	{
-		friend class nano::transport::tcp_channels;
-
-	public:
-		channel_tcp (rsnano::ChannelHandle * handle_a) :
-			channel{ handle_a } {};
-
-		uint8_t get_network_version () const override;
-
-		std::string to_string () const override;
-
-		nano::endpoint get_remote_endpoint () const override
-		{
-			return nano::transport::map_tcp_to_endpoint (get_tcp_remote_endpoint ());
-		}
-
-		nano::tcp_endpoint get_tcp_remote_endpoint () const override;
-		nano::transport::transport_type get_type () const override
-		{
-			return nano::transport::transport_type::tcp;
-		}
-	};
-
 	class tcp_channels final : public std::enable_shared_from_this<tcp_channels>
 	{
-		friend class nano::transport::channel_tcp;
-
 	public:
 		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::NetworkFilterHandle * filter_handle);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
@@ -76,7 +46,5 @@ namespace transport
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;
 	};
-
-	std::shared_ptr<nano::transport::channel> channel_handle_to_channel (rsnano::ChannelHandle * handle);
 } // namespace transport
 } // namespace nano

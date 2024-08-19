@@ -329,7 +329,7 @@ impl Network {
         self.state.lock().unwrap().collect_container_info(name)
     }
 
-    pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
+    pub fn random_fill_peering_endpoints(&self, endpoints: &mut [SocketAddrV6]) {
         self.state.lock().unwrap().random_fill_realtime(endpoints);
     }
 
@@ -540,7 +540,7 @@ impl Network {
 
     pub(crate) fn create_keepalive_message(&self) -> Message {
         let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
-        self.random_fill_realtime(&mut peers);
+        self.random_fill_peering_endpoints(&mut peers);
         Message::Keepalive(Keepalive { peers })
     }
 
@@ -968,6 +968,8 @@ pub(crate) struct ChannelsInfo {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
+
     use super::*;
 
     #[tokio::test]
@@ -998,5 +1000,54 @@ mod tests {
 
         assert!(network.upgrade_to_realtime_connection(channel.channel_id(), PublicKey::from(456)));
         assert_eq!(network.list_realtime_channels(0).len(), 1);
+    }
+
+    #[test]
+    fn random_fill_peering_endpoints_empty() {
+        let network = Network::new(NetworkOptions::new_test_instance());
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_peering_endpoints(&mut endpoints);
+        assert_eq!(endpoints, [NULL_ENDPOINT; 3]);
+    }
+
+    #[tokio::test]
+    async fn random_fill_peering_endpoints_part() {
+        let network = Network::new(NetworkOptions::new_test_instance());
+        add_realtime_channel_with_peering_addr(&network, TEST_ENDPOINT_1).await;
+        add_realtime_channel_with_peering_addr(&network, TEST_ENDPOINT_2).await;
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_peering_endpoints(&mut endpoints);
+        assert!(endpoints.contains(&TEST_ENDPOINT_1));
+        assert!(endpoints.contains(&TEST_ENDPOINT_2));
+        assert_eq!(endpoints[2], NULL_ENDPOINT);
+    }
+
+    #[tokio::test]
+    async fn random_fill_peering_endpoints() {
+        let network = Network::new(NetworkOptions::new_test_instance());
+        add_realtime_channel_with_peering_addr(&network, TEST_ENDPOINT_1).await;
+        add_realtime_channel_with_peering_addr(&network, TEST_ENDPOINT_2).await;
+        add_realtime_channel_with_peering_addr(&network, TEST_ENDPOINT_3).await;
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_peering_endpoints(&mut endpoints);
+        assert!(endpoints.contains(&TEST_ENDPOINT_1));
+        assert!(endpoints.contains(&TEST_ENDPOINT_2));
+        assert!(endpoints.contains(&TEST_ENDPOINT_3));
+    }
+
+    async fn add_realtime_channel_with_peering_addr(network: &Network, peering_addr: SocketAddrV6) {
+        let channel = network
+            .add(
+                TcpStream::new_null_with_peer_addr(peering_addr),
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+            )
+            .await
+            .unwrap();
+        channel.set_peering_endpoint(peering_addr);
+        network.upgrade_to_realtime_connection(
+            channel.channel_id(),
+            PublicKey::from(peering_addr.ip().to_bits()),
+        );
     }
 }

@@ -18,7 +18,9 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{Channel, ChannelMode, DropPolicy, MessagePublisher, Network, TrafficType},
+    transport::{
+        Channel, ChannelId, ChannelMode, DropPolicy, MessagePublisher, Network, TrafficType,
+    },
     NetworkParams,
 };
 
@@ -45,7 +47,8 @@ pub struct Telemetry {
     message_publisher: Mutex<MessagePublisher>,
     node_id: KeyPair,
     startup_time: Instant,
-    notify: Mutex<Vec<Box<dyn Fn(&TelemetryData, &Arc<Channel>) + Send + Sync>>>,
+    telemetry_processed_callbacks:
+        Mutex<Vec<Box<dyn Fn(&TelemetryData, &SocketAddrV6) + Send + Sync>>>,
 }
 
 impl Telemetry {
@@ -80,7 +83,7 @@ impl Telemetry {
                 last_broadcast: None,
                 last_request: None,
             }),
-            notify: Mutex::new(Vec::new()),
+            telemetry_processed_callbacks: Mutex::new(Vec::new()),
             node_id,
             startup_time: Instant::now(),
         }
@@ -94,8 +97,11 @@ impl Telemetry {
         }
     }
 
-    pub fn add_callback(&self, f: Box<dyn Fn(&TelemetryData, &Arc<Channel>) + Send + Sync>) {
-        self.notify.lock().unwrap().push(f);
+    pub fn on_telemetry_processed(
+        &self,
+        f: Box<dyn Fn(&TelemetryData, &SocketAddrV6) + Send + Sync>,
+    ) {
+        self.telemetry_processed_callbacks.lock().unwrap().push(f);
     }
 
     fn verify(&self, telemetry: &TelemetryAck, channel: &Arc<Channel>) -> bool {
@@ -120,7 +126,7 @@ impl Telemetry {
         }
 
         if data.genesis_block != self.network_params.ledger.genesis.hash() {
-            self.network.peer_misbehaved(channel);
+            self.network.peer_misbehaved(channel.channel_id());
 
             self.stats
                 .inc(StatType::Telemetry, DetailType::GenesisMismatch);
@@ -138,16 +144,16 @@ impl Telemetry {
         let data = telemetry.0.as_ref().unwrap();
 
         let mut guard = self.mutex.lock().unwrap();
-        let endpoint = channel.remote_addr();
+        let peer_addr = channel.peering_addr().unwrap_or(channel.peer_addr());
 
-        if let Some(entry) = guard.telemetries.get_mut(&endpoint) {
+        if let Some(entry) = guard.telemetries.get_mut(&peer_addr) {
             self.stats.inc(StatType::Telemetry, DetailType::Update);
             entry.data = data.clone();
             entry.last_updated = Instant::now();
         } else {
             self.stats.inc(StatType::Telemetry, DetailType::Insert);
             guard.telemetries.push_back(Entry {
-                endpoint,
+                endpoint: peer_addr,
                 data: data.clone(),
                 last_updated: Instant::now(),
             });
@@ -161,9 +167,9 @@ impl Telemetry {
         drop(guard);
 
         {
-            let callbacks = self.notify.lock().unwrap();
+            let callbacks = self.telemetry_processed_callbacks.lock().unwrap();
             for callback in callbacks.iter() {
-                (callback)(data, channel);
+                (callback)(data, &peer_addr);
             }
         }
 
@@ -245,16 +251,16 @@ impl Telemetry {
     }
 
     fn run_requests(&self) {
-        let peers = self.network.random_list_realtime(usize::MAX, 0);
-        for channel in peers {
-            self.request(&channel);
+        let channel_ids = self.network.random_list_realtime_ids();
+        for channel_id in channel_ids {
+            self.request(channel_id);
         }
     }
 
-    fn request(&self, channel: &Channel) {
+    fn request(&self, channel_id: ChannelId) {
         self.stats.inc(StatType::Telemetry, DetailType::Request);
         self.message_publisher.lock().unwrap().try_send(
-            channel.channel_id(),
+            channel_id,
             &Message::TelemetryReq,
             DropPolicy::CanDrop,
             TrafficType::Generic,
@@ -263,17 +269,17 @@ impl Telemetry {
 
     fn run_broadcasts(&self) {
         let telemetry = self.local_telemetry();
-        let peers = self.network.random_list_realtime(usize::MAX, 0);
+        let channel_ids = self.network.random_list_realtime_ids();
         let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
-        for channel in peers {
-            self.broadcast(&channel, &message);
+        for channel_id in channel_ids {
+            self.broadcast(channel_id, &message);
         }
     }
 
-    fn broadcast(&self, channel: &Channel, message: &Message) {
+    fn broadcast(&self, channel_id: ChannelId, message: &Message) {
         self.stats.inc(StatType::Telemetry, DetailType::Broadcast);
         self.message_publisher.lock().unwrap().try_send(
-            channel.channel_id(),
+            channel_id,
             message,
             DropPolicy::CanDrop,
             TrafficType::Generic,

@@ -6,16 +6,8 @@
 #include <nano/lib/utility.hpp>
 #include <nano/secure/common.hpp>
 
-#include <memory>
-
 namespace nano
 {
-
-namespace transport
-{
-	class channel;
-}
-
 class vote_processor_config final
 {
 public:
@@ -32,31 +24,4 @@ public:
 	size_t batch_size{ 1024 };
 	size_t max_triggered{ 16384 };
 };
-
-class vote_processor_queue
-{
-public:
-	vote_processor_queue (rsnano::VoteProcessorQueueHandle * handle);
-	vote_processor_queue (vote_processor_queue const &) = delete;
-	~vote_processor_queue ();
-
-	/** Returns true if the vote was queued for processing */
-	bool vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a);
-
-	rsnano::VoteProcessorQueueHandle * handle;
-};
-
-class vote_processor final
-{
-public:
-	vote_processor (rsnano::VoteProcessorHandle * handle);
-	vote_processor (vote_processor const &) = delete;
-	~vote_processor ();
-
-	/** Note: node.active.mutex lock is required */
-	nano::vote_code vote_blocking (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
-
-	rsnano::VoteProcessorHandle * handle;
-};
-
 }

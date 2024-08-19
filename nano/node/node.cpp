@@ -155,17 +155,15 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	logger{ std::make_shared<nano::logger> (make_logger_identifier (node_id)) },
 	stats{ std::make_shared<nano::stats> (rsnano::rsn_node_stats (handle)) },
 	workers{ std::make_shared<nano::thread_pool> (rsnano::rsn_node_workers (handle)) },
-	bootstrap_workers{ std::make_shared<nano::thread_pool> (rsnano::rsn_node_bootstrap_workers (handle)) },
 	flags (flags_a),
 	work (work_a),
 	distributed_work (rsnano::rsn_node_distributed_work (handle)),
 	store (rsnano::rsn_node_store (handle)),
 	unchecked{ rsn_node_unchecked (handle) },
 	ledger (rsnano::rsn_node_ledger (handle), store, network_params.ledger),
-	outbound_limiter{ rsnano::rsn_node_outbound_bandwidth_limiter (handle) },
 	// empty `config.peering_port` means the user made no port choice at all;
 	// otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_syn_cookies (handle), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_network_filter (handle)) },
+	network{ std::make_shared<nano::network> (*this, config_a.peering_port.value_or (0), rsnano::rsn_node_tcp_channels (handle), rsnano::rsn_node_network_filter (handle)) },
 	telemetry (std::make_shared<nano::telemetry> (rsnano::rsn_node_telemetry (handle))),
 	bootstrap_initiator (rsnano::rsn_node_bootstrap_initiator (handle)),
 	// BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -180,19 +178,13 @@ nano::node::node (rsnano::async_runtime & async_rt_a, std::filesystem::path cons
 	representative_register (rsnano::rsn_node_representative_register (handle)),
 	rep_crawler (rsnano::rsn_node_rep_crawler (handle), *this),
 	rep_tiers{ rsnano::rsn_node_rep_tiers (handle) },
-	vote_processor_queue{
-		rsnano::rsn_node_vote_processor_queue (handle)
-	},
-	vote_processor (rsnano::rsn_node_vote_processor (handle)),
 	block_processor (rsnano::rsn_node_block_processor (handle)),
 	history{ rsnano::rsn_node_history (handle) },
 	confirming_set (rsnano::rsn_node_confirming_set (handle)),
-	vote_cache{ rsnano::rsn_node_vote_cache (handle) },
 	wallets{ rsnano::rsn_node_wallets (handle) },
 	active (*this, rsnano::rsn_node_active (handle)),
 	scheduler_impl{ std::make_unique<nano::scheduler::component> (handle) },
 	scheduler{ *scheduler_impl },
-	aggregator (rsnano::rsn_node_request_aggregator (handle)),
 	backlog{ rsnano::rsn_node_backlog_population (handle) },
 	websocket{ rsnano::rsn_node_websocket (handle) },
 	startup_time (std::chrono::steady_clock::now ()),

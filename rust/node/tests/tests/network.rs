@@ -42,8 +42,8 @@ fn last_contacted() {
         .unwrap();
 
     // check that the endpoints are part of the same connection
-    assert_eq!(channel0.local_addr(), channel1.remote_addr());
-    assert_eq!(channel1.local_addr(), channel0.remote_addr());
+    assert_eq!(channel0.local_addr(), channel1.peer_addr());
+    assert_eq!(channel1.local_addr(), channel0.peer_addr());
 
     // capture the state before and ensure the clock ticks at least once
     let timestamp_before_keepalive = channel0.get_last_packet_received();

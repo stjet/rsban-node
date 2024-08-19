@@ -28,7 +28,6 @@ public:
 	void for_each (
 	nano::hash_or_account const & dependency, std::function<void (nano::unchecked_key const &, nano::unchecked_info const &)> action, std::function<bool ()> predicate = [] () { return true; });
 	std::vector<nano::unchecked_info> get (nano::block_hash const &);
-	bool exists (nano::unchecked_key const & key) const;
 	void del (nano::unchecked_key const & key);
 	void clear ();
 	std::size_t count () const;

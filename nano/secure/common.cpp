@@ -685,15 +685,3 @@ nano::stat::detail nano::to_stat_detail (nano::block_status process_result)
 	return static_cast<nano::stat::detail> (rsnano::rsn_process_result_into_detail (static_cast<uint8_t> (process_result)));
 }
 
-std::vector<std::shared_ptr<nano::vote>> nano::into_vote_vec (rsnano::VoteVecHandle * handle)
-{
-	auto len = rsnano::rsn_vote_vec_len (handle);
-	std::vector<std::shared_ptr<nano::vote>> result;
-	for (auto i = 0; i < len; ++i)
-	{
-		auto vote_handle = rsnano::rsn_vote_vec_get (handle, i);
-		result.push_back (std::make_shared<nano::vote> (vote_handle));
-	}
-	rsnano::rsn_vote_vec_destroy (handle);
-	return result;
-}

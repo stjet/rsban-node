@@ -13,38 +13,6 @@
 #include <nano/secure/ledger.hpp>
 #include <nano/store/component.hpp>
 
-nano::request_aggregator::request_aggregator (rsnano::RequestAggregatorHandle * handle) :
-	handle{ handle }
-{
-}
-
-nano::request_aggregator::~request_aggregator ()
-{
-	rsnano::rsn_request_aggregator_destroy (handle);
-}
-
-bool nano::request_aggregator::request (request_type const & request, std::shared_ptr<nano::transport::channel> const & channel)
-{
-	auto vec_handle = rsnano::rsn_hashes_roots_vec_create ();
-	for (auto const & [hash, root] : request)
-	{
-		rsnano::rsn_hashes_roots_vec_push (vec_handle, hash.bytes.data (), root.bytes.data ());
-	}
-	bool added = rsnano::rsn_request_aggregator_add (handle, channel->handle, vec_handle);
-	rsnano::rsn_hashes_roots_vec_destroy (vec_handle);
-	return added;
-}
-
-std::size_t nano::request_aggregator::size () const
-{
-	return rsnano::rsn_request_aggregator_len (handle);
-}
-
-bool nano::request_aggregator::empty () const
-{
-	return rsnano::rsn_request_aggregator_len (handle) == 0;
-}
-
 /*
  * request_aggregator_config
  */

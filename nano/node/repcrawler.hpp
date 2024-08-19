@@ -4,7 +4,6 @@
 #include "nano/node/common.hpp"
 
 #include <nano/lib/locks.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <chrono>
@@ -20,7 +19,6 @@ class node;
 class representative
 {
 public:
-	representative (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
 	representative (representative const & other_a);
 	representative (rsnano::RepresentativeHandle * handle_a);
 	~representative ();
@@ -60,9 +58,6 @@ public:
 	representative_register (representative_register const &) = delete;
 	~representative_register ();
 
-	void update_or_insert (nano::account account_a, std::shared_ptr<nano::transport::channel> const & channel_a);
-	/** Query if a peer manages a principle representative */
-	bool is_pr (std::shared_ptr<nano::transport::channel> const & target_channel) const;
 	/** Get total available weight from representatives */
 	nano::uint128_t total_weight () const;
 
@@ -87,21 +82,6 @@ public:
 	rep_crawler (rep_crawler const &) = delete;
 	~rep_crawler ();
 
-	void start ();
-	void stop ();
-
-	/**
-	 * Called when a non-replay vote arrives that might be of interest to rep crawler.
-	 * @return true, if the vote was of interest and was processed, this indicates that the rep is likely online and voting
-	 */
-	bool process (std::shared_ptr<nano::vote> const &, std::shared_ptr<nano::transport::channel> const &);
-
-	/** Attempt to determine if the peer manages one or more representative accounts */
-	void query (std::shared_ptr<nano::transport::channel> const & target_channel);
-
-	/** Query if a peer manages a principle representative */
-	bool is_pr (std::shared_ptr<nano::transport::channel> const &) const;
-
 	/** Total number of representatives */
 	std::size_t representative_count ();
 
@@ -110,10 +90,5 @@ private:
 
 public:
 	rsnano::RepCrawlerHandle * handle;
-
-public: // Testing
-	void force_add_rep (nano::account const & account, std::shared_ptr<nano::transport::channel> const & channel);
-	void force_process (std::shared_ptr<nano::vote> const & vote, std::shared_ptr<nano::transport::channel> const & channel);
-	void force_query (nano::block_hash const & hash, std::shared_ptr<nano::transport::channel> const & channel);
 };
 }

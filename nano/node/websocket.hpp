@@ -32,7 +32,6 @@ class vote;
 class wallets;
 class active_elections;
 class telemetry;
-class vote_processor;
 }
 
 namespace nano

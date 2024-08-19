@@ -10,9 +10,7 @@ output_tracking = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dev-dependencies]
-rsnano_node = { path = ".", features = ["output_tracking"] }
 mock_instant = "0.2.1"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 axum = "0.7.5"
 tracing-test = "0.2.4"
 test_helpers = { path = "../tools/test_helpers" }

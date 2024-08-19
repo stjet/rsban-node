@@ -88,11 +88,10 @@ pub fn create_websocket_server(
     }));
 
     let server_w = Arc::downgrade(&server);
-    telemetry.add_callback(Box::new(move |data, channel| {
+    telemetry.on_telemetry_processed(Box::new(move |data, peer_addr| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Telemetry) {
-                let endpoint = channel.peering_endpoint().unwrap_or(channel.remote_addr());
-                server.broadcast(&telemetry_received(data, endpoint));
+                server.broadcast(&telemetry_received(data, *peer_addr));
             }
         }
     }));

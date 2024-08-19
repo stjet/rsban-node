@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 TEST (bootstrap_ascending, account_base)
 {
 	nano::node_flags flags;
-	nano::test::system system{ 1, nano::transport::transport_type::tcp, flags };
+	nano::test::system system{ 1, flags };
 	auto & node0 = *system.nodes[0];
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -42,7 +42,7 @@ TEST (bootstrap_ascending, account_base)
 TEST (bootstrap_ascending, account_inductive)
 {
 	nano::node_flags flags;
-	nano::test::system system{ 1, nano::transport::transport_type::tcp, flags };
+	nano::test::system system{ 1, flags };
 	auto & node0 = *system.nodes[0];
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -79,7 +79,7 @@ TEST (bootstrap_ascending, trace_base)
 {
 	nano::node_flags flags;
 	flags.set_disable_legacy_bootstrap (true);
-	nano::test::system system{ 1, nano::transport::transport_type::tcp, flags };
+	nano::test::system system{ 1, flags };
 	auto & node0 = *system.nodes[0];
 	nano::keypair key;
 	nano::state_block_builder builder;

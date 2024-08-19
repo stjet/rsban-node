@@ -5,8 +5,6 @@ add_library(
   active_elections.cpp
   backlog_population.hpp
   backlog_population.cpp
-  bandwidth_limiter.hpp
-  bandwidth_limiter.cpp
   blockprocessor.hpp
   blockprocessor.cpp
   bootstrap/bootstrap_bulk_pull.hpp
@@ -91,8 +89,6 @@ add_library(
   scheduler/priority.cpp
   telemetry.hpp
   telemetry.cpp
-  transport/channel.hpp
-  transport/channel.cpp
   transport/tcp.hpp
   transport/tcp.cpp
   transport/tcp_listener.hpp
@@ -115,8 +111,7 @@ add_library(
   websocketconfig.hpp
   websocketconfig.cpp
   messages.hpp
-  messages.cpp
-  xorshift.hpp)
+  messages.cpp)
 
 target_link_libraries(
   node

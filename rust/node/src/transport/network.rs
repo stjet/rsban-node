@@ -241,7 +241,7 @@ impl Network {
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|e| e.remote_addr())
+            .map(|e| e.peer_addr())
     }
 
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
@@ -342,6 +342,16 @@ impl Network {
             .lock()
             .unwrap()
             .random_realtime_channels(count, min_version)
+    }
+
+    pub(crate) fn random_list_realtime_ids(&self) -> Vec<ChannelId> {
+        self.state
+            .lock()
+            .unwrap()
+            .random_realtime_channels(usize::MAX, 0)
+            .iter()
+            .map(|c| c.channel_id())
+            .collect()
     }
 
     pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
@@ -526,7 +536,7 @@ impl Network {
 
     pub(crate) fn list_realtime_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
         let mut result = self.state.lock().unwrap().list_realtime(min_version);
-        result.sort_by_key(|i| i.remote_addr());
+        result.sort_by_key(|i| i.peer_addr());
         result
     }
 
@@ -536,6 +546,13 @@ impl Network {
 
     pub(crate) fn set_port(&self, port: u16) {
         self.port.store(port, Ordering::SeqCst);
+    }
+
+    pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
+        let guard = self.state.lock().unwrap();
+        if let Some(channel) = guard.channels.get_by_id(channel_id) {
+            channel.set_peering_addr(peering_addr);
+        }
     }
 
     pub(crate) fn create_keepalive_message(&self) -> Message {
@@ -552,18 +569,28 @@ impl Network {
             .is_excluded(addr, self.clock.now())
     }
 
-    pub(crate) fn peer_misbehaved(&self, channel: &Arc<Channel>) {
-        {
-            // Add to peer exclusion list
-            self.state
-                .lock()
-                .unwrap()
-                .excluded_peers
-                .peer_misbehaved(&channel.remote_addr(), self.clock.now());
-        }
+    pub(crate) fn peer_misbehaved(&self, channel_id: ChannelId) {
+        let mut guard = self.state.lock().unwrap();
 
-        warn!(peer_addr = ?channel.remote_addr(), mode = ?channel.mode(), direction = ?channel.direction(), "Peer misbehaved!");
+        let Some(channel) = guard.channels.get_by_id(channel_id) else {
+            return;
+        };
+        let channel = channel.clone();
+
+        // Add to peer exclusion list
+
+        guard
+            .excluded_peers
+            .peer_misbehaved(&channel.peer_addr(), self.clock.now());
+
+        let peer_addr = channel.peer_addr();
+        let mode = channel.mode();
+        let direction = channel.direction();
+
         channel.close();
+        drop(guard);
+
+        warn!(?peer_addr, ?mode, ?direction, "Peer misbehaved!");
     }
 
     pub(crate) fn perma_ban(&self, remote_addr: SocketAddrV6) {
@@ -602,7 +629,7 @@ impl Network {
                 if other.ipv4_address_or_ipv6_subnet() == channel.ipv4_address_or_ipv6_subnet() {
                     // We already have a connection to that node. We allow duplicate node ids, but
                     // only if they come from different IP addresses
-                    let endpoint = channel.remote_addr();
+                    let endpoint = channel.peer_addr();
                     debug!(
                         node_id = node_id.to_node_id(),
                         remote = %endpoint,
@@ -627,7 +654,7 @@ impl Network {
 
         debug!(
             "Switched to realtime mode (addr: {}, node_id: {})",
-            channel.remote_addr(),
+            channel.peer_addr(),
             node_id.to_node_id()
         );
 
@@ -663,7 +690,7 @@ impl State {
             if channel.mode() == ChannelMode::Realtime
                 && channel.protocol_version() >= self.network_constants.protocol_version_min
             {
-                if let Some(peering) = channel.peering_endpoint() {
+                if let Some(peering) = channel.peering_addr() {
                     channel_id = Some(channel.channel_id());
                     peering_endpoint = Some(peering);
                     break;
@@ -796,7 +823,7 @@ impl State {
     pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
         let mut peers = self.list_realtime(0);
         // Don't include channels with ephemeral remote ports
-        peers.retain(|c| c.peering_endpoint().is_some());
+        peers.retain(|c| c.peering_addr().is_some());
         let mut rng = thread_rng();
         peers.shuffle(&mut rng);
         peers.truncate(endpoints.len());
@@ -805,7 +832,7 @@ impl State {
 
         for (i, target) in endpoints.iter_mut().enumerate() {
             let endpoint = if i < peers.len() {
-                peers[i].peering_endpoint().unwrap_or(null_endpoint)
+                peers[i].peering_addr().unwrap_or(null_endpoint)
             } else {
                 null_endpoint
             };
@@ -1044,7 +1071,7 @@ mod tests {
             )
             .await
             .unwrap();
-        channel.set_peering_endpoint(peering_addr);
+        channel.set_peering_addr(peering_addr);
         network.upgrade_to_realtime_connection(
             channel.channel_id(),
             PublicKey::from(peering_addr.ip().to_bits()),

@@ -1,7 +1,6 @@
 #include <nano/lib/blocks.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 #include <nano/secure/ledger.hpp>
 #include <nano/store/account.hpp>

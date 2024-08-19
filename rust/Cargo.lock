@@ -1942,7 +1942,6 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",
- "rsnano_node",
  "rsnano_store_lmdb",
  "scoped_threadpool",
  "serde",
@@ -1962,7 +1961,6 @@ dependencies = [
  "toml 0.8.15",
  "toml_edit 0.15.0",
  "tracing",
- "tracing-subscriber",
  "tracing-test",
  "uuid 1.10.0",
 ]

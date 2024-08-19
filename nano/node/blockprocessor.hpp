@@ -84,7 +84,7 @@ public:
 	void stop ();
 
 	void process_active (std::shared_ptr<nano::block> const & incoming);
-	bool add (std::shared_ptr<nano::block> const &, block_source = block_source::live, std::shared_ptr<nano::transport::channel> const & channel = nullptr);
+	bool add (std::shared_ptr<nano::block> const &, block_source = block_source::live);
 	std::optional<nano::block_status> add_blocking (std::shared_ptr<nano::block> const & block, block_source);
 	void force (std::shared_ptr<nano::block> const &);
 

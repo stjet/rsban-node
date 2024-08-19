@@ -34,7 +34,7 @@ use rsnano_core::{
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelDirection, ChannelId, ChannelMode, PeerConnectorExt, TcpStream},
+    transport::{ChannelId, PeerConnectorExt},
 };
 use std::{
     collections::VecDeque,
@@ -557,22 +557,6 @@ pub unsafe extern "C" fn rsn_node_flood_block_many(
         Box::new(move || callback(ctx_wrapper.get_context())),
         Duration::from_millis(delay_ms),
     );
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_node_fake_channel(handle: &NodeHandle) -> *mut ChannelHandle {
-    let channel = handle
-        .0
-        .async_rt
-        .tokio
-        .block_on(handle.0.network.add(
-            TcpStream::new_null(),
-            ChannelDirection::Inbound,
-            ChannelMode::Realtime,
-        ))
-        .unwrap();
-
-    ChannelHandle::new(channel)
 }
 
 #[no_mangle]

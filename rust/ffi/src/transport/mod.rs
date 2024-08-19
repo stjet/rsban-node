@@ -1,6 +1,5 @@
 mod bandwidth_limiter;
 mod channel;
-mod channel_tcp;
 mod network_filter;
 mod socket;
 mod syn_cookies;

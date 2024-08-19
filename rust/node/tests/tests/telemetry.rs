@@ -6,7 +6,7 @@ use rsnano_node::{
 };
 use std::{thread::sleep, time::Duration};
 
-use super::helpers::{assert_never, assert_timely, make_fake_channel, System};
+use super::helpers::{assert_always_eq, assert_never, assert_timely, make_fake_channel, System};
 
 #[test]
 fn invalid_signature() {
@@ -164,4 +164,32 @@ fn disable_metrics() {
             .get_telemetry(&channel1.remote_addr())
             .is_some()
     });
+}
+
+#[test]
+fn mismatched_node_id() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let telemetry = node.telemetry.local_telemetry();
+
+    let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
+    let channel = make_fake_channel(&node);
+    node.inbound_message_queue.put(message, channel);
+
+    assert_timely(Duration::from_secs(5), || {
+        node.stats.count(
+            StatType::Telemetry,
+            DetailType::NodeIdMismatch,
+            Direction::In,
+        ) > 0
+    });
+    assert_always_eq(
+        Duration::from_secs(1),
+        || {
+            node.stats
+                .count(StatType::Telemetry, DetailType::Process, Direction::In)
+        },
+        0,
+    );
 }

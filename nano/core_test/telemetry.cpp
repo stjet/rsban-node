@@ -37,20 +37,6 @@ TEST (telemetry, DISABLED_dos_tcp)
 	// TODO reimplement in Rust
 }
 
-TEST (telemetry, mismatched_node_id)
-{
-	nano::test::system system;
-	auto & node = *system.add_node ();
-
-	auto telemetry = node.local_telemetry ();
-
-	auto message = nano::telemetry_ack{ nano::dev::network_params.network, telemetry };
-	node.network->inbound (message, nano::test::fake_channel (node, /* node id */ { 123 }));
-
-	ASSERT_TIMELY (5s, node.stats->count (nano::stat::type::telemetry, nano::stat::detail::node_id_mismatch) > 0);
-	ASSERT_ALWAYS (1s, node.stats->count (nano::stat::type::telemetry, nano::stat::detail::process) == 0)
-}
-
 TEST (telemetry, ongoing_broadcasts)
 {
 	nano::test::system system;

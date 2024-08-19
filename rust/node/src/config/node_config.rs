@@ -262,6 +262,11 @@ impl NodeConfig {
             Networks::Invalid => panic!("invalid network"),
         }
 
+        let bootstrap_initiator_cfg =
+            BootstrapInitiatorConfig::default_for(network_params.network.current_network);
+
+        let block_processor_cfg = BlockProcessorConfig::new(network_params.work.clone());
+
         Self {
             peering_port,
             bootstrap_fraction_numerator: 1,
@@ -276,16 +281,13 @@ impl NodeConfig {
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
             signature_checker_threads: (parallelism / 2) as u32,
             enable_voting,
-            bootstrap_connections: BootstrapInitiatorConfig::default().bootstrap_connections,
-            bootstrap_connections_max: BootstrapInitiatorConfig::default()
-                .bootstrap_connections_max,
+            bootstrap_connections: bootstrap_initiator_cfg.bootstrap_connections,
+            bootstrap_connections_max: bootstrap_initiator_cfg.bootstrap_connections_max,
             bootstrap_initiator_threads: 1,
             bootstrap_serving_threads: 1,
-            bootstrap_frontier_request_count: BootstrapInitiatorConfig::default()
-                .frontier_request_count,
-            block_processor_batch_max_time_ms: BlockProcessorConfig::default()
-                .batch_max_time
-                .as_millis() as i64,
+            bootstrap_frontier_request_count: bootstrap_initiator_cfg.frontier_request_count,
+            block_processor_batch_max_time_ms: block_processor_cfg.batch_max_time.as_millis()
+                as i64,
             allow_local_peers: !(network_params.network.is_live_network()
                 || network_params.network.is_test_network()), // disable by default for live network
             vote_minimum: Amount::raw(*GXRB_RATIO),
@@ -356,7 +358,7 @@ impl NodeConfig {
             } else {
                 Duration::from_secs(60)
             },
-            block_processor: BlockProcessorConfig::new(network_params.work.clone()),
+            block_processor: block_processor_cfg,
             vote_processor: VoteProcessorConfig::new(parallelism),
             tcp: if network_params.network.is_dev_network() {
                 TcpConfig::for_dev_network()

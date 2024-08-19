@@ -130,6 +130,18 @@ impl WorkThresholds {
         )
     }
 
+    pub fn default_for(network: Networks) -> Self {
+        match network {
+            Networks::NanoDevNetwork => Self::publish_dev().clone(),
+            Networks::NanoBetaNetwork => Self::publish_beta().clone(),
+            Networks::NanoLiveNetwork => Self::publish_full().clone(),
+            Networks::NanoTestNetwork => Self::publish_test().clone(),
+            Networks::Invalid => {
+                panic!("no default network set")
+            }
+        }
+    }
+
     pub fn new_stub() -> Self {
         WorkThresholds::with_difficulty(
             Box::new(StubDifficulty::new()),
@@ -283,15 +295,7 @@ impl WorkThresholds {
 
 impl Default for WorkThresholds {
     fn default() -> Self {
-        match ACTIVE_NETWORK.lock().unwrap().clone() {
-            Networks::NanoDevNetwork => Self::publish_dev().clone(),
-            Networks::NanoBetaNetwork => Self::publish_beta().clone(),
-            Networks::NanoLiveNetwork => Self::publish_full().clone(),
-            Networks::NanoTestNetwork => Self::publish_test().clone(),
-            Networks::Invalid => {
-                panic!("no default network set")
-            }
-        }
+        Self::default_for(ACTIVE_NETWORK.lock().unwrap().clone())
     }
 }
 

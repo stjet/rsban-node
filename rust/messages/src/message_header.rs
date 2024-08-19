@@ -83,9 +83,9 @@ impl Default for ProtocolInfo {
 }
 
 impl ProtocolInfo {
-    pub fn dev_network() -> Self {
+    pub fn default_for(network: Networks) -> Self {
         Self {
-            network: Networks::NanoDevNetwork,
+            network,
             ..Default::default()
         }
     }
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn serialize_header() {
-        let protocol_info = ProtocolInfo::dev_network();
+        let protocol_info = ProtocolInfo::default_for(Networks::NanoDevNetwork);
         let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.extensions = 0xABCD.into();
 

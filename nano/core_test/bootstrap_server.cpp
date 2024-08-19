@@ -67,61 +67,6 @@ bool compare_blocks (std::vector<std::shared_ptr<nano::block>> blocks_a, std::ve
 }
 }
 
-TEST (bootstrap_server, serve_multiple)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	responses_helper responses;
-	responses.connect (node.bootstrap_server);
-
-	auto chains = nano::test::setup_chains (system, node, 32, 16);
-
-	{
-		// Request blocks from multiple chains at once
-		uint64_t next_id = 0;
-		for (auto & [account, blocks] : chains)
-		{
-			// Request blocks from account root
-			nano::asc_pull_req::blocks_payload request_payload{};
-			request_payload.start = account;
-			request_payload.count = nano::bootstrap_server::max_blocks;
-			request_payload.start_type = nano::asc_pull_req::hash_type::account;
-			nano::asc_pull_req request{ node.network_params.network, next_id++, request_payload };
-
-			node.network->inbound (request, nano::test::fake_channel (node));
-		}
-	}
-
-	ASSERT_TIMELY_EQ (15s, responses.size (), chains.size ());
-
-	auto all_responses = responses.get ();
-	{
-		int next_id = 0;
-		for (auto & [account, blocks] : chains)
-		{
-			// Find matching response
-			auto response_it = std::find_if (all_responses.begin (), all_responses.end (), [&] (auto ack) { return ack.id () == next_id; });
-			ASSERT_TRUE (response_it != all_responses.end ());
-			auto response = *response_it;
-
-			// Ensure we got response exactly for what we asked for
-			ASSERT_EQ (response.id (), next_id);
-			ASSERT_EQ (response.pull_type (), nano::asc_pull_type::blocks);
-
-			nano::asc_pull_ack::blocks_payload response_payload;
-			ASSERT_NO_THROW (response_payload = std::get<nano::asc_pull_ack::blocks_payload> (response.payload ()));
-			ASSERT_EQ (response_payload.blocks.size (), 17); // 1 open block + 16 random blocks
-			ASSERT_TRUE (compare_blocks (response_payload.blocks, blocks));
-
-			++next_id;
-		}
-	}
-
-	// Ensure we don't get any unexpected responses
-	ASSERT_ALWAYS (1s, responses.size () == chains.size ());
-}
-
 TEST (bootstrap_server, serve_account_info)
 {
 	nano::test::system system{};

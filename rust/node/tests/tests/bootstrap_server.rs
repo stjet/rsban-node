@@ -210,6 +210,59 @@ fn serve_missing() {
     assert_eq!(response_payload.blocks().len(), 0);
 }
 
+#[test]
+fn serve_multiple() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let responses = ResponseHelper::new();
+    responses.connect(&node);
+
+    let chains = setup_chains(&node, 32, 16, &DEV_GENESIS_KEY, true);
+
+    {
+        // Request blocks from multiple chains at once
+        let mut next_id = 0;
+        for (account, _) in &chains {
+            // Request blocks from account root
+            let request = Message::AscPullReq(AscPullReq {
+                id: next_id,
+                req_type: AscPullReqType::Blocks(BlocksReqPayload {
+                    start_type: HashType::Account,
+                    start: (*account).into(),
+                    count: BootstrapServer::MAX_BLOCKS as u8,
+                }),
+            });
+            next_id += 1;
+
+            let channel = make_fake_channel(&node);
+            node.inbound_message_queue.put(request, channel);
+        }
+    }
+
+    assert_timely_eq(Duration::from_secs(15), || responses.len(), chains.len());
+
+    let all_responses = responses.get();
+    {
+        let mut next_id = 0;
+        for (_, blocks) in &chains {
+            // Find matching response
+            let response = all_responses.iter().find(|r| r.id == next_id).unwrap();
+
+            // Ensure we got response exactly for what we asked for
+
+            let AscPullAckType::Blocks(ref response_payload) = response.pull_type else {
+                panic!("wrong ack type")
+            };
+
+            assert_eq!(response_payload.blocks().len(), 17); // 1 open block + 16 random blocks
+            assert!(compare_blocks(response_payload.blocks(), blocks));
+
+            next_id += 1;
+        }
+    }
+}
+
 struct ResponseHelper {
     responses: Arc<Mutex<Vec<AscPullAck>>>,
 }

@@ -5,20 +5,8 @@
 #include <nano/lib/observer_set.hpp>
 #include <nano/node/messages.hpp>
 
-namespace nano::store
-{
-class transaction;
-class component;
-}
-
 namespace nano
 {
-class ledger;
-namespace transport
-{
-	class channel;
-}
-
 class bootstrap_server_config final
 {
 public:

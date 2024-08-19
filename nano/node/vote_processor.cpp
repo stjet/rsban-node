@@ -27,11 +27,6 @@ nano::vote_processor_queue::~vote_processor_queue ()
 	rsnano::rsn_vote_processor_queue_destroy (handle);
 }
 
-bool nano::vote_processor_queue::vote (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a)
-{
-	return rsnano::rsn_vote_processor_queue_vote (handle, vote_a->get_handle (), channel_a->handle, static_cast<uint8_t> (nano::vote_source::live));
-}
-
 nano::vote_processor::vote_processor (rsnano::VoteProcessorHandle * handle) :
 	handle{ handle }
 {

@@ -44,8 +44,6 @@ public:
 	void cleanup (std::chrono::system_clock::time_point const & cutoff);
 	std::size_t size () const;
 	bool empty () const;
-	/** Disconnects and adds peer to exclusion list */
-	void inbound (nano::message const &, std::shared_ptr<nano::transport::channel> const &);
 
 	static std::string to_string (nano::networks);
 

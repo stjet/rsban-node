@@ -5,8 +5,6 @@
 #include <nano/node/messages.hpp>
 #include <nano/node/nodeconfig.hpp>
 #include <nano/secure/common.hpp>
-
-#include <memory>
 #include <optional>
 
 namespace nano
@@ -18,10 +16,6 @@ class stats;
 class ledger;
 class thread_pool;
 class unchecked_map;
-namespace transport
-{
-	class channel;
-}
 
 /**
  * This class periodically broadcasts and requests telemetry from peers.

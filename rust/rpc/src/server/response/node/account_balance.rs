@@ -25,7 +25,7 @@ impl AccountBalance {
 pub(crate) async fn account_balance(
     node: Arc<Node>,
     account_str: String,
-    only_confirmed: Option<bool>,
+    only_confirmed: Option<String>,
 ) -> String {
     let tx = node.ledger.read_txn();
 
@@ -39,7 +39,11 @@ pub(crate) async fn account_balance(
         None => return format_error_message("Account not found"),
     };
 
-    let only_confirmed = only_confirmed.unwrap_or(true);
+    let only_confirmed = match only_confirmed.as_deref() {
+        Some("true") => true,
+        Some("false") => false,
+        _ => true,
+    };
 
     let pending = node
         .ledger

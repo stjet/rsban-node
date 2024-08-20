@@ -6,6 +6,6 @@ use serde::Deserialize;
 pub(crate) enum NodeRpcRequest {
     AccountBalance {
         account: String,
-        only_confirmed: Option<bool>,
+        only_confirmed: Option<String>,
     },
 }

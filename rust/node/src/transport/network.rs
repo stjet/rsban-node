@@ -555,7 +555,7 @@ impl Network {
     pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
         let guard = self.state.lock().unwrap();
         if let Some(channel) = guard.channels.get_by_id(channel_id) {
-            channel.set_peering_addr(peering_addr);
+            channel.info.set_peering_addr(peering_addr);
         }
     }
 
@@ -761,7 +761,7 @@ impl State {
         let mut result = Vec::new();
         for channel in self.channels.iter() {
             if channel.info.mode() == ChannelMode::Realtime
-                && channel.get_last_packet_sent() < cutoff
+                && channel.info.last_packet_sent() < cutoff
             {
                 result.push(channel.channel_id());
             }
@@ -1077,7 +1077,7 @@ mod tests {
             )
             .await
             .unwrap();
-        channel.set_peering_addr(peering_addr);
+        channel.info.set_peering_addr(peering_addr);
         network.upgrade_to_realtime_connection(
             channel.channel_id(),
             PublicKey::from(peering_addr.ip().to_bits()),

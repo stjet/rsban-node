@@ -15,22 +15,16 @@ use rsnano_core::{
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{Arc, Mutex, RwLock},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    sync::{Arc, RwLock},
+    time::{Duration, SystemTime},
 };
 use tokio::time::sleep;
 use tracing::debug;
-
-pub struct ChannelData {
-    last_packet_received: SystemTime,
-    last_packet_sent: SystemTime,
-}
 
 pub struct Channel {
     channel_id: ChannelId,
     network_info: Arc<RwLock<NetworkInfo>>,
     pub info: Arc<ChannelInfo>,
-    channel_mutex: Mutex<ChannelData>,
     limiter: Arc<OutboundBandwidthLimiter>,
     stats: Arc<Stats>,
     write_queue: WriteQueue,
@@ -50,15 +44,10 @@ impl Channel {
     ) -> (Self, WriteQueueReceiver) {
         let (write_queue, receiver) = WriteQueue::new(Self::MAX_QUEUE_SIZE);
 
-        let now = SystemTime::now();
         let channel = Self {
             channel_id: channel_info.channel_id(),
             info: channel_info,
             network_info,
-            channel_mutex: Mutex::new(ChannelData {
-                last_packet_received: now,
-                last_packet_sent: now,
-            }),
             limiter,
             stats,
             write_queue,
@@ -137,13 +126,6 @@ impl Channel {
         channel
     }
 
-    pub(crate) fn set_peering_addr(&self, address: SocketAddrV6) {
-        self.network_info
-            .read()
-            .unwrap()
-            .set_peering_addr(self.channel_id(), address);
-    }
-
     pub(crate) fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
         self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
     }
@@ -158,30 +140,6 @@ impl Channel {
 
     pub fn channel_id(&self) -> ChannelId {
         self.channel_id
-    }
-
-    pub fn get_last_bootstrap_attempt(&self) -> SystemTime {
-        self.info.last_bootstrap_attempt()
-    }
-
-    pub fn set_last_bootstrap_attempt(&self, time: SystemTime) {
-        self.info.set_last_bootstrap_attempt(time);
-    }
-
-    pub fn get_last_packet_received(&self) -> SystemTime {
-        self.channel_mutex.lock().unwrap().last_packet_received
-    }
-
-    pub fn set_last_packet_received(&self, instant: SystemTime) {
-        self.channel_mutex.lock().unwrap().last_packet_received = instant;
-    }
-
-    pub fn get_last_packet_sent(&self) -> SystemTime {
-        self.channel_mutex.lock().unwrap().last_packet_sent
-    }
-
-    pub fn set_last_packet_sent(&self, instant: SystemTime) {
-        self.channel_mutex.lock().unwrap().last_packet_sent = instant;
     }
 
     pub fn set_node_id(&self, id: Account) {
@@ -236,7 +194,7 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
-            self.set_last_packet_sent(SystemTime::now());
+            self.info.set_last_packet_sent(SystemTime::now());
         } else {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
@@ -246,7 +204,7 @@ impl Channel {
 
         result?;
 
-        self.channel_mutex.lock().unwrap().last_packet_sent = SystemTime::now();
+        self.info.set_last_packet_sent(SystemTime::now());
         Ok(())
     }
 
@@ -285,7 +243,7 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
-            self.set_last_packet_sent(SystemTime::now());
+            self.info.set_last_packet_sent(SystemTime::now());
         } else if write_error {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
@@ -387,7 +345,7 @@ impl AsyncBufferReader for Arc<Channel> {
                                     count as u64,
                                 );
                                 self.update_last_activity();
-                                self.set_last_packet_received(SystemTime::now());
+                                self.info.set_last_packet_received(SystemTime::now());
                                 return Ok(());
                             }
                         }

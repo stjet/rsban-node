@@ -49,6 +49,7 @@ impl ChannelInfo {
         peer_addr: SocketAddrV6,
         direction: ChannelDirection,
     ) -> Self {
+        let now = SystemTime::now();
         Self {
             channel_id,
             peer_addr,
@@ -63,6 +64,8 @@ impl ChannelInfo {
             data: Mutex::new(ChannelInfoData {
                 node_id: None,
                 last_bootstrap_attempt: UNIX_EPOCH,
+                last_packet_received: now,
+                last_packet_sent: now,
                 peering_addr: if direction == ChannelDirection::Outbound {
                     Some(peer_addr)
                 } else {
@@ -160,7 +163,7 @@ impl ChannelInfo {
         self.data.lock().unwrap().node_id = Some(node_id);
     }
 
-    fn set_peering_addr(&self, peering_addr: SocketAddrV6) {
+    pub fn set_peering_addr(&self, peering_addr: SocketAddrV6) {
         self.data.lock().unwrap().peering_addr = Some(peering_addr);
     }
 
@@ -179,12 +182,30 @@ impl ChannelInfo {
     pub fn set_last_bootstrap_attempt(&self, time: SystemTime) {
         self.data.lock().unwrap().last_bootstrap_attempt = time;
     }
+
+    pub fn last_packet_received(&self) -> SystemTime {
+        self.data.lock().unwrap().last_packet_received
+    }
+
+    pub fn set_last_packet_received(&self, instant: SystemTime) {
+        self.data.lock().unwrap().last_packet_received = instant;
+    }
+
+    pub fn last_packet_sent(&self) -> SystemTime {
+        self.data.lock().unwrap().last_packet_sent
+    }
+
+    pub fn set_last_packet_sent(&self, instant: SystemTime) {
+        self.data.lock().unwrap().last_packet_sent = instant;
+    }
 }
 
 struct ChannelInfoData {
     node_id: Option<PublicKey>,
     peering_addr: Option<SocketAddrV6>,
     last_bootstrap_attempt: SystemTime,
+    last_packet_received: SystemTime,
+    last_packet_sent: SystemTime,
 }
 
 pub struct NetworkInfo {
@@ -224,12 +245,6 @@ impl NetworkInfo {
     pub fn set_node_id(&self, channel_id: ChannelId, node_id: PublicKey) {
         if let Some(channel) = self.channels.get(&channel_id) {
             channel.set_node_id(node_id);
-        }
-    }
-
-    pub fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
-        if let Some(channel) = self.channels.get(&channel_id) {
-            channel.set_peering_addr(peering_addr);
         }
     }
 }

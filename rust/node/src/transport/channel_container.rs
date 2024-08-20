@@ -32,7 +32,7 @@ impl ChannelContainer {
 
         self.sequential.push(id);
         self.by_bootstrap_attempt
-            .entry(channel.get_last_bootstrap_attempt())
+            .entry(channel.info.last_bootstrap_attempt())
             .or_default()
             .push(id);
         self.by_network_version
@@ -83,7 +83,7 @@ impl ChannelContainer {
 
             remove_from_btree(
                 &mut self.by_bootstrap_attempt,
-                &channel.get_last_bootstrap_attempt(),
+                &channel.info.last_bootstrap_attempt(),
                 id,
             );
             remove_from_btree(
@@ -152,8 +152,8 @@ impl ChannelContainer {
 
     pub fn set_last_bootstrap_attempt(&mut self, channel_id: ChannelId, attempt_time: SystemTime) {
         if let Some(channel) = self.by_channel_id.get(&channel_id) {
-            let old_time = channel.get_last_bootstrap_attempt();
-            channel.set_last_bootstrap_attempt(attempt_time);
+            let old_time = channel.info.last_bootstrap_attempt();
+            channel.info.set_last_bootstrap_attempt(attempt_time);
             remove_from_btree(&mut self.by_bootstrap_attempt, &old_time, channel_id);
             self.by_bootstrap_attempt
                 .entry(attempt_time)
@@ -195,7 +195,7 @@ impl ChannelContainer {
 
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
-            if entry.get_last_packet_sent() < cutoff {
+            if entry.info.last_packet_sent() < cutoff {
                 debug!(remote_addr = ?entry.info.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.info.mode(), "Closing idle channel");
                 entry.info.close();
             }

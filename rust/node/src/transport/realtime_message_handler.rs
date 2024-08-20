@@ -1,4 +1,4 @@
-use super::{Channel, MessagePublisher, NetworkFilter, NetworkInfo};
+use super::{ChannelInfo, MessagePublisher, NetworkFilter, NetworkInfo};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::{BootstrapAscending, BootstrapServer},
@@ -67,7 +67,7 @@ impl RealtimeMessageHandler {
         }
     }
 
-    pub fn process(&self, message: Message, channel: &Arc<Channel>) {
+    pub fn process(&self, message: Message, channel: &Arc<ChannelInfo>) {
         self.stats.inc_dir(
             StatType::Message,
             message.message_type().into(),
@@ -82,7 +82,7 @@ impl RealtimeMessageHandler {
                 // The first entry is used to inform us of the peering address of the sending node
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
                     let peering_addr =
-                        SocketAddrV6::new(*channel.info.peer_addr().ip(), peer0.port(), 0, 0);
+                        SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
                     self.network_info
@@ -154,11 +154,11 @@ impl RealtimeMessageHandler {
                     TrafficType::Generic,
                 );
             }
-            Message::TelemetryAck(ack) => self.telemetry.process(&ack, &channel.info),
+            Message::TelemetryAck(ack) => self.telemetry.process(&ack, channel),
             Message::AscPullReq(req) => {
-                self.bootstrap_server.request(req, channel.info.clone());
+                self.bootstrap_server.request(req, channel.clone());
             }
-            Message::AscPullAck(ack) => self.ascend_boot.process(&ack, channel),
+            Message::AscPullAck(ack) => self.ascend_boot.process(&ack, channel.channel_id()),
             Message::FrontierReq(_)
             | Message::BulkPush
             | Message::BulkPull(_)

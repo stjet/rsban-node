@@ -224,7 +224,7 @@ impl ResponseServer {
     }
 
     fn queue_realtime(&self, message: Message) {
-        self.inbound_queue.put(message, self.channel.clone());
+        self.inbound_queue.put(message, self.channel.info.clone());
         // TODO: Throttle if not added
     }
 

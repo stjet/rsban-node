@@ -18,8 +18,7 @@ use crate::{
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BandwidthLimiter, Channel, ChannelId, DropPolicy, MessagePublisher, NetworkInfo,
-        TrafficType,
+        BandwidthLimiter, ChannelId, DropPolicy, MessagePublisher, NetworkInfo, TrafficType,
     },
 };
 use num::integer::sqrt;
@@ -306,7 +305,7 @@ impl BootstrapAscending {
     }
 
     /// Process `asc_pull_ack` message coming from network
-    pub fn process(&self, message: &AscPullAck, channel: &Arc<Channel>) {
+    pub fn process(&self, message: &AscPullAck, channel_id: ChannelId) {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag
@@ -320,7 +319,7 @@ impl BootstrapAscending {
                 (0, self.config.request_timeout.as_millis() as i64),
             );
 
-            guard.scoring.received_message(channel.channel_id());
+            guard.scoring.received_message(channel_id);
             drop(guard);
 
             self.condition.notify_all();

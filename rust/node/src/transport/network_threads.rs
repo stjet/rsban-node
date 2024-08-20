@@ -7,6 +7,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     NetworkParams,
 };
+use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_messages::{Keepalive, Message};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -252,7 +253,9 @@ impl KeepaliveLoop {
     fn keepalive(&mut self) {
         let (message, keepalive_list) = {
             let network = self.network.read().unwrap();
-            let message = network.create_keepalive_message();
+            let mut peers = [NULL_ENDPOINT; 8];
+            network.random_fill_realtime(&mut peers);
+            let message = Message::Keepalive(Keepalive { peers });
             let list = network.keepalive_list();
             (message, list)
         };

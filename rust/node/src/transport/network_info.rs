@@ -20,7 +20,7 @@ use rsnano_core::{
     },
     PublicKey,
 };
-use rsnano_messages::{Keepalive, Message, ProtocolInfo};
+use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},
@@ -1011,12 +1011,6 @@ impl NetworkInfo {
         result
     }
 
-    pub(crate) fn create_keepalive_message(&self) -> Message {
-        let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
-        self.random_fill_realtime(&mut peers);
-        Message::Keepalive(Keepalive { peers })
-    }
-
     pub(crate) fn channels_info(&self) -> ChannelsInfo {
         let mut info = ChannelsInfo::default();
         for channel in self.channels.values() {
@@ -1034,6 +1028,7 @@ impl NetworkInfo {
         info
     }
 
+    #[allow(dead_code)]
     pub(crate) fn len(&self) -> usize {
         self.channels.len()
     }

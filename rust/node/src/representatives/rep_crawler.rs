@@ -12,14 +12,15 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
     BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
-use rsnano_messages::{ConfirmReq, Message};
+use rsnano_messages::{ConfirmReq, Keepalive, Message};
 use std::{
     collections::HashMap,
     mem::size_of,
+    net::{Ipv6Addr, SocketAddrV6},
     ops::DerefMut,
     sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,
@@ -391,8 +392,13 @@ impl RepCrawler {
                             .find_realtime_channel_by_peering_addr(&endpoint)
                         {
                             Some(channel_id) => {
-                                let keepalive =
-                                    network_info.read().unwrap().create_keepalive_message();
+                                let mut peers = [NULL_ENDPOINT; 8];
+                                network_info
+                                    .read()
+                                    .unwrap()
+                                    .random_fill_realtime(&mut peers);
+                                let keepalive = Message::Keepalive(Keepalive { peers });
+
                                 publisher.lock().unwrap().try_send(
                                     channel_id,
                                     &keepalive,

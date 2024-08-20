@@ -19,7 +19,8 @@ fn invalid_signature() {
 
     let channel = make_fake_channel(&node);
     channel.set_node_id(node_id);
-    node.inbound_message_queue.put(message, channel);
+    node.inbound_message_queue
+        .put(message, channel.info.clone());
 
     assert_timely(Duration::from_secs(5), || {
         node.stats.count(
@@ -186,7 +187,8 @@ fn mismatched_node_id() {
 
     let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
     let channel = make_fake_channel(&node);
-    node.inbound_message_queue.put(message, channel);
+    node.inbound_message_queue
+        .put(message, channel.info.clone());
 
     assert_timely(Duration::from_secs(5), || {
         node.stats.count(

@@ -236,6 +236,8 @@ impl Node {
             network_params.network.protocol_info(),
             config.tcp.clone(),
             stats.clone(),
+            flags.clone(),
+            network_params.network.clone(),
         )));
 
         // empty `config.peering_port` means the user made no port choice at all;

@@ -1,11 +1,14 @@
 use crate::{
+    config::{NetworkConstants, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
-    utils::reserved_address,
+    utils::{
+        ipv4_address_or_ipv6_subnet, is_ipv4_mapped, map_address_to_subnetwork, reserved_address,
+    },
 };
 
 use super::{
-    attempt_container::AttemptContainer, ChannelDirection, ChannelId, ChannelMode, PeerExclusion,
-    TcpConfig, TrafficType,
+    attempt_container::AttemptContainer, AcceptResult, ChannelDirection, ChannelId, ChannelMode,
+    PeerExclusion, TcpConfig, TrafficType,
 };
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
@@ -142,6 +145,14 @@ impl ChannelInfo {
             .unwrap_or(self.peer_addr())
     }
 
+    pub fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
+        ipv4_address_or_ipv6_subnet(&self.peer_addr().ip())
+    }
+
+    pub fn subnetwork(&self) -> Ipv6Addr {
+        map_address_to_subnetwork(self.peer_addr().ip())
+    }
+
     pub fn protocol_version(&self) -> u8 {
         self.protocol_version.load(Ordering::Relaxed)
     }
@@ -257,6 +268,8 @@ pub struct NetworkInfo {
     pub attempts: AttemptContainer,
     protocol: ProtocolInfo,
     tcp_config: TcpConfig,
+    node_flags: NodeFlags,
+    network_constants: NetworkConstants,
     pub(crate) excluded_peers: PeerExclusion,
 }
 
@@ -266,6 +279,8 @@ impl NetworkInfo {
         protocol: ProtocolInfo,
         tcp_config: TcpConfig,
         stats: Arc<Stats>,
+        node_flags: NodeFlags,
+        network_constants: NetworkConstants,
     ) -> Self {
         Self {
             next_channel_id: 1,
@@ -278,6 +293,8 @@ impl NetworkInfo {
             protocol,
             tcp_config,
             excluded_peers: PeerExclusion::new(),
+            node_flags,
+            network_constants,
         }
     }
 
@@ -288,6 +305,8 @@ impl NetworkInfo {
             Default::default(),
             Default::default(),
             Arc::new(Stats::default()),
+            Default::default(),
+            Default::default(),
         )
     }
 
@@ -498,6 +517,106 @@ impl NetworkInfo {
         }
 
         dead_channels.iter().map(|c| c.channel_id()).collect()
+    }
+
+    pub fn check_limits(
+        &mut self,
+        peer: &SocketAddrV6,
+        direction: ChannelDirection,
+    ) -> AcceptResult {
+        if !self.node_flags.disable_max_peers_per_ip {
+            let count = self.count_by_ip(peer.ip());
+            if count >= self.network_constants.max_peers_per_ip {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerIp,
+                    direction.into(),
+                );
+                debug!(
+                    "Max connections per IP reached ({}, count: {}), unable to open new connection",
+                    peer.ip(),
+                    count
+                );
+                return AcceptResult::Rejected;
+            }
+        }
+
+        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
+        if !self.node_flags.disable_max_peers_per_subnetwork && !is_ipv4_mapped(&peer.ip()) {
+            let subnet = map_address_to_subnetwork(&peer.ip());
+            let count = self.count_by_subnet(&subnet);
+            if count >= self.network_constants.max_peers_per_subnetwork {
+                self.stats.inc_dir(
+                    StatType::TcpListenerRejected,
+                    DetailType::MaxPerSubnetwork,
+                    direction.into(),
+                );
+                debug!(
+                    "Max connections per subnetwork reached ({}), unable to open new connection",
+                    peer.ip()
+                );
+                return AcceptResult::Rejected;
+            }
+        }
+
+        match direction {
+            ChannelDirection::Inbound => {
+                let count = self.count_by_direction(ChannelDirection::Inbound);
+
+                if count >= self.tcp_config.max_inbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        direction.into(),
+                    );
+                    debug!(
+                        "Max inbound connections reached ({}), unable to accept new connection: {}",
+                        count,
+                        peer.ip()
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+            ChannelDirection::Outbound => {
+                let count = self.count_by_direction(ChannelDirection::Outbound);
+
+                if count >= self.tcp_config.max_outbound_connections {
+                    self.stats.inc_dir(
+                        StatType::TcpListenerRejected,
+                        DetailType::MaxAttempts,
+                        direction.into(),
+                    );
+                    debug!(
+                        "Max outbound connections reached ({}), unable to initiate new connection: {}",
+                        count, peer.ip()
+                    );
+                    return AcceptResult::Rejected;
+                }
+            }
+        }
+
+        AcceptResult::Accepted
+    }
+
+    fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
+        self.channels
+            .values()
+            .filter(|c| c.is_alive() && c.ipv4_address_or_ipv6_subnet() == *ip)
+            .count()
+    }
+
+    fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
+        self.channels
+            .values()
+            .filter(|c| c.is_alive() && c.subnetwork() == *subnet)
+            .count()
+    }
+
+    fn count_by_direction(&self, direction: ChannelDirection) -> usize {
+        self.channels
+            .values()
+            .filter(|c| c.is_alive() && c.direction() == direction)
+            .count()
     }
 
     pub fn stop(&mut self) -> bool {

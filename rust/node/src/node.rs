@@ -1036,7 +1036,7 @@ impl Node {
             "Monitor",
             Monitor::new(
                 ledger.clone(),
-                network.clone(),
+                network_info.clone(),
                 online_reps.clone(),
                 active_elections.clone(),
             ),

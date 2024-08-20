@@ -63,10 +63,6 @@ impl Network {
         }
     }
 
-    pub(crate) fn channels_info(&self) -> ChannelsInfo {
-        self.info.read().unwrap().channels_info()
-    }
-
     pub(crate) async fn wait_for_available_inbound_slot(&self) {
         let last_log = Instant::now();
         let log_interval = if self.network_params.network.is_dev_network() {

@@ -105,6 +105,7 @@ mod tests {
     use crate::{
         stats::Direction,
         transport::{ChannelDirection, ChannelMode},
+        utils::Timestamp,
     };
     use rsnano_core::utils::{
         new_test_timestamp, NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
@@ -284,7 +285,15 @@ mod tests {
     ) {
         let mut network = NetworkInfo::new_test_instance();
         for endpoint in open_channels {
-            let channel = network.add(NULL_ENDPOINT, endpoint, ChannelDirection::Outbound);
+            let channel = network
+                .add(
+                    NULL_ENDPOINT,
+                    endpoint,
+                    ChannelDirection::Outbound,
+                    ChannelMode::Realtime,
+                    Timestamp::new_test_instance(),
+                )
+                .unwrap();
             channel.set_mode(ChannelMode::Realtime);
         }
         let ledger = Arc::new(Ledger::new_null_builder().peers(already_stored).finish());

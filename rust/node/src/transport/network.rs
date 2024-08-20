@@ -4,12 +4,9 @@ use super::{
     TrafficType,
 };
 use crate::{
-    config::{NetworkConstants, NodeFlags},
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::{
-        into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, map_address_to_subnetwork,
-        SteadyClock,
-    },
+    config::NetworkConstants,
+    stats::{DetailType, StatType, Stats},
+    utils::{into_ipv6_socket_address, SteadyClock},
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng};
@@ -23,12 +20,10 @@ use std::{
 use tracing::{debug, warn};
 
 pub struct NetworkOptions {
-    pub allow_local_peers: bool,
     pub tcp_config: TcpConfig,
     pub publish_filter: Arc<NetworkFilter>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
-    pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub clock: Arc<SteadyClock>,
     pub network_info: Arc<RwLock<NetworkInfo>>,
@@ -37,12 +32,10 @@ pub struct NetworkOptions {
 impl NetworkOptions {
     pub fn new_test_instance() -> Self {
         NetworkOptions {
-            allow_local_peers: true,
             tcp_config: TcpConfig::for_dev_network(),
             publish_filter: Arc::new(NetworkFilter::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
-            flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
             clock: Arc::new(SteadyClock::new_null()),
             network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
@@ -53,8 +46,6 @@ impl NetworkOptions {
 pub struct Network {
     state: Mutex<State>,
     pub info: Arc<RwLock<NetworkInfo>>,
-    allow_local_peers: bool,
-    flags: NodeFlags,
     stats: Arc<Stats>,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
@@ -74,13 +65,11 @@ impl Network {
         let network = Arc::new(options.network_params);
 
         Self {
-            allow_local_peers: options.allow_local_peers,
             state: Mutex::new(State {
                 channels: Default::default(),
                 network_constants: network.network.clone(),
             }),
             tcp_config: options.tcp_config,
-            flags: options.flags,
             stats: options.stats,
             network_params: network,
             limiter: options.limiter,
@@ -101,10 +90,10 @@ impl Network {
         } else {
             Duration::from_secs(15)
         };
-        while self.count_by_direction(ChannelDirection::Inbound)
-            >= self.tcp_config.max_inbound_connections
-            && !self.info.read().unwrap().is_stopped()
-        {
+        while {
+            let info = self.info.read().unwrap();
+            !info.is_inbound_slot_available() && !info.is_stopped()
+        } {
             if last_log.elapsed() >= log_interval {
                 warn!(
                     "Waiting for available slots to accept new connections (current: {} / max: {})",
@@ -123,24 +112,12 @@ impl Network {
         direction: ChannelDirection,
         planned_mode: ChannelMode,
     ) -> AcceptResult {
-        if self
-            .info
-            .write()
-            .unwrap()
-            .excluded_peers
-            .is_excluded(peer_addr, self.clock.now())
-        {
-            return AcceptResult::Rejected;
-        }
-        if direction == ChannelDirection::Outbound {
-            if self.can_add_outbound_connection(&peer_addr, planned_mode) {
-                AcceptResult::Accepted
-            } else {
-                AcceptResult::Rejected
-            }
-        } else {
-            self.check_limits(&peer_addr, direction)
-        }
+        self.info.write().unwrap().can_add_connection(
+            peer_addr,
+            direction,
+            planned_mode,
+            self.clock.now(),
+        )
     }
 
     pub async fn add(
@@ -159,51 +136,13 @@ impl Network {
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
-        let result = self.can_add_connection(&peer_addr, direction, planned_mode);
-        if result != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::AcceptRejected,
-                direction.into(),
-            );
-            if direction == ChannelDirection::Outbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::ConnectFailure,
-                    Direction::Out,
-                );
-            }
-            debug!(?peer_addr, ?direction, "Rejected connection");
-            if direction == ChannelDirection::Inbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::AcceptFailure,
-                    Direction::In,
-                );
-                // Refusal reason should be logged earlier
-            }
-            return Err(anyhow!("check_limits failed"));
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::AcceptSuccess,
-            direction.into(),
-        );
-
-        if direction == ChannelDirection::Outbound {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectSuccess,
-                Direction::Out,
-            );
-        }
-
-        let channel_info = self
-            .info
-            .write()
-            .unwrap()
-            .add(local_addr, peer_addr, direction);
+        let channel_info = self.info.write().unwrap().add(
+            local_addr,
+            peer_addr,
+            direction,
+            planned_mode,
+            self.clock.now(),
+        )?;
 
         let channel = Channel::create(
             channel_info,
@@ -232,14 +171,6 @@ impl Network {
 
     fn close(&self) {
         self.state.lock().unwrap().close_channels();
-    }
-
-    pub(crate) fn check_limits(
-        &self,
-        ip: &SocketAddrV6,
-        direction: ChannelDirection,
-    ) -> AcceptResult {
-        self.info.write().unwrap().check_limits(ip, direction)
     }
 
     pub(crate) fn add_attempt(&self, remote: SocketAddrV6) -> bool {
@@ -301,135 +232,6 @@ impl Network {
         } else {
             Err(anyhow!("Channel not found"))
         }
-    }
-
-    fn max_ip_or_subnetwork_connections(&self, endpoint: &SocketAddrV6) -> bool {
-        self.max_ip_connections(endpoint) || self.max_subnetwork_connections(endpoint)
-    }
-
-    fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
-        if self.flags.disable_max_peers_per_ip {
-            return false;
-        }
-        let mut result;
-        let address = ipv4_address_or_ipv6_subnet(endpoint.ip());
-        let lock = self.state.lock().unwrap();
-        result = lock.channels.count_by_ip(&address) >= lock.network_constants.max_peers_per_ip;
-        if !result {
-            result = self
-                .info
-                .read()
-                .unwrap()
-                .attempts
-                .count_by_address(&address)
-                >= lock.network_constants.max_peers_per_ip;
-        }
-        if result {
-            self.stats
-                .inc_dir(StatType::Tcp, DetailType::MaxPerIp, Direction::Out);
-        }
-        result
-    }
-
-    fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
-        if self.flags.disable_max_peers_per_subnetwork {
-            return false;
-        }
-
-        let subnet = map_address_to_subnetwork(endoint.ip());
-        let is_max = {
-            let guard = self.state.lock().unwrap();
-            guard.channels.count_by_subnet(&subnet)
-                >= self.network_params.network.max_peers_per_subnetwork
-                || self
-                    .info
-                    .read()
-                    .unwrap()
-                    .attempts
-                    .count_by_subnetwork(&subnet)
-                    >= self.network_params.network.max_peers_per_subnetwork
-        };
-
-        if is_max {
-            self.stats
-                .inc_dir(StatType::Tcp, DetailType::MaxPerSubnetwork, Direction::Out);
-        }
-
-        is_max
-    }
-
-    fn can_add_outbound_connection(&self, peer: &SocketAddrV6, planned_mode: ChannelMode) -> bool {
-        if self.flags.disable_tcp_realtime {
-            return false;
-        }
-
-        // Don't contact invalid IPs
-        if self
-            .info
-            .read()
-            .unwrap()
-            .not_a_peer(peer, self.allow_local_peers)
-        {
-            return false;
-        }
-
-        // Don't overload single IP
-        if self.max_ip_or_subnetwork_connections(peer) {
-            return false;
-        }
-
-        if self
-            .info
-            .write()
-            .unwrap()
-            .excluded_peers
-            .is_excluded(peer, self.clock.now())
-        {
-            return false;
-        }
-
-        let state = self.state.lock().unwrap();
-        // Don't connect to nodes that already sent us something
-        if state
-            .find_channels_by_remote_addr(peer)
-            .iter()
-            .any(|c| c.info.mode() == planned_mode || c.info.mode() == ChannelMode::Undefined)
-        {
-            return false;
-        }
-        if state
-            .find_channels_by_peering_addr(peer)
-            .iter()
-            .any(|c| c.info.mode() == planned_mode || c.info.mode() == ChannelMode::Undefined)
-        {
-            return false;
-        }
-
-        if self
-            .info
-            .write()
-            .unwrap()
-            .check_limits(peer, ChannelDirection::Outbound)
-            != AcceptResult::Accepted
-        {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectRejected,
-                Direction::Out,
-            );
-            // Refusal reason should be logged earlier
-
-            return false; // Rejected
-        }
-
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::ConnectInitiate,
-            Direction::Out,
-        );
-        debug!("Initiate outgoing connection to: {}", peer);
-
-        true
     }
 
     pub fn len_sqrt(&self) -> f32 {
@@ -672,30 +474,6 @@ impl State {
         }
 
         result
-    }
-
-    pub(crate) fn find_channels_by_remote_addr(
-        &self,
-        remote_addr: &SocketAddrV6,
-    ) -> Vec<Arc<Channel>> {
-        self.channels
-            .get_by_remote_addr(remote_addr)
-            .iter()
-            .filter(|c| c.info.is_alive())
-            .map(|&c| c.clone())
-            .collect()
-    }
-
-    pub(crate) fn find_channels_by_peering_addr(
-        &self,
-        peering_addr: &SocketAddrV6,
-    ) -> Vec<Arc<Channel>> {
-        self.channels
-            .get_by_peering_addr(peering_addr)
-            .iter()
-            .filter(|c| c.info.is_alive())
-            .map(|&c| c.clone())
-            .collect()
     }
 
     pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<Channel>> {

@@ -97,26 +97,6 @@ impl ChannelContainer {
         }
     }
 
-    pub fn get_by_remote_addr(&self, remote_addr: &SocketAddrV6) -> Vec<&Arc<Channel>> {
-        self.by_endpoint
-            .get(remote_addr)
-            .map(|ids| {
-                ids.iter()
-                    .map(|id| self.by_channel_id.get(id).unwrap())
-                    .filter(|c| c.info.is_alive())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn get_by_peering_addr(&self, peering_addr: &SocketAddrV6) -> Vec<&Arc<Channel>> {
-        // TODO use a hashmap?
-        self.by_channel_id
-            .values()
-            .filter(|c| c.info.peering_addr().as_ref() == Some(peering_addr) && c.info.is_alive())
-            .collect()
-    }
-
     pub fn get_by_id(&self, id: ChannelId) -> Option<&Arc<Channel>> {
         self.by_channel_id.get(&id)
     }
@@ -155,25 +135,11 @@ impl ChannelContainer {
         }
     }
 
-    pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
-        self.by_ip_address
-            .get(ip)
-            .map(|channel_ids| channel_ids.len())
-            .unwrap_or_default()
-    }
-
     pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.by_channel_id
             .values()
             .filter(|c| c.info.direction() == direction && c.info.is_alive())
             .count()
-    }
-
-    pub fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
-        self.by_subnet
-            .get(subnet)
-            .map(|ids| ids.len())
-            .unwrap_or_default()
     }
 
     pub fn clear(&mut self) {

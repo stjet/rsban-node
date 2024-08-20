@@ -238,17 +238,16 @@ impl Node {
             stats.clone(),
             flags.clone(),
             network_params.network.clone(),
+            config.allow_local_peers,
         )));
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
-            allow_local_peers: config.allow_local_peers,
             tcp_config: config.tcp.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             network_params: network_params.clone(),
             stats: stats.clone(),
-            flags: flags.clone(),
             limiter: outbound_limiter.clone(),
             clock: steady_clock.clone(),
             network_info: network_info.clone(),

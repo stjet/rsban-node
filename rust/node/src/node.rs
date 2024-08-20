@@ -233,6 +233,9 @@ impl Node {
 
         let network_info = Arc::new(RwLock::new(NetworkInfo::new(
             config.peering_port.unwrap_or(0),
+            network_params.network.protocol_info(),
+            config.tcp.clone(),
+            stats.clone(),
         )));
 
         // empty `config.peering_port` means the user made no port choice at all;
@@ -299,6 +302,7 @@ impl Node {
             unchecked.clone(),
             network_params.clone(),
             network.clone(),
+            network_info.clone(),
             message_publisher.clone(),
             node_id.clone(),
         ));
@@ -1118,7 +1122,10 @@ impl Node {
                 ContainerInfoComponent::Composite(
                     "network".to_string(),
                     vec![
-                        self.network.collect_container_info("tcp_channels"),
+                        self.network_info
+                            .read()
+                            .unwrap()
+                            .collect_container_info("tcp_channels"),
                         self.syn_cookies.collect_container_info("syn_cookies"),
                     ],
                 ),

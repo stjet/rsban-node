@@ -1,4 +1,4 @@
-use super::{Channel, ChannelId, DropPolicy, Network, TrafficType};
+use super::{ChannelId, ChannelInfo, DropPolicy, Network, TrafficType};
 use crate::{
     representatives::OnlineReps,
     stats::{Direction, StatType, Stats},
@@ -107,8 +107,13 @@ impl MessagePublisher {
         }
     }
 
-    fn list_no_pr(&self, count: usize) -> Vec<Arc<Channel>> {
-        let mut channels = self.network.random_list_realtime(usize::MAX, 0);
+    fn list_no_pr(&self, count: usize) -> Vec<Arc<ChannelInfo>> {
+        let mut channels = self
+            .network
+            .info
+            .read()
+            .unwrap()
+            .random_list_realtime(usize::MAX, 0);
         {
             let reps = self.online_reps.lock().unwrap();
             channels.retain(|c| !reps.is_pr(c.channel_id()));

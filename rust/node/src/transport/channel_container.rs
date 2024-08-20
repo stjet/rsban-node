@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
     time::SystemTime,
 };
-use tracing::debug;
 
 /// Keeps track of all connected channels
 #[derive(Default)]
@@ -22,8 +21,6 @@ pub struct ChannelContainer {
 }
 
 impl ChannelContainer {
-    pub const ELEMENT_SIZE: usize = std::mem::size_of::<Channel>();
-
     pub fn insert(&mut self, channel: Arc<Channel>) -> bool {
         let id = channel.channel_id();
         if self.by_channel_id.contains_key(&id) {
@@ -66,10 +63,6 @@ impl ChannelContainer {
             .filter(|c| c.info.is_alive())
     }
 
-    pub fn len(&self) -> usize {
-        self.by_channel_id.len()
-    }
-
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.by_channel_id
             .values()
@@ -77,7 +70,7 @@ impl ChannelContainer {
             .count()
     }
 
-    fn remove_by_id(&mut self, id: ChannelId) -> Option<Arc<Channel>> {
+    pub(crate) fn remove_by_id(&mut self, id: ChannelId) -> Option<Arc<Channel>> {
         if let Some(channel) = self.by_channel_id.remove(&id) {
             self.sequential.retain(|x| *x != id); // todo: linear search is slow?
 
@@ -191,49 +184,6 @@ impl ChannelContainer {
         self.by_ip_address.clear();
         self.by_subnet.clear();
         self.by_channel_id.clear();
-    }
-
-    pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
-        for entry in self.iter() {
-            if entry.info.last_packet_sent() < cutoff {
-                debug!(remote_addr = ?entry.info.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.info.mode(), "Closing idle channel");
-                entry.info.close();
-            }
-        }
-    }
-
-    /// Removes dead channels and returns their channel ids
-    pub fn remove_dead(&mut self) -> Vec<ChannelId> {
-        let dead_channels: Vec<_> = self
-            .by_channel_id
-            .values()
-            .filter(|c| !c.info.is_alive())
-            .cloned()
-            .collect();
-
-        for channel in &dead_channels {
-            debug!("Removing dead channel: {}", channel.info.peer_addr());
-            self.remove_by_id(channel.channel_id());
-        }
-
-        dead_channels.iter().map(|c| c.channel_id()).collect()
-    }
-
-    pub fn close_old_protocol_versions(&mut self, min_version: u8) {
-        while let Some((version, channel_ids)) = self.by_network_version.first_key_value() {
-            if *version < min_version {
-                for id in channel_ids {
-                    if let Some(channel) = self.by_channel_id.get(id) {
-                        debug!(channel_id = %id, peer_addr = ?channel.info.peer_addr(), version, min_version,
-                            "Closing channel with old protocol version",
-                        );
-                        channel.info.close();
-                    }
-                }
-            } else {
-                break;
-            }
-        }
     }
 }
 

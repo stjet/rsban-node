@@ -1,22 +1,19 @@
 use super::{
-    attempt_container::AttemptContainer, channel_container::ChannelContainer, Channel,
-    ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkFilter, NetworkInfo,
-    OutboundBandwidthLimiter, PeerExclusion, TcpConfig, TcpStream, TrafficType,
+    channel_container::ChannelContainer, Channel, ChannelDirection, ChannelId, ChannelMode,
+    DropPolicy, NetworkFilter, NetworkInfo, OutboundBandwidthLimiter, TcpConfig, TcpStream,
+    TrafficType,
 };
 use crate::{
     config::{NetworkConstants, NodeFlags},
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
         into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_mapped,
-        map_address_to_subnetwork, SteadyClock, Timestamp,
+        map_address_to_subnetwork, SteadyClock,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rand::{seq::SliceRandom, thread_rng};
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
-    Account,
-};
+use rsnano_core::{utils::NULL_ENDPOINT, Account};
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
@@ -48,7 +45,7 @@ impl NetworkOptions {
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
             clock: Arc::new(SteadyClock::new_null()),
-            network_info: Arc::new(RwLock::new(NetworkInfo::new(8080))),
+            network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
         }
     }
 }
@@ -79,10 +76,8 @@ impl Network {
         Self {
             allow_local_peers: options.allow_local_peers,
             state: Mutex::new(State {
-                attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
-                excluded_peers: PeerExclusion::new(),
                 stats: options.stats.clone(),
                 node_flags: options.flags.clone(),
                 config: options.tcp_config.clone(),
@@ -131,6 +126,15 @@ impl Network {
         direction: ChannelDirection,
         planned_mode: ChannelMode,
     ) -> AcceptResult {
+        if self
+            .info
+            .write()
+            .unwrap()
+            .excluded_peers
+            .is_excluded(peer_addr, self.clock.now())
+        {
+            return AcceptResult::Rejected;
+        }
         if direction == ChannelDirection::Outbound {
             if self.can_add_outbound_connection(&peer_addr, planned_mode) {
                 AcceptResult::Accepted
@@ -238,55 +242,15 @@ impl Network {
         ip: &SocketAddrV6,
         direction: ChannelDirection,
     ) -> AcceptResult {
-        self.state
-            .lock()
-            .unwrap()
-            .check_limits(ip, direction, self.clock.now())
+        self.state.lock().unwrap().check_limits(ip, direction)
     }
 
     pub(crate) fn add_attempt(&self, remote: SocketAddrV6) -> bool {
-        let mut guard = self.state.lock().unwrap();
-
-        let count = guard.attempts.count_by_address(remote.ip());
-        if count >= self.tcp_config.max_attempts_per_ip {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::MaxAttemptsPerIp,
-                Direction::Out,
-            );
-            debug!("Connection attempt already in progress ({}), unable to initiate new connection: {}", count, remote.ip());
-            return false; // Rejected
-        }
-
-        guard.attempts.insert(remote, ChannelDirection::Outbound)
+        self.info.write().unwrap().add_attempt(remote)
     }
 
     pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
-        self.state.lock().unwrap().attempts.remove(&remote);
-    }
-
-    pub fn find_realtime_channel_by_remote_addr(
-        &self,
-        endpoint: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_realtime_channel_by_remote_addr(endpoint)
-    }
-
-    pub(crate) fn find_realtime_channel_by_peering_addr(
-        &self,
-        peering_addr: &SocketAddrV6,
-    ) -> Option<ChannelId> {
-        self.state
-            .lock()
-            .unwrap()
-            .find_realtime_channel_by_peering_addr(peering_addr)
-    }
-
-    pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        self.state.lock().unwrap().collect_container_info(name)
+        self.info.write().unwrap().remove_attempt(remote)
     }
 
     pub fn random_fill_peering_endpoints(&self, endpoints: &mut [SocketAddrV6]) {
@@ -295,23 +259,6 @@ impl Network {
 
     pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<Channel>> {
         self.state.lock().unwrap().random_fanout_realtime(scale)
-    }
-
-    pub(crate) fn random_list_realtime(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .random_realtime_channels(count, min_version)
-    }
-
-    pub(crate) fn random_list_realtime_ids(&self) -> Vec<ChannelId> {
-        self.state
-            .lock()
-            .unwrap()
-            .random_realtime_channels(usize::MAX, 0)
-            .iter()
-            .map(|c| c.channel_id())
-            .collect()
     }
 
     pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
@@ -372,8 +319,13 @@ impl Network {
         let lock = self.state.lock().unwrap();
         result = lock.channels.count_by_ip(&address) >= lock.network_constants.max_peers_per_ip;
         if !result {
-            result =
-                lock.attempts.count_by_address(&address) >= lock.network_constants.max_peers_per_ip;
+            result = self
+                .info
+                .read()
+                .unwrap()
+                .attempts
+                .count_by_address(&address)
+                >= lock.network_constants.max_peers_per_ip;
         }
         if result {
             self.stats
@@ -392,7 +344,12 @@ impl Network {
             let guard = self.state.lock().unwrap();
             guard.channels.count_by_subnet(&subnet)
                 >= self.network_params.network.max_peers_per_subnetwork
-                || guard.attempts.count_by_subnetwork(&subnet)
+                || self
+                    .info
+                    .read()
+                    .unwrap()
+                    .attempts
+                    .count_by_subnetwork(&subnet)
                     >= self.network_params.network.max_peers_per_subnetwork
         };
 
@@ -424,11 +381,17 @@ impl Network {
             return false;
         }
 
-        let mut state = self.state.lock().unwrap();
-        if state.excluded_peers.is_excluded(peer, self.clock.now()) {
+        if self
+            .info
+            .write()
+            .unwrap()
+            .excluded_peers
+            .is_excluded(peer, self.clock.now())
+        {
             return false;
         }
 
+        let mut state = self.state.lock().unwrap();
         // Don't connect to nodes that already sent us something
         if state
             .find_channels_by_remote_addr(peer)
@@ -445,9 +408,7 @@ impl Network {
             return false;
         }
 
-        if state.check_limits(peer, ChannelDirection::Outbound, self.clock.now())
-            != AcceptResult::Accepted
-        {
+        if state.check_limits(peer, ChannelDirection::Outbound) != AcceptResult::Accepted {
             self.stats.inc_dir(
                 StatType::TcpListener,
                 DetailType::ConnectRejected,
@@ -479,11 +440,10 @@ impl Network {
 
     /// Returns channel IDs of removed channels
     pub fn purge(&self, cutoff: SystemTime) -> Vec<ChannelId> {
+        let channel_ids = self.info.write().unwrap().purge(cutoff);
         let mut guard = self.state.lock().unwrap();
-        let channel_ids = guard.purge(cutoff);
-        let mut network = self.info.write().unwrap();
         for channel_id in &channel_ids {
-            network.remove(*channel_id);
+            guard.channels.remove_by_id(*channel_id);
         }
         channel_ids
     }
@@ -526,15 +486,15 @@ impl Network {
     }
 
     pub(crate) fn is_excluded(&self, addr: &SocketAddrV6) -> bool {
-        self.state
-            .lock()
+        self.info
+            .write()
             .unwrap()
             .excluded_peers
             .is_excluded(addr, self.clock.now())
     }
 
     pub(crate) fn peer_misbehaved(&self, channel_id: ChannelId) {
-        let mut guard = self.state.lock().unwrap();
+        let guard = self.state.lock().unwrap();
 
         let Some(channel) = guard.channels.get_by_id(channel_id) else {
             return;
@@ -543,7 +503,9 @@ impl Network {
 
         // Add to peer exclusion list
 
-        guard
+        self.info
+            .write()
+            .unwrap()
             .excluded_peers
             .peer_misbehaved(&channel.info.peer_addr(), self.clock.now());
 
@@ -558,8 +520,8 @@ impl Network {
     }
 
     pub(crate) fn perma_ban(&self, remote_addr: SocketAddrV6) {
-        self.state
-            .lock()
+        self.info
+            .write()
             .unwrap()
             .excluded_peers
             .perma_ban(remote_addr);
@@ -636,10 +598,8 @@ impl Network {
 }
 
 struct State {
-    attempts: AttemptContainer,
     channels: ChannelContainer,
     network_constants: NetworkConstants,
-    excluded_peers: PeerExclusion,
     stats: Arc<Stats>,
     node_flags: NodeFlags,
     config: TcpConfig,
@@ -676,21 +636,6 @@ impl State {
             channel.info.close();
         }
         self.channels.clear();
-    }
-
-    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
-        self.channels.close_idle_channels(cutoff);
-
-        // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
-        self.channels
-            .close_old_protocol_versions(self.network_constants.protocol_version_min);
-
-        // Remove channels with dead underlying sockets
-        let purged_channel_ids = self.channels.remove_dead();
-
-        // Remove keepalive attempt tracking for attempts older than cutoff
-        self.attempts.purge(cutoff);
-        purged_channel_ids
     }
 
     pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
@@ -741,30 +686,6 @@ impl State {
             .collect()
     }
 
-    pub fn find_realtime_channel_by_remote_addr(
-        &self,
-        endpoint: &SocketAddrV6,
-    ) -> Option<Arc<Channel>> {
-        self.channels
-            .get_by_remote_addr(endpoint)
-            .drain(..)
-            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.info.is_alive())
-            .next()
-            .cloned()
-    }
-
-    pub fn find_realtime_channel_by_peering_addr(
-        &self,
-        peering_addr: &SocketAddrV6,
-    ) -> Option<ChannelId> {
-        self.channels
-            .get_by_peering_addr(peering_addr)
-            .drain(..)
-            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.info.is_alive())
-            .next()
-            .map(|c| c.channel_id())
-    }
-
     pub(crate) fn find_channels_by_peering_addr(
         &self,
         peering_addr: &SocketAddrV6,
@@ -813,19 +734,7 @@ impl State {
         &mut self,
         peer: &SocketAddrV6,
         direction: ChannelDirection,
-        now: Timestamp,
     ) -> AcceptResult {
-        if self.excluded_peers.is_excluded(peer, now) {
-            self.stats.inc_dir(
-                StatType::TcpListenerRejected,
-                DetailType::Excluded,
-                direction.into(),
-            );
-
-            debug!("Rejected connection from excluded peer: {}", peer);
-            return AcceptResult::Rejected;
-        }
-
         if !self.node_flags.disable_max_peers_per_ip {
             let count = self.channels.count_by_ip(peer.ip());
             if count >= self.network_constants.max_peers_per_ip {
@@ -915,25 +824,6 @@ impl State {
             }
         }
         info
-    }
-
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "channels".to_string(),
-                    count: self.channels.len(),
-                    sizeof_element: ChannelContainer::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "attempts".to_string(),
-                    count: self.attempts.len(),
-                    sizeof_element: AttemptContainer::ELEMENT_SIZE,
-                }),
-                self.excluded_peers.collect_container_info("excluded_peers"),
-            ],
-        )
     }
 }
 

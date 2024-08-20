@@ -36,6 +36,7 @@ pub struct RepCrawler {
     config: NodeConfig,
     network_params: NetworkParams,
     network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     peer_connector: Arc<PeerConnector>,
     async_rt: Arc<AsyncRuntime>,
     condition: Condvar,
@@ -71,6 +72,7 @@ impl RepCrawler {
             config,
             network_params,
             network: Arc::clone(&network),
+            network_info: network_info.clone(),
             async_rt,
             condition: Condvar::new(),
             ledger,
@@ -380,13 +382,18 @@ impl RepCrawler {
     pub fn keepalive_or_connect(&self, address: String, port: u16) {
         let peer_connector = self.peer_connector.clone();
         let network = self.network.clone();
+        let network_info = self.network_info.clone();
         let publisher = self.message_publisher.clone();
         self.async_rt.tokio.spawn(async move {
             match tokio::net::lookup_host((address.as_str(), port)).await {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match network.find_realtime_channel_by_peering_addr(&endpoint) {
+                        match network_info
+                            .read()
+                            .unwrap()
+                            .find_realtime_channel_by_peering_addr(&endpoint)
+                        {
                             Some(channel_id) => {
                                 let keepalive = network.create_keepalive_message();
                                 publisher.lock().unwrap().try_send(

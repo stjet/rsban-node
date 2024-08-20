@@ -498,7 +498,9 @@ pub unsafe extern "C" fn rsn_node_flood_block_many(
 pub extern "C" fn rsn_node_is_connected_to(handle: &NodeHandle, peer: &EndpointDto) -> bool {
     handle
         .0
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_realtime_channel_by_remote_addr(&peer.into())
         .is_some()
 }

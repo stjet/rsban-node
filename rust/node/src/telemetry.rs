@@ -9,7 +9,7 @@ use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
     net::SocketAddrV6,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
@@ -19,7 +19,8 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
     transport::{
-        ChannelId, ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, Network, TrafficType,
+        ChannelId, ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, Network, NetworkInfo,
+        TrafficType,
     },
     NetworkParams,
 };
@@ -44,6 +45,7 @@ pub struct Telemetry {
     mutex: Mutex<TelemetryImpl>,
     network_params: NetworkParams,
     network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     message_publisher: Mutex<MessagePublisher>,
     node_id: KeyPair,
     startup_time: Instant,
@@ -62,6 +64,7 @@ impl Telemetry {
         unchecked: Arc<UncheckedMap>,
         network_params: NetworkParams,
         network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
         node_id: KeyPair,
     ) -> Self {
@@ -73,6 +76,7 @@ impl Telemetry {
             unchecked,
             network_params,
             network,
+            network_info,
             message_publisher: Mutex::new(message_publisher),
             thread: Mutex::new(None),
             condition: Condvar::new(),
@@ -251,7 +255,7 @@ impl Telemetry {
     }
 
     fn run_requests(&self) {
-        let channel_ids = self.network.random_list_realtime_ids();
+        let channel_ids = self.network_info.read().unwrap().random_list_realtime_ids();
         for channel_id in channel_ids {
             self.request(channel_id);
         }
@@ -269,7 +273,7 @@ impl Telemetry {
 
     fn run_broadcasts(&self) {
         let telemetry = self.local_telemetry();
-        let channel_ids = self.network.random_list_realtime_ids();
+        let channel_ids = self.network_info.read().unwrap().random_list_realtime_ids();
         let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
         for channel_id in channel_ids {
             self.broadcast(channel_id, &message);

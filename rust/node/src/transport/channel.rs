@@ -69,7 +69,12 @@ impl Channel {
                 TEST_ENDPOINT_2,
                 ChannelDirection::Outbound,
             )),
-            Arc::new(RwLock::new(NetworkInfo::new(80))),
+            Arc::new(RwLock::new(NetworkInfo::new(
+                80,
+                Default::default(),
+                Default::default(),
+                Arc::new(Stats::default()),
+            ))),
             Arc::new(TcpStream::new_null()),
             Arc::new(Stats::default()),
             Arc::new(OutboundBandwidthLimiter::default()),

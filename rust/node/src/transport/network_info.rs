@@ -1,10 +1,19 @@
-use crate::utils::reserved_address;
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    utils::reserved_address,
+};
 
-use super::{ChannelDirection, ChannelId, ChannelMode, TrafficType};
+use super::{
+    attempt_container::AttemptContainer, ChannelDirection, ChannelId, ChannelMode, PeerExclusion,
+    TcpConfig, TrafficType,
+};
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
+    utils::{
+        seconds_since_epoch, ContainerInfo, ContainerInfoComponent, TEST_ENDPOINT_1,
+        TEST_ENDPOINT_2,
+    },
     PublicKey,
 };
 use rsnano_messages::ProtocolInfo;
@@ -17,6 +26,7 @@ use std::{
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tracing::debug;
 
 /// Default timeout in seconds
 const DEFAULT_TIMEOUT: u64 = 120;
@@ -243,22 +253,42 @@ pub struct NetworkInfo {
     listening_port: u16,
     stopped: bool,
     new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>>,
+    stats: Arc<Stats>,
+    pub attempts: AttemptContainer,
+    protocol: ProtocolInfo,
+    tcp_config: TcpConfig,
+    pub(crate) excluded_peers: PeerExclusion,
 }
 
 impl NetworkInfo {
-    pub fn new(listening_port: u16) -> Self {
+    pub fn new(
+        listening_port: u16,
+        protocol: ProtocolInfo,
+        tcp_config: TcpConfig,
+        stats: Arc<Stats>,
+    ) -> Self {
         Self {
             next_channel_id: 1,
             channels: HashMap::new(),
             listening_port,
             stopped: false,
             new_realtime_channel_observers: Vec::new(),
+            stats,
+            attempts: Default::default(),
+            protocol,
+            tcp_config,
+            excluded_peers: PeerExclusion::new(),
         }
     }
 
     #[allow(dead_code)]
     pub(crate) fn new_test_instance() -> Self {
-        Self::new(8080)
+        Self::new(
+            8080,
+            Default::default(),
+            Default::default(),
+            Arc::new(Stats::default()),
+        )
     }
 
     pub(crate) fn on_new_realtime_channel(
@@ -272,6 +302,25 @@ impl NetworkInfo {
         &self,
     ) -> Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>> {
         self.new_realtime_channel_observers.clone()
+    }
+
+    pub(crate) fn add_attempt(&mut self, remote: SocketAddrV6) -> bool {
+        let count = self.attempts.count_by_address(remote.ip());
+        if count >= self.tcp_config.max_attempts_per_ip {
+            self.stats.inc_dir(
+                StatType::TcpListenerRejected,
+                DetailType::MaxAttemptsPerIp,
+                Direction::Out,
+            );
+            debug!("Connection attempt already in progress ({}), unable to initiate new connection: {}", count, remote.ip());
+            return false; // Rejected
+        }
+
+        self.attempts.insert(remote, ChannelDirection::Outbound)
+    }
+
+    pub(crate) fn remove_attempt(&mut self, remote: &SocketAddrV6) {
+        self.attempts.remove(&remote);
     }
 
     pub fn add(
@@ -322,6 +371,29 @@ impl NetworkInfo {
             .find(|c| c.node_id() == Some(*node_id))
     }
 
+    pub fn find_realtime_channel_by_remote_addr(
+        &self,
+        endpoint: &SocketAddrV6,
+    ) -> Option<&Arc<ChannelInfo>> {
+        self.channels.values().find(|c| {
+            c.mode() == ChannelMode::Realtime && c.is_alive() && c.peer_addr() == *endpoint
+        })
+    }
+
+    pub(crate) fn find_realtime_channel_by_peering_addr(
+        &self,
+        peering_addr: &SocketAddrV6,
+    ) -> Option<ChannelId> {
+        self.channels
+            .values()
+            .find(|c| {
+                c.mode() == ChannelMode::Realtime
+                    && c.is_alive()
+                    && c.peering_addr() == Some(*peering_addr)
+            })
+            .map(|c| c.channel_id())
+    }
+
     pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelInfo>> {
         let mut channels = self.list_realtime(min_version);
         let mut rng = thread_rng();
@@ -356,6 +428,78 @@ impl NetworkInfo {
             || endpoint == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.listening_port(), 0, 0)
     }
 
+    pub(crate) fn random_list_realtime(
+        &self,
+        count: usize,
+        min_version: u8,
+    ) -> Vec<Arc<ChannelInfo>> {
+        let mut channels = self.list_realtime(min_version);
+        let mut rng = thread_rng();
+        channels.shuffle(&mut rng);
+        if count > 0 {
+            channels.truncate(count)
+        }
+        channels
+    }
+
+    pub(crate) fn random_list_realtime_ids(&self) -> Vec<ChannelId> {
+        self.random_list_realtime(usize::MAX, 0)
+            .iter()
+            .map(|c| c.channel_id())
+            .collect()
+    }
+
+    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
+        self.close_idle_channels(cutoff);
+
+        // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
+        self.close_old_protocol_versions(self.protocol.version_min);
+
+        // Remove channels with dead underlying sockets
+        let purged_channel_ids = self.remove_dead_channels();
+
+        // Remove keepalive attempt tracking for attempts older than cutoff
+        self.attempts.purge(cutoff);
+        purged_channel_ids
+    }
+
+    fn close_idle_channels(&mut self, cutoff: SystemTime) {
+        for entry in self.channels.values() {
+            if entry.last_packet_sent() < cutoff {
+                debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
+                entry.close();
+            }
+        }
+    }
+
+    fn close_old_protocol_versions(&mut self, min_version: u8) {
+        for channel in self.channels.values() {
+            if channel.protocol_version() < min_version {
+                debug!(channel_id = %channel.channel_id(), peer_addr = ?channel.peer_addr(), version = channel.protocol_version(), min_version,
+                    "Closing channel with old protocol version",
+                );
+                channel.close();
+            }
+        }
+    }
+
+    /// Removes dead channels and returns their channel ids
+    fn remove_dead_channels(&mut self) -> Vec<ChannelId> {
+        let dead_channels: Vec<_> = self
+            .channels
+            .values()
+            .filter(|c| !c.is_alive())
+            .cloned()
+            .collect();
+
+        for channel in &dead_channels {
+            debug!("Removing dead channel: {}", channel.peer_addr());
+            self.channels.remove(&channel.channel_id());
+        }
+
+        dead_channels.iter().map(|c| c.channel_id()).collect()
+    }
+
     pub fn stop(&mut self) -> bool {
         if self.stopped {
             false
@@ -367,6 +511,25 @@ impl NetworkInfo {
 
     pub fn is_stopped(&self) -> bool {
         self.stopped
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "channels".to_string(),
+                    count: self.channels.len(),
+                    sizeof_element: size_of::<Arc<ChannelInfo>>(),
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "attempts".to_string(),
+                    count: self.attempts.len(),
+                    sizeof_element: AttemptContainer::ELEMENT_SIZE,
+                }),
+                self.excluded_peers.collect_container_info("excluded_peers"),
+            ],
+        )
     }
 }
 

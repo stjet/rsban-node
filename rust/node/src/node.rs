@@ -661,7 +661,7 @@ impl Node {
         });
 
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
-            network.clone(),
+            network_info.clone(),
             peer_connector.clone(),
             flags.clone(),
             network_params.clone(),

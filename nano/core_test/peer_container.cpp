@@ -10,14 +10,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (peer_container, empty_peers)
-{
-	nano::test::system system (1);
-	nano::network & network (*system.nodes[0]->network);
-	system.nodes[0]->network->cleanup (std::chrono::system_clock::now ());
-	ASSERT_EQ (0, network.size ());
-}
-
 // Test the TCP channel cleanup function works properly. It is used to remove peers that are not
 // exchanging messages after a while.
 TEST (peer_container, tcp_channel_cleanup_works)

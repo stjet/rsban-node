@@ -1,6 +1,6 @@
 use super::{
     Channel, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
-    MessageDeserializer, Network, NetworkFilter, NetworkInfo, SynCookies,
+    MessageDeserializer, NetworkFilter, NetworkInfo, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -78,7 +78,6 @@ pub struct ResponseServer {
     stats: Arc<Stats>,
     pub disable_bootstrap_bulk_pull_server: bool,
     allow_bootstrap: bool,
-    network: Arc<Network>,
     network_info: Arc<RwLock<NetworkInfo>>,
     inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
@@ -97,7 +96,6 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl ResponseServer {
     pub fn new(
-        network: Arc<Network>,
         network_info: Arc<RwLock<NetworkInfo>>,
         inbound_queue: Arc<InboundMessageQueue>,
         channel: Arc<Channel>,
@@ -118,7 +116,6 @@ impl ResponseServer {
         let network_constants = network_params.network.clone();
         let remote_endpoint = channel.info.peer_addr();
         Self {
-            network,
             network_info,
             inbound_queue,
             channel,
@@ -291,8 +288,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
             return false;
         }
 
-        self.network
-            .info
+        self.network_info
             .read()
             .unwrap()
             .upgrade_to_realtime_connection(self.channel.channel_id(), *node_id)

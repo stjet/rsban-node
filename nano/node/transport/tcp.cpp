@@ -42,9 +42,3 @@ uint16_t nano::transport::tcp_channels::port () const
 	return rsnano::rsn_tcp_channels_port (handle);
 }
 
-void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
-{
-	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();
-	rsnano::rsn_tcp_channels_purge (handle, cutoff_ns);
-}
-

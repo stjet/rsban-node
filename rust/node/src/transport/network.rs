@@ -12,7 +12,7 @@ use rsnano_core::utils::NULL_ENDPOINT;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use tracing::{debug, warn};
 
@@ -155,16 +155,6 @@ impl Network {
         } else {
             Err(anyhow!("Channel not found"))
         }
-    }
-
-    /// Returns channel IDs of removed channels
-    pub fn purge(&self, cutoff: SystemTime) -> Vec<ChannelId> {
-        let channel_ids = self.info.write().unwrap().purge(cutoff);
-        let mut guard = self.channels.lock().unwrap();
-        for channel_id in &channel_ids {
-            guard.remove(channel_id);
-        }
-        channel_ids
     }
 
     pub fn port(&self) -> u16 {

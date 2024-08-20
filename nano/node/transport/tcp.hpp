@@ -27,7 +27,6 @@ namespace transport
 		~tcp_channels ();
 
 		std::size_t size () const;
-		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
 
 		uint16_t port () const;
 

@@ -523,6 +523,7 @@ impl NetworkInfo {
             .collect()
     }
 
+    /// Returns channel IDs of removed channels
     pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
         self.close_idle_channels(cutoff);
 
@@ -1033,6 +1034,10 @@ impl NetworkInfo {
         info
     }
 
+    pub(crate) fn len(&self) -> usize {
+        self.channels.len()
+    }
+
     pub fn is_stopped(&self) -> bool {
         self.stopped
     }
@@ -1175,5 +1180,68 @@ mod tests {
             channel.channel_id(),
             PublicKey::from(peering_addr.ip().to_bits()),
         );
+    }
+
+    mod purging {
+        use super::*;
+
+        #[test]
+        fn purge_empty() {
+            let mut network = NetworkInfo::new_test_instance();
+            network.purge(SystemTime::now());
+            assert_eq!(network.len(), 0);
+        }
+
+        #[test]
+        fn purge_if_no_packet_sent() {
+            let mut network = NetworkInfo::new_test_instance();
+            network
+                .add(
+                    TEST_ENDPOINT_1,
+                    TEST_ENDPOINT_2,
+                    ChannelDirection::Outbound,
+                    ChannelMode::Realtime,
+                    Timestamp::new_test_instance(),
+                )
+                .unwrap();
+            network.purge(SystemTime::now());
+            assert_eq!(network.len(), 0);
+        }
+
+        #[test]
+        fn purge_if_last_packet_sent_is_above_timeout() {
+            let mut network = NetworkInfo::new_test_instance();
+            let channel = network
+                .add(
+                    TEST_ENDPOINT_1,
+                    TEST_ENDPOINT_2,
+                    ChannelDirection::Outbound,
+                    ChannelMode::Realtime,
+                    Timestamp::new_test_instance(),
+                )
+                .unwrap();
+            let now = SystemTime::now();
+            channel.set_last_packet_sent(now - Duration::from_secs(300));
+            network.purge(SystemTime::now());
+            assert_eq!(network.len(), 0);
+        }
+
+        #[test]
+        fn dont_purge_if_packet_sent_within_timeout() {
+            let mut network = NetworkInfo::new_test_instance();
+            let channel = network
+                .add(
+                    TEST_ENDPOINT_1,
+                    TEST_ENDPOINT_2,
+                    ChannelDirection::Outbound,
+                    ChannelMode::Realtime,
+                    Timestamp::new_test_instance(),
+                )
+                .unwrap();
+            let now = SystemTime::now();
+            channel.set_last_packet_sent(now);
+            network.purge(now);
+            assert_eq!(network.len(), 1);
+        }
     }
 }

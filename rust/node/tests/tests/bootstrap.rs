@@ -1407,7 +1407,6 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     ));
 
     Arc::new(ResponseServer::new(
-        node.network.clone(),
         node.network_info.clone(),
         node.inbound_message_queue.clone(),
         channel,

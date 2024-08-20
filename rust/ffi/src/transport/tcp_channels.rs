@@ -1,4 +1,3 @@
-use rsnano_core::utils::system_time_from_nanoseconds;
 use rsnano_node::transport::{ChannelMode, Network};
 use std::{ops::Deref, sync::Arc};
 
@@ -20,12 +19,6 @@ pub extern "C" fn rsn_tcp_channels_port(handle: &TcpChannelsHandle) -> u16 {
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_destroy(handle: *mut TcpChannelsHandle) {
     drop(Box::from_raw(handle))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: u64) {
-    let cutoff = system_time_from_nanoseconds(cutoff_ns);
-    handle.purge(cutoff);
 }
 
 #[no_mangle]

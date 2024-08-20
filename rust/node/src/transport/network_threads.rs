@@ -1,6 +1,6 @@
 use super::{
-    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, Network, NetworkInfo,
-    PeerConnector, PeerConnectorExt, SynCookies, TrafficType,
+    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, NetworkInfo, PeerConnector,
+    PeerConnectorExt, SynCookies, TrafficType,
 };
 use crate::{
     config::{NodeConfig, NodeFlags},
@@ -20,7 +20,7 @@ pub(crate) struct NetworkThreads {
     keepalive_thread: Option<JoinHandle<()>>,
     reachout_thread: Option<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
-    network: Arc<Network>,
+    network: Arc<RwLock<NetworkInfo>>,
     peer_connector: Arc<PeerConnector>,
     flags: NodeFlags,
     network_params: NetworkParams,
@@ -34,7 +34,7 @@ pub(crate) struct NetworkThreads {
 
 impl NetworkThreads {
     pub fn new(
-        network: Arc<Network>,
+        network: Arc<RwLock<NetworkInfo>>,
         peer_connector: Arc<PeerConnector>,
         flags: NodeFlags,
         network_params: NetworkParams,
@@ -81,7 +81,7 @@ impl NetworkThreads {
 
         let mut keepalive = KeepaliveLoop {
             stopped: self.stopped.clone(),
-            network: self.network.info.clone(),
+            network: self.network.clone(),
             network_params: self.network_params.clone(),
             stats: Arc::clone(&self.stats),
             keepalive_factory: Arc::clone(&self.keepalive_factory),
@@ -115,7 +115,7 @@ impl NetworkThreads {
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
         self.stopped.0.notify_all();
-        self.network.info.write().unwrap().stop();
+        self.network.write().unwrap().stop();
         if let Some(t) = self.keepalive_thread.take() {
             t.join().unwrap();
         }

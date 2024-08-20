@@ -76,7 +76,6 @@ impl ResponseServerFactory {
 
     pub(crate) fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
         let server = Arc::new(ResponseServer::new(
-            self.network.clone(),
             self.network.info.clone(),
             self.inbound_queue.clone(),
             channel,

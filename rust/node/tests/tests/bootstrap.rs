@@ -7,7 +7,7 @@ use rsnano_messages::BulkPull;
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
-    transport::{Channel, ChannelDirection, ChannelId, LatestKeepalives, ResponseServer},
+    transport::{Channel, ChannelDirection, ChannelInfo, LatestKeepalives, ResponseServer},
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
@@ -1394,7 +1394,7 @@ mod bulk_pull_account {
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let channel = node.async_rt.tokio.block_on(Channel::create(
-        ChannelId::from(1),
+        Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
         ChannelDirection::Inbound,
         node.network_params.network.protocol_info().version_using,

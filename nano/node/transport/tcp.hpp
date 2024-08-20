@@ -35,7 +35,6 @@ namespace transport
 
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		uint16_t port () const;
-		std::size_t get_next_channel_id ();
 
 		std::shared_ptr<nano::network_filter> publish_filter;
 

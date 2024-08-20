@@ -79,7 +79,7 @@ impl RealtimeMessageHandler {
                 // The first entry is used to inform us of the peering address of the sending node
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
                     let peering_addr =
-                        SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
+                        SocketAddrV6::new(*channel.info.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
                     self.network
@@ -149,7 +149,7 @@ impl RealtimeMessageHandler {
                     TrafficType::Generic,
                 );
             }
-            Message::TelemetryAck(ack) => self.telemetry.process(&ack, channel),
+            Message::TelemetryAck(ack) => self.telemetry.process(&ack, &channel.info),
             Message::AscPullReq(req) => {
                 self.bootstrap_server.request(req, Arc::clone(channel));
             }

@@ -48,7 +48,7 @@ impl ChannelContainer {
             .or_default()
             .push(id);
         self.by_endpoint
-            .entry(channel.peer_addr())
+            .entry(channel.info.peer_addr())
             .or_default()
             .push(id);
         self.by_channel_id.insert(id, channel);
@@ -91,7 +91,7 @@ impl ChannelContainer {
                 &channel.protocol_version(),
                 id,
             );
-            remove_from_hashmap(&mut self.by_endpoint, &channel.peer_addr(), id);
+            remove_from_hashmap(&mut self.by_endpoint, &channel.info.peer_addr(), id);
             remove_from_hashmap(
                 &mut self.by_ip_address,
                 &channel.ipv4_address_or_ipv6_subnet(),
@@ -120,7 +120,7 @@ impl ChannelContainer {
         // TODO use a hashmap?
         self.by_channel_id
             .values()
-            .filter(|c| c.peering_addr().as_ref() == Some(peering_addr) && c.is_alive())
+            .filter(|c| c.info.peering_addr().as_ref() == Some(peering_addr) && c.is_alive())
             .collect()
     }
 
@@ -131,7 +131,7 @@ impl ChannelContainer {
     pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<Channel>> {
         self.by_channel_id
             .values()
-            .filter(|c| c.get_node_id() == Some(*node_id) && c.is_alive())
+            .filter(|c| c.info.node_id() == Some(*node_id) && c.is_alive())
             .next()
     }
 
@@ -196,7 +196,7 @@ impl ChannelContainer {
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
             if entry.get_last_packet_sent() < cutoff {
-                debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
+                debug!(remote_addr = ?entry.info.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
                 entry.close();
             }
         }
@@ -212,7 +212,7 @@ impl ChannelContainer {
             .collect();
 
         for channel in &dead_channels {
-            debug!("Removing dead channel: {}", channel.peer_addr());
+            debug!("Removing dead channel: {}", channel.info.peer_addr());
             self.remove_by_id(channel.channel_id());
         }
 
@@ -224,7 +224,7 @@ impl ChannelContainer {
             if *version < min_version {
                 for id in channel_ids {
                     if let Some(channel) = self.by_channel_id.get(id) {
-                        debug!(channel_id = %id, peer_addr = ?channel.peer_addr(), version, min_version,
+                        debug!(channel_id = %id, peer_addr = ?channel.info.peer_addr(), version, min_version,
                             "Closing channel with old protocol version",
                         );
                         channel.close();

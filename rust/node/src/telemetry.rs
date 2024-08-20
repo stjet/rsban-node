@@ -19,7 +19,7 @@ use crate::{
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
     transport::{
-        Channel, ChannelId, ChannelMode, DropPolicy, MessagePublisher, Network, TrafficType,
+        ChannelId, ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, Network, TrafficType,
     },
     NetworkParams,
 };
@@ -104,7 +104,7 @@ impl Telemetry {
         self.telemetry_processed_callbacks.lock().unwrap().push(f);
     }
 
-    fn verify(&self, telemetry: &TelemetryAck, channel: &Arc<Channel>) -> bool {
+    fn verify(&self, telemetry: &TelemetryAck, channel: &ChannelInfo) -> bool {
         let Some(data) = &telemetry.0 else {
             self.stats
                 .inc(StatType::Telemetry, DetailType::EmptyPayload);
@@ -112,7 +112,7 @@ impl Telemetry {
         };
 
         // Check if telemetry node id matches channel node id
-        if Some(data.node_id) != channel.get_node_id() {
+        if Some(data.node_id) != channel.node_id() {
             self.stats
                 .inc(StatType::Telemetry, DetailType::NodeIdMismatch);
             return false;
@@ -137,14 +137,14 @@ impl Telemetry {
     }
 
     /// Process telemetry message from network
-    pub fn process(&self, telemetry: &TelemetryAck, channel: &Arc<Channel>) {
+    pub fn process(&self, telemetry: &TelemetryAck, channel: &ChannelInfo) {
         if !self.verify(telemetry, channel) {
             return;
         }
         let data = telemetry.0.as_ref().unwrap();
 
         let mut guard = self.mutex.lock().unwrap();
-        let peer_addr = channel.peering_addr().unwrap_or(channel.peer_addr());
+        let peer_addr = channel.peering_addr_or_peer_addr();
 
         if let Some(entry) = guard.telemetries.get_mut(&peer_addr) {
             self.stats.inc(StatType::Telemetry, DetailType::Update);

@@ -64,11 +64,6 @@ uint16_t nano::transport::tcp_channels::port () const
 	return rsnano::rsn_tcp_channels_port (handle);
 }
 
-std::size_t nano::transport::tcp_channels::get_next_channel_id ()
-{
-	return rsnano::rsn_tcp_channels_get_next_channel_id (handle);
-}
-
 bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
 {
 	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };

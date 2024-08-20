@@ -29,7 +29,6 @@ pub struct Channel {
     stats: Arc<Stats>,
     write_queue: WriteQueue,
     stream: Arc<TcpStream>,
-    ignore_closed_write_queue: bool,
 }
 
 impl Channel {
@@ -52,7 +51,6 @@ impl Channel {
             stats,
             write_queue,
             stream,
-            ignore_closed_write_queue: false,
         };
 
         (channel, receiver)
@@ -64,7 +62,7 @@ impl Channel {
 
     pub fn new_null_with_id(id: impl Into<ChannelId>) -> Self {
         let channel_id = id.into();
-        let (mut channel, _receiver) = Self::new(
+        let (channel, _receiver) = Self::new(
             Arc::new(ChannelInfo::new(
                 channel_id,
                 TEST_ENDPOINT_1,
@@ -75,8 +73,6 @@ impl Channel {
             Arc::new(Stats::default()),
             Arc::new(OutboundBandwidthLimiter::default()),
         );
-        // We drop the write queue receiver, so the channel would be dead immediately.
-        channel.ignore_closed_write_queue = true;
         channel
     }
 
@@ -89,6 +85,7 @@ impl Channel {
     ) -> Arc<Self> {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
+        let info = channel_info.clone();
         let (channel, mut receiver) = Self::new(channel_info, network_info, stream, stats, limiter);
         //
         // process write queue:
@@ -118,6 +115,7 @@ impl Channel {
                     }
                 }
             }
+            info.close();
         });
 
         let channel = Arc::new(channel);
@@ -128,10 +126,6 @@ impl Channel {
 
     pub(crate) fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
         self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
-    }
-
-    fn is_closed(&self) -> bool {
-        self.info.is_closed() || (!self.ignore_closed_write_queue && self.write_queue.is_closed())
     }
 
     fn update_last_activity(&self) {
@@ -150,7 +144,7 @@ impl Channel {
     }
 
     pub fn is_alive(&self) -> bool {
-        !self.is_closed()
+        !self.info.is_closed()
     }
 
     pub fn local_addr(&self) -> SocketAddrV6 {
@@ -175,7 +169,7 @@ impl Channel {
             sleep(Duration::from_millis(20)).await;
         }
 
-        if self.is_closed() {
+        if self.info.is_closed() {
             bail!("socket closed");
         }
 
@@ -214,7 +208,7 @@ impl Channel {
         drop_policy: DropPolicy,
         traffic_type: TrafficType,
     ) -> bool {
-        if self.is_closed() {
+        if self.info.is_closed() {
             return false;
         }
 
@@ -318,7 +312,7 @@ impl AsyncBufferReader for Arc<Channel> {
             return Err(anyhow!("buffer is too small for read count"));
         }
 
-        if self.is_closed() {
+        if self.info.is_closed() {
             return Err(anyhow!("Tried to read from a closed TcpStream"));
         }
 

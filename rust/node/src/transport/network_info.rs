@@ -247,4 +247,10 @@ impl NetworkInfo {
             channel.set_node_id(node_id);
         }
     }
+
+    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelInfo>> {
+        self.channels
+            .values()
+            .find(|c| c.node_id() == Some(*node_id))
+    }
 }

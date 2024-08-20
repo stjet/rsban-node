@@ -506,9 +506,10 @@ pub unsafe extern "C" fn rsn_node_find_endpoint_for_node_id(
     node_id: *const u8,
     result: &mut EndpointDto,
 ) -> bool {
-    match handle.0.network.find_node_id(&PublicKey::from_ptr(node_id)) {
+    let network = handle.0.network_info.read().unwrap();
+    match network.find_node_id(&PublicKey::from_ptr(node_id)) {
         Some(channel) => {
-            *result = channel.info.peer_addr().into();
+            *result = channel.peer_addr().into();
             true
         }
         None => false,

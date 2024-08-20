@@ -431,7 +431,11 @@ impl ResponseServerExt for Arc<ResponseServer> {
                     );
                     if matches!(result, HandshakeStatus::AbortOwnNodeId) {
                         if let Some(peering_addr) = self.channel.info.peering_addr() {
-                            self.network.perma_ban(peering_addr);
+                            self.network_info
+                                .write()
+                                .unwrap()
+                                .excluded_peers
+                                .perma_ban(peering_addr);
                         }
                     }
                     return ProcessResult::Abort;

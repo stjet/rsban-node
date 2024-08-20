@@ -81,7 +81,7 @@ impl NetworkThreads {
 
         let mut keepalive = KeepaliveLoop {
             stopped: self.stopped.clone(),
-            network: Arc::clone(&self.network),
+            network: self.network.info.clone(),
             network_params: self.network_params.clone(),
             stats: Arc::clone(&self.stats),
             keepalive_factory: Arc::clone(&self.keepalive_factory),
@@ -218,7 +218,7 @@ struct KeepaliveLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network_params: NetworkParams,
     stats: Arc<Stats>,
-    network: Arc<Network>,
+    network: Arc<RwLock<NetworkInfo>>,
     keepalive_factory: Arc<KeepaliveFactory>,
     message_publisher: MessagePublisher,
 }
@@ -250,9 +250,14 @@ impl KeepaliveLoop {
     }
 
     fn keepalive(&mut self) {
-        let message = self.network.info.read().unwrap().create_keepalive_message();
+        let (message, keepalive_list) = {
+            let network = self.network.read().unwrap();
+            let message = network.create_keepalive_message();
+            let list = network.keepalive_list();
+            (message, list)
+        };
 
-        for channel_id in self.network.keepalive_list() {
+        for channel_id in keepalive_list {
             self.message_publisher.try_send(
                 channel_id,
                 &message,
@@ -265,7 +270,9 @@ impl KeepaliveLoop {
     fn flood_keepalive(&mut self, scale: f32) {
         let mut keepalive = Keepalive::default();
         self.network
-            .random_fill_peering_endpoints(&mut keepalive.peers);
+            .read()
+            .unwrap()
+            .random_fill_realtime(&mut keepalive.peers);
         self.message_publisher
             .flood(&Message::Keepalive(keepalive), DropPolicy::CanDrop, scale);
     }

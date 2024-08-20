@@ -208,18 +208,6 @@ impl Network {
             .excluded_peers
             .is_excluded(addr, self.clock.now())
     }
-
-    pub(crate) fn perma_ban(&self, remote_addr: SocketAddrV6) {
-        self.info
-            .write()
-            .unwrap()
-            .excluded_peers
-            .perma_ban(remote_addr);
-    }
-
-    pub(crate) fn keepalive_list(&self) -> Vec<ChannelId> {
-        self.info.read().unwrap().keepalive_list()
-    }
 }
 
 #[derive(PartialEq, Eq)]

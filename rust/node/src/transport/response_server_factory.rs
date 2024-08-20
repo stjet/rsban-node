@@ -1,18 +1,18 @@
 use super::{
-    Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, ResponseServer,
-    ResponseServerExt, SynCookies,
+    Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, NetworkInfo,
+    ResponseServer, ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig},
     config::NodeFlags,
     stats::Stats,
-    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
+    utils::{AsyncRuntime, SteadyClock, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub(crate) struct ResponseServerFactory {
     pub(crate) runtime: Arc<AsyncRuntime>,
@@ -36,11 +36,13 @@ impl ResponseServerFactory {
         let ledger = Arc::new(Ledger::new_null());
         let flags = NodeFlags::default();
         let network = Arc::new(Network::new_null());
+        let network_info = Arc::new(RwLock::new(NetworkInfo::new_test_instance()));
         let runtime = Arc::new(AsyncRuntime::default());
         let workers = Arc::new(ThreadPoolImpl::new_test_instance());
         let network_params = NetworkParams::new(rsnano_core::Networks::NanoDevNetwork);
         let stats = Arc::new(Stats::default());
         let block_processor = Arc::new(BlockProcessor::new_test_instance(ledger.clone()));
+        let clock = Arc::new(SteadyClock::new_null());
         Self {
             runtime: runtime.clone(),
             stats: stats.clone(),
@@ -52,6 +54,7 @@ impl ResponseServerFactory {
                 BootstrapInitiatorConfig::default(),
                 flags.clone(),
                 network.clone(),
+                network_info,
                 runtime,
                 workers,
                 network_params.clone(),
@@ -60,6 +63,7 @@ impl ResponseServerFactory {
                 None,
                 ledger,
                 MessagePublisher::new_null(),
+                clock,
             )),
             network,
             inbound_queue: Arc::new(InboundMessageQueue::default()),

@@ -477,6 +477,7 @@ impl Node {
             global_config.into(),
             flags.clone(),
             network.clone(),
+            network_info.clone(),
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
@@ -491,6 +492,7 @@ impl Node {
                 network_params.network.protocol_info(),
                 512,
             ),
+            steady_clock.clone(),
         ));
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
@@ -676,7 +678,7 @@ impl Node {
         let ongoing_bootstrap = Arc::new(OngoingBootstrap::new(
             network_params.clone(),
             bootstrap_initiator.clone(),
-            network.clone(),
+            network_info.clone(),
             flags.clone(),
             ledger.clone(),
             stats.clone(),

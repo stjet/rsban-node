@@ -200,14 +200,6 @@ impl Network {
     pub fn port(&self) -> u16 {
         self.info.read().unwrap().listening_port()
     }
-
-    pub(crate) fn is_excluded(&self, addr: &SocketAddrV6) -> bool {
-        self.info
-            .write()
-            .unwrap()
-            .excluded_peers
-            .is_excluded(addr, self.clock.now())
-    }
 }
 
 #[derive(PartialEq, Eq)]

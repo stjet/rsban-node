@@ -1003,7 +1003,7 @@ impl Node {
         let time_factory = SystemTimeFactory::default();
 
         let peer_cache_updater = PeerCacheUpdater::new(
-            network.clone(),
+            network_info.clone(),
             ledger.clone(),
             time_factory,
             stats.clone(),

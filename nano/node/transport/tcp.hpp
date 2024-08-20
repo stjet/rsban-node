@@ -30,7 +30,6 @@ namespace transport
 		float size_sqrt () const;
 		// Desired fanout for a given scale
 		std::size_t fanout (float scale = 1.0f) const;
-		bool not_a_peer (nano::endpoint const &, bool);
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
 
 		void random_fill (std::array<nano::endpoint, 8> &) const;

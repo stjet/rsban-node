@@ -39,15 +39,6 @@ pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_not_a_peer(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-    allow_local_peers: bool,
-) -> bool {
-    handle.not_a_peer(&endpoint.into(), allow_local_peers)
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
     handle: &TcpChannelsHandle,
     endpoints: *mut EndpointDto,

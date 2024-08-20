@@ -1,4 +1,4 @@
-use super::{ChannelInfo, Network};
+use super::{ChannelInfo, NetworkInfo};
 use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
@@ -6,13 +6,17 @@ use crate::{
 use rsnano_core::utils::SystemTimeFactory;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbWriteTransaction;
-use std::{net::SocketAddrV6, sync::Arc, time::Duration};
+use std::{
+    net::SocketAddrV6,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 use tracing::debug;
 
 /// Writes a snapshot of the current peers to the database,
 /// so that we can reconnect to them when the node is restarted
 pub struct PeerCacheUpdater {
-    network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     ledger: Arc<Ledger>,
     time_factory: SystemTimeFactory,
     stats: Arc<Stats>,
@@ -21,14 +25,14 @@ pub struct PeerCacheUpdater {
 
 impl PeerCacheUpdater {
     pub fn new(
-        network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         ledger: Arc<Ledger>,
         time_factory: SystemTimeFactory,
         stats: Arc<Stats>,
         erase_cutoff: Duration,
     ) -> Self {
         Self {
-            network,
+            network_info,
             ledger,
             time_factory,
             stats,
@@ -37,9 +41,9 @@ impl PeerCacheUpdater {
     }
 
     fn save_peers(&self, tx: &mut LmdbWriteTransaction) {
-        let live_peers = self.network.list_realtime_channels(0);
-        for peer in live_peers {
-            self.save_peer(tx, &peer.info);
+        let live_peers = self.network_info.read().unwrap().list_realtime_channels(0);
+        for peer in &live_peers {
+            self.save_peer(tx, peer);
         }
     }
 
@@ -100,10 +104,10 @@ mod tests {
     use super::*;
     use crate::{
         stats::Direction,
-        transport::{ChannelDirection, ChannelMode, TcpStream},
+        transport::{ChannelDirection, ChannelMode},
     };
     use rsnano_core::utils::{
-        new_test_timestamp, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
+        new_test_timestamp, NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
     };
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
@@ -278,17 +282,10 @@ mod tests {
         Vec<SocketAddrV6>,
         Arc<Stats>,
     ) {
-        let network = Arc::new(Network::new_null());
+        let mut network = NetworkInfo::new_test_instance();
         for endpoint in open_channels {
-            let channel = network
-                .add(
-                    TcpStream::new_null_with_peer_addr(endpoint),
-                    ChannelDirection::Outbound,
-                    ChannelMode::Realtime,
-                )
-                .await
-                .unwrap();
-            channel.info.set_mode(ChannelMode::Realtime);
+            let channel = network.add(NULL_ENDPOINT, endpoint, ChannelDirection::Outbound);
+            channel.set_mode(ChannelMode::Realtime);
         }
         let ledger = Arc::new(Ledger::new_null_builder().peers(already_stored).finish());
         let time_factory = SystemTimeFactory::new_null_with(now);
@@ -297,7 +294,7 @@ mod tests {
         let delete_tracker = ledger.store.peer.track_deletions();
         let erase_cutoff = Duration::from_secs(60 * 60);
         let mut peer_history = PeerCacheUpdater::new(
-            network,
+            Arc::new(RwLock::new(network)),
             ledger,
             time_factory,
             Arc::clone(&stats),

@@ -1,3 +1,5 @@
+use crate::utils::reserved_address;
+
 use super::{ChannelDirection, ChannelId, ChannelMode, TrafficType};
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
@@ -8,7 +10,7 @@ use rsnano_core::{
 use rsnano_messages::ProtocolInfo;
 use std::{
     collections::HashMap,
-    net::SocketAddrV6,
+    net::{Ipv6Addr, SocketAddrV6},
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
@@ -254,6 +256,11 @@ impl NetworkInfo {
         }
     }
 
+    #[allow(dead_code)]
+    pub(crate) fn new_test_instance() -> Self {
+        Self::new(8080)
+    }
+
     pub(crate) fn on_new_realtime_channel(
         &mut self,
         callback: Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>,
@@ -343,6 +350,12 @@ impl NetworkInfo {
         result
     }
 
+    pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
+        endpoint.ip().is_unspecified()
+            || reserved_address(endpoint, allow_local_peers)
+            || endpoint == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.listening_port(), 0, 0)
+    }
+
     pub fn stop(&mut self) -> bool {
         if self.stopped {
             false
@@ -354,5 +367,34 @@ impl NetworkInfo {
 
     pub fn is_stopped(&self) -> bool {
         self.stopped
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reserved_ip_is_not_a_peer() {
+        let network = NetworkInfo::new_test_instance();
+
+        assert!(network.not_a_peer(
+            &SocketAddrV6::new(Ipv6Addr::new(0xff00u16, 0, 0, 0, 0, 0, 0, 0), 1000, 0, 0),
+            true
+        ));
+        assert!(network.not_a_peer(&SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 10000, 0, 0), true));
+        assert!(network.not_a_peer(
+            &SocketAddrV6::new(Ipv6Addr::LOCALHOST, network.listening_port(), 0, 0),
+            false
+        ));
+
+        // Test with a valid IP address
+        assert_eq!(
+            network.not_a_peer(
+                &SocketAddrV6::new(Ipv6Addr::from_bits(0x08080808), 10000, 0, 0),
+                true
+            ),
+            false
+        );
     }
 }

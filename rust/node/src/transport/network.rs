@@ -8,7 +8,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
         into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, is_ipv4_mapped,
-        map_address_to_subnetwork, reserved_address, SteadyClock, Timestamp,
+        map_address_to_subnetwork, SteadyClock, Timestamp,
     },
     NetworkParams, DEV_NETWORK_PARAMS,
 };
@@ -55,7 +55,7 @@ impl NetworkOptions {
 
 pub struct Network {
     state: Mutex<State>,
-    network_info: Arc<RwLock<NetworkInfo>>,
+    pub info: Arc<RwLock<NetworkInfo>>,
     allow_local_peers: bool,
     flags: NodeFlags,
     stats: Arc<Stats>,
@@ -94,7 +94,7 @@ impl Network {
             limiter: options.limiter,
             publish_filter: options.publish_filter,
             clock: options.clock,
-            network_info: options.network_info,
+            info: options.network_info,
         }
     }
 
@@ -111,7 +111,7 @@ impl Network {
         };
         while self.count_by_direction(ChannelDirection::Inbound)
             >= self.tcp_config.max_inbound_connections
-            && !self.network_info.read().unwrap().is_stopped()
+            && !self.info.read().unwrap().is_stopped()
         {
             if last_log.elapsed() >= log_interval {
                 warn!(
@@ -199,7 +199,7 @@ impl Network {
         }
 
         let channel_info = self
-            .network_info
+            .info
             .write()
             .unwrap()
             .add(local_addr, peer_addr, direction);
@@ -209,7 +209,7 @@ impl Network {
             stream,
             self.stats.clone(),
             self.limiter.clone(),
-            self.network_info.clone(),
+            self.info.clone(),
         )
         .await;
         self.state.lock().unwrap().channels.insert(channel.clone());
@@ -224,25 +224,13 @@ impl Network {
     }
 
     pub(crate) fn stop(&self) {
-        if self.network_info.write().unwrap().stop() {
+        if self.info.write().unwrap().stop() {
             self.close();
         }
     }
 
     fn close(&self) {
         self.state.lock().unwrap().close_channels();
-    }
-
-    pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
-        endpoint.ip().is_unspecified()
-            || reserved_address(endpoint, allow_local_peers)
-            || endpoint
-                == &SocketAddrV6::new(
-                    Ipv6Addr::LOCALHOST,
-                    self.network_info.read().unwrap().listening_port(),
-                    0,
-                    0,
-                )
     }
 
     pub(crate) fn check_limits(
@@ -422,7 +410,12 @@ impl Network {
         }
 
         // Don't contact invalid IPs
-        if self.not_a_peer(peer, self.allow_local_peers) {
+        if self
+            .info
+            .read()
+            .unwrap()
+            .not_a_peer(peer, self.allow_local_peers)
+        {
             return false;
         }
 
@@ -488,7 +481,7 @@ impl Network {
     pub fn purge(&self, cutoff: SystemTime) -> Vec<ChannelId> {
         let mut guard = self.state.lock().unwrap();
         let channel_ids = guard.purge(cutoff);
-        let mut network = self.network_info.write().unwrap();
+        let mut network = self.info.write().unwrap();
         for channel_id in &channel_ids {
             network.remove(*channel_id);
         }
@@ -511,18 +504,12 @@ impl Network {
         self.state.lock().unwrap().bootstrap_peer()
     }
 
-    pub(crate) fn list_realtime_channels(&self, min_version: u8) -> Vec<Arc<Channel>> {
-        let mut result = self.state.lock().unwrap().list_realtime(min_version);
-        result.sort_by_key(|i| i.info.peer_addr());
-        result
-    }
-
     pub fn port(&self) -> u16 {
-        self.network_info.read().unwrap().listening_port()
+        self.info.read().unwrap().listening_port()
     }
 
     pub(crate) fn set_port(&self, port: u16) {
-        self.network_info.write().unwrap().set_listening_port(port);
+        self.info.write().unwrap().set_listening_port(port);
     }
 
     pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
@@ -594,7 +581,7 @@ impl Network {
         let (observers, channel) = {
             let state = self.state.lock().unwrap();
 
-            if self.network_info.read().unwrap().is_stopped() {
+            if self.info.read().unwrap().is_stopped() {
                 return false;
             }
 
@@ -621,11 +608,7 @@ impl Network {
             channel.info.set_node_id(node_id);
             channel.info.set_mode(ChannelMode::Realtime);
 
-            let observers = self
-                .network_info
-                .read()
-                .unwrap()
-                .new_realtime_channel_observers();
+            let observers = self.info.read().unwrap().new_realtime_channel_observers();
             let channel = channel.clone();
             (observers, channel)
         };
@@ -991,7 +974,10 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(network.list_realtime_channels(0).len(), 0);
+        assert_eq!(
+            network.info.read().unwrap().list_realtime_channels(0).len(),
+            0
+        );
     }
 
     #[tokio::test]
@@ -1007,7 +993,10 @@ mod tests {
             .unwrap();
 
         assert!(network.upgrade_to_realtime_connection(channel.channel_id(), PublicKey::from(456)));
-        assert_eq!(network.list_realtime_channels(0).len(), 1);
+        assert_eq!(
+            network.info.read().unwrap().list_realtime_channels(0).len(),
+            1
+        );
     }
 
     #[test]

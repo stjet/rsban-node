@@ -64,12 +64,6 @@ uint16_t nano::transport::tcp_channels::port () const
 	return rsnano::rsn_tcp_channels_port (handle);
 }
 
-bool nano::transport::tcp_channels::not_a_peer (nano::endpoint const & endpoint_a, bool allow_local_peers)
-{
-	auto endpoint_dto{ rsnano::udp_endpoint_to_dto (endpoint_a) };
-	return rsnano::rsn_tcp_channels_not_a_peer (handle, &endpoint_dto, allow_local_peers);
-}
-
 void nano::transport::tcp_channels::purge (std::chrono::system_clock::time_point const & cutoff_a)
 {
 	uint64_t cutoff_ns = std::chrono::duration_cast<std::chrono::nanoseconds> (cutoff_a.time_since_epoch ()).count ();

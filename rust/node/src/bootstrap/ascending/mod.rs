@@ -18,7 +18,7 @@ use crate::{
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BandwidthLimiter, Channel, ChannelId, DropPolicy, MessagePublisher, Network, NetworkInfo,
+        BandwidthLimiter, Channel, ChannelId, DropPolicy, MessagePublisher, NetworkInfo,
         TrafficType,
     },
 };

@@ -20,7 +20,7 @@ use rsnano_core::{
     },
     PublicKey,
 };
-use rsnano_messages::ProtocolInfo;
+use rsnano_messages::{Keepalive, Message, ProtocolInfo};
 use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},
@@ -945,6 +945,59 @@ impl NetworkInfo {
         }
     }
 
+    pub(crate) fn upgrade_to_realtime_connection(
+        &self,
+        channel_id: ChannelId,
+        node_id: PublicKey,
+    ) -> bool {
+        let (observers, channel) = {
+            if self.is_stopped() {
+                return false;
+            }
+
+            let Some(channel) = self.channels.get(&channel_id) else {
+                return false;
+            };
+
+            if let Some(other) = self.find_node_id(&node_id) {
+                if other.ipv4_address_or_ipv6_subnet() == channel.ipv4_address_or_ipv6_subnet() {
+                    // We already have a connection to that node. We allow duplicate node ids, but
+                    // only if they come from different IP addresses
+                    let endpoint = channel.peer_addr();
+                    debug!(
+                        node_id = node_id.to_node_id(),
+                        remote = %endpoint,
+                        "Could not upgrade channel {} to realtime connection, because another channel for the same node ID was found",
+                        channel.channel_id(),
+                    );
+                    return false;
+                }
+            }
+
+            channel.set_node_id(node_id);
+            channel.set_mode(ChannelMode::Realtime);
+
+            let observers = self.new_realtime_channel_observers();
+            let channel = channel.clone();
+            (observers, channel)
+        };
+
+        self.stats
+            .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
+
+        debug!(
+            "Switched to realtime mode (addr: {}, node_id: {})",
+            channel.peer_addr(),
+            node_id.to_node_id()
+        );
+
+        for observer in observers {
+            observer(channel.clone());
+        }
+
+        true
+    }
+
     pub fn keepalive_list(&self) -> Vec<ChannelId> {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
@@ -955,6 +1008,12 @@ impl NetworkInfo {
         }
 
         result
+    }
+
+    pub(crate) fn create_keepalive_message(&self) -> Message {
+        let mut peers = [SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0); 8];
+        self.random_fill_realtime(&mut peers);
+        Message::Keepalive(Keepalive { peers })
     }
 
     pub(crate) fn channels_info(&self) -> ChannelsInfo {
@@ -1007,6 +1066,22 @@ impl Drop for NetworkInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rsnano_core::utils::{NULL_ENDPOINT, TEST_ENDPOINT_3};
+
+    #[test]
+    fn newly_added_channel_is_not_a_realtime_channel() {
+        let mut network = NetworkInfo::new_test_instance();
+        network
+            .add(
+                TEST_ENDPOINT_1,
+                TEST_ENDPOINT_2,
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+                Timestamp::new_test_instance(),
+            )
+            .unwrap();
+        assert_eq!(network.list_realtime_channels(0).len(), 0);
+    }
 
     #[test]
     fn reserved_ip_is_not_a_peer() {
@@ -1029,6 +1104,76 @@ mod tests {
                 true
             ),
             false
+        );
+    }
+
+    #[test]
+    fn upgrade_channel_to_realtime_channel() {
+        let mut network = NetworkInfo::new_test_instance();
+        let channel = network
+            .add(
+                TEST_ENDPOINT_1,
+                TEST_ENDPOINT_2,
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+                Timestamp::new_test_instance(),
+            )
+            .unwrap();
+
+        assert!(network.upgrade_to_realtime_connection(channel.channel_id(), PublicKey::from(456)));
+        assert_eq!(network.list_realtime_channels(0).len(), 1);
+    }
+
+    #[test]
+    fn random_fill_peering_endpoints_empty() {
+        let network = NetworkInfo::new_test_instance();
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_realtime(&mut endpoints);
+        assert_eq!(endpoints, [NULL_ENDPOINT; 3]);
+    }
+
+    #[test]
+    fn random_fill_peering_endpoints_part() {
+        let mut network = NetworkInfo::new_test_instance();
+        add_realtime_channel_with_peering_addr(&mut network, TEST_ENDPOINT_1);
+        add_realtime_channel_with_peering_addr(&mut network, TEST_ENDPOINT_2);
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_realtime(&mut endpoints);
+        assert!(endpoints.contains(&TEST_ENDPOINT_1));
+        assert!(endpoints.contains(&TEST_ENDPOINT_2));
+        assert_eq!(endpoints[2], NULL_ENDPOINT);
+    }
+
+    #[test]
+    fn random_fill_peering_endpoints() {
+        let mut network = NetworkInfo::new_test_instance();
+        add_realtime_channel_with_peering_addr(&mut network, TEST_ENDPOINT_1);
+        add_realtime_channel_with_peering_addr(&mut network, TEST_ENDPOINT_2);
+        add_realtime_channel_with_peering_addr(&mut network, TEST_ENDPOINT_3);
+        let mut endpoints = [NULL_ENDPOINT; 3];
+        network.random_fill_realtime(&mut endpoints);
+        assert!(endpoints.contains(&TEST_ENDPOINT_1));
+        assert!(endpoints.contains(&TEST_ENDPOINT_2));
+        assert!(endpoints.contains(&TEST_ENDPOINT_3));
+    }
+
+    fn add_realtime_channel_with_peering_addr(
+        network: &mut NetworkInfo,
+        peering_addr: SocketAddrV6,
+    ) {
+        let channel = network
+            .add(
+                TEST_ENDPOINT_1,
+                peering_addr,
+                ChannelDirection::Inbound,
+                ChannelMode::Realtime,
+                Timestamp::new_test_instance(),
+            )
+            .unwrap();
+        channel.set_peering_addr(peering_addr);
+        network.upgrade_to_realtime_connection(
+            channel.channel_id(),
+            PublicKey::from(peering_addr.ip().to_bits()),
         );
     }
 }

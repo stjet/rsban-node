@@ -1,6 +1,6 @@
 use super::{
-    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, Network, PeerConnector,
-    PeerConnectorExt, SynCookies, TrafficType,
+    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, Network, NetworkInfo,
+    PeerConnector, PeerConnectorExt, SynCookies, TrafficType,
 };
 use crate::{
     config::{NodeConfig, NodeFlags},
@@ -10,7 +10,7 @@ use crate::{
 use rsnano_messages::{Keepalive, Message};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
     time::Duration,
 };
@@ -173,15 +173,15 @@ impl CleanupLoop {
 }
 
 pub struct KeepaliveFactory {
-    pub network: Arc<Network>,
+    pub network: Arc<RwLock<NetworkInfo>>,
     pub config: NodeConfig,
 }
 
 impl KeepaliveFactory {
     pub fn create_keepalive_self(&self) -> Keepalive {
         let mut result = Keepalive::default();
-        self.network
-            .random_fill_peering_endpoints(&mut result.peers);
+        let network = self.network.read().unwrap();
+        network.random_fill_realtime(&mut result.peers);
         // We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
         // Move these items to index 2 and 3 so they propagate
         result.peers[2] = result.peers[0];
@@ -203,11 +203,11 @@ impl KeepaliveFactory {
             let external_address = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
             if !external_address.ip().is_unspecified() {
                 result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.network.port(), 0, 0);
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, network.listening_port(), 0, 0);
                 result.peers[1] = external_address;
             } else {
                 result.peers[0] =
-                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, self.network.port(), 0, 0);
+                    SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, network.listening_port(), 0, 0);
             }
         }
         result
@@ -250,7 +250,7 @@ impl KeepaliveLoop {
     }
 
     fn keepalive(&mut self) {
-        let message = self.network.create_keepalive_message();
+        let message = self.network.info.read().unwrap().create_keepalive_message();
 
         for channel_id in self.network.keepalive_list() {
             self.message_publisher.try_send(

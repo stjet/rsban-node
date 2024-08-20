@@ -292,6 +292,9 @@ impl ResponseServerExt for Arc<ResponseServer> {
         }
 
         self.network
+            .info
+            .read()
+            .unwrap()
             .upgrade_to_realtime_connection(self.channel.channel_id(), *node_id)
     }
 

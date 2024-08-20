@@ -301,7 +301,6 @@ impl Node {
             ledger.clone(),
             unchecked.clone(),
             network_params.clone(),
-            network.clone(),
             network_info.clone(),
             message_publisher.clone(),
             node_id.clone(),
@@ -529,7 +528,6 @@ impl Node {
             config.rep_crawler_query_timeout,
             config.clone(),
             network_params.clone(),
-            network.clone(),
             network_info.clone(),
             async_rt.clone(),
             ledger.clone(),
@@ -547,7 +545,7 @@ impl Node {
         //         the latter would inherit the port from the former (if TCP is active, otherwise `network` picks first)
         //
         let tcp_listener = Arc::new(TcpListener::new(
-            network.port(),
+            network_info.read().unwrap().listening_port(),
             network.clone(),
             async_rt.clone(),
             stats.clone(),
@@ -651,7 +649,7 @@ impl Node {
         ));
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
-            network: network.clone(),
+            network: network_info.clone(),
             config: config.clone(),
         });
 

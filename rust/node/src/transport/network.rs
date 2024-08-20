@@ -208,8 +208,6 @@ impl Network {
         let channel = Channel::create(
             channel_info,
             stream,
-            direction,
-            self.network_params.network.protocol_info().version_using,
             self.stats.clone(),
             self.limiter.clone(),
             self.network_info.clone(),
@@ -469,14 +467,14 @@ impl Network {
         if state
             .find_channels_by_remote_addr(peer)
             .iter()
-            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+            .any(|c| c.info.mode() == planned_mode || c.info.mode() == ChannelMode::Undefined)
         {
             return false;
         }
         if state
             .find_channels_by_peering_addr(peer)
             .iter()
-            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+            .any(|c| c.info.mode() == planned_mode || c.info.mode() == ChannelMode::Undefined)
         {
             return false;
         }
@@ -590,10 +588,10 @@ impl Network {
             .peer_misbehaved(&channel.info.peer_addr(), self.clock.now());
 
         let peer_addr = channel.info.peer_addr();
-        let mode = channel.mode();
-        let direction = channel.direction();
+        let mode = channel.info.mode();
+        let direction = channel.info.direction();
 
-        channel.close();
+        channel.info.close();
         drop(guard);
 
         warn!(?peer_addr, ?mode, ?direction, "Peer misbehaved!");
@@ -647,8 +645,8 @@ impl Network {
                 }
             }
 
-            channel.set_node_id(node_id);
-            channel.set_mode(ChannelMode::Realtime);
+            channel.info.set_node_id(node_id);
+            channel.info.set_mode(ChannelMode::Realtime);
 
             let observers = state.new_realtime_channel_observers.clone();
             let channel = channel.clone();
@@ -693,8 +691,8 @@ impl State {
         let mut peering_endpoint = None;
         let mut channel_id = None;
         for channel in self.channels.iter_by_last_bootstrap_attempt() {
-            if channel.mode() == ChannelMode::Realtime
-                && channel.protocol_version() >= self.network_constants.protocol_version_min
+            if channel.info.mode() == ChannelMode::Realtime
+                && channel.info.protocol_version() >= self.network_constants.protocol_version_min
             {
                 if let Some(peering) = channel.info.peering_addr() {
                     channel_id = Some(channel.channel_id());
@@ -716,7 +714,7 @@ impl State {
 
     pub fn close_channels(&mut self) {
         for channel in self.channels.iter() {
-            channel.close();
+            channel.info.close();
         }
         self.channels.clear();
     }
@@ -750,9 +748,9 @@ impl State {
         self.channels
             .iter()
             .filter(|c| {
-                c.protocol_version() >= min_version
+                c.info.protocol_version() >= min_version
                     && c.is_alive()
-                    && c.mode() == ChannelMode::Realtime
+                    && c.info.mode() == ChannelMode::Realtime
             })
             .map(|c| c.clone())
             .collect()
@@ -762,7 +760,9 @@ impl State {
         let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
         let mut result = Vec::new();
         for channel in self.channels.iter() {
-            if channel.mode() == ChannelMode::Realtime && channel.get_last_packet_sent() < cutoff {
+            if channel.info.mode() == ChannelMode::Realtime
+                && channel.get_last_packet_sent() < cutoff
+            {
                 result.push(channel.channel_id());
             }
         }
@@ -789,7 +789,7 @@ impl State {
         self.channels
             .get_by_remote_addr(endpoint)
             .drain(..)
-            .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
+            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.is_alive())
             .next()
             .cloned()
     }
@@ -801,7 +801,7 @@ impl State {
         self.channels
             .get_by_peering_addr(peering_addr)
             .drain(..)
-            .filter(|c| c.mode() == ChannelMode::Realtime && c.is_alive())
+            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.is_alive())
             .next()
             .map(|c| c.channel_id())
     }
@@ -947,14 +947,14 @@ impl State {
 
     pub fn channels_info(&self) -> ChannelsInfo {
         let mut info = ChannelsInfo::default();
-        for entry in self.channels.iter() {
+        for channel in self.channels.iter() {
             info.total += 1;
-            match entry.mode() {
+            match channel.info.mode() {
                 ChannelMode::Bootstrap => info.bootstrap += 1,
                 ChannelMode::Realtime => info.realtime += 1,
                 _ => {}
             }
-            match entry.direction() {
+            match channel.info.direction() {
                 ChannelDirection::Inbound => info.inbound += 1,
                 ChannelDirection::Outbound => info.outbound += 1,
             }

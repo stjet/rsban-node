@@ -64,7 +64,7 @@ impl PeerScoring {
 
     pub fn sync(&mut self, channels: &[Arc<Channel>]) {
         for channel in channels {
-            if channel.protocol_version() >= self.config.min_protocol_version {
+            if channel.info.protocol_version() >= self.config.min_protocol_version {
                 if !self.scoring.contains(channel.channel_id()) {
                     if !channel.is_queue_full(TrafficType::Bootstrap) {
                         self.scoring.insert(PeerScore::new(channel));

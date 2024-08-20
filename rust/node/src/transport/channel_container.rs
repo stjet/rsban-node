@@ -36,7 +36,7 @@ impl ChannelContainer {
             .or_default()
             .push(id);
         self.by_network_version
-            .entry(channel.protocol_version())
+            .entry(channel.info.protocol_version())
             .or_default()
             .push(id);
         self.by_ip_address
@@ -73,7 +73,7 @@ impl ChannelContainer {
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.by_channel_id
             .values()
-            .filter(|c| c.mode() == mode && c.is_alive())
+            .filter(|c| c.info.mode() == mode && c.is_alive())
             .count()
     }
 
@@ -88,7 +88,7 @@ impl ChannelContainer {
             );
             remove_from_btree(
                 &mut self.by_network_version,
-                &channel.protocol_version(),
+                &channel.info.protocol_version(),
                 id,
             );
             remove_from_hashmap(&mut self.by_endpoint, &channel.info.peer_addr(), id);
@@ -137,8 +137,8 @@ impl ChannelContainer {
 
     pub fn set_protocol_version(&mut self, channel_id: ChannelId, protocol_version: u8) {
         if let Some(channel) = self.by_channel_id.get(&channel_id) {
-            let old_version = channel.protocol_version();
-            channel.set_protocol_version(protocol_version);
+            let old_version = channel.info.protocol_version();
+            channel.info.set_protocol_version(protocol_version);
             if old_version == protocol_version {
                 return;
             }
@@ -172,7 +172,7 @@ impl ChannelContainer {
     pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.by_channel_id
             .values()
-            .filter(|c| c.direction() == direction && c.is_alive())
+            .filter(|c| c.info.direction() == direction && c.is_alive())
             .count()
     }
 
@@ -196,8 +196,8 @@ impl ChannelContainer {
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
             if entry.get_last_packet_sent() < cutoff {
-                debug!(remote_addr = ?entry.info.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
-                entry.close();
+                debug!(remote_addr = ?entry.info.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.info.mode(), "Closing idle channel");
+                entry.info.close();
             }
         }
     }
@@ -227,7 +227,7 @@ impl ChannelContainer {
                         debug!(channel_id = %id, peer_addr = ?channel.info.peer_addr(), version, min_version,
                             "Closing channel with old protocol version",
                         );
-                        channel.close();
+                        channel.info.close();
                     }
                 }
             } else {

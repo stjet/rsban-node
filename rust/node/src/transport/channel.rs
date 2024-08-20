@@ -1,14 +1,13 @@
 use super::{
     write_queue::{WriteQueue, WriteQueueReceiver},
-    AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, ChannelMode, DropPolicy,
-    NetworkInfo, OutboundBandwidthLimiter, TcpStream, TrafficType,
+    AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkInfo,
+    OutboundBandwidthLimiter, TcpStream, TrafficType,
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::{into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
 };
 use async_trait::async_trait;
-use num::FromPrimitive;
 use rsnano_core::{
     utils::{seconds_since_epoch, TEST_ENDPOINT_1},
     Account,
@@ -16,52 +15,24 @@ use rsnano_core::{
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-        Arc, Mutex, RwLock,
-    },
+    sync::{Arc, Mutex, RwLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::time::sleep;
 use tracing::debug;
 
 pub struct ChannelData {
-    last_bootstrap_attempt: SystemTime,
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
 }
-
-/// Default timeout in seconds
-const DEFAULT_TIMEOUT: u64 = 120;
 
 pub struct Channel {
     channel_id: ChannelId,
     network_info: Arc<RwLock<NetworkInfo>>,
     pub info: Arc<ChannelInfo>,
     channel_mutex: Mutex<ChannelData>,
-    protocol_version: AtomicU8,
     limiter: Arc<OutboundBandwidthLimiter>,
     stats: Arc<Stats>,
-
-    /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
-    last_activity: AtomicU64,
-
-    /// Duration in seconds of inactivity that causes a socket timeout
-    /// activity is any successful connect, send or receive event
-    timeout_seconds: AtomicU64,
-
-    direction: ChannelDirection,
-
-    /// Flag that is set when cleanup decides to close the socket due to timeout.
-    /// NOTE: Currently used by tcp_server::timeout() but I suspect that this and tcp_server::timeout() are not needed.
-    timed_out: AtomicBool,
-
-    /// Set by close() - completion handlers must check this. This is more reliable than checking
-    /// error codes as the OS may have already completed the async operation.
-    closed: AtomicBool,
-
-    socket_type: AtomicU8,
-
     write_queue: WriteQueue,
     stream: Arc<TcpStream>,
     ignore_closed_write_queue: bool,
@@ -74,8 +45,6 @@ impl Channel {
         channel_info: Arc<ChannelInfo>,
         network_info: Arc<RwLock<NetworkInfo>>,
         stream: Arc<TcpStream>,
-        direction: ChannelDirection,
-        protocol_version: u8,
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
     ) -> (Self, WriteQueueReceiver) {
@@ -87,19 +56,11 @@ impl Channel {
             info: channel_info,
             network_info,
             channel_mutex: Mutex::new(ChannelData {
-                last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
                 last_packet_sent: now,
             }),
-            protocol_version: AtomicU8::new(protocol_version),
             limiter,
             stats,
-            last_activity: AtomicU64::new(seconds_since_epoch()),
-            timeout_seconds: AtomicU64::new(DEFAULT_TIMEOUT),
-            direction,
-            timed_out: AtomicBool::new(false),
-            closed: AtomicBool::new(false),
-            socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
             write_queue,
             stream,
             ignore_closed_write_queue: false,
@@ -122,8 +83,6 @@ impl Channel {
             )),
             Arc::new(RwLock::new(NetworkInfo::new())),
             Arc::new(TcpStream::new_null()),
-            ChannelDirection::Inbound,
-            200,
             Arc::new(Stats::default()),
             Arc::new(OutboundBandwidthLimiter::default()),
         );
@@ -135,23 +94,13 @@ impl Channel {
     pub async fn create(
         channel_info: Arc<ChannelInfo>,
         stream: TcpStream,
-        direction: ChannelDirection,
-        protocol_version: u8,
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
         network_info: Arc<RwLock<NetworkInfo>>,
     ) -> Arc<Self> {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
-        let (channel, mut receiver) = Self::new(
-            channel_info,
-            network_info,
-            stream,
-            direction,
-            protocol_version,
-            stats,
-            limiter,
-        );
+        let (channel, mut receiver) = Self::new(channel_info, network_info, stream, stats, limiter);
         //
         // process write queue:
         tokio::spawn(async move {
@@ -200,13 +149,11 @@ impl Channel {
     }
 
     fn is_closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
-            || (!self.ignore_closed_write_queue && self.write_queue.is_closed())
+        self.info.is_closed() || (!self.ignore_closed_write_queue && self.write_queue.is_closed())
     }
 
     fn update_last_activity(&self) {
-        self.last_activity
-            .store(seconds_since_epoch(), Ordering::Relaxed);
+        self.info.set_last_activity(seconds_since_epoch());
     }
 
     pub fn channel_id(&self) -> ChannelId {
@@ -214,11 +161,11 @@ impl Channel {
     }
 
     pub fn get_last_bootstrap_attempt(&self) -> SystemTime {
-        self.channel_mutex.lock().unwrap().last_bootstrap_attempt
+        self.info.last_bootstrap_attempt()
     }
 
     pub fn set_last_bootstrap_attempt(&self, time: SystemTime) {
-        self.channel_mutex.lock().unwrap().last_bootstrap_attempt = time;
+        self.info.set_last_bootstrap_attempt(time);
     }
 
     pub fn get_last_packet_received(&self) -> SystemTime {
@@ -253,31 +200,6 @@ impl Channel {
             .local_addr()
             .map(|addr| into_ipv6_socket_address(addr))
             .unwrap_or(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
-    }
-
-    pub fn protocol_version(&self) -> u8 {
-        self.protocol_version.load(Ordering::Relaxed)
-    }
-
-    pub fn set_protocol_version(&self, version: u8) {
-        self.protocol_version.store(version, Ordering::Relaxed);
-    }
-
-    pub fn direction(&self) -> ChannelDirection {
-        self.direction
-    }
-
-    pub fn mode(&self) -> ChannelMode {
-        FromPrimitive::from_u8(self.socket_type.load(Ordering::SeqCst)).unwrap()
-    }
-
-    pub fn set_mode(&self, mode: ChannelMode) {
-        self.socket_type.store(mode as u8, Ordering::SeqCst);
-    }
-
-    pub fn set_timeout(&self, timeout: Duration) {
-        self.timeout_seconds
-            .store(timeout.as_secs(), Ordering::SeqCst);
     }
 
     pub async fn send_buffer(
@@ -319,7 +241,7 @@ impl Channel {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
             debug!(channel_id = %self.channel_id(), remote_addr = ?self.info.peer_addr(), "Closing channel after write error");
-            self.close();
+            self.info.close();
         }
 
         result?;
@@ -367,16 +289,10 @@ impl Channel {
         } else if write_error {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
-            self.close();
-            debug!(peer_addr = ?self.info.peer_addr(), channel_id = %self.channel_id(), mode = ?self.mode(), "Closing socket after write error");
+            self.info.close();
+            debug!(peer_addr = ?self.info.peer_addr(), channel_id = %self.channel_id(), mode = ?self.info.mode(), "Closing socket after write error");
         }
         inserted
-    }
-
-    pub fn close(&self) {
-        if !self.closed.swap(true, Ordering::SeqCst) {
-            self.set_timeout(Duration::ZERO);
-        }
     }
 
     pub fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
@@ -403,13 +319,11 @@ impl Channel {
             let mut condition_to_disconnect = false;
 
             // if there is no activity for timeout seconds then disconnect
-            if (now - self.last_activity.load(Ordering::Relaxed))
-                > self.timeout_seconds.load(Ordering::Relaxed)
-            {
+            if (now - self.info.last_activity()) > self.info.timeout().as_secs() {
                 self.stats.inc_dir(
                     StatType::Tcp,
                     DetailType::TcpIoTimeoutDrop,
-                    if self.direction == ChannelDirection::Inbound {
+                    if self.info.direction() == ChannelDirection::Inbound {
                         Direction::In
                     } else {
                         Direction::Out
@@ -419,9 +333,9 @@ impl Channel {
             }
 
             if condition_to_disconnect {
-                debug!(channel_id = %self.channel_id(), remote_addr = ?self.info.peer_addr(), mode = ?self.mode(), direction = ?self.direction(), "Closing channel due to timeout");
-                self.timed_out.store(true, Ordering::SeqCst);
-                self.close();
+                debug!(channel_id = %self.channel_id(), remote_addr = ?self.info.peer_addr(), mode = ?self.info.mode(), direction = ?self.info.direction(), "Closing channel due to timeout");
+                self.info.set_timed_out(true);
+                self.info.close();
             }
         }
     }
@@ -435,7 +349,7 @@ impl Display for Channel {
 
 impl Drop for Channel {
     fn drop(&mut self) {
-        self.close();
+        self.info.close();
     }
 }
 

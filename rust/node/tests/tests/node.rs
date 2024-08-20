@@ -941,7 +941,7 @@ fn rep_crawler_rep_remove() {
     assert_eq!(channel_rep1.channel_id(), reps[0].channel_id);
 
     // When rep1 disconnects then rep1 should not be found anymore
-    channel_rep1.close();
+    channel_rep1.info.close();
     assert_timely_eq(
         Duration::from_secs(5),
         || {

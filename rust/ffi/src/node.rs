@@ -534,12 +534,15 @@ pub unsafe extern "C" fn rsn_node_get_peers(handle: &NodeHandle) -> *mut PeerInf
         .network
         .random_realtime_channels(usize::MAX, 0)
         .iter()
-        .map(|c| PeerInfoDto {
-            has_node_id: c.info.node_id().is_some(),
-            node_id: *c.info.node_id().unwrap_or_default().as_bytes(),
-            protocol_version: c.protocol_version(),
-            remote_endpoint: c.info.peer_addr().into(),
-            peering_endpoint: c.info.peering_addr_or_peer_addr().into(),
+        .map(|c| {
+            let channel = &c.info;
+            PeerInfoDto {
+                has_node_id: channel.node_id().is_some(),
+                node_id: *channel.node_id().unwrap_or_default().as_bytes(),
+                protocol_version: channel.protocol_version(),
+                remote_endpoint: channel.peer_addr().into(),
+                peering_endpoint: channel.peering_addr_or_peer_addr().into(),
+            }
         })
         .collect();
     peers.sort_by(|a, b| {

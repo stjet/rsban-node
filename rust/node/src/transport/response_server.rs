@@ -179,7 +179,7 @@ impl ResponseServer {
             return false;
         }
 
-        if self.channel.mode() != ChannelMode::Undefined {
+        if self.channel.info.mode() != ChannelMode::Undefined {
             return false;
         }
 
@@ -191,7 +191,7 @@ impl ResponseServer {
             return false;
         }
 
-        self.channel.set_mode(ChannelMode::Bootstrap);
+        self.channel.info.set_mode(ChannelMode::Bootstrap);
         debug!("Switched to bootstrap mode ({})", self.remote_endpoint());
         true
     }
@@ -206,15 +206,15 @@ impl ResponseServer {
     }
 
     fn is_undefined_connection(&self) -> bool {
-        self.channel.mode() == ChannelMode::Undefined
+        self.channel.info.mode() == ChannelMode::Undefined
     }
 
     fn is_bootstrap_connection(&self) -> bool {
-        self.channel.mode() == ChannelMode::Bootstrap
+        self.channel.info.mode() == ChannelMode::Bootstrap
     }
 
     fn is_realtime_connection(&self) -> bool {
-        self.channel.mode() == ChannelMode::Realtime
+        self.channel.info.mode() == ChannelMode::Realtime
     }
 
     fn queue_realtime(&self, message: Message) {
@@ -237,7 +237,7 @@ impl ResponseServer {
             .await
             .is_err()
         {
-            self.channel.close();
+            self.channel.info.close();
         }
     }
 }
@@ -246,7 +246,7 @@ impl Drop for ResponseServer {
     fn drop(&mut self) {
         let remote_ep = { *self.remote_endpoint.lock().unwrap() };
         debug!("Exiting server: {}", remote_ep);
-        self.channel.close();
+        self.channel.info.close();
     }
 }
 
@@ -278,7 +278,7 @@ pub enum ProcessResult {
 #[async_trait]
 impl ResponseServerExt for Arc<ResponseServer> {
     fn to_realtime_connection(&self, node_id: &Account) -> bool {
-        if self.channel.mode() != ChannelMode::Undefined {
+        if self.channel.info.mode() != ChannelMode::Undefined {
             return false;
         }
 
@@ -355,7 +355,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
 
             match result {
                 ProcessResult::Abort => {
-                    self.channel.close();
+                    self.channel.info.close();
                     break;
                 }
                 ProcessResult::Progress => {}

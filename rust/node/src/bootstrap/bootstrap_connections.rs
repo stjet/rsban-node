@@ -582,7 +582,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
         };
         debug!("Bootstrap connection established to: {}", peer_addr);
 
-        channel.set_mode(ChannelMode::Bootstrap);
+        channel.info.set_mode(ChannelMode::Bootstrap);
 
         let client = Arc::new(BootstrapClient::new(
             &self,

@@ -1,28 +1,20 @@
 use super::{bootstrap_limits, BootstrapConnections};
-use crate::{
-    transport::{
-        BufferDropPolicy, Channel, ChannelEnum, ChannelTcp, ChannelTcpExt, Socket,
-        SocketExtensions, TrafficType, WriteCallback,
-    },
-    utils::{AsyncRuntime, ErrorCode},
-};
+use crate::transport::{Channel, ChannelId, MessagePublisher, TrafficType};
 use rsnano_messages::Message;
 use std::{
-    net::{Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, Weak,
     },
     time::{Duration, Instant},
 };
-use tokio::task::spawn_blocking;
 
 pub struct BootstrapClient {
-    async_rt: Arc<AsyncRuntime>,
     observer: Weak<BootstrapConnections>,
-    channel: Arc<ChannelEnum>,
-    socket: Arc<Socket>,
-    receive_buffer: Arc<Mutex<Vec<u8>>>,
+    channel: Arc<Channel>,
+    channel_id: ChannelId,
+    pub message_publisher: MessagePublisher,
     block_count: AtomicU64,
     block_rate: AtomicU64,
     pending_stop: AtomicBool,
@@ -32,25 +24,20 @@ pub struct BootstrapClient {
 
 impl BootstrapClient {
     pub fn new(
-        async_rt: Arc<AsyncRuntime>,
         observer: &Arc<BootstrapConnections>,
-        channel: Arc<ChannelEnum>,
-        socket: Arc<Socket>,
+        channel: Arc<Channel>,
+        message_publisher: MessagePublisher,
     ) -> Self {
-        if let ChannelEnum::Tcp(tcp) = channel.as_ref() {
-            tcp.update_remote_endpoint();
-        }
         Self {
-            async_rt,
             observer: Arc::downgrade(observer),
+            channel_id: channel.channel_id(),
             channel,
-            socket,
-            receive_buffer: Arc::new(Mutex::new(vec![0; 256])),
             block_count: AtomicU64::new(0),
             block_rate: AtomicU64::new(0f64.to_bits()),
             pending_stop: AtomicBool::new(false),
             hard_stop: AtomicBool::new(false),
             start_time: Mutex::new(Instant::now()),
+            message_publisher,
         }
     }
 
@@ -78,68 +65,15 @@ impl BootstrapClient {
         *lock = Instant::now();
     }
 
-    pub fn get_channel(&self) -> &Arc<ChannelEnum> {
+    pub fn get_channel(&self) -> &Arc<Channel> {
         &self.channel
     }
 
-    pub fn get_socket(&self) -> &Arc<Socket> {
-        &self.socket
-    }
-
-    //TODO delete and use async read() directly
-    pub fn read_async(&self, size: usize, callback: Box<dyn FnOnce(ErrorCode, usize) + Send>) {
-        let socket = Arc::clone(&self.socket);
-        let buffer = Arc::clone(&self.receive_buffer);
-        self.async_rt.tokio.spawn(async move {
-            let result = socket.read_raw(buffer, size).await;
-            spawn_blocking(Box::new(move || match result {
-                Ok(()) => callback(ErrorCode::new(), size),
-                Err(_) => callback(ErrorCode::fault(), 0),
-            }));
-        });
-    }
-
-    pub async fn read(&self, size: usize) -> anyhow::Result<()> {
-        self.socket
-            .read_raw(Arc::clone(&self.receive_buffer), size)
+    pub async fn send(&self, message: &Message) -> anyhow::Result<()> {
+        let mut publisher = self.message_publisher.clone();
+        publisher
+            .send(self.channel_id, message, TrafficType::Bootstrap)
             .await
-    }
-
-    pub fn receive_buffer(&self) -> Vec<u8> {
-        self.receive_buffer.lock().unwrap().clone()
-    }
-
-    pub fn receive_buffer_len(&self) -> usize {
-        self.receive_buffer.lock().unwrap().len()
-    }
-
-    fn tcp_channel(&self) -> &Arc<ChannelTcp> {
-        match self.channel.as_ref() {
-            ChannelEnum::Tcp(tcp) => tcp,
-            _ => panic!("not a tcp channel!"),
-        }
-    }
-
-    pub fn send_buffer(
-        &self,
-        buffer: &Arc<Vec<u8>>,
-        callback: Option<WriteCallback>,
-        policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        self.tcp_channel()
-            .send_buffer(buffer, callback, policy, traffic_type);
-    }
-
-    pub fn send(
-        &self,
-        message: &Message,
-        callback: Option<WriteCallback>,
-        drop_policy: BufferDropPolicy,
-        traffic_type: TrafficType,
-    ) {
-        self.tcp_channel()
-            .send(message, callback, drop_policy, traffic_type);
     }
 
     pub fn inc_block_count(&self) -> u64 {
@@ -169,28 +103,20 @@ impl BootstrapClient {
         }
     }
 
-    pub fn close_socket(&self) {
-        self.socket.close();
+    pub fn close(&self) {
+        self.channel.close();
     }
 
     pub fn set_timeout(&self, timeout: Duration) {
-        self.socket.set_timeout(timeout);
+        self.channel.set_timeout(timeout);
     }
 
-    pub fn remote_endpoint(&self) -> SocketAddr {
-        SocketAddr::V6(
-            self.socket
-                .get_remote()
-                .unwrap_or_else(|| SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)),
-        )
+    pub fn remote_addr(&self) -> SocketAddrV6 {
+        self.channel.peer_addr()
     }
 
     pub fn channel_string(&self) -> String {
-        self.tcp_channel().to_string()
-    }
-
-    pub fn tcp_endpoint(&self) -> SocketAddrV6 {
-        self.tcp_channel().remote_addr()
+        self.channel.to_string()
     }
 }
 

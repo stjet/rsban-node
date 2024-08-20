@@ -1,26 +1,26 @@
+use super::{Channel, MessagePublisher, Network};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::{BootstrapAscending, BootstrapServer},
     config::{NodeConfig, NodeFlags},
     consensus::{RequestAggregator, VoteProcessorQueue},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, TrafficType},
+    transport::{DropPolicy, TrafficType},
     wallets::Wallets,
     Telemetry,
 };
-use peer_connector::PeerConnectorExt;
 use rsnano_core::VoteSource;
 use rsnano_messages::{Message, TelemetryAck};
-use std::{net::SocketAddrV6, sync::Arc};
+use std::{
+    net::SocketAddrV6,
+    sync::{Arc, Mutex},
+};
 use tracing::trace;
-
-use super::{peer_connector, ChannelEnum, Network, PeerConnector};
 
 /// Handle realtime messages (as opposed to bootstrap messages)
 pub struct RealtimeMessageHandler {
     stats: Arc<Stats>,
     network: Arc<Network>,
-    peer_connector: Arc<PeerConnector>,
     block_processor: Arc<BlockProcessor>,
     config: NodeConfig,
     flags: NodeFlags,
@@ -30,13 +30,13 @@ pub struct RealtimeMessageHandler {
     telemetry: Arc<Telemetry>,
     bootstrap_server: Arc<BootstrapServer>,
     ascend_boot: Arc<BootstrapAscending>,
+    message_publisher: Mutex<MessagePublisher>,
 }
 
 impl RealtimeMessageHandler {
-    pub fn new(
+    pub(crate) fn new(
         stats: Arc<Stats>,
         network: Arc<Network>,
-        peer_connector: Arc<PeerConnector>,
         block_processor: Arc<BlockProcessor>,
         config: NodeConfig,
         flags: NodeFlags,
@@ -46,11 +46,11 @@ impl RealtimeMessageHandler {
         telemetry: Arc<Telemetry>,
         bootstrap_server: Arc<BootstrapServer>,
         ascend_boot: Arc<BootstrapAscending>,
+        message_publisher: MessagePublisher,
     ) -> Self {
         Self {
             stats,
             network,
-            peer_connector,
             block_processor,
             config,
             flags,
@@ -60,10 +60,11 @@ impl RealtimeMessageHandler {
             telemetry,
             bootstrap_server,
             ascend_boot,
+            message_publisher: Mutex::new(message_publisher),
         }
     }
 
-    pub fn process(&self, message: Message, channel: &Arc<ChannelEnum>) {
+    pub fn process(&self, message: Message, channel: &Arc<Channel>) {
         self.stats.inc_dir(
             StatType::Message,
             message.message_type().into(),
@@ -75,14 +76,14 @@ impl RealtimeMessageHandler {
             Message::Keepalive(keepalive) => {
                 // Check for special node port data
                 let peer0 = keepalive.peers[0];
+                // The first entry is used to inform us of the peering address of the sending node
                 if peer0.ip().is_unspecified() && peer0.port() != 0 {
-                    // TODO: Remove this as we do not need to establish a second connection to the same peer
-                    let new_endpoint =
-                        SocketAddrV6::new(*channel.remote_addr().ip(), peer0.port(), 0, 0);
-                    self.peer_connector.connect_to(new_endpoint);
+                    let peering_addr =
+                        SocketAddrV6::new(*channel.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
-                    channel.set_peering_endpoint(new_endpoint);
+                    self.network
+                        .set_peering_addr(channel.channel_id(), peering_addr);
                 }
             }
             Message::Publish(publish) => {
@@ -93,11 +94,9 @@ impl RealtimeMessageHandler {
                 } else {
                     BlockSource::Live
                 };
-                let added = self.block_processor.add(
-                    Arc::new(publish.block),
-                    source,
-                    Some(Arc::clone(channel)),
-                );
+                let added =
+                    self.block_processor
+                        .add(Arc::new(publish.block), source, channel.channel_id());
                 if !added {
                     self.network.publish_filter.clear(publish.digest);
                     self.stats
@@ -109,7 +108,7 @@ impl RealtimeMessageHandler {
                 // TODO: This check should be cached somewhere
                 if self.config.enable_voting && self.wallets.voting_reps_count() > 0 {
                     self.request_aggregator
-                        .request(req.roots_hashes, Arc::clone(channel));
+                        .request(req.roots_hashes, channel.channel_id());
                 }
             }
             Message::ConfirmAck(ack) => {
@@ -118,8 +117,11 @@ impl RealtimeMessageHandler {
                         true => VoteSource::Rebroadcast,
                         false => VoteSource::Live,
                     };
-                    self.vote_processor_queue
-                        .vote(Arc::new(ack.vote().clone()), channel, source);
+                    self.vote_processor_queue.vote(
+                        Arc::new(ack.vote().clone()),
+                        channel.channel_id(),
+                        source,
+                    );
                 }
             }
             Message::NodeIdHandshake(_) => {
@@ -140,10 +142,10 @@ impl RealtimeMessageHandler {
                 };
 
                 let msg = Message::TelemetryAck(TelemetryAck(data));
-                channel.send(
+                self.message_publisher.lock().unwrap().try_send(
+                    channel.channel_id(),
                     &msg,
-                    None,
-                    BufferDropPolicy::NoSocketDrop,
+                    DropPolicy::ShouldNotDrop,
                     TrafficType::Generic,
                 );
             }

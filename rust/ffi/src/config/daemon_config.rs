@@ -2,7 +2,7 @@ use super::{
     fill_node_config_dto, fill_node_rpc_config_dto, fill_opencl_config_dto, NodeConfigDto,
     NodeRpcConfigDto, OpenclConfigDto,
 };
-use crate::secure::NetworkParamsDto;
+use crate::{secure::NetworkParamsDto, StringDto};
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{
     config::{DaemonConfig, DaemonToml},
@@ -10,8 +10,7 @@ use rsnano_node::{
 };
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::{c_char, CString},
-    ptr::copy_nonoverlapping,
+    ptr::{self},
 };
 
 #[repr(C)]
@@ -43,37 +42,29 @@ pub unsafe extern "C" fn rsn_daemon_config_create(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_daemon_config_serialize_toml(
-    dto: &DaemonConfigDto,
-    buffer: *mut c_char,
-    buffer_len: usize,
-) -> i32 {
+pub extern "C" fn rsn_daemon_config_serialize_toml(dto: &DaemonConfigDto) -> StringDto {
     let cfg = match DaemonConfig::try_from(dto) {
         Ok(d) => d,
-        Err(_) => return -1,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
     };
 
     let toml: DaemonToml = (&cfg).into();
     let toml_str = match toml::to_string(&toml) {
         Ok(t) => t,
-        Err(_) => return -1,
+        Err(_) => {
+            return StringDto {
+                handle: ptr::null_mut(),
+                value: ptr::null(),
+            }
+        }
     };
 
-    let c_string = match CString::new(toml_str) {
-        Ok(c) => c,
-        Err(_) => return -1,
-    };
-
-    let toml_len = c_string.as_bytes_with_nul().len();
-
-    if toml_len > buffer_len {
-        return -1;
-    }
-
-    unsafe {
-        copy_nonoverlapping(c_string.as_ptr(), buffer, toml_len);
-    }
-    0
+    toml_str.into()
 }
 
 impl TryFrom<&DaemonConfigDto> for DaemonConfig {

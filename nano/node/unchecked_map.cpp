@@ -89,11 +89,6 @@ std::vector<nano::unchecked_info> nano::unchecked_map::get (nano::block_hash con
 	return result;
 }
 
-bool nano::unchecked_map::exists (nano::unchecked_key const & key) const
-{
-	return rsnano::rsn_unchecked_map_exists (handle, key.to_dto ());
-}
-
 void nano::unchecked_map::del (nano::unchecked_key const & key)
 {
 	rsnano::rsn_unchecked_map_del (handle, key.to_dto ());

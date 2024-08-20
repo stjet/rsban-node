@@ -1,5 +1,8 @@
-use super::{Socket, SynCookies};
-use crate::stats::{DetailType, Direction, StatType, Stats};
+use super::{Channel, SynCookies};
+use crate::{
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::TrafficType,
+};
 use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, PublicKey};
 use rsnano_messages::{
     Message, MessageSerializer, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
@@ -16,6 +19,7 @@ use tracing::{debug, warn};
 
 pub enum HandshakeStatus {
     Abort,
+    AbortOwnNodeId,
     Handshake,
     Realtime(PublicKey),
     Bootstrap,
@@ -52,6 +56,7 @@ impl HandshakeProcess {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_null() -> Self {
         Self {
             genesis_hash: BlockHash::from(1),
@@ -64,7 +69,7 @@ impl HandshakeProcess {
         }
     }
 
-    pub(crate) async fn initiate_handshake(&self, socket: &Socket) -> Result<(), ()> {
+    pub(crate) async fn initiate_handshake(&self, channel: &Channel) -> Result<(), ()> {
         let endpoint = self.remote_endpoint;
         let query = self.prepare_query(&endpoint);
         if query.is_none() {
@@ -85,7 +90,7 @@ impl HandshakeProcess {
         let mut serializer = MessageSerializer::new(self.protocol);
         let data = serializer.serialize(&message);
 
-        match socket.write_raw(data).await {
+        match channel.send_buffer(data, TrafficType::Generic).await {
             Ok(()) => {
                 self.stats
                     .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);
@@ -111,7 +116,7 @@ impl HandshakeProcess {
     pub(crate) async fn process_handshake(
         &self,
         message: &NodeIdHandshake,
-        socket: &Socket,
+        channel: &Channel,
     ) -> HandshakeStatus {
         if message.query.is_none() && message.response.is_none() {
             self.stats.inc_dir(
@@ -161,7 +166,7 @@ impl HandshakeProcess {
         if let Some(query) = message.query.clone() {
             // Send response + our own query
             if self
-                .send_response(&query, message.is_v2, socket)
+                .send_response(&query, message.is_v2, channel)
                 .await
                 .is_err()
             {
@@ -182,7 +187,7 @@ impl HandshakeProcess {
                         "This node tried to connect to itself. Closing channel ({})",
                         self.remote_endpoint
                     );
-                    return HandshakeStatus::Abort;
+                    return HandshakeStatus::AbortOwnNodeId;
                 }
                 Err(e) => {
                     self.stats
@@ -207,7 +212,7 @@ impl HandshakeProcess {
         &self,
         query: &NodeIdHandshakeQuery,
         v2: bool,
-        socket: &Socket,
+        channel: &Channel,
     ) -> anyhow::Result<()> {
         let response = self.prepare_response(query, v2);
         let own_query = self.prepare_query(&self.remote_endpoint);
@@ -222,7 +227,7 @@ impl HandshakeProcess {
 
         let mut serializer = MessageSerializer::new(self.protocol);
         let buffer = serializer.serialize(&handshake_response);
-        match socket.write_raw(buffer).await {
+        match channel.send_buffer(buffer, TrafficType::Generic).await {
             Ok(_) => {
                 self.stats
                     .inc_dir(StatType::TcpServer, DetailType::Handshake, Direction::Out);

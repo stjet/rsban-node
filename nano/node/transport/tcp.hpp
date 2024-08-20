@@ -1,10 +1,7 @@
 #pragma once
 
 #include "nano/lib/rsnano.hpp"
-#include "nano/node/election.hpp"
-
 #include <nano/node/common.hpp>
-#include <nano/node/transport/channel.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <chrono>
@@ -18,63 +15,12 @@ class bootstrap_server;
 class node_config;
 class node_flags;
 class network;
-class syn_cookies;
 class logger;
 
 namespace transport
 {
-	class tcp_server;
-	class tcp_channels;
-	class tcp_listener;
-
-	class request_response_visitor_factory
-	{
-	public:
-		explicit request_response_visitor_factory (nano::node & node_a);
-		request_response_visitor_factory (request_response_visitor_factory const &) = delete;
-		~request_response_visitor_factory ();
-		rsnano::RequestResponseVisitorFactoryHandle * handle;
-	};
-
-	class channel_tcp : public nano::transport::channel
-	{
-		friend class nano::transport::tcp_channels;
-
-	public:
-		channel_tcp (
-		rsnano::async_runtime & async_rt_a,
-		nano::outbound_bandwidth_limiter & limiter_a,
-		nano::network_constants const & network_a,
-		std::shared_ptr<nano::transport::socket> const & socket_a,
-		nano::stats const & stats_a,
-		nano::transport::tcp_channels const & tcp_channels_a,
-		size_t channel_id);
-
-		channel_tcp (rsnano::ChannelHandle * handle_a) :
-			channel{ handle_a } {};
-
-		uint8_t get_network_version () const override;
-		size_t socket_id () const;
-
-		std::string to_string () const override;
-
-		nano::endpoint get_remote_endpoint () const override
-		{
-			return nano::transport::map_tcp_to_endpoint (get_tcp_remote_endpoint ());
-		}
-
-		nano::tcp_endpoint get_tcp_remote_endpoint () const override;
-		nano::tcp_endpoint get_local_endpoint () const override;
-		nano::transport::transport_type get_type () const override
-		{
-			return nano::transport::transport_type::tcp;
-		}
-	};
-
 	class tcp_channels final : public std::enable_shared_from_this<tcp_channels>
 	{
-		friend class nano::transport::channel_tcp;
-
 	public:
 		explicit tcp_channels (rsnano::TcpChannelsHandle * handle, rsnano::NetworkFilterHandle * filter_handle);
 		tcp_channels (nano::transport::tcp_channels const &) = delete;
@@ -84,14 +30,8 @@ namespace transport
 		float size_sqrt () const;
 		// Desired fanout for a given scale
 		std::size_t fanout (float scale = 1.0f) const;
-		std::shared_ptr<nano::transport::channel_tcp> find_channel (nano::tcp_endpoint const &) const;
-		std::vector<std::shared_ptr<nano::transport::channel>> random_channels (std::size_t, uint8_t = 0) const;
-		std::shared_ptr<nano::transport::channel_tcp> find_node_id (nano::account const &);
 		bool not_a_peer (nano::endpoint const &, bool);
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
-		std::deque<std::shared_ptr<nano::transport::channel>> list (std::size_t max_count = 0, uint8_t = 0);
-		std::deque<std::shared_ptr<nano::transport::channel>> random_fanout (float scale = 1.0f);
-		void flood_message (nano::message & msg, float scale);
 
 		void random_fill (std::array<nano::endpoint, 8> &) const;
 		uint16_t port () const;
@@ -104,7 +44,5 @@ namespace transport
 
 		friend class network_peer_max_tcp_attempts_subnetwork_Test;
 	};
-
-	std::shared_ptr<nano::transport::channel> channel_handle_to_channel (rsnano::ChannelHandle * handle);
 } // namespace transport
 } // namespace nano

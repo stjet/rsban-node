@@ -1,18 +1,18 @@
-use rsnano_core::KeyPair;
-use rsnano_ledger::Ledger;
-
 use super::{
-    InboundMessageQueue, Network, OutboundBandwidthLimiter, ResponseServerImpl, Socket, SynCookies,
+    Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, ResponseServer,
+    ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
-    bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig, BootstrapMessageVisitorFactory},
+    bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig},
     config::NodeFlags,
     stats::Stats,
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
-use std::sync::Arc;
+use rsnano_core::KeyPair;
+use rsnano_ledger::Ledger;
+use std::sync::{Arc, Mutex};
 
 pub(crate) struct ResponseServerFactory {
     pub(crate) runtime: Arc<AsyncRuntime>,
@@ -27,6 +27,7 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) node_flags: NodeFlags,
     pub(crate) network_params: NetworkParams,
     pub(crate) syn_cookies: Arc<SynCookies>,
+    pub(crate) latest_keepalives: Arc<Mutex<LatestKeepalives>>,
 }
 
 impl ResponseServerFactory {
@@ -55,42 +56,43 @@ impl ResponseServerFactory {
                 workers,
                 network_params.clone(),
                 stats,
-                Arc::new(OutboundBandwidthLimiter::default()),
                 block_processor,
                 None,
                 ledger,
+                MessagePublisher::new_null(),
             )),
             network,
             inbound_queue: Arc::new(InboundMessageQueue::default()),
             node_flags: flags,
             network_params,
             syn_cookies: Arc::new(SynCookies::new(1)),
+            latest_keepalives: Arc::new(Mutex::new(LatestKeepalives::default())),
         }
     }
 
-    pub(crate) fn create_response_server(&self, socket: Arc<Socket>) -> Arc<ResponseServerImpl> {
-        let message_visitor_factory = Arc::new(BootstrapMessageVisitorFactory::new(
+    pub(crate) fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
+        let server = Arc::new(ResponseServer::new(
+            self.network.clone(),
+            self.inbound_queue.clone(),
+            channel,
+            Arc::clone(&self.network.publish_filter),
+            Arc::new(self.network_params.clone()),
+            Arc::clone(&self.stats),
+            true,
+            self.syn_cookies.clone(),
+            self.node_id.clone(),
             self.runtime.clone(),
-            self.stats.clone(),
-            self.network_params.network.clone(),
             self.ledger.clone(),
             self.workers.clone(),
             self.block_processor.clone(),
             self.bootstrap_initiator.clone(),
             self.node_flags.clone(),
+            self.latest_keepalives.clone(),
         ));
 
-        Arc::new(ResponseServerImpl::new(
-            &self.network.clone(),
-            self.inbound_queue.clone(),
-            socket,
-            Arc::clone(&self.network.publish_filter),
-            Arc::new(self.network_params.clone()),
-            Arc::clone(&self.stats),
-            message_visitor_factory,
-            true,
-            self.syn_cookies.clone(),
-            self.node_id.clone(),
-        ))
+        let server_l = server.clone();
+        tokio::spawn(async move { server_l.run().await });
+
+        server
     }
 }

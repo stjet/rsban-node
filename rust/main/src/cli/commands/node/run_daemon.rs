@@ -1,17 +1,25 @@
 use crate::cli::{get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
+use rsnano_core::work::WorkPoolImpl;
 use rsnano_node::{
-    config::{NetworkConstants, NodeConfig, NodeFlags},
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants, NodeFlags,
+    },
     node::{Node, NodeExt},
     utils::AsyncRuntime,
     NetworkParams,
 };
+use rsnano_rpc::{run_rpc_server, RpcConfig, RpcToml};
 use std::{
+    fs::read_to_string,
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
+use toml::from_str;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -110,7 +118,7 @@ pub(crate) struct RunDaemonArgs {
 }
 
 impl RunDaemonArgs {
-    pub(crate) fn run_daemon(&self) -> Result<()> {
+    pub(crate) async fn run_daemon(&self) -> Result<()> {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));
@@ -123,11 +131,31 @@ impl RunDaemonArgs {
 
         std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
 
-        let config = NodeConfig::new(
-            Some(network_params.network.default_node_port),
-            &network_params,
-            get_cpu_count(),
-        );
+        let node_toml_config_path = get_node_toml_config_path(&path);
+
+        let daemon_config = if node_toml_config_path.exists() {
+            let daemon_toml_str = read_to_string(node_toml_config_path)?;
+
+            let daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
+
+            (&daemon_toml).into()
+        } else {
+            DaemonConfig::default()
+        };
+
+        let node_config = daemon_config.node;
+
+        let rpc_toml_config_path = get_rpc_toml_config_path(&path);
+
+        let rpc_config = if rpc_toml_config_path.exists() {
+            let rpc_toml_str = read_to_string(rpc_toml_config_path)?;
+
+            let rpc_toml: RpcToml = from_str(&rpc_toml_str)?;
+
+            (&rpc_toml).into()
+        } else {
+            RpcConfig::default()
+        };
 
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
@@ -136,14 +164,14 @@ impl RunDaemonArgs {
 
         let work = Arc::new(WorkPoolImpl::new(
             network_params.work.clone(),
-            config.work_threads as usize,
-            Duration::from_nanos(config.pow_sleep_interval_ns as u64),
+            node_config.work_threads as usize,
+            Duration::from_nanos(node_config.pow_sleep_interval_ns as u64),
         ));
 
         let node = Arc::new(Node::new(
             async_rt,
             path,
-            config,
+            node_config,
             network_params,
             flags,
             work,
@@ -154,10 +182,25 @@ impl RunDaemonArgs {
 
         node.start();
 
+        let rpc_server = if daemon_config.rpc_enable {
+            let ip_addr = IpAddr::from_str(&rpc_config.address)?;
+            let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
+            Some(tokio::spawn(run_rpc_server(
+                node.clone(),
+                socket_addr,
+                rpc_config.enable_control,
+            )))
+        } else {
+            None
+        };
+
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let finished_clone = finished.clone();
 
         ctrlc::set_handler(move || {
+            if let Some(server) = rpc_server.as_ref() {
+                server.abort();
+            }
             node.stop();
             *finished_clone.0.lock().unwrap() = true;
             finished_clone.1.notify_all();

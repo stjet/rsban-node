@@ -4,10 +4,10 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, ChannelId, Network, PeerConnector, PeerConnectorExt,
-        TrafficType, TransportType,
+        Channel, ChannelId, DropPolicy, MessagePublisher, Network, PeerConnector, PeerConnectorExt,
+        TrafficType,
     },
-    utils::{into_ipv6_socket_address, AsyncRuntime},
+    utils::{into_ipv6_socket_address, AsyncRuntime, SteadyClock, Timestamp},
     NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
@@ -42,13 +42,14 @@ pub struct RepCrawler {
     ledger: Arc<Ledger>,
     active: Arc<ActiveElections>,
     thread: Mutex<Option<JoinHandle<()>>>,
-    relative_time: Instant,
+    steady_clock: Arc<SteadyClock>,
+    message_publisher: Arc<Mutex<MessagePublisher>>,
 }
 
 impl RepCrawler {
     const MAX_RESPONSES: usize = 1024 * 4;
 
-    pub fn new(
+    pub(crate) fn new(
         online_reps: Arc<Mutex<OnlineReps>>,
         stats: Arc<Stats>,
         query_timeout: Duration,
@@ -59,7 +60,8 @@ impl RepCrawler {
         ledger: Arc<Ledger>,
         active: Arc<ActiveElections>,
         peer_connector: Arc<PeerConnector>,
-        relative_time: Instant,
+        steady_clock: Arc<SteadyClock>,
+        message_publisher: MessagePublisher,
     ) -> Self {
         let is_dev_network = network_params.network.is_dev_network();
         Self {
@@ -74,7 +76,8 @@ impl RepCrawler {
             active,
             thread: Mutex::new(None),
             peer_connector,
-            relative_time,
+            steady_clock,
+            message_publisher: Arc::new(Mutex::new(message_publisher)),
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
@@ -102,7 +105,7 @@ impl RepCrawler {
 
     /// Called when a non-replay vote arrives that might be of interest to rep crawler.
     /// @return true, if the vote was of interest and was processed, this indicates that the rep is likely online and voting
-    pub fn process(&self, vote: Arc<Vote>, channel: Arc<ChannelEnum>) -> bool {
+    pub fn process(&self, vote: Arc<Vote>, channel_id: ChannelId) -> bool {
         let mut guard = self.rep_crawler_impl.lock().unwrap();
         let mut processed = false;
 
@@ -110,7 +113,7 @@ impl RepCrawler {
         let x = guard.deref_mut();
         let queries = &mut x.queries;
         let responses = &mut x.responses;
-        queries.modify_for_channel(channel.channel_id(), |query| {
+        queries.modify_for_channel(channel_id, |query| {
             // TODO: This linear search could be slow, especially with large votes.
             let target_hash = query.hash;
             let found = vote.hashes.iter().any(|h| *h == target_hash);
@@ -118,9 +121,8 @@ impl RepCrawler {
 
             if found {
                 debug!(
-                    "Processing response for block: {} from: {}",
-                    target_hash,
-                    channel.remote_addr()
+                    "Processing response for block: {} from channel: {}",
+                    target_hash, channel_id
                 );
                 self.stats
                     .inc_dir(StatType::RepCrawler, DetailType::Response, Direction::In);
@@ -131,7 +133,7 @@ impl RepCrawler {
                     (0, query_timeout.as_millis() as i64),
                 );
 
-                responses.push_back((Arc::clone(&channel), Arc::clone(&vote)));
+                responses.push_back((channel_id, Arc::clone(&vote)));
                 query.replies += 1;
                 self.condition.notify_all();
                 processed = true;
@@ -147,7 +149,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query(&self, target_channels: Vec<Arc<ChannelEnum>>) {
+    pub fn query(&self, target_channels: Vec<Arc<Channel>>) {
         let Some(hash_root) = self.prepare_query_target() else {
             debug!("No block to query");
             self.stats.inc_dir(
@@ -161,54 +163,45 @@ impl RepCrawler {
         let mut guard = self.rep_crawler_impl.lock().unwrap();
 
         for channel in target_channels {
-            guard.track_rep_request(
-                hash_root,
-                Arc::clone(&channel),
-                self.relative_time.elapsed(),
-            );
+            guard.track_rep_request(hash_root, Arc::clone(&channel), self.steady_clock.now());
             debug!(
                 "Sending query for block: {} to: {}",
                 hash_root.0,
-                channel.remote_addr()
+                channel.peer_addr()
             );
             self.stats
                 .inc_dir(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
 
             let req = Message::ConfirmReq(ConfirmReq::new(vec![hash_root]));
 
-            let stats = Arc::clone(&self.stats);
-            channel.send(
+            self.message_publisher.lock().unwrap().try_send(
+                channel.channel_id(),
                 &req,
-                Some(Box::new(move |ec, _len| {
-                    if ec.is_err() {
-                        stats.inc_dir(StatType::RepCrawler, DetailType::WriteError, Direction::Out);
-                    }
-                })),
-                BufferDropPolicy::NoSocketDrop,
+                DropPolicy::ShouldNotDrop,
                 TrafficType::Generic,
-            )
+            );
         }
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query_channel(&self, target_channel: Arc<ChannelEnum>) {
+    pub fn query_channel(&self, target_channel: Arc<Channel>) {
         self.query(vec![target_channel]);
     }
 
     // Only for tests
-    pub fn force_process(&self, vote: Arc<Vote>, channel: Arc<ChannelEnum>) {
+    pub fn force_process(&self, vote: Arc<Vote>, channel_id: ChannelId) {
         assert!(self.network_params.network.is_dev_network());
         let mut guard = self.rep_crawler_impl.lock().unwrap();
-        guard.responses.push_back((channel, vote));
+        guard.responses.push_back((channel_id, vote));
     }
 
     // Only for tests
-    pub fn force_query(&self, hash: BlockHash, channel: Arc<ChannelEnum>) {
+    pub fn force_query(&self, hash: BlockHash, channel_id: ChannelId) {
         assert!(self.network_params.network.is_dev_network());
         let mut guard = self.rep_crawler_impl.lock().unwrap();
         guard.queries.insert(QueryEntry {
             hash,
-            channel,
+            channel_id,
             time: Instant::now(),
             replies: 0,
         })
@@ -262,7 +255,7 @@ impl RepCrawler {
                 guard.last_query = Some(Instant::now());
 
                 let targets =
-                    guard.prepare_crawl_targets(sufficient_weight, self.relative_time.elapsed());
+                    guard.prepare_crawl_targets(sufficient_weight, self.steady_clock.now());
                 drop(guard);
                 self.query(targets);
                 guard = self.rep_crawler_impl.lock().unwrap();
@@ -283,12 +276,9 @@ impl RepCrawler {
         );
 
         // TODO: Is it really faster to repeatedly lock/unlock the mutex for each response?
-        for (channel, vote) in responses {
-            if channel.get_type() == TransportType::Loopback {
-                debug!(
-                    "Ignoring vote from loopback channel: {}",
-                    channel.channel_id()
-                );
+        for (channel_id, vote) in responses {
+            if channel_id == ChannelId::LOOPBACK {
+                debug!("Ignoring vote from loopback channel");
                 continue;
             }
 
@@ -302,26 +292,25 @@ impl RepCrawler {
                 continue;
             }
 
-            let endpoint = channel.remote_addr();
             let result = self.online_reps.lock().unwrap().vote_observed_directly(
                 vote.voting_account,
-                channel.channel_id(),
-                self.relative_time.elapsed(),
+                channel_id,
+                self.steady_clock.now(),
             );
 
             match result {
                 InsertResult::Inserted => {
                     info!(
-                        "Found representative: {} at: {}",
+                        "Found representative: {} at channel: {}",
                         vote.voting_account.encode_account(),
-                        endpoint
+                        channel_id
                     );
                 }
                 InsertResult::ChannelChanged(previous) => {
                     warn!(
-                        "Updated representative: {} at: {} (was at: {})",
+                        "Updated representative: {} at channel: {} (was at: {})",
                         vote.voting_account.encode_account(),
-                        endpoint,
+                        channel_id,
                         previous
                     )
                 }
@@ -390,20 +379,21 @@ impl RepCrawler {
     pub fn keepalive_or_connect(&self, address: String, port: u16) {
         let peer_connector = self.peer_connector.clone();
         let network = self.network.clone();
+        let publisher = self.message_publisher.clone();
         self.async_rt.tokio.spawn(async move {
             match tokio::net::lookup_host((address.as_str(), port)).await {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match network.find_channel_by_peering_addr(&endpoint) {
-                            Some(channel) => {
+                        match network.find_realtime_channel_by_peering_addr(&endpoint) {
+                            Some(channel_id) => {
                                 let keepalive = network.create_keepalive_message();
-                                channel.send(
+                                publisher.lock().unwrap().try_send(
+                                    channel_id,
                                     &keepalive,
-                                    None,
-                                    BufferDropPolicy::Limiter,
+                                    DropPolicy::CanDrop,
                                     TrafficType::Generic,
-                                )
+                                );
                             }
                             None => {
                                 peer_connector.connect_to(endpoint);
@@ -456,7 +446,7 @@ struct RepCrawlerImpl {
     query_timeout: Duration,
     stopped: bool,
     last_query: Option<Instant>,
-    responses: BoundedVecDeque<(Arc<ChannelEnum>, Arc<Vote>)>,
+    responses: BoundedVecDeque<(ChannelId, Arc<Vote>)>,
     is_dev_network: bool,
 }
 
@@ -468,11 +458,7 @@ impl RepCrawlerImpl {
         }
     }
 
-    fn prepare_crawl_targets(
-        &self,
-        sufficient_weight: bool,
-        now: Duration,
-    ) -> Vec<Arc<ChannelEnum>> {
+    fn prepare_crawl_targets(&self, sufficient_weight: bool, now: Timestamp) -> Vec<Arc<Channel>> {
         // TODO: Make these values configurable
         const CONSERVATIVE_COUNT: usize = 160;
         const AGGRESSIVE_COUNT: usize = 160;
@@ -502,7 +488,9 @@ impl RepCrawlerImpl {
         };
 
         /* include channels with ephemeral remote ports */
-        let mut random_peers = self.network.random_channels(required_peer_count, 0);
+        let mut random_peers = self
+            .network
+            .random_realtime_channels(required_peer_count, 0);
 
         random_peers.retain(|channel| {
             match self
@@ -533,12 +521,12 @@ impl RepCrawlerImpl {
     fn track_rep_request(
         &mut self,
         hash_root: (BlockHash, Root),
-        channel: Arc<ChannelEnum>,
-        now: Duration,
+        channel: Arc<Channel>,
+        now: Timestamp,
     ) {
         self.queries.insert(QueryEntry {
             hash: hash_root.0,
-            channel: Arc::clone(&channel),
+            channel_id: channel.channel_id(),
             time: Instant::now(),
             replies: 0,
         });
@@ -558,9 +546,8 @@ impl RepCrawlerImpl {
 
             if query.replies == 0 {
                 debug!(
-                    "Aborting unresponsive query for block: {} from: {}",
-                    query.hash,
-                    query.channel.remote_addr()
+                    "Aborting unresponsive query for block: {} from channel: {}",
+                    query.hash, query.channel_id
                 );
                 self.stats.inc_dir(
                     StatType::RepCrawler,
@@ -569,10 +556,8 @@ impl RepCrawlerImpl {
                 );
             } else {
                 debug!(
-                    "Completion of query with: {} replies for block: {} from: {}",
-                    query.replies,
-                    query.hash,
-                    query.channel.remote_addr()
+                    "Completion of query with: {} replies for block: {} from channel: {}",
+                    query.replies, query.hash, query.channel_id
                 );
                 self.stats.inc_dir(
                     StatType::RepCrawler,
@@ -588,7 +573,7 @@ impl RepCrawlerImpl {
 
 struct QueryEntry {
     hash: BlockHash,
-    channel: Arc<ChannelEnum>,
+    channel_id: ChannelId,
     time: Instant,
     /// number of replies to the query
     replies: usize,
@@ -625,7 +610,7 @@ impl OrderedQueries {
         self.next_id = self.next_id.wrapping_add(1);
         self.sequenced.push(entry_id);
         self.by_channel
-            .entry(entry.channel.channel_id())
+            .entry(entry.channel_id)
             .or_default()
             .push(entry_id);
         self.by_hash.entry(entry.hash).or_default().push(entry_id);
@@ -647,11 +632,10 @@ impl OrderedQueries {
     fn remove(&mut self, entry_id: usize) {
         if let Some(entry) = self.entries.remove(&entry_id) {
             self.sequenced.retain(|id| *id != entry_id);
-            if let Some(mut by_channel) = self.by_channel.remove(&entry.channel.channel_id()) {
+            if let Some(mut by_channel) = self.by_channel.remove(&entry.channel_id) {
                 if by_channel.len() > 1 {
                     by_channel.retain(|i| *i != entry_id);
-                    self.by_channel
-                        .insert(entry.channel.channel_id(), by_channel);
+                    self.by_channel.insert(entry.channel_id, by_channel);
                 }
             }
             if let Some(mut by_hash) = self.by_hash.remove(&entry.hash) {

@@ -1,10 +1,8 @@
-use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory, SocketBuilder};
+use super::{ChannelDirection, ChannelMode, Network, ResponseServerFactory};
 use crate::{
-    config::NodeConfig,
-    stats::{DetailType, Direction, SocketStats, StatType, Stats},
+    stats::{DetailType, Direction, StatType, Stats},
     transport::TcpStream,
-    utils::{into_ipv6_socket_address, AsyncRuntime, ThreadPool},
-    NetworkParams,
+    utils::AsyncRuntime,
 };
 use async_trait::async_trait;
 use std::{
@@ -16,17 +14,14 @@ use std::{
     time::Duration,
 };
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 /// Server side portion of tcp sessions. Listens for new socket connections and spawns tcp_server objects when connected.
 pub struct TcpListener {
     port: AtomicU16,
-    node_config: NodeConfig,
     network: Arc<Network>,
     stats: Arc<Stats>,
     runtime: Arc<AsyncRuntime>,
-    workers: Arc<dyn ThreadPool>,
-    network_params: NetworkParams,
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
@@ -47,26 +42,20 @@ struct TcpListenerData {
 impl TcpListener {
     pub(crate) fn new(
         port: u16,
-        node_config: NodeConfig,
         network: Arc<Network>,
-        network_params: NetworkParams,
         runtime: Arc<AsyncRuntime>,
         stats: Arc<Stats>,
-        workers: Arc<dyn ThreadPool>,
         response_server_factory: Arc<ResponseServerFactory>,
     ) -> Self {
         Self {
             port: AtomicU16::new(port),
-            node_config,
             network,
             data: Mutex::new(TcpListenerData {
                 stopped: false,
                 local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
-            network_params,
             runtime: Arc::clone(&runtime),
             stats,
-            workers,
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_factory,
@@ -146,40 +135,23 @@ impl TcpListenerExt for Arc<TcpListener> {
                     continue;
                 };
 
-                let raw_stream = TcpStream::new(stream);
-
-                let Ok(remote_endpoint) = raw_stream.peer_addr() else {
-                    continue;
-                };
-
-                let remote_endpoint = into_ipv6_socket_address(remote_endpoint);
-                let socket_stats = Arc::new(SocketStats::new(Arc::clone(&self.stats)));
-                let socket = SocketBuilder::new(
-                    ChannelDirection::Inbound,
-                    Arc::clone(&self.workers),
-                    Arc::downgrade(&self.runtime),
-                )
-                .default_timeout(Duration::from_secs(
-                    self.node_config.tcp_io_timeout_s as u64,
-                ))
-                .silent_connection_tolerance_time(Duration::from_secs(
-                    self.network_params
-                        .network
-                        .silent_connection_tolerance_time_s as u64,
-                ))
-                .idle_timeout(self.network_params.network.idle_timeout)
-                .observer(socket_stats)
-                .use_existing_socket(raw_stream, remote_endpoint)
-                .finish();
-
-                let response_server = self
-                    .response_server_factory
-                    .create_response_server(socket.clone());
-
-                let _ = self
+                let tcp_stream = TcpStream::new(stream);
+                match self
                     .network
-                    .add(&socket, &response_server, ChannelDirection::Inbound)
-                    .await;
+                    .add(
+                        tcp_stream,
+                        ChannelDirection::Inbound,
+                        ChannelMode::Undefined,
+                    )
+                    .await
+                {
+                    Ok(channel) => {
+                        self.response_server_factory.start_response_server(channel);
+                    }
+                    Err(e) => {
+                        warn!("Could not accept incoming connection: {:?}", e);
+                    }
+                };
 
                 // Sleep for a while to prevent busy loop
                 tokio::time::sleep(Duration::from_millis(10)).await;

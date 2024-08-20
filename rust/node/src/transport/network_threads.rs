@@ -1,8 +1,10 @@
-use super::{Network, NetworkExt, PeerConnector, PeerConnectorExt, SynCookies};
+use super::{
+    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, Network, PeerConnector,
+    PeerConnectorExt, SynCookies, TrafficType,
+};
 use crate::{
     config::{NodeConfig, NodeFlags},
-    representatives::OnlineReps,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, StatType, Stats},
     NetworkParams,
 };
 use rsnano_messages::{Keepalive, Message};
@@ -10,23 +12,24 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
-use tracing::info;
 
-pub struct NetworkThreads {
+pub(crate) struct NetworkThreads {
     cleanup_thread: Option<JoinHandle<()>>,
     keepalive_thread: Option<JoinHandle<()>>,
     reachout_thread: Option<JoinHandle<()>>,
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network: Arc<Network>,
-    online_reps: Arc<Mutex<OnlineReps>>,
     peer_connector: Arc<PeerConnector>,
     flags: NodeFlags,
     network_params: NetworkParams,
     stats: Arc<Stats>,
     syn_cookies: Arc<SynCookies>,
     keepalive_factory: Arc<KeepaliveFactory>,
+    latest_keepalives: Arc<Mutex<LatestKeepalives>>,
+    dead_channel_cleanup: Option<DeadChannelCleanup>,
+    message_publisher: MessagePublisher,
 }
 
 impl NetworkThreads {
@@ -38,7 +41,9 @@ impl NetworkThreads {
         stats: Arc<Stats>,
         syn_cookies: Arc<SynCookies>,
         keepalive_factory: Arc<KeepaliveFactory>,
-        online_reps: Arc<Mutex<OnlineReps>>,
+        latest_keepalives: Arc<Mutex<LatestKeepalives>>,
+        dead_channel_cleanup: DeadChannelCleanup,
+        message_publisher: MessagePublisher,
     ) -> Self {
         Self {
             cleanup_thread: None,
@@ -52,7 +57,9 @@ impl NetworkThreads {
             stats,
             syn_cookies,
             keepalive_factory,
-            online_reps,
+            latest_keepalives,
+            dead_channel_cleanup: Some(dead_channel_cleanup),
+            message_publisher,
         }
     }
 
@@ -60,11 +67,9 @@ impl NetworkThreads {
         let cleanup = CleanupLoop {
             stopped: self.stopped.clone(),
             network_params: self.network_params.clone(),
-            stats: self.stats.clone(),
             flags: self.flags.clone(),
             syn_cookies: self.syn_cookies.clone(),
-            network: self.network.clone(),
-            online_reps: self.online_reps.clone(),
+            dead_channel_cleanup: self.dead_channel_cleanup.take().unwrap(),
         };
 
         self.cleanup_thread = Some(
@@ -74,12 +79,13 @@ impl NetworkThreads {
                 .unwrap(),
         );
 
-        let keepalive = KeepaliveLoop {
+        let mut keepalive = KeepaliveLoop {
             stopped: self.stopped.clone(),
             network: Arc::clone(&self.network),
             network_params: self.network_params.clone(),
             stats: Arc::clone(&self.stats),
             keepalive_factory: Arc::clone(&self.keepalive_factory),
+            message_publisher: self.message_publisher.clone(),
         };
 
         self.keepalive_thread = Some(
@@ -94,8 +100,8 @@ impl NetworkThreads {
                 stopped: self.stopped.clone(),
                 reachout_interval: self.network_params.network.merge_period,
                 stats: self.stats.clone(),
-                network: self.network.clone(),
                 peer_connector: self.peer_connector.clone(),
+                latest_keepalives: self.latest_keepalives.clone(),
             };
 
             self.reachout_thread = Some(
@@ -133,11 +139,9 @@ impl Drop for NetworkThreads {
 struct CleanupLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     network_params: NetworkParams,
-    stats: Arc<Stats>,
     flags: NodeFlags,
     syn_cookies: Arc<SynCookies>,
-    network: Arc<Network>,
-    online_reps: Arc<Mutex<OnlineReps>>,
+    dead_channel_cleanup: DeadChannelCleanup,
 }
 
 impl CleanupLoop {
@@ -156,27 +160,8 @@ impl CleanupLoop {
             }
             drop(stopped);
 
-            self.stats.inc(StatType::Network, DetailType::LoopCleanup);
-
             if !self.flags.disable_connection_cleanup {
-                let removed_channel_ids = self
-                    .network
-                    .purge(SystemTime::now() - self.network_params.network.cleanup_cutoff());
-
-                for channel_id in removed_channel_ids {
-                    let removed_reps = self.online_reps.lock().unwrap().remove_peer(channel_id);
-                    for rep in removed_reps {
-                        info!(
-                            "Evicting representative {} with dead channel",
-                            rep.encode_account(),
-                        );
-                        self.stats.inc_dir(
-                            StatType::RepCrawler,
-                            DetailType::ChannelDead,
-                            Direction::In,
-                        );
-                    }
-                }
+                self.dead_channel_cleanup.clean_up();
             }
 
             self.syn_cookies
@@ -195,7 +180,8 @@ pub struct KeepaliveFactory {
 impl KeepaliveFactory {
     pub fn create_keepalive_self(&self) -> Keepalive {
         let mut result = Keepalive::default();
-        self.network.random_fill(&mut result.peers);
+        self.network
+            .random_fill_peering_endpoints(&mut result.peers);
         // We will clobber values in index 0 and 1 and if there are only 2 nodes in the system, these are the only positions occupied
         // Move these items to index 2 and 3 so they propagate
         result.peers[2] = result.peers[0];
@@ -234,10 +220,11 @@ struct KeepaliveLoop {
     stats: Arc<Stats>,
     network: Arc<Network>,
     keepalive_factory: Arc<KeepaliveFactory>,
+    message_publisher: MessagePublisher,
 }
 
 impl KeepaliveLoop {
-    fn run(&self) {
+    fn run(&mut self) {
         let mut stopped = self.stopped.1.lock().unwrap();
         while !*stopped {
             stopped = self
@@ -256,23 +243,37 @@ impl KeepaliveLoop {
             self.flood_keepalive(0.75);
             self.flood_keepalive_self(0.25);
 
-            self.network.keepalive();
+            self.keepalive();
 
             stopped = self.stopped.1.lock().unwrap();
         }
     }
 
-    fn flood_keepalive(&self, scale: f32) {
-        let mut keepalive = Keepalive::default();
-        self.network.random_fill(&mut keepalive.peers);
-        self.network
-            .flood_message(&Message::Keepalive(keepalive), scale);
+    fn keepalive(&mut self) {
+        let message = self.network.create_keepalive_message();
+
+        for channel_id in self.network.keepalive_list() {
+            self.message_publisher.try_send(
+                channel_id,
+                &message,
+                DropPolicy::CanDrop,
+                TrafficType::Generic,
+            );
+        }
     }
 
-    fn flood_keepalive_self(&self, scale: f32) {
-        let keepalive = self.keepalive_factory.create_keepalive_self();
+    fn flood_keepalive(&mut self, scale: f32) {
+        let mut keepalive = Keepalive::default();
         self.network
-            .flood_message(&Message::Keepalive(keepalive), scale);
+            .random_fill_peering_endpoints(&mut keepalive.peers);
+        self.message_publisher
+            .flood(&Message::Keepalive(keepalive), DropPolicy::CanDrop, scale);
+    }
+
+    fn flood_keepalive_self(&mut self, scale: f32) {
+        let keepalive = self.keepalive_factory.create_keepalive_self();
+        self.message_publisher
+            .flood(&Message::Keepalive(keepalive), DropPolicy::CanDrop, scale);
     }
 }
 
@@ -280,8 +281,8 @@ struct ReachoutLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
     reachout_interval: Duration,
     stats: Arc<Stats>,
-    network: Arc<Network>,
     peer_connector: Arc<PeerConnector>,
+    latest_keepalives: Arc<Mutex<LatestKeepalives>>,
 }
 
 impl ReachoutLoop {
@@ -300,9 +301,7 @@ impl ReachoutLoop {
             }
             drop(stopped);
 
-            self.stats.inc(StatType::Network, DetailType::LoopReachout);
-
-            if let Some(keepalive) = self.network.sample_keepalive() {
+            if let Some(keepalive) = self.latest_keepalives.lock().unwrap().pop_random() {
                 for peer in keepalive.peers {
                     self.stats.inc(StatType::Network, DetailType::ReachoutLive);
                     self.peer_connector.connect_to(peer);

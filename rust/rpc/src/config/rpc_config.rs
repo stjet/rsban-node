@@ -2,6 +2,7 @@ use rsnano_core::utils::get_cpu_count;
 use rsnano_node::config::NetworkConstants;
 use std::net::Ipv6Addr;
 
+#[derive(Debug, PartialEq)]
 pub struct RpcConfig {
     pub address: String,
     pub port: u16,
@@ -10,6 +11,12 @@ pub struct RpcConfig {
     pub max_request_size: u64,
     pub rpc_logging: RpcLoggingConfig,
     pub rpc_process: RpcProcessConfig,
+}
+
+impl Default for RpcConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
+    }
 }
 
 impl RpcConfig {
@@ -40,12 +47,7 @@ impl RpcConfig {
     }
 }
 
-impl Default for RpcConfig {
-    fn default() -> Self {
-        Self::new(&NetworkConstants::default(), get_cpu_count())
-    }
-}
-
+#[derive(Debug, PartialEq)]
 pub struct RpcLoggingConfig {
     pub log_rpc: bool,
 }
@@ -62,11 +64,18 @@ impl RpcLoggingConfig {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct RpcProcessConfig {
     pub io_threads: u32,
     pub ipc_address: String,
     pub ipc_port: u16,
     pub num_ipc_connections: u32,
+}
+
+impl Default for RpcProcessConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
+    }
 }
 
 impl RpcProcessConfig {
@@ -94,12 +103,11 @@ impl RpcProcessConfig {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
     use rsnano_node::config::get_default_rpc_filepath_from;
     use std::path::Path;
 
     #[test]
-    fn default_rpc_filepath() -> Result<()> {
+    fn default_rpc_filepath() {
         assert_eq!(
             get_default_rpc_filepath_from(Path::new("/path/to/nano_node")),
             Path::new("/path/to/nano_rpc")
@@ -114,7 +122,5 @@ mod tests {
             get_default_rpc_filepath_from(Path::new("/bin/nano_node.exe")),
             Path::new("/bin/nano_rpc.exe")
         );
-
-        Ok(())
     }
 }

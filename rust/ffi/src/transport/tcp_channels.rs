@@ -1,7 +1,6 @@
-use super::{ChannelHandle, EndpointDto};
-use crate::messages::MessageHandle;
-use rsnano_core::{utils::system_time_from_nanoseconds, PublicKey};
-use rsnano_node::transport::{ChannelEnum, ChannelMode, Network};
+use super::EndpointDto;
+use rsnano_core::utils::system_time_from_nanoseconds;
+use rsnano_node::transport::{ChannelMode, Network};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     ops::Deref,
@@ -49,38 +48,6 @@ pub unsafe extern "C" fn rsn_tcp_channels_not_a_peer(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_find_channel(
-    handle: &mut TcpChannelsHandle,
-    endpoint: &EndpointDto,
-) -> *mut ChannelHandle {
-    match handle.find_channel_by_remote_addr(&endpoint.into()) {
-        Some(channel) => ChannelHandle::new(channel),
-        None => std::ptr::null_mut(),
-    }
-}
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_random_channels(
-    handle: &mut TcpChannelsHandle,
-    count: usize,
-    min_version: u8,
-) -> *mut ChannelListHandle {
-    let channels = handle.random_channels(count, min_version);
-    Box::into_raw(Box::new(ChannelListHandle(channels)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_find_node_id(
-    handle: &mut TcpChannelsHandle,
-    node_id: *const u8,
-) -> *mut ChannelHandle {
-    let node_id = PublicKey::from_ptr(node_id);
-    match handle.find_node_id(&node_id) {
-        Some(channel) => ChannelHandle::new(channel),
-        None => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
     handle: &TcpChannelsHandle,
     endpoints: *mut EndpointDto,
@@ -88,7 +55,7 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
     let endpoints = std::slice::from_raw_parts_mut(endpoints, 8);
     let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
     let mut tmp = [null_endpoint; 8];
-    handle.random_fill(&mut tmp);
+    handle.random_fill_peering_endpoints(&mut tmp);
     endpoints
         .iter_mut()
         .zip(&tmp)
@@ -108,42 +75,4 @@ pub unsafe extern "C" fn rsn_tcp_channels_len_sqrt(handle: &TcpChannelsHandle) -
 #[no_mangle]
 pub unsafe extern "C" fn rsn_tcp_channels_fanout(handle: &TcpChannelsHandle, scale: f32) -> usize {
     handle.fanout(scale)
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_random_fanout(
-    handle: &TcpChannelsHandle,
-    scale: f32,
-) -> *mut ChannelListHandle {
-    let channels = handle.random_fanout(scale);
-    Box::into_raw(Box::new(ChannelListHandle(channels)))
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_tcp_channels_flood_message(
-    handle: &TcpChannelsHandle,
-    msg: &MessageHandle,
-    scale: f32,
-) {
-    handle.flood_message(&msg.message, scale)
-}
-
-pub struct ChannelListHandle(Vec<Arc<ChannelEnum>>);
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_len(handle: *mut ChannelListHandle) -> usize {
-    (*handle).0.len()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_get(
-    handle: *mut ChannelListHandle,
-    index: usize,
-) -> *mut ChannelHandle {
-    ChannelHandle::new((*handle).0[index].clone())
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_channel_list_destroy(handle: *mut ChannelListHandle) {
-    drop(Box::from_raw(handle))
 }

@@ -1,5 +1,4 @@
-use super::{ChannelDirection, ChannelEnum, ChannelId, ChannelMode, ResponseServerImpl};
-use crate::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
+use super::{Channel, ChannelDirection, ChannelId, ChannelMode};
 use rsnano_core::PublicKey;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -13,178 +12,191 @@ use tracing::debug;
 /// Keeps track of all connected channels
 #[derive(Default)]
 pub struct ChannelContainer {
-    by_endpoint: HashMap<SocketAddrV6, Arc<ChannelEntry>>,
-    by_random_access: Vec<SocketAddrV6>,
-    by_bootstrap_attempt: BTreeMap<SystemTime, Vec<SocketAddrV6>>,
-    by_network_version: BTreeMap<u8, Vec<SocketAddrV6>>,
-    by_ip_address: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-    by_subnet: HashMap<Ipv6Addr, Vec<SocketAddrV6>>,
-    by_id: HashMap<ChannelId, SocketAddrV6>,
+    by_channel_id: HashMap<ChannelId, Arc<Channel>>,
+    by_endpoint: HashMap<SocketAddrV6, Vec<ChannelId>>,
+    sequential: Vec<ChannelId>,
+    by_bootstrap_attempt: BTreeMap<SystemTime, Vec<ChannelId>>,
+    by_network_version: BTreeMap<u8, Vec<ChannelId>>,
+    by_ip_address: HashMap<Ipv6Addr, Vec<ChannelId>>,
+    by_subnet: HashMap<Ipv6Addr, Vec<ChannelId>>,
 }
 
 impl ChannelContainer {
-    pub const ELEMENT_SIZE: usize = std::mem::size_of::<ChannelEntry>();
+    pub const ELEMENT_SIZE: usize = std::mem::size_of::<Channel>();
 
-    pub fn insert(
-        &mut self,
-        channel: Arc<ChannelEnum>,
-        response_server: Option<Arc<ResponseServerImpl>>,
-    ) -> bool {
-        let entry = Arc::new(ChannelEntry::new(channel, response_server));
-        let endpoint = entry.endpoint();
-        if self.by_endpoint.contains_key(&endpoint) {
-            return false;
+    pub fn insert(&mut self, channel: Arc<Channel>) -> bool {
+        let id = channel.channel_id();
+        if self.by_channel_id.contains_key(&id) {
+            panic!("Channel already in collection!");
         }
 
-        self.by_random_access.push(endpoint);
+        self.sequential.push(id);
         self.by_bootstrap_attempt
-            .entry(entry.last_bootstrap_attempt())
+            .entry(channel.get_last_bootstrap_attempt())
             .or_default()
-            .push(endpoint);
+            .push(id);
         self.by_network_version
-            .entry(entry.network_version())
+            .entry(channel.protocol_version())
             .or_default()
-            .push(endpoint);
+            .push(id);
         self.by_ip_address
-            .entry(entry.ip_address())
+            .entry(channel.ipv4_address_or_ipv6_subnet())
             .or_default()
-            .push(endpoint);
+            .push(id);
         self.by_subnet
-            .entry(entry.subnetwork())
+            .entry(channel.subnetwork())
             .or_default()
-            .push(endpoint);
-        self.by_id.insert(entry.channel.channel_id(), endpoint);
-        self.by_endpoint.insert(entry.endpoint(), entry);
+            .push(id);
+        self.by_endpoint
+            .entry(channel.peer_addr())
+            .or_default()
+            .push(id);
+        self.by_channel_id.insert(id, channel);
         true
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
-        self.by_endpoint.values()
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<Channel>> {
+        self.by_channel_id.values().filter(|c| c.is_alive())
     }
 
-    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<ChannelEntry>> {
+    pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<Channel>> {
         self.by_bootstrap_attempt
             .iter()
-            .flat_map(|(_, v)| v.iter().map(|ep| self.by_endpoint.get(ep).unwrap()))
+            .flat_map(|(_, ids)| ids.iter().map(|id| self.by_channel_id.get(id).unwrap()))
+            .filter(|c| c.is_alive())
     }
 
     pub fn len(&self) -> usize {
-        self.by_endpoint.len()
+        self.by_channel_id.len()
     }
 
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
-        self.by_endpoint
+        self.by_channel_id
             .values()
-            .filter(|i| i.channel.mode() == mode)
+            .filter(|c| c.mode() == mode && c.is_alive())
             .count()
     }
 
-    pub fn remove_by_endpoint(&mut self, endpoint: &SocketAddrV6) -> Option<Arc<ChannelEnum>> {
-        if let Some(entry) = self.by_endpoint.remove(endpoint) {
-            self.by_random_access.retain(|x| x != endpoint); // todo: linear search is slow?
+    fn remove_by_id(&mut self, id: ChannelId) -> Option<Arc<Channel>> {
+        if let Some(channel) = self.by_channel_id.remove(&id) {
+            self.sequential.retain(|x| *x != id); // todo: linear search is slow?
 
-            remove_endpoint_btree(
+            remove_from_btree(
                 &mut self.by_bootstrap_attempt,
-                &entry.last_bootstrap_attempt(),
-                endpoint,
+                &channel.get_last_bootstrap_attempt(),
+                id,
             );
-            remove_endpoint_btree(
+            remove_from_btree(
                 &mut self.by_network_version,
-                &entry.network_version(),
-                endpoint,
+                &channel.protocol_version(),
+                id,
             );
-            remove_endpoint_map(&mut self.by_ip_address, &entry.ip_address(), endpoint);
-            remove_endpoint_map(&mut self.by_subnet, &entry.subnetwork(), endpoint);
-            self.by_id.remove(&entry.channel.channel_id());
-            Some(entry.channel.clone())
+            remove_from_hashmap(&mut self.by_endpoint, &channel.peer_addr(), id);
+            remove_from_hashmap(
+                &mut self.by_ip_address,
+                &channel.ipv4_address_or_ipv6_subnet(),
+                id,
+            );
+            remove_from_hashmap(&mut self.by_subnet, &channel.subnetwork(), id);
+            Some(channel)
         } else {
             None
         }
     }
 
-    pub fn get_by_remote_addr(&self, remote_addr: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
-        self.by_endpoint.get(remote_addr)
+    pub fn get_by_remote_addr(&self, remote_addr: &SocketAddrV6) -> Vec<&Arc<Channel>> {
+        self.by_endpoint
+            .get(remote_addr)
+            .map(|ids| {
+                ids.iter()
+                    .map(|id| self.by_channel_id.get(id).unwrap())
+                    .filter(|c| c.is_alive())
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
-    pub fn get_by_peering_addr(&self, peering_addr: &SocketAddrV6) -> Option<&Arc<ChannelEntry>> {
+    pub fn get_by_peering_addr(&self, peering_addr: &SocketAddrV6) -> Vec<&Arc<Channel>> {
         // TODO use a hashmap?
-        self.by_endpoint
+        self.by_channel_id
             .values()
-            .find(|i| i.channel.peering_endpoint().as_ref() == Some(peering_addr))
+            .filter(|c| c.peering_addr().as_ref() == Some(peering_addr) && c.is_alive())
+            .collect()
     }
 
-    pub fn get_by_index(&self, index: usize) -> Option<&Arc<ChannelEntry>> {
-        self.by_random_access
-            .get(index)
-            .and_then(|ep| self.by_endpoint.get(ep))
+    pub fn get_by_id(&self, id: ChannelId) -> Option<&Arc<Channel>> {
+        self.by_channel_id.get(&id)
     }
 
-    pub fn get_by_id(&self, id: ChannelId) -> Option<&Arc<ChannelEntry>> {
-        self.by_id.get(&id).and_then(|ep| self.by_endpoint.get(ep))
-    }
-
-    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelEntry>> {
-        self.by_endpoint
+    pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<Channel>> {
+        self.by_channel_id
             .values()
-            .filter(|i| i.channel.get_node_id() == Some(*node_id))
+            .filter(|c| c.get_node_id() == Some(*node_id) && c.is_alive())
             .next()
     }
 
-    pub fn set_last_bootstrap_attempt(
-        &mut self,
-        endpoint: &SocketAddrV6,
-        attempt_time: SystemTime,
-    ) {
-        if let Some(channel) = self.by_endpoint.get(endpoint) {
-            let old_time = channel.last_bootstrap_attempt();
-            channel.channel.set_last_bootstrap_attempt(attempt_time);
-            remove_endpoint_btree(
-                &mut self.by_bootstrap_attempt,
-                &old_time,
-                &channel.endpoint(),
-            );
+    pub fn set_protocol_version(&mut self, channel_id: ChannelId, protocol_version: u8) {
+        if let Some(channel) = self.by_channel_id.get(&channel_id) {
+            let old_version = channel.protocol_version();
+            channel.set_protocol_version(protocol_version);
+            if old_version == protocol_version {
+                return;
+            }
+            remove_from_btree(&mut self.by_network_version, &old_version, channel_id);
+            self.by_network_version
+                .entry(protocol_version)
+                .or_default()
+                .push(channel_id);
+        }
+    }
+
+    pub fn set_last_bootstrap_attempt(&mut self, channel_id: ChannelId, attempt_time: SystemTime) {
+        if let Some(channel) = self.by_channel_id.get(&channel_id) {
+            let old_time = channel.get_last_bootstrap_attempt();
+            channel.set_last_bootstrap_attempt(attempt_time);
+            remove_from_btree(&mut self.by_bootstrap_attempt, &old_time, channel_id);
             self.by_bootstrap_attempt
                 .entry(attempt_time)
                 .or_default()
-                .push(*endpoint);
+                .push(channel_id);
         }
     }
 
     pub fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
         self.by_ip_address
             .get(ip)
-            .map(|endpoints| endpoints.len())
+            .map(|channel_ids| channel_ids.len())
             .unwrap_or_default()
     }
 
     pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
-        self.by_endpoint
+        self.by_channel_id
             .values()
-            .filter(|entry| entry.channel.direction() == direction)
+            .filter(|c| c.direction() == direction && c.is_alive())
             .count()
     }
 
     pub fn count_by_subnet(&self, subnet: &Ipv6Addr) -> usize {
         self.by_subnet
             .get(subnet)
-            .map(|endpoints| endpoints.len())
+            .map(|ids| ids.len())
             .unwrap_or_default()
     }
 
     pub fn clear(&mut self) {
         self.by_endpoint.clear();
-        self.by_random_access.clear();
+        self.sequential.clear();
         self.by_bootstrap_attempt.clear();
         self.by_network_version.clear();
         self.by_ip_address.clear();
         self.by_subnet.clear();
-        self.by_id.clear();
+        self.by_channel_id.clear();
     }
 
     pub fn close_idle_channels(&mut self, cutoff: SystemTime) {
         for entry in self.iter() {
-            if entry.channel.get_last_packet_sent() < cutoff {
-                debug!("Closing idle channel: {}", entry.channel.remote_addr());
+            if entry.get_last_packet_sent() < cutoff {
+                debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
                 entry.close();
             }
         }
@@ -193,33 +205,29 @@ impl ChannelContainer {
     /// Removes dead channels and returns their channel ids
     pub fn remove_dead(&mut self) -> Vec<ChannelId> {
         let dead_channels: Vec<_> = self
-            .by_endpoint
+            .by_channel_id
             .values()
-            .filter(|c| !c.channel.is_alive())
+            .filter(|c| !c.is_alive())
             .cloned()
             .collect();
 
         for channel in &dead_channels {
-            debug!("Removing dead channel: {}", channel.endpoint());
-            self.remove_by_endpoint(&channel.endpoint());
+            debug!("Removing dead channel: {}", channel.peer_addr());
+            self.remove_by_id(channel.channel_id());
         }
 
-        dead_channels
-            .iter()
-            .map(|c| c.channel.channel_id())
-            .collect()
+        dead_channels.iter().map(|c| c.channel_id()).collect()
     }
 
     pub fn close_old_protocol_versions(&mut self, min_version: u8) {
-        while let Some((version, endpoints)) = self.by_network_version.first_key_value() {
+        while let Some((version, channel_ids)) = self.by_network_version.first_key_value() {
             if *version < min_version {
-                for ep in endpoints {
-                    debug!(
-                        "Closing channel with old protocol version: {} (channels version: {}, min version: {})",
-                        ep, version, min_version
-                    );
-                    if let Some(entry) = self.by_endpoint.get(ep) {
-                        entry.close();
+                for id in channel_ids {
+                    if let Some(channel) = self.by_channel_id.get(id) {
+                        debug!(channel_id = %id, peer_addr = ?channel.peer_addr(), version, min_version,
+                            "Closing channel with old protocol version",
+                        );
+                        channel.close();
                     }
                 }
             } else {
@@ -229,76 +237,23 @@ impl ChannelContainer {
     }
 }
 
-pub struct ChannelEntry {
-    pub channel: Arc<ChannelEnum>,
-    pub response_server: Option<Arc<ResponseServerImpl>>,
-}
-
-impl ChannelEntry {
-    pub fn new(
-        channel: Arc<ChannelEnum>,
-        response_server: Option<Arc<ResponseServerImpl>>,
-    ) -> Self {
-        Self {
-            channel,
-            response_server,
-        }
-    }
-
-    pub fn endpoint(&self) -> SocketAddrV6 {
-        self.channel.remote_addr()
-    }
-
-    pub fn last_packet_sent(&self) -> SystemTime {
-        self.channel.get_last_packet_sent()
-    }
-
-    pub fn last_bootstrap_attempt(&self) -> SystemTime {
-        self.channel.get_last_bootstrap_attempt()
-    }
-
-    pub fn close(&self) {
-        self.channel.close();
-        if let Some(server) = &self.response_server {
-            server.stop();
-        }
-    }
-
-    pub fn network_version(&self) -> u8 {
-        self.channel.network_version()
-    }
-
-    pub fn ip_address(&self) -> Ipv6Addr {
-        ipv4_address_or_ipv6_subnet(self.endpoint().ip())
-    }
-
-    pub fn subnetwork(&self) -> Ipv6Addr {
-        map_address_to_subnetwork(self.endpoint().ip())
-    }
-}
-
-fn remove_endpoint_btree<K: Ord>(
-    tree: &mut BTreeMap<K, Vec<SocketAddrV6>>,
-    key: &K,
-    endpoint: &SocketAddrV6,
-) {
-    let endpoints = tree.get_mut(key).unwrap();
-    if endpoints.len() > 1 {
-        endpoints.retain(|x| x != endpoint);
+fn remove_from_hashmap<K>(tree: &mut HashMap<K, Vec<ChannelId>>, key: &K, id: ChannelId)
+where
+    K: Ord + Hash,
+{
+    let channel_ids = tree.get_mut(key).unwrap();
+    if channel_ids.len() > 1 {
+        channel_ids.retain(|x| *x != id);
     } else {
         tree.remove(key);
     }
 }
 
-fn remove_endpoint_map<K: Eq + PartialEq + Hash>(
-    map: &mut HashMap<K, Vec<SocketAddrV6>>,
-    key: &K,
-    endpoint: &SocketAddrV6,
-) {
-    let endpoints = map.get_mut(key).unwrap();
-    if endpoints.len() > 1 {
-        endpoints.retain(|x| x != endpoint);
+fn remove_from_btree<K: Ord>(tree: &mut BTreeMap<K, Vec<ChannelId>>, key: &K, id: ChannelId) {
+    let channel_ids = tree.get_mut(key).unwrap();
+    if channel_ids.len() > 1 {
+        channel_ids.retain(|x| *x != id);
     } else {
-        map.remove(key);
+        tree.remove(key);
     }
 }

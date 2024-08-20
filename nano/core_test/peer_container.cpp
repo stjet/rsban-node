@@ -1,6 +1,4 @@
-#include <nano/node/transport/socket.hpp>
 #include <nano/node/transport/tcp.hpp>
-#include <nano/node/transport/tcp_server.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/testutil.hpp>
@@ -18,20 +16,6 @@ TEST (peer_container, empty_peers)
 	nano::network & network (*system.nodes[0]->network);
 	system.nodes[0]->network->cleanup (std::chrono::system_clock::now ());
 	ASSERT_EQ (0, network.size ());
-}
-
-// Test a node cannot connect to its own endpoint.
-TEST (peer_container, no_self_incoming)
-{
-	nano::test::system system{ 1 };
-	auto & node = *system.nodes[0];
-	node.connect (node.network->endpoint ());
-	auto error = system.poll_until_true (2s, [&node] {
-		auto result = node.network->tcp_channels->find_channel (nano::transport::map_endpoint_to_tcp (node.network->endpoint ()));
-		return result != nullptr;
-	});
-	ASSERT_TRUE (error);
-	ASSERT_TRUE (system.nodes[0]->network->empty ());
 }
 
 // Tests the function network not_a_peer function used by the nano::transport::tcp_channels.insert ()
@@ -60,62 +44,6 @@ TEST (peer_container, reserved_ip_is_not_a_peer)
 TEST (peer_container, tcp_channel_cleanup_works)
 {
 	// TODO reimplement in Rust
-}
-
-TEST (channels, fill_random_clear)
-{
-	nano::test::system system (1);
-	std::array<nano::endpoint, 8> target;
-	std::fill (target.begin (), target.end (), nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000));
-	system.nodes[0]->network->tcp_channels->random_fill (target);
-	ASSERT_TRUE (std::all_of (target.begin (), target.end (), [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::any (), 0); }));
-}
-
-// Test all targets get replaced by random_fill
-TEST (channels, fill_random_full)
-{
-	nano::test::system system{ 1 };
-
-	// create 8 peer nodes so that the random_fill is completely filled with real connection data
-	for (int i = 0; i < 8; ++i)
-	{
-		auto outer_node = nano::test::add_outer_node (system);
-		nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ());
-	}
-	ASSERT_TIMELY_EQ (5s, 8, system.nodes[0]->network->tcp_channels->size ());
-
-	// create an array of 8 endpoints with a known filler value
-	auto filler_endpoint = nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000);
-	std::array<nano::endpoint, 8> target;
-	std::fill (target.begin (), target.end (), filler_endpoint);
-
-	// random fill target array with endpoints taken from the network connections
-	system.nodes[0]->network->tcp_channels->random_fill (target);
-
-	// check that all element in target got overwritten
-	auto is_filler = [&filler_endpoint] (nano::endpoint const & endpoint_a) {
-		return endpoint_a == filler_endpoint;
-	};
-	ASSERT_TRUE (std::none_of (target.begin (), target.end (), is_filler));
-}
-
-// Test only the known channels are filled
-TEST (channels, fill_random_part)
-{
-	nano::test::system system{ 1 };
-	std::array<nano::endpoint, 8> target;
-	std::size_t half = target.size () / 2;
-	for (std::size_t i = 0; i < half; ++i)
-	{
-		auto outer_node = nano::test::add_outer_node (system);
-		nano::test::establish_tcp (system, *system.nodes[0], outer_node->network->endpoint ());
-	}
-	ASSERT_EQ (half, system.nodes[0]->network->tcp_channels->size ());
-	std::fill (target.begin (), target.end (), nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000));
-	system.nodes[0]->network->tcp_channels->random_fill (target);
-	ASSERT_TRUE (std::none_of (target.begin (), target.begin () + half, [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), 10000); }));
-	ASSERT_TRUE (std::none_of (target.begin (), target.begin () + half, [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::loopback (), 0); }));
-	ASSERT_TRUE (std::all_of (target.begin () + half, target.end (), [] (nano::endpoint const & endpoint_a) { return endpoint_a == nano::endpoint (boost::asio::ip::address_v6::any (), 0); }));
 }
 
 TEST (peer_container, list_fanout)

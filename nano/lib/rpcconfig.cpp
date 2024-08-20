@@ -1,3 +1,5 @@
+#include "nano/lib/rsnanoutils.hpp"
+
 #include <nano/boost/asio/ip/address_v6.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/rpcconfig.hpp>
@@ -60,15 +62,8 @@ rsnano::RpcConfigDto nano::rpc_config::to_dto () const
 std::string nano::rpc_config::serialize_toml () const
 {
 	auto dto{ to_dto () };
-
-	const size_t buffer_len = 1000;
-	std::vector<char> buffer (buffer_len);
-
-	rsnano::rsn_rpc_config_serialize_toml (&dto, buffer.data (), buffer_len);
-
-	std::string toml_str (buffer.data ());
-
-	return toml_str;
+	auto string_dto = rsnano::rsn_rpc_config_serialize_toml (&dto);
+	return rsnano::convert_dto_to_string (string_dto);
 }
 
 nano::error nano::rpc_config::deserialize_toml (nano::tomlconfig & toml)

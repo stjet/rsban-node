@@ -1,13 +1,14 @@
-use crate::{
-    bootstrap::BootstrapAttemptTrait,
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, TrafficType},
-};
-
 use super::{
     BootstrapAttemptWallet, BootstrapClient, BootstrapConnections, BootstrapConnectionsExt,
     BootstrapInitiator, BootstrapInitiatorExt,
 };
+use crate::{
+    bootstrap::BootstrapAttemptTrait,
+    stats::{DetailType, Direction, StatType, Stats},
+    transport::AsyncBufferReader,
+    utils::{AsyncRuntime, ThreadPool},
+};
+use async_trait::async_trait;
 use rsnano_core::{
     utils::{BufferReader, Deserialize, FixedSizeSerialize},
     Account, Amount, BlockHash,
@@ -30,6 +31,8 @@ pub struct BulkPullAccountClient {
     connections: Arc<BootstrapConnections>,
     ledger: Arc<Ledger>,
     bootstrap_initiator: Arc<BootstrapInitiator>,
+    runtime: Arc<AsyncRuntime>,
+    workers: Arc<dyn ThreadPool>,
 }
 
 impl BulkPullAccountClient {
@@ -42,6 +45,8 @@ impl BulkPullAccountClient {
         connections: Arc<BootstrapConnections>,
         ledger: Arc<Ledger>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
+        runtime: Arc<AsyncRuntime>,
+        workers: Arc<dyn ThreadPool>,
     ) -> Self {
         attempt.notify();
         Self {
@@ -54,6 +59,8 @@ impl BulkPullAccountClient {
             connections,
             ledger,
             bootstrap_initiator,
+            runtime,
+            workers,
         }
     }
 }
@@ -64,11 +71,13 @@ impl Drop for BulkPullAccountClient {
     }
 }
 
+#[async_trait]
 pub trait BulkPullAccountClientExt {
     fn request(&self);
-    fn receive_pending(&self);
+    async fn receive_pending(&self);
 }
 
+#[async_trait]
 impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
     fn request(&self) {
         let req = Message::BulkPullAccount(BulkPullAccount {
@@ -88,16 +97,16 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
         }
 
         let self_l = Arc::clone(self);
-        self.connection.send(
-            &req,
-            Some(Box::new(move |ec, _size| {
-                if ec.is_ok() {
-                    self_l.receive_pending();
-                } else {
+        self.runtime.tokio.spawn(async move {
+            match self_l.connection.send(&req).await {
+                Ok(()) => {
+                    self_l.receive_pending().await;
+                }
+                Err(e) => {
                     debug!(
                         "Error starting bulk pull request to: {} ({:?})",
                         self_l.connection.channel_string(),
-                        ec
+                        e
                     );
                     self_l.stats.inc_dir(
                         StatType::Bootstrap,
@@ -107,65 +116,60 @@ impl BulkPullAccountClientExt for Arc<BulkPullAccountClient> {
 
                     self_l.attempt.requeue_pending(self_l.account);
                 }
-            })),
-            BufferDropPolicy::NoLimiterDrop,
-            TrafficType::Generic,
-        );
+            }
+        });
     }
 
-    fn receive_pending(&self) {
-        let this_l = Arc::clone(self);
-        let size_l = BlockHash::serialized_size() + Amount::serialized_size();
-        self.connection.read_async(
-            size_l,
-            Box::new(move |ec, size| {
-                // An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
-                // we simply get a size of 0.
-                if size == size_l {
-                    if ec.is_ok() {
-                        let buf = this_l.connection.receive_buffer();
-                        let mut reader = BufferReader::new(&buf);
-                        let pending = BlockHash::deserialize(&mut reader).unwrap();
-                        let balance = Amount::deserialize(&mut reader).unwrap();
-                        if this_l.pull_blocks.load(Ordering::SeqCst) == 0 || !pending.is_zero() {
-                            if this_l.pull_blocks.load(Ordering::SeqCst) == 0
-                                || balance >= this_l.receive_minimum
+    async fn receive_pending(&self) {
+        let mut buffer = [0; 256];
+        if let Err(e) = self
+            .connection
+            .get_channel()
+            .read(
+                &mut buffer,
+                BlockHash::serialized_size() + Amount::serialized_size(),
+            )
+            .await
+        {
+            debug!("Error while receiving bulk pull account frontier: {:?}", e);
+            self.attempt.requeue_pending(self.account);
+            return;
+        }
+
+        let mut reader = BufferReader::new(&buffer);
+        let pending = BlockHash::deserialize(&mut reader).unwrap();
+        let balance = Amount::deserialize(&mut reader).unwrap();
+        if self.pull_blocks.load(Ordering::SeqCst) == 0 || !pending.is_zero() {
+            if self.pull_blocks.load(Ordering::SeqCst) == 0 || balance >= self.receive_minimum {
+                let this_l = Arc::clone(self);
+                self.workers.push_task(Box::new(move || {
+                    this_l.pull_blocks.fetch_add(1, Ordering::SeqCst);
+                    {
+                        if !pending.is_zero() {
+                            if !this_l
+                                .ledger
+                                .any()
+                                .block_exists_or_pruned(&this_l.ledger.read_txn(), &pending)
                             {
-                                this_l.pull_blocks.fetch_add(1, Ordering::SeqCst);
-                                {
-                                    if !pending.is_zero() {
-                                        if !this_l.ledger.any().block_exists_or_pruned(
-                                            &this_l.ledger.read_txn(),
-                                            &pending,
-                                        ) {
-                                            this_l.bootstrap_initiator.bootstrap_lazy(
-                                                pending.into(),
-                                                false,
-                                                "".to_string(),
-                                            );
-                                        }
-                                    }
-                                }
-                                this_l.receive_pending();
-                            } else {
-                                this_l.attempt.requeue_pending(this_l.account);
+                                this_l.bootstrap_initiator.bootstrap_lazy(
+                                    pending.into(),
+                                    false,
+                                    "".to_string(),
+                                );
                             }
-                        } else {
-                            this_l.connections.pool_connection(
-                                Arc::clone(&this_l.connection),
-                                false,
-                                false,
-                            );
                         }
-                    } else {
-                        debug!("Error while receiving bulk pull account frontier: {:?}", ec);
-                        this_l.attempt.requeue_pending(this_l.account);
                     }
-                } else {
-                    debug!("Invalid size: Expected {}, got: {}", size_l, size);
-                    this_l.attempt.requeue_pending(this_l.account);
-                }
-            }),
-        );
+                    let runtime = this_l.runtime.clone();
+                    runtime
+                        .tokio
+                        .spawn(async move { this_l.receive_pending().await });
+                }));
+            } else {
+                self.attempt.requeue_pending(self.account);
+            }
+        } else {
+            self.connections
+                .pool_connection(Arc::clone(&self.connection), false, false);
+        }
     }
 }

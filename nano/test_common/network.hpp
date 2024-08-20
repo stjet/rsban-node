@@ -7,12 +7,6 @@ namespace nano
 {
 class node;
 
-namespace transport
-{
-	class channel;
-	class channel_tcp;
-}
-
 namespace test
 {
 	class system;

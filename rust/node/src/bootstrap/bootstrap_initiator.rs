@@ -8,7 +8,7 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{Network, OutboundBandwidthLimiter},
+    transport::{MessagePublisher, Network},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
@@ -16,7 +16,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
-    Account, Amount, HashOrAccount, Networks, XRB_RATIO,
+    Account, Amount, HashOrAccount, Networks, ACTIVE_NETWORK, XRB_RATIO,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
@@ -52,9 +52,11 @@ pub struct BootstrapInitiatorConfig {
     pub receive_minimum: Amount,
 }
 
-impl Default for BootstrapInitiatorConfig {
-    fn default() -> Self {
+impl BootstrapInitiatorConfig {
+    pub fn default_for(network: Networks) -> Self {
         Self {
+            work_thresholds: WorkThresholds::default_for(network),
+            protocol: ProtocolInfo::default_for(network),
             bootstrap_connections: 4,
             bootstrap_connections_max: 64,
             tcp_io_timeout: Duration::from_secs(15),
@@ -63,15 +65,19 @@ impl Default for BootstrapInitiatorConfig {
             disable_legacy_bootstrap: false,
             idle_timeout: Duration::from_secs(120),
             lazy_max_pull_blocks: 512,
-            work_thresholds: Default::default(),
             lazy_retry_limit: 64,
-            protocol: Default::default(),
             frontier_request_count: 1024 * 1024,
             frontier_retry_limit: 16,
             disable_bulk_push_client: false,
             bootstrap_initiator_threads: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
         }
+    }
+}
+
+impl Default for BootstrapInitiatorConfig {
+    fn default() -> Self {
+        Self::default_for(ACTIVE_NETWORK.lock().unwrap().clone())
     }
 }
 
@@ -102,6 +108,7 @@ pub struct BootstrapInitiator {
     flags: NodeFlags,
     network: Arc<Network>,
     workers: Arc<dyn ThreadPool>,
+    runtime: Arc<AsyncRuntime>,
 }
 
 impl BootstrapInitiator {
@@ -109,14 +116,14 @@ impl BootstrapInitiator {
         config: BootstrapInitiatorConfig,
         flags: NodeFlags,
         network: Arc<Network>,
-        async_rt: Arc<AsyncRuntime>,
+        runtime: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
         stats: Arc<Stats>,
-        outbound_limiter: Arc<OutboundBandwidthLimiter>,
         block_processor: Arc<BlockProcessor>,
         websocket: Option<Arc<WebsocketListener>>,
         ledger: Arc<Ledger>,
+        message_publisher: MessagePublisher,
     ) -> Self {
         let attempts = Arc::new(Mutex::new(BootstrapAttempts::new()));
         let cache = Arc::new(Mutex::new(PullsCache::new()));
@@ -138,16 +145,17 @@ impl BootstrapInitiator {
             flags: flags.clone(),
             network: Arc::clone(&network),
             workers: Arc::clone(&workers),
+            runtime: runtime.clone(),
             connections: Arc::new(BootstrapConnections::new(
                 attempts,
                 config,
                 network,
-                async_rt,
+                runtime,
                 workers,
                 stats,
-                outbound_limiter,
                 block_processor,
                 cache,
+                message_publisher,
             )),
         }
     }
@@ -172,6 +180,7 @@ impl BootstrapInitiator {
             flags: NodeFlags::default(),
             network: Arc::new(Network::new_null()),
             workers: Arc::new(ThreadPoolImpl::new_test_instance()),
+            runtime: Arc::new(AsyncRuntime::default()),
         }
     }
 
@@ -345,13 +354,14 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.websocket.as_ref().cloned(),
                     Arc::downgrade(&self.block_processor),
                     self_w,
-                    Arc::clone(&self.ledger),
+                    self.ledger.clone(),
                     self.workers.clone(),
                     id_a,
                     incremental_id as u64,
-                    Arc::clone(&self.connections),
+                    self.connections.clone(),
                     (&self.config).into(),
-                    Arc::clone(&self.stats),
+                    self.stats.clone(),
+                    self.runtime.clone(),
                     frontiers_age_a,
                     start_account_a,
                 )
@@ -368,7 +378,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
         }
     }
 
-    fn bootstrap2(&self, endpoint_a: SocketAddrV6, id_a: String) {
+    fn bootstrap2(&self, remote_addr: SocketAddrV6, id_a: String) {
         if !self.stopped.load(Ordering::SeqCst) {
             self.stop_attempts();
             self.stats
@@ -388,6 +398,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.connections.clone(),
                     (&self.config).into(),
                     self.stats.clone(),
+                    self.runtime.clone(),
                     u32::MAX,
                     Account::zero(),
                 )
@@ -398,14 +409,16 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .attempts_list
                 .insert(incremental_id, Arc::clone(&attempt));
             self.attempts.lock().unwrap().add(attempt);
-            if !self.network.is_excluded(&endpoint_a) {
-                self.connections.add_connection(endpoint_a);
+            if !self.network.is_excluded(&remote_addr) {
+                self.runtime
+                    .tokio
+                    .block_on(self.connections.add_connection(remote_addr));
             }
         }
         self.condition.notify_all();
     }
 
-    fn bootstrap_lazy(&self, hash_or_account_a: HashOrAccount, force: bool, id_a: String) -> bool {
+    fn bootstrap_lazy(&self, hash_or_account: HashOrAccount, force: bool, id: String) -> bool {
         let mut key_inserted = false;
         let lazy_attempt = self.current_lazy_attempt();
         if lazy_attempt.is_none() || force {
@@ -422,22 +435,26 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 && guard.find_attempt(BootstrapMode::Lazy).is_none()
             {
                 let incremental_id = self.attempts.lock().unwrap().get_incremental_id();
+
+                let bootstrap_id = if id.is_empty() {
+                    hash_or_account.to_string()
+                } else {
+                    id
+                };
+
                 let lazy_attempt = BootstrapAttemptLazy::new(
                     self.websocket.clone(),
-                    Arc::clone(&self.block_processor),
+                    self.block_processor.clone(),
                     Arc::downgrade(self),
-                    Arc::clone(&self.ledger),
-                    if id_a.is_empty() {
-                        hash_or_account_a.to_string()
-                    } else {
-                        id_a
-                    },
+                    self.ledger.clone(),
+                    bootstrap_id,
                     incremental_id as u64,
                     self.flags.clone(),
-                    Arc::clone(&self.connections),
+                    self.connections.clone(),
                     self.network_params.clone(),
                 )
                 .unwrap();
+
                 let attempt = Arc::new(BootstrapStrategy::Lazy(lazy_attempt));
                 guard
                     .attempts_list
@@ -447,14 +464,14 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 let BootstrapStrategy::Lazy(lazy) = &*attempt else {
                     unreachable!()
                 };
-                key_inserted = lazy.lazy_start(&hash_or_account_a);
+                key_inserted = lazy.lazy_start(&hash_or_account);
             }
         } else {
             let lazy_attempt = lazy_attempt.unwrap();
             let BootstrapStrategy::Lazy(lazy) = &*lazy_attempt else {
                 unreachable!()
             };
-            key_inserted = lazy.lazy_start(&hash_or_account_a);
+            key_inserted = lazy.lazy_start(&hash_or_account);
         }
         self.condition.notify_all();
         key_inserted
@@ -479,15 +496,16 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
             let wallet_attempt = Arc::new(
                 BootstrapAttemptWallet::new(
                     self.websocket.clone(),
-                    Arc::clone(&self.block_processor),
+                    self.block_processor.clone(),
                     Arc::clone(self),
-                    Arc::clone(&self.ledger),
+                    self.ledger.clone(),
                     id,
                     incremental_id as u64,
-                    Arc::clone(&self.connections),
-                    Arc::clone(&self.workers),
+                    self.connections.clone(),
+                    self.workers.clone(),
                     self.config.receive_minimum,
-                    Arc::clone(&self.stats),
+                    self.stats.clone(),
+                    self.runtime.clone(),
                 )
                 .unwrap(),
             );

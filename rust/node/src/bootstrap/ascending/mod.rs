@@ -17,7 +17,9 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BandwidthLimiter, BufferDropPolicy, ChannelEnum, Network, TrafficType},
+    transport::{
+        BandwidthLimiter, Channel, ChannelId, DropPolicy, MessagePublisher, Network, TrafficType,
+    },
 };
 pub use account_sets::AccountSetsConfig;
 use num::integer::sqrt;
@@ -49,6 +51,7 @@ pub struct BootstrapAscending {
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
     network: Arc<Network>,
+    message_publisher: Mutex<MessagePublisher>,
     thread: Mutex<Option<JoinHandle<()>>>,
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
     mutex: Mutex<BootstrapAscendingImpl>,
@@ -60,11 +63,12 @@ pub struct BootstrapAscending {
 }
 
 impl BootstrapAscending {
-    pub fn new(
+    pub(crate) fn new(
         block_processor: Arc<BlockProcessor>,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
         network: Arc<Network>,
+        message_publisher: MessagePublisher,
         config: BootstrapAscendingConfig,
     ) -> Self {
         Self {
@@ -85,6 +89,7 @@ impl BootstrapAscending {
             stats,
             network,
             ledger,
+            message_publisher: Mutex::new(message_publisher),
         }
     }
 
@@ -99,7 +104,7 @@ impl BootstrapAscending {
         }
     }
 
-    fn send(&self, channel: &Arc<ChannelEnum>, tag: AsyncTag) {
+    fn send(&self, channel: &Arc<Channel>, tag: AsyncTag) {
         debug_assert!(matches!(
             tag.query_type,
             QueryType::BlocksByHash | QueryType::BlocksByAccount
@@ -126,10 +131,10 @@ impl BootstrapAscending {
         );
 
         // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        channel.send(
+        self.message_publisher.lock().unwrap().try_send(
+            channel.channel_id(),
             &request,
-            None,
-            BufferDropPolicy::Limiter,
+            DropPolicy::CanDrop,
             TrafficType::Bootstrap,
         );
     }
@@ -160,7 +165,7 @@ impl BootstrapAscending {
         }
     }
 
-    fn wait_available_channel(&self) -> Option<Arc<ChannelEnum>> {
+    fn wait_available_channel(&self) -> Option<Arc<Channel>> {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             let channel = guard.scoring.channel();
@@ -184,7 +189,7 @@ impl BootstrapAscending {
         while !guard.stopped {
             let account = guard.available_account(&self.stats, &self.database_limiter);
             if !account.is_zero() {
-                guard.accounts.timestamp(&account, false);
+                guard.accounts.timestamp_set(&account);
                 return account;
             } else {
                 guard = self
@@ -198,7 +203,7 @@ impl BootstrapAscending {
         Account::zero()
     }
 
-    fn request(&self, account: Account, channel: &Arc<ChannelEnum>) -> bool {
+    fn request(&self, account: Account, channel: &Arc<Channel>) -> bool {
         let info = {
             let tx = self.ledger.read_txn();
             self.ledger.store.account.get(&tx, &account)
@@ -213,7 +218,7 @@ impl BootstrapAscending {
         let tag = AsyncTag {
             id: thread_rng().next_u64(),
             account,
-            time: Instant::now(),
+            timestamp: Instant::now(),
             query_type,
             start,
         };
@@ -273,13 +278,14 @@ impl BootstrapAscending {
     fn run_timeouts(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
-            guard.scoring.sync(&self.network.list_channels(0));
+            guard.scoring.sync(&self.network.list_realtime_channels(0));
             guard.scoring.timeout();
             guard
                 .throttle
                 .resize(compute_throttle_size(&self.ledger, &self.config));
+
             while let Some(front) = guard.tags.front() {
-                if front.time.elapsed() <= self.config.timeout {
+                if front.timestamp.elapsed() <= self.config.request_timeout {
                     break;
                 }
 
@@ -296,17 +302,18 @@ impl BootstrapAscending {
     }
 
     /// Process `asc_pull_ack` message coming from network
-    pub fn process(&self, message: &AscPullAck, channel: &Arc<ChannelEnum>) {
+    pub fn process(&self, message: &AscPullAck, channel: &Arc<Channel>) {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag
         if let Some(tag) = guard.tags.remove(message.id) {
             self.stats
                 .inc(StatType::BootstrapAscending, DetailType::Reply);
+
             self.stats.sample(
                 Sample::BootstrapTagDuration,
-                tag.time.elapsed().as_millis() as i64,
-                (0, self.config.timeout.as_millis() as i64),
+                tag.timestamp.elapsed().as_millis() as i64,
+                (0, self.config.request_timeout.as_millis() as i64),
             );
 
             guard.scoring.received_message(channel);
@@ -340,8 +347,11 @@ impl BootstrapAscending {
                 );
 
                 for block in response.blocks() {
-                    self.block_processor
-                        .add(Arc::new(block.clone()), BlockSource::Bootstrap, None);
+                    self.block_processor.add(
+                        Arc::new(block.clone()),
+                        BlockSource::Bootstrap,
+                        ChannelId::LOOPBACK,
+                    );
                 }
                 let mut guard = self.mutex.lock().unwrap();
                 guard.throttle.add(true);
@@ -532,8 +542,7 @@ impl BootstrapAscendingImpl {
                 // If we've inserted any block in to an account, unmark it as blocked
                 self.accounts.unblock(account, None);
                 self.accounts.priority_up(&account);
-                self.accounts
-                    .timestamp(&account, /* reset timestamp */ true);
+                self.accounts.timestamp_reset(&account);
 
                 if block.is_send() {
                     let destination = block.destination().unwrap();
@@ -602,7 +611,7 @@ pub struct BootstrapAscendingConfig {
     pub requests_limit: usize,
     pub database_requests_limit: usize,
     pub pull_count: usize,
-    pub timeout: Duration,
+    pub request_timeout: Duration,
     pub throttle_coefficient: usize,
     pub throttle_wait: Duration,
     pub account_sets: AccountSetsConfig,
@@ -617,7 +626,7 @@ impl Default for BootstrapAscendingConfig {
             requests_limit: 64,
             database_requests_limit: 1024,
             pull_count: BlocksAckPayload::MAX_BLOCKS,
-            timeout: Duration::from_secs(3),
+            request_timeout: Duration::from_secs(3),
             throttle_coefficient: 16,
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),

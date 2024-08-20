@@ -58,9 +58,6 @@ add_library(
   memory.cpp
   numbers.hpp
   numbers.cpp
-  object_stream.hpp
-  object_stream.cpp
-  object_stream_adapters.hpp
   observer_set.hpp
   relaxed_atomic.hpp
   rpc_handler_interface.hpp

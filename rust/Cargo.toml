@@ -1,14 +1,15 @@
 [workspace]
 members = [
-	"core",
-	"messages",
-	"store_lmdb",
-	"ledger",
-	"node",
-	"ffi",
-	"main",
-	"rpc",
-	"tools/load_test",
-	"tools/xtask", "rpc",
+    "core",
+    "messages",
+    "store_lmdb",
+    "ledger",
+    "node",
+    "ffi",
+    "main",
+    "tools/load_test",
+    "tools/xtask",
+    "tools/test_helpers",
+    "rpc",
 ]
 resolver = "2"

@@ -3,8 +3,6 @@
 #include <nano/lib/errors.hpp>
 #include <nano/lib/locks.hpp>
 #include <nano/lib/timer.hpp>
-#include <nano/node/transport/channel.hpp>
-#include <nano/node/transport/fake.hpp>
 #include <nano/node/transport/transport.hpp>
 #include <nano/secure/account_info.hpp>
 
@@ -391,10 +389,6 @@ namespace test
 	 * Converts list of blocks to list of hashes
 	 */
 	std::vector<nano::block_hash> blocks_to_hashes (std::vector<std::shared_ptr<nano::block>> blocks);
-	/*
-	 * Creates a new fake channel associated with `node`
-	 */
-	std::shared_ptr<nano::transport::fake::channel> fake_channel (nano::node & node, nano::account node_id = { 0 });
 	/*
 	 * Start an election on system system_a, node node_a and hash hash_a by reading the block
 	 * out of the ledger and adding it to the manual election scheduler queue.

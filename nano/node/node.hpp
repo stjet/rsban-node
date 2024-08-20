@@ -9,7 +9,6 @@
 #include <nano/lib/work.hpp>
 #include <nano/node/active_elections.hpp>
 #include <nano/node/backlog_population.hpp>
-#include <nano/node/bandwidth_limiter.hpp>
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
@@ -24,7 +23,6 @@
 #include <nano/node/repcrawler.hpp>
 #include <nano/node/request_aggregator.hpp>
 #include <nano/node/telemetry.hpp>
-#include <nano/node/transport/tcp_server.hpp>
 #include <nano/node/unchecked_map.hpp>
 #include <nano/node/vote_cache.hpp>
 #include <nano/node/vote_processor.hpp>
@@ -122,6 +120,7 @@ public:
 	nano::amount get_rep_weight (nano::account const & account);
 	std::unordered_map<nano::account, nano::uint128_t> get_rep_weights () const;
 	nano::ConfirmationQuorum quorum () const;
+	std::optional<nano::endpoint> find_endpoint_for_node_id (nano::account const & node_id);
 
 public:
 	nano::keypair node_id;
@@ -132,28 +131,22 @@ public:
 	std::shared_ptr<nano::logger> logger;
 	std::shared_ptr<nano::stats> stats;
 	std::shared_ptr<nano::thread_pool> workers;
-	std::shared_ptr<nano::thread_pool> bootstrap_workers;
 	nano::node_flags flags;
 	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
 	nano::store::lmdb::component store;
 	nano::unchecked_map unchecked;
 	nano::ledger ledger;
-	nano::outbound_bandwidth_limiter outbound_limiter;
 	std::shared_ptr<nano::network> network;
 	std::shared_ptr<nano::telemetry> telemetry;
-	nano::bootstrap_server bootstrap_server;
 	std::filesystem::path application_path;
 	nano::representative_register representative_register;
 	nano::rep_tiers rep_tiers;
-	nano::vote_processor_queue vote_processor_queue;
 	nano::local_vote_history history;
 	nano::confirming_set confirming_set;
-	nano::vote_cache vote_cache;
 	nano::block_processor block_processor;
 	nano::wallets wallets;
 	nano::active_elections active;
-	nano::vote_processor vote_processor;
 	nano::websocket_server websocket;
 	nano::bootstrap_initiator bootstrap_initiator;
 	nano::rep_crawler rep_crawler;
@@ -164,9 +157,7 @@ private: // Placed here to maintain initialization order
 
 public:
 	nano::scheduler::component & scheduler;
-	nano::request_aggregator aggregator;
 	nano::backlog_population backlog;
-	nano::network_threads network_threads;
 
 	std::chrono::steady_clock::time_point const startup_time;
 	// For tests only

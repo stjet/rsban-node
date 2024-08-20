@@ -1,5 +1,5 @@
 use super::BootstrapAscendingConfig;
-use crate::transport::{ChannelEnum, ChannelId, TrafficType};
+use crate::transport::{Channel, ChannelId, TrafficType};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Weak},
@@ -19,7 +19,7 @@ impl PeerScoring {
         }
     }
 
-    pub fn received_message(&mut self, channel: &Arc<ChannelEnum>) {
+    pub fn received_message(&mut self, channel: &Arc<Channel>) {
         self.scoring.modify(channel.channel_id(), |i| {
             if i.outstanding > 1 {
                 i.outstanding -= 1;
@@ -28,7 +28,7 @@ impl PeerScoring {
         })
     }
 
-    pub fn channel(&mut self) -> Option<Arc<ChannelEnum>> {
+    pub fn channel(&mut self) -> Option<Arc<Channel>> {
         if let Some(channel) = self.get_next_channel() {
             self.scoring.modify(channel.channel_id(), |i| {
                 i.outstanding += 1;
@@ -40,10 +40,10 @@ impl PeerScoring {
         }
     }
 
-    fn get_next_channel(&self) -> Option<Arc<ChannelEnum>> {
+    fn get_next_channel(&self) -> Option<Arc<Channel>> {
         self.scoring.iter_by_outstanding().find_map(|score| {
             if let Some(channel) = score.channel.upgrade() {
-                if !channel.max(TrafficType::Generic)
+                if !channel.is_queue_full(TrafficType::Generic)
                     && score.outstanding < self.config.requests_limit
                 {
                     return Some(channel);
@@ -62,11 +62,11 @@ impl PeerScoring {
         self.scoring.modify_all(|i| i.decay());
     }
 
-    pub fn sync(&mut self, channels: &[Arc<ChannelEnum>]) {
+    pub fn sync(&mut self, channels: &[Arc<Channel>]) {
         for channel in channels {
-            if channel.network_version() >= self.config.min_protocol_version {
+            if channel.protocol_version() >= self.config.min_protocol_version {
                 if !self.scoring.contains(channel.channel_id()) {
-                    if !channel.max(TrafficType::Bootstrap) {
+                    if !channel.is_queue_full(TrafficType::Bootstrap) {
                         self.scoring.insert(PeerScore::new(channel));
                     }
                 }
@@ -77,7 +77,7 @@ impl PeerScoring {
 
 struct PeerScore {
     channel_id: ChannelId,
-    channel: Weak<ChannelEnum>,
+    channel: Weak<Channel>,
     /// Number of outstanding requests to a peer
     outstanding: usize,
     request_count_total: usize,
@@ -85,7 +85,7 @@ struct PeerScore {
 }
 
 impl PeerScore {
-    fn new(channel: &Arc<ChannelEnum>) -> Self {
+    fn new(channel: &Arc<Channel>) -> Self {
         Self {
             channel_id: channel.channel_id(),
             channel: Arc::downgrade(channel),

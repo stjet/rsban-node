@@ -1,7 +1,7 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::PeeredRep,
-    transport::{BufferDropPolicy, ChannelId, Network, TrafficType},
+    transport::{ChannelId, DropPolicy, MessagePublisher, Network, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
@@ -28,10 +28,15 @@ pub struct ConfirmationSolicitor<'a> {
     channels: HashSet<ChannelId>,
     prepared: bool,
     rebroadcasted: usize,
+    message_publisher: MessagePublisher,
 }
 
 impl<'a> ConfirmationSolicitor<'a> {
-    pub fn new(network_params: &NetworkParams, network: &'a Network) -> Self {
+    pub fn new(
+        network_params: &NetworkParams,
+        network: &'a Network,
+        message_publisher: MessagePublisher,
+    ) -> Self {
         Self {
             network,
             max_block_broadcasts: if network_params.network.is_dev_network() {
@@ -47,6 +52,7 @@ impl<'a> ConfirmationSolicitor<'a> {
             requests: HashMap::new(),
             channels: HashSet::new(),
             rebroadcasted: 0,
+            message_publisher,
         }
     }
 
@@ -84,18 +90,17 @@ impl<'a> ConfirmationSolicitor<'a> {
                 true
             };
             if should_broadcast {
-                self.network.send(
+                self.message_publisher.try_send(
                     i.channel_id,
                     &winner,
-                    None,
-                    BufferDropPolicy::Limiter,
+                    DropPolicy::CanDrop,
                     TrafficType::Generic,
-                )
+                );
             }
         }
         // Random flood for block propagation
-        self.network
-            .flood_message2(&winner, BufferDropPolicy::Limiter, 0.5);
+        self.message_publisher
+            .flood(&winner, DropPolicy::CanDrop, 0.5);
         Ok(())
     }
 
@@ -127,7 +132,10 @@ impl<'a> ConfirmationSolicitor<'a> {
             if !exists || !is_final || different {
                 let request_queue = self.requests.entry(rep.channel_id).or_default();
                 self.channels.insert(rep.channel_id);
-                if !self.network.max(rep.channel_id, TrafficType::Generic) {
+                if !self
+                    .network
+                    .is_queue_full(rep.channel_id, TrafficType::Generic)
+                {
                     request_queue.push((winner.hash(), winner.root()));
                     if !different {
                         count += 1;
@@ -160,11 +168,10 @@ impl<'a> ConfirmationSolicitor<'a> {
                     roots_hashes.push(root_hash.clone());
                     if roots_hashes.len() == ConfirmReq::HASHES_MAX {
                         let req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
-                        self.network.send(
+                        self.message_publisher.try_send(
                             *channel_id,
                             &req,
-                            None,
-                            BufferDropPolicy::Limiter,
+                            DropPolicy::CanDrop,
                             TrafficType::Generic,
                         );
                         roots_hashes = Vec::new();
@@ -173,11 +180,10 @@ impl<'a> ConfirmationSolicitor<'a> {
             }
             if !roots_hashes.is_empty() {
                 let req = Message::ConfirmReq(ConfirmReq::new(roots_hashes));
-                self.network.send(
+                self.message_publisher.try_send(
                     *channel_id,
                     &req,
-                    None,
-                    BufferDropPolicy::Limiter,
+                    DropPolicy::CanDrop,
                     TrafficType::Generic,
                 );
             }

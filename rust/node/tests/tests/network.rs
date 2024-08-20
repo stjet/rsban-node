@@ -1,14 +1,18 @@
-use crate::tests::helpers::assert_timely;
-
-use super::helpers::{assert_timely_eq, establish_tcp, System};
-use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{Keepalive, Message, Publish};
+use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
-    transport::{BufferDropPolicy, ChannelMode, TrafficType},
+    transport::{ChannelMode, DropPolicy, TrafficType},
 };
-use std::time::{Duration, SystemTime};
+use std::{
+    ops::Deref,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
+use test_helpers::{
+    assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel, start_election, System,
+};
 
 #[test]
 fn last_contacted() {
@@ -38,8 +42,8 @@ fn last_contacted() {
         .unwrap();
 
     // check that the endpoints are part of the same connection
-    assert_eq!(channel0.local_addr(), channel1.remote_addr());
-    assert_eq!(channel1.local_addr(), channel0.remote_addr());
+    assert_eq!(channel0.local_addr(), channel1.peer_addr());
+    assert_eq!(channel1.local_addr(), channel0.peer_addr());
 
     // capture the state before and ensure the clock ticks at least once
     let timestamp_before_keepalive = channel0.get_last_packet_received();
@@ -47,7 +51,7 @@ fn last_contacted() {
         node0
             .stats
             .count(StatType::Message, DetailType::Keepalive, Direction::In);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || SystemTime::now() > timestamp_before_keepalive,
         "clock did not advance",
@@ -58,26 +62,27 @@ fn last_contacted() {
     // and we need one more keepalive to handle the possibility that there is a keepalive already in flight when we start the crucial part of the test
     // it is possible that there could be multiple keepalives in flight but we assume here that there will be no more than one in flight for the purposes of this test
     let keepalive = Message::Keepalive(Keepalive::default());
-    channel1.send(
+    let mut publisher = node0.message_publisher.lock().unwrap();
+    publisher.try_send(
+        channel1.channel_id(),
         &keepalive,
-        None,
-        BufferDropPolicy::NoLimiterDrop,
+        DropPolicy::ShouldNotDrop,
         TrafficType::Generic,
     );
-    channel1.send(
+    publisher.try_send(
+        channel1.channel_id(),
         &keepalive,
-        None,
-        BufferDropPolicy::NoLimiterDrop,
+        DropPolicy::ShouldNotDrop,
         TrafficType::Generic,
     );
-    channel1.send(
+    publisher.try_send(
+        channel1.channel_id(),
         &keepalive,
-        None,
-        BufferDropPolicy::NoLimiterDrop,
+        DropPolicy::ShouldNotDrop,
         TrafficType::Generic,
     );
 
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(3),
         || {
             node0
@@ -93,7 +98,6 @@ fn last_contacted() {
 }
 
 #[test]
-#[ignore = "todo"]
 fn send_discarded_publish() {
     let mut system = System::new();
     let node1 = system.make_node();
@@ -101,21 +105,23 @@ fn send_discarded_publish() {
 
     let block = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
-        999.into(),
-        *DEV_GENESIS_ACCOUNT,
-        Amount::MAX - Amount::nano(100),
-        Account::from(123).into(),
+        2.into(),
+        3.into(),
+        Amount::MAX,
+        4.into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(2.into()),
     ));
 
-    node1
-        .network
-        .flood_message(&Message::Publish(Publish::new_forward(block)), 1.0);
+    node1.message_publisher.lock().unwrap().flood(
+        &Message::Publish(Publish::new_forward(block)),
+        DropPolicy::ShouldNotDrop,
+        1.0,
+    );
 
     assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
     assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
-    assert_timely(
+    assert_timely_msg(
         Duration::from_secs(10),
         || {
             node2
@@ -127,4 +133,63 @@ fn send_discarded_publish() {
     );
     assert_eq!(node1.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
     assert_eq!(node2.latest(&DEV_GENESIS_ACCOUNT), *DEV_GENESIS_HASH);
+}
+
+#[test]
+fn receivable_processor_confirm_insufficient_pos() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        Account::zero().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1.process(send1.clone()).unwrap();
+    let election = start_election(&node1, &send1.hash());
+
+    let key1 = KeyPair::new();
+    let vote = Arc::new(Vote::new_final(&key1, vec![send1.hash()]));
+    let channel = make_fake_channel(&node1);
+    let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
+        vote.deref().clone(),
+    ));
+    assert_eq!(1, election.vote_count());
+
+    node1.inbound_message_queue.put(con1, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2);
+}
+
+#[test]
+fn receivable_processor_confirm_sufficient_pos() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::MAX - Amount::raw(1),
+        Account::zero().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node1.process(send1.clone()).unwrap();
+    let election = start_election(&node1, &send1.hash());
+
+    let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
+    let channel = make_fake_channel(&node1);
+    let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
+        vote.deref().clone(),
+    ));
+    assert_eq!(1, election.vote_count());
+
+    node1.inbound_message_queue.put(con1, channel);
+
+    assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2);
 }

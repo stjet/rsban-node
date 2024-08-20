@@ -46,13 +46,13 @@ nano::test::system::system (nano::work_generation work_gen) :
 	}
 }
 
-nano::test::system::system (uint16_t count_a, nano::transport::transport_type type_a, nano::node_flags flags_a) :
+nano::test::system::system (uint16_t count_a, nano::node_flags flags_a) :
 	system ()
 {
 	nodes.reserve (count_a);
 	for (uint16_t i (0); i < count_a; ++i)
 	{
-		add_node (default_config (), flags_a, type_a);
+		add_node (default_config (), flags_a);
 	}
 }
 
@@ -81,13 +81,13 @@ nano::node & nano::test::system::node (std::size_t index) const
 	return *nodes[index];
 }
 
-std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_flags node_flags_a, nano::transport::transport_type type_a)
+std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_flags node_flags_a)
 {
-	return add_node (default_config (), node_flags_a, type_a);
+	return add_node (default_config (), node_flags_a);
 }
 
 /** Returns the node added. */
-std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config const & node_config_a, nano::node_flags node_flags_a, nano::transport::transport_type type_a, std::optional<nano::keypair> const & rep)
+std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config const & node_config_a, nano::node_flags node_flags_a, std::optional<nano::keypair> const & rep)
 {
 	auto node (std::make_shared<nano::node> (async_rt, nano::unique_path (), node_config_a, work, node_flags_a, node_sequence++));
 	for (auto i : initialization_blocks)
@@ -121,12 +121,11 @@ std::shared_ptr<nano::node> nano::test::system::add_node (nano::node_config cons
 			auto node2 (*j);
 
 			// TCP is the only transport layer available.
-			debug_assert (type_a == nano::transport::transport_type::tcp);
 			(*j)->network->merge_peer ((*i)->network->endpoint ());
 
 			auto ec = poll_until_true (5s, [&node1, &node2] () {
-				bool result_1 = node1->network->find_node_id (node2->node_id.pub) != nullptr;
-				bool result_2 = node2->network->find_node_id (node1->node_id.pub) != nullptr;
+				bool result_1 = node1->find_endpoint_for_node_id (node2->node_id.pub).has_value ();
+				bool result_2 = node2->find_endpoint_for_node_id (node1->node_id.pub).has_value ();
 				return result_1 && result_2;
 			});
 			debug_assert (!ec);

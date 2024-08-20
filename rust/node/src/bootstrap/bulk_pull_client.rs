@@ -14,9 +14,10 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BlockDeserializer, BufferDropPolicy, TrafficType},
-    utils::{AsyncRuntime, ErrorCode, ThreadPool},
+    transport::read_block,
+    utils::{AsyncRuntime, ThreadPool},
 };
+use async_trait::async_trait;
 use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
 use rsnano_messages::{BulkPull, Message};
 use tracing::{debug, trace};
@@ -29,10 +30,10 @@ pub struct BulkPullClient {
     connection: Arc<BootstrapClient>,
     attempt: Arc<BootstrapStrategy>,
     stats: Arc<Stats>,
+    runtime: Arc<AsyncRuntime>,
     network_error: AtomicBool,
     block_processor: Arc<BlockProcessor>,
     workers: Arc<dyn ThreadPool>,
-    block_deserializer: BlockDeserializer,
     /// Tracks the number of blocks successfully deserialized
     pull_blocks: AtomicU64,
     connections: Arc<BootstrapConnections>,
@@ -61,7 +62,7 @@ impl BulkPullClient {
         connection: Arc<BootstrapClient>,
         attempt: Arc<BootstrapStrategy>,
         workers: Arc<dyn ThreadPool>,
-        async_rt: Arc<AsyncRuntime>,
+        runtime: Arc<AsyncRuntime>,
         connections: Arc<BootstrapConnections>,
         bootstrap_initiator: Arc<BootstrapInitiator>,
         pull: PullInfo,
@@ -74,8 +75,8 @@ impl BulkPullClient {
             stats,
             network_error: AtomicBool::new(false),
             block_processor,
+            runtime,
             workers,
-            block_deserializer: BlockDeserializer::new(async_rt),
             pull_blocks: AtomicU64::new(0),
             connections,
             config,
@@ -116,13 +117,14 @@ impl Drop for BulkPullClient {
     }
 }
 
+#[async_trait]
 pub trait BulkPullClientExt {
     fn request(&self);
-    fn throttled_receive_block(&self);
-    fn receive_block(&self);
-    fn received_block(&self, ec: ErrorCode, block: Option<BlockEnum>);
+    async fn throttled_receive_block(&self);
+    fn received_block(&self, block: Option<BlockEnum>);
 }
 
+#[async_trait]
 impl BulkPullClientExt for Arc<BulkPullClient> {
     fn request(&self) {
         debug_assert!(
@@ -152,16 +154,20 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         }
 
         let self_clone = Arc::clone(self);
-        self.connection.send(
-            &Message::BulkPull(payload),
-            Some(Box::new(move |ec, _len| {
-                if ec.is_ok() {
-                    self_clone.throttled_receive_block();
-                } else {
+        self.runtime.tokio.spawn(async move {
+            match self_clone
+                .connection
+                .send(&Message::BulkPull(payload))
+                .await
+            {
+                Ok(()) => {
+                    self_clone.throttled_receive_block().await;
+                }
+                Err(e) => {
                     debug!(
                         "Error sending bulk pull request to: {} ({:?})",
                         self_clone.connection.channel_string(),
-                        ec
+                        e
                     );
                     self_clone.stats.inc_dir(
                         StatType::Bootstrap,
@@ -169,45 +175,37 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
                         Direction::In,
                     );
                 }
-            })),
-            BufferDropPolicy::NoLimiterDrop,
-            TrafficType::Generic,
-        );
+            }
+        });
     }
 
-    fn throttled_receive_block(&self) {
+    async fn throttled_receive_block(&self) {
         debug_assert!(!self.network_error.load(Ordering::Relaxed));
         if self.block_processor.queue_len(BlockSource::BootstrapLegacy) < 1024 {
-            self.receive_block();
+            let Ok(block) = read_block(self.connection.get_channel()).await else {
+                self.network_error.store(true, Ordering::SeqCst);
+                return;
+            };
+            let self_clone = Arc::clone(self);
+            self.workers
+                .push_task(Box::new(move || self_clone.received_block(block)));
         } else {
             let self_clone = Arc::clone(self);
             self.workers.add_delayed_task(
                 Duration::from_secs(1),
                 Box::new(move || {
                     if !self_clone.connection.pending_stop() && !self_clone.attempt.stopped() {
-                        self_clone.throttled_receive_block();
+                        let runtime = self_clone.runtime.clone();
+                        runtime.tokio.spawn(async move {
+                            self_clone.throttled_receive_block().await;
+                        });
                     }
                 }),
             );
         }
     }
 
-    fn receive_block(&self) {
-        let socket = self.connection.get_socket();
-        let self_clone = Arc::clone(self);
-        self.block_deserializer.read(
-            socket,
-            Box::new(move |ec, block| {
-                self_clone.received_block(ec, block);
-            }),
-        );
-    }
-
-    fn received_block(&self, ec: ErrorCode, block: Option<BlockEnum>) {
-        if ec.is_err() {
-            self.network_error.store(true, Ordering::SeqCst);
-            return;
-        }
+    fn received_block(&self, block: Option<BlockEnum>) {
         let Some(block) = block else {
             // Avoid re-using slow peers, or peers that sent the wrong blocks.
             if !self.connection.pending_stop()
@@ -276,7 +274,10 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             if self.attempt.mode() != BootstrapMode::Legacy
                 || self.unexpected_count.load(Ordering::SeqCst) < 16384
             {
-                self.throttled_receive_block();
+                let self_l = Arc::clone(self);
+                self.runtime.tokio.spawn(async move {
+                    self_l.throttled_receive_block().await;
+                });
             }
         } else if !stop_pull && block_expected {
             self.connections

@@ -38,11 +38,6 @@ nano::telemetry_data nano::telemetry::local_telemetry () const
 	return { rsnano::rsn_telemetry_local_telemetry (handle) };
 }
 
-std::size_t nano::telemetry::size () const
-{
-	return rsnano::rsn_telemetry_len (handle);
-}
-
 std::optional<nano::telemetry_data> nano::telemetry::get_telemetry (const nano::endpoint & endpoint) const
 {
 	auto dto{ rsnano::udp_endpoint_to_dto (endpoint) };

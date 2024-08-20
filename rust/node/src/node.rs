@@ -10,14 +10,13 @@ use crate::{
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        create_loopback_channel, get_bootstrap_weights, log_bootstrap_weights,
-        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
-        ElectionStatusType, HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler,
-        ManualSchedulerExt, OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler,
-        PrioritySchedulerExt, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RecentlyConfirmedCache, RepTiers, RequestAggregator, VoteApplier, VoteBroadcaster,
-        VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt,
-        VoteProcessorQueue, VoteRouter,
+        get_bootstrap_weights, log_bootstrap_weights, AccountBalanceChangedCallback,
+        ActiveElections, ActiveElectionsExt, ElectionEndCallback, ElectionStatusType,
+        HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
+        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
+        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
+        RequestAggregator, VoteApplier, VoteBroadcaster, VoteCache, VoteCacheProcessor,
+        VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -25,15 +24,15 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        BufferDropPolicy, ChannelEnum, InboundCallback, InboundMessageQueue, KeepaliveFactory,
-        MessageProcessor, Network, NetworkFilter, NetworkOptions, NetworkThreads,
-        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
-        TrafficType,
+        ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
+        LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter,
+        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
+        TcpListener, TcpListenerExt, TrafficType,
     },
     utils::{
-        AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
-        TxnTrackingConfig,
+        AsyncRuntime, LongRunningTransactionLogger, SteadyClock, ThreadPool, ThreadPoolImpl,
+        TimerThread, TxnTrackingConfig,
     },
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
@@ -52,7 +51,7 @@ use rsnano_core::{
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
-use rsnano_messages::{ConfirmAck, DeserializedMessage, Message, Publish};
+use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -64,25 +63,25 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
     pub async_rt: Arc<AsyncRuntime>,
     pub application_path: PathBuf,
-    pub relative_time: Instant,
+    pub steady_clock: Arc<SteadyClock>,
     pub node_id: KeyPair,
     pub config: NodeConfig,
-    network_params: NetworkParams,
+    pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
     pub workers: Arc<dyn ThreadPool>,
     pub bootstrap_workers: Arc<dyn ThreadPool>,
     wallet_workers: Arc<dyn ThreadPool>,
     election_workers: Arc<dyn ThreadPool>,
-    flags: NodeFlags,
+    pub flags: NodeFlags,
     work: Arc<WorkPoolImpl>,
     pub distributed_work: Arc<DistributedWorkFactory>,
     pub store: Arc<LmdbStore>,
@@ -93,7 +92,7 @@ pub struct Node {
     pub network: Arc<Network>,
     pub telemetry: Arc<Telemetry>,
     pub bootstrap_server: Arc<BootstrapServer>,
-    pub online_weight_sampler: Arc<OnlineWeightSampler>,
+    online_weight_sampler: Arc<OnlineWeightSampler>,
     pub online_reps: Arc<Mutex<OnlineReps>>,
     pub rep_tiers: Arc<RepTiers>,
     pub vote_processor_queue: Arc<VoteProcessorQueue>,
@@ -111,17 +110,17 @@ pub struct Node {
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
     pub rep_crawler: Arc<RepCrawler>,
     pub tcp_listener: Arc<TcpListener>,
-    pub hinted_scheduler: Arc<HintedScheduler>,
+    hinted_scheduler: Arc<HintedScheduler>,
     pub manual_scheduler: Arc<ManualScheduler>,
-    pub optimistic_scheduler: Arc<OptimisticScheduler>,
+    optimistic_scheduler: Arc<OptimisticScheduler>,
     pub priority_scheduler: Arc<PriorityScheduler>,
     pub request_aggregator: Arc<RequestAggregator>,
     pub backlog_population: Arc<BacklogPopulation>,
-    pub ascendboot: Arc<BootstrapAscending>,
+    ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
-    pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
+    _process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     message_processor: Mutex<MessageProcessor>,
-    pub network_threads: Arc<Mutex<NetworkThreads>>,
+    network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
     pub peer_connector: Arc<PeerConnector>,
     ongoing_bootstrap: Arc<OngoingBootstrap>,
@@ -130,6 +129,8 @@ pub struct Node {
     pub inbound_message_queue: Arc<InboundMessageQueue>,
     monitor: TimerThread<Monitor>,
     stopped: AtomicBool,
+    pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
+                                                         // to keep the weak pointer alive
 }
 
 impl Node {
@@ -142,10 +143,12 @@ impl Node {
         work: Arc<WorkPoolImpl>,
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<
-            dyn Fn(&Arc<Vote>, &Option<Arc<ChannelEnum>>, VoteSource, VoteCode) + Send + Sync,
-        >,
+        on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
     ) -> Self {
+        // Time relative to the start of the node. This makes time exlicit and enables us to
+        // write time relevant unit tests with ease.
+        let steady_clock = Arc::new(SteadyClock::default());
+
         let network_label = network_params.network.get_current_network_as_string();
         let global_config = GlobalConfig {
             node_config: config.clone(),
@@ -226,25 +229,28 @@ impl Node {
             config.bootstrap_serving_threads as usize,
             "Bootstrap work",
         ));
-
-        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
-            config.message_processor.max_queue,
-            stats.clone(),
-        ));
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
             allow_local_peers: config.allow_local_peers,
             tcp_config: config.tcp.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
-            async_rt: async_rt.clone(),
             network_params: network_params.clone(),
             stats: stats.clone(),
-            inbound_queue: inbound_message_queue.clone(),
             port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
+            clock: steady_clock.clone(),
         }));
+
+        let mut dead_channel_cleanup =
+            DeadChannelCleanup::new(network.clone(), network_params.network.cleanup_cutoff());
+
+        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
+            config.message_processor.max_queue,
+            stats.clone(),
+        ));
+        dead_channel_cleanup.add(&inbound_message_queue);
 
         let telemetry_config = TelementryConfig {
             enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
@@ -257,31 +263,10 @@ impl Node {
             flags.disable_block_processor_unchecked_deletion,
         ));
 
-        let telemetry = Arc::new(Telemetry::new(
-            telemetry_config,
-            config.clone(),
-            stats.clone(),
-            ledger.clone(),
-            unchecked.clone(),
-            network_params.clone(),
-            network.clone(),
-            node_id.clone(),
-        ));
-
-        let bootstrap_server = Arc::new(BootstrapServer::new(
-            config.bootstrap_server.clone(),
-            stats.clone(),
-            ledger.clone(),
-        ));
-
         let online_weight_sampler = Arc::new(OnlineWeightSampler::new(
             ledger.clone(),
             network_params.node.max_weight_samples as usize,
         ));
-
-        // Time relative to the start of the node. This makes time exlicit and enables us to
-        // write time relevant unit tests with ease.
-        let relative_time = Instant::now();
 
         let online_reps = Arc::new(Mutex::new(
             OnlineReps::builder()
@@ -291,6 +276,34 @@ impl Node {
                 .trended(online_weight_sampler.calculate_trend())
                 .finish(),
         ));
+        dead_channel_cleanup.add(&online_reps);
+
+        let message_publisher = MessagePublisher::new(
+            online_reps.clone(),
+            network.clone(),
+            stats.clone(),
+            network_params.network.protocol_info(),
+        );
+
+        let telemetry = Arc::new(Telemetry::new(
+            telemetry_config,
+            config.clone(),
+            stats.clone(),
+            ledger.clone(),
+            unchecked.clone(),
+            network_params.clone(),
+            network.clone(),
+            message_publisher.clone(),
+            node_id.clone(),
+        ));
+
+        let bootstrap_server = Arc::new(BootstrapServer::new(
+            config.bootstrap_server.clone(),
+            stats.clone(),
+            ledger.clone(),
+            message_publisher.clone(),
+        ));
+        dead_channel_cleanup.add(&bootstrap_server);
 
         let rep_tiers = Arc::new(RepTiers::new(
             rep_weights.clone(),
@@ -304,6 +317,7 @@ impl Node {
             stats.clone(),
             rep_tiers.clone(),
         ));
+        dead_channel_cleanup.add(&vote_processor_queue);
 
         let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
 
@@ -328,6 +342,7 @@ impl Node {
             unchecked.clone(),
             stats.clone(),
         ));
+        dead_channel_cleanup.add(&block_processor);
 
         let distributed_work =
             Arc::new(DistributedWorkFactory::new(work.clone(), async_rt.clone()));
@@ -357,39 +372,16 @@ impl Node {
                 workers.clone(),
                 block_processor.clone(),
                 online_reps.clone(),
-                network.clone(),
                 confirming_set.clone(),
+                message_publisher.clone(),
             )
             .expect("Could not create wallet"),
         );
         wallets.initialize2();
 
-        let inbound_impl: Arc<
-            RwLock<Box<dyn Fn(DeserializedMessage, Arc<ChannelEnum>) + Send + Sync>>,
-        > = Arc::new(RwLock::new(Box::new(|_msg, _channel| {
-            panic!("inbound callback not set");
-        })));
-        let inbound_impl_clone = inbound_impl.clone();
-        let inbound: InboundCallback =
-            Arc::new(move |msg: DeserializedMessage, channel: Arc<ChannelEnum>| {
-                let cb = inbound_impl_clone.read().unwrap();
-                (*cb)(msg, channel);
-            });
-
-        let loopback_channel = create_loopback_channel(
-            node_id.public_key(),
-            &network,
-            stats.clone(),
-            &network_params,
-            inbound,
-            &async_rt,
-        );
-
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
-            online_reps.clone(),
-            network.clone(),
             vote_processor_queue.clone(),
-            loopback_channel,
+            message_publisher.clone(),
         ));
 
         let vote_generators = Arc::new(VoteGenerators::new(
@@ -400,6 +392,7 @@ impl Node {
             &config,
             &network_params,
             vote_broadcaster,
+            message_publisher.clone(),
         ));
 
         let vote_applier = Arc::new(VoteApplier::new(
@@ -455,7 +448,8 @@ impl Node {
             vote_applier,
             vote_router.clone(),
             vote_cache_processor.clone(),
-            relative_time,
+            steady_clock.clone(),
+            message_publisher.clone(),
         ));
 
         active_elections.initialize();
@@ -476,13 +470,22 @@ impl Node {
             bootstrap_workers.clone(),
             network_params.clone(),
             stats.clone(),
-            outbound_limiter.clone(),
             block_processor.clone(),
             websocket.clone(),
             ledger.clone(),
+            MessagePublisher::new_with_buffer_size(
+                online_reps.clone(),
+                network.clone(),
+                stats.clone(),
+                network_params.network.protocol_info(),
+                512,
+            ),
         ));
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
+
+        let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
+        dead_channel_cleanup.add(&latest_keepalives);
 
         let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
@@ -497,16 +500,14 @@ impl Node {
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             syn_cookies: syn_cookies.clone(),
+            latest_keepalives: latest_keepalives.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
-            config.clone(),
             network.clone(),
             stats.clone(),
             async_rt.clone(),
-            workers.clone(),
-            network_params.clone(),
             response_server_factory.clone(),
         ));
 
@@ -521,7 +522,8 @@ impl Node {
             ledger.clone(),
             active_elections.clone(),
             peer_connector.clone(),
-            relative_time,
+            steady_clock.clone(),
+            message_publisher.clone(),
         ));
 
         // BEWARE: `bootstrap` takes `network.port` instead of `config.peering_port` because when the user doesn't specify
@@ -533,12 +535,9 @@ impl Node {
         //
         let tcp_listener = Arc::new(TcpListener::new(
             network.port(),
-            config.clone(),
             network.clone(),
-            network_params.clone(),
             async_rt.clone(),
             stats.clone(),
-            workers.clone(),
             response_server_factory.clone(),
         ));
 
@@ -585,7 +584,9 @@ impl Node {
             stats.clone(),
             vote_generators.clone(),
             ledger.clone(),
+            network.clone(),
         ));
+        dead_channel_cleanup.add(&request_aggregator);
 
         let backlog_population = Arc::new(BacklogPopulation::new(
             global_config.into(),
@@ -600,6 +601,7 @@ impl Node {
             ledger.clone(),
             stats.clone(),
             network.clone(),
+            message_publisher.clone(),
             global_config.into(),
         ));
 
@@ -607,10 +609,9 @@ impl Node {
             config.local_block_broadcaster.clone(),
             block_processor.clone(),
             stats.clone(),
-            network.clone(),
-            online_reps.clone(),
             ledger.clone(),
             confirming_set.clone(),
+            message_publisher.clone(),
             !flags.disable_block_processor_republishing,
         ));
         local_block_broadcaster.initialize();
@@ -624,7 +625,6 @@ impl Node {
         let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
             network.clone(),
-            peer_connector.clone(),
             block_processor.clone(),
             config.clone(),
             flags.clone(),
@@ -634,20 +634,14 @@ impl Node {
             telemetry.clone(),
             bootstrap_server.clone(),
             ascendboot.clone(),
+            message_publisher.clone(),
         ));
-
-        let realtime_message_handler_weak = Arc::downgrade(&realtime_message_handler);
-        *inbound_impl.write().unwrap() =
-            Box::new(move |msg: DeserializedMessage, channel: Arc<ChannelEnum>| {
-                if let Some(handler) = realtime_message_handler_weak.upgrade() {
-                    handler.process(msg.message, &channel);
-                }
-            });
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
             network: network.clone(),
             config: config.clone(),
         });
+
         let network_threads = Arc::new(Mutex::new(NetworkThreads::new(
             network.clone(),
             peer_connector.clone(),
@@ -656,7 +650,9 @@ impl Node {
             stats.clone(),
             syn_cookies.clone(),
             keepalive_factory.clone(),
-            online_reps.clone(),
+            latest_keepalives.clone(),
+            dead_channel_cleanup,
+            message_publisher.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(
@@ -687,7 +683,7 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         if !flags.disable_rep_crawler {
-            network.on_new_channel(Arc::new(move |channel| {
+            network.on_new_realtime_channel(Arc::new(move |channel| {
                 if let Some(crawler) = rep_crawler_w.upgrade() {
                     crawler.query_channel(channel);
                 }
@@ -729,7 +725,7 @@ impl Node {
                 processor.add(
                     info.block.as_ref().unwrap().clone(),
                     BlockSource::Unchecked,
-                    None,
+                    ChannelId::LOOPBACK,
                 );
             }
         }));
@@ -737,7 +733,7 @@ impl Node {
         let ledger_w = Arc::downgrade(&ledger);
         let vote_cache_w = Arc::downgrade(&vote_cache);
         let wallets_w = Arc::downgrade(&wallets);
-        let channels_w = Arc::downgrade(&network);
+        let publisher_l = Mutex::new(message_publisher.clone());
         vote_router.add_vote_processed_observer(Box::new(move |vote, source, results| {
             let Some(ledger) = ledger_w.upgrade() else {
                 return;
@@ -746,9 +742,6 @@ impl Node {
                 return;
             };
             let Some(wallets) = wallets_w.upgrade() else {
-                return;
-            };
-            let Some(channels) = channels_w.upgrade() else {
                 return;
             };
             let rep_weight = ledger.weight(&vote.voting_account);
@@ -764,7 +757,10 @@ impl Node {
                     let ack = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
                         vote.as_ref().clone(),
                     ));
-                    channels.flood_message(&ack, 0.5);
+                    publisher_l
+                        .lock()
+                        .unwrap()
+                        .flood(&ack, DropPolicy::CanDrop, 0.5);
                 }
             }
         }));
@@ -790,41 +786,51 @@ impl Node {
         });
 
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
-        network.on_new_channel(Arc::new(move |channel| {
+        let message_publisher_l = Arc::new(Mutex::new(message_publisher.clone()));
+        let message_publisher_w = Arc::downgrade(&message_publisher_l);
+        network.on_new_realtime_channel(Arc::new(move |channel| {
             let Some(factory) = keepalive_factory_w.upgrade() else {
+                return;
+            };
+            let Some(publisher) = message_publisher_w.upgrade() else {
                 return;
             };
             let keepalive = factory.create_keepalive_self();
             let msg = Message::Keepalive(keepalive);
-            channel.send(&msg, None, BufferDropPolicy::Limiter, TrafficType::Generic);
+            publisher.lock().unwrap().try_send(
+                channel.channel_id(),
+                &msg,
+                DropPolicy::CanDrop,
+                TrafficType::Generic,
+            );
         }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let reps_w = Arc::downgrade(&online_reps);
-        vote_processor.add_vote_processed_callback(Box::new(move |vote, channel, source, code| {
-            debug_assert!(code != VoteCode::Invalid);
-            let Some(rep_crawler) = rep_crawler_w.upgrade() else {
-                return;
-            };
-            let Some(reps) = reps_w.upgrade() else {
-                return;
-            };
-            let Some(channel) = &channel else {
-                return; // Channel expired when waiting for vote to be processed
-            };
-            // Ignore republished votes
-            if source != VoteSource::Live {
-                return;
-            }
+        let clock = steady_clock.clone();
+        vote_processor.add_vote_processed_callback(Box::new(
+            move |vote, channel_id, source, code| {
+                debug_assert!(code != VoteCode::Invalid);
+                let Some(rep_crawler) = rep_crawler_w.upgrade() else {
+                    return;
+                };
+                let Some(reps) = reps_w.upgrade() else {
+                    return;
+                };
+                // Ignore republished votes
+                if source != VoteSource::Live {
+                    return;
+                }
 
-            let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel.clone());
-            if active_in_rep_crawler {
-                // Representative is defined as online if replying to live votes or rep_crawler queries
-                reps.lock()
-                    .unwrap()
-                    .vote_observed(vote.voting_account, relative_time.elapsed());
-            }
-        }));
+                let active_in_rep_crawler = rep_crawler.process(vote.clone(), channel_id);
+                if active_in_rep_crawler {
+                    // Representative is defined as online if replying to live votes or rep_crawler queries
+                    reps.lock()
+                        .unwrap()
+                        .vote_observed(vote.voting_account, clock.now());
+                }
+            },
+        ));
 
         if !distributed_work.work_generation_enabled() {
             info!("Work generation is disabled");
@@ -1020,7 +1026,7 @@ impl Node {
         );
 
         Self {
-            relative_time,
+            steady_clock,
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
                 "Net reachout",
@@ -1075,12 +1081,13 @@ impl Node {
             backlog_population,
             ascendboot,
             local_block_broadcaster,
-            process_live_dispatcher,
+            _process_live_dispatcher: process_live_dispatcher, // needs to stay alive
             ledger_pruning,
             network_threads,
             message_processor,
             inbound_message_queue,
             monitor,
+            message_publisher: message_publisher_l,
             stopped: AtomicBool::new(false),
         }
     }
@@ -1194,6 +1201,13 @@ impl Node {
         }
     }
 
+    pub fn insert_into_wallet(&self, keys: &KeyPair) {
+        let wallet_id = self.wallets.wallet_ids()[0];
+        self.wallets
+            .insert_adhoc2(&wallet_id, &keys.private_key(), true)
+            .unwrap();
+    }
+
     pub fn process_active(&self, block: BlockEnum) {
         self.block_processor.process_active(Arc::new(block));
     }
@@ -1261,6 +1275,11 @@ impl Node {
     pub fn confirm(&self, hash: BlockHash) {
         let mut tx = self.ledger.rw_txn();
         self.ledger.confirm(&mut tx, hash);
+    }
+
+    pub fn block_confirmed(&self, hash: &BlockHash) -> bool {
+        let tx = self.ledger.read_txn();
+        self.ledger.confirmed().block_exists(&tx, hash)
     }
 
     pub fn blocks_confirmed(&self, blocks: &[BlockEnum]) -> bool {
@@ -1503,7 +1522,10 @@ impl NodeExt for Arc<Node> {
     ) {
         if let Some(block) = blocks.pop_front() {
             let publish = Message::Publish(Publish::new_forward(block));
-            self.network.flood_message(&publish, 1.0);
+            self.message_publisher
+                .lock()
+                .unwrap()
+                .flood(&publish, DropPolicy::CanDrop, 1.0);
             if blocks.is_empty() {
                 callback()
             } else {

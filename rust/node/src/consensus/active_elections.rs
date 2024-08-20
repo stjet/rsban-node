@@ -10,8 +10,8 @@ use crate::{
     consensus::VoteApplierExt,
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{BufferDropPolicy, Network},
-    utils::HardenedConstants,
+    transport::{DropPolicy, MessagePublisher, Network},
+    utils::{HardenedConstants, SteadyClock},
     wallets::Wallets,
     NetworkParams,
 };
@@ -69,9 +69,9 @@ impl Default for ActiveElectionsConfig {
 }
 
 pub struct ActiveElections {
-    relative_time: Instant,
-    pub mutex: Mutex<ActiveElectionsState>,
-    pub condition: Condvar,
+    steady_clock: Arc<SteadyClock>,
+    mutex: Mutex<ActiveElectionsState>,
+    condition: Condvar,
     network_params: NetworkParams,
     wallets: Arc<Wallets>,
     node_config: NodeConfig,
@@ -80,7 +80,7 @@ pub struct ActiveElections {
     confirming_set: Arc<ConfirmingSet>,
     pub recently_confirmed: Arc<RecentlyConfirmedCache>,
     /// Helper container for storing recently cemented elections (a block from election might be confirmed but not yet cemented by confirmation height processor)
-    pub recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
+    recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
     block_processor: Arc<BlockProcessor>,
     vote_generators: Arc<VoteGenerators>,
     network: Arc<Network>,
@@ -98,6 +98,7 @@ pub struct ActiveElections {
     pub vote_applier: Arc<VoteApplier>,
     pub vote_router: Arc<VoteRouter>,
     vote_cache_processor: Arc<VoteCacheProcessor>,
+    message_publisher: Mutex<MessagePublisher>,
 }
 
 impl ActiveElections {
@@ -120,7 +121,8 @@ impl ActiveElections {
         vote_applier: Arc<VoteApplier>,
         vote_router: Arc<VoteRouter>,
         vote_cache_processor: Arc<VoteCacheProcessor>,
-        relative_time: Instant,
+        steady_clock: Arc<SteadyClock>,
+        message_publisher: MessagePublisher,
     ) -> Self {
         Self {
             mutex: Mutex::new(ActiveElectionsState {
@@ -159,7 +161,8 @@ impl ActiveElections {
             vote_applier,
             vote_router,
             vote_cache_processor,
-            relative_time,
+            steady_clock,
+            message_publisher: Mutex::new(message_publisher),
         }
     }
 
@@ -322,7 +325,7 @@ impl ActiveElections {
         }
     }
 
-    pub fn request_loop2<'a>(
+    fn request_loop2<'a>(
         &self,
         stamp: Instant,
         guard: MutexGuard<'a, ActiveElectionsState>,
@@ -469,7 +472,7 @@ impl ActiveElections {
         (replaced, election_guard)
     }
 
-    pub fn publish(&self, block: &Arc<BlockEnum>, election: &Election) -> bool {
+    fn publish(&self, block: &Arc<BlockEnum>, election: &Election) -> bool {
         let mut election_guard = election.mutex.lock().unwrap();
 
         // Do not insert new blocks if already confirmed
@@ -494,8 +497,8 @@ impl ActiveElections {
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
                     election_guard.status.winner = Some(Arc::clone(block));
                     let message = Message::Publish(Publish::new_forward(block.as_ref().clone()));
-                    self.network
-                        .flood_message2(&message, BufferDropPolicy::NoLimiterDrop, 1.0);
+                    let mut publisher = self.message_publisher.lock().unwrap();
+                    publisher.flood(&message, DropPolicy::ShouldNotDrop, 1.0);
                 }
             } else {
                 election_guard
@@ -589,7 +592,7 @@ impl ActiveElections {
     }
 
     /// Erase all blocks from active and, if not confirmed, clear digests from network filters
-    pub fn cleanup_election<'a>(
+    fn cleanup_election<'a>(
         &self,
         mut guard: MutexGuard<'a, ActiveElectionsState>,
         election: &'a Arc<Election>,
@@ -761,7 +764,7 @@ impl ActiveElections {
         }
     }
 
-    pub fn request_confirm<'a>(
+    fn request_confirm<'a>(
         &'a self,
         guard: MutexGuard<'a, ActiveElectionsState>,
     ) -> MutexGuard<'a, ActiveElectionsState> {
@@ -769,7 +772,11 @@ impl ActiveElections {
         let elections = Self::list_active_impl(this_loop_target, &guard);
         drop(guard);
 
-        let mut solicitor = ConfirmationSolicitor::new(&self.network_params, &self.network);
+        let mut solicitor = ConfirmationSolicitor::new(
+            &self.network_params,
+            &self.network,
+            self.message_publisher.lock().unwrap().clone(),
+        );
         solicitor.prepare(&self.online_reps.lock().unwrap().peered_principal_reps());
 
         /*
@@ -991,13 +998,13 @@ impl From<Amount> for TallyKey {
     }
 }
 
-pub struct ActiveElectionsState {
+struct ActiveElectionsState {
     roots: OrderedRoots,
-    pub stopped: bool,
-    pub manual_count: usize,
-    pub priority_count: usize,
-    pub hinted_count: usize,
-    pub optimistic_count: usize,
+    stopped: bool,
+    manual_count: usize,
+    priority_count: usize,
+    hinted_count: usize,
+    optimistic_count: usize,
 }
 
 impl ActiveElectionsState {
@@ -1269,13 +1276,10 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             if !self.recently_confirmed.root_exists(&root) {
                 inserted = true;
                 let online_reps = self.online_reps.clone();
-                let relative_time = self.relative_time;
+                let clock = self.steady_clock.clone();
                 let observer_rep_cb = Box::new(move |rep| {
                     // Representative is defined as online if replying to live votes or rep_crawler queries
-                    online_reps
-                        .lock()
-                        .unwrap()
-                        .vote_observed(rep, relative_time.elapsed());
+                    online_reps.lock().unwrap().vote_observed(rep, clock.now());
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);

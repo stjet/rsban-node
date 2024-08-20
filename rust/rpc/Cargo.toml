@@ -4,8 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rsnano_core = { path = "../core" }
-rsnano_node = { path = "../node" }
-anyhow = "1.0.40"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["net"] }
+anyhow = "1.0.40"
+rsnano_node = { path = "../node" }
+axum = "0.7.5"
+rsnano_core = { path = "../core" }
 toml = "0.8.15"
+tracing = "0.1"
+
+[dev-dependencies]
+rsnano_node = { path = "../node", features = ["output_tracking"] }
+mock_instant = "0.2.1"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-test = "0.2.4"
+reqwest = { version = "0.11.7", default-features = false, features = ["json"] }
+test_helpers = { path = "../tools/test_helpers" }

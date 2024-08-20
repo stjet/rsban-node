@@ -1,7 +1,6 @@
 #include <nano/core_test/fakes/websocket_client.hpp>
 #include <nano/lib/blocks.hpp>
 #include <nano/node/active_elections.hpp>
-#include <nano/node/transport/fake.hpp>
 #include <nano/node/websocket.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
@@ -128,104 +127,6 @@ TEST (websocket, confirmation)
 	}
 
 	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-}
-
-// Tests getting notification of a started election
-TEST (websocket, started_election)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.websocket_config.enabled = true;
-	config.websocket_config.port = system.get_available_port ();
-	auto node1 = system.add_node (config);
-
-	std::atomic<bool> ack_ready{ false };
-	auto task = ([&ack_ready, config, &node1] () {
-		fake_websocket_client client (node1->websocket.server->listening_port ());
-		client.send_message (R"json({"action": "subscribe", "topic": "started_election", "ack": true})json");
-		client.await_ack ();
-		ack_ready = true;
-		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::started_election));
-		return client.get_response ();
-	});
-	auto future = std::async (std::launch::async, task);
-
-	ASSERT_TIMELY (5s, ack_ready);
-
-	// Create election, causing a websocket message to be emitted
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 = std::make_shared<nano::transport::fake::channel> (*node1);
-	node1->network->inbound (publish1, channel1);
-	ASSERT_TIMELY (1s, node1->active.election (send1->qualified_root ()));
-	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-
-	auto response = future.get ();
-	ASSERT_TRUE (response);
-	boost::property_tree::ptree event;
-	std::stringstream stream;
-	stream << response.get ();
-	boost::property_tree::read_json (stream, event);
-	ASSERT_EQ (event.get<std::string> ("topic"), "started_election");
-}
-
-// Tests getting notification of an erased election
-TEST (websocket, stopped_election)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.websocket_config.enabled = true;
-	config.websocket_config.port = system.get_available_port ();
-	auto node1 (system.add_node (config));
-
-	std::atomic<bool> ack_ready{ false };
-	auto task = ([&ack_ready, config, &node1] () {
-		fake_websocket_client client (node1->websocket.server->listening_port ());
-		client.send_message (R"json({"action": "subscribe", "topic": "stopped_election", "ack": true})json");
-		client.await_ack ();
-		ack_ready = true;
-		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::stopped_election));
-		return client.get_response ();
-	});
-	auto future = std::async (std::launch::async, task);
-
-	ASSERT_TIMELY (5s, ack_ready);
-
-	// Create election, then erase it, causing a websocket message to be emitted
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	nano::publish publish1{ nano::dev::network_params.network, send1 };
-	auto channel1 = std::make_shared<nano::transport::fake::channel> (*node1);
-	node1->network->inbound (publish1, channel1);
-	ASSERT_TIMELY (5s, node1->active.election (send1->qualified_root ()));
-	node1->active.erase (*send1);
-
-	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-
-	auto response = future.get ();
-	ASSERT_TRUE (response);
-	boost::property_tree::ptree event;
-	std::stringstream stream;
-	stream << response.get ();
-	boost::property_tree::read_json (stream, event);
-	ASSERT_EQ (event.get<std::string> ("topic"), "stopped_election");
 }
 
 // Tests the filtering options of block confirmations
@@ -1006,9 +907,9 @@ TEST (websocket, telemetry)
 
 	ASSERT_TIMELY (10s, done);
 
-	auto channel = node1->network->find_node_id (node2->get_node_id ());
-	ASSERT_NE (channel, nullptr);
-	ASSERT_TIMELY (5s, node1->telemetry->get_telemetry (channel->get_remote_endpoint ()));
+	auto remote = node1->find_endpoint_for_node_id (node2->get_node_id ());
+	ASSERT_TRUE (remote.has_value ());
+	ASSERT_TIMELY (5s, node1->telemetry->get_telemetry (remote.value ()));
 
 	ASSERT_TIMELY_EQ (10s, future.wait_for (0s), std::future_status::ready);
 

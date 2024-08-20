@@ -5,8 +5,6 @@ add_library(
   active_elections.cpp
   backlog_population.hpp
   backlog_population.cpp
-  bandwidth_limiter.hpp
-  bandwidth_limiter.cpp
   blockprocessor.hpp
   blockprocessor.cpp
   bootstrap/bootstrap_bulk_pull.hpp
@@ -15,8 +13,6 @@ add_library(
   bootstrap/bootstrap_config.cpp
   bootstrap/bootstrap_connections.hpp
   bootstrap/bootstrap_connections.cpp
-  bootstrap/bootstrap_frontier.hpp
-  bootstrap/bootstrap_frontier.cpp
   bootstrap/bootstrap.hpp
   bootstrap/bootstrap.cpp
   bootstrap/bootstrap_server.hpp
@@ -27,8 +23,6 @@ add_library(
   common.cpp
   confirming_set.hpp
   confirming_set.cpp
-  confirmation_solicitor.hpp
-  confirmation_solicitor.cpp
   daemonconfig.hpp
   daemonconfig.cpp
   distributed_work_factory.hpp
@@ -95,20 +89,10 @@ add_library(
   scheduler/priority.cpp
   telemetry.hpp
   telemetry.cpp
-  transport/channel.hpp
-  transport/channel.cpp
-  transport/fake.hpp
-  transport/fake.cpp
-  transport/inproc.hpp
-  transport/inproc.cpp
-  transport/socket.hpp
-  transport/socket.cpp
   transport/tcp.hpp
   transport/tcp.cpp
   transport/tcp_listener.hpp
   transport/tcp_listener.cpp
-  transport/tcp_server.hpp
-  transport/tcp_server.cpp
   transport/transport.hpp
   transport/transport.cpp
   unchecked_map.cpp
@@ -127,8 +111,7 @@ add_library(
   websocketconfig.hpp
   websocketconfig.cpp
   messages.hpp
-  messages.cpp
-  xorshift.hpp)
+  messages.cpp)
 
 target_link_libraries(
   node

@@ -56,18 +56,24 @@ fn with_comments(toml_string: &String, comment_values: bool) -> String {
 
     for line in reader.lines() {
         let mut line = line.unwrap();
+
         if !line.is_empty() && !line.starts_with('[') {
             if line.starts_with('#') {
-                line = format!("\t{}", line);
+                // Keep the comment lines as is
+                ss_processed.push_str(&line);
             } else {
-                line = if comment_values {
-                    format!("\t# {}", line)
+                // Split the line into key and value, assuming key = value format
+                if comment_values {
+                    line = format!("# {}", line.trim());
                 } else {
-                    format!("\t{}", line)
-                };
+                    line = format!("{}", line.trim());
+                }
+                ss_processed.push_str(&line);
             }
+        } else {
+            ss_processed.push_str(&line);
         }
-        ss_processed.push_str(&line);
+
         ss_processed.push('\n');
     }
 

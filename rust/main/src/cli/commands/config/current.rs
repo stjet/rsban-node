@@ -1,14 +1,9 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::PathBuf,
-};
-
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_node::config::{get_node_toml_config_path, get_rpc_toml_config_path, DaemonToml};
 use rsnano_rpc::RpcToml;
+use std::fs::read_to_string;
 use toml::from_str;
 
 #[derive(Parser)]
@@ -40,9 +35,9 @@ impl CurrentArgs {
             let node_toml_config_path = get_node_toml_config_path(&path);
 
             if node_toml_config_path.exists() {
-                let toml_str = read_toml(&node_toml_config_path)?;
+                let daemon_toml_str = read_to_string(&node_toml_config_path)?;
 
-                let current_daemon_toml: DaemonToml = from_str(&toml_str)?;
+                let current_daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
 
                 let default_daemon_toml = DaemonToml::default();
 
@@ -54,7 +49,7 @@ impl CurrentArgs {
             let rpc_toml_config_path = get_rpc_toml_config_path(&path);
 
             if rpc_toml_config_path.exists() {
-                let toml_str = read_toml(&rpc_toml_config_path)?;
+                let toml_str = read_to_string(&rpc_toml_config_path)?;
 
                 let current_rpc_toml: RpcToml = from_str(&toml_str)?;
 
@@ -68,19 +63,4 @@ impl CurrentArgs {
 
         Ok(())
     }
-}
-
-fn read_toml(path: &PathBuf) -> Result<String> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-
-    let mut toml_str = String::new();
-    for line in reader.lines() {
-        let line = line?;
-        if !line.trim_start().starts_with('#') {
-            toml_str.push_str(&line);
-            toml_str.push('\n');
-        }
-    }
-    Ok(toml_str)
 }

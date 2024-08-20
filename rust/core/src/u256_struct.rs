@@ -104,10 +104,26 @@ macro_rules! u256_struct {
             }
         }
 
+        impl From<i32> for $name {
+            fn from(value: i32) -> Self {
+                let mut bytes = [0; 32];
+                bytes[28..].copy_from_slice(&value.to_be_bytes());
+                Self::from_bytes(bytes)
+            }
+        }
+
         impl From<u64> for $name {
             fn from(value: u64) -> Self {
                 let mut bytes = [0; 32];
                 bytes[24..].copy_from_slice(&value.to_be_bytes());
+                Self::from_bytes(bytes)
+            }
+        }
+
+        impl From<u128> for $name {
+            fn from(value: u128) -> Self {
+                let mut bytes = [0; 32];
+                bytes[16..].copy_from_slice(&value.to_be_bytes());
                 Self::from_bytes(bytes)
             }
         }

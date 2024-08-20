@@ -44,10 +44,9 @@ void nano::block_processor::process_active (std::shared_ptr<nano::block> const &
 	add (incoming);
 }
 
-bool nano::block_processor::add (std::shared_ptr<nano::block> const & block, block_source const source, std::shared_ptr<nano::transport::channel> const & channel)
+bool nano::block_processor::add (std::shared_ptr<nano::block> const & block, block_source const source)
 {
-	auto channel_handle = channel ? channel->handle : nullptr;
-	return rsnano::rsn_block_processor_add (handle, block->get_handle (), static_cast<uint8_t> (source), channel_handle);
+	return rsnano::rsn_block_processor_add (handle, block->get_handle (), static_cast<uint8_t> (source));
 }
 
 std::optional<nano::block_status> nano::block_processor::add_blocking (std::shared_ptr<nano::block> const & block, block_source const source)

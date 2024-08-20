@@ -9,8 +9,8 @@ use rsnano_messages::FrontierReq;
 use tracing::{debug, trace};
 
 use crate::{
-    transport::{ResponseServerExt, ResponseServerImpl, SocketExtensions, TrafficType},
-    utils::{AsyncRuntime, ErrorCode, ThreadPool},
+    transport::{ResponseServer, ResponseServerExt, TrafficType},
+    utils::{AsyncRuntime, ThreadPool},
 };
 
 /// Server side of a frontier request. Created when a tcp_server receives a frontier_req message and exited when end-of-list is reached.
@@ -20,7 +20,7 @@ pub struct FrontierReqServer {
 
 impl FrontierReqServer {
     pub fn new(
-        connection: Arc<ResponseServerImpl>,
+        connection: Arc<ResponseServer>,
         request: FrontierReq,
         thread_pool: Arc<dyn ThreadPool>,
         ledger: Arc<Ledger>,
@@ -58,7 +58,7 @@ impl FrontierReqServer {
 }
 
 struct FrontierReqServerImpl {
-    connection: Arc<ResponseServerImpl>,
+    connection: Arc<ResponseServer>,
     current: Account,
     frontier: BlockHash,
     request: FrontierReq,
@@ -70,34 +70,8 @@ struct FrontierReqServerImpl {
 }
 
 impl FrontierReqServerImpl {
-    pub fn no_block_sent(&self, ec: ErrorCode, _size: usize) {
-        if ec.is_ok() {
-            let connection = self.connection.clone();
-            self.runtime
-                .tokio
-                .spawn(async move { connection.run().await });
-        } else {
-            debug!("Error sending frontier finish: {:?}", ec);
-        }
-    }
-
     pub fn send_confirmed(&self) -> bool {
         self.request.only_confirmed
-    }
-
-    pub fn send_finished(&self, server: Arc<Mutex<FrontierReqServerImpl>>) {
-        let mut send_buffer = Vec::with_capacity(64);
-        send_buffer.extend_from_slice(Account::zero().as_bytes());
-        send_buffer.extend_from_slice(BlockHash::zero().as_bytes());
-        debug!("Frontier sending finished");
-
-        self.connection.socket.async_write(
-            &Arc::new(send_buffer),
-            Some(Box::new(move |ec, size| {
-                server.lock().unwrap().no_block_sent(ec, size);
-            })),
-            TrafficType::Generic,
-        )
     }
 
     pub fn send_next(&mut self, server: Arc<Mutex<FrontierReqServerImpl>>) {
@@ -114,17 +88,46 @@ impl FrontierReqServerImpl {
             debug_assert!(!self.current.is_zero());
             debug_assert!(!self.frontier.is_zero());
             self.next();
-            self.connection.socket.async_write(
-                &Arc::new(send_buffer),
-                Some(Box::new(move |ec, size| {
-                    let server_clone = Arc::clone(&server);
-                    server.lock().unwrap().sent_action(ec, size, server_clone);
-                })),
-                TrafficType::Generic,
-            );
+
+            let conn = self.connection.clone();
+            self.runtime.tokio.spawn(async move {
+                match conn
+                    .channel()
+                    .send_buffer(&send_buffer, TrafficType::Generic)
+                    .await
+                {
+                    Ok(()) => {
+                        let server2 = server.clone();
+                        server.lock().unwrap().sent_action(server2);
+                    }
+                    Err(e) => debug!("Error sending frontier pair: {:?}", e),
+                }
+            });
         } else {
-            self.send_finished(server);
+            let connection = self.connection.clone();
+            self.runtime.tokio.spawn(async move {
+                Self::send_finished(connection).await;
+            });
         }
+    }
+
+    async fn send_finished(connection: Arc<ResponseServer>) {
+        let mut send_buffer = Vec::with_capacity(64);
+        send_buffer.extend_from_slice(Account::zero().as_bytes());
+        send_buffer.extend_from_slice(BlockHash::zero().as_bytes());
+        debug!("Frontier sending finished");
+
+        match connection
+            .channel()
+            .send_buffer(&send_buffer, TrafficType::Generic)
+            .await
+        {
+            Ok(()) => {
+                let connection = connection.clone();
+                tokio::spawn(async move { connection.run().await });
+            }
+            Err(e) => debug!("Error sending frontier finish: {:?}", e),
+        };
     }
 
     pub fn next(&mut self) {
@@ -180,24 +183,15 @@ impl FrontierReqServerImpl {
         }
     }
 
-    pub fn sent_action(
-        &mut self,
-        ec: ErrorCode,
-        _size: usize,
-        server: Arc<Mutex<FrontierReqServerImpl>>,
-    ) {
+    pub fn sent_action(&mut self, server: Arc<Mutex<FrontierReqServerImpl>>) {
         let Some(thread_pool) = self.thread_pool.upgrade() else {
             return;
         };
 
-        if ec.is_ok() {
-            self.count += 1;
-            thread_pool.push_task(Box::new(move || {
-                let server_clone = Arc::clone(&server);
-                server.lock().unwrap().send_next(server_clone);
-            }));
-        } else {
-            debug!("Error sending frontier pair: {:?}", ec);
-        }
+        self.count += 1;
+        thread_pool.push_task(Box::new(move || {
+            let server_clone = Arc::clone(&server);
+            server.lock().unwrap().send_next(server_clone);
+        }));
     }
 }

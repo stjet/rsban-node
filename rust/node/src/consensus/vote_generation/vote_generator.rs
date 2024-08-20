@@ -2,7 +2,7 @@ use super::{LocalVoteHistory, VoteSpacing};
 use crate::{
     consensus::VoteBroadcaster,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{BufferDropPolicy, ChannelEnum, TrafficType},
+    transport::{ChannelId, DropPolicy, MessagePublisher, TrafficType},
     utils::ProcessingQueue,
     wallets::Wallets,
 };
@@ -42,6 +42,7 @@ impl VoteGenerator {
         history: Arc<LocalVoteHistory>,
         is_final: bool,
         stats: Arc<Stats>,
+        message_publisher: MessagePublisher,
         voting_delay: Duration,
         vote_generator_delay: Duration,
         vote_generator_threshold: usize,
@@ -49,6 +50,7 @@ impl VoteGenerator {
     ) -> Self {
         let shared_state = Arc::new(SharedState {
             ledger: Arc::clone(&ledger),
+            message_publisher: Mutex::new(message_publisher),
             history,
             wallets,
             condition: Condvar::new(),
@@ -108,7 +110,7 @@ impl VoteGenerator {
     }
 
     /// Queue blocks for vote generation, returning the number of successful candidates.
-    pub(crate) fn generate(&self, blocks: &[Arc<BlockEnum>], channel: Arc<ChannelEnum>) -> usize {
+    pub(crate) fn generate(&self, blocks: &[Arc<BlockEnum>], channel_id: ChannelId) -> usize {
         let req_candidates = {
             let txn = self.ledger.read_txn();
             blocks
@@ -125,7 +127,7 @@ impl VoteGenerator {
 
         let result = req_candidates.len();
         let mut guard = self.shared_state.queues.lock().unwrap();
-        guard.requests.push_back((req_candidates, channel));
+        guard.requests.push_back((req_candidates, channel_id));
         while guard.requests.len() > Self::MAX_REQUESTS {
             // On a large queue of requests, erase the oldest one
             guard.requests.pop_front();
@@ -157,8 +159,7 @@ impl VoteGenerator {
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "requests".to_string(),
                     count: requests_count,
-                    sizeof_element: size_of::<Arc<ChannelEnum>>()
-                        + size_of::<Vec<(Root, BlockHash)>>(),
+                    sizeof_element: size_of::<ChannelId>() + size_of::<Vec<(Root, BlockHash)>>(),
                 }),
             ],
         )
@@ -175,6 +176,7 @@ struct SharedState {
     ledger: Arc<Ledger>,
     wallets: Arc<Wallets>,
     history: Arc<LocalVoteHistory>,
+    message_publisher: Mutex<MessagePublisher>,
     is_final: bool,
     condition: Condvar,
     stopped: AtomicBool,
@@ -264,7 +266,7 @@ impl SharedState {
     {
         debug_assert_eq!(hashes.len(), roots.len());
         let mut votes = Vec::new();
-        self.wallets.foreach_representative(|pub_key, priv_key| {
+        self.wallets.foreach_representative(|keys| {
             let timestamp = if self.is_final {
                 Vote::TIMESTAMP_MAX
             } else {
@@ -276,8 +278,7 @@ impl SharedState {
                 0x9 /*8192ms*/
             };
             votes.push(Arc::new(Vote::new(
-                *pub_key,
-                priv_key,
+                keys,
                 timestamp,
                 duration,
                 hashes.clone(),
@@ -296,7 +297,7 @@ impl SharedState {
         }
     }
 
-    fn reply(&self, request: (Vec<(Root, BlockHash)>, Arc<ChannelEnum>)) {
+    fn reply(&self, request: (Vec<(Root, BlockHash)>, ChannelId)) {
         let mut i = request.0.iter().peekable();
         while i.peek().is_some() && !self.stopped.load(Ordering::SeqCst) {
             let mut hashes = Vec::with_capacity(VoteGenerator::MAX_HASHES);
@@ -326,13 +327,13 @@ impl SharedState {
                     hashes.len() as u64,
                 );
                 self.vote(&hashes, &roots, |vote| {
-                    let channel = &request.1;
+                    let channel_id = &request.1;
                     let confirm =
                         Message::ConfirmAck(ConfirmAck::new_with_own_vote((*vote).clone()));
-                    channel.send(
+                    self.message_publisher.lock().unwrap().try_send(
+                        *channel_id,
                         &confirm,
-                        None,
-                        BufferDropPolicy::Limiter,
+                        DropPolicy::CanDrop,
                         TrafficType::Generic,
                     );
                     self.stats.inc_dir(
@@ -418,5 +419,5 @@ impl SharedState {
 #[derive(Default)]
 struct Queues {
     candidates: VecDeque<(Root, BlockHash)>,
-    requests: VecDeque<(Vec<(Root, BlockHash)>, Arc<ChannelEnum>)>,
+    requests: VecDeque<(Vec<(Root, BlockHash)>, ChannelId)>,
 }

@@ -1,26 +1,28 @@
+use crate::create_send_and_receive_blocks;
+use crate::Account;
+use crate::AccountInfo;
+use crate::RpcClient;
 use anyhow::{anyhow, Result};
 use reqwest::Url;
 use rsnano_core::{utils::get_cpu_count, DEV_GENESIS_KEY};
 use rsnano_node::{
-    config::{get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants},
-    unique_path,
-    utils::TomlConfig,
-    NetworkParams, DEV_NETWORK_PARAMS,
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants,
+    },
+    unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
-use rsnano_rpc::RpcConfig;
+use rsnano_rpc::{RpcConfig, RpcToml};
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::Arc,
     time::Duration,
 };
 use tokio::time::sleep;
-
-use crate::create_send_and_receive_blocks;
-use crate::Account;
-use crate::AccountInfo;
-use crate::RpcClient;
+use toml::to_string;
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
@@ -184,8 +186,11 @@ fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkPar
         .enabled = true;
     daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
     daemon_config.node.use_memory_pools = (index % 2) == 0;
-    let toml = TomlConfig::new();
-    toml.write(get_node_toml_config_path(data_path))?;
+    let daemon_toml = DaemonToml::default();
+    fs::write(
+        get_node_toml_config_path(data_path),
+        to_string(&daemon_toml)?,
+    )?;
     Ok(())
 }
 
@@ -194,7 +199,7 @@ fn write_rpc_config(index: usize, data_path: &Path, network_params: &NetworkPara
     rpc_config.port = RPC_PORT_START + index as u16;
     rpc_config.enable_control = true;
     rpc_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;
-    let toml_rpc = TomlConfig::new();
-    toml_rpc.write(get_rpc_toml_config_path(data_path))?;
+    let rpc_toml = RpcToml::default();
+    fs::write(get_rpc_toml_config_path(data_path), to_string(&rpc_toml)?)?;
     Ok(())
 }

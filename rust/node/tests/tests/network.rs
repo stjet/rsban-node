@@ -37,16 +37,19 @@ fn last_contacted() {
 
     // channel0 is the other side of channel1, same connection different endpoint
     let channel0 = node0
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_node_id(&node1.node_id.public_key())
-        .unwrap();
+        .unwrap()
+        .clone();
 
     // check that the endpoints are part of the same connection
-    assert_eq!(channel0.local_addr(), channel1.info.peer_addr());
-    assert_eq!(channel1.local_addr(), channel0.info.peer_addr());
+    assert_eq!(channel0.local_addr(), channel1.peer_addr());
+    assert_eq!(channel1.local_addr(), channel0.peer_addr());
 
     // capture the state before and ensure the clock ticks at least once
-    let timestamp_before_keepalive = channel0.info.last_packet_received();
+    let timestamp_before_keepalive = channel0.last_packet_received();
     let keepalive_count =
         node0
             .stats
@@ -93,7 +96,7 @@ fn last_contacted() {
         "keepalive count",
     );
     assert_eq!(node0.network.count_by_mode(ChannelMode::Realtime), 1);
-    let timestamp_after_keepalive = channel0.info.last_packet_received();
+    let timestamp_after_keepalive = channel0.last_packet_received();
     assert!(timestamp_after_keepalive > timestamp_before_keepalive);
 }
 

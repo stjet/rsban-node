@@ -43,10 +43,6 @@ impl WriteQueue {
         }
     }
 
-    pub fn is_closed(&self) -> bool {
-        self.generic_queue.is_closed() || self.bootstrap_queue.is_closed()
-    }
-
     pub fn capacity(&self, traffic_type: TrafficType) -> usize {
         self.queue_for(traffic_type).capacity()
     }

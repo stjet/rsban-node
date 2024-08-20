@@ -4,8 +4,8 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        Channel, ChannelId, DropPolicy, MessagePublisher, Network, PeerConnector, PeerConnectorExt,
-        TrafficType,
+        ChannelId, ChannelInfo, DropPolicy, MessagePublisher, Network, NetworkInfo, PeerConnector,
+        PeerConnectorExt, TrafficType,
     },
     utils::{into_ipv6_socket_address, AsyncRuntime, SteadyClock, Timestamp},
     NetworkParams,
@@ -21,7 +21,7 @@ use std::{
     collections::HashMap,
     mem::size_of,
     ops::DerefMut,
-    sync::{Arc, Condvar, Mutex, MutexGuard},
+    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -56,6 +56,7 @@ impl RepCrawler {
         config: NodeConfig,
         network_params: NetworkParams,
         network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         async_rt: Arc<AsyncRuntime>,
         ledger: Arc<Ledger>,
         active: Arc<ActiveElections>,
@@ -87,7 +88,7 @@ impl RepCrawler {
                 stopped: false,
                 last_query: None,
                 responses: BoundedVecDeque::new(Self::MAX_RESPONSES),
-                network,
+                network_info,
             }),
         }
     }
@@ -149,7 +150,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query(&self, target_channels: Vec<Arc<Channel>>) {
+    pub fn query(&self, target_channels: Vec<Arc<ChannelInfo>>) {
         let Some(hash_root) = self.prepare_query_target() else {
             debug!("No block to query");
             self.stats.inc_dir(
@@ -163,11 +164,11 @@ impl RepCrawler {
         let mut guard = self.rep_crawler_impl.lock().unwrap();
 
         for channel in target_channels {
-            guard.track_rep_request(hash_root, Arc::clone(&channel), self.steady_clock.now());
+            guard.track_rep_request(hash_root, channel.channel_id(), self.steady_clock.now());
             debug!(
                 "Sending query for block: {} to: {}",
                 hash_root.0,
-                channel.info.peer_addr()
+                channel.peer_addr()
             );
             self.stats
                 .inc_dir(StatType::RepCrawler, DetailType::QuerySent, Direction::In);
@@ -184,7 +185,7 @@ impl RepCrawler {
     }
 
     /// Attempt to determine if the peer manages one or more representative accounts
-    pub fn query_channel(&self, target_channel: Arc<Channel>) {
+    pub fn query_channel(&self, target_channel: Arc<ChannelInfo>) {
         self.query(vec![target_channel]);
     }
 
@@ -442,7 +443,7 @@ struct RepCrawlerImpl {
     queries: OrderedQueries,
     online_reps: Arc<Mutex<OnlineReps>>,
     stats: Arc<Stats>,
-    network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     query_timeout: Duration,
     stopped: bool,
     last_query: Option<Instant>,
@@ -458,7 +459,11 @@ impl RepCrawlerImpl {
         }
     }
 
-    fn prepare_crawl_targets(&self, sufficient_weight: bool, now: Timestamp) -> Vec<Arc<Channel>> {
+    fn prepare_crawl_targets(
+        &self,
+        sufficient_weight: bool,
+        now: Timestamp,
+    ) -> Vec<Arc<ChannelInfo>> {
         // TODO: Make these values configurable
         const CONSERVATIVE_COUNT: usize = 160;
         const AGGRESSIVE_COUNT: usize = 160;
@@ -489,7 +494,9 @@ impl RepCrawlerImpl {
 
         /* include channels with ephemeral remote ports */
         let mut random_peers = self
-            .network
+            .network_info
+            .read()
+            .unwrap()
             .random_realtime_channels(required_peer_count, 0);
 
         random_peers.retain(|channel| {
@@ -521,12 +528,12 @@ impl RepCrawlerImpl {
     fn track_rep_request(
         &mut self,
         hash_root: (BlockHash, Root),
-        channel: Arc<Channel>,
+        channel_id: ChannelId,
         now: Timestamp,
     ) {
         self.queries.insert(QueryEntry {
             hash: hash_root.0,
-            channel_id: channel.channel_id(),
+            channel_id,
             time: Instant::now(),
             replies: 0,
         });
@@ -534,7 +541,7 @@ impl RepCrawlerImpl {
         self.online_reps
             .lock()
             .unwrap()
-            .on_rep_request(channel.channel_id(), now);
+            .on_rep_request(channel_id, now);
     }
 
     fn cleanup(&mut self) {

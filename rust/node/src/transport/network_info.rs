@@ -1,7 +1,8 @@
 use super::{ChannelDirection, ChannelId, ChannelMode, TrafficType};
 use num::FromPrimitive;
+use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, TEST_ENDPOINT_1},
+    utils::{seconds_since_epoch, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     PublicKey,
 };
 use rsnano_messages::ProtocolInfo;
@@ -20,6 +21,7 @@ const DEFAULT_TIMEOUT: u64 = 120;
 
 pub struct ChannelInfo {
     channel_id: ChannelId,
+    local_addr: SocketAddrV6,
     peer_addr: SocketAddrV6,
     data: Mutex<ChannelInfoData>,
     protocol_version: AtomicU8,
@@ -48,12 +50,14 @@ pub struct ChannelInfo {
 impl ChannelInfo {
     pub fn new(
         channel_id: ChannelId,
+        local_addr: SocketAddrV6,
         peer_addr: SocketAddrV6,
         direction: ChannelDirection,
     ) -> Self {
         let now = SystemTime::now();
         Self {
             channel_id,
+            local_addr,
             peer_addr,
             // TODO set protocol version to 0
             protocol_version: AtomicU8::new(ProtocolInfo::default().version_using),
@@ -83,6 +87,7 @@ impl ChannelInfo {
         Self::new(
             ChannelId::from(42),
             TEST_ENDPOINT_1,
+            TEST_ENDPOINT_2,
             ChannelDirection::Outbound,
         )
     }
@@ -97,6 +102,10 @@ impl ChannelInfo {
 
     pub fn direction(&self) -> ChannelDirection {
         self.direction
+    }
+
+    pub fn local_addr(&self) -> SocketAddrV6 {
+        self.local_addr
     }
 
     /// The address that we are connected to. If this is an incoming channel, then
@@ -233,23 +242,45 @@ struct ChannelInfoData {
 pub struct NetworkInfo {
     next_channel_id: usize,
     channels: HashMap<ChannelId, Arc<ChannelInfo>>,
+    listening_port: u16,
+    stopped: bool,
+    new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>>,
 }
 
 impl NetworkInfo {
-    pub fn new() -> Self {
+    pub fn new(listening_port: u16) -> Self {
         Self {
             next_channel_id: 1,
             channels: HashMap::new(),
+            listening_port,
+            stopped: false,
+            new_realtime_channel_observers: Vec::new(),
         }
+    }
+
+    pub(crate) fn on_new_realtime_channel(
+        &mut self,
+        callback: Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>,
+    ) {
+        self.new_realtime_channel_observers.push(callback);
+    }
+
+    pub(crate) fn new_realtime_channel_observers(
+        &self,
+    ) -> Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>> {
+        self.new_realtime_channel_observers.clone()
     }
 
     pub fn add(
         &mut self,
+        local_addr: SocketAddrV6,
         peer_addr: SocketAddrV6,
         direction: ChannelDirection,
     ) -> Arc<ChannelInfo> {
         let channel_id = self.get_next_channel_id();
-        let channel_info = Arc::new(ChannelInfo::new(channel_id, peer_addr, direction));
+        let channel_info = Arc::new(ChannelInfo::new(
+            channel_id, local_addr, peer_addr, direction,
+        ));
         self.channels.insert(channel_id, channel_info.clone());
         channel_info
     }
@@ -258,6 +289,18 @@ impl NetworkInfo {
         let id = self.next_channel_id.into();
         self.next_channel_id += 1;
         id
+    }
+
+    pub fn listening_port(&self) -> u16 {
+        self.listening_port
+    }
+
+    pub fn set_listening_port(&mut self, port: u16) {
+        self.listening_port = port
+    }
+
+    pub fn get(&self, channel_id: ChannelId) -> Option<&Arc<ChannelInfo>> {
+        self.channels.get(&channel_id)
     }
 
     pub fn remove(&mut self, channel_id: ChannelId) {
@@ -274,5 +317,46 @@ impl NetworkInfo {
         self.channels
             .values()
             .find(|c| c.node_id() == Some(*node_id))
+    }
+
+    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<ChannelInfo>> {
+        let mut channels = self.list_realtime(min_version);
+        let mut rng = thread_rng();
+        channels.shuffle(&mut rng);
+        if count > 0 {
+            channels.truncate(count)
+        }
+        channels
+    }
+
+    pub fn list_realtime(&self, min_version: u8) -> Vec<Arc<ChannelInfo>> {
+        self.channels
+            .values()
+            .filter(|c| {
+                c.protocol_version() >= min_version
+                    && c.is_alive()
+                    && c.mode() == ChannelMode::Realtime
+            })
+            .map(|c| c.clone())
+            .collect()
+    }
+
+    pub(crate) fn list_realtime_channels(&self, min_version: u8) -> Vec<Arc<ChannelInfo>> {
+        let mut result = self.list_realtime(min_version);
+        result.sort_by_key(|i| i.peer_addr());
+        result
+    }
+
+    pub fn stop(&mut self) -> bool {
+        if self.stopped {
+            false
+        } else {
+            self.stopped = true;
+            true
+        }
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.stopped
     }
 }

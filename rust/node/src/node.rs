@@ -231,7 +231,9 @@ impl Node {
             "Bootstrap work",
         ));
 
-        let network_info = Arc::new(RwLock::new(NetworkInfo::new()));
+        let network_info = Arc::new(RwLock::new(NetworkInfo::new(
+            config.peering_port.unwrap_or(0),
+        )));
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
@@ -241,7 +243,6 @@ impl Node {
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             network_params: network_params.clone(),
             stats: stats.clone(),
-            port: config.peering_port.unwrap_or(0),
             flags: flags.clone(),
             limiter: outbound_limiter.clone(),
             clock: steady_clock.clone(),
@@ -523,6 +524,7 @@ impl Node {
             config.clone(),
             network_params.clone(),
             network.clone(),
+            network_info.clone(),
             async_rt.clone(),
             ledger.clone(),
             active_elections.clone(),
@@ -605,7 +607,7 @@ impl Node {
             block_processor.clone(),
             ledger.clone(),
             stats.clone(),
-            network.clone(),
+            network_info.clone(),
             message_publisher.clone(),
             global_config.into(),
         ));
@@ -688,11 +690,14 @@ impl Node {
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         if !flags.disable_rep_crawler {
-            network.on_new_realtime_channel(Arc::new(move |channel| {
-                if let Some(crawler) = rep_crawler_w.upgrade() {
-                    crawler.query_channel(channel);
-                }
-            }));
+            network_info
+                .write()
+                .unwrap()
+                .on_new_realtime_channel(Arc::new(move |channel| {
+                    if let Some(crawler) = rep_crawler_w.upgrade() {
+                        crawler.query_channel(channel);
+                    }
+                }));
         }
 
         let block_processor_w = Arc::downgrade(&block_processor);
@@ -793,22 +798,25 @@ impl Node {
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
         let message_publisher_l = Arc::new(Mutex::new(message_publisher.clone()));
         let message_publisher_w = Arc::downgrade(&message_publisher_l);
-        network.on_new_realtime_channel(Arc::new(move |channel| {
-            let Some(factory) = keepalive_factory_w.upgrade() else {
-                return;
-            };
-            let Some(publisher) = message_publisher_w.upgrade() else {
-                return;
-            };
-            let keepalive = factory.create_keepalive_self();
-            let msg = Message::Keepalive(keepalive);
-            publisher.lock().unwrap().try_send(
-                channel.channel_id(),
-                &msg,
-                DropPolicy::CanDrop,
-                TrafficType::Generic,
-            );
-        }));
+        network_info
+            .write()
+            .unwrap()
+            .on_new_realtime_channel(Arc::new(move |channel| {
+                let Some(factory) = keepalive_factory_w.upgrade() else {
+                    return;
+                };
+                let Some(publisher) = message_publisher_w.upgrade() else {
+                    return;
+                };
+                let keepalive = factory.create_keepalive_self();
+                let msg = Message::Keepalive(keepalive);
+                publisher.lock().unwrap().try_send(
+                    channel.channel_id(),
+                    &msg,
+                    DropPolicy::CanDrop,
+                    TrafficType::Generic,
+                );
+            }));
 
         let rep_crawler_w = Arc::downgrade(&rep_crawler);
         let reps_w = Arc::downgrade(&online_reps);

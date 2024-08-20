@@ -15,15 +15,12 @@ use crate::{
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
-    Account, PublicKey,
+    Account,
 };
 use rsnano_messages::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
-        Arc, Mutex, RwLock,
-    },
+    sync::{Arc, Mutex, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 use tracing::{debug, warn};
@@ -34,7 +31,6 @@ pub struct NetworkOptions {
     pub publish_filter: Arc<NetworkFilter>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
-    pub port: u16,
     pub flags: NodeFlags,
     pub limiter: Arc<OutboundBandwidthLimiter>,
     pub clock: Arc<SteadyClock>,
@@ -49,11 +45,10 @@ impl NetworkOptions {
             publish_filter: Arc::new(NetworkFilter::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
-            port: 8088,
             flags: NodeFlags::default(),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
             clock: Arc::new(SteadyClock::new_null()),
-            network_info: Arc::new(RwLock::new(NetworkInfo::new())),
+            network_info: Arc::new(RwLock::new(NetworkInfo::new(8080))),
         }
     }
 }
@@ -61,8 +56,6 @@ impl NetworkOptions {
 pub struct Network {
     state: Mutex<State>,
     network_info: Arc<RwLock<NetworkInfo>>,
-    port: AtomicU16,
-    stopped: AtomicBool,
     allow_local_peers: bool,
     flags: NodeFlags,
     stats: Arc<Stats>,
@@ -84,14 +77,11 @@ impl Network {
         let network = Arc::new(options.network_params);
 
         Self {
-            port: AtomicU16::new(options.port),
-            stopped: AtomicBool::new(false),
             allow_local_peers: options.allow_local_peers,
             state: Mutex::new(State {
                 attempts: Default::default(),
                 channels: Default::default(),
                 network_constants: network.network.clone(),
-                new_realtime_channel_observers: Vec::new(),
                 excluded_peers: PeerExclusion::new(),
                 stats: options.stats.clone(),
                 node_flags: options.flags.clone(),
@@ -121,7 +111,7 @@ impl Network {
         };
         while self.count_by_direction(ChannelDirection::Inbound)
             >= self.tcp_config.max_inbound_connections
-            && !self.stopped.load(Ordering::SeqCst)
+            && !self.network_info.read().unwrap().is_stopped()
         {
             if last_log.elapsed() >= log_interval {
                 warn!(
@@ -160,6 +150,11 @@ impl Network {
     ) -> anyhow::Result<Arc<Channel>> {
         let peer_addr = stream
             .peer_addr()
+            .map(into_ipv6_socket_address)
+            .unwrap_or(NULL_ENDPOINT);
+
+        let local_addr = stream
+            .local_addr()
             .map(into_ipv6_socket_address)
             .unwrap_or(NULL_ENDPOINT);
 
@@ -203,7 +198,11 @@ impl Network {
             );
         }
 
-        let channel_info = self.network_info.write().unwrap().add(peer_addr, direction);
+        let channel_info = self
+            .network_info
+            .write()
+            .unwrap()
+            .add(local_addr, peer_addr, direction);
 
         let channel = Channel::create(
             channel_info,
@@ -225,7 +224,7 @@ impl Network {
     }
 
     pub(crate) fn stop(&self) {
-        if !self.stopped.swap(true, Ordering::SeqCst) {
+        if self.network_info.write().unwrap().stop() {
             self.close();
         }
     }
@@ -234,31 +233,16 @@ impl Network {
         self.state.lock().unwrap().close_channels();
     }
 
-    pub fn endpoint_for(&self, channel_id: ChannelId) -> Option<SocketAddrV6> {
-        self.state
-            .lock()
-            .unwrap()
-            .channels
-            .get_by_id(channel_id)
-            .map(|e| e.info.peer_addr())
-    }
-
     pub fn not_a_peer(&self, endpoint: &SocketAddrV6, allow_local_peers: bool) -> bool {
         endpoint.ip().is_unspecified()
             || reserved_address(endpoint, allow_local_peers)
             || endpoint
-                == &SocketAddrV6::new(Ipv6Addr::LOCALHOST, self.port.load(Ordering::SeqCst), 0, 0)
-    }
-
-    pub(crate) fn on_new_realtime_channel(
-        &self,
-        callback: Arc<dyn Fn(Arc<Channel>) + Send + Sync>,
-    ) {
-        self.state
-            .lock()
-            .unwrap()
-            .new_realtime_channel_observers
-            .push(callback);
+                == &SocketAddrV6::new(
+                    Ipv6Addr::LOCALHOST,
+                    self.network_info.read().unwrap().listening_port(),
+                    0,
+                    0,
+                )
     }
 
     pub(crate) fn check_limits(
@@ -311,17 +295,6 @@ impl Network {
             .lock()
             .unwrap()
             .find_realtime_channel_by_peering_addr(peering_addr)
-    }
-
-    pub fn random_realtime_channels(&self, count: usize, min_version: u8) -> Vec<Arc<Channel>> {
-        self.state
-            .lock()
-            .unwrap()
-            .random_realtime_channels(count, min_version)
-    }
-
-    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<Channel>> {
-        self.state.lock().unwrap().find_node_id(node_id)
     }
 
     pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -545,11 +518,11 @@ impl Network {
     }
 
     pub fn port(&self) -> u16 {
-        self.port.load(Ordering::SeqCst)
+        self.network_info.read().unwrap().listening_port()
     }
 
     pub(crate) fn set_port(&self, port: u16) {
-        self.port.store(port, Ordering::SeqCst);
+        self.network_info.write().unwrap().set_listening_port(port);
     }
 
     pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
@@ -621,7 +594,7 @@ impl Network {
         let (observers, channel) = {
             let state = self.state.lock().unwrap();
 
-            if self.stopped.load(Ordering::SeqCst) {
+            if self.network_info.read().unwrap().is_stopped() {
                 return false;
             }
 
@@ -648,7 +621,11 @@ impl Network {
             channel.info.set_node_id(node_id);
             channel.info.set_mode(ChannelMode::Realtime);
 
-            let observers = state.new_realtime_channel_observers.clone();
+            let observers = self
+                .network_info
+                .read()
+                .unwrap()
+                .new_realtime_channel_observers();
             let channel = channel.clone();
             (observers, channel)
         };
@@ -663,7 +640,7 @@ impl Network {
         );
 
         for observer in observers {
-            observer(channel.clone());
+            observer(channel.info.clone());
         }
 
         true
@@ -679,7 +656,6 @@ struct State {
     attempts: AttemptContainer,
     channels: ChannelContainer,
     network_constants: NetworkConstants,
-    new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<Channel>) + Send + Sync>>,
     excluded_peers: PeerExclusion,
     stats: Arc<Stats>,
     node_flags: NodeFlags,
@@ -816,10 +792,6 @@ impl State {
             .filter(|c| c.info.is_alive())
             .map(|&c| c.clone())
             .collect()
-    }
-
-    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<Arc<Channel>> {
-        self.channels.get_by_node_id(node_id).map(|c| c.clone())
     }
 
     pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<Channel>> {
@@ -1001,7 +973,10 @@ pub(crate) struct ChannelsInfo {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
+    use rsnano_core::{
+        utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3},
+        PublicKey,
+    };
 
     use super::*;
 

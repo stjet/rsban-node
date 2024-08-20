@@ -6,7 +6,7 @@ use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
-    transport::{Channel, ChannelDirection, ChannelMode, PeerConnectorExt, TcpStream},
+    transport::{Channel, ChannelDirection, ChannelInfo, ChannelMode, PeerConnectorExt, TcpStream},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -93,11 +93,15 @@ impl System {
             let start = Instant::now();
             loop {
                 if node
-                    .network
+                    .network_info
+                    .read()
+                    .unwrap()
                     .find_node_id(&other.node_id.public_key())
                     .is_some()
                     && other
-                        .network
+                        .network_info
+                        .read()
+                        .unwrap()
                         .find_node_id(&node.node_id.public_key())
                         .is_some()
                 {
@@ -107,6 +111,7 @@ impl System {
                 if start.elapsed() > Duration::from_secs(5) {
                     panic!("connection not successfull");
                 }
+                sleep(Duration::from_millis(10));
             }
         }
         node
@@ -264,23 +269,28 @@ fn init_tracing() {
     });
 }
 
-pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
+pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelInfo> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
     assert_timely_msg(
         Duration::from_secs(2),
         || {
-            node.network
+            node.network_info
+                .read()
+                .unwrap()
                 .find_node_id(&peer.node_id.public_key())
                 .is_some()
         },
         "node did not connect",
     );
 
-    node.network
+    node.network_info
+        .read()
+        .unwrap()
         .find_node_id(&peer.node_id.public_key())
         .unwrap()
+        .clone()
 }
 
 pub fn make_fake_channel(node: &Node) -> Arc<Channel> {

@@ -18,15 +18,14 @@ use rsnano_node::{
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use test_helpers::{
-    assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, System,
-};
+use test_helpers::{assert_timely_eq, assert_timely_msg, get_available_port, System};
 
 mod bootstrap_processor {
     use rsnano_node::{
         config::NodeConfig,
         transport::{ChannelMode, PeerConnectorExt},
     };
+    use test_helpers::establish_tcp;
 
     use super::*;
 

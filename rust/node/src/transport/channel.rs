@@ -9,7 +9,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use rsnano_core::{
-    utils::{seconds_since_epoch, TEST_ENDPOINT_1},
+    utils::{seconds_since_epoch, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     Account,
 };
 use std::{
@@ -66,9 +66,10 @@ impl Channel {
             Arc::new(ChannelInfo::new(
                 channel_id,
                 TEST_ENDPOINT_1,
+                TEST_ENDPOINT_2,
                 ChannelDirection::Outbound,
             )),
-            Arc::new(RwLock::new(NetworkInfo::new())),
+            Arc::new(RwLock::new(NetworkInfo::new(80))),
             Arc::new(TcpStream::new_null()),
             Arc::new(Stats::default()),
             Arc::new(OutboundBandwidthLimiter::default()),
@@ -221,8 +222,10 @@ impl Channel {
         let (inserted, write_error) = self
             .write_queue
             .try_insert(Arc::new(buffer.to_vec()), traffic_type); // TODO don't copy into vec. Split into fixed size packets
-        self.info
-            .set_queue_full(traffic_type, self.info.is_queue_full(traffic_type));
+        self.info.set_queue_full(
+            traffic_type,
+            self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE,
+        );
 
         if inserted {
             self.stats.add_dir_aggregate(

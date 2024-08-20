@@ -49,19 +49,22 @@ fn basic() {
 
     // Request telemetry metrics
     let channel = node_client
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_node_id(&node_server.get_node_id())
-        .unwrap();
+        .unwrap()
+        .clone();
 
     assert_timely(Duration::from_secs(5), || {
         node_client
             .telemetry
-            .get_telemetry(&channel.info.peer_addr())
+            .get_telemetry(&channel.peer_addr())
             .is_some()
     });
     let telemetry_data = node_client
         .telemetry
-        .get_telemetry(&channel.info.peer_addr())
+        .get_telemetry(&channel.peer_addr())
         .unwrap();
     assert_eq!(node_server.get_node_id(), telemetry_data.node_id);
 
@@ -71,13 +74,13 @@ fn basic() {
     // Call again straight away
     let telemetry_data2 = node_client
         .telemetry
-        .get_telemetry(&channel.info.peer_addr())
+        .get_telemetry(&channel.peer_addr())
         .unwrap();
 
     // Call again straight away
     let telemetry_data3 = node_client
         .telemetry
-        .get_telemetry(&channel.info.peer_addr())
+        .get_telemetry(&channel.peer_addr())
         .unwrap();
 
     // we expect at least one consecutive repeat of telemetry
@@ -88,7 +91,7 @@ fn basic() {
 
     let telemetry_data4 = node_client
         .telemetry
-        .get_telemetry(&channel.info.peer_addr())
+        .get_telemetry(&channel.peer_addr())
         .unwrap();
 
     assert_ne!(telemetry_data, telemetry_data4);
@@ -102,15 +105,18 @@ fn disconnected() {
 
     // Request telemetry metrics
     let channel = node_client
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_node_id(&node_server.get_node_id())
-        .unwrap();
+        .unwrap()
+        .clone();
 
     // Ensure telemetry is available before disconnecting
     assert_timely(Duration::from_secs(5), || {
         node_client
             .telemetry
-            .get_telemetry(&channel.info.peer_addr())
+            .get_telemetry(&channel.peer_addr())
             .is_some()
     });
     node_server.stop();
@@ -119,7 +125,7 @@ fn disconnected() {
     assert_timely(Duration::from_secs(5), || {
         node_client
             .telemetry
-            .get_telemetry(&channel.info.peer_addr())
+            .get_telemetry(&channel.peer_addr())
             .is_none()
     });
 }
@@ -138,29 +144,35 @@ fn disable_metrics() {
 
     // Try and request metrics from a node which is turned off but a channel is not closed yet
     let channel = node_client
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_node_id(&node_server.get_node_id())
-        .unwrap();
+        .unwrap()
+        .clone();
 
     node_client.telemetry.trigger();
 
     assert_never(Duration::from_secs(1), || {
         node_client
             .telemetry
-            .get_telemetry(&channel.info.peer_addr())
+            .get_telemetry(&channel.peer_addr())
             .is_some()
     });
 
     // It should still be able to receive metrics though
     let channel1 = node_server
-        .network
+        .network_info
+        .read()
+        .unwrap()
         .find_node_id(&node_client.get_node_id())
-        .unwrap();
+        .unwrap()
+        .clone();
 
     assert_timely(Duration::from_secs(5), || {
         node_server
             .telemetry
-            .get_telemetry(&channel1.info.peering_addr().unwrap())
+            .get_telemetry(&channel1.peering_addr().unwrap())
             .is_some()
     });
 }

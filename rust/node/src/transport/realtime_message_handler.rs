@@ -1,4 +1,4 @@
-use super::{Channel, MessagePublisher, Network};
+use super::{Channel, MessagePublisher, NetworkFilter, NetworkInfo};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::{BootstrapAscending, BootstrapServer},
@@ -13,14 +13,15 @@ use rsnano_core::VoteSource;
 use rsnano_messages::{Message, TelemetryAck};
 use std::{
     net::SocketAddrV6,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 use tracing::trace;
 
 /// Handle realtime messages (as opposed to bootstrap messages)
 pub struct RealtimeMessageHandler {
     stats: Arc<Stats>,
-    network: Arc<Network>,
+    publish_filter: Arc<NetworkFilter>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     block_processor: Arc<BlockProcessor>,
     config: NodeConfig,
     flags: NodeFlags,
@@ -36,7 +37,8 @@ pub struct RealtimeMessageHandler {
 impl RealtimeMessageHandler {
     pub(crate) fn new(
         stats: Arc<Stats>,
-        network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
+        publish_filter: Arc<NetworkFilter>,
         block_processor: Arc<BlockProcessor>,
         config: NodeConfig,
         flags: NodeFlags,
@@ -50,7 +52,8 @@ impl RealtimeMessageHandler {
     ) -> Self {
         Self {
             stats,
-            network,
+            network_info,
+            publish_filter,
             block_processor,
             config,
             flags,
@@ -82,8 +85,7 @@ impl RealtimeMessageHandler {
                         SocketAddrV6::new(*channel.info.peer_addr().ip(), peer0.port(), 0, 0);
 
                     // Remember this for future forwarding to other peers
-                    self.network
-                        .info
+                    self.network_info
                         .read()
                         .unwrap()
                         .set_peering_addr(channel.channel_id(), peering_addr);
@@ -101,7 +103,7 @@ impl RealtimeMessageHandler {
                     self.block_processor
                         .add(Arc::new(publish.block), source, channel.channel_id());
                 if !added {
-                    self.network.publish_filter.clear(publish.digest);
+                    self.publish_filter.clear(publish.digest);
                     self.stats
                         .inc_dir(StatType::Drop, DetailType::Publish, Direction::In);
                 }

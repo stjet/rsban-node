@@ -10,7 +10,7 @@ use crate::{
     consensus::VoteApplierExt,
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{DropPolicy, MessagePublisher, Network, NetworkInfo},
+    transport::{DropPolicy, MessagePublisher, NetworkFilter, NetworkInfo},
     utils::{HardenedConstants, SteadyClock},
     wallets::Wallets,
     NetworkParams,
@@ -83,7 +83,7 @@ pub struct ActiveElections {
     recently_cemented: Arc<Mutex<BoundedVecDeque<ElectionStatus>>>,
     block_processor: Arc<BlockProcessor>,
     vote_generators: Arc<VoteGenerators>,
-    network: Arc<Network>,
+    publish_filter: Arc<NetworkFilter>,
     network_info: Arc<RwLock<NetworkInfo>>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
@@ -111,7 +111,7 @@ impl ActiveElections {
         confirming_set: Arc<ConfirmingSet>,
         block_processor: Arc<BlockProcessor>,
         vote_generators: Arc<VoteGenerators>,
-        network: Arc<Network>,
+        publish_filter: Arc<NetworkFilter>,
         network_info: Arc<RwLock<NetworkInfo>>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
@@ -148,7 +148,7 @@ impl ActiveElections {
             node_config,
             block_processor,
             vote_generators,
-            network,
+            publish_filter,
             network_info,
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
@@ -363,7 +363,7 @@ impl ActiveElections {
     fn clear_publish_filter(&self, block: &BlockEnum) {
         let mut buf = MemoryStream::new();
         block.serialize_without_block_type(&mut buf);
-        self.network.publish_filter.clear_bytes(buf.as_bytes());
+        self.publish_filter.clear_bytes(buf.as_bytes());
     }
 
     /// Maximum number of elections that should be present in this container

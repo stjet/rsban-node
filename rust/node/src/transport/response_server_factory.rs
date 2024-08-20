@@ -1,6 +1,6 @@
 use super::{
-    Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, NetworkInfo,
-    ResponseServer, ResponseServerExt, SynCookies,
+    Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, NetworkFilter,
+    NetworkInfo, ResponseServer, ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -22,7 +22,8 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) workers: Arc<dyn ThreadPool>,
     pub(crate) block_processor: Arc<BlockProcessor>,
     pub(crate) bootstrap_initiator: Arc<BootstrapInitiator>,
-    pub(crate) network: Arc<Network>,
+    pub(crate) network: Arc<RwLock<NetworkInfo>>,
+    pub(crate) publish_filter: Arc<NetworkFilter>,
     pub(crate) inbound_queue: Arc<InboundMessageQueue>,
     pub(crate) node_flags: NodeFlags,
     pub(crate) network_params: NetworkParams,
@@ -36,6 +37,7 @@ impl ResponseServerFactory {
         let ledger = Arc::new(Ledger::new_null());
         let flags = NodeFlags::default();
         let network = Arc::new(Network::new_null());
+        let publish_filter = Arc::new(NetworkFilter::default());
         let network_info = Arc::new(RwLock::new(NetworkInfo::new_test_instance()));
         let runtime = Arc::new(AsyncRuntime::default());
         let workers = Arc::new(ThreadPoolImpl::new_test_instance());
@@ -54,7 +56,7 @@ impl ResponseServerFactory {
                 BootstrapInitiatorConfig::default(),
                 flags.clone(),
                 network.clone(),
-                network_info,
+                network_info.clone(),
                 runtime,
                 workers,
                 network_params.clone(),
@@ -65,21 +67,22 @@ impl ResponseServerFactory {
                 MessagePublisher::new_null(),
                 clock,
             )),
-            network,
+            network: network_info,
             inbound_queue: Arc::new(InboundMessageQueue::default()),
             node_flags: flags,
             network_params,
             syn_cookies: Arc::new(SynCookies::new(1)),
             latest_keepalives: Arc::new(Mutex::new(LatestKeepalives::default())),
+            publish_filter,
         }
     }
 
     pub(crate) fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
         let server = Arc::new(ResponseServer::new(
-            self.network.info.clone(),
+            self.network.clone(),
             self.inbound_queue.clone(),
             channel,
-            Arc::clone(&self.network.publish_filter),
+            self.publish_filter.clone(),
             Arc::new(self.network_params.clone()),
             Arc::clone(&self.stats),
             true,

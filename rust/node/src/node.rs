@@ -246,10 +246,12 @@ impl Node {
             network_params.network.cleanup_cutoff(),
         );
 
+        let publish_filter = Arc::new(NetworkFilter::new(256 * 1024));
+
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
-            publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
+            publish_filter: publish_filter.clone(),
             network_params: network_params.clone(),
             stats: stats.clone(),
             limiter: outbound_limiter.clone(),
@@ -451,7 +453,7 @@ impl Node {
             confirming_set.clone(),
             block_processor.clone(),
             vote_generators.clone(),
-            network.clone(),
+            publish_filter.clone(),
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
@@ -512,12 +514,13 @@ impl Node {
             workers: workers.clone(),
             block_processor: block_processor.clone(),
             bootstrap_initiator: bootstrap_initiator.clone(),
-            network: network.clone(),
+            network: network_info.clone(),
             inbound_queue: inbound_message_queue.clone(),
             node_flags: flags.clone(),
             network_params: network_params.clone(),
             syn_cookies: syn_cookies.clone(),
             latest_keepalives: latest_keepalives.clone(),
+            publish_filter: publish_filter.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(
@@ -642,7 +645,8 @@ impl Node {
 
         let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
-            network.clone(),
+            network_info.clone(),
+            publish_filter.clone(),
             block_processor.clone(),
             config.clone(),
             flags.clone(),

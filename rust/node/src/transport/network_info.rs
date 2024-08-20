@@ -43,8 +43,6 @@ pub struct ChannelInfo {
     closed: AtomicBool,
 
     socket_type: AtomicU8,
-    generic_queue_full: AtomicBool,
-    bootstrap_queue_full: AtomicBool,
 }
 
 impl ChannelInfo {
@@ -67,13 +65,12 @@ impl ChannelInfo {
             timed_out: AtomicBool::new(false),
             socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
             closed: AtomicBool::new(false),
-            generic_queue_full: AtomicBool::new(false),
-            bootstrap_queue_full: AtomicBool::new(false),
             data: Mutex::new(ChannelInfoData {
                 node_id: None,
                 last_bootstrap_attempt: UNIX_EPOCH,
                 last_packet_received: now,
                 last_packet_sent: now,
+                is_queue_full_impl: None,
                 peering_addr: if direction == ChannelDirection::Outbound {
                     Some(peer_addr)
                 } else {
@@ -90,6 +87,10 @@ impl ChannelInfo {
             TEST_ENDPOINT_2,
             ChannelDirection::Outbound,
         )
+    }
+
+    pub fn set_queue_full_query(&self, query: Box<dyn Fn(TrafficType) -> bool + Send>) {
+        self.data.lock().unwrap().is_queue_full_impl = Some(query);
     }
 
     pub fn channel_id(&self) -> ChannelId {
@@ -216,17 +217,11 @@ impl ChannelInfo {
         self.data.lock().unwrap().last_packet_sent = instant;
     }
 
-    pub fn set_queue_full(&self, traffic_type: TrafficType, full: bool) {
-        match traffic_type {
-            TrafficType::Generic => self.generic_queue_full.store(full, Ordering::Relaxed),
-            TrafficType::Bootstrap => self.bootstrap_queue_full.store(full, Ordering::Relaxed),
-        }
-    }
-
     pub fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
-        match traffic_type {
-            TrafficType::Generic => self.generic_queue_full.load(Ordering::Relaxed),
-            TrafficType::Bootstrap => self.bootstrap_queue_full.load(Ordering::Relaxed),
+        let guard = self.data.lock().unwrap();
+        match &guard.is_queue_full_impl {
+            Some(cb) => cb(traffic_type),
+            None => false,
         }
     }
 }
@@ -237,6 +232,7 @@ struct ChannelInfoData {
     last_bootstrap_attempt: SystemTime,
     last_packet_received: SystemTime,
     last_packet_sent: SystemTime,
+    is_queue_full_impl: Option<Box<dyn Fn(TrafficType) -> bool + Send>>,
 }
 
 pub struct NetworkInfo {

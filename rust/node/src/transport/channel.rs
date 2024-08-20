@@ -27,7 +27,7 @@ pub struct Channel {
     pub info: Arc<ChannelInfo>,
     limiter: Arc<OutboundBandwidthLimiter>,
     stats: Arc<Stats>,
-    write_queue: WriteQueue,
+    write_queue: Arc<WriteQueue>,
     stream: Arc<TcpStream>,
 }
 
@@ -49,7 +49,7 @@ impl Channel {
             network_info,
             limiter,
             stats,
-            write_queue,
+            write_queue: Arc::new(write_queue),
             stream,
         };
 
@@ -89,10 +89,17 @@ impl Channel {
         let info = channel_info.clone();
         let (channel, mut receiver) = Self::new(channel_info, network_info, stream, stats, limiter);
 
+        let write_queue = Arc::downgrade(&channel.write_queue);
+        info.set_queue_full_query(Box::new(move |traffic_type| {
+            let Some(queue) = write_queue.upgrade() else {
+                return true;
+            };
+            queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
+        }));
+
         // process write queue:
         tokio::spawn(async move {
-            while let Some((entry, traffic_type)) = receiver.pop().await {
-                info.set_queue_full(traffic_type, false);
+            while let Some((entry, _)) = receiver.pop().await {
                 let mut written = 0;
                 let buffer = &entry.buffer;
                 loop {
@@ -222,10 +229,6 @@ impl Channel {
         let (inserted, write_error) = self
             .write_queue
             .try_insert(Arc::new(buffer.to_vec()), traffic_type); // TODO don't copy into vec. Split into fixed size packets
-        self.info.set_queue_full(
-            traffic_type,
-            self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE,
-        );
 
         if inserted {
             self.stats.add_dir_aggregate(

@@ -2,7 +2,6 @@ mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel;
-mod channel_container;
 mod dead_channel_cleanup;
 mod fair_queue;
 mod handshake_process;

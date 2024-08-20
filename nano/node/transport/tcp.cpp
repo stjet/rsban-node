@@ -37,17 +37,6 @@ std::size_t nano::transport::tcp_channels::size () const
 	return rsnano::rsn_tcp_channels_channel_count (handle);
 }
 
-float nano::transport::tcp_channels::size_sqrt () const
-{
-	return rsnano::rsn_tcp_channels_len_sqrt (handle);
-}
-
-// Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
-std::size_t nano::transport::tcp_channels::fanout (float scale) const
-{
-	return rsnano::rsn_tcp_channels_fanout (handle, scale);
-}
-
 void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
 {
 	std::array<rsnano::EndpointDto, 8> dtos;

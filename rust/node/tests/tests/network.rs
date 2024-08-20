@@ -31,7 +31,13 @@ fn last_contacted() {
     let channel1 = establish_tcp(&node1, &node0);
     assert_timely_eq(
         Duration::from_secs(3),
-        || node0.network.count_by_mode(ChannelMode::Realtime),
+        || {
+            node0
+                .network_info
+                .read()
+                .unwrap()
+                .count_by_mode(ChannelMode::Realtime)
+        },
         1,
     );
 
@@ -95,7 +101,14 @@ fn last_contacted() {
         },
         "keepalive count",
     );
-    assert_eq!(node0.network.count_by_mode(ChannelMode::Realtime), 1);
+    assert_eq!(
+        node0
+            .network_info
+            .read()
+            .unwrap()
+            .count_by_mode(ChannelMode::Realtime),
+        1
+    );
     let timestamp_after_keepalive = channel0.last_packet_received();
     assert!(timestamp_after_keepalive > timestamp_before_keepalive);
 }

@@ -35,7 +35,11 @@ pub extern "C" fn rsn_tcp_channels_purge(handle: &TcpChannelsHandle, cutoff_ns: 
 
 #[no_mangle]
 pub extern "C" fn rsn_tcp_channels_channel_count(handle: &mut TcpChannelsHandle) -> usize {
-    handle.count_by_mode(ChannelMode::Realtime)
+    handle
+        .info
+        .read()
+        .unwrap()
+        .count_by_mode(ChannelMode::Realtime)
 }
 
 #[no_mangle]
@@ -51,14 +55,4 @@ pub unsafe extern "C" fn rsn_tcp_channels_random_fill(
         .iter_mut()
         .zip(&tmp)
         .for_each(|(dto, ep)| *dto = ep.into());
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_len_sqrt(handle: &TcpChannelsHandle) -> f32 {
-    handle.len_sqrt()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn rsn_tcp_channels_fanout(handle: &TcpChannelsHandle, scale: f32) -> usize {
-    handle.fanout(scale)
 }

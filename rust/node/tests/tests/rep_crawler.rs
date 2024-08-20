@@ -132,7 +132,12 @@ fn rep_weight() {
 
     assert_timely_eq(
         Duration::from_secs(5),
-        || node.network.count_by_mode(ChannelMode::Realtime),
+        || {
+            node.network_info
+                .read()
+                .unwrap()
+                .count_by_mode(ChannelMode::Realtime)
+        },
         3,
     );
 

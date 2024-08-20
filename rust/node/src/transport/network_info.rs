@@ -9,7 +9,7 @@ use crate::{
 
 use super::{
     attempt_container::AttemptContainer, AcceptResult, ChannelDirection, ChannelId, ChannelMode,
-    PeerExclusion, TcpConfig, TrafficType,
+    ChannelsInfo, PeerExclusion, TcpConfig, TrafficType,
 };
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
@@ -30,7 +30,7 @@ use std::{
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Default timeout in seconds
 const DEFAULT_TIMEOUT: u64 = 120;
@@ -438,7 +438,7 @@ impl NetworkInfo {
     pub fn find_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelInfo>> {
         self.channels
             .values()
-            .find(|c| c.node_id() == Some(*node_id))
+            .find(|c| c.node_id() == Some(*node_id) && c.is_alive())
     }
 
     pub fn find_realtime_channel_by_remote_addr(
@@ -472,6 +472,10 @@ impl NetworkInfo {
             channels.truncate(count)
         }
         channels
+    }
+
+    pub fn random_fanout_realtime(&self, scale: f32) -> Vec<Arc<ChannelInfo>> {
+        self.random_realtime_channels(self.fanout(scale), 0)
     }
 
     pub fn list_realtime(&self, min_version: u8) -> Vec<Arc<ChannelInfo>> {
@@ -581,6 +585,8 @@ impl NetworkInfo {
         f32::sqrt(self.count_by_mode(ChannelMode::Realtime) as f32)
     }
 
+    /// Desired fanout for a given scale
+    /// Simulating with sqrt_broadcast_simulate shows we only need to broadcast to sqrt(total_peers) random peers in order to successfully publish to everyone with high probability
     pub fn fanout(&self, scale: f32) -> usize {
         (self.len_sqrt() * scale).ceil() as usize
     }
@@ -678,17 +684,53 @@ impl NetworkInfo {
             .count()
     }
 
-    fn count_by_direction(&self, direction: ChannelDirection) -> usize {
+    pub(crate) fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.channels
             .values()
             .filter(|c| c.is_alive() && c.direction() == direction)
             .count()
     }
-    fn count_by_mode(&self, mode: ChannelMode) -> usize {
+
+    pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.channels
             .values()
             .filter(|c| c.is_alive() && c.mode() == mode)
             .count()
+    }
+
+    pub fn bootstrap_peer(&mut self) -> SocketAddrV6 {
+        let mut peering_endpoint = None;
+        let mut channel = None;
+        for i in self.iter_by_last_bootstrap_attempt() {
+            if i.mode() == ChannelMode::Realtime
+                && i.protocol_version() >= self.network_constants.protocol_version_min
+            {
+                if let Some(peering) = i.peering_addr() {
+                    channel = Some(i);
+                    peering_endpoint = Some(peering);
+                    break;
+                }
+            }
+        }
+
+        match (channel, peering_endpoint) {
+            (Some(c), Some(peering)) => {
+                c.set_last_bootstrap_attempt(SystemTime::now());
+                peering
+            }
+            _ => SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
+        }
+    }
+
+    pub fn iter_by_last_bootstrap_attempt(&self) -> Vec<Arc<ChannelInfo>> {
+        let mut channels: Vec<_> = self
+            .channels
+            .values()
+            .filter(|c| c.is_alive())
+            .cloned()
+            .collect();
+        channels.sort_by(|a, b| a.last_bootstrap_attempt().cmp(&b.last_bootstrap_attempt()));
+        channels
     }
 
     pub(crate) fn find_channels_by_remote_addr(
@@ -837,13 +879,99 @@ impl NetworkInfo {
         true
     }
 
+    pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
+        if let Some(channel) = self.channels.get(&channel_id) {
+            channel.set_peering_addr(peering_addr);
+        }
+    }
+
+    pub(crate) fn peer_misbehaved(&mut self, channel_id: ChannelId, now: Timestamp) {
+        let Some(channel) = self.channels.get(&channel_id) else {
+            return;
+        };
+        let channel = channel.clone();
+
+        // Add to peer exclusion list
+
+        self.excluded_peers
+            .peer_misbehaved(&channel.peer_addr(), now);
+
+        let peer_addr = channel.peer_addr();
+        let mode = channel.mode();
+        let direction = channel.direction();
+
+        channel.close();
+        warn!(?peer_addr, ?mode, ?direction, "Peer misbehaved!");
+    }
+
+    pub fn close(&mut self) {}
+
     pub fn stop(&mut self) -> bool {
         if self.stopped {
             false
         } else {
+            for channel in self.channels.values() {
+                channel.close();
+            }
+            self.channels.clear();
             self.stopped = true;
             true
         }
+    }
+
+    pub fn random_fill_realtime(&self, endpoints: &mut [SocketAddrV6]) {
+        let mut peers = self.list_realtime(0);
+        // Don't include channels with ephemeral remote ports
+        peers.retain(|c| c.peering_addr().is_some());
+        let mut rng = thread_rng();
+        peers.shuffle(&mut rng);
+        peers.truncate(endpoints.len());
+
+        let null_endpoint = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0);
+
+        for (i, target) in endpoints.iter_mut().enumerate() {
+            let endpoint = if i < peers.len() {
+                peers[i].peering_addr().unwrap_or(null_endpoint)
+            } else {
+                null_endpoint
+            };
+            *target = endpoint;
+        }
+    }
+
+    pub(crate) fn set_protocol_version(&self, channel_id: ChannelId, protocol_version: u8) {
+        if let Some(channel) = self.channels.get(&channel_id) {
+            channel.set_protocol_version(protocol_version)
+        }
+    }
+
+    pub fn keepalive_list(&self) -> Vec<ChannelId> {
+        let cutoff = SystemTime::now() - self.network_constants.keepalive_period;
+        let mut result = Vec::new();
+        for channel in self.channels.values() {
+            if channel.mode() == ChannelMode::Realtime && channel.last_packet_sent() < cutoff {
+                result.push(channel.channel_id());
+            }
+        }
+
+        result
+    }
+
+    pub(crate) fn channels_info(&self) -> ChannelsInfo {
+        let mut info = ChannelsInfo::default();
+        for channel in self.channels.values() {
+            info.total += 1;
+            match channel.mode() {
+                ChannelMode::Bootstrap => info.bootstrap += 1,
+                ChannelMode::Realtime => info.realtime += 1,
+                _ => {}
+            }
+            match channel.direction() {
+                ChannelDirection::Inbound => info.inbound += 1,
+                ChannelDirection::Outbound => info.outbound += 1,
+            }
+        }
+        info
     }
 
     pub fn is_stopped(&self) -> bool {
@@ -867,6 +995,12 @@ impl NetworkInfo {
                 self.excluded_peers.collect_container_info("excluded_peers"),
             ],
         )
+    }
+}
+
+impl Drop for NetworkInfo {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 

@@ -115,7 +115,7 @@ impl NetworkThreads {
     pub fn stop(&mut self) {
         *self.stopped.1.lock().unwrap() = true;
         self.stopped.0.notify_all();
-        self.network.stop();
+        self.network.info.write().unwrap().stop();
         if let Some(t) = self.keepalive_thread.take() {
             t.join().unwrap();
         }

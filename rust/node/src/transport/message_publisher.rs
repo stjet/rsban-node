@@ -125,7 +125,13 @@ impl MessagePublisher {
 
     pub fn flood(&mut self, message: &Message, drop_policy: DropPolicy, scale: f32) {
         let buffer = self.message_serializer.serialize(message);
-        let channels = self.network.random_fanout_realtime(scale);
+        let channels = self
+            .network
+            .info
+            .read()
+            .unwrap()
+            .random_fanout_realtime(scale);
+
         for channel in channels {
             try_send_serialized_message(
                 &self.network,

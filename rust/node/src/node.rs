@@ -244,7 +244,6 @@ impl Node {
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
-            tcp_config: config.tcp.clone(),
             publish_filter: Arc::new(NetworkFilter::new(256 * 1024)),
             network_params: network_params.clone(),
             stats: stats.clone(),
@@ -306,6 +305,7 @@ impl Node {
             network_info.clone(),
             message_publisher.clone(),
             node_id.clone(),
+            steady_clock.clone(),
         ));
 
         let bootstrap_server = Arc::new(BootstrapServer::new(

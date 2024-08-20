@@ -6,7 +6,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Network,
-        TrafficType,
+        NetworkInfo, TrafficType,
     },
 };
 use rsnano_core::{
@@ -17,7 +17,7 @@ use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::{max, min},
-    sync::{Arc, Condvar, Mutex, MutexGuard},
+    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,
 };
 
@@ -97,7 +97,7 @@ impl RequestAggregator {
                 config: self.config.clone(),
                 ledger: self.ledger.clone(),
                 vote_generators: self.vote_generators.clone(),
-                network: self.network.clone(),
+                network: self.network.info.clone(),
             };
 
             guard.push(
@@ -201,7 +201,7 @@ struct RequestAggregatorLoop {
     config: RequestAggregatorConfig,
     ledger: Arc<Ledger>,
     vote_generators: Arc<VoteGenerators>,
-    network: Arc<Network>,
+    network: Arc<RwLock<NetworkInfo>>,
 }
 
 impl RequestAggregatorLoop {
@@ -233,6 +233,8 @@ impl RequestAggregatorLoop {
 
             if !self
                 .network
+                .read()
+                .unwrap()
                 .is_queue_full(*channel_id, TrafficType::Generic)
             {
                 self.process(&tx, request, *channel_id);

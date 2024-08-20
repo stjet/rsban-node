@@ -486,7 +486,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             // TODO - tune this better
             // Not many peers respond, need to try to make more connections than we need.
             for _ in 0..delta {
-                let endpoint = self.network.bootstrap_peer(); // Legacy bootstrap is compatible with older version of protocol
+                let endpoint = self.network.info.write().unwrap().bootstrap_peer(); // Legacy bootstrap is compatible with older version of protocol
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
                     && (self.config.allow_bootstrap_peers_duplicates
                         || !endpoints.contains(&endpoint))

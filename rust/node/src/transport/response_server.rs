@@ -1,6 +1,6 @@
 use super::{
     Channel, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
-    MessageDeserializer, Network, NetworkFilter, SynCookies,
+    MessageDeserializer, Network, NetworkFilter, NetworkInfo, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -25,7 +25,7 @@ use std::{
     net::SocketAddrV6,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Mutex, RwLock, Weak,
     },
     time::{Duration, Instant},
 };
@@ -79,6 +79,7 @@ pub struct ResponseServer {
     pub disable_bootstrap_bulk_pull_server: bool,
     allow_bootstrap: bool,
     network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
     initiate_handshake_listener: OutputListenerMt<()>,
@@ -97,6 +98,7 @@ static NEXT_UNIQUE_ID: AtomicUsize = AtomicUsize::new(0);
 impl ResponseServer {
     pub fn new(
         network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         inbound_queue: Arc<InboundMessageQueue>,
         channel: Arc<Channel>,
         publish_filter: Arc<NetworkFilter>,
@@ -117,6 +119,7 @@ impl ResponseServer {
         let remote_endpoint = channel.info.peer_addr();
         Self {
             network,
+            network_info,
             inbound_queue,
             channel,
             disable_bootstrap_listener: false,
@@ -187,7 +190,13 @@ impl ResponseServer {
             return false;
         }
 
-        if self.network.count_by_mode(ChannelMode::Bootstrap) >= self.connections_max {
+        if self
+            .network_info
+            .read()
+            .unwrap()
+            .count_by_mode(ChannelMode::Bootstrap)
+            >= self.connections_max
+        {
             return false;
         }
 
@@ -314,7 +323,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
                 Ok(msg) => {
                     if first_message {
                         // TODO: if version using changes => peer misbehaved!
-                        self.network.set_protocol_version(
+                        self.network_info.read().unwrap().set_protocol_version(
                             self.channel.channel_id(),
                             msg.protocol.version_using,
                         );

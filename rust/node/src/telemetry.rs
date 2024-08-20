@@ -22,6 +22,7 @@ use crate::{
         ChannelId, ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, Network, NetworkInfo,
         TrafficType,
     },
+    utils::SteadyClock,
     NetworkParams,
 };
 
@@ -51,6 +52,7 @@ pub struct Telemetry {
     startup_time: Instant,
     telemetry_processed_callbacks:
         Mutex<Vec<Box<dyn Fn(&TelemetryData, &SocketAddrV6) + Send + Sync>>>,
+    clock: Arc<SteadyClock>,
 }
 
 impl Telemetry {
@@ -67,6 +69,7 @@ impl Telemetry {
         network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
         node_id: KeyPair,
+        clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
             config,
@@ -90,6 +93,7 @@ impl Telemetry {
             telemetry_processed_callbacks: Mutex::new(Vec::new()),
             node_id,
             startup_time: Instant::now(),
+            clock,
         }
     }
 
@@ -130,7 +134,10 @@ impl Telemetry {
         }
 
         if data.genesis_block != self.network_params.ledger.genesis.hash() {
-            self.network.peer_misbehaved(channel.channel_id());
+            self.network_info
+                .write()
+                .unwrap()
+                .peer_misbehaved(channel.channel_id(), self.clock.now());
 
             self.stats
                 .inc(StatType::Telemetry, DetailType::GenesisMismatch);
@@ -352,7 +359,11 @@ impl Telemetry {
             uptime: self.startup_time.elapsed().as_secs(),
             unchecked_count: self.unchecked.len() as u64,
             genesis_block: self.network_params.ledger.genesis.hash(),
-            peer_count: self.network.count_by_mode(ChannelMode::Realtime) as u32,
+            peer_count: self
+                .network_info
+                .read()
+                .unwrap()
+                .count_by_mode(ChannelMode::Realtime) as u32,
             account_count: self.ledger.account_count(),
             major_version: MAJOR_VERSION,
             minor_version: MINOR_VERSION,

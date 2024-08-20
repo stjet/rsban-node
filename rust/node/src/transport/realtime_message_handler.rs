@@ -83,6 +83,9 @@ impl RealtimeMessageHandler {
 
                     // Remember this for future forwarding to other peers
                     self.network
+                        .info
+                        .read()
+                        .unwrap()
                         .set_peering_addr(channel.channel_id(), peering_addr);
                 }
             }

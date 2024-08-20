@@ -668,7 +668,13 @@ mod bootstrap_processor {
             .connect_to(node2.tcp_listener.local_address());
         assert_timely_eq(
             Duration::from_secs(5),
-            || node2.network.count_by_mode(ChannelMode::Realtime),
+            || {
+                node2
+                    .network_info
+                    .read()
+                    .unwrap()
+                    .count_by_mode(ChannelMode::Realtime)
+            },
             1,
         );
         node1
@@ -1402,6 +1408,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
 
     Arc::new(ResponseServer::new(
         node.network.clone(),
+        node.network_info.clone(),
         node.inbound_message_queue.clone(),
         channel,
         node.network.publish_filter.clone(),

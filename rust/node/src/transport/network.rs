@@ -995,9 +995,8 @@ pub(crate) struct ChannelsInfo {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
-
     use super::*;
+    use rsnano_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
 
     #[tokio::test]
     async fn newly_added_channel_is_not_a_realtime_channel() {

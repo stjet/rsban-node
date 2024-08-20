@@ -37,10 +37,15 @@ impl RpcClient {
         Ok(result)
     }
 
-    pub async fn account_balance(&self, destination: &str) -> Result<Value> {
+    pub async fn account_balance(
+        &self,
+        destination: &str,
+        only_confirmed: Option<&str>,
+    ) -> Result<Value> {
         let request = json!({
             "action": "account_balance",
             "account": destination,
+            "only_confirmed": only_confirmed.unwrap_or("true"),
         });
         Ok(self.rpc_request(&request).await?)
     }

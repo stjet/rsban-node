@@ -157,7 +157,7 @@ impl ResponseServer {
     }
 
     pub fn is_stopped(&self) -> bool {
-        !self.channel.is_alive()
+        !self.channel.info.is_alive()
     }
 
     pub fn remote_endpoint(&self) -> SocketAddrV6 {

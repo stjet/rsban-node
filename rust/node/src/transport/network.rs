@@ -359,7 +359,7 @@ impl Network {
             .unwrap()
             .channels
             .get_by_id(channel_id)
-            .map(|c| c.is_queue_full(traffic_type))
+            .map(|c| c.info.is_queue_full(traffic_type))
             .unwrap_or(true)
     }
 
@@ -749,7 +749,7 @@ impl State {
             .iter()
             .filter(|c| {
                 c.info.protocol_version() >= min_version
-                    && c.is_alive()
+                    && c.info.is_alive()
                     && c.info.mode() == ChannelMode::Realtime
             })
             .map(|c| c.clone())
@@ -777,7 +777,7 @@ impl State {
         self.channels
             .get_by_remote_addr(remote_addr)
             .iter()
-            .filter(|c| c.is_alive())
+            .filter(|c| c.info.is_alive())
             .map(|&c| c.clone())
             .collect()
     }
@@ -789,7 +789,7 @@ impl State {
         self.channels
             .get_by_remote_addr(endpoint)
             .drain(..)
-            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.is_alive())
+            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.info.is_alive())
             .next()
             .cloned()
     }
@@ -801,7 +801,7 @@ impl State {
         self.channels
             .get_by_peering_addr(peering_addr)
             .drain(..)
-            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.is_alive())
+            .filter(|c| c.info.mode() == ChannelMode::Realtime && c.info.is_alive())
             .next()
             .map(|c| c.channel_id())
     }
@@ -813,7 +813,7 @@ impl State {
         self.channels
             .get_by_peering_addr(peering_addr)
             .iter()
-            .filter(|c| c.is_alive())
+            .filter(|c| c.info.is_alive())
             .map(|&c| c.clone())
             .collect()
     }

@@ -1,4 +1,4 @@
-use super::{ChannelDirection, ChannelId, ChannelMode};
+use super::{ChannelDirection, ChannelId, ChannelMode, TrafficType};
 use num::FromPrimitive;
 use rsnano_core::{
     utils::{seconds_since_epoch, TEST_ENDPOINT_1},
@@ -41,6 +41,8 @@ pub struct ChannelInfo {
     closed: AtomicBool,
 
     socket_type: AtomicU8,
+    generic_queue_full: AtomicBool,
+    bootstrap_queue_full: AtomicBool,
 }
 
 impl ChannelInfo {
@@ -61,6 +63,8 @@ impl ChannelInfo {
             timed_out: AtomicBool::new(false),
             socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
             closed: AtomicBool::new(false),
+            generic_queue_full: AtomicBool::new(false),
+            bootstrap_queue_full: AtomicBool::new(false),
             data: Mutex::new(ChannelInfoData {
                 node_id: None,
                 last_bootstrap_attempt: UNIX_EPOCH,
@@ -150,6 +154,10 @@ impl ChannelInfo {
         self.timed_out.store(value, Ordering::Relaxed)
     }
 
+    pub fn is_alive(&self) -> bool {
+        !self.is_closed()
+    }
+
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::Relaxed)
     }
@@ -197,6 +205,20 @@ impl ChannelInfo {
 
     pub fn set_last_packet_sent(&self, instant: SystemTime) {
         self.data.lock().unwrap().last_packet_sent = instant;
+    }
+
+    pub fn set_queue_full(&self, traffic_type: TrafficType, full: bool) {
+        match traffic_type {
+            TrafficType::Generic => self.generic_queue_full.store(full, Ordering::Relaxed),
+            TrafficType::Bootstrap => self.bootstrap_queue_full.store(full, Ordering::Relaxed),
+        }
+    }
+
+    pub fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
+        match traffic_type {
+            TrafficType::Generic => self.generic_queue_full.load(Ordering::Relaxed),
+            TrafficType::Bootstrap => self.bootstrap_queue_full.load(Ordering::Relaxed),
+        }
     }
 }
 

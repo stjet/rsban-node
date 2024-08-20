@@ -56,14 +56,14 @@ impl ChannelContainer {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Arc<Channel>> {
-        self.by_channel_id.values().filter(|c| c.is_alive())
+        self.by_channel_id.values().filter(|c| c.info.is_alive())
     }
 
     pub fn iter_by_last_bootstrap_attempt(&self) -> impl Iterator<Item = &Arc<Channel>> {
         self.by_bootstrap_attempt
             .iter()
             .flat_map(|(_, ids)| ids.iter().map(|id| self.by_channel_id.get(id).unwrap()))
-            .filter(|c| c.is_alive())
+            .filter(|c| c.info.is_alive())
     }
 
     pub fn len(&self) -> usize {
@@ -73,7 +73,7 @@ impl ChannelContainer {
     pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
         self.by_channel_id
             .values()
-            .filter(|c| c.info.mode() == mode && c.is_alive())
+            .filter(|c| c.info.mode() == mode && c.info.is_alive())
             .count()
     }
 
@@ -110,7 +110,7 @@ impl ChannelContainer {
             .map(|ids| {
                 ids.iter()
                     .map(|id| self.by_channel_id.get(id).unwrap())
-                    .filter(|c| c.is_alive())
+                    .filter(|c| c.info.is_alive())
                     .collect()
             })
             .unwrap_or_default()
@@ -120,7 +120,7 @@ impl ChannelContainer {
         // TODO use a hashmap?
         self.by_channel_id
             .values()
-            .filter(|c| c.info.peering_addr().as_ref() == Some(peering_addr) && c.is_alive())
+            .filter(|c| c.info.peering_addr().as_ref() == Some(peering_addr) && c.info.is_alive())
             .collect()
     }
 
@@ -131,7 +131,7 @@ impl ChannelContainer {
     pub fn get_by_node_id(&self, node_id: &PublicKey) -> Option<&Arc<Channel>> {
         self.by_channel_id
             .values()
-            .filter(|c| c.info.node_id() == Some(*node_id) && c.is_alive())
+            .filter(|c| c.info.node_id() == Some(*node_id) && c.info.is_alive())
             .next()
     }
 
@@ -172,7 +172,7 @@ impl ChannelContainer {
     pub fn count_by_direction(&self, direction: ChannelDirection) -> usize {
         self.by_channel_id
             .values()
-            .filter(|c| c.info.direction() == direction && c.is_alive())
+            .filter(|c| c.info.direction() == direction && c.info.is_alive())
             .count()
     }
 
@@ -207,7 +207,7 @@ impl ChannelContainer {
         let dead_channels: Vec<_> = self
             .by_channel_id
             .values()
-            .filter(|c| !c.is_alive())
+            .filter(|c| !c.info.is_alive())
             .cloned()
             .collect();
 

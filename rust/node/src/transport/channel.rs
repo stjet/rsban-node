@@ -87,10 +87,11 @@ impl Channel {
         let stream_l = stream.clone();
         let info = channel_info.clone();
         let (channel, mut receiver) = Self::new(channel_info, network_info, stream, stats, limiter);
-        //
+
         // process write queue:
         tokio::spawn(async move {
-            while let Some(entry) = receiver.pop().await {
+            while let Some((entry, traffic_type)) = receiver.pop().await {
+                info.set_queue_full(traffic_type, false);
                 let mut written = 0;
                 let buffer = &entry.buffer;
                 loop {
@@ -124,10 +125,6 @@ impl Channel {
         channel
     }
 
-    pub(crate) fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
-        self.write_queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
-    }
-
     fn update_last_activity(&self) {
         self.info.set_last_activity(seconds_since_epoch());
     }
@@ -143,10 +140,6 @@ impl Channel {
             .set_node_id(self.channel_id, id);
     }
 
-    pub fn is_alive(&self) -> bool {
-        !self.info.is_closed()
-    }
-
     pub fn local_addr(&self) -> SocketAddrV6 {
         self.stream
             .local_addr()
@@ -159,7 +152,7 @@ impl Channel {
         buffer: &[u8],
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
-        while self.is_queue_full(traffic_type) {
+        while self.info.is_queue_full(traffic_type) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
         }
@@ -212,7 +205,7 @@ impl Channel {
             return false;
         }
 
-        if drop_policy == DropPolicy::CanDrop && self.is_queue_full(traffic_type) {
+        if drop_policy == DropPolicy::CanDrop && self.info.is_queue_full(traffic_type) {
             return false;
         }
 
@@ -228,6 +221,8 @@ impl Channel {
         let (inserted, write_error) = self
             .write_queue
             .try_insert(Arc::new(buffer.to_vec()), traffic_type); // TODO don't copy into vec. Split into fixed size packets
+        self.info
+            .set_queue_full(traffic_type, self.info.is_queue_full(traffic_type));
 
         if inserted {
             self.stats.add_dir_aggregate(
@@ -259,7 +254,7 @@ impl Channel {
         loop {
             sleep(Duration::from_secs(2)).await;
             // If the socket is already dead, close just in case, and stop doing checkups
-            if !self.is_alive() {
+            if !self.info.is_alive() {
                 debug!(
                     peer_addr = ?self.info.peer_addr(),
                     "Stopping checkup for dead channel"

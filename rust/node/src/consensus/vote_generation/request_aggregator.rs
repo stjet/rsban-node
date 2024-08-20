@@ -5,8 +5,8 @@ use super::{
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
-        ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, Network,
-        NetworkInfo, TrafficType,
+        ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, NetworkInfo,
+        TrafficType,
     },
 };
 use rsnano_core::{
@@ -60,7 +60,7 @@ pub struct RequestAggregator {
     state: Arc<Mutex<RequestAggregatorState>>,
     condition: Arc<Condvar>,
     threads: Mutex<Vec<JoinHandle<()>>>,
-    network: Arc<Network>,
+    network: Arc<RwLock<NetworkInfo>>,
 }
 
 impl RequestAggregator {
@@ -69,7 +69,7 @@ impl RequestAggregator {
         stats: Arc<Stats>,
         vote_generators: Arc<VoteGenerators>,
         ledger: Arc<Ledger>,
-        network: Arc<Network>,
+        network: Arc<RwLock<NetworkInfo>>,
     ) -> Self {
         let max_queue = config.max_queue;
         Self {
@@ -97,7 +97,7 @@ impl RequestAggregator {
                 config: self.config.clone(),
                 ledger: self.ledger.clone(),
                 vote_generators: self.vote_generators.clone(),
-                network: self.network.info.clone(),
+                network: self.network.clone(),
             };
 
             guard.push(

@@ -1,6 +1,7 @@
 use super::{
-    Channel, ChannelDirection, ChannelId, ChannelMode, DropPolicy, NetworkFilter, NetworkInfo,
-    OutboundBandwidthLimiter, TcpStream, TrafficType,
+    Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep,
+    DeadChannelCleanupTarget, DropPolicy, NetworkFilter, NetworkInfo, OutboundBandwidthLimiter,
+    TcpStream, TrafficType,
 };
 use crate::{
     stats::Stats,
@@ -10,7 +11,6 @@ use crate::{
 use rsnano_core::utils::NULL_ENDPOINT;
 use std::{
     collections::HashMap,
-    net::SocketAddrV6,
     sync::{Arc, Mutex, RwLock},
     time::{Duration, Instant, SystemTime},
 };
@@ -82,20 +82,6 @@ impl Network {
         }
     }
 
-    pub fn can_add_connection(
-        &self,
-        peer_addr: &SocketAddrV6,
-        direction: ChannelDirection,
-        planned_mode: ChannelMode,
-    ) -> AcceptResult {
-        self.info.write().unwrap().can_add_connection(
-            peer_addr,
-            direction,
-            planned_mode,
-            self.clock.now(),
-        )
-    }
-
     pub async fn add(
         &self,
         stream: TcpStream,
@@ -142,18 +128,6 @@ impl Network {
         Self::new(NetworkOptions::new_test_instance())
     }
 
-    pub(crate) fn add_attempt(&self, remote: SocketAddrV6) -> bool {
-        self.info.write().unwrap().add_attempt(remote)
-    }
-
-    pub(crate) fn remove_attempt(&self, remote: &SocketAddrV6) {
-        self.info.write().unwrap().remove_attempt(remote)
-    }
-
-    pub fn random_fill_peering_endpoints(&self, endpoints: &mut [SocketAddrV6]) {
-        self.info.read().unwrap().random_fill_realtime(endpoints);
-    }
-
     pub(crate) fn try_send_buffer(
         &self,
         channel_id: ChannelId,
@@ -193,12 +167,25 @@ impl Network {
         channel_ids
     }
 
-    pub fn count_by_mode(&self, mode: ChannelMode) -> usize {
-        self.info.read().unwrap().count_by_mode(mode)
-    }
-
     pub fn port(&self) -> u16 {
         self.info.read().unwrap().listening_port()
+    }
+}
+
+impl DeadChannelCleanupTarget for Arc<Network> {
+    fn dead_channel_cleanup_step(&self) -> Box<dyn super::DeadChannelCleanupStep> {
+        Box::new(NetworkCleanup(Arc::clone(self)))
+    }
+}
+
+struct NetworkCleanup(Arc<Network>);
+
+impl DeadChannelCleanupStep for NetworkCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut channels = self.0.channels.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            channels.remove(channel_id);
+        }
     }
 }
 

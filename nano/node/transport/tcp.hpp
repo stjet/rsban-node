@@ -29,7 +29,6 @@ namespace transport
 		std::size_t size () const;
 		void purge (std::chrono::system_clock::time_point const & cutoff_deadline);
 
-		void random_fill (std::array<nano::endpoint, 8> &) const;
 		uint16_t port () const;
 
 		std::shared_ptr<nano::network_filter> publish_filter;

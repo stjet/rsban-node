@@ -37,17 +37,6 @@ std::size_t nano::transport::tcp_channels::size () const
 	return rsnano::rsn_tcp_channels_channel_count (handle);
 }
 
-void nano::transport::tcp_channels::random_fill (std::array<nano::endpoint, 8> & target_a) const
-{
-	std::array<rsnano::EndpointDto, 8> dtos;
-	rsnano::rsn_tcp_channels_random_fill (handle, dtos.data ());
-	auto j{ target_a.begin () };
-	for (auto i{ dtos.begin () }, n{ dtos.end () }; i != n; ++i, ++j)
-	{
-		*j = rsnano::dto_to_udp_endpoint (*i);
-	}
-}
-
 uint16_t nano::transport::tcp_channels::port () const
 {
 	return rsnano::rsn_tcp_channels_port (handle);

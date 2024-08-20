@@ -241,6 +241,11 @@ impl Node {
             config.allow_local_peers,
         )));
 
+        let mut dead_channel_cleanup = DeadChannelCleanup::new(
+            network_info.clone(),
+            network_params.network.cleanup_cutoff(),
+        );
+
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
@@ -252,8 +257,7 @@ impl Node {
             network_info: network_info.clone(),
         }));
 
-        let mut dead_channel_cleanup =
-            DeadChannelCleanup::new(network.clone(), network_params.network.cleanup_cutoff());
+        dead_channel_cleanup.add(&network);
 
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
             config.message_processor.max_queue,
@@ -522,6 +526,7 @@ impl Node {
             stats.clone(),
             async_rt.clone(),
             response_server_factory.clone(),
+            steady_clock.clone(),
         ));
 
         let rep_crawler = Arc::new(RepCrawler::new(
@@ -597,7 +602,7 @@ impl Node {
             stats.clone(),
             vote_generators.clone(),
             ledger.clone(),
-            network.clone(),
+            network_info.clone(),
         ));
         dead_channel_cleanup.add(&request_aggregator);
 

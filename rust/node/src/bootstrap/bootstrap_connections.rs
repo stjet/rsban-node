@@ -547,21 +547,26 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     }
 
     async fn connect_client(&self, peer_addr: SocketAddrV6, push_front: bool) -> bool {
-        if !self.network.add_attempt(peer_addr) {
-            return false;
-        }
-
-        if self.network.can_add_connection(
-            &peer_addr,
-            ChannelDirection::Outbound,
-            ChannelMode::Bootstrap,
-        ) != AcceptResult::Accepted
         {
-            debug!(
+            let mut network = self.network_info.write().unwrap();
+            if !network.add_attempt(peer_addr) {
+                return false;
+            }
+
+            if network.can_add_connection(
+                &peer_addr,
+                ChannelDirection::Outbound,
+                ChannelMode::Bootstrap,
+                self.clock.now(),
+            ) != AcceptResult::Accepted
+            {
+                network.remove_attempt(&peer_addr);
+                drop(network);
+                debug!(
                     "Could not create outbound bootstrap connection to {}, because of failed limit check",
                     peer_addr);
-            self.network.remove_attempt(&peer_addr);
-            return false;
+                return false;
+            }
         }
 
         let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
@@ -609,7 +614,10 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             self.message_publisher.clone(),
         ));
         self.connections_count.fetch_add(1, Ordering::SeqCst);
-        self.network.remove_attempt(&peer_addr);
+        self.network_info
+            .write()
+            .unwrap()
+            .remove_attempt(&peer_addr);
         self.pool_connection(client, true, push_front);
 
         true

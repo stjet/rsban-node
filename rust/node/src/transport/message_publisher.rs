@@ -102,7 +102,8 @@ impl MessagePublisher {
             self.try_send(rep.channel_id, &message, drop_policy, traffic_type);
         }
 
-        for peer in self.list_no_pr(self.network.fanout(scale)) {
+        let peers = self.list_no_pr(self.network.info.read().unwrap().fanout(scale));
+        for peer in peers {
             self.try_send(peer.channel_id(), &message, drop_policy, traffic_type);
         }
     }

@@ -10,7 +10,7 @@ use crate::{
     consensus::VoteApplierExt,
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{DropPolicy, MessagePublisher, Network},
+    transport::{DropPolicy, MessagePublisher, Network, NetworkInfo},
     utils::{HardenedConstants, SteadyClock},
     wallets::Wallets,
     NetworkParams,
@@ -28,7 +28,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     mem::size_of,
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard},
+    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -84,6 +84,7 @@ pub struct ActiveElections {
     block_processor: Arc<BlockProcessor>,
     vote_generators: Arc<VoteGenerators>,
     network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
@@ -111,6 +112,7 @@ impl ActiveElections {
         block_processor: Arc<BlockProcessor>,
         vote_generators: Arc<VoteGenerators>,
         network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
         election_end: ElectionEndCallback,
@@ -147,6 +149,7 @@ impl ActiveElections {
             block_processor,
             vote_generators,
             network,
+            network_info,
             vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
@@ -774,7 +777,7 @@ impl ActiveElections {
 
         let mut solicitor = ConfirmationSolicitor::new(
             &self.network_params,
-            &self.network,
+            &self.network_info,
             self.message_publisher.lock().unwrap().clone(),
         );
         solicitor.prepare(&self.online_reps.lock().unwrap().peered_principal_reps());

@@ -449,6 +449,7 @@ impl Node {
             block_processor.clone(),
             vote_generators.clone(),
             network.clone(),
+            network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
             election_end,

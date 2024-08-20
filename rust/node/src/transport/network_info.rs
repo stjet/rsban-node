@@ -570,6 +570,21 @@ impl NetworkInfo {
         dead_channels.iter().map(|c| c.channel_id()).collect()
     }
 
+    pub(crate) fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {
+        self.channels
+            .get(&channel_id)
+            .map(|c| c.is_queue_full(traffic_type))
+            .unwrap_or(true)
+    }
+
+    fn len_sqrt(&self) -> f32 {
+        f32::sqrt(self.count_by_mode(ChannelMode::Realtime) as f32)
+    }
+
+    pub fn fanout(&self, scale: f32) -> usize {
+        (self.len_sqrt() * scale).ceil() as usize
+    }
+
     pub fn check_limits(
         &mut self,
         peer: &SocketAddrV6,
@@ -667,6 +682,12 @@ impl NetworkInfo {
         self.channels
             .values()
             .filter(|c| c.is_alive() && c.direction() == direction)
+            .count()
+    }
+    fn count_by_mode(&self, mode: ChannelMode) -> usize {
+        self.channels
+            .values()
+            .filter(|c| c.is_alive() && c.mode() == mode)
             .count()
     }
 

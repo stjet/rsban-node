@@ -18,7 +18,7 @@ use crate::{
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        BandwidthLimiter, Channel, ChannelId, DropPolicy, MessagePublisher, Network, TrafficType,
+        BandwidthLimiter, ChannelId, DropPolicy, MessagePublisher, NetworkInfo, TrafficType,
     },
 };
 use num::integer::sqrt;
@@ -34,7 +34,7 @@ use rsnano_messages::{
 };
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
-    sync::{Arc, Condvar, Mutex, MutexGuard},
+    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -51,7 +51,7 @@ pub struct BootstrapAscending {
     block_processor: Arc<BlockProcessor>,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    network: Arc<Network>,
+    network_info: Arc<RwLock<NetworkInfo>>,
     message_publisher: Mutex<MessagePublisher>,
     thread: Mutex<Option<JoinHandle<()>>>,
     timeout_thread: Mutex<Option<JoinHandle<()>>>,
@@ -68,7 +68,7 @@ impl BootstrapAscending {
         block_processor: Arc<BlockProcessor>,
         ledger: Arc<Ledger>,
         stats: Arc<Stats>,
-        network: Arc<Network>,
+        network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
         config: BootstrapAscendingConfig,
     ) -> Self {
@@ -88,7 +88,7 @@ impl BootstrapAscending {
             database_limiter: BandwidthLimiter::new(1.0, config.database_requests_limit),
             config,
             stats,
-            network,
+            network_info,
             ledger,
             message_publisher: Mutex::new(message_publisher),
         }
@@ -105,7 +105,7 @@ impl BootstrapAscending {
         }
     }
 
-    fn send(&self, channel: &Arc<Channel>, tag: AsyncTag) {
+    fn send(&self, channel_id: ChannelId, tag: AsyncTag) {
         debug_assert!(matches!(
             tag.query_type,
             QueryType::BlocksByHash | QueryType::BlocksByAccount
@@ -133,7 +133,7 @@ impl BootstrapAscending {
 
         // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
         self.message_publisher.lock().unwrap().try_send(
-            channel.channel_id(),
+            channel_id,
             &request,
             DropPolicy::CanDrop,
             TrafficType::Bootstrap,
@@ -166,12 +166,12 @@ impl BootstrapAscending {
         }
     }
 
-    fn wait_available_channel(&self) -> Option<Arc<Channel>> {
+    fn wait_available_channel(&self) -> Option<ChannelId> {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
             let channel = guard.scoring.channel();
-            if channel.is_some() {
-                return channel;
+            if let Some(c) = channel {
+                return Some(c.channel_id());
             }
 
             let sleep = self.config.throttle_wait;
@@ -204,7 +204,7 @@ impl BootstrapAscending {
         Account::zero()
     }
 
-    fn request(&self, account: Account, channel: &Arc<Channel>) -> bool {
+    fn request(&self, account: Account, channel_id: ChannelId) -> bool {
         let info = {
             let tx = self.ledger.read_txn();
             self.ledger.store.account.get(&tx, &account)
@@ -225,7 +225,7 @@ impl BootstrapAscending {
         };
 
         self.track(tag.clone());
-        self.send(channel, tag);
+        self.send(channel_id, tag);
         true // Request sent
     }
 
@@ -240,11 +240,11 @@ impl BootstrapAscending {
         }
 
         // Waits for channel that is not full
-        let Some(channel) = self.wait_available_channel() else {
+        let Some(channel_id) = self.wait_available_channel() else {
             return false;
         };
 
-        let success = self.request(account, &channel);
+        let success = self.request(account, channel_id);
         return success;
     }
 
@@ -279,7 +279,9 @@ impl BootstrapAscending {
     fn run_timeouts(&self) {
         let mut guard = self.mutex.lock().unwrap();
         while !guard.stopped {
-            guard.scoring.sync(&self.network.list_realtime_channels(0));
+            guard
+                .scoring
+                .sync(&self.network_info.read().unwrap().list_realtime_channels(0));
             guard.scoring.timeout();
             guard
                 .throttle
@@ -303,7 +305,7 @@ impl BootstrapAscending {
     }
 
     /// Process `asc_pull_ack` message coming from network
-    pub fn process(&self, message: &AscPullAck, channel: &Arc<Channel>) {
+    pub fn process(&self, message: &AscPullAck, channel_id: ChannelId) {
         let mut guard = self.mutex.lock().unwrap();
 
         // Only process messages that have a known tag
@@ -317,7 +319,7 @@ impl BootstrapAscending {
                 (0, self.config.request_timeout.as_millis() as i64),
             );
 
-            guard.scoring.received_message(channel);
+            guard.scoring.received_message(channel_id);
             drop(guard);
 
             self.condition.notify_all();

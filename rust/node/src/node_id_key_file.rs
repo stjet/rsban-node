@@ -1,6 +1,6 @@
-use crate::nullable_fs::NullableFilesystem;
 use anyhow::Context;
 use rsnano_core::{KeyPair, KeyPairFactory};
+use rsnano_nullable_fs::NullableFilesystem;
 use std::path::{Path, PathBuf};
 use tracing::info;
 

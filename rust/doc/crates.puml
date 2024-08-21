@@ -10,6 +10,7 @@
 
 folder "nullables"{
 [output_tracker]
+[nullable_fs]
 }
 
 [main] --> [node]

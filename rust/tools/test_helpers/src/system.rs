@@ -25,7 +25,7 @@ use tokio::runtime::Runtime;
 use tracing_subscriber::EnvFilter;
 
 pub struct System {
-    runtime: Arc<AsyncRuntime>,
+    pub runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
     nodes: Vec<Arc<Node>>,

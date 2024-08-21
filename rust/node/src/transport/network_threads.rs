@@ -262,7 +262,7 @@ impl KeepaliveLoop {
             let mut peers = [NULL_ENDPOINT; 8];
             network.random_fill_realtime(&mut peers);
             let message = Message::Keepalive(Keepalive { peers });
-            let list = network.idle_channels(self.keepalive_period, SystemTime::now());
+            let list = network.idle_channels(self.keepalive_period, self.clock.now());
             (message, list)
         };
 

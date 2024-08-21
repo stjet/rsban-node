@@ -1404,6 +1404,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.stats.clone(),
         node.outbound_limiter.clone(),
         node.network_info.clone(),
+        node.steady_clock.clone(),
     ));
 
     Arc::new(ResponseServer::new(

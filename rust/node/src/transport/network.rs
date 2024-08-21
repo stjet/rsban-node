@@ -110,6 +110,7 @@ impl Network {
             self.stats.clone(),
             self.limiter.clone(),
             self.info.clone(),
+            self.clock.clone(),
         )
         .await;
         self.channels

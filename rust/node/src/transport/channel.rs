@@ -5,19 +5,20 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    utils::{into_ipv6_socket_address, ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
+    utils::into_ipv6_socket_address,
 };
 use async_trait::async_trait;
 use rsnano_core::{
-    utils::{seconds_since_epoch, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
+    utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     Account,
 };
+use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, RwLock},
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 use tokio::time::sleep;
 use tracing::debug;
@@ -30,6 +31,7 @@ pub struct Channel {
     stats: Arc<Stats>,
     write_queue: Arc<WriteQueue>,
     stream: Arc<TcpStream>,
+    clock: Arc<SteadyClock>,
 }
 
 impl Channel {
@@ -41,6 +43,7 @@ impl Channel {
         stream: Arc<TcpStream>,
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
+        clock: Arc<SteadyClock>,
     ) -> (Self, WriteQueueReceiver) {
         let (write_queue, receiver) = WriteQueue::new(Self::MAX_QUEUE_SIZE);
 
@@ -52,6 +55,7 @@ impl Channel {
             stats,
             write_queue: Arc::new(write_queue),
             stream,
+            clock,
         };
 
         (channel, receiver)
@@ -69,11 +73,13 @@ impl Channel {
                 TEST_ENDPOINT_1,
                 TEST_ENDPOINT_2,
                 ChannelDirection::Outbound,
+                Timestamp::new_test_instance(),
             )),
             Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
             Arc::new(TcpStream::new_null()),
             Arc::new(Stats::default()),
             Arc::new(OutboundBandwidthLimiter::default()),
+            Arc::new(SteadyClock::new_null()),
         );
         channel
     }
@@ -84,11 +90,13 @@ impl Channel {
         stats: Arc<Stats>,
         limiter: Arc<OutboundBandwidthLimiter>,
         network_info: Arc<RwLock<NetworkInfo>>,
+        clock: Arc<SteadyClock>,
     ) -> Arc<Self> {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
         let info = channel_info.clone();
-        let (channel, mut receiver) = Self::new(channel_info, network_info, stream, stats, limiter);
+        let (channel, mut receiver) =
+            Self::new(channel_info, network_info, stream, stats, limiter, clock);
 
         let write_queue = Arc::downgrade(&channel.write_queue);
         info.set_queue_full_query(Box::new(move |traffic_type| {
@@ -135,7 +143,7 @@ impl Channel {
     }
 
     fn update_last_activity(&self) {
-        self.info.set_last_activity(seconds_since_epoch());
+        self.info.set_last_activity(self.clock.now());
     }
 
     pub fn channel_id(&self) -> ChannelId {
@@ -190,7 +198,7 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
-            self.info.set_last_packet_sent(SystemTime::now());
+            self.info.set_last_packet_sent(self.clock.now());
         } else {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
@@ -200,7 +208,7 @@ impl Channel {
 
         result?;
 
-        self.info.set_last_packet_sent(SystemTime::now());
+        self.info.set_last_packet_sent(self.clock.now());
         Ok(())
     }
 
@@ -239,7 +247,7 @@ impl Channel {
                 buf_size as u64,
             );
             self.update_last_activity();
-            self.info.set_last_packet_sent(SystemTime::now());
+            self.info.set_last_packet_sent(self.clock.now());
         } else if write_error {
             self.stats
                 .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
@@ -247,14 +255,6 @@ impl Channel {
             debug!(peer_addr = ?self.info.peer_addr(), channel_id = %self.channel_id(), mode = ?self.info.mode(), "Closing socket after write error");
         }
         inserted
-    }
-
-    pub fn ipv4_address_or_ipv6_subnet(&self) -> Ipv6Addr {
-        ipv4_address_or_ipv6_subnet(&self.info.peer_addr().ip())
-    }
-
-    pub fn subnetwork(&self) -> Ipv6Addr {
-        map_address_to_subnetwork(self.info.peer_addr().ip())
     }
 
     async fn ongoing_checkup(&self) {
@@ -269,11 +269,11 @@ impl Channel {
                 return;
             }
 
-            let now = seconds_since_epoch();
+            let now = self.clock.now();
             let mut condition_to_disconnect = false;
 
             // if there is no activity for timeout seconds then disconnect
-            if (now - self.info.last_activity()) > self.info.timeout().as_secs() {
+            if (now - self.info.last_activity()) > self.info.timeout() {
                 self.stats.inc_dir(
                     StatType::Tcp,
                     DetailType::TcpIoTimeoutDrop,
@@ -341,7 +341,7 @@ impl AsyncBufferReader for Arc<Channel> {
                                     count as u64,
                                 );
                                 self.update_last_activity();
-                                self.info.set_last_packet_received(SystemTime::now());
+                                self.info.set_last_packet_received(self.clock.now());
                                 return Ok(());
                             }
                         }

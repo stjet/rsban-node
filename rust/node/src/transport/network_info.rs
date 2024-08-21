@@ -12,10 +12,7 @@ use super::{
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
-    utils::{
-        seconds_since_epoch, ContainerInfo, ContainerInfoComponent, TEST_ENDPOINT_1,
-        TEST_ENDPOINT_2,
-    },
+    utils::{ContainerInfo, ContainerInfoComponent, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     Networks, PublicKey,
 };
 use rsnano_messages::ProtocolInfo;
@@ -27,7 +24,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime},
 };
 use tracing::{debug, warn};
 
@@ -43,7 +40,10 @@ pub struct ChannelInfo {
     direction: ChannelDirection,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
-    last_activity: AtomicU64, // TODO use Timestamp
+    last_activity: AtomicU64,
+    last_bootstrap_attempt: AtomicU64,
+    last_packet_received: AtomicU64,
+    last_packet_sent: AtomicU64,
 
     /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
@@ -66,8 +66,8 @@ impl ChannelInfo {
         local_addr: SocketAddrV6,
         peer_addr: SocketAddrV6,
         direction: ChannelDirection,
+        now: Timestamp,
     ) -> Self {
-        let now = SystemTime::now();
         Self {
             channel_id,
             local_addr,
@@ -75,16 +75,16 @@ impl ChannelInfo {
             // TODO set protocol version to 0
             protocol_version: AtomicU8::new(ProtocolInfo::default().version_using),
             direction,
-            last_activity: AtomicU64::new(seconds_since_epoch()),
+            last_activity: AtomicU64::new(now.into()),
+            last_bootstrap_attempt: AtomicU64::new(0),
+            last_packet_received: AtomicU64::new(now.into()),
+            last_packet_sent: AtomicU64::new(now.into()),
             timeout_seconds: AtomicU64::new(DEFAULT_TIMEOUT),
             timed_out: AtomicBool::new(false),
             socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
             closed: AtomicBool::new(false),
             data: Mutex::new(ChannelInfoData {
                 node_id: None,
-                last_bootstrap_attempt: UNIX_EPOCH,
-                last_packet_received: now,
-                last_packet_sent: now,
                 is_queue_full_impl: None,
                 peering_addr: if direction == ChannelDirection::Outbound {
                     Some(peer_addr)
@@ -101,6 +101,7 @@ impl ChannelInfo {
             TEST_ENDPOINT_1,
             TEST_ENDPOINT_2,
             ChannelDirection::Outbound,
+            Timestamp::new_test_instance(),
         )
     }
 
@@ -162,12 +163,12 @@ impl ChannelInfo {
         self.protocol_version.store(version, Ordering::Relaxed);
     }
 
-    pub fn last_activity(&self) -> u64 {
-        self.last_activity.load(Ordering::Relaxed)
+    pub fn last_activity(&self) -> Timestamp {
+        self.last_activity.load(Ordering::Relaxed).into()
     }
 
-    pub fn set_last_activity(&self, value: u64) {
-        self.last_activity.store(value, Ordering::Relaxed)
+    pub fn set_last_activity(&self, now: Timestamp) {
+        self.last_activity.store(now.into(), Ordering::Relaxed);
     }
 
     pub fn timeout(&self) -> Duration {
@@ -216,28 +217,30 @@ impl ChannelInfo {
         self.socket_type.store(mode as u8, Ordering::SeqCst);
     }
 
-    pub fn last_bootstrap_attempt(&self) -> SystemTime {
-        self.data.lock().unwrap().last_bootstrap_attempt
+    pub fn last_bootstrap_attempt(&self) -> Timestamp {
+        self.last_bootstrap_attempt.load(Ordering::Relaxed).into()
     }
 
-    pub fn set_last_bootstrap_attempt(&self, time: SystemTime) {
-        self.data.lock().unwrap().last_bootstrap_attempt = time;
+    pub fn set_last_bootstrap_attempt(&self, now: Timestamp) {
+        self.last_bootstrap_attempt
+            .store(now.into(), Ordering::Relaxed);
     }
 
-    pub fn last_packet_received(&self) -> SystemTime {
-        self.data.lock().unwrap().last_packet_received
+    pub fn last_packet_received(&self) -> Timestamp {
+        self.last_packet_received.load(Ordering::Relaxed).into()
     }
 
-    pub fn set_last_packet_received(&self, instant: SystemTime) {
-        self.data.lock().unwrap().last_packet_received = instant;
+    pub fn set_last_packet_received(&self, now: Timestamp) {
+        self.last_packet_received
+            .store(now.into(), Ordering::Relaxed);
     }
 
-    pub fn last_packet_sent(&self) -> SystemTime {
-        self.data.lock().unwrap().last_packet_sent
+    pub fn last_packet_sent(&self) -> Timestamp {
+        self.last_packet_sent.load(Ordering::Relaxed).into()
     }
 
-    pub fn set_last_packet_sent(&self, instant: SystemTime) {
-        self.data.lock().unwrap().last_packet_sent = instant;
+    pub fn set_last_packet_sent(&self, now: Timestamp) {
+        self.last_packet_sent.store(now.into(), Ordering::Relaxed);
     }
 
     pub fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
@@ -252,9 +255,6 @@ impl ChannelInfo {
 struct ChannelInfoData {
     node_id: Option<PublicKey>,
     peering_addr: Option<SocketAddrV6>,
-    last_bootstrap_attempt: SystemTime,
-    last_packet_received: SystemTime,
-    last_packet_sent: SystemTime,
     is_queue_full_impl: Option<Box<dyn Fn(TrafficType) -> bool + Send>>,
 }
 
@@ -436,7 +436,7 @@ impl NetworkInfo {
 
         let channel_id = self.get_next_channel_id();
         let channel_info = Arc::new(ChannelInfo::new(
-            channel_id, local_addr, peer_addr, direction,
+            channel_id, local_addr, peer_addr, direction, now,
         ));
         self.channels.insert(channel_id, channel_info.clone());
         Ok(channel_info)
@@ -559,8 +559,13 @@ impl NetworkInfo {
     }
 
     /// Returns channel IDs of removed channels
-    pub fn purge(&mut self, cutoff: SystemTime) -> Vec<ChannelId> {
-        self.close_idle_channels(cutoff);
+    pub fn purge(
+        &mut self,
+        cutoff: SystemTime,
+        now: Timestamp,
+        cutoff_period: Duration,
+    ) -> Vec<ChannelId> {
+        self.close_idle_channels(now, cutoff_period);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
         self.close_old_protocol_versions(self.network_config.min_protocol_version);
@@ -573,9 +578,9 @@ impl NetworkInfo {
         purged_channel_ids
     }
 
-    fn close_idle_channels(&mut self, cutoff: SystemTime) {
+    fn close_idle_channels(&mut self, now: Timestamp, cutoff_period: Duration) {
         for entry in self.channels.values() {
-            if entry.last_packet_sent() < cutoff {
+            if now - entry.last_packet_sent() >= cutoff_period {
                 debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
                 entry.close();
             }
@@ -734,7 +739,7 @@ impl NetworkInfo {
             .count()
     }
 
-    pub fn bootstrap_peer(&mut self) -> SocketAddrV6 {
+    pub fn bootstrap_peer(&mut self, now: Timestamp) -> SocketAddrV6 {
         let mut peering_endpoint = None;
         let mut channel = None;
         for i in self.iter_by_last_bootstrap_attempt() {
@@ -751,7 +756,7 @@ impl NetworkInfo {
 
         match (channel, peering_endpoint) {
             (Some(c), Some(peering)) => {
-                c.set_last_bootstrap_attempt(SystemTime::now());
+                c.set_last_bootstrap_attempt(now);
                 peering
             }
             _ => SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
@@ -1034,11 +1039,12 @@ impl NetworkInfo {
         true
     }
 
-    pub fn idle_channels(&self, min_idle_time: Duration, now: SystemTime) -> Vec<ChannelId> {
-        let cutoff = now - min_idle_time;
+    pub fn idle_channels(&self, min_idle_time: Duration, now: Timestamp) -> Vec<ChannelId> {
         let mut result = Vec::new();
         for channel in self.channels.values() {
-            if channel.mode() == ChannelMode::Realtime && channel.last_packet_sent() < cutoff {
+            if channel.mode() == ChannelMode::Realtime
+                && now - channel.last_packet_sent() >= min_idle_time
+            {
                 result.push(channel.channel_id());
             }
         }
@@ -1218,59 +1224,65 @@ mod tests {
         #[test]
         fn purge_empty() {
             let mut network = NetworkInfo::new_test_instance();
-            network.purge(SystemTime::now());
+            network.purge(
+                SystemTime::now(),
+                Timestamp::new_test_instance(),
+                Duration::from_secs(1),
+            );
             assert_eq!(network.len(), 0);
         }
 
         #[test]
-        fn purge_if_no_packet_sent() {
+        fn dont_purge_new_channel() {
             let mut network = NetworkInfo::new_test_instance();
+            let now = Timestamp::new_test_instance();
             network
                 .add(
                     TEST_ENDPOINT_1,
                     TEST_ENDPOINT_2,
                     ChannelDirection::Outbound,
                     ChannelMode::Realtime,
-                    Timestamp::new_test_instance(),
+                    now,
                 )
                 .unwrap();
-            network.purge(SystemTime::now());
-            assert_eq!(network.len(), 0);
+            network.purge(SystemTime::now(), now, Duration::from_secs(1));
+            assert_eq!(network.len(), 1);
         }
 
         #[test]
         fn purge_if_last_packet_sent_is_above_timeout() {
             let mut network = NetworkInfo::new_test_instance();
+            let now = Timestamp::new_test_instance();
             let channel = network
                 .add(
                     TEST_ENDPOINT_1,
                     TEST_ENDPOINT_2,
                     ChannelDirection::Outbound,
                     ChannelMode::Realtime,
-                    Timestamp::new_test_instance(),
+                    now,
                 )
                 .unwrap();
-            let now = SystemTime::now();
             channel.set_last_packet_sent(now - Duration::from_secs(300));
-            network.purge(SystemTime::now());
+            network.purge(SystemTime::now(), now, Duration::from_secs(1));
             assert_eq!(network.len(), 0);
         }
 
         #[test]
         fn dont_purge_if_packet_sent_within_timeout() {
             let mut network = NetworkInfo::new_test_instance();
+            let now2 = Timestamp::new_test_instance();
             let channel = network
                 .add(
                     TEST_ENDPOINT_1,
                     TEST_ENDPOINT_2,
                     ChannelDirection::Outbound,
                     ChannelMode::Realtime,
-                    Timestamp::new_test_instance(),
+                    now2,
                 )
                 .unwrap();
             let now = SystemTime::now();
-            channel.set_last_packet_sent(now);
-            network.purge(now);
+            channel.set_last_packet_sent(now2);
+            network.purge(now, now2, Duration::from_secs(1));
             assert_eq!(network.len(), 1);
         }
     }

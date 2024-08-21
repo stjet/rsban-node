@@ -5,11 +5,7 @@ use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     transport::{ChannelMode, DropPolicy, TrafficType},
 };
-use std::{
-    ops::Deref,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{
     assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel, start_election, System,
 };
@@ -62,7 +58,7 @@ fn last_contacted() {
             .count(StatType::Message, DetailType::Keepalive, Direction::In);
     assert_timely_msg(
         Duration::from_secs(3),
-        || SystemTime::now() > timestamp_before_keepalive,
+        || node0.steady_clock.now() > timestamp_before_keepalive,
         "clock did not advance",
     );
 

@@ -235,6 +235,7 @@ impl Node {
         )));
 
         let mut dead_channel_cleanup = DeadChannelCleanup::new(
+            steady_clock.clone(),
             network_info.clone(),
             network_params.network.cleanup_cutoff(),
         );

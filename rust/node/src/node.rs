@@ -36,7 +36,7 @@ use crate::{
     },
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
-    work::{DistributedWorkFactory, HttpClient},
+    work::DistributedWorkFactory,
     NetworkParams, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry, BUILD_INFO,
     VERSION_STRING,
 };
@@ -52,6 +52,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
+use rsnano_nullable_http_client::HttpClient;
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,

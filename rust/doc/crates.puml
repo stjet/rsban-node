@@ -16,6 +16,7 @@ folder "nullables"{
 [fs]
 [tcp]
 [lmdb]
+[http_client]
 }
 
 [C++ node] --> [ffi]

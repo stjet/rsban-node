@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use reqwest::{IntoUrl, Method, StatusCode, Url};
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use serde::{de::DeserializeOwned, Serialize};

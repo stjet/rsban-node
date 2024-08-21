@@ -49,4 +49,21 @@ impl RpcClient {
         });
         Ok(self.rpc_request(&request).await?)
     }
+
+    pub async fn account_create(&self, wallet: &str, index: Option<&str>) -> Result<Value> {
+        let request = if index.is_some() {
+            json!({
+                "action": "account_create",
+                "wallet": wallet,
+                "index": index.unwrap(),
+            })
+        } else {
+            json!({
+                "action": "account_create",
+                "wallet": wallet,
+            })
+        };
+
+        Ok(self.rpc_request(&request).await?)
+    }
 }

@@ -6,7 +6,7 @@ use serde::Deserialize;
 pub(crate) enum WalletRpcRequest {
     AccountCreate {
         wallet: String,
-        index: Option<u32>,
+        index: Option<String>,
     },
     #[serde(other)]
     UnknownCommand,

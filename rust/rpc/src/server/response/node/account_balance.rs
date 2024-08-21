@@ -76,7 +76,7 @@ mod tests {
     use test_helpers::{assert_timely_msg, get_available_port, RpcClient, System};
 
     #[test]
-    fn only_confirmed_none() -> Result<()> {
+    fn account_balance_only_confirmed_none() -> Result<()> {
         let mut system = System::new();
         let node = system.make_node();
         let node_clone = node.clone();
@@ -140,7 +140,7 @@ mod tests {
     }
 
     #[test]
-    fn only_confirmed_true() -> Result<()> {
+    fn account_balance_only_confirmed_true() -> Result<()> {
         let mut system = System::new();
         let node = system.make_node();
         let node_clone = node.clone();
@@ -204,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn only_confirmed_false() -> Result<()> {
+    fn account_balance_only_confirmed_false() -> Result<()> {
         let mut system = System::new();
         let node = system.make_node();
         let node_clone = node.clone();
@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn only_confirmed_invalid() -> Result<()> {
+    fn account_balance_only_confirmed_invalid() -> Result<()> {
         let mut system = System::new();
         let node = system.make_node();
         let node_clone = node.clone();

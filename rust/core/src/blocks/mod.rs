@@ -511,6 +511,18 @@ impl From<JsonBlock> for BlockEnum {
     }
 }
 
+impl From<BlockEnum> for JsonBlock {
+    fn from(value: BlockEnum) -> Self {
+        value.as_block().json_representation()
+    }
+}
+
+impl From<&BlockEnum> for JsonBlock {
+    fn from(value: &BlockEnum) -> Self {
+        value.as_block().json_representation()
+    }
+}
+
 pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<BlockEnum> {
     let block_type = ptree.get_string("type")?;
     match block_type.as_str() {

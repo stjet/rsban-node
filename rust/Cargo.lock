@@ -1239,6 +1239,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_node",
+ "rsnano_rpc_messages",
  "serde",
  "serde_json",
  "tokio",
@@ -2039,6 +2040,15 @@ dependencies = [
 [[package]]
 name = "rsnano_output_tracker"
 version = "0.1.0"
+
+[[package]]
+name = "rsnano_rpc_messages"
+version = "0.1.0"
+dependencies = [
+ "rsnano_core",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "rsnano_store_lmdb"

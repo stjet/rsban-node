@@ -93,11 +93,14 @@ impl BlockFactory {
             .acquire_owned()
             .await?;
         let destination_account = self.get_destination_account(send_no);
-        let genesis_account = DEV_GENESIS_ACCOUNT.encode_account();
 
         let res = self
             .node_client
-            .send_receive(self.wallet, &genesis_account, destination_account.as_string)
+            .send_receive(
+                self.wallet,
+                *DEV_GENESIS_ACCOUNT,
+                destination_account.as_string,
+            )
             .await;
         self.send_calls_remaining.fetch_sub(1, Ordering::SeqCst);
         res

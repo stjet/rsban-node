@@ -80,7 +80,7 @@ impl TestNode {
     }
 
     pub async fn connect(&self, other: &TestNode) -> Result<()> {
-        self.node_client.keepalive_rpc(other.peering_port).await
+        self.node_client.keepalive(other.peering_port).await
     }
 
     pub async fn create_send_and_receive_blocks(

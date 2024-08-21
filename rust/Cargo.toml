@@ -2,8 +2,8 @@
 members = [
     "core",
     "nullables/output_tracker",
-    "nullables/nullable_fs",
-    "nullables/nullable_tcp",
+    "nullables/fs",
+    "nullables/tcp",
     "messages",
     "store_lmdb",
     "ledger",
@@ -12,6 +12,6 @@ members = [
     "main",
     "tools/load_test",
     "tools/xtask",
-    "tools/test_helpers", "nullables/nullable_fs", "nullables/nullable_tcp",
+    "tools/test_helpers", 
 ]
 resolver = "2"

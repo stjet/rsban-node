@@ -34,15 +34,19 @@ pub(crate) async fn account_balance(
         Err(_) => return format_error_message("Bad account number"),
     };
 
-    let balance = match node.ledger.confirmed().account_balance(&tx, &account) {
-        Some(balance) => balance,
-        None => return format_error_message("Account not found"),
-    };
-
     let only_confirmed = match only_confirmed.as_deref() {
         Some("true") => true,
         Some("false") => false,
         _ => true,
+    };
+
+    let balance = match if only_confirmed {
+        node.ledger.confirmed().account_balance(&tx, &account)
+    } else {
+        node.ledger.any().account_balance(&tx, &account)
+    } {
+        Some(balance) => balance,
+        None => return format_error_message("Account not found"),
     };
 
     let pending = node
@@ -65,168 +69,66 @@ mod tests {
     use reqwest::Url;
     use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-    use rsnano_node::node::Node;
-    use std::{
-        net::{IpAddr, Ipv4Addr, SocketAddr},
-        str::FromStr,
-        sync::Arc,
-        time::Duration,
-    };
+    use std::net::{IpAddr, SocketAddr};
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use std::thread;
+    use std::time::Duration;
     use test_helpers::{assert_timely_msg, RpcClient, System};
-    use tokio::{net::TcpListener, sync::oneshot};
-    use tokio_util::sync::CancellationToken;
+    use tokio::sync::Notify;
+    use tokio::{net::TcpListener, time::sleep};
 
     #[tokio::test]
-    async fn account_balance_test_with_true_include_pending() -> Result<()> {
+    async fn only_confirmed_none() -> Result<()> {
+        let finished = Arc::new(Notify::new());
+        let finished_clone = finished.clone();
+
         let mut system = System::new();
         let node = system.make_node();
+        let node_clone = node.clone();
 
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_ACCOUNT,
-            Amount::MAX - Amount::raw(1),
-            DEV_GENESIS_KEY.public_key().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
+        let system_handle = thread::spawn(move || {
+            let send1 = BlockEnum::State(StateBlock::new(
+                *DEV_GENESIS_ACCOUNT,
+                *DEV_GENESIS_HASH,
+                *DEV_GENESIS_ACCOUNT,
+                Amount::MAX - Amount::raw(1),
+                DEV_GENESIS_KEY.public_key().into(),
+                &DEV_GENESIS_KEY,
+                node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            ));
 
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
+            node.process_active(send1.clone());
+            assert_timely_msg(
+                Duration::from_secs(5),
+                || node.active.active(&send1),
+                "not active on node 1",
+            );
 
-        let rpc_config = RpcConfig::default();
-        let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
-
-        let _server = start(
-            node,
-            SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                get_available_port().await,
-            ),
-            false,
-        )
-        .await;
-
-        let node_url = format!("http://[::1]:{}/", rpc_config.port);
-        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
-
-        let result = node_client
-            .account_balance(&DEV_GENESIS_KEY.public_key().encode_account(), Some("true"))
-            .await?;
-
-        assert_eq!(
-            result.get("balance").unwrap().as_str().unwrap(),
-            String::from("340282366920938463463374607431768211455")
-        );
-
-        assert_eq!(
-            result.get("pending").unwrap().as_str().unwrap(),
-            String::from("0")
-        );
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn account_balance_test_without_include_pending() -> Result<()> {
-        let mut system = System::new();
-        let node = system.make_node();
-
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_ACCOUNT,
-            Amount::MAX - Amount::raw(1),
-            DEV_GENESIS_KEY.public_key().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
-
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
+            finished_clone.notify_one();
+        });
 
         let rpc_config = RpcConfig::default();
+        let port = get_available_port().await;
+        println!("port: {}", port);
         let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
+        let socket_addr = SocketAddr::new(ip_addr, port);
 
-        let _server = start(
-            node,
-            SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                get_available_port().await,
-            ),
-            false,
-        )
-        .await;
+        let rpc_server_handle = tokio::spawn(async move {
+            run_rpc_server(node_clone, socket_addr, rpc_config.enable_control)
+                .await
+                .unwrap();
+        });
 
-        /*let node_url = format!("http://[::1]:{}/", rpc_config.port);
+        sleep(Duration::from_millis(10)).await;
+
+        let node_url = format!("http://[::1]:{}/", port);
         let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
 
         let result = node_client
             .account_balance(&DEV_GENESIS_KEY.public_key().encode_account(), None)
-            .await?;
-
-        assert_eq!(
-            result.get("balance").unwrap().as_str().unwrap(),
-            String::from("340282366920938463463374607431768211455")
-        );*/
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn account_balance_test_with_invalid_include_pending() -> Result<()> {
-        let mut system = System::new();
-        let node = system.make_node();
-
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_ACCOUNT,
-            Amount::MAX - Amount::raw(1),
-            DEV_GENESIS_KEY.public_key().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
-
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
-
-        let rpc_config = RpcConfig::default();
-        let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
-
-        let _server = start(
-            node,
-            SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                get_available_port().await,
-            ),
-            false,
-        )
-        .await;
-
-        /*let node_url = format!("http://[::1]:{}/", rpc_config.port);
-        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
-
-        let result = node_client
-            .account_balance(
-                &DEV_GENESIS_KEY.public_key().encode_account(),
-                Some("invalid"),
-            )
-            .await?;
+            .await
+            .unwrap();
 
         assert_eq!(
             result.get("balance").unwrap().as_str().unwrap(),
@@ -236,48 +138,143 @@ mod tests {
         assert_eq!(
             result.get("pending").unwrap().as_str().unwrap(),
             String::from("0")
-        );*/
+        );
+
+        assert_eq!(
+            result.get("receivable").unwrap().as_str().unwrap(),
+            String::from("0")
+        );
+
+        finished.notified().await;
+
+        system_handle.join().unwrap();
+
+        rpc_server_handle.abort();
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn account_balance_test_with_false_include_pending() -> Result<()> {
+    async fn only_confirmed_true() -> Result<()> {
+        let finished = Arc::new(Notify::new());
+        let finished_clone = finished.clone();
+
         let mut system = System::new();
         let node = system.make_node();
+        let node_clone = node.clone();
 
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_ACCOUNT,
-            Amount::MAX - Amount::raw(1),
-            DEV_GENESIS_KEY.public_key().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
+        let system_handle = thread::spawn(move || {
+            let send1 = BlockEnum::State(StateBlock::new(
+                *DEV_GENESIS_ACCOUNT,
+                *DEV_GENESIS_HASH,
+                *DEV_GENESIS_ACCOUNT,
+                Amount::MAX - Amount::raw(1),
+                DEV_GENESIS_KEY.public_key().into(),
+                &DEV_GENESIS_KEY,
+                node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            ));
 
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
+            node.process_active(send1.clone());
+            assert_timely_msg(
+                Duration::from_secs(5),
+                || node.active.active(&send1),
+                "not active on node 1",
+            );
+
+            finished_clone.notify_one();
+        });
 
         let rpc_config = RpcConfig::default();
+        let port = get_available_port().await;
+        println!("port: {}", port);
         let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
+        let socket_addr = SocketAddr::new(ip_addr, port);
 
-        let _server = start(
-            node,
-            SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                get_available_port().await,
-            ),
-            false,
-        )
-        .await;
+        let rpc_server_handle = tokio::spawn(async move {
+            run_rpc_server(node_clone, socket_addr, rpc_config.enable_control)
+                .await
+                .unwrap();
+        });
 
-        /*let node_url = format!("http://[::1]:{}/", rpc_config.port);
+        sleep(Duration::from_millis(10)).await;
+
+        let node_url = format!("http://[::1]:{}/", port);
+        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
+
+        let result = node_client
+            .account_balance(&DEV_GENESIS_KEY.public_key().encode_account(), Some("true"))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            result.get("balance").unwrap().as_str().unwrap(),
+            String::from("340282366920938463463374607431768211455")
+        );
+
+        assert_eq!(
+            result.get("pending").unwrap().as_str().unwrap(),
+            String::from("0")
+        );
+
+        assert_eq!(
+            result.get("receivable").unwrap().as_str().unwrap(),
+            String::from("0")
+        );
+
+        finished.notified().await;
+
+        system_handle.join().unwrap();
+
+        rpc_server_handle.abort();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn only_confirmed_false() -> Result<()> {
+        let finished = Arc::new(Notify::new());
+        let finished_clone = finished.clone();
+
+        let mut system = System::new();
+        let node = system.make_node();
+        let node_clone = node.clone();
+
+        let system_handle = thread::spawn(move || {
+            let send1 = BlockEnum::State(StateBlock::new(
+                *DEV_GENESIS_ACCOUNT,
+                *DEV_GENESIS_HASH,
+                *DEV_GENESIS_ACCOUNT,
+                Amount::MAX - Amount::raw(1),
+                DEV_GENESIS_KEY.public_key().into(),
+                &DEV_GENESIS_KEY,
+                node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            ));
+
+            node.process_active(send1.clone());
+            assert_timely_msg(
+                Duration::from_secs(5),
+                || node.active.active(&send1),
+                "not active on node 1",
+            );
+
+            finished_clone.notify_one();
+        });
+
+        let rpc_config = RpcConfig::default();
+        let port = get_available_port().await;
+        println!("port: {}", port);
+        let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
+        let socket_addr = SocketAddr::new(ip_addr, port);
+
+        let rpc_server_handle = tokio::spawn(async move {
+            run_rpc_server(node_clone, socket_addr, rpc_config.enable_control)
+                .await
+                .unwrap();
+        });
+
+        sleep(Duration::from_millis(10)).await;
+
+        let node_url = format!("http://[::1]:{}/", port);
         let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
 
         let result = node_client
@@ -285,7 +282,86 @@ mod tests {
                 &DEV_GENESIS_KEY.public_key().encode_account(),
                 Some("false"),
             )
-            .await?;
+            .await
+            .unwrap();
+
+        assert_eq!(
+            result.get("balance").unwrap().as_str().unwrap(),
+            String::from("340282366920938463463374607431768211454")
+        );
+
+        assert_eq!(
+            result.get("pending").unwrap().as_str().unwrap(),
+            String::from("1")
+        );
+
+        assert_eq!(
+            result.get("receivable").unwrap().as_str().unwrap(),
+            String::from("1")
+        );
+
+        finished.notified().await;
+
+        system_handle.join().unwrap();
+
+        rpc_server_handle.abort();
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn only_confirmed_invalid() -> Result<()> {
+        let finished = Arc::new(Notify::new());
+        let finished_clone = finished.clone();
+
+        let mut system = System::new();
+        let node = system.make_node();
+        let node_clone = node.clone();
+
+        let system_handle = thread::spawn(move || {
+            let send1 = BlockEnum::State(StateBlock::new(
+                *DEV_GENESIS_ACCOUNT,
+                *DEV_GENESIS_HASH,
+                *DEV_GENESIS_ACCOUNT,
+                Amount::MAX - Amount::raw(1),
+                DEV_GENESIS_KEY.public_key().into(),
+                &DEV_GENESIS_KEY,
+                node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            ));
+
+            node.process_active(send1.clone());
+            assert_timely_msg(
+                Duration::from_secs(5),
+                || node.active.active(&send1),
+                "not active on node 1",
+            );
+
+            finished_clone.notify_one();
+        });
+
+        let rpc_config = RpcConfig::default();
+        let port = get_available_port().await;
+        let ip_addr = IpAddr::from_str(&rpc_config.address).unwrap();
+        let socket_addr = SocketAddr::new(ip_addr, port);
+
+        let rpc_server_handle = tokio::spawn(async move {
+            run_rpc_server(node_clone, socket_addr, rpc_config.enable_control)
+                .await
+                .unwrap();
+        });
+
+        sleep(Duration::from_millis(10)).await;
+
+        let node_url = format!("http://[::1]:{}/", port);
+        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url).unwrap()));
+
+        let result = node_client
+            .account_balance(
+                &DEV_GENESIS_KEY.public_key().encode_account(),
+                Some("invalid"),
+            )
+            .await
+            .unwrap();
 
         assert_eq!(
             result.get("balance").unwrap().as_str().unwrap(),
@@ -294,55 +370,21 @@ mod tests {
 
         assert_eq!(
             result.get("pending").unwrap().as_str().unwrap(),
-            String::from("1")
-        );*/
+            String::from("0")
+        );
+
+        assert_eq!(
+            result.get("receivable").unwrap().as_str().unwrap(),
+            String::from("0")
+        );
+
+        finished.notified().await;
+
+        system_handle.join().unwrap();
+
+        rpc_server_handle.abort();
 
         Ok(())
-    }
-
-    pub(crate) struct DropGuard {
-        cancel_token: CancellationToken,
-    }
-
-    impl Drop for DropGuard {
-        fn drop(&mut self) {
-            self.cancel_token.cancel();
-        }
-    }
-
-    async fn run_server(
-        node: Arc<Node>,
-        server_addr: SocketAddr,
-        enable_control: bool,
-        cancel_token: CancellationToken,
-        tx_ready: oneshot::Sender<()>,
-    ) {
-        //let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-        tx_ready.send(()).unwrap();
-        tokio::select! {
-            _ = run_rpc_server(node, server_addr, enable_control) => { },
-            _ = cancel_token.cancelled() => { }
-        }
-    }
-
-    pub(crate) async fn start(
-        node: Arc<Node>,
-        server_addr: SocketAddr,
-        enable_control: bool,
-    ) -> DropGuard {
-        let guard = DropGuard {
-            cancel_token: CancellationToken::new(),
-        };
-        let cancel_token = guard.cancel_token.clone();
-        let (tx_ready, rx_ready) = oneshot::channel::<()>();
-
-        tokio::spawn(async move {
-            run_server(node, server_addr, enable_control, cancel_token, tx_ready).await
-        });
-
-        rx_ready.await.unwrap();
-
-        guard
     }
 
     async fn get_available_port() -> u16 {

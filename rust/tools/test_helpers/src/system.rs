@@ -21,6 +21,7 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
+use tokio::runtime::Runtime;
 use tracing_subscriber::EnvFilter;
 
 pub struct System {
@@ -31,6 +32,22 @@ pub struct System {
 }
 
 impl System {
+    pub fn new_with_runtime(runtime: Runtime) -> Self {
+        init_tracing();
+        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+
+        Self {
+            runtime: Arc::new(AsyncRuntime::new(runtime)),
+            work: Arc::new(WorkPoolImpl::new(
+                network_params.work.clone(),
+                1,
+                Duration::ZERO,
+            )),
+            network_params,
+            nodes: Vec::new(),
+        }
+    }
+
     pub fn new() -> Self {
         init_tracing();
         let network_params = NetworkParams::new(Networks::NanoDevNetwork);
@@ -128,7 +145,7 @@ impl System {
         ))
     }
 
-    fn stop(&mut self) {
+    pub fn stop(&mut self) {
         for node in &self.nodes {
             node.stop();
             std::fs::remove_dir_all(&node.application_path)

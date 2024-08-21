@@ -2,8 +2,9 @@ use super::{AcceptResult, ChannelDirection, Network, ResponseServerFactory, TcpC
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::ChannelMode,
-    utils::{AsyncRuntime, SteadyClock},
+    utils::AsyncRuntime,
 };
+use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{net::SocketAddrV6, sync::Arc};

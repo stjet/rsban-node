@@ -2,7 +2,6 @@ mod container_info;
 mod json;
 mod rng;
 mod stream;
-mod system_time_factory;
 mod toml;
 
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
@@ -14,7 +13,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 pub use stream::*;
-pub use system_time_factory::*;
 pub use toml::*;
 
 pub trait Serialize {

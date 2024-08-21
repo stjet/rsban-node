@@ -2,7 +2,6 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_mapped, map_address_to_subnetwork, reserved_address,
-        Timestamp,
     },
 };
 
@@ -20,6 +19,7 @@ use rsnano_core::{
     Networks, PublicKey,
 };
 use rsnano_messages::ProtocolInfo;
+use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},

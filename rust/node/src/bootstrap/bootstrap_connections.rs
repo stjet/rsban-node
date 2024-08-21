@@ -9,11 +9,12 @@ use crate::{
     transport::{
         AcceptResult, ChannelDirection, ChannelMode, MessagePublisher, Network, NetworkInfo,
     },
-    utils::{AsyncRuntime, SteadyClock, ThreadPool, ThreadPoolImpl},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
 use rsnano_core::{utils::PropertyTree, Account, BlockHash};
+use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStreamFactory;
 use std::{
     cmp::{max, min},

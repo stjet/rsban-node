@@ -7,11 +7,12 @@ use crate::{
     bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig},
     config::NodeFlags,
     stats::Stats,
-    utils::{AsyncRuntime, SteadyClock, ThreadPool, ThreadPoolImpl},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
+use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
 
 pub(crate) struct ResponseServerFactory {

@@ -5,11 +5,11 @@ use super::{
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
-    utils::SteadyClock,
     NetworkParams,
 };
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_messages::{Keepalive, Message};
+use rsnano_nullable_clock::SteadyClock;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex, RwLock},

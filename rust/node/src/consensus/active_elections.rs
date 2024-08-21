@@ -11,7 +11,7 @@ use crate::{
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{DropPolicy, MessagePublisher, NetworkFilter, NetworkInfo},
-    utils::{HardenedConstants, SteadyClock},
+    utils::HardenedConstants,
     wallets::Wallets,
     NetworkParams,
 };
@@ -22,6 +22,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
+use rsnano_nullable_clock::SteadyClock;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::max,

@@ -9,7 +9,7 @@ use crate::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
     transport::{MessagePublisher, Network, NetworkInfo},
-    utils::{AsyncRuntime, SteadyClock, ThreadPool, ThreadPoolImpl},
+    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
 };
@@ -20,6 +20,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
+use rsnano_nullable_clock::SteadyClock;
 use std::{
     collections::{HashMap, VecDeque},
     net::SocketAddrV6,

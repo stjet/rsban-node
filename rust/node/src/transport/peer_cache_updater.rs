@@ -3,8 +3,8 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
 };
-use rsnano_core::utils::SystemTimeFactory;
 use rsnano_ledger::Ledger;
+use rsnano_nullable_clock::SystemTimeFactory;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     net::SocketAddrV6,
@@ -105,11 +105,11 @@ mod tests {
     use crate::{
         stats::Direction,
         transport::{ChannelDirection, ChannelMode},
-        utils::Timestamp,
     };
     use rsnano_core::utils::{
         new_test_timestamp, NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
     };
+    use rsnano_nullable_clock::Timestamp;
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
 

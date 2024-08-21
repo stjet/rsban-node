@@ -4,6 +4,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
+use rsnano_nullable_clock::SteadyClock;
 use std::{
     cmp::min,
     collections::{HashMap, VecDeque},
@@ -21,7 +22,6 @@ use crate::{
     transport::{
         ChannelId, ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, NetworkInfo, TrafficType,
     },
-    utils::SteadyClock,
     NetworkParams,
 };
 

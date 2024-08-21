@@ -7,7 +7,7 @@ use crate::{
         ChannelId, ChannelInfo, DropPolicy, MessagePublisher, NetworkInfo, PeerConnector,
         PeerConnectorExt, TrafficType,
     },
-    utils::{into_ipv6_socket_address, AsyncRuntime, SteadyClock, Timestamp},
+    utils::{into_ipv6_socket_address, AsyncRuntime},
     NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
@@ -17,10 +17,10 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmReq, Keepalive, Message};
+use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     collections::HashMap,
     mem::size_of,
-    net::{Ipv6Addr, SocketAddrV6},
     ops::DerefMut,
     sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},
     thread::JoinHandle,

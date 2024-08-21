@@ -210,7 +210,7 @@ impl Block for ReceiveBlock {
         Some(self.hashables.source)
     }
 
-    fn representative_field(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<PublicKey> {
         None
     }
 

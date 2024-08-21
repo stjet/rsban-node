@@ -99,8 +99,10 @@ pub fn u64_from_hex_str(s: impl AsRef<str>) -> Result<u64, ParseIntError> {
 u256_struct!(HashOrAccount);
 u256_struct!(Link);
 u256_struct!(PublicKey);
+serialize_32_byte_string!(PublicKey);
 u256_struct!(Root);
 u256_struct!(WalletId);
+serialize_32_byte_string!(WalletId);
 
 impl WalletId {
     pub fn random() -> Self {
@@ -220,6 +222,18 @@ impl From<&Link> for HashOrAccount {
     }
 }
 
+impl From<Account> for Root {
+    fn from(key: Account) -> Self {
+        Root::from_bytes(*key.as_bytes())
+    }
+}
+
+impl From<&PublicKey> for Root {
+    fn from(key: &PublicKey) -> Self {
+        Root::from_bytes(*key.as_bytes())
+    }
+}
+
 impl From<PublicKey> for Root {
     fn from(key: PublicKey) -> Self {
         Root::from_bytes(*key.as_bytes())
@@ -248,6 +262,14 @@ impl PublicKey {
     /// IV for Key encryption
     pub fn initialization_vector(&self) -> [u8; 16] {
         self.0[..16].try_into().unwrap()
+    }
+
+    pub fn to_node_id(&self) -> String {
+        Account::from(self).to_node_id()
+    }
+
+    pub fn as_account(&self) -> Account {
+        self.into()
     }
 }
 

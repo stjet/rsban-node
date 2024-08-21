@@ -21,7 +21,7 @@ pub struct StateHashables {
     pub previous: BlockHash,
 
     // Representative of this account
-    pub representative: Account,
+    pub representative: PublicKey,
 
     // Current balance of this account
     // Allows lookup of account balance simply by looking at the head block
@@ -60,7 +60,7 @@ impl StateBlock {
     pub fn new(
         account: Account,
         previous: BlockHash,
-        representative: Account,
+        representative: PublicKey,
         balance: Amount,
         link: Link,
         keys: &KeyPair,
@@ -82,7 +82,7 @@ impl StateBlock {
     pub fn new_obsolete(
         account: Account,
         previous: BlockHash,
-        representative: Account,
+        representative: PublicKey,
         balance: Amount,
         link: Link,
         prv_key: &RawKey,
@@ -111,9 +111,9 @@ impl StateBlock {
 
     pub fn new_test_instance_with_key(key: KeyPair) -> Self {
         Self::new(
-            key.public_key(),
+            key.account(),
             BlockHash::from(456),
-            Account::from(789),
+            PublicKey::from(789),
             Amount::raw(420),
             Link::from(111),
             &key,
@@ -129,7 +129,7 @@ impl StateBlock {
     pub fn with_signature(
         account: Account,
         previous: BlockHash,
-        representative: Account,
+        representative: PublicKey,
         balance: Amount,
         link: Link,
         signature: Signature,
@@ -166,7 +166,7 @@ impl StateBlock {
         BlockHash::zero()
     }
 
-    pub fn mandatory_representative(&self) -> Account {
+    pub fn mandatory_representative(&self) -> PublicKey {
         self.hashables.representative
     }
 
@@ -187,7 +187,7 @@ impl StateBlock {
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let account = Account::deserialize(stream)?;
         let previous = BlockHash::deserialize(stream)?;
-        let representative = Account::deserialize(stream)?;
+        let representative = PublicKey::deserialize(stream)?;
         let balance = Amount::deserialize(stream)?;
         let link = Link::deserialize(stream)?;
         let signature = Signature::deserialize(stream)?;
@@ -216,7 +216,7 @@ impl StateBlock {
         }
         let account = Account::decode_account(reader.get_string("account")?)?;
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
-        let representative = Account::decode_account(reader.get_string("representative")?)?;
+        let representative = Account::decode_account(reader.get_string("representative")?)?.into();
         let balance = Amount::decode_dec(reader.get_string("balance")?)?;
         let link = Link::decode_hex(reader.get_string("link")?)?;
         let work = u64_from_hex_str(reader.get_string("work")?)?;
@@ -308,7 +308,7 @@ impl Block for StateBlock {
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string(
             "representative",
-            &self.hashables.representative.encode_account(),
+            &Account::from(self.hashables.representative).encode_account(),
         )?;
         writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
         writer.put_string("link", &self.hashables.link.encode_hex())?;
@@ -341,7 +341,7 @@ impl Block for StateBlock {
         None
     }
 
-    fn representative_field(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<PublicKey> {
         Some(self.hashables.representative)
     }
 
@@ -367,7 +367,10 @@ impl serde::Serialize for StateBlock {
         state.serialize_field("type", "state")?;
         state.serialize_field("account", &self.hashables.account)?;
         state.serialize_field("previous", &self.hashables.previous)?;
-        state.serialize_field("representative", &self.hashables.representative)?;
+        state.serialize_field(
+            "representative",
+            &self.hashables.representative.as_account(),
+        )?;
         state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
         state.serialize_field("link", &self.hashables.link.encode_hex())?;
         state.serialize_field("link_as_account", &Account::from(&self.hashables.link))?;

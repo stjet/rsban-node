@@ -10,7 +10,7 @@ use crate::{
 use async_trait::async_trait;
 use rsnano_core::{
     utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
-    Account,
+    PublicKey,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;
@@ -150,7 +150,7 @@ impl Channel {
         self.channel_id
     }
 
-    pub fn set_node_id(&self, id: Account) {
+    pub fn set_node_id(&self, id: PublicKey) {
         self.network_info
             .read()
             .unwrap()

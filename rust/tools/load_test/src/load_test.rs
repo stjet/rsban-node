@@ -1,5 +1,6 @@
 use anyhow::bail;
 use anyhow::Result;
+use rsnano_core::Account;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -62,7 +63,7 @@ impl LoadTest {
         Ok(())
     }
 
-    async fn create_send_and_receive_blocks(&self) -> Result<HashMap<String, AccountInfo>> {
+    async fn create_send_and_receive_blocks(&self) -> Result<HashMap<Account, AccountInfo>> {
         println!("Beginning tests");
         self.primary_node()
             .create_send_and_receive_blocks(
@@ -75,14 +76,14 @@ impl LoadTest {
 
     async fn wait_for_nodes_to_catch_up(
         &self,
-        expected_account_info: &HashMap<String, AccountInfo>,
+        expected_account_info: &HashMap<Account, AccountInfo>,
     ) -> Result<()> {
         println!("Waiting for nodes to catch up...");
         let timer = Instant::now();
         for node in &self.nodes[1..] {
             for (account, info) in expected_account_info {
                 loop {
-                    if let Ok(other_account_info) = node.account_info(account).await {
+                    if let Ok(other_account_info) = node.account_info(*account).await {
                         if info == &other_account_info {
                             // Found the account in this node
                             break;

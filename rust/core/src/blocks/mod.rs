@@ -29,7 +29,7 @@ use crate::{
         Stream,
     },
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, KeyPair, Link,
-    QualifiedRoot, Root, Signature, WorkVersion,
+    PublicKey, QualifiedRoot, Root, Signature, WorkVersion,
 };
 use num::FromPrimitive;
 use std::{
@@ -132,7 +132,7 @@ pub trait Block: FullHash {
     fn balance_field(&self) -> Option<Amount>;
     /// Source block for open/receive blocks, zero otherwise.
     fn source_field(&self) -> Option<BlockHash>;
-    fn representative_field(&self) -> Option<Account>;
+    fn representative_field(&self) -> Option<PublicKey>;
     fn destination_field(&self) -> Option<Account>;
     fn qualified_root(&self) -> QualifiedRoot {
         QualifiedRoot::new(self.root(), self.previous())

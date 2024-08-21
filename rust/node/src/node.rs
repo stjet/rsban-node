@@ -773,7 +773,7 @@ impl Node {
             // Republish vote if it is new and the node does not host a principal representative (or close to)
             let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);
             if processed {
-                if wallets.should_republish_vote(vote.voting_account) {
+                if wallets.should_republish_vote(vote.voting_account.into()) {
                     let ack = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
                         vote.as_ref().clone(),
                     ));

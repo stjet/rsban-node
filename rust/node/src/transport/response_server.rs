@@ -15,7 +15,7 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{Account, KeyPair};
+use rsnano_core::{KeyPair, PublicKey};
 use rsnano_ledger::Ledger;
 use rsnano_messages::*;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
@@ -266,7 +266,7 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
 
 #[async_trait]
 pub trait ResponseServerExt {
-    fn to_realtime_connection(&self, node_id: &Account) -> bool;
+    fn to_realtime_connection(&self, node_id: &PublicKey) -> bool;
     async fn run(&self);
     async fn process_message(&self, message: Message) -> ProcessResult;
     fn process_realtime(&self, message: Message) -> ProcessResult;
@@ -281,7 +281,7 @@ pub enum ProcessResult {
 
 #[async_trait]
 impl ResponseServerExt for Arc<ResponseServer> {
-    fn to_realtime_connection(&self, node_id: &Account) -> bool {
+    fn to_realtime_connection(&self, node_id: &PublicKey) -> bool {
         if self.channel.info.mode() != ChannelMode::Undefined {
             return false;
         }

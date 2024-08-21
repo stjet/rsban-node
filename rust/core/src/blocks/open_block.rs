@@ -13,7 +13,7 @@ use super::{Block, BlockSideband, BlockType, BlockVisitor};
 pub struct OpenHashables {
     /// Block with first send transaction to this account
     pub source: BlockHash,
-    pub representative: Account,
+    pub representative: PublicKey,
     pub account: Account,
 }
 
@@ -45,7 +45,7 @@ pub struct OpenBlock {
 impl OpenBlock {
     pub fn new(
         source: BlockHash,
-        representative: Account,
+        representative: PublicKey,
         account: Account,
         prv_key: &RawKey,
         pub_key: &PublicKey,
@@ -77,7 +77,7 @@ impl OpenBlock {
         let key = KeyPair::from(42);
         Self::new(
             BlockHash::from(123),
-            Account::from(456),
+            PublicKey::from(456),
             Account::from(789),
             &key.private_key(),
             &key.public_key(),
@@ -96,7 +96,7 @@ impl OpenBlock {
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
         let hashables = OpenHashables {
             source: BlockHash::deserialize(stream)?,
-            representative: Account::deserialize(stream)?,
+            representative: PublicKey::deserialize(stream)?,
             account: Account::deserialize(stream)?,
         };
         let signature = Signature::deserialize(stream)?;
@@ -114,7 +114,7 @@ impl OpenBlock {
 
     pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
         let source = BlockHash::decode_hex(reader.get_string("source")?)?;
-        let representative = Account::decode_account(reader.get_string("representative")?)?;
+        let representative = Account::decode_account(reader.get_string("representative")?)?.into();
         let account = Account::decode_account(reader.get_string("account")?)?;
         let work = u64_from_hex_str(reader.get_string("work")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
@@ -200,7 +200,7 @@ impl Block for OpenBlock {
         writer.put_string("source", &self.hashables.source.encode_hex())?;
         writer.put_string(
             "representative",
-            &self.hashables.representative.encode_account(),
+            &Account::from(self.hashables.representative).encode_account(),
         )?;
         writer.put_string("account", &self.hashables.account.encode_account())?;
         writer.put_string("work", &to_hex_string(self.work))?;
@@ -224,7 +224,7 @@ impl Block for OpenBlock {
         Some(self.hashables.source)
     }
 
-    fn representative_field(&self) -> Option<Account> {
+    fn representative_field(&self) -> Option<PublicKey> {
         Some(self.hashables.representative)
     }
 
@@ -257,7 +257,10 @@ impl serde::Serialize for OpenBlock {
         let mut state = serializer.serialize_struct("Block", 6)?;
         state.serialize_field("type", "open")?;
         state.serialize_field("source", &self.hashables.source)?;
-        state.serialize_field("representative", &self.hashables.representative)?;
+        state.serialize_field(
+            "representative",
+            &self.hashables.representative.as_account(),
+        )?;
         state.serialize_field("account", &self.hashables.account)?;
         state.serialize_field("work", &to_hex_string(self.work))?;
         state.serialize_field("signature", &self.signature)?;
@@ -277,7 +280,7 @@ mod tests {
     fn create_block() {
         let key = KeyPair::new();
         let source = BlockHash::from(1);
-        let representative = Account::from(2);
+        let representative = PublicKey::from(2);
         let account = Account::from(3);
         let block = OpenBlock::new(
             source,
@@ -298,7 +301,7 @@ mod tests {
         let key1 = KeyPair::new();
         let block1 = OpenBlock::new(
             BlockHash::from(0),
-            Account::from(1),
+            PublicKey::from(1),
             Account::from(0),
             &key1.private_key(),
             &key1.public_key(),

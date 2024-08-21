@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use reqwest::Url;
-use rsnano_core::{utils::get_cpu_count, DEV_GENESIS_KEY};
+use rsnano_core::{utils::get_cpu_count, Account, WalletId, DEV_GENESIS_KEY};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -21,9 +21,9 @@ use rsnano_node::{
 };
 
 use crate::create_send_and_receive_blocks;
-use crate::Account;
 use crate::AccountInfo;
-use crate::RpcClient;
+use crate::KeyPairDto;
+use crate::NanoRpcClient;
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
@@ -34,7 +34,7 @@ pub struct TestNode {
     pub data_path: PathBuf,
     node_child: Option<Child>,
     rpc_child: Option<Child>,
-    node_client: Arc<RpcClient>,
+    node_client: Arc<NanoRpcClient>,
     pub rpc_port: u16,
     pub peering_port: u16,
 }
@@ -45,7 +45,7 @@ impl TestNode {
         let rpc_port = RPC_PORT_START + node_no as u16;
         let peering_port = PEERING_PORT_START + node_no as u16;
         let node_url = format!("http://[::1]:{}/", rpc_port);
-        let node_client = Arc::new(RpcClient::new(Url::parse(&node_url)?));
+        let node_client = Arc::new(NanoRpcClient::new(Url::parse(&node_url)?));
         Ok(Self {
             node_no,
             data_path,
@@ -88,11 +88,11 @@ impl TestNode {
         destination_count: usize,
         send_count: usize,
         simultaneous_process_calls: usize,
-    ) -> Result<HashMap<String, AccountInfo>> {
+    ) -> Result<HashMap<Account, AccountInfo>> {
         let destination_accounts = self.create_destination_accounts(destination_count).await?;
         let wallet = self.node_client.wallet_create_rpc().await?;
-        self.add_genesis_account(&wallet).await?;
-        self.add_destination_accounts(&destination_accounts, &wallet)
+        self.add_genesis_account(wallet).await?;
+        self.add_destination_accounts(&destination_accounts, wallet)
             .await?;
 
         create_send_and_receive_blocks(
@@ -105,26 +105,29 @@ impl TestNode {
         .await
     }
 
-    async fn add_genesis_account(&self, wallet: &str) -> Result<()> {
+    async fn add_genesis_account(&self, wallet: WalletId) -> Result<()> {
         self.node_client
-            .wallet_add_rpc(wallet, &DEV_GENESIS_KEY.private_key().encode_hex())
+            .wallet_add(wallet, DEV_GENESIS_KEY.private_key())
             .await
     }
 
     async fn add_destination_accounts(
         &self,
-        destination_accounts: &[Account],
-        wallet: &str,
+        destination_accounts: &[KeyPairDto],
+        wallet: WalletId,
     ) -> Result<()> {
         for account in destination_accounts {
             self.node_client
-                .wallet_add_rpc(wallet, &account.private_key)
+                .wallet_add(wallet, account.private_key)
                 .await?;
         }
         Ok(())
     }
 
-    async fn create_destination_accounts(&self, destination_count: usize) -> Result<Vec<Account>> {
+    async fn create_destination_accounts(
+        &self,
+        destination_count: usize,
+    ) -> Result<Vec<KeyPairDto>> {
         let mut destination_accounts = Vec::with_capacity(destination_count);
         for _ in 0..destination_count {
             let acc = self.node_client.key_create_rpc().await?;
@@ -133,8 +136,8 @@ impl TestNode {
         Ok(destination_accounts)
     }
 
-    pub async fn account_info(&self, account: &str) -> Result<AccountInfo> {
-        self.node_client.account_info_rpc(account).await
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfo> {
+        self.node_client.account_info(account).await
     }
 }
 

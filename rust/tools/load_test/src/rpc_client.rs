@@ -1,29 +1,62 @@
-use anyhow::bail;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use reqwest::Url;
+use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, WalletId};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Duration;
 
-#[derive(Debug)]
-pub struct Account {
-    pub private_key: String,
-    pub public_key: String,
-    pub as_string: String,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct KeyPairDto {
+    pub private_key: RawKey,
+    pub public_key: PublicKey,
+    pub as_string: Account,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountInfo {
-    pub frontier: String,
-    pub block_count: String,
-    pub balance: String,
+    pub frontier: BlockHash,
+    pub block_count: u64,
+    pub balance: Amount,
 }
 
-pub struct RpcClient {
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum RpcCommand {
+    AccountInfo(AccountInfoCmd),
+    WalletAdd(WalletAddCmd),
+    Stop,
+}
+
+impl RpcCommand {
+    pub fn account_info(account: Account) -> Self {
+        Self::AccountInfo(AccountInfoCmd { account })
+    }
+
+    pub fn wallet_add(wallet_id: WalletId, key: RawKey) -> Self {
+        Self::WalletAdd(WalletAddCmd {
+            wallet: wallet_id,
+            key,
+        })
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountInfoCmd {
+    pub account: Account,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct WalletAddCmd {
+    pub wallet: WalletId,
+    pub key: RawKey,
+}
+
+pub struct NanoRpcClient {
     url: Url,
     client: reqwest::Client,
 }
 
-impl RpcClient {
+impl NanoRpcClient {
     pub fn new(url: Url) -> Self {
         Self {
             url,
@@ -34,7 +67,97 @@ impl RpcClient {
         }
     }
 
-    async fn rpc_request(&self, request: &serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfo> {
+        let cmd = RpcCommand::account_info(account);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn receive_block(
+        &self,
+        wallet: WalletId,
+        destination: Account,
+        block: &str,
+    ) -> Result<()> {
+        let request = json!({
+            "action": "receive",
+            "wallet": wallet,
+            "account": destination,
+            "block": block
+        });
+        self.rpc_request(&request).await?;
+        Ok(())
+    }
+
+    pub async fn send_block(
+        &self,
+        wallet: WalletId,
+        source: &str,
+        destination: Account,
+    ) -> Result<String> {
+        let request = json!({
+            "action": "send",
+            "wallet": wallet,
+            "source": source,
+            "destination": destination,
+            "amount": "1"
+        });
+        let json = self.rpc_request(&request).await?;
+        let block = json["block"].as_str().unwrap().to_owned();
+        Ok(block)
+    }
+
+    pub async fn send_receive(
+        &self,
+        wallet: WalletId,
+        source: &str,
+        destination: Account,
+    ) -> Result<()> {
+        let block = self.send_block(wallet, source, destination).await?;
+        self.receive_block(wallet, destination, &block).await
+    }
+
+    pub async fn keepalive_rpc(&self, port: u16) -> Result<()> {
+        let request = json!({
+            "action": "keepalive",
+            "address": "::1",
+            "port": port
+        });
+        self.rpc_request(&request).await?;
+        Ok(())
+    }
+
+    pub async fn key_create_rpc(&self) -> Result<KeyPairDto> {
+        let request = json!({
+            "action": "key_create"
+        });
+        let json = self.rpc_request(&request).await?;
+        Ok(serde_json::from_value(json)?)
+    }
+
+    pub async fn wallet_create_rpc(&self) -> Result<WalletId> {
+        let request = json!({
+            "action": "wallet_create"
+        });
+        let json = self.rpc_request(&request).await?;
+        WalletId::decode_hex(json["wallet"].as_str().unwrap())
+    }
+
+    pub async fn wallet_add(&self, wallet: WalletId, prv_key: RawKey) -> Result<()> {
+        let cmd = RpcCommand::wallet_add(wallet, prv_key);
+        self.rpc_request(&cmd).await?;
+        Ok(())
+    }
+
+    pub async fn stop_rpc(&self) -> Result<()> {
+        self.rpc_request(&RpcCommand::Stop).await?;
+        Ok(())
+    }
+
+    async fn rpc_request<T>(&self, request: &T) -> Result<serde_json::Value>
+    where
+        T: Serialize,
+    {
         let result = self
             .client
             .post(self.url.clone())
@@ -51,104 +174,51 @@ impl RpcClient {
 
         Ok(result)
     }
+}
 
-    pub async fn receive_block(&self, wallet: &str, destination: &str, block: &str) -> Result<()> {
-        let request = json!({
-            "action": "receive",
-            "wallet": wallet,
-            "account": destination,
-            "block": block
-        });
-        self.rpc_request(&request).await?;
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_account_info_command() {
+        assert_eq!(
+            serde_json::to_string_pretty(&RpcCommand::account_info(Account::from(123))).unwrap(),
+            r#"{
+  "action": "account_info",
+  "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+}"#
+        )
     }
 
-    pub async fn send_block(
-        &self,
-        wallet: &str,
-        source: &str,
-        destination: &str,
-    ) -> Result<String> {
-        let request = json!({
-            "action": "send",
-            "wallet": wallet,
-            "source": source,
-            "destination": destination,
-            "amount": "1"
-        });
-        let json = self.rpc_request(&request).await?;
-        let block = json["block"].as_str().unwrap().to_owned();
-        Ok(block)
+    #[test]
+    fn serialize_stop_command() {
+        assert_eq!(
+            serde_json::to_string_pretty(&RpcCommand::Stop).unwrap(),
+            r#"{
+  "action": "stop"
+}"#
+        )
     }
 
-    pub async fn send_receive(&self, wallet: &str, source: &str, destination: &str) -> Result<()> {
-        let block = self.send_block(wallet, source, destination).await?;
-        self.receive_block(wallet, destination, &block).await
+    #[test]
+    fn serialize_wallet_add_command() {
+        assert_eq!(
+            serde_json::to_string_pretty(&RpcCommand::wallet_add(1.into(), 2.into())).unwrap(),
+            r#"{
+  "action": "wallet_add",
+  "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
+  "key": "0000000000000000000000000000000000000000000000000000000000000002"
+}"#
+        )
     }
 
-    pub async fn keepalive_rpc(&self, port: u16) -> Result<()> {
-        let request = json!({
-            "action": "keepalive",
-            "address": "::1",
-            "port": port
-        });
-        self.rpc_request(&request).await?;
-        Ok(())
-    }
-
-    pub async fn key_create_rpc(&self) -> Result<Account> {
-        let request = json!({
-            "action": "key_create"
-        });
-        let json = self.rpc_request(&request).await?;
-
-        let account = Account {
-            private_key: json["private"].as_str().unwrap().to_owned(),
-            public_key: json["public"].as_str().unwrap().to_owned(),
-            as_string: json["account"].as_str().unwrap().to_owned(),
-        };
-
-        Ok(account)
-    }
-
-    pub async fn wallet_create_rpc(&self) -> Result<String> {
-        let request = json!({
-            "action": "wallet_create"
-        });
-        let json = self.rpc_request(&request).await?;
-        Ok(json["wallet"].as_str().unwrap().to_owned())
-    }
-
-    pub async fn wallet_add_rpc(&self, wallet: &str, prv_key: &str) -> Result<()> {
-        let request = json!({
-            "action": "wallet_add",
-            "wallet": wallet,
-            "key": prv_key,
-        });
-        self.rpc_request(&request).await?;
-        Ok(())
-    }
-
-    pub async fn stop_rpc(&self) -> Result<()> {
-        let request = json!({
-            "action": "stop"
-        });
-        self.rpc_request(&request).await?;
-        Ok(())
-    }
-
-    pub async fn account_info_rpc(&self, account: &str) -> Result<AccountInfo> {
-        let request = json!({
-            "action": "account_info",
-            "account": account
-        });
-
-        let json = self.rpc_request(&request).await?;
-
-        Ok(AccountInfo {
-            frontier: json["frontier"].as_str().unwrap().to_owned(),
-            block_count: json["block_count"].as_str().unwrap().to_owned(),
-            balance: json["balance"].as_str().unwrap().to_owned(),
-        })
+    #[test]
+    fn deserialize_account_info_command() {
+        let account = Account::from(123);
+        let cmd = RpcCommand::account_info(account);
+        let serialized = serde_json::to_string_pretty(&cmd).unwrap();
+        let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(cmd, deserialized)
     }
 }

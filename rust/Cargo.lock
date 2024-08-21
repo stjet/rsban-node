@@ -1239,6 +1239,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_node",
+ "serde",
  "serde_json",
  "tokio",
 ]

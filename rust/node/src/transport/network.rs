@@ -1,7 +1,7 @@
 use super::{
     Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep,
     DeadChannelCleanupTarget, DropPolicy, NetworkFilter, NetworkInfo, OutboundBandwidthLimiter,
-    TcpStream, TrafficType,
+    TrafficType,
 };
 use crate::{
     stats::Stats,
@@ -9,6 +9,7 @@ use crate::{
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_core::utils::NULL_ENDPOINT;
+use rsnano_nullable_tcp::TcpStream;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},

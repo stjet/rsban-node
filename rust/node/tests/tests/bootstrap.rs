@@ -13,9 +13,9 @@ use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
     config::{FrontiersConfirmationMode, NodeFlags},
     node::NodeExt,
-    transport::TcpStream,
     wallets::WalletsExt,
 };
+use rsnano_nullable_tcp::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use test_helpers::{assert_timely_eq, assert_timely_msg, get_available_port, System};

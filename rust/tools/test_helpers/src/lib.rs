@@ -6,12 +6,13 @@ use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
-    transport::{Channel, ChannelDirection, ChannelInfo, ChannelMode, PeerConnectorExt, TcpStream},
+    transport::{Channel, ChannelDirection, ChannelInfo, ChannelMode, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
     NetworkParams,
 };
+use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::TcpListener,
     sync::{

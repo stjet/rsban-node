@@ -72,8 +72,8 @@ impl NodeIdKeyFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nullable_fs::FsEvent;
     use rsnano_core::RawKey;
+    use rsnano_nullable_fs::FsEvent;
     use std::io::ErrorKind;
     use tracing_test::traced_test;
 

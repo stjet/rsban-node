@@ -1,7 +1,7 @@
 use super::{
     write_queue::{WriteQueue, WriteQueueReceiver},
     AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkInfo,
-    OutboundBandwidthLimiter, TcpStream, TrafficType,
+    OutboundBandwidthLimiter, TrafficType,
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
@@ -12,6 +12,7 @@ use rsnano_core::{
     utils::{seconds_since_epoch, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     Account,
 };
+use rsnano_nullable_tcp::TcpStream;
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},

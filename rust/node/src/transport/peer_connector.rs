@@ -1,9 +1,10 @@
 use super::{AcceptResult, ChannelDirection, Network, ResponseServerFactory, TcpConfig};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{ChannelMode, TcpStream},
+    transport::ChannelMode,
     utils::{AsyncRuntime, SteadyClock},
 };
+use rsnano_nullable_tcp::TcpStream;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{net::SocketAddrV6, sync::Arc};
 use tokio_util::sync::CancellationToken;

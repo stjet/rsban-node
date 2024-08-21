@@ -40,7 +40,6 @@ use crate::{
     NetworkParams, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry, BUILD_INFO,
     VERSION_STRING,
 };
-use reqwest::Url;
 use rsnano_core::{
     utils::{
         as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree,
@@ -52,7 +51,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_nullable_http_client::HttpClient;
+use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,

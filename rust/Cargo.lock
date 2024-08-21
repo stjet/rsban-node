@@ -1919,7 +1919,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
  "backtrace",
  "bitvec",
  "blake2 0.10.6",
@@ -1927,7 +1926,6 @@ dependencies = [
  "chrono",
  "dirs",
  "futures-util",
- "lmdb-rkv",
  "mock_instant",
  "num",
  "num-derive 0.3.3",
@@ -1936,7 +1934,6 @@ dependencies = [
  "ordered-float",
  "primitive-types",
  "rand",
- "reqwest 0.12.5",
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",

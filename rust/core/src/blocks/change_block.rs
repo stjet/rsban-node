@@ -1,13 +1,12 @@
+use super::{Block, BlockVisitor};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, KeyPair, LazyBlockHash,
-    Link, PublicKey, RawKey, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock, KeyPair,
+    LazyBlockHash, Link, PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 use serde::ser::SerializeStruct;
-
-use super::{Block, BlockVisitor};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {
@@ -237,6 +236,15 @@ impl Block for ChangeBlock {
     fn destination_field(&self) -> Option<Account> {
         None
     }
+
+    fn json_representation(&self) -> JsonBlock {
+        JsonBlock::Change(JsonChangeBlock {
+            previous: self.hashables.previous,
+            representative: self.hashables.representative.into(),
+            work: self.work,
+            signature: self.signature.clone(),
+        })
+    }
 }
 
 impl serde::Serialize for ChangeBlock {
@@ -254,6 +262,31 @@ impl serde::Serialize for ChangeBlock {
         state.serialize_field("work", &to_hex_string(self.work))?;
         state.serialize_field("signature", &self.signature)?;
         state.end()
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JsonChangeBlock {
+    pub previous: BlockHash,
+    pub representative: Account,
+    pub work: u64,
+    pub signature: Signature,
+}
+
+impl From<JsonChangeBlock> for ChangeBlock {
+    fn from(value: JsonChangeBlock) -> Self {
+        let hashables = ChangeHashables {
+            previous: value.previous,
+            representative: value.representative.into(),
+        };
+
+        Self {
+            work: value.work,
+            signature: value.signature,
+            hashables,
+            hash: LazyBlockHash::new(),
+            sideband: None,
+        }
     }
 }
 

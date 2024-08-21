@@ -1,8 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PendingKey,
-    PublicKey, RawKey, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    PendingKey, PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 use serde::ser::SerializeStruct;
@@ -296,6 +296,16 @@ impl Block for SendBlock {
     fn destination_field(&self) -> Option<Account> {
         Some(self.hashables.destination)
     }
+
+    fn json_representation(&self) -> JsonBlock {
+        JsonBlock::Send(JsonSendBlock {
+            previous: self.hashables.previous,
+            destination: self.hashables.destination,
+            balance: self.hashables.balance,
+            work: self.work,
+            signature: self.signature.clone(),
+        })
+    }
 }
 
 impl serde::Serialize for SendBlock {
@@ -312,6 +322,35 @@ impl serde::Serialize for SendBlock {
         state.serialize_field("signature", &self.signature)?;
         state.end()
     }
+}
+
+impl From<JsonSendBlock> for SendBlock {
+    fn from(value: JsonSendBlock) -> Self {
+        let hashables = SendHashables {
+            previous: value.previous,
+            destination: value.destination,
+            balance: value.balance,
+        };
+
+        let hash = LazyBlockHash::new();
+
+        Self {
+            hashables,
+            work: value.work,
+            signature: value.signature,
+            hash,
+            sideband: None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JsonSendBlock {
+    pub previous: BlockHash,
+    pub destination: Account,
+    pub balance: Amount,
+    pub work: u64,
+    pub signature: Signature,
 }
 
 #[cfg(test)]

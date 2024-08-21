@@ -97,7 +97,9 @@ pub fn u64_from_hex_str(s: impl AsRef<str>) -> Result<u64, ParseIntError> {
 }
 
 u256_struct!(HashOrAccount);
+serialize_32_byte_string!(HashOrAccount);
 u256_struct!(Link);
+serialize_32_byte_string!(Link);
 u256_struct!(PublicKey);
 serialize_32_byte_string!(PublicKey);
 u256_struct!(Root);
@@ -109,15 +111,6 @@ impl WalletId {
         let secret: [u8; 32] = thread_rng().gen();
         let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
         Self::from_bytes(*keys.public_key().as_bytes())
-    }
-}
-
-impl serde::Serialize for HashOrAccount {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.encode_hex())
     }
 }
 

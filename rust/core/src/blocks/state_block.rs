@@ -1,8 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
-    Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, HashOrAccount, JsonBlock, KeyPair, LazyBlockHash,
+    Link, PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 use serde::ser::SerializeStruct;
@@ -356,6 +356,19 @@ impl Block for StateBlock {
     fn destination_field(&self) -> Option<Account> {
         None
     }
+
+    fn json_representation(&self) -> JsonBlock {
+        JsonBlock::State(JsonStateBlock {
+            account: self.hashables.account,
+            previous: self.hashables.previous,
+            representative: self.hashables.representative.into(),
+            balance: self.hashables.balance,
+            link: self.hashables.link,
+            link_as_account: Some(self.hashables.link.into()),
+            signature: self.signature.clone(),
+            work: self.work,
+        })
+    }
 }
 
 impl serde::Serialize for StateBlock {
@@ -378,6 +391,40 @@ impl serde::Serialize for StateBlock {
         state.serialize_field("work", &to_hex_string(self.work))?;
         state.end()
     }
+}
+
+impl From<JsonStateBlock> for StateBlock {
+    fn from(value: JsonStateBlock) -> Self {
+        let hashables = StateHashables {
+            account: value.account,
+            previous: value.previous,
+            representative: value.representative.into(),
+            balance: value.balance,
+            link: value.link,
+        };
+
+        let hash = LazyBlockHash::new();
+
+        Self {
+            work: value.work,
+            signature: value.signature,
+            hashables,
+            hash,
+            sideband: None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JsonStateBlock {
+    pub account: Account,
+    pub previous: BlockHash,
+    pub representative: Account,
+    pub balance: Amount,
+    pub link: Link,
+    pub link_as_account: Option<Account>,
+    pub signature: Signature,
+    pub work: u64,
 }
 
 #[cfg(test)]

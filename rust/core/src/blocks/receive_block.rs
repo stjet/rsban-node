@@ -1,8 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
-    Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 use serde::ser::SerializeStruct;
@@ -225,6 +225,15 @@ impl Block for ReceiveBlock {
     fn destination_field(&self) -> Option<Account> {
         None
     }
+
+    fn json_representation(&self) -> JsonBlock {
+        JsonBlock::Receive(JsonReceiveBlock {
+            previous: self.hashables.previous,
+            source: self.hashables.source,
+            work: self.work,
+            signature: self.signature.clone(),
+        })
+    }
 }
 
 impl serde::Serialize for ReceiveBlock {
@@ -240,6 +249,32 @@ impl serde::Serialize for ReceiveBlock {
         state.serialize_field("signature", &self.signature)?;
         state.end()
     }
+}
+
+impl From<JsonReceiveBlock> for ReceiveBlock {
+    fn from(value: JsonReceiveBlock) -> Self {
+        let hashables = ReceiveHashables {
+            previous: value.previous,
+            source: value.source,
+        };
+        let hash = LazyBlockHash::new();
+
+        Self {
+            work: value.work,
+            signature: value.signature,
+            hashables,
+            hash,
+            sideband: None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JsonReceiveBlock {
+    pub previous: BlockHash,
+    pub source: BlockHash,
+    pub work: u64,
+    pub signature: Signature,
 }
 
 #[cfg(test)]

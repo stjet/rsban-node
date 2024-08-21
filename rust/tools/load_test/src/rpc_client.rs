@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::Url;
-use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, WalletId};
+use rsnano_core::{Account, Amount, BlockEnum, BlockHash, PublicKey, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Duration;
@@ -24,6 +24,7 @@ pub struct AccountInfo {
 pub enum RpcCommand {
     AccountInfo(AccountInfoCmd),
     WalletAdd(WalletAddCmd),
+    Receive(ReceiveCmd),
     Stop,
 }
 
@@ -49,6 +50,13 @@ pub struct AccountInfoCmd {
 pub struct WalletAddCmd {
     pub wallet: WalletId,
     pub key: RawKey,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct ReceiveCmd {
+    pub wallet: WalletId,
+    pub account: Account,
+    pub block: String, //todo
 }
 
 pub struct NanoRpcClient {

@@ -1,8 +1,8 @@
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, KeyPair, LazyBlockHash, Link, PublicKey, RawKey,
-    Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    PublicKey, RawKey, Root, Signature,
 };
 use anyhow::Result;
 use serde::ser::SerializeStruct;
@@ -247,6 +247,16 @@ impl Block for OpenBlock {
     fn destination_field(&self) -> Option<Account> {
         None
     }
+
+    fn json_representation(&self) -> JsonBlock {
+        JsonBlock::Open(JsonOpenBlock {
+            source: self.hashables.source,
+            representative: self.hashables.representative.into(),
+            account: self.hashables.account,
+            work: self.work,
+            signature: self.signature.clone(),
+        })
+    }
 }
 
 impl serde::Serialize for OpenBlock {
@@ -265,6 +275,33 @@ impl serde::Serialize for OpenBlock {
         state.serialize_field("work", &to_hex_string(self.work))?;
         state.serialize_field("signature", &self.signature)?;
         state.end()
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JsonOpenBlock {
+    pub source: BlockHash,
+    pub representative: Account,
+    pub account: Account,
+    pub work: u64,
+    pub signature: Signature,
+}
+
+impl From<JsonOpenBlock> for OpenBlock {
+    fn from(value: JsonOpenBlock) -> Self {
+        let hashables = OpenHashables {
+            source: value.source,
+            representative: value.representative.into(),
+            account: value.account,
+        };
+
+        Self {
+            work: value.work,
+            signature: value.signature,
+            hashables,
+            hash: LazyBlockHash::new(),
+            sideband: None,
+        }
     }
 }
 

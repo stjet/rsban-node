@@ -14,7 +14,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use super::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
-use super::response::{account_balance, account_create};
+use super::response::account_balance;
 
 #[derive(Clone)]
 struct Service {
@@ -62,13 +62,6 @@ async fn handle_rpc(
             } => account_balance(service.node, account, only_confirmed).await,
         },
         RpcRequest::Wallet(wallet_request) => match wallet_request {
-            WalletRpcRequest::AccountCreate { wallet, index } => {
-                if service.enable_control {
-                    account_create(service.node, wallet, index).await
-                } else {
-                    format_error_message("Enable control is disabled")
-                }
-            }
             WalletRpcRequest::UnknownCommand => format_error_message("Unknown command"),
         },
     };

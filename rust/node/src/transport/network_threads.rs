@@ -5,6 +5,7 @@ use super::{
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
+    utils::SteadyClock,
     NetworkParams,
 };
 use rsnano_core::utils::NULL_ENDPOINT;
@@ -13,7 +14,7 @@ use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 pub(crate) struct NetworkThreads {
@@ -31,6 +32,7 @@ pub(crate) struct NetworkThreads {
     latest_keepalives: Arc<Mutex<LatestKeepalives>>,
     dead_channel_cleanup: Option<DeadChannelCleanup>,
     message_publisher: MessagePublisher,
+    clock: Arc<SteadyClock>,
 }
 
 impl NetworkThreads {
@@ -45,6 +47,7 @@ impl NetworkThreads {
         latest_keepalives: Arc<Mutex<LatestKeepalives>>,
         dead_channel_cleanup: DeadChannelCleanup,
         message_publisher: MessagePublisher,
+        clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
             cleanup_thread: None,
@@ -61,6 +64,7 @@ impl NetworkThreads {
             latest_keepalives,
             dead_channel_cleanup: Some(dead_channel_cleanup),
             message_publisher,
+            clock,
         }
     }
 
@@ -83,10 +87,11 @@ impl NetworkThreads {
         let mut keepalive = KeepaliveLoop {
             stopped: self.stopped.clone(),
             network: self.network.clone(),
-            network_params: self.network_params.clone(),
+            keepalive_period: self.network_params.network.keepalive_period,
             stats: Arc::clone(&self.stats),
             keepalive_factory: Arc::clone(&self.keepalive_factory),
             message_publisher: self.message_publisher.clone(),
+            clock: self.clock.clone(),
         };
 
         self.keepalive_thread = Some(
@@ -217,11 +222,12 @@ impl KeepaliveFactory {
 
 struct KeepaliveLoop {
     stopped: Arc<(Condvar, Mutex<bool>)>,
-    network_params: NetworkParams,
     stats: Arc<Stats>,
     network: Arc<RwLock<NetworkInfo>>,
     keepalive_factory: Arc<KeepaliveFactory>,
     message_publisher: MessagePublisher,
+    clock: Arc<SteadyClock>,
+    keepalive_period: Duration,
 }
 
 impl KeepaliveLoop {
@@ -231,7 +237,7 @@ impl KeepaliveLoop {
             stopped = self
                 .stopped
                 .0
-                .wait_timeout(stopped, self.network_params.network.keepalive_period)
+                .wait_timeout(stopped, self.keepalive_period)
                 .unwrap()
                 .0;
 
@@ -256,7 +262,7 @@ impl KeepaliveLoop {
             let mut peers = [NULL_ENDPOINT; 8];
             network.random_fill_realtime(&mut peers);
             let message = Message::Keepalive(Keepalive { peers });
-            let list = network.keepalive_list();
+            let list = network.idle_channels(self.keepalive_period, SystemTime::now());
             (message, list)
         };
 

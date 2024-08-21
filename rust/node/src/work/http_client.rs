@@ -1,5 +1,5 @@
 use reqwest::{IntoUrl, Method, StatusCode, Url};
-use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::HashMap, sync::Arc};
 

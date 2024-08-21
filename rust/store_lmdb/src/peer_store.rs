@@ -3,7 +3,7 @@ use crate::{
     Transaction, PEERS_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
     array::TryFromSliceError,
     net::SocketAddrV6,

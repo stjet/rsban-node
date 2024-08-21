@@ -243,7 +243,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 .network_info
                 .write()
                 .unwrap()
-                .excluded_peers
                 .is_excluded(&client_a.remote_addr(), self.clock.now())
         {
             client_a.set_timeout(self.config.idle_timeout);
@@ -508,7 +507,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         .network_info
                         .write()
                         .unwrap()
-                        .excluded_peers
                         .is_excluded(&endpoint, self.clock.now())
                 {
                     let success = self

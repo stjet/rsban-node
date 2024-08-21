@@ -1,7 +1,5 @@
 mod container_info;
 mod json;
-mod output_tracker;
-mod output_tracker_mt;
 mod rng;
 mod stream;
 mod system_time_factory;
@@ -9,8 +7,6 @@ mod toml;
 
 pub use container_info::{ContainerInfo, ContainerInfoComponent};
 pub use json::*;
-pub use output_tracker::{OutputListener, OutputTracker};
-pub use output_tracker_mt::{OutputListenerMt, OutputTrackerMt};
 pub use rng::NullableRng;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},

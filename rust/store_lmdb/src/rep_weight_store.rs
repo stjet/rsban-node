@@ -4,12 +4,12 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
-#[cfg(feature = "output_tracking")]
-use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
 use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, Amount,
 };
+#[cfg(feature = "output_tracking")]
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::sync::Arc;
 
 pub struct LmdbRepWeightStore {

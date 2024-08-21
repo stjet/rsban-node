@@ -232,13 +232,8 @@ impl Node {
         ));
 
         let network_info = Arc::new(RwLock::new(NetworkInfo::new(
-            config.peering_port.unwrap_or(0),
-            network_params.network.protocol_info(),
-            config.tcp.clone(),
+            global_config.into(),
             stats.clone(),
-            flags.clone(),
-            network_params.network.clone(),
-            config.allow_local_peers,
         )));
 
         let mut dead_channel_cleanup = DeadChannelCleanup::new(
@@ -675,6 +670,7 @@ impl Node {
             latest_keepalives.clone(),
             dead_channel_cleanup,
             message_publisher.clone(),
+            steady_clock.clone(),
         )));
 
         let message_processor = Mutex::new(MessageProcessor::new(

@@ -50,9 +50,7 @@ use std::{
 
 use primitive_types::U256;
 use rsnano_core::utils::{get_cpu_count, PropertyTree};
-#[cfg(feature = "output_tracking")]
-use rsnano_core::utils::{OutputListener, OutputTracker};
-#[cfg(feature = "output_tracking")]
+use rsnano_output_tracker::{OutputListener, OutputTracker};
 use std::rc::Rc;
 
 pub trait Transaction {

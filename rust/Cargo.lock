@@ -1940,6 +1940,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",
+ "rsnano_output_tracker",
  "rsnano_store_lmdb",
  "scoped_threadpool",
  "serde",
@@ -1983,6 +1984,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsnano_output_tracker"
+version = "0.1.0"
+
+[[package]]
 name = "rsnano_store_lmdb"
 version = "0.1.0"
 dependencies = [
@@ -1994,6 +1999,7 @@ dependencies = [
  "primitive-types",
  "rand",
  "rsnano_core",
+ "rsnano_output_tracker",
  "rsnano_store_lmdb",
  "serde",
  "serde_json",

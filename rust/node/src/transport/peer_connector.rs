@@ -4,7 +4,7 @@ use crate::{
     transport::{ChannelMode, TcpStream},
     utils::{AsyncRuntime, SteadyClock},
 };
-use rsnano_core::utils::{OutputListenerMt, OutputTrackerMt};
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{net::SocketAddrV6, sync::Arc};
 use tokio_util::sync::CancellationToken;
 use tracing::debug;

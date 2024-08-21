@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "core",
+    "nullables/output_tracker",
     "messages",
     "store_lmdb",
     "ledger",

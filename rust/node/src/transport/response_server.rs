@@ -15,12 +15,10 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{
-    utils::{OutputListenerMt, OutputTrackerMt},
-    Account, KeyPair,
-};
+use rsnano_core::{Account, KeyPair};
 use rsnano_ledger::Ledger;
 use rsnano_messages::*;
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
     net::SocketAddrV6,
     sync::{
@@ -427,11 +425,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
                     );
                     if matches!(result, HandshakeStatus::AbortOwnNodeId) {
                         if let Some(peering_addr) = self.channel.info.peering_addr() {
-                            self.network_info
-                                .write()
-                                .unwrap()
-                                .excluded_peers
-                                .perma_ban(peering_addr);
+                            self.network_info.write().unwrap().perma_ban(peering_addr);
                         }
                     }
                     return ProcessResult::Abort;

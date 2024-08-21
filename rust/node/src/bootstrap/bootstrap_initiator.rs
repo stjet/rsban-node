@@ -420,7 +420,6 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 .network_info
                 .write()
                 .unwrap()
-                .excluded_peers
                 .is_excluded(&remote_addr, self.clock.now())
             {
                 self.runtime

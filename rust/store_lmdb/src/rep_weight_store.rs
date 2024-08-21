@@ -1,6 +1,5 @@
 use crate::{
-    nullable_lmdb::ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor,
-    Transaction, REP_WEIGHT_TEST_DATABASE,
+    LmdbDatabase, LmdbEnv, LmdbWriteTransaction, RoCursor, Transaction, REP_WEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
@@ -8,6 +7,7 @@ use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, Amount,
 };
+use rsnano_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::sync::Arc;

@@ -22,6 +22,7 @@ rsnano_store_lmdb = { path = "../store_lmdb" }
 rsnano_output_tracker = { path = "../nullables/output_tracker" }
 rsnano_nullable_fs = { path = "../nullables/fs" }
 rsnano_nullable_tcp = { path = "../nullables/tcp" }
+rsnano_nullable_lmdb = { path = "../nullables/lmdb" }
 lmdb-rkv = "0.14"
 rsnano_ledger = { path = "../ledger" }
 anyhow = "1.0.40"

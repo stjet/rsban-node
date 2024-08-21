@@ -4,6 +4,7 @@ members = [
     "nullables/output_tracker",
     "nullables/fs",
     "nullables/tcp",
+    "nullables/lmdb",
     "messages",
     "store_lmdb",
     "ledger",

@@ -1,6 +1,5 @@
 use crate::{
     iterator::{LmdbIterator, LmdbRangeIterator},
-    nullable_lmdb::ConfiguredDatabase,
     parallel_traversal, BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
     LmdbReadTransaction, LmdbWriteTransaction, Transaction, ACCOUNT_TEST_DATABASE,
 };
@@ -9,6 +8,7 @@ use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, AccountInfo,
 };
+use rsnano_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{ops::RangeBounds, sync::Arc};

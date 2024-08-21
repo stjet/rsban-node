@@ -21,9 +21,10 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
+use rsnano_nullable_lmdb::LmdbDatabase;
 use rsnano_store_lmdb::{
-    create_backup_file, BinaryDbIterator, KeyType, LmdbDatabase, LmdbEnv, LmdbIteratorImpl,
-    LmdbWalletStore, LmdbWriteTransaction, Transaction,
+    create_backup_file, BinaryDbIterator, KeyType, LmdbEnv, LmdbIteratorImpl, LmdbWalletStore,
+    LmdbWriteTransaction, Transaction,
 };
 use std::{
     collections::{HashMap, HashSet},

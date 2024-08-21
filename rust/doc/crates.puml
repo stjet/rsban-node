@@ -3,24 +3,30 @@
 [nullables]
 [core]
 [ledger]
+[store_lmdb]
 [messages]
 [node]
 [main]
+[rpc]
 [ffi]
+[C++ node]
 
 folder "nullables"{
 [output_tracker]
-[nullable_fs]
-[nullable_tcp]
+[fs]
+[tcp]
+[lmdb]
 }
 
+[C++ node] --> [ffi]
 [main] --> [node]
-[node] --> [core]
+[main] --> [rpc]
+[rpc] --> [node]
 [node] --> [ledger]
 [node] --> [messages]
-[node] --> "nullables"
-[ledger] --> "nullables"
-[ffi] --> [ledger]
+[messages] --> [core]
+[ledger] --> [store_lmdb]
+[store_lmdb] --> [core]
 [ffi] --> [node]
 
 @enduml

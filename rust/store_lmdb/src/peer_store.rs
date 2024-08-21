@@ -1,8 +1,9 @@
 use crate::{
-    iterator::LmdbIterator, ConfiguredDatabase, LmdbDatabase, LmdbEnv, LmdbWriteTransaction,
-    Transaction, PEERS_TEST_DATABASE,
+    iterator::LmdbIterator, LmdbDatabase, LmdbEnv, LmdbWriteTransaction, Transaction,
+    PEERS_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+use rsnano_nullable_lmdb::ConfiguredDatabase;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
     array::TryFromSliceError,

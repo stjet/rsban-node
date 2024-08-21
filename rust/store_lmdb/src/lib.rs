@@ -12,7 +12,6 @@ mod final_vote_store;
 mod iterator;
 mod lmdb_config;
 mod lmdb_env;
-mod nullable_lmdb;
 mod online_weight_store;
 mod peer_store;
 mod pending_store;
@@ -30,12 +29,14 @@ pub use final_vote_store::LmdbFinalVoteStore;
 pub use iterator::{BinaryDbIterator, LmdbIteratorImpl};
 pub use lmdb_config::{LmdbConfig, SyncStrategy};
 pub use lmdb_env::*;
-pub use nullable_lmdb::*;
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::*;
 pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
 pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 pub use rep_weight_store::*;
+use rsnano_nullable_lmdb::{
+    InactiveTransaction, LmdbDatabase, LmdbEnvironment, RoCursor, RoTransaction, RwTransaction,
+};
 pub use store::{create_backup_file, LedgerCache, LmdbStore};
 pub use version_store::LmdbVersionStore;
 pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};

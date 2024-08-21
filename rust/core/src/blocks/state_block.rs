@@ -1,13 +1,11 @@
+use super::{Block, BlockSideband, BlockType, BlockVisitor};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, HashOrAccount, JsonBlock, KeyPair, LazyBlockHash,
-    Link, PublicKey, RawKey, Root, Signature,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
-use serde::ser::SerializeStruct;
-
-use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct StateHashables {
@@ -366,30 +364,8 @@ impl Block for StateBlock {
             link: self.hashables.link,
             link_as_account: Some(self.hashables.link.into()),
             signature: self.signature.clone(),
-            work: self.work,
+            work: self.work.into(),
         })
-    }
-}
-
-impl serde::Serialize for StateBlock {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Block", 9)?;
-        state.serialize_field("type", "state")?;
-        state.serialize_field("account", &self.hashables.account)?;
-        state.serialize_field("previous", &self.hashables.previous)?;
-        state.serialize_field(
-            "representative",
-            &self.hashables.representative.as_account(),
-        )?;
-        state.serialize_field("balance", &self.hashables.balance.to_string_dec())?;
-        state.serialize_field("link", &self.hashables.link.encode_hex())?;
-        state.serialize_field("link_as_account", &Account::from(&self.hashables.link))?;
-        state.serialize_field("signature", &self.signature)?;
-        state.serialize_field("work", &to_hex_string(self.work))?;
-        state.end()
     }
 }
 
@@ -406,7 +382,7 @@ impl From<JsonStateBlock> for StateBlock {
         let hash = LazyBlockHash::new();
 
         Self {
-            work: value.work,
+            work: value.work.into(),
             signature: value.signature,
             hashables,
             hash,
@@ -424,7 +400,7 @@ pub struct JsonStateBlock {
     pub link: Link,
     pub link_as_account: Option<Account>,
     pub signature: Signature,
-    pub work: u64,
+    pub work: WorkNonce,
 }
 
 #[cfg(test)]
@@ -482,7 +458,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = StateBlock::new_test_instance();
+        let block = BlockEnum::State(StateBlock::new_test_instance());
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

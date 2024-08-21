@@ -20,6 +20,7 @@ use blake2::{
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
 use rand::{thread_rng, Rng};
+use serde::de::{Unexpected, Visitor};
 pub use vote::*;
 
 mod key_pair;
@@ -70,7 +71,11 @@ mod kdf;
 pub use kdf::KeyDerivationFunction;
 use utils::{BufferWriter, Deserialize, Serialize, Stream};
 
-use std::{fmt::Write, str::FromStr, sync::Mutex};
+use std::{
+    fmt::{Debug, Display, Write},
+    str::FromStr,
+    sync::Mutex,
+};
 use std::{num::ParseIntError, sync::LazyLock};
 
 pub fn encode_hex(i: u128) -> String {
@@ -392,6 +397,73 @@ impl Serialize for Frontier {
     fn serialize(&self, stream: &mut dyn BufferWriter) {
         self.account.serialize(stream);
         self.hash.serialize(stream);
+    }
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+pub struct WorkNonce(u64);
+
+impl Display for WorkNonce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:016X}", self.0)
+    }
+}
+
+impl Debug for WorkNonce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self, f)
+    }
+}
+
+impl From<u64> for WorkNonce {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<WorkNonce> for u64 {
+    fn from(value: WorkNonce) -> Self {
+        value.0
+    }
+}
+
+impl serde::Serialize for WorkNonce {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&to_hex_string(self.0))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for WorkNonce {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = deserializer.deserialize_str(WorkNonceVisitor {})?;
+        Ok(value)
+    }
+}
+
+struct WorkNonceVisitor {}
+
+impl<'de> Visitor<'de> for WorkNonceVisitor {
+    type Value = WorkNonce;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a hex string containing 8 bytes")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let mut bytes = [0; 8];
+        hex::decode_to_slice(v, &mut bytes).map_err(|_| {
+            serde::de::Error::invalid_value(Unexpected::Str(v), &"a hex string containing 8 bytes")
+        })?;
+        Ok(WorkNonce(u64::from_be_bytes(bytes)))
     }
 }
 

@@ -3,10 +3,9 @@ use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock, KeyPair,
-    LazyBlockHash, Link, PublicKey, RawKey, Root, Signature,
+    LazyBlockHash, Link, PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
-use serde::ser::SerializeStruct;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ChangeHashables {
@@ -241,27 +240,9 @@ impl Block for ChangeBlock {
         JsonBlock::Change(JsonChangeBlock {
             previous: self.hashables.previous,
             representative: self.hashables.representative.into(),
-            work: self.work,
+            work: self.work.into(),
             signature: self.signature.clone(),
         })
-    }
-}
-
-impl serde::Serialize for ChangeBlock {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Block", 5)?;
-        state.serialize_field("type", "change")?;
-        state.serialize_field("previous", &self.hashables.previous)?;
-        state.serialize_field(
-            "representative",
-            &self.hashables.representative.as_account(),
-        )?;
-        state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature)?;
-        state.end()
     }
 }
 
@@ -269,8 +250,8 @@ impl serde::Serialize for ChangeBlock {
 pub struct JsonChangeBlock {
     pub previous: BlockHash,
     pub representative: Account,
-    pub work: u64,
     pub signature: Signature,
+    pub work: WorkNonce,
 }
 
 impl From<JsonChangeBlock> for ChangeBlock {
@@ -281,7 +262,7 @@ impl From<JsonChangeBlock> for ChangeBlock {
         };
 
         Self {
-            work: value.work,
+            work: value.work.into(),
             signature: value.signature,
             hashables,
             hash: LazyBlockHash::new(),
@@ -295,7 +276,7 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        KeyPair,
+        BlockEnum, KeyPair,
     };
 
     #[test]
@@ -345,7 +326,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = ChangeBlock::new_test_instance();
+        let block = BlockEnum::LegacyChange(ChangeBlock::new_test_instance());
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,
@@ -353,8 +334,8 @@ mod tests {
   "type": "change",
   "previous": "000000000000000000000000000000000000000000000000000000000000007B",
   "representative": "nano_11111111111111111111111111111111111111111111111111gahteczqci",
-  "work": "0000000000010F2C",
-  "signature": "6F6E98FB9C3D0B91CBAF78C8613C7A7AE990AA627B9C1381D1D97AB7118C91D169381E3897A477286A4AFB68F7CD347F3FF16F8AB4C33241D8BF793CE29E730B"
+  "signature": "6F6E98FB9C3D0B91CBAF78C8613C7A7AE990AA627B9C1381D1D97AB7118C91D169381E3897A477286A4AFB68F7CD347F3FF16F8AB4C33241D8BF793CE29E730B",
+  "work": "0000000000010F2C"
 }"#
         );
     }

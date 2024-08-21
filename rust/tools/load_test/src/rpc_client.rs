@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::Url;
-use rsnano_core::{Account, Amount, BlockEnum, BlockHash, PublicKey, RawKey, WalletId};
+use rsnano_core::{Account, Amount, BlockHash, PublicKey, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Duration;

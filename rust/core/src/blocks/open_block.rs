@@ -1,13 +1,11 @@
+use super::{Block, BlockSideband, BlockType, BlockVisitor};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
-    PublicKey, RawKey, Root, Signature,
+    PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
-use serde::ser::SerializeStruct;
-
-use super::{Block, BlockSideband, BlockType, BlockVisitor};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenHashables {
@@ -253,38 +251,19 @@ impl Block for OpenBlock {
             source: self.hashables.source,
             representative: self.hashables.representative.into(),
             account: self.hashables.account,
-            work: self.work,
+            work: self.work.into(),
             signature: self.signature.clone(),
         })
     }
 }
 
-impl serde::Serialize for OpenBlock {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Block", 6)?;
-        state.serialize_field("type", "open")?;
-        state.serialize_field("source", &self.hashables.source)?;
-        state.serialize_field(
-            "representative",
-            &self.hashables.representative.as_account(),
-        )?;
-        state.serialize_field("account", &self.hashables.account)?;
-        state.serialize_field("work", &to_hex_string(self.work))?;
-        state.serialize_field("signature", &self.signature)?;
-        state.end()
-    }
-}
-
 #[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct JsonOpenBlock {
+    pub account: Account,
     pub source: BlockHash,
     pub representative: Account,
-    pub account: Account,
-    pub work: u64,
     pub signature: Signature,
+    pub work: WorkNonce,
 }
 
 impl From<JsonOpenBlock> for OpenBlock {
@@ -296,7 +275,7 @@ impl From<JsonOpenBlock> for OpenBlock {
         };
 
         Self {
-            work: value.work,
+            work: value.work.into(),
             signature: value.signature,
             hashables,
             hash: LazyBlockHash::new(),
@@ -310,7 +289,7 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        KeyPair,
+        BlockEnum, KeyPair,
     };
 
     #[test]
@@ -365,17 +344,17 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = OpenBlock::new_test_instance();
+        let block = BlockEnum::LegacyOpen(OpenBlock::new_test_instance());
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,
             r#"{
   "type": "open",
+  "account": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
   "source": "000000000000000000000000000000000000000000000000000000000000007B",
   "representative": "nano_11111111111111111111111111111111111111111111111111gahteczqci",
-  "account": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
-  "work": "0000000000010F2C",
-  "signature": "791B637D0CB7D333AFC9F4D06870A1B5ADD2857E5C37BBAEEF70C77E0DDC7DF6541CC877EA88BE2483D7E0198BC9455C61E4B7BD98A50352BB5C4AD0E468DF04"
+  "signature": "791B637D0CB7D333AFC9F4D06870A1B5ADD2857E5C37BBAEEF70C77E0DDC7DF6541CC877EA88BE2483D7E0198BC9455C61E4B7BD98A50352BB5C4AD0E468DF04",
+  "work": "0000000000010F2C"
 }"#
         );
     }

@@ -1853,6 +1853,7 @@ dependencies = [
  "once_cell",
  "primitive-types",
  "rand",
+ "rsnano_nullable_random",
  "rust-argon2",
  "serde",
  "serde_json",
@@ -2016,6 +2017,13 @@ version = "0.1.0"
 dependencies = [
  "lmdb-rkv",
  "lmdb-rkv-sys",
+]
+
+[[package]]
+name = "rsnano_nullable_random"
+version = "0.1.0"
+dependencies = [
+ "rand",
 ]
 
 [[package]]

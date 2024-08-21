@@ -7,6 +7,7 @@ members = [
     "nullables/lmdb",
     "nullables/http_client",
     "nullables/clock",
+    "nullables/random",
     "messages",
     "store_lmdb",
     "ledger",
@@ -15,6 +16,6 @@ members = [
     "main",
     "tools/load_test",
     "tools/xtask",
-    "tools/test_helpers", "nullables/http_client", "nullables/clock", 
+    "tools/test_helpers", "nullables/http_client", "nullables/clock", "nullables/random", 
 ]
 resolver = "2"

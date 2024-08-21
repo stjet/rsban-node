@@ -100,7 +100,7 @@ impl PeerConnectorExt for Arc<PeerConnector> {
         {
             let mut network = self.network.info.write().unwrap();
 
-            if !network.add_attempt(peer) {
+            if !network.add_attempt(peer, self.clock.now()) {
                 return false;
             }
             if network.can_add_connection(

@@ -24,7 +24,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 use tracing::{debug, warn};
 
@@ -367,7 +367,7 @@ impl NetworkInfo {
         self.excluded_peers.is_excluded(peer_addr, now)
     }
 
-    pub(crate) fn add_attempt(&mut self, remote: SocketAddrV6) -> bool {
+    pub(crate) fn add_attempt(&mut self, remote: SocketAddrV6, now: Timestamp) -> bool {
         let count = self.attempts.count_by_address(remote.ip());
         if count >= self.network_config.max_attempts_per_ip {
             self.stats.inc_dir(
@@ -379,7 +379,8 @@ impl NetworkInfo {
             return false; // Rejected
         }
 
-        self.attempts.insert(remote, ChannelDirection::Outbound)
+        self.attempts
+            .insert(remote, ChannelDirection::Outbound, now)
     }
 
     pub(crate) fn remove_attempt(&mut self, remote: &SocketAddrV6) {
@@ -559,12 +560,7 @@ impl NetworkInfo {
     }
 
     /// Returns channel IDs of removed channels
-    pub fn purge(
-        &mut self,
-        cutoff: SystemTime,
-        now: Timestamp,
-        cutoff_period: Duration,
-    ) -> Vec<ChannelId> {
+    pub fn purge(&mut self, now: Timestamp, cutoff_period: Duration) -> Vec<ChannelId> {
         self.close_idle_channels(now, cutoff_period);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
@@ -574,7 +570,7 @@ impl NetworkInfo {
         let purged_channel_ids = self.remove_dead_channels();
 
         // Remove keepalive attempt tracking for attempts older than cutoff
-        self.attempts.purge(cutoff);
+        self.attempts.purge(now, cutoff_period);
         purged_channel_ids
     }
 
@@ -1224,11 +1220,7 @@ mod tests {
         #[test]
         fn purge_empty() {
             let mut network = NetworkInfo::new_test_instance();
-            network.purge(
-                SystemTime::now(),
-                Timestamp::new_test_instance(),
-                Duration::from_secs(1),
-            );
+            network.purge(Timestamp::new_test_instance(), Duration::from_secs(1));
             assert_eq!(network.len(), 0);
         }
 
@@ -1245,7 +1237,7 @@ mod tests {
                     now,
                 )
                 .unwrap();
-            network.purge(SystemTime::now(), now, Duration::from_secs(1));
+            network.purge(now, Duration::from_secs(1));
             assert_eq!(network.len(), 1);
         }
 
@@ -1263,26 +1255,25 @@ mod tests {
                 )
                 .unwrap();
             channel.set_last_packet_sent(now - Duration::from_secs(300));
-            network.purge(SystemTime::now(), now, Duration::from_secs(1));
+            network.purge(now, Duration::from_secs(1));
             assert_eq!(network.len(), 0);
         }
 
         #[test]
         fn dont_purge_if_packet_sent_within_timeout() {
             let mut network = NetworkInfo::new_test_instance();
-            let now2 = Timestamp::new_test_instance();
+            let now = Timestamp::new_test_instance();
             let channel = network
                 .add(
                     TEST_ENDPOINT_1,
                     TEST_ENDPOINT_2,
                     ChannelDirection::Outbound,
                     ChannelMode::Realtime,
-                    now2,
+                    now,
                 )
                 .unwrap();
-            let now = SystemTime::now();
-            channel.set_last_packet_sent(now2);
-            network.purge(now, now2, Duration::from_secs(1));
+            channel.set_last_packet_sent(now);
+            network.purge(now, Duration::from_secs(1));
             assert_eq!(network.len(), 1);
         }
     }

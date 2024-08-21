@@ -552,7 +552,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     async fn connect_client(&self, peer_addr: SocketAddrV6, push_front: bool) -> bool {
         {
             let mut network = self.network_info.write().unwrap();
-            if !network.add_attempt(peer_addr) {
+            if !network.add_attempt(peer_addr, self.clock.now()) {
                 return false;
             }
 

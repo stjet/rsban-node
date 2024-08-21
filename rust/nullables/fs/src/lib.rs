@@ -1,4 +1,4 @@
-use rsnano_core::utils::{OutputListener, OutputTracker};
+use rsnano_output_tracker::{OutputListener, OutputTracker};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},

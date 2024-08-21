@@ -6,12 +6,13 @@ use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
-    transport::{Channel, ChannelDirection, ChannelMode, PeerConnectorExt, TcpStream},
+    transport::{Channel, ChannelDirection, ChannelInfo, ChannelMode, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
     NetworkParams,
 };
+use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::TcpListener,
     sync::{
@@ -21,33 +22,16 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
-use tokio::runtime::Runtime;
 use tracing_subscriber::EnvFilter;
 
 pub struct System {
-    pub runtime: Arc<AsyncRuntime>,
+    runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
     nodes: Vec<Arc<Node>>,
 }
 
 impl System {
-    pub fn new_with_runtime(runtime: Runtime) -> Self {
-        init_tracing();
-        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
-
-        Self {
-            runtime: Arc::new(AsyncRuntime::new(runtime)),
-            work: Arc::new(WorkPoolImpl::new(
-                network_params.work.clone(),
-                1,
-                Duration::ZERO,
-            )),
-            network_params,
-            nodes: Vec::new(),
-        }
-    }
-
     pub fn new() -> Self {
         init_tracing();
         let network_params = NetworkParams::new(Networks::NanoDevNetwork);
@@ -110,11 +94,15 @@ impl System {
             let start = Instant::now();
             loop {
                 if node
-                    .network
+                    .network_info
+                    .read()
+                    .unwrap()
                     .find_node_id(&other.node_id.public_key())
                     .is_some()
                     && other
-                        .network
+                        .network_info
+                        .read()
+                        .unwrap()
                         .find_node_id(&node.node_id.public_key())
                         .is_some()
                 {
@@ -124,6 +112,7 @@ impl System {
                 if start.elapsed() > Duration::from_secs(5) {
                     panic!("connection not successfull");
                 }
+                sleep(Duration::from_millis(10));
             }
         }
         node
@@ -145,7 +134,7 @@ impl System {
         ))
     }
 
-    pub fn stop(&mut self) {
+    fn stop(&mut self) {
         for node in &self.nodes {
             node.stop();
             std::fs::remove_dir_all(&node.application_path)
@@ -281,23 +270,28 @@ fn init_tracing() {
     });
 }
 
-pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<Channel> {
+pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelInfo> {
     node.peer_connector
         .connect_to(peer.tcp_listener.local_address());
 
     assert_timely_msg(
         Duration::from_secs(2),
         || {
-            node.network
+            node.network_info
+                .read()
+                .unwrap()
                 .find_node_id(&peer.node_id.public_key())
                 .is_some()
         },
         "node did not connect",
     );
 
-    node.network
+    node.network_info
+        .read()
+        .unwrap()
         .find_node_id(&peer.node_id.public_key())
         .unwrap()
+        .clone()
 }
 
 pub fn make_fake_channel(node: &Node) -> Arc<Channel> {

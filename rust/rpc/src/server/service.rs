@@ -14,7 +14,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use super::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
-use super::response::{account_balance, account_create};
+use super::response::account_create;
 
 #[derive(Clone)]
 struct Service {
@@ -59,7 +59,7 @@ async fn handle_rpc(
             NodeRpcRequest::AccountBalance {
                 account,
                 only_confirmed,
-            } => account_balance(service.node, account, only_confirmed).await,
+            } => todo!(),
         },
         RpcRequest::Wallet(wallet_request) => match wallet_request {
             WalletRpcRequest::AccountCreate { wallet, index } => {

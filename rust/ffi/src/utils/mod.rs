@@ -2,7 +2,7 @@ mod async_runtime;
 mod stream;
 
 pub use async_runtime::AsyncRuntimeHandle;
-use rsnano_node::utils::{
+use rsnano_network::utils::{
     ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
 };
 use std::{

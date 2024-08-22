@@ -9,6 +9,7 @@ members = [
     "nullables/clock",
     "nullables/random",
     "messages",
+    "network",
     "rpc_messages",
     "rpc_client",
     "store_lmdb",
@@ -19,5 +20,5 @@ members = [
     "tools/load_test",
     "tools/xtask",
     "tools/test_helpers" 
-]
+, "network"]
 resolver = "2"

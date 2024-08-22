@@ -5,13 +5,12 @@ use rsnano_core::{
 };
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::ChannelId;
-use rsnano_network::TrafficType;
+use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, VoteApplierExt},
     stats::{DetailType, Direction, StatType},
-    transport::{DropPolicy, PeerConnectorExt},
+    transport::PeerConnectorExt,
     wallets::WalletsExt,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};

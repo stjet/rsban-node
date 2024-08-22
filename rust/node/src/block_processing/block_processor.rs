@@ -171,7 +171,7 @@ impl BlockProcessorConfig {
 
 pub struct BlockProcessor {
     thread: Mutex<Option<JoinHandle<()>>>,
-    pub processor_loop: Arc<BlockProcessorLoop>,
+    pub(crate) processor_loop: Arc<BlockProcessorLoop>,
 }
 
 impl BlockProcessor {

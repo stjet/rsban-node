@@ -137,3 +137,12 @@ impl NetworkStats {
         }
     }
 }
+
+impl From<ChannelDirection> for Direction {
+    fn from(value: ChannelDirection) -> Self {
+        match value {
+            ChannelDirection::Inbound => Direction::In,
+            ChannelDirection::Outbound => Direction::Out,
+        }
+    }
+}

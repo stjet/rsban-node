@@ -46,30 +46,8 @@ pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
 pub(crate) use response_server_factory::*;
 use rsnano_network::ChannelDirection;
-use std::fmt::Debug;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 use token_bucket::TokenBucket;
 pub use tokio_socket_facade::*;
 pub use vec_buffer_reader::VecBufferReader;
-
-use crate::stats;
-
-/// Policy to affect at which stage a buffer can be dropped
-#[derive(PartialEq, Eq, FromPrimitive, Debug, Clone, Copy)]
-pub enum DropPolicy {
-    /// Can be dropped by bandwidth limiter (default)
-    CanDrop,
-    /// Should not be dropped by bandwidth limiter,
-    /// but it can still be dropped if the write queue is full
-    ShouldNotDrop,
-}
-
-impl From<ChannelDirection> for stats::Direction {
-    fn from(value: ChannelDirection) -> Self {
-        match value {
-            ChannelDirection::Inbound => stats::Direction::In,
-            ChannelDirection::Outbound => stats::Direction::Out,
-        }
-    }
-}

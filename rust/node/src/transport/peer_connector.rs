@@ -72,21 +72,26 @@ impl PeerConnector {
         self.cancel_token.cancel();
     }
 
-    async fn connect_impl(&self, endpoint: SocketAddrV6) -> anyhow::Result<()> {
-        let raw_listener = tokio::net::TcpSocket::new_v6()?;
-        let raw_stream = raw_listener.connect(endpoint.into()).await?;
-        let raw_stream = TcpStream::new(raw_stream);
+    async fn connect_impl(&self, peer: SocketAddrV6) -> anyhow::Result<()> {
+        let tcp_stream = Self::connect_stream(peer).await?;
+
         let channel = self
             .network
             .add(
-                raw_stream,
+                tcp_stream,
                 ChannelDirection::Outbound,
                 ChannelMode::Realtime,
             )
             .await?;
-        let response_server = self.response_server_factory.start_response_server(channel);
-        response_server.initiate_handshake().await;
+
+        self.response_server_factory.start_outbound(channel);
         Ok(())
+    }
+
+    async fn connect_stream(peer: SocketAddrV6) -> tokio::io::Result<TcpStream> {
+        let socket = tokio::net::TcpSocket::new_v6()?;
+        let tcp_stream = socket.connect(peer.into()).await?;
+        Ok(TcpStream::new(tcp_stream))
     }
 }
 

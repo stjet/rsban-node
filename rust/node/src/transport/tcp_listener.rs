@@ -148,7 +148,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     .await
                 {
                     Ok(channel) => {
-                        self.response_server_factory.start_response_server(channel);
+                        self.response_server_factory.start_inbound(channel);
                     }
                     Err(e) => {
                         warn!("Could not accept incoming connection: {:?}", e);

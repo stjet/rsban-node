@@ -80,7 +80,18 @@ impl ResponseServerFactory {
         }
     }
 
-    pub(crate) fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
+    pub(crate) fn start_outbound(&self, channel: Arc<Channel>) {
+        let response_server = self.start_response_server(channel);
+        self.runtime.tokio.spawn(async move {
+            response_server.initiate_handshake().await;
+        });
+    }
+
+    pub(crate) fn start_inbound(&self, channel: Arc<Channel>) {
+        self.start_response_server(channel);
+    }
+
+    fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
         let server = Arc::new(ResponseServer::new(
             self.network.clone(),
             self.inbound_queue.clone(),
@@ -101,7 +112,9 @@ impl ResponseServerFactory {
         ));
 
         let server_l = server.clone();
-        tokio::spawn(async move { server_l.run().await });
+        self.runtime
+            .tokio
+            .spawn(async move { server_l.run().await });
 
         server
     }

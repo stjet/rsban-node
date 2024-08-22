@@ -1,9 +1,11 @@
-use super::{Network, ResponseServerFactory, TcpConfig};
+use super::{ResponseServerFactory, TcpConfig};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
 };
-use rsnano_network::{ChannelDirection, ChannelMode, NetworkObserver, NullNetworkObserver};
+use rsnano_network::{
+    ChannelDirection, ChannelMode, Network, NetworkObserver, NullNetworkObserver,
+};
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};

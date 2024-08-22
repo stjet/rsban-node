@@ -29,9 +29,9 @@ use crate::{
     },
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
-        LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, Network, NetworkCleanup,
-        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NetworkFilter, NetworkThreads,
+        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
+        ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -51,7 +51,9 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::{ChannelId, DeadChannelCleanup, DropPolicy, NetworkInfo, TrafficType};
+use rsnano_network::{
+    ChannelId, DeadChannelCleanup, DropPolicy, Network, NetworkCleanup, NetworkInfo, TrafficType,
+};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{

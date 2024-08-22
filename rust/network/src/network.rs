@@ -1,10 +1,10 @@
-use rsnano_core::utils::NULL_ENDPOINT;
-use rsnano_network::{
+use crate::{
     bandwidth_limiter::{OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig},
     utils::into_ipv6_socket_address,
     Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy,
     NetworkInfo, NetworkObserver, NullNetworkObserver, TrafficType,
 };
+use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
 use std::{
@@ -41,7 +41,7 @@ impl Network {
         self.observer = observer;
     }
 
-    pub(crate) async fn wait_for_available_inbound_slot(&self) {
+    pub async fn wait_for_available_inbound_slot(&self) {
         let last_log = Instant::now();
         let log_interval = Duration::from_secs(15);
         while {
@@ -110,7 +110,7 @@ impl Network {
         Ok(channel)
     }
 
-    pub(crate) fn new_null() -> Self {
+    pub fn new_null() -> Self {
         Self::new(
             Default::default(),
             Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
@@ -118,7 +118,7 @@ impl Network {
         )
     }
 
-    pub(crate) fn try_send_buffer(
+    pub fn try_send_buffer(
         &self,
         channel_id: ChannelId,
         buffer: &[u8],

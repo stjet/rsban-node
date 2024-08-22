@@ -1,10 +1,10 @@
-use super::{Network, ResponseServerFactory};
+use super::ResponseServerFactory;
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
 };
 use async_trait::async_trait;
-use rsnano_network::{ChannelDirection, ChannelMode};
+use rsnano_network::{ChannelDirection, ChannelMode, Network};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},

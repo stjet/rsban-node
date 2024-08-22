@@ -71,7 +71,7 @@ impl Runnable for PeerCacheConnector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stats::Direction;
+    use crate::{stats::Direction, utils::AsyncRuntime};
     use rsnano_core::utils::{parse_endpoint, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
     use rsnano_output_tracker::OutputTrackerMt;
     use std::time::UNIX_EPOCH;
@@ -190,7 +190,8 @@ mod tests {
         Arc<Stats>,
     ) {
         let ledger = ledger_with_peers(cached_peers);
-        let peer_connector = Arc::new(PeerConnector::new_null());
+        let runtime = Arc::new(AsyncRuntime::default());
+        let peer_connector = Arc::new(PeerConnector::new_null(runtime));
         let merge_tracker = peer_connector.track_connections();
         let stats = Arc::new(Stats::default());
         let connector =

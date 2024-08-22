@@ -45,7 +45,7 @@ pub struct BootstrapConnections {
     network_info: Arc<RwLock<NetworkInfo>>,
     network_stats: Arc<dyn NetworkObserver>,
     workers: Arc<dyn ThreadPool>,
-    runtime: Arc<AsyncRuntime>,
+    tokio: tokio::runtime::Handle,
     stats: Arc<Stats>,
     block_processor: Arc<BlockProcessor>,
     bootstrap_initiator: Mutex<Option<Weak<BootstrapInitiator>>>,
@@ -61,7 +61,7 @@ impl BootstrapConnections {
         network: Arc<Network>,
         network_info: Arc<RwLock<NetworkInfo>>,
         network_stats: Arc<dyn NetworkObserver>,
-        async_rt: Arc<AsyncRuntime>,
+        tokio: tokio::runtime::Handle,
         workers: Arc<dyn ThreadPool>,
         stats: Arc<Stats>,
         block_processor: Arc<BlockProcessor>,
@@ -86,7 +86,7 @@ impl BootstrapConnections {
             network_info,
             network_stats,
             workers,
-            runtime: async_rt,
+            tokio,
             stats,
             block_processor,
             pulls_cache,
@@ -96,9 +96,7 @@ impl BootstrapConnections {
         }
     }
 
-    pub fn new_null() -> Self {
-        let runtime = Arc::new(AsyncRuntime::default());
-
+    pub fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
         Self {
             condition: Condvar::new(),
             populate_connections_started: AtomicBool::new(false),
@@ -112,7 +110,7 @@ impl BootstrapConnections {
             network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
             network_stats: Arc::new(NullNetworkObserver::new()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
-            runtime: runtime.clone(),
+            tokio: runtime.tokio.handle().clone(),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             bootstrap_initiator: Mutex::new(None),
@@ -521,10 +519,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                         .unwrap()
                         .is_excluded(&endpoint, self.clock.now())
                 {
-                    let success = self
-                        .runtime
-                        .tokio
-                        .block_on(self.connect_client(endpoint, false));
+                    let success = self.tokio.block_on(self.connect_client(endpoint, false));
                     if success {
                         endpoints.insert(endpoint);
                         let _guard = self.mutex.lock().unwrap();
@@ -708,7 +703,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                                 connection_l,
                                 attempt_l,
                                 Arc::clone(&self_l.workers),
-                                Arc::clone(&self_l.runtime),
+                                self_l.tokio.clone(),
                                 self_l,
                                 initiator,
                                 pull,

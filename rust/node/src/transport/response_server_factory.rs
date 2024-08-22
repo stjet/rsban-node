@@ -35,9 +35,8 @@ pub(crate) struct ResponseServerFactory {
 
 impl ResponseServerFactory {
     #[allow(dead_code)]
-    pub(crate) fn new_null() -> Self {
+    pub(crate) fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
         let ledger = Arc::new(Ledger::new_null());
-        let runtime = Arc::new(AsyncRuntime::default());
         let flags = NodeFlags::default();
         let network = Arc::new(Network::new_null(runtime.tokio.handle().clone()));
         let publish_filter = Arc::new(NetworkFilter::default());

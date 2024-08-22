@@ -9,7 +9,7 @@ use crate::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
     transport::MessagePublisher,
-    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
+    utils::{AsyncRuntime, ThreadPool},
     websocket::WebsocketListener,
     NetworkParams,
 };
@@ -159,7 +159,7 @@ impl BootstrapInitiator {
                 network,
                 network_info,
                 network_stats,
-                runtime,
+                runtime.tokio.handle().clone(),
                 workers,
                 stats,
                 block_processor,
@@ -167,31 +167,6 @@ impl BootstrapInitiator {
                 message_publisher,
                 clock,
             )),
-        }
-    }
-
-    pub fn new_null() -> Self {
-        Self {
-            mutex: Mutex::new(Data {
-                attempts_list: HashMap::new(),
-            }),
-            condition: Condvar::new(),
-            threads: Mutex::new(Vec::new()),
-            connections: Arc::new(BootstrapConnections::new_null()),
-            config: Default::default(),
-            stopped: AtomicBool::new(false),
-            cache: Arc::new(Mutex::new(PullsCache::new())),
-            stats: Arc::new(Stats::default()),
-            attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
-            websocket: None,
-            block_processor: Arc::new(BlockProcessor::new_null()),
-            ledger: Arc::new(Ledger::new_null()),
-            network_params: NetworkParams::new(Networks::NanoDevNetwork),
-            flags: NodeFlags::default(),
-            network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
-            workers: Arc::new(ThreadPoolImpl::new_test_instance()),
-            runtime: Arc::new(AsyncRuntime::default()),
-            clock: Arc::new(SteadyClock::new_null()),
         }
     }
 

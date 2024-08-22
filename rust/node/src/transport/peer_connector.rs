@@ -50,16 +50,15 @@ impl PeerConnector {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn new_null() -> Self {
-        let runtime = Arc::new(AsyncRuntime::default());
+    pub(crate) fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
         Self {
             config: Default::default(),
             network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
             network_observer: Arc::new(NullNetworkObserver::new()),
             stats: Arc::new(Default::default()),
-            runtime,
+            runtime: runtime.clone(),
             cancel_token: CancellationToken::new(),
-            response_server_factory: Arc::new(ResponseServerFactory::new_null()),
+            response_server_factory: Arc::new(ResponseServerFactory::new_null(runtime.clone())),
             connect_listener: OutputListenerMt::new(),
             clock: Arc::new(SteadyClock::new_null()),
         }
@@ -181,7 +180,8 @@ mod tests {
 
     #[test]
     fn track_connections() {
-        let peer_connector = Arc::new(PeerConnector::new_null());
+        let runtime = Arc::new(AsyncRuntime::default());
+        let peer_connector = Arc::new(PeerConnector::new_null(runtime));
         let connect_tracker = peer_connector.track_connections();
 
         peer_connector.connect_to(TEST_ENDPOINT_1);

@@ -1,23 +1,9 @@
 use anyhow::{bail, Result};
 use reqwest::Url;
-use rsnano_core::{Account, Amount, BlockHash, JsonBlock, PublicKey, RawKey, WalletId};
-use rsnano_rpc_messages::RpcCommand;
-use serde::{Deserialize, Serialize};
+use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_rpc_messages::*;
+use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct KeyPairDto {
-    pub private_key: RawKey,
-    pub public_key: PublicKey,
-    pub as_string: Account,
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountInfo {
-    pub frontier: BlockHash,
-    pub block_count: u64,
-    pub balance: Amount,
-}
 
 pub struct NanoRpcClient {
     url: Url,
@@ -35,7 +21,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfo> {
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

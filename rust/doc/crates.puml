@@ -31,6 +31,7 @@ folder "RPC"{
 [rpc_server] --> [node]
 [rpc_server] --> [rpc_messages]
 [rpc_client] --> [rpc_messages]
+[rpc_messages] --> [core]
 [node] --> [ledger]
 [node] --> [messages]
 [messages] --> [core]

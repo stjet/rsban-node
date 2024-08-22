@@ -1,14 +1,9 @@
-use anyhow::bail;
-use anyhow::Result;
+use crate::{ProgramArgs, TestNode};
+use anyhow::{bail, Result};
 use rsnano_core::Account;
-use std::collections::HashMap;
-use std::time::Duration;
-use tokio::time::sleep;
-use tokio::time::Instant;
-
-use crate::AccountInfo;
-use crate::ProgramArgs;
-use crate::TestNode;
+use rsnano_rpc_messages::AccountInfoDto;
+use std::{collections::HashMap, time::Duration};
+use tokio::time::{sleep, Instant};
 
 pub struct LoadTest {
     args: ProgramArgs,
@@ -63,7 +58,7 @@ impl LoadTest {
         Ok(())
     }
 
-    async fn create_send_and_receive_blocks(&self) -> Result<HashMap<Account, AccountInfo>> {
+    async fn create_send_and_receive_blocks(&self) -> Result<HashMap<Account, AccountInfoDto>> {
         println!("Beginning tests");
         self.primary_node()
             .create_send_and_receive_blocks(
@@ -76,7 +71,7 @@ impl LoadTest {
 
     async fn wait_for_nodes_to_catch_up(
         &self,
-        expected_account_info: &HashMap<Account, AccountInfo>,
+        expected_account_info: &HashMap<Account, AccountInfoDto>,
     ) -> Result<()> {
         println!("Waiting for nodes to catch up...");
         let timer = Instant::now();

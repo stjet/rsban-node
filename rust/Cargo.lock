@@ -1239,6 +1239,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_node",
+ "rsnano_rpc_client",
  "rsnano_rpc_messages",
  "serde",
  "serde_json",
@@ -2040,6 +2041,18 @@ dependencies = [
 [[package]]
 name = "rsnano_output_tracker"
 version = "0.1.0"
+
+[[package]]
+name = "rsnano_rpc_client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest 0.11.27",
+ "rsnano_core",
+ "rsnano_rpc_messages",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "rsnano_rpc_messages"

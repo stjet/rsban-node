@@ -1,15 +1,7 @@
+use crate::create_send_and_receive_blocks;
 use anyhow::{anyhow, Result};
 use reqwest::Url;
 use rsnano_core::{utils::get_cpu_count, Account, WalletId, DEV_GENESIS_KEY};
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    process::{Child, Command},
-    sync::Arc,
-    time::Duration,
-};
-use tokio::time::sleep;
-
 use rsnano_node::{
     config::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
@@ -19,11 +11,16 @@ use rsnano_node::{
     utils::TomlConfig,
     NetworkParams, DEV_NETWORK_PARAMS,
 };
-
-use crate::create_send_and_receive_blocks;
-use crate::AccountInfo;
-use crate::KeyPairDto;
-use crate::NanoRpcClient;
+use rsnano_rpc_client::NanoRpcClient;
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::{Child, Command},
+    sync::Arc,
+    time::Duration,
+};
+use tokio::time::sleep;
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
@@ -88,7 +85,7 @@ impl TestNode {
         destination_count: usize,
         send_count: usize,
         simultaneous_process_calls: usize,
-    ) -> Result<HashMap<Account, AccountInfo>> {
+    ) -> Result<HashMap<Account, AccountInfoDto>> {
         let destination_accounts = self.create_destination_accounts(destination_count).await?;
         let wallet = self.node_client.wallet_create_rpc().await?;
         self.add_genesis_account(wallet).await?;
@@ -136,7 +133,7 @@ impl TestNode {
         Ok(destination_accounts)
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfo> {
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         self.node_client.account_info(account).await
     }
 }

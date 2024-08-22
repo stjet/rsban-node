@@ -1,8 +1,9 @@
-use crate::{AccountInfo, KeyPairDto, NanoRpcClient};
 use anyhow::Result;
 use rand::Rng;
 use rsnano_core::{Account, WalletId};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
+use rsnano_rpc_client::NanoRpcClient;
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
 use std::{
     collections::HashMap,
     io::Write,
@@ -20,7 +21,7 @@ pub async fn create_send_and_receive_blocks(
     destination_accounts: Vec<KeyPairDto>,
     wallet: WalletId,
     node_client: Arc<NanoRpcClient>,
-) -> Result<HashMap<Account, AccountInfo>> {
+) -> Result<HashMap<Account, AccountInfoDto>> {
     let factory = Arc::new(BlockFactory {
         send_count,
         simultaneous_calls_semaphore: Arc::new(Semaphore::new(simultaneous_process_calls)),
@@ -110,7 +111,7 @@ impl BlockFactory {
 async fn get_account_info(
     node_client: &NanoRpcClient,
     accounts: &[KeyPairDto],
-) -> Result<HashMap<Account, AccountInfo>> {
+) -> Result<HashMap<Account, AccountInfoDto>> {
     let mut account_info = HashMap::new();
     for account in accounts {
         let account = account.as_string;

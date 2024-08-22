@@ -52,10 +52,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::{
-    bandwidth_limiter::OutboundBandwidthLimiter, ChannelId, DeadChannelCleanup, DropPolicy,
-    NetworkInfo, TrafficType,
-};
+use rsnano_network::{ChannelId, DeadChannelCleanup, DropPolicy, NetworkInfo, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{
@@ -92,7 +89,6 @@ pub struct Node {
     pub store: Arc<LmdbStore>,
     pub unchecked: Arc<UncheckedMap>,
     pub ledger: Arc<Ledger>,
-    pub outbound_limiter: Arc<OutboundBandwidthLimiter>,
     pub syn_cookies: Arc<SynCookies>,
     pub network_info: Arc<RwLock<NetworkInfo>>,
     pub network: Arc<Network>,
@@ -220,7 +216,6 @@ impl Node {
 
         log_bootstrap_weights(&ledger.rep_weights);
 
-        let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(global_config.into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));
 
         let workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(
@@ -253,8 +248,7 @@ impl Node {
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let mut network = Network::new(NetworkOptions {
             network_params: network_params.clone(),
-            stats: stats.clone(),
-            limiter: outbound_limiter.clone(),
+            limiter_config: global_config.into(),
             clock: steady_clock.clone(),
             network_info: network_info.clone(),
         });
@@ -1083,7 +1077,6 @@ impl Node {
             distributed_work,
             unchecked,
             telemetry,
-            outbound_limiter,
             syn_cookies,
             network,
             network_info,

@@ -4,11 +4,13 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
-use rsnano_network::{ChannelInfo, NullNetworkObserver};
+use rsnano_network::{
+    bandwidth_limiter::OutboundBandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
+};
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
-    transport::{Channel, LatestKeepalives, ResponseServer},
+    transport::{LatestKeepalives, ResponseServer},
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
@@ -1386,7 +1388,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let channel = node.async_rt.tokio.block_on(Channel::create(
         Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
-        node.outbound_limiter.clone(),
+        Arc::new(OutboundBandwidthLimiter::default()),
         node.network_info.clone(),
         node.steady_clock.clone(),
         Arc::new(NullNetworkObserver::new()),
@@ -1396,7 +1398,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.network_info.clone(),
         node.inbound_message_queue.clone(),
         channel,
-        node.network.publish_filter.clone(),
+        node.publish_filter.clone(),
         Arc::new(node.network_params.clone()),
         node.stats.clone(),
         true,

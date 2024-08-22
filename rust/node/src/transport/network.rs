@@ -1,12 +1,10 @@
-use crate::{
-    stats::{adapters::NetworkStats, Stats},
-    NetworkParams, DEV_NETWORK_PARAMS,
-};
+use crate::{NetworkParams, DEV_NETWORK_PARAMS};
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_network::{
-    bandwidth_limiter::OutboundBandwidthLimiter, utils::into_ipv6_socket_address, Channel,
-    ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy, NetworkInfo,
-    NetworkObserver, NullNetworkObserver, TrafficType,
+    bandwidth_limiter::{OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig},
+    utils::into_ipv6_socket_address,
+    Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy,
+    NetworkInfo, NetworkObserver, NullNetworkObserver, TrafficType,
 };
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
@@ -19,8 +17,7 @@ use tracing::{debug, warn};
 
 pub struct NetworkOptions {
     pub network_params: NetworkParams,
-    pub stats: Arc<Stats>,
-    pub limiter: Arc<OutboundBandwidthLimiter>,
+    pub limiter_config: OutboundBandwidthLimiterConfig,
     pub clock: Arc<SteadyClock>,
     pub network_info: Arc<RwLock<NetworkInfo>>,
 }
@@ -29,8 +26,7 @@ impl NetworkOptions {
     pub fn new_test_instance() -> Self {
         NetworkOptions {
             network_params: DEV_NETWORK_PARAMS.clone(),
-            stats: Arc::new(Default::default()),
-            limiter: Arc::new(OutboundBandwidthLimiter::default()),
+            limiter_config: Default::default(),
             clock: Arc::new(SteadyClock::new_null()),
             network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
         }
@@ -40,7 +36,6 @@ impl NetworkOptions {
 pub struct Network {
     channels: Mutex<HashMap<ChannelId, Arc<Channel>>>,
     pub info: Arc<RwLock<NetworkInfo>>,
-    stats: Arc<Stats>,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     clock: Arc<SteadyClock>,
@@ -53,9 +48,8 @@ impl Network {
 
         Self {
             channels: Mutex::new(HashMap::new()),
-            stats: options.stats,
             network_params: network,
-            limiter: options.limiter,
+            limiter: Arc::new(OutboundBandwidthLimiter::new(options.limiter_config)),
             clock: options.clock,
             info: options.network_info,
             observer: Arc::new(NullNetworkObserver::new()),
@@ -109,14 +103,13 @@ impl Network {
             self.clock.now(),
         );
 
-        let network_stats = NetworkStats::new(self.stats.clone());
         let channel_info = match channel_info {
             Ok(c) => {
-                network_stats.accepted(&peer_addr, direction);
+                self.observer.accepted(&peer_addr, direction);
                 c
             }
             Err(e) => {
-                network_stats.error(e, &peer_addr, direction);
+                self.observer.error(e, &peer_addr, direction);
                 return Err(anyhow!("Could not add channel: {:?}", e));
             }
         };

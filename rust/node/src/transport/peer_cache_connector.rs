@@ -1,4 +1,4 @@
-use super::{PeerConnector, PeerConnectorExt};
+use super::PeerConnector;
 use crate::stats::{DetailType, StatType};
 use crate::{
     stats::Stats,

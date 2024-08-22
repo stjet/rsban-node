@@ -3,7 +3,7 @@ use crate::{
     config::NodeConfig,
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{MessagePublisher, PeerConnector, PeerConnectorExt},
+    transport::{MessagePublisher, PeerConnector},
     utils::AsyncRuntime,
     NetworkParams,
 };

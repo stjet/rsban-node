@@ -1,4 +1,4 @@
-use super::{LatestKeepalives, MessagePublisher, PeerConnector, PeerConnectorExt, SynCookies};
+use super::{LatestKeepalives, MessagePublisher, PeerConnector, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},

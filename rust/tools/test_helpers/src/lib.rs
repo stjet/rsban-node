@@ -7,7 +7,6 @@ use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
-    transport::PeerConnectorExt,
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,

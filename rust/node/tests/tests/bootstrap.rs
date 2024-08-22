@@ -27,7 +27,7 @@ mod bootstrap_processor {
     use super::*;
     use rsnano_ledger::DEV_GENESIS_PUB_KEY;
     use rsnano_network::ChannelMode;
-    use rsnano_node::{config::NodeConfig, transport::PeerConnectorExt};
+    use rsnano_node::config::NodeConfig;
     use test_helpers::establish_tcp;
 
     #[test]

@@ -67,37 +67,8 @@ impl PeerConnector {
         self.connect_listener.track()
     }
 
-    pub fn stop(&self) {
-        self.cancel_token.cancel();
-    }
-
-    async fn connect_impl(&self, peer: SocketAddrV6) -> anyhow::Result<()> {
-        let tcp_stream = Self::connect_stream(peer).await?;
-
-        let channel = self.network.add(
-            tcp_stream,
-            ChannelDirection::Outbound,
-            ChannelMode::Realtime,
-        )?;
-
-        self.response_server_spawner.spawn(channel);
-        Ok(())
-    }
-
-    async fn connect_stream(peer: SocketAddrV6) -> tokio::io::Result<TcpStream> {
-        let socket = tokio::net::TcpSocket::new_v6()?;
-        let tcp_stream = socket.connect(peer.into()).await?;
-        Ok(TcpStream::new(tcp_stream))
-    }
-}
-
-pub trait PeerConnectorExt {
     /// Establish a network connection to the given peer
-    fn connect_to(&self, peer: SocketAddrV6) -> bool;
-}
-
-impl PeerConnectorExt for Arc<PeerConnector> {
-    fn connect_to(&self, peer: SocketAddrV6) -> bool {
+    pub fn connect_to(&self, peer: SocketAddrV6) -> bool {
         self.connect_listener.emit(peer);
 
         if self.cancel_token.is_cancelled() {
@@ -133,12 +104,17 @@ impl PeerConnectorExt for Arc<PeerConnector> {
 
         self.stats.inc(StatType::Network, DetailType::MergePeer);
 
-        let self_l = Arc::clone(self);
+        let network_l = self.network.clone();
+        let response_server_spawner_l = self.response_server_spawner.clone();
+        let stats_l = self.stats.clone();
+        let connect_timeout = self.connect_timeout;
+        let cancel_token = self.cancel_token.clone();
+
         self.tokio.spawn(async move {
             tokio::select! {
-                result =  self_l.connect_impl(peer) =>{
+                result =  connect_impl(peer, &network_l, &*response_server_spawner_l) =>{
                     if let Err(e) = result {
-                        self_l.stats.inc_dir(
+                        stats_l.inc_dir(
                             StatType::TcpListener,
                             DetailType::ConnectError,
                             Direction::Out,
@@ -147,8 +123,8 @@ impl PeerConnectorExt for Arc<PeerConnector> {
                     }
 
                 },
-                _ = tokio::time::sleep(self_l.connect_timeout) =>{
-                    self_l.stats
+                _ = tokio::time::sleep(connect_timeout) =>{
+                    stats_l
                         .inc(StatType::TcpListener, DetailType::AttemptTimeout);
                     debug!(
                         "Connection attempt timed out: {}",
@@ -156,7 +132,7 @@ impl PeerConnectorExt for Arc<PeerConnector> {
                     );
 
                 }
-                _ = self_l.cancel_token.cancelled() =>{
+                _ = cancel_token.cancelled() =>{
                     debug!(
                         "Connection attempt cancelled: {}",
                         peer,
@@ -165,11 +141,38 @@ impl PeerConnectorExt for Arc<PeerConnector> {
                 }
             }
 
-            self_l.network.info.write().unwrap().remove_attempt(&peer);
+            network_l.info.write().unwrap().remove_attempt(&peer);
         });
 
         true
     }
+
+    pub fn stop(&self) {
+        self.cancel_token.cancel();
+    }
+}
+
+async fn connect_impl(
+    peer: SocketAddrV6,
+    network: &Network,
+    response_server_spawner: &dyn ResponseServerSpawner,
+) -> anyhow::Result<()> {
+    let tcp_stream = connect_stream(peer).await?;
+
+    let channel = network.add(
+        tcp_stream,
+        ChannelDirection::Outbound,
+        ChannelMode::Realtime,
+    )?;
+
+    response_server_spawner.spawn(channel);
+    Ok(())
+}
+
+async fn connect_stream(peer: SocketAddrV6) -> tokio::io::Result<TcpStream> {
+    let socket = tokio::net::TcpSocket::new_v6()?;
+    let tcp_stream = socket.connect(peer.into()).await?;
+    Ok(TcpStream::new(tcp_stream))
 }
 
 #[cfg(test)]

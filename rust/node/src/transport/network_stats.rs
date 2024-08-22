@@ -1,8 +1,7 @@
-use tracing::debug;
-
 use super::{ChannelDirection, NetworkError};
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use std::{net::SocketAddrV6, sync::Arc};
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct NetworkStats {
@@ -14,7 +13,7 @@ impl NetworkStats {
         Self { stats }
     }
 
-    pub fn connect(&self, peer: &SocketAddrV6) {
+    pub fn connection_attempt(&self, peer: &SocketAddrV6) {
         self.stats.inc_dir(
             StatType::TcpListener,
             DetailType::ConnectInitiate,
@@ -23,7 +22,41 @@ impl NetworkStats {
         debug!(?peer, "Initiate outgoing connection");
     }
 
+    pub fn accepted(&self, peer: &SocketAddrV6, direction: ChannelDirection) {
+        if direction == ChannelDirection::Outbound {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::ConnectSuccess,
+                direction.into(),
+            );
+        } else {
+            self.stats.inc_dir(
+                StatType::TcpListener,
+                DetailType::AcceptSuccess,
+                direction.into(),
+            );
+        }
+        debug!(%peer, ?direction, "New channel added");
+    }
+
     pub fn error(&self, error: NetworkError, peer: &SocketAddrV6, direction: ChannelDirection) {
+        match direction {
+            ChannelDirection::Inbound => {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::AcceptRejected,
+                    Direction::In,
+                );
+            }
+            ChannelDirection::Outbound => {
+                self.stats.inc_dir(
+                    StatType::TcpListener,
+                    DetailType::ConnectRejected,
+                    Direction::Out,
+                );
+            }
+        }
+
         match error {
             NetworkError::MaxConnections => {
                 self.stats.inc_dir(
@@ -101,7 +134,6 @@ impl NetworkStats {
                     ?direction,
                     "Already connected to that peer, unable to open new connection");
             }
-            NetworkError::Rejected => {}
         }
     }
 }

@@ -73,6 +73,7 @@ impl Channel {
                 TEST_ENDPOINT_1,
                 TEST_ENDPOINT_2,
                 ChannelDirection::Outbound,
+                u8::MAX,
                 Timestamp::new_test_instance(),
             )),
             Arc::new(RwLock::new(NetworkInfo::new_test_instance())),

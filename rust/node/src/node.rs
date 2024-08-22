@@ -229,10 +229,7 @@ impl Node {
             "Bootstrap work",
         ));
 
-        let network_info = Arc::new(RwLock::new(NetworkInfo::new(
-            global_config.into(),
-            stats.clone(),
-        )));
+        let network_info = Arc::new(RwLock::new(NetworkInfo::new(global_config.into())));
 
         let network_stats = NetworkStats::new(stats.clone());
 

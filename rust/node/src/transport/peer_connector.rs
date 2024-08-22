@@ -104,15 +104,21 @@ impl PeerConnectorExt for Arc<PeerConnector> {
         {
             let mut network = self.network.info.write().unwrap();
 
-            if !network.add_outbound_attempt(peer, self.clock.now()) {
+            if let Err(e) =
+                network.add_outbound_attempt(peer, ChannelMode::Realtime, self.clock.now())
+            {
+                if let Some(stats) = &self.network_stats {
+                    stats.error(e, &peer, ChannelDirection::Outbound);
+                }
+
                 return false;
             }
 
             if let Some(stats) = &self.network_stats {
-                stats.connect(&peer);
+                stats.connection_attempt(&peer);
             }
 
-            if let Err(e) = network.can_add_connection(
+            if let Err(e) = network.validate_new_connection(
                 &peer,
                 ChannelDirection::Outbound,
                 ChannelMode::Realtime,

@@ -286,10 +286,31 @@ impl ResponseServerExt for Arc<ResponseServer> {
             return false;
         }
 
-        self.network_info
+        let upgraded = self
+            .network_info
             .read()
             .unwrap()
-            .upgrade_to_realtime_connection(self.channel.channel_id(), *node_id)
+            .upgrade_to_realtime_connection(self.channel.channel_id(), *node_id);
+
+        if upgraded {
+            self.stats
+                .inc(StatType::TcpChannels, DetailType::ChannelAccepted);
+
+            debug!(
+                "Switched to realtime mode (addr: {}, node_id: {})",
+                self.channel.info.peer_addr(),
+                node_id.to_node_id()
+            );
+        } else {
+            debug!(
+                channel_id = ?self.channel.channel_id(),
+                peer = %self.channel.info.peer_addr(),
+                node_id = node_id.to_node_id(),
+                "Could not upgrade channel to realtime connection, because another channel for the same node ID was found",
+            );
+        }
+
+        upgraded
     }
 
     async fn run(&self) {

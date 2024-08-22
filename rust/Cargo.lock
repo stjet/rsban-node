@@ -1922,11 +1922,13 @@ dependencies = [
 name = "rsnano_network"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "num-derive 0.3.3",
  "num-traits",
  "rand",
  "rsnano_core",
  "rsnano_nullable_clock",
+ "tokio",
  "tracing",
 ]
 

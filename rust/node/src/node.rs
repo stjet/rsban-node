@@ -133,6 +133,7 @@ pub struct Node {
     pub inbound_message_queue: Arc<InboundMessageQueue>,
     monitor: TimerThread<Monitor>,
     stopped: AtomicBool,
+    pub publish_filter: Arc<NetworkFilter>,
     pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
                                                          // to keep the weak pointer alive
 }
@@ -249,7 +250,6 @@ impl Node {
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
         let network = Arc::new(Network::new(NetworkOptions {
-            publish_filter: publish_filter.clone(),
             network_params: network_params.clone(),
             stats: stats.clone(),
             limiter: outbound_limiter.clone(),
@@ -1126,6 +1126,7 @@ impl Node {
             inbound_message_queue,
             monitor,
             message_publisher: message_publisher_l,
+            publish_filter,
             stopped: AtomicBool::new(false),
         }
     }

@@ -551,7 +551,7 @@ fn vote_by_hash_republish() {
     );
 
     // give block send2 to node1 and wait until the block is received and processed by node1
-    node1.network.publish_filter.clear_all();
+    node1.publish_filter.clear_all();
     node1.process_active(send2.clone());
     assert_timely_msg(
         Duration::from_secs(5),

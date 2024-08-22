@@ -22,7 +22,6 @@ mod tcp_listener;
 mod token_bucket;
 mod tokio_socket_facade;
 mod vec_buffer_reader;
-mod write_queue;
 
 pub use bandwidth_limiter::{
     BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,

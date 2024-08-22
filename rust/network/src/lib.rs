@@ -4,12 +4,16 @@ mod dead_channel_cleanup;
 mod network_info;
 pub mod peer_exclusion;
 pub mod utils;
+pub mod write_queue;
 
 pub use channel_info::*;
 pub use dead_channel_cleanup::*;
 pub use network_info::*;
 use num_derive::FromPrimitive;
 use std::fmt::{Debug, Display};
+
+#[macro_use]
+extern crate anyhow;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
 pub struct ChannelId(usize);

@@ -1,4 +1,4 @@
-use super::{Channel, ChannelDirection, NetworkFilter, OutboundBandwidthLimiter};
+use super::{Channel, ChannelDirection, OutboundBandwidthLimiter};
 use crate::{
     stats::{adapters::NetworkStats, Stats},
     NetworkParams, DEV_NETWORK_PARAMS,
@@ -18,7 +18,6 @@ use std::{
 use tracing::{debug, warn};
 
 pub struct NetworkOptions {
-    pub publish_filter: Arc<NetworkFilter>,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
     pub limiter: Arc<OutboundBandwidthLimiter>,
@@ -29,7 +28,6 @@ pub struct NetworkOptions {
 impl NetworkOptions {
     pub fn new_test_instance() -> Self {
         NetworkOptions {
-            publish_filter: Arc::new(NetworkFilter::default()),
             network_params: DEV_NETWORK_PARAMS.clone(),
             stats: Arc::new(Default::default()),
             limiter: Arc::new(OutboundBandwidthLimiter::default()),
@@ -45,7 +43,6 @@ pub struct Network {
     stats: Arc<Stats>,
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
-    pub publish_filter: Arc<NetworkFilter>,
     clock: Arc<SteadyClock>,
 }
 
@@ -58,7 +55,6 @@ impl Network {
             stats: options.stats,
             network_params: network,
             limiter: options.limiter,
-            publish_filter: options.publish_filter,
             clock: options.clock,
             info: options.network_info,
         }

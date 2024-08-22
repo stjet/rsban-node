@@ -517,7 +517,7 @@ impl BlockProcessorLoop {
         results
     }
 
-    pub fn process_batch(
+    fn process_batch(
         &self,
         mut guard: MutexGuard<BlockProcessorImpl>,
     ) -> Vec<(BlockStatus, Arc<BlockProcessorContext>)> {
@@ -733,7 +733,7 @@ impl BlockProcessorImpl {
     }
 }
 
-pub struct BlockProcessorCleanup(Arc<BlockProcessorLoop>);
+pub(crate) struct BlockProcessorCleanup(Arc<BlockProcessorLoop>);
 
 impl BlockProcessorCleanup {
     pub fn new(processor_loop: Arc<BlockProcessorLoop>) -> Self {

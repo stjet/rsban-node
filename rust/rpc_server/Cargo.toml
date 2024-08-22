@@ -1,11 +1,13 @@
 [package]
-name = "rsnano_rpc"
+name = "rsnano_rpc_server"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 rsnano_core = { path = "../core" }
 rsnano_node = { path = "../node" }
+rsnano_rpc_client = { path = "../rpc_client" }
+rsnano_rpc_messages = { path = "../rpc_messages" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["net"] }
@@ -15,12 +17,6 @@ toml = "0.8.15"
 tracing = "0.1"
 
 [dev-dependencies]
-rsnano_ledger = { path = "../ledger" }
-rsnano_node = { path = "../node", features = ["output_tracking"] }
-mock_instant = "0.2.1"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-tracing-test = "0.2.4"
-reqwest = { version = "0.11.7", default-features = false, features = ["json"] }
 test_helpers = { path = "../tools/test_helpers" }
-tokio-util = "0.7.11"
-rand = { version = "0.8.4" }
+reqwest = { version = "0" }
+rsnano_ledger = { path = "../ledger" }

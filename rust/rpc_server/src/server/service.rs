@@ -1,3 +1,4 @@
+use super::account_balance;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -7,17 +8,15 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use serde_json::{json, to_string_pretty};
+use rsnano_rpc_messages::RpcCommand::AccountBalance;
+use rsnano_rpc_messages::{AccountBalanceRequest, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
-use super::request::{NodeRpcRequest, RpcRequest, WalletRpcRequest};
-use super::response::account_balance;
-
 #[derive(Clone)]
-struct Service {
+struct RpcService {
     node: Arc<Node>,
     enable_control: bool,
 }
@@ -27,7 +26,7 @@ pub async fn run_rpc_server(
     server_addr: SocketAddr,
     enable_control: bool,
 ) -> Result<()> {
-    let service = Service {
+    let rpc_service = RpcService {
         node,
         enable_control,
     };
@@ -35,7 +34,7 @@ pub async fn run_rpc_server(
     let app = Router::new()
         .route("/", post(handle_rpc))
         .layer(map_request(set_header))
-        .with_state(service);
+        .with_state(rpc_service);
 
     let listener = TcpListener::bind(server_addr)
         .await
@@ -51,19 +50,15 @@ pub async fn run_rpc_server(
 }
 
 async fn handle_rpc(
-    State(service): State<Service>,
-    Json(rpc_request): Json<RpcRequest>,
+    State(rpc_service): State<RpcService>,
+    Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
-    let response = match rpc_request {
-        RpcRequest::Node(node_request) => match node_request {
-            NodeRpcRequest::AccountBalance {
-                account,
-                only_confirmed,
-            } => account_balance(service.node, account, only_confirmed).await,
-        },
-        RpcRequest::Wallet(wallet_request) => match wallet_request {
-            WalletRpcRequest::UnknownCommand => format_error_message("Unknown command"),
-        },
+    let response = match rpc_command {
+        AccountBalance(AccountBalanceRequest {
+            account,
+            only_confirmed,
+        }) => account_balance(rpc_service.node, account, only_confirmed).await,
+        _ => todo!(),
     };
 
     (StatusCode::OK, response).into_response()
@@ -74,9 +69,4 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .headers_mut()
         .insert("Content-Type", "application/json".parse().unwrap());
     request
-}
-
-pub(crate) fn format_error_message(error: &str) -> String {
-    let json_value = json!({ "error": error });
-    to_string_pretty(&json_value).unwrap()
 }

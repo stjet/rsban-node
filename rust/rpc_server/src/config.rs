@@ -3,23 +3,23 @@ use rsnano_node::config::NetworkConstants;
 use std::net::Ipv6Addr;
 
 #[derive(Debug, PartialEq)]
-pub struct RpcConfig {
+pub struct RpcServerConfig {
     pub address: String,
     pub port: u16,
     pub enable_control: bool,
     pub max_json_depth: u8,
     pub max_request_size: u64,
-    pub rpc_logging: RpcLoggingConfig,
-    pub rpc_process: RpcProcessConfig,
+    pub rpc_logging: RpcServerLoggingConfig,
+    pub rpc_process: RpcServerProcessConfig,
 }
 
-impl Default for RpcConfig {
+impl Default for RpcServerConfig {
     fn default() -> Self {
         Self::new(&NetworkConstants::default(), get_cpu_count())
     }
 }
 
-impl RpcConfig {
+impl RpcServerConfig {
     pub fn new(network_constants: &NetworkConstants, parallelism: usize) -> Self {
         Self::new2(
             network_constants,
@@ -41,44 +41,38 @@ impl RpcConfig {
             enable_control,
             max_json_depth: 20,
             max_request_size: 32 * 1024 * 1024,
-            rpc_logging: RpcLoggingConfig::new(),
-            rpc_process: RpcProcessConfig::new(network_constants, parallelism),
+            rpc_logging: RpcServerLoggingConfig::default(),
+            rpc_process: RpcServerProcessConfig::new(network_constants, parallelism),
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct RpcLoggingConfig {
+pub struct RpcServerLoggingConfig {
     pub log_rpc: bool,
 }
 
-impl Default for RpcLoggingConfig {
-    fn default() -> Self {
-        Self { log_rpc: true }
+impl RpcServerLoggingConfig {
+    pub fn new(log_rpc: bool) -> Self {
+        Self { log_rpc }
     }
 }
 
-impl RpcLoggingConfig {
-    pub fn new() -> Self {
-        Default::default()
+impl Default for RpcServerLoggingConfig {
+    fn default() -> Self {
+        Self::new(true)
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct RpcProcessConfig {
+pub struct RpcServerProcessConfig {
     pub io_threads: u32,
     pub ipc_address: String,
     pub ipc_port: u16,
     pub num_ipc_connections: u32,
 }
 
-impl Default for RpcProcessConfig {
-    fn default() -> Self {
-        Self::new(&NetworkConstants::default(), get_cpu_count())
-    }
-}
-
-impl RpcProcessConfig {
+impl RpcServerProcessConfig {
     pub fn new(network_constants: &NetworkConstants, parallelism: usize) -> Self {
         Self {
             io_threads: if parallelism > 4 {
@@ -98,6 +92,12 @@ impl RpcProcessConfig {
                 1
             },
         }
+    }
+}
+
+impl Default for RpcServerProcessConfig {
+    fn default() -> Self {
+        Self::new(&NetworkConstants::default(), get_cpu_count())
     }
 }
 

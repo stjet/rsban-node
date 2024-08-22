@@ -1,7 +1,8 @@
-use super::{ChannelId, ChannelInfo, InboundMessageQueue, RealtimeMessageHandler};
+use super::{ChannelInfo, InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
 use rsnano_core::utils::get_cpu_count;
 use rsnano_messages::Message;
+use rsnano_network::ChannelId;
 use std::{
     cmp::{max, min},
     collections::VecDeque,

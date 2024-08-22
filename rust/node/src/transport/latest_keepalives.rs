@@ -1,6 +1,7 @@
-use super::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget};
+use super::{DeadChannelCleanupStep, DeadChannelCleanupTarget};
 use rand::{seq::IteratorRandom, thread_rng};
 use rsnano_messages::Keepalive;
+use rsnano_network::ChannelId;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},

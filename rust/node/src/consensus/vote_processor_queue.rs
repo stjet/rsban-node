@@ -1,12 +1,13 @@
 use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
+    transport::{DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Vote, VoteSource,
 };
+use rsnano_network::ChannelId;
 use std::{
     collections::VecDeque,
     mem::size_of,
@@ -137,7 +138,7 @@ impl DeadChannelCleanupTarget for Arc<VoteProcessorQueue> {
 struct VoteProcessorQueueCleanup(Arc<VoteProcessorQueue>);
 
 impl DeadChannelCleanupStep for VoteProcessorQueueCleanup {
-    fn clean_up_dead_channels(&self, dead_channel_ids: &[crate::transport::ChannelId]) {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut guard = self.0.data.lock().unwrap();
         for channel_id in dead_channel_ids {
             for tier in RepTier::iter() {

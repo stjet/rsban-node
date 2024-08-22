@@ -1,4 +1,4 @@
-use super::TrafficType;
+use rsnano_network::TrafficType;
 use std::sync::Arc;
 use tokio::sync::mpsc::{self};
 

@@ -24,7 +24,7 @@ use crate::{
     pruning::{LedgerPruning, LedgerPruningExt},
     representatives::{OnlineReps, OnlineRepsCleanup, RepCrawler, RepCrawlerExt},
     stats::{
-        adapters::{LedgerStats, NetworkStats, NetworkStatsObserver},
+        adapters::{LedgerStats, NetworkStats},
         DetailType, Direction, StatType, Stats,
     },
     transport::{
@@ -239,7 +239,7 @@ impl Node {
 
         let network_info = Arc::new(RwLock::new(NetworkInfo::new(global_config.into())));
 
-        let network_stats = NetworkStats::new(stats.clone());
+        let network_observer = Arc::new(NetworkStats::new(stats.clone()));
 
         let mut dead_channel_cleanup = DeadChannelCleanup::new(
             steady_clock.clone(),
@@ -258,7 +258,7 @@ impl Node {
             clock: steady_clock.clone(),
             network_info: network_info.clone(),
         });
-        network.set_observer(Arc::new(NetworkStatsObserver::new(stats.clone())));
+        network.set_observer(network_observer.clone());
         let network = Arc::new(network);
 
         dead_channel_cleanup.add_step(NetworkCleanup::new(network.clone()));
@@ -492,7 +492,7 @@ impl Node {
             flags.clone(),
             network.clone(),
             network_info.clone(),
-            network_stats.clone(),
+            network_observer.clone(),
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
@@ -535,7 +535,7 @@ impl Node {
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
             network.clone(),
-            network_stats.clone(),
+            network_observer.clone(),
             stats.clone(),
             async_rt.clone(),
             response_server_factory.clone(),

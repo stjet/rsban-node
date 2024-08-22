@@ -6,13 +6,13 @@ use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig},
     config::NodeFlags,
-    stats::{adapters::NetworkStats, Stats},
+    stats::Stats,
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
-use rsnano_network::{Channel, NetworkInfo};
+use rsnano_network::{Channel, NetworkInfo, NullNetworkObserver};
 use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -59,7 +59,7 @@ impl ResponseServerFactory {
                 flags.clone(),
                 network.clone(),
                 network_info.clone(),
-                NetworkStats::new(stats.clone()),
+                Arc::new(NullNetworkObserver::new()),
                 runtime,
                 workers,
                 network_params.clone(),

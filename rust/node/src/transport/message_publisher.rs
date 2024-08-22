@@ -46,10 +46,10 @@ impl MessagePublisher {
         }
     }
 
-    pub(crate) fn new_null() -> Self {
+    pub(crate) fn new_null(handle: tokio::runtime::Handle) -> Self {
         Self::new(
             Arc::new(Mutex::new(OnlineReps::default())),
-            Arc::new(Network::new_null()),
+            Arc::new(Network::new_null(handle)),
             Arc::new(Stats::default()),
             Default::default(),
         )

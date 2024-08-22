@@ -37,11 +37,11 @@ impl ResponseServerFactory {
     #[allow(dead_code)]
     pub(crate) fn new_null() -> Self {
         let ledger = Arc::new(Ledger::new_null());
+        let runtime = Arc::new(AsyncRuntime::default());
         let flags = NodeFlags::default();
-        let network = Arc::new(Network::new_null());
+        let network = Arc::new(Network::new_null(runtime.tokio.handle().clone()));
         let publish_filter = Arc::new(NetworkFilter::default());
         let network_info = Arc::new(RwLock::new(NetworkInfo::new_test_instance()));
-        let runtime = Arc::new(AsyncRuntime::default());
         let workers = Arc::new(ThreadPoolImpl::new_test_instance());
         let network_params = NetworkParams::new(rsnano_core::Networks::NanoDevNetwork);
         let stats = Arc::new(Stats::default());
@@ -60,14 +60,14 @@ impl ResponseServerFactory {
                 network.clone(),
                 network_info.clone(),
                 Arc::new(NullNetworkObserver::new()),
-                runtime,
+                runtime.clone(),
                 workers,
                 network_params.clone(),
                 stats,
                 block_processor,
                 None,
                 ledger,
-                MessagePublisher::new_null(),
+                MessagePublisher::new_null(runtime.tokio.handle().clone()),
                 clock,
             )),
             network: network_info,

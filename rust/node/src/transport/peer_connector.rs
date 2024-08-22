@@ -51,12 +51,13 @@ impl PeerConnector {
 
     #[allow(dead_code)]
     pub(crate) fn new_null() -> Self {
+        let runtime = Arc::new(AsyncRuntime::default());
         Self {
             config: Default::default(),
-            network: Arc::new(Network::new_null()),
+            network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
             network_observer: Arc::new(NullNetworkObserver::new()),
             stats: Arc::new(Default::default()),
-            runtime: Arc::new(Default::default()),
+            runtime,
             cancel_token: CancellationToken::new(),
             response_server_factory: Arc::new(ResponseServerFactory::new_null()),
             connect_listener: OutputListenerMt::new(),

@@ -97,6 +97,8 @@ impl BootstrapConnections {
     }
 
     pub fn new_null() -> Self {
+        let runtime = Arc::new(AsyncRuntime::default());
+
         Self {
             condition: Condvar::new(),
             populate_connections_started: AtomicBool::new(false),
@@ -106,16 +108,16 @@ impl BootstrapConnections {
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
-            network: Arc::new(Network::new_null()),
+            network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
             network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
             network_stats: Arc::new(NullNetworkObserver::new()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
-            runtime: Arc::new(AsyncRuntime::default()),
+            runtime: runtime.clone(),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             bootstrap_initiator: Mutex::new(None),
             pulls_cache: Arc::new(Mutex::new(PullsCache::new())),
-            message_publisher: MessagePublisher::new_null(),
+            message_publisher: MessagePublisher::new_null(runtime.tokio.handle().clone()),
             clock: Arc::new(SteadyClock::new_null()),
         }
     }

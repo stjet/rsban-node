@@ -251,6 +251,7 @@ impl Node {
             global_config.into(),
             network_info.clone(),
             steady_clock.clone(),
+            async_rt.tokio.handle().clone(),
         );
         network.set_observer(network_observer.clone());
         let network = Arc::new(network);

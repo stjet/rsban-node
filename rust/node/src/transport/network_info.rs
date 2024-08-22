@@ -1,10 +1,13 @@
-use super::{ChannelDirection, PeerExclusion};
+use super::ChannelDirection;
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Networks, PublicKey,
 };
-use rsnano_network::{attempt_container::AttemptContainer, utils::is_ipv4_mapped, ChannelInfo};
+use rsnano_network::{
+    attempt_container::AttemptContainer, peer_exclusion::PeerExclusion, utils::is_ipv4_mapped,
+    ChannelInfo,
+};
 use rsnano_network::{
     utils::{map_address_to_subnetwork, reserved_address},
     ChannelMode,
@@ -36,7 +39,6 @@ pub struct NetworkConfig {
     pub disable_max_peers_per_subnetwork: bool, // For testing only
     pub disable_network: bool,
     pub listening_port: u16,
-    pub default_protocol_version: u8,
 }
 
 impl NetworkConfig {
@@ -55,8 +57,7 @@ impl NetworkConfig {
                 _ => 16,
             },
             max_attempts_per_ip: if is_dev { 128 } else { 1 },
-            min_protocol_version: 0x14,     //TODO don't hard code
-            default_protocol_version: 0x15, //TODO don't hard code
+            min_protocol_version: 0x14, //TODO don't hard code
             disable_max_peers_per_ip: false,
             disable_max_peers_per_subnetwork: false,
             disable_network: false,
@@ -167,7 +168,7 @@ impl NetworkInfo {
             local_addr,
             peer_addr,
             direction,
-            self.network_config.default_protocol_version,
+            self.network_config.min_protocol_version,
             now,
         ));
         self.channels.insert(channel_id, channel_info.clone());

@@ -1,4 +1,3 @@
-mod bandwidth_limiter;
 mod block_deserializer;
 mod channel;
 mod fair_queue;
@@ -19,13 +18,9 @@ mod response_server;
 mod response_server_factory;
 mod syn_cookies;
 mod tcp_listener;
-mod token_bucket;
 mod tokio_socket_facade;
 mod vec_buffer_reader;
 
-pub use bandwidth_limiter::{
-    BandwidthLimitType, BandwidthLimiter, OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig,
-};
 pub use block_deserializer::read_block;
 pub use channel::*;
 pub(crate) use fair_queue::*;
@@ -47,6 +42,5 @@ pub(crate) use response_server_factory::*;
 use rsnano_network::ChannelDirection;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
-use token_bucket::TokenBucket;
 pub use tokio_socket_facade::*;
 pub use vec_buffer_reader::VecBufferReader;

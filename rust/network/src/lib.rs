@@ -1,8 +1,10 @@
 pub mod attempt_container;
+pub mod bandwidth_limiter;
 mod channel_info;
 mod dead_channel_cleanup;
 mod network_info;
 pub mod peer_exclusion;
+pub mod token_bucket;
 pub mod utils;
 pub mod write_queue;
 

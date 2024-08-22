@@ -3,6 +3,9 @@ name = "rsnano_network"
 version = "0.1.0"
 edition = "2021"
 
+[dev-dependencies]
+mock_instant = "0.2.1"
+
 [dependencies]
 rsnano_nullable_clock = { path = "../nullables/clock" }
 rsnano_core = { path = "../core" }

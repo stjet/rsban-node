@@ -30,9 +30,9 @@ use crate::{
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
         LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, Network, NetworkCleanup,
-        NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
-        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
-        ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        NetworkFilter, NetworkOptions, NetworkThreads, PeerCacheConnector, PeerCacheUpdater,
+        PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener,
+        TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -52,7 +52,10 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::{ChannelId, DeadChannelCleanup, DropPolicy, NetworkInfo, TrafficType};
+use rsnano_network::{
+    bandwidth_limiter::OutboundBandwidthLimiter, ChannelId, DeadChannelCleanup, DropPolicy,
+    NetworkInfo, TrafficType,
+};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{
@@ -61,7 +64,6 @@ use rsnano_store_lmdb::{
 };
 use serde::Serialize;
 use std::{
-    borrow::Borrow,
     collections::{HashMap, VecDeque},
     path::{Path, PathBuf},
     sync::{
@@ -218,7 +220,7 @@ impl Node {
 
         log_bootstrap_weights(&ledger.rep_weights);
 
-        let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(config.borrow().into()));
+        let outbound_limiter = Arc::new(OutboundBandwidthLimiter::new(global_config.into()));
         let syn_cookies = Arc::new(SynCookies::new(network_params.network.max_peers_per_ip));
 
         let workers: Arc<dyn ThreadPool> = Arc::new(ThreadPoolImpl::create(

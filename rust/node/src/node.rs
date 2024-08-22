@@ -1,11 +1,11 @@
 use crate::{
     block_processing::{
-        BacklogPopulation, BlockProcessor, BlockSource, LocalBlockBroadcaster,
-        LocalBlockBroadcasterExt, UncheckedMap,
+        BacklogPopulation, BlockProcessor, BlockProcessorCleanup, BlockSource,
+        LocalBlockBroadcaster, LocalBlockBroadcasterExt, UncheckedMap,
     },
     bootstrap::{
         BootstrapAscending, BootstrapAscendingExt, BootstrapInitiator, BootstrapInitiatorExt,
-        BootstrapServer, OngoingBootstrap, OngoingBootstrapExt,
+        BootstrapServer, BootstrapServerCleanup, OngoingBootstrap, OngoingBootstrapExt,
     },
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
@@ -15,22 +15,24 @@ use crate::{
         HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
         OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
         ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
-        RequestAggregator, VoteApplier, VoteBroadcaster, VoteCache, VoteCacheProcessor,
-        VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteRouter,
+        RequestAggregator, RequestAggregatorCleanup, VoteApplier, VoteBroadcaster, VoteCache,
+        VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
+        VoteProcessorQueueCleanup, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
-    representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
+    representatives::{OnlineReps, OnlineRepsCleanup, RepCrawler, RepCrawlerExt},
     stats::{
         adapters::{LedgerStats, NetworkStats},
         DetailType, Direction, StatType, Stats,
     },
     transport::{
-        DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory, LatestKeepalives,
-        MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkOptions, NetworkThreads,
-        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
-        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
+        DropPolicy, InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory,
+        LatestKeepalives, LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, Network,
+        NetworkCleanup, NetworkFilter, NetworkOptions, NetworkThreads, OutboundBandwidthLimiter,
+        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
+        ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -50,7 +52,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::{ChannelId, NetworkInfo, TrafficType};
+use rsnano_network::{ChannelId, DeadChannelCleanup, NetworkInfo, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{
@@ -255,13 +257,15 @@ impl Node {
             network_info: network_info.clone(),
         }));
 
-        dead_channel_cleanup.add(&network);
+        dead_channel_cleanup.add_step(NetworkCleanup::new(network.clone()));
 
         let inbound_message_queue = Arc::new(InboundMessageQueue::new(
             config.message_processor.max_queue,
             stats.clone(),
         ));
-        dead_channel_cleanup.add(&inbound_message_queue);
+        dead_channel_cleanup.add_step(InboundMessageQueueCleanup::new(
+            inbound_message_queue.clone(),
+        ));
 
         let telemetry_config = TelementryConfig {
             enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
@@ -287,7 +291,7 @@ impl Node {
                 .trended(online_weight_sampler.calculate_trend())
                 .finish(),
         ));
-        dead_channel_cleanup.add(&online_reps);
+        dead_channel_cleanup.add_step(OnlineRepsCleanup::new(online_reps.clone()));
 
         let message_publisher = MessagePublisher::new(
             online_reps.clone(),
@@ -315,7 +319,9 @@ impl Node {
             ledger.clone(),
             message_publisher.clone(),
         ));
-        dead_channel_cleanup.add(&bootstrap_server);
+        dead_channel_cleanup.add_step(BootstrapServerCleanup::new(
+            bootstrap_server.server_impl.clone(),
+        ));
 
         let rep_tiers = Arc::new(RepTiers::new(
             rep_weights.clone(),
@@ -329,7 +335,7 @@ impl Node {
             stats.clone(),
             rep_tiers.clone(),
         ));
-        dead_channel_cleanup.add(&vote_processor_queue);
+        dead_channel_cleanup.add_step(VoteProcessorQueueCleanup::new(vote_processor_queue.clone()));
 
         let history = Arc::new(LocalVoteHistory::new(network_params.voting.max_cache));
 
@@ -354,7 +360,9 @@ impl Node {
             unchecked.clone(),
             stats.clone(),
         ));
-        dead_channel_cleanup.add(&block_processor);
+        dead_channel_cleanup.add_step(BlockProcessorCleanup::new(
+            block_processor.processor_loop.clone(),
+        ));
 
         let distributed_work =
             Arc::new(DistributedWorkFactory::new(work.clone(), async_rt.clone()));
@@ -501,7 +509,7 @@ impl Node {
         bootstrap_initiator.start();
 
         let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
-        dead_channel_cleanup.add(&latest_keepalives);
+        dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));
 
         let response_server_factory = Arc::new(ResponseServerFactory {
             runtime: async_rt.clone(),
@@ -605,7 +613,9 @@ impl Node {
             ledger.clone(),
             network_info.clone(),
         ));
-        dead_channel_cleanup.add(&request_aggregator);
+        dead_channel_cleanup.add_step(RequestAggregatorCleanup::new(
+            request_aggregator.state.clone(),
+        ));
 
         let backlog_population = Arc::new(BacklogPopulation::new(
             global_config.into(),

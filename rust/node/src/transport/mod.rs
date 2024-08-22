@@ -1,7 +1,6 @@
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel;
-mod dead_channel_cleanup;
 mod fair_queue;
 mod handshake_process;
 mod inbound_message_queue;
@@ -30,10 +29,9 @@ pub use bandwidth_limiter::{
 };
 pub use block_deserializer::read_block;
 pub use channel::*;
-pub(crate) use dead_channel_cleanup::*;
 pub(crate) use fair_queue::*;
 pub(crate) use handshake_process::*;
-pub use inbound_message_queue::InboundMessageQueue;
+pub use inbound_message_queue::*;
 pub use latest_keepalives::*;
 pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
 pub use message_processor::*;

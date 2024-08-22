@@ -1,14 +1,12 @@
-use super::{
-    Channel, ChannelDirection, DeadChannelCleanupStep, DeadChannelCleanupTarget, DropPolicy,
-    NetworkFilter, OutboundBandwidthLimiter,
-};
+use super::{Channel, ChannelDirection, DropPolicy, NetworkFilter, OutboundBandwidthLimiter};
 use crate::{
     stats::{adapters::NetworkStats, Stats},
     NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_network::{
-    utils::into_ipv6_socket_address, ChannelId, ChannelMode, NetworkInfo, TrafficType,
+    utils::into_ipv6_socket_address, ChannelId, ChannelMode, DeadChannelCleanupStep, NetworkInfo,
+    TrafficType,
 };
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
@@ -178,13 +176,13 @@ impl Network {
     }
 }
 
-impl DeadChannelCleanupTarget for Arc<Network> {
-    fn dead_channel_cleanup_step(&self) -> Box<dyn super::DeadChannelCleanupStep> {
-        Box::new(NetworkCleanup(Arc::clone(self)))
+pub struct NetworkCleanup(Arc<Network>);
+
+impl NetworkCleanup {
+    pub fn new(network: Arc<Network>) -> Self {
+        Self(network)
     }
 }
-
-struct NetworkCleanup(Arc<Network>);
 
 impl DeadChannelCleanupStep for NetworkCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {

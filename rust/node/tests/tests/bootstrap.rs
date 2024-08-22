@@ -4,10 +4,11 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
+use rsnano_network::ChannelInfo;
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
-    transport::{Channel, ChannelInfo, LatestKeepalives, ResponseServer},
+    transport::{Channel, LatestKeepalives, ResponseServer},
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},

@@ -1,8 +1,8 @@
-use super::{ChannelInfo, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue};
+use super::{DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::utils::ContainerInfoComponent;
 use rsnano_messages::Message;
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, ChannelInfo};
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},

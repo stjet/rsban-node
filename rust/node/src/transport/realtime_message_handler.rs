@@ -1,4 +1,4 @@
-use super::{ChannelInfo, MessagePublisher, NetworkFilter, NetworkInfo};
+use super::{MessagePublisher, NetworkFilter, NetworkInfo};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::{BootstrapAscending, BootstrapServer},
@@ -11,7 +11,7 @@ use crate::{
 };
 use rsnano_core::VoteSource;
 use rsnano_messages::{Message, TelemetryAck};
-use rsnano_network::TrafficType;
+use rsnano_network::{ChannelInfo, TrafficType};
 use std::{
     net::SocketAddrV6,
     sync::{Arc, Mutex, RwLock},

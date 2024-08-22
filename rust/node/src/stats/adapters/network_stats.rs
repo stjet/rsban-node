@@ -1,5 +1,5 @@
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_network::{ChannelDirection, NetworkError};
+use rsnano_network::{ChannelDirection, ChannelInfo, NetworkError, NetworkObserver};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::debug;
 
@@ -144,5 +144,64 @@ impl From<ChannelDirection> for Direction {
             ChannelDirection::Inbound => Direction::In,
             ChannelDirection::Outbound => Direction::Out,
         }
+    }
+}
+
+pub(crate) struct NetworkStatsObserver(Arc<Stats>);
+
+impl NetworkStatsObserver {
+    pub fn new(stats: Arc<Stats>) -> Self {
+        Self(stats)
+    }
+}
+
+impl NetworkObserver for NetworkStatsObserver {
+    fn send_succeeded(&self, buf_size: usize) {
+        self.0.add_dir_aggregate(
+            StatType::TrafficTcp,
+            DetailType::All,
+            Direction::Out,
+            buf_size as u64,
+        );
+    }
+
+    fn send_failed(&self) {
+        self.0
+            .inc_dir(StatType::Tcp, DetailType::TcpWriteError, Direction::In);
+    }
+
+    fn channel_timed_out(&self, channel: &ChannelInfo) {
+        self.0.inc_dir(
+            StatType::Tcp,
+            DetailType::TcpIoTimeoutDrop,
+            if channel.direction() == ChannelDirection::Inbound {
+                Direction::In
+            } else {
+                Direction::Out
+            },
+        );
+        debug!(
+            channel_id = %channel.channel_id(), 
+            remote_addr = ?channel.peer_addr(), 
+            mode = ?channel.mode(), 
+            direction = ?channel.direction(), 
+            "Closing channel due to timeout");
+    }
+
+    fn read_succeeded(&self, count: usize) {
+        self.0.add_dir(
+            StatType::TrafficTcp,
+            DetailType::All,
+            Direction::In,
+            count as u64,
+        );
+    }
+
+    fn read_failed(&self) {
+        self.0.inc_dir(
+            StatType::Tcp,
+            DetailType::TcpReadError,
+            Direction::In,
+        );
     }
 }

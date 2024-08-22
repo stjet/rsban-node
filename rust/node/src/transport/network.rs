@@ -6,7 +6,8 @@ use crate::{
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_network::{
     bandwidth_limiter::OutboundBandwidthLimiter, utils::into_ipv6_socket_address, ChannelDirection,
-    ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy, NetworkInfo, TrafficType,
+    ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy, NetworkInfo, NetworkObserver,
+    NullNetworkObserver, TrafficType,
 };
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
@@ -44,6 +45,7 @@ pub struct Network {
     network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     clock: Arc<SteadyClock>,
+    observer: Arc<dyn NetworkObserver>,
 }
 
 impl Network {
@@ -57,7 +59,12 @@ impl Network {
             limiter: options.limiter,
             clock: options.clock,
             info: options.network_info,
+            observer: Arc::new(NullNetworkObserver::new()),
         }
+    }
+
+    pub fn set_observer(&mut self, observer: Arc<dyn NetworkObserver>) {
+        self.observer = observer;
     }
 
     pub(crate) async fn wait_for_available_inbound_slot(&self) {
@@ -118,10 +125,10 @@ impl Network {
         let channel = Channel::create(
             channel_info,
             stream,
-            self.stats.clone(),
             self.limiter.clone(),
             self.info.clone(),
             self.clock.clone(),
+            self.observer.clone(),
         )
         .await;
         self.channels

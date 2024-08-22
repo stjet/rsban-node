@@ -24,7 +24,7 @@ use crate::{
     pruning::{LedgerPruning, LedgerPruningExt},
     representatives::{OnlineReps, OnlineRepsCleanup, RepCrawler, RepCrawlerExt},
     stats::{
-        adapters::{LedgerStats, NetworkStats},
+        adapters::{LedgerStats, NetworkStats, NetworkStatsObserver},
         DetailType, Direction, StatType, Stats,
     },
     transport::{
@@ -251,13 +251,15 @@ impl Node {
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-        let network = Arc::new(Network::new(NetworkOptions {
+        let mut network = Network::new(NetworkOptions {
             network_params: network_params.clone(),
             stats: stats.clone(),
             limiter: outbound_limiter.clone(),
             clock: steady_clock.clone(),
             network_info: network_info.clone(),
-        }));
+        });
+        network.set_observer(Arc::new(NetworkStatsObserver::new(stats.clone())));
+        let network = Arc::new(network);
 
         dead_channel_cleanup.add_step(NetworkCleanup::new(network.clone()));
 

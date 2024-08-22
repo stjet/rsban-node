@@ -2,7 +2,7 @@ mod ledger_stats;
 mod network_stats;
 mod parse_message_error;
 pub use ledger_stats::LedgerStats;
-pub use network_stats::NetworkStats;
+pub use network_stats::*;
 
 use rsnano_core::VoteSource;
 use rsnano_ledger::BlockStatus;

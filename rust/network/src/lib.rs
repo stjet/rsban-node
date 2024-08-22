@@ -3,6 +3,7 @@ pub mod bandwidth_limiter;
 mod channel_info;
 mod dead_channel_cleanup;
 mod network_info;
+mod network_observer;
 pub mod peer_exclusion;
 pub mod token_bucket;
 pub mod utils;
@@ -12,6 +13,7 @@ use async_trait::async_trait;
 pub use channel_info::*;
 pub use dead_channel_cleanup::*;
 pub use network_info::*;
+pub use network_observer::*;
 use num_derive::FromPrimitive;
 use std::fmt::{Debug, Display};
 

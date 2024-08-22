@@ -4,7 +4,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
-use rsnano_network::ChannelInfo;
+use rsnano_network::{ChannelInfo, NullNetworkObserver};
 use rsnano_node::{
     bootstrap::BulkPullServer,
     node::Node,
@@ -1386,10 +1386,10 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let channel = node.async_rt.tokio.block_on(Channel::create(
         Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
-        node.stats.clone(),
         node.outbound_limiter.clone(),
         node.network_info.clone(),
         node.steady_clock.clone(),
+        Arc::new(NullNetworkObserver::new()),
     ));
 
     Arc::new(ResponseServer::new(

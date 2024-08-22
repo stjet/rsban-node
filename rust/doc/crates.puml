@@ -9,6 +9,9 @@
 [main]
 [ffi]
 [C++ node]
+[rpc_messages]
+[rpc_server]
+[rpc_client]
 
 folder "nullables"{
 [fs]
@@ -18,12 +21,6 @@ folder "nullables"{
 [lmdb]
 [http_client]
 [output_tracker]
-}
-
-folder "RPC"{
-    [rpc_messages]
-    [rpc_server]
-    [rpc_client]
 }
 
 [C++ node] --> [ffi]

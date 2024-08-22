@@ -1,7 +1,7 @@
 use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
+    transport::FairQueue,
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -9,7 +9,7 @@ use rsnano_core::{
     BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, DeadChannelCleanupStep};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
@@ -159,7 +159,7 @@ impl BlockProcessorConfig {
 
 pub struct BlockProcessor {
     thread: Mutex<Option<JoinHandle<()>>>,
-    processor_loop: Arc<BlockProcessorLoop>,
+    pub(crate) processor_loop: Arc<BlockProcessorLoop>,
 }
 
 impl BlockProcessor {
@@ -305,7 +305,7 @@ impl Drop for BlockProcessor {
     }
 }
 
-struct BlockProcessorLoop {
+pub(crate) struct BlockProcessorLoop {
     mutex: Mutex<BlockProcessorImpl>,
     condition: Condvar,
     ledger: Arc<Ledger>,
@@ -505,7 +505,7 @@ impl BlockProcessorLoop {
         results
     }
 
-    pub fn process_batch(
+    fn process_batch(
         &self,
         mut guard: MutexGuard<BlockProcessorImpl>,
     ) -> Vec<(BlockStatus, Arc<BlockProcessorContext>)> {
@@ -691,12 +691,6 @@ impl BlockProcessorLoop {
     }
 }
 
-impl DeadChannelCleanupTarget for Arc<BlockProcessor> {
-    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
-        Box::new(BlockProcessorCleanup(self.processor_loop.clone()))
-    }
-}
-
 struct BlockProcessorImpl {
     pub queue: FairQueue<(BlockSource, ChannelId), Arc<BlockProcessorContext>>,
     pub last_log: Option<Instant>,
@@ -728,6 +722,12 @@ impl BlockProcessorImpl {
 }
 
 pub(crate) struct BlockProcessorCleanup(Arc<BlockProcessorLoop>);
+
+impl BlockProcessorCleanup {
+    pub fn new(processor_loop: Arc<BlockProcessorLoop>) -> Self {
+        Self(processor_loop)
+    }
+}
 
 impl DeadChannelCleanupStep for BlockProcessorCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {

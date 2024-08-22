@@ -16,7 +16,6 @@ mod response_server;
 mod response_server_factory;
 mod syn_cookies;
 mod tcp_listener;
-mod tokio_socket_facade;
 mod vec_buffer_reader;
 
 pub use block_deserializer::read_block;
@@ -37,5 +36,4 @@ pub use response_server::*;
 pub(crate) use response_server_factory::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
-pub use tokio_socket_facade::*;
 pub use vec_buffer_reader::VecBufferReader;

@@ -1,6 +1,7 @@
 use super::{bootstrap_limits, BootstrapConnections};
-use crate::transport::{Channel, ChannelId, MessagePublisher, TrafficType};
+use crate::transport::{Channel, MessagePublisher};
 use rsnano_messages::Message;
+use rsnano_network::{ChannelId, TrafficType};
 use std::{
     net::SocketAddrV6,
     sync::{

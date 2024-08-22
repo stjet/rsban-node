@@ -1,17 +1,15 @@
-use crate::utils::{
-    ipv4_address_or_ipv6_subnet, is_ipv4_mapped, map_address_to_subnetwork, reserved_address,
-};
-
-use super::{
-    attempt_container::AttemptContainer, ChannelDirection, ChannelId, ChannelMode, PeerExclusion,
-    TrafficType,
-};
+use super::{ChannelDirection, ChannelMode, PeerExclusion};
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     Networks, PublicKey,
 };
+use rsnano_network::utils::{
+    ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
+};
+use rsnano_network::{attempt_container::AttemptContainer, utils::is_ipv4_mapped};
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,

@@ -2,11 +2,12 @@ use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
     WalletId,
 };
+use rsnano_network::ChannelDirection;
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     node::{Node, NodeExt},
-    transport::{Channel, ChannelDirection, ChannelInfo, ChannelMode, PeerConnectorExt},
+    transport::{Channel, ChannelInfo, ChannelMode, PeerConnectorExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,

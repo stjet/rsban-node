@@ -1,6 +1,7 @@
 use super::OnlineReps;
-use crate::transport::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget};
+use crate::transport::{DeadChannelCleanupStep, DeadChannelCleanupTarget};
 use rsnano_core::Account;
+use rsnano_network::ChannelId;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 

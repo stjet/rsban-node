@@ -11,7 +11,7 @@ mod toml;
 use crate::{transport::EndpointDto, VoidPointerCallback};
 pub use async_runtime::AsyncRuntimeHandle;
 pub use container_info::*;
-use rsnano_node::utils::{
+use rsnano_network::utils::{
     ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
 };
 use std::{

@@ -1,4 +1,3 @@
-use crate::{NetworkParams, DEV_NETWORK_PARAMS};
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_network::{
     bandwidth_limiter::{OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig},
@@ -15,43 +14,25 @@ use std::{
 };
 use tracing::{debug, warn};
 
-pub struct NetworkOptions {
-    pub network_params: NetworkParams,
-    pub limiter_config: OutboundBandwidthLimiterConfig,
-    pub clock: Arc<SteadyClock>,
-    pub network_info: Arc<RwLock<NetworkInfo>>,
-}
-
-impl NetworkOptions {
-    pub fn new_test_instance() -> Self {
-        NetworkOptions {
-            network_params: DEV_NETWORK_PARAMS.clone(),
-            limiter_config: Default::default(),
-            clock: Arc::new(SteadyClock::new_null()),
-            network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
-        }
-    }
-}
-
 pub struct Network {
     channels: Mutex<HashMap<ChannelId, Arc<Channel>>>,
     pub info: Arc<RwLock<NetworkInfo>>,
-    network_params: Arc<NetworkParams>,
     limiter: Arc<OutboundBandwidthLimiter>,
     clock: Arc<SteadyClock>,
     observer: Arc<dyn NetworkObserver>,
 }
 
 impl Network {
-    pub fn new(options: NetworkOptions) -> Self {
-        let network = Arc::new(options.network_params);
-
+    pub fn new(
+        limiter_config: OutboundBandwidthLimiterConfig,
+        network_info: Arc<RwLock<NetworkInfo>>,
+        clock: Arc<SteadyClock>,
+    ) -> Self {
         Self {
             channels: Mutex::new(HashMap::new()),
-            network_params: network,
-            limiter: Arc::new(OutboundBandwidthLimiter::new(options.limiter_config)),
-            clock: options.clock,
-            info: options.network_info,
+            limiter: Arc::new(OutboundBandwidthLimiter::new(limiter_config)),
+            clock,
+            info: network_info,
             observer: Arc::new(NullNetworkObserver::new()),
         }
     }
@@ -62,11 +43,7 @@ impl Network {
 
     pub(crate) async fn wait_for_available_inbound_slot(&self) {
         let last_log = Instant::now();
-        let log_interval = if self.network_params.network.is_dev_network() {
-            Duration::from_secs(1)
-        } else {
-            Duration::from_secs(15)
-        };
+        let log_interval = Duration::from_secs(15);
         while {
             let info = self.info.read().unwrap();
             !info.is_inbound_slot_available() && !info.is_stopped()
@@ -134,7 +111,11 @@ impl Network {
     }
 
     pub(crate) fn new_null() -> Self {
-        Self::new(NetworkOptions::new_test_instance())
+        Self::new(
+            Default::default(),
+            Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
+            Arc::new(SteadyClock::new_null()),
+        )
     }
 
     pub(crate) fn try_send_buffer(

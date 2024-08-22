@@ -30,9 +30,8 @@ use crate::{
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
         LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, Network, NetworkCleanup,
-        NetworkFilter, NetworkOptions, NetworkThreads, PeerCacheConnector, PeerCacheUpdater,
-        PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener,
-        TcpListenerExt,
+        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -246,12 +245,11 @@ impl Node {
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
-        let mut network = Network::new(NetworkOptions {
-            network_params: network_params.clone(),
-            limiter_config: global_config.into(),
-            clock: steady_clock.clone(),
-            network_info: network_info.clone(),
-        });
+        let mut network = Network::new(
+            global_config.into(),
+            network_info.clone(),
+            steady_clock.clone(),
+        );
         network.set_observer(network_observer.clone());
         let network = Arc::new(network);
 

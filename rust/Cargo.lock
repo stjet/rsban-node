@@ -1922,7 +1922,10 @@ dependencies = [
 name = "rsnano_network"
 version = "0.1.0"
 dependencies = [
+ "num-derive 0.3.3",
+ "num-traits",
  "rsnano_core",
+ "rsnano_nullable_clock",
 ]
 
 [[package]]
@@ -2451,6 +2454,7 @@ dependencies = [
  "axum",
  "mock_instant",
  "rsnano_core",
+ "rsnano_network",
  "rsnano_node",
  "rsnano_nullable_tcp",
  "tracing-subscriber",

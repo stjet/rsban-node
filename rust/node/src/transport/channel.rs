@@ -1,7 +1,7 @@
 use super::{
     write_queue::{WriteQueue, WriteQueueReceiver},
     AsyncBufferReader, ChannelDirection, ChannelInfo, DropPolicy, NetworkInfo,
-    OutboundBandwidthLimiter, TrafficType,
+    OutboundBandwidthLimiter,
 };
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use async_trait::async_trait;
@@ -9,8 +9,7 @@ use rsnano_core::{
     utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     PublicKey,
 };
-use rsnano_network::utils::into_ipv6_socket_address;
-use rsnano_network::ChannelId;
+use rsnano_network::{utils::into_ipv6_socket_address, ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;
 use std::{

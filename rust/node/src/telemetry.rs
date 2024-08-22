@@ -19,10 +19,10 @@ use crate::{
     block_processing::UncheckedMap,
     config::NodeConfig,
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, NetworkInfo, TrafficType},
+    transport::{ChannelInfo, ChannelMode, DropPolicy, MessagePublisher, NetworkInfo},
     NetworkParams,
 };
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 
 /**
  * This class periodically broadcasts and requests telemetry from peers.

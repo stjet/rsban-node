@@ -2,7 +2,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{
         ChannelInfo, DeadChannelCleanupStep, DeadChannelCleanupTarget, DropPolicy, FairQueue,
-        MessagePublisher, TrafficType,
+        MessagePublisher,
     },
 };
 use rsnano_core::{BlockEnum, BlockHash, Frontier};
@@ -11,7 +11,7 @@ use rsnano_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
     AscPullReqType, BlocksAckPayload, BlocksReqPayload, FrontiersReqPayload, HashType, Message,
 };
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::min,

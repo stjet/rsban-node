@@ -28,7 +28,7 @@ use crate::{
         MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkInfo, NetworkOptions,
         NetworkStats, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
         PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
-        TcpListener, TcpListenerExt, TrafficType,
+        TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -48,7 +48,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{

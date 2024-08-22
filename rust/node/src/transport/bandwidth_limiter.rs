@@ -1,6 +1,6 @@
+use super::TokenBucket;
 use crate::config::NodeConfig;
-
-use super::{TokenBucket, TrafficType};
+use rsnano_network::TrafficType;
 use std::sync::Mutex;
 
 impl From<TrafficType> for BandwidthLimitType {

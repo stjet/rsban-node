@@ -1,3 +1,4 @@
+use num_derive::FromPrimitive;
 use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
@@ -29,4 +30,19 @@ impl From<usize> for ChannelId {
     fn from(value: usize) -> Self {
         Self(value)
     }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
+pub enum ChannelDirection {
+    /// Socket was created by accepting an incoming connection
+    Inbound,
+    /// Socket was created by initiating an outgoing connection
+    Outbound,
+}
+
+#[derive(FromPrimitive, Copy, Clone, Debug)]
+pub enum TrafficType {
+    Generic,
+    /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
+    Bootstrap,
 }

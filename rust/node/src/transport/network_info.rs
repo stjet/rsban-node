@@ -1,6 +1,4 @@
-use super::{
-    attempt_container::AttemptContainer, ChannelDirection, ChannelMode, PeerExclusion, TrafficType,
-};
+use super::{attempt_container::AttemptContainer, ChannelDirection, ChannelMode, PeerExclusion};
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
 use rsnano_core::{
@@ -11,7 +9,7 @@ use rsnano_network::utils::is_ipv4_mapped;
 use rsnano_network::utils::{
     ipv4_address_or_ipv6_subnet, map_address_to_subnetwork, reserved_address,
 };
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,

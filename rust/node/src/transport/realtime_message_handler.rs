@@ -5,12 +5,13 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::{RequestAggregator, VoteProcessorQueue},
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{DropPolicy, TrafficType},
+    transport::DropPolicy,
     wallets::Wallets,
     Telemetry,
 };
 use rsnano_core::VoteSource;
 use rsnano_messages::{Message, TelemetryAck};
+use rsnano_network::TrafficType;
 use std::{
     net::SocketAddrV6,
     sync::{Arc, Mutex, RwLock},

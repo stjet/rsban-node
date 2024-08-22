@@ -1,5 +1,5 @@
-use super::ChannelDirection;
 use rsnano_network::utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork};
+use rsnano_network::ChannelDirection;
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,

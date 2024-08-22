@@ -2,7 +2,7 @@ use super::{LocalVoteHistory, VoteSpacing};
 use crate::{
     consensus::VoteBroadcaster,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{DropPolicy, MessagePublisher, TrafficType},
+    transport::{DropPolicy, MessagePublisher},
     utils::ProcessingQueue,
     wallets::Wallets,
 };
@@ -12,7 +12,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{Ledger, Writer};
 use rsnano_messages::{ConfirmAck, Message};
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_store_lmdb::{LmdbReadTransaction, LmdbWriteTransaction, Transaction};
 use std::{
     collections::VecDeque,

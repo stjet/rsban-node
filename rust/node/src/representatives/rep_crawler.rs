@@ -5,7 +5,6 @@ use crate::{
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
         ChannelInfo, DropPolicy, MessagePublisher, NetworkInfo, PeerConnector, PeerConnectorExt,
-        TrafficType,
     },
     utils::AsyncRuntime,
     NetworkParams,
@@ -18,7 +17,7 @@ use rsnano_core::{
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmReq, Keepalive, Message};
 use rsnano_network::utils::into_ipv6_socket_address;
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     collections::HashMap,

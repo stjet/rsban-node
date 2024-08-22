@@ -54,6 +54,7 @@ pub(crate) use peer_exclusion::PeerExclusion;
 pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
 pub(crate) use response_server_factory::*;
+use rsnano_network::ChannelDirection;
 use std::fmt::Debug;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
@@ -71,14 +72,6 @@ pub enum DropPolicy {
     /// Should not be dropped by bandwidth limiter,
     /// but it can still be dropped if the write queue is full
     ShouldNotDrop,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
-pub enum ChannelDirection {
-    /// Socket was created by accepting an incoming connection
-    Inbound,
-    /// Socket was created by initiating an outgoing connection
-    Outbound,
 }
 
 impl From<ChannelDirection> for stats::Direction {
@@ -108,11 +101,4 @@ impl ChannelMode {
             ChannelMode::Realtime => "realtime",
         }
     }
-}
-
-#[derive(FromPrimitive, Copy, Clone, Debug)]
-pub enum TrafficType {
-    Generic,
-    /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
-    Bootstrap,
 }

@@ -21,14 +21,11 @@ use std::time::Duration;
 use test_helpers::{assert_timely_eq, assert_timely_msg, get_available_port, System};
 
 mod bootstrap_processor {
-    use rsnano_ledger::DEV_GENESIS_PUB_KEY;
-    use rsnano_node::{
-        config::NodeConfig,
-        transport::{ChannelMode, PeerConnectorExt},
-    };
-    use test_helpers::establish_tcp;
-
     use super::*;
+    use rsnano_ledger::DEV_GENESIS_PUB_KEY;
+    use rsnano_network::ChannelMode;
+    use rsnano_node::{config::NodeConfig, transport::PeerConnectorExt};
+    use test_helpers::establish_tcp;
 
     #[test]
     fn bootstrap_processor_lazy_hash() {

@@ -1,10 +1,10 @@
 use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
-use rsnano_network::TrafficType;
+use rsnano_network::{ChannelMode, TrafficType};
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
-    transport::{ChannelMode, DropPolicy},
+    transport::DropPolicy,
 };
 use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{

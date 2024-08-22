@@ -10,7 +10,6 @@ use crate::{
     },
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::ChannelMode,
     utils::{AsyncRuntime, ThreadPool},
     NetworkParams,
 };
@@ -18,6 +17,7 @@ use async_trait::async_trait;
 use rsnano_core::{KeyPair, PublicKey};
 use rsnano_ledger::Ledger;
 use rsnano_messages::*;
+use rsnano_network::ChannelMode;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
     net::SocketAddrV6,

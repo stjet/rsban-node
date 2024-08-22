@@ -59,7 +59,7 @@ impl Network {
         }
     }
 
-    pub async fn add(
+    pub fn add(
         &self,
         stream: TcpStream,
         direction: ChannelDirection,
@@ -101,8 +101,9 @@ impl Network {
             self.info.clone(),
             self.clock.clone(),
             self.observer.clone(),
-        )
-        .await;
+            &self.handle,
+        );
+
         self.channels
             .lock()
             .unwrap()

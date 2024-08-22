@@ -1385,14 +1385,15 @@ mod bulk_pull_account {
 }
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {
-    let channel = node.async_rt.tokio.block_on(Channel::create(
+    let channel = Channel::create(
         Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
         Arc::new(OutboundBandwidthLimiter::default()),
         node.network_info.clone(),
         node.steady_clock.clone(),
         Arc::new(NullNetworkObserver::new()),
-    ));
+        node.async_rt.tokio.handle(),
+    );
 
     Arc::new(ResponseServer::new(
         node.network_info.clone(),

@@ -14,6 +14,7 @@ use std::{
     },
     time::Duration,
 };
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, warn};
 
@@ -138,15 +139,11 @@ impl TcpListenerExt for Arc<TcpListener> {
                 };
 
                 let tcp_stream = TcpStream::new(stream);
-                match self
-                    .network
-                    .add(
-                        tcp_stream,
-                        ChannelDirection::Inbound,
-                        ChannelMode::Undefined,
-                    )
-                    .await
-                {
+                match self.network.add(
+                    tcp_stream,
+                    ChannelDirection::Inbound,
+                    ChannelMode::Undefined,
+                ) {
                     Ok(channel) => {
                         self.response_server_factory.start_inbound(channel);
                     }
@@ -156,7 +153,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                 };
 
                 // Sleep for a while to prevent busy loop
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                sleep(Duration::from_millis(10)).await;
             }
         };
 

@@ -76,14 +76,11 @@ impl PeerConnector {
     async fn connect_impl(&self, peer: SocketAddrV6) -> anyhow::Result<()> {
         let tcp_stream = Self::connect_stream(peer).await?;
 
-        let channel = self
-            .network
-            .add(
-                tcp_stream,
-                ChannelDirection::Outbound,
-                ChannelMode::Realtime,
-            )
-            .await?;
+        let channel = self.network.add(
+            tcp_stream,
+            ChannelDirection::Outbound,
+            ChannelMode::Realtime,
+        )?;
 
         self.response_server_factory.start_outbound(channel);
         Ok(())

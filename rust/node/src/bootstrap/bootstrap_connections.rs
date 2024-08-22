@@ -618,15 +618,11 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             }
         };
 
-        let Ok(channel) = self
-            .network
-            .add(
-                tcp_stream,
-                ChannelDirection::Outbound,
-                ChannelMode::Bootstrap,
-            )
-            .await
-        else {
+        let Ok(channel) = self.network.add(
+            tcp_stream,
+            ChannelDirection::Outbound,
+            ChannelMode::Bootstrap,
+        ) else {
             debug!(remote_addr = ?peer_addr, "Bootstrap connection rejected");
             self.network_info
                 .write()

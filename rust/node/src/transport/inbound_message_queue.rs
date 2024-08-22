@@ -1,7 +1,8 @@
-use super::{ChannelId, ChannelInfo, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue};
+use super::{ChannelInfo, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::utils::ContainerInfoComponent;
 use rsnano_messages::Message;
+use rsnano_network::ChannelId;
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},
@@ -110,7 +111,7 @@ impl DeadChannelCleanupTarget for Arc<InboundMessageQueue> {
 struct InboundMessageQueueCleanup(Arc<InboundMessageQueue>);
 
 impl DeadChannelCleanupStep for InboundMessageQueueCleanup {
-    fn clean_up_dead_channels(&self, dead_channel_ids: &[super::ChannelId]) {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
         let mut guard = self.0.state.lock().unwrap();
         for channel_id in dead_channel_ids {
             guard.queue.remove(channel_id);

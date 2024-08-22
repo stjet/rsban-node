@@ -4,16 +4,14 @@ use super::{
 };
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{
-        ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, NetworkInfo,
-        TrafficType,
-    },
+    transport::{DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue, NetworkInfo},
 };
 use rsnano_core::{
     utils::{get_cpu_count, ContainerInfoComponent},
     BlockHash, Root,
 };
 use rsnano_ledger::Ledger;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::{max, min},

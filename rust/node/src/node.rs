@@ -24,11 +24,11 @@ use crate::{
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
     stats::{DetailType, Direction, LedgerStats, StatType, Stats},
     transport::{
-        ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
-        LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkInfo,
-        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory, LatestKeepalives,
+        MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkInfo, NetworkOptions,
+        NetworkStats, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
         PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
-        TcpListener, TcpListenerExt, TrafficType,
+        TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -48,6 +48,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
 use rsnano_store_lmdb::{
@@ -229,10 +230,9 @@ impl Node {
             "Bootstrap work",
         ));
 
-        let network_info = Arc::new(RwLock::new(NetworkInfo::new(
-            global_config.into(),
-            stats.clone(),
-        )));
+        let network_info = Arc::new(RwLock::new(NetworkInfo::new(global_config.into())));
+
+        let network_stats = NetworkStats::new(stats.clone());
 
         let mut dead_channel_cleanup = DeadChannelCleanup::new(
             steady_clock.clone(),
@@ -478,6 +478,7 @@ impl Node {
             flags.clone(),
             network.clone(),
             network_info.clone(),
+            network_stats.clone(),
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
@@ -520,6 +521,7 @@ impl Node {
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
             network.clone(),
+            network_stats.clone(),
             stats.clone(),
             async_rt.clone(),
             response_server_factory.clone(),
@@ -773,7 +775,7 @@ impl Node {
             // Republish vote if it is new and the node does not host a principal representative (or close to)
             let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);
             if processed {
-                if wallets.should_republish_vote(vote.voting_account) {
+                if wallets.should_republish_vote(vote.voting_account.into()) {
                     let ack = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
                         vote.as_ref().clone(),
                     ));

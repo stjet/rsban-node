@@ -1,4 +1,3 @@
-mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel;

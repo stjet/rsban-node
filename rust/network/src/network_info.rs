@@ -68,16 +68,6 @@ impl NetworkConfig {
     }
 }
 
-pub struct NetworkInfo {
-    next_channel_id: usize,
-    channels: HashMap<ChannelId, Arc<ChannelInfo>>,
-    stopped: bool,
-    new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>>,
-    attempts: AttemptContainer,
-    network_config: NetworkConfig,
-    excluded_peers: PeerExclusion,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum NetworkError {
     MaxConnections,
@@ -88,6 +78,16 @@ pub enum NetworkError {
     InvalidIp,
     /// We are already connected to that peer and we tried to connect a second time
     DuplicateConnection,
+}
+
+pub struct NetworkInfo {
+    next_channel_id: usize,
+    channels: HashMap<ChannelId, Arc<ChannelInfo>>,
+    stopped: bool,
+    new_realtime_channel_observers: Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>>,
+    attempts: AttemptContainer,
+    network_config: NetworkConfig,
+    excluded_peers: PeerExclusion,
 }
 
 impl NetworkInfo {

@@ -1,4 +1,4 @@
-use super::{AsyncBufferReader, ChannelDirection, OutboundBandwidthLimiter};
+use super::{ChannelDirection, OutboundBandwidthLimiter};
 use crate::stats::{DetailType, Direction, StatType, Stats};
 use async_trait::async_trait;
 use rsnano_core::{
@@ -8,7 +8,7 @@ use rsnano_core::{
 use rsnano_network::{
     utils::into_ipv6_socket_address,
     write_queue::{WriteQueue, WriteQueueReceiver},
-    ChannelId, ChannelInfo, DropPolicy, NetworkInfo, TrafficType,
+    AsyncBufferReader, ChannelId, ChannelInfo, DropPolicy, NetworkInfo, TrafficType,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;
@@ -307,7 +307,7 @@ impl Drop for Channel {
 }
 
 #[async_trait]
-impl AsyncBufferReader for Arc<Channel> {
+impl AsyncBufferReader for Channel {
     async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
         if count > buffer.len() {
             return Err(anyhow!("buffer is too small for read count"));
@@ -364,5 +364,20 @@ impl AsyncBufferReader for Arc<Channel> {
                 }
             }
         }
+    }
+}
+
+pub struct ChannelReader(Arc<Channel>);
+
+impl ChannelReader {
+    pub fn new(channel: Arc<Channel>) -> Self {
+        Self(channel)
+    }
+}
+
+#[async_trait]
+impl AsyncBufferReader for ChannelReader {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
+        self.0.read(buffer, count).await
     }
 }

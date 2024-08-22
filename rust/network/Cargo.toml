@@ -9,6 +9,7 @@ rsnano_core = { path = "../core" }
 num-traits = "0"
 num-derive = "0"
 rand = { version = "0" }
+async-trait = "0"
 tracing = "0.1"
 anyhow = "1"
 tokio = { version = "1", features = [

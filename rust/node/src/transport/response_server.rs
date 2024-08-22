@@ -1,6 +1,6 @@
 use super::{
-    Channel, HandshakeProcess, HandshakeStatus, InboundMessageQueue, LatestKeepalives,
-    MessageDeserializer, NetworkFilter, SynCookies,
+    Channel, ChannelReader, HandshakeProcess, HandshakeStatus, InboundMessageQueue,
+    LatestKeepalives, MessageDeserializer, NetworkFilter, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -327,7 +327,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
             self.network_params.network.protocol_info(),
             self.network_params.network.work.clone(),
             self.publish_filter.clone(),
-            self.channel.clone(),
+            ChannelReader::new(self.channel.clone()),
         );
 
         let mut first_message = true;

@@ -14,7 +14,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::read_block,
+    transport::{read_block, ChannelReader},
     utils::{AsyncRuntime, ThreadPool},
 };
 use async_trait::async_trait;
@@ -182,7 +182,9 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
     async fn throttled_receive_block(&self) {
         debug_assert!(!self.network_error.load(Ordering::Relaxed));
         if self.block_processor.queue_len(BlockSource::BootstrapLegacy) < 1024 {
-            let Ok(block) = read_block(self.connection.get_channel()).await else {
+            let Ok(block) =
+                read_block(&ChannelReader::new(self.connection.get_channel().clone())).await
+            else {
                 self.network_error.store(true, Ordering::SeqCst);
                 return;
             };

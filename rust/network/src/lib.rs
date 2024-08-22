@@ -6,6 +6,7 @@ pub mod peer_exclusion;
 pub mod utils;
 pub mod write_queue;
 
+use async_trait::async_trait;
 pub use channel_info::*;
 pub use dead_channel_cleanup::*;
 pub use network_info::*;
@@ -89,4 +90,9 @@ pub enum DropPolicy {
     /// Should not be dropped by bandwidth limiter,
     /// but it can still be dropped if the write queue is full
     ShouldNotDrop,
+}
+
+#[async_trait]
+pub trait AsyncBufferReader {
+    async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()>;
 }

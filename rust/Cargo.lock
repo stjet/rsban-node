@@ -1923,6 +1923,7 @@ name = "rsnano_network"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "num-derive 0.3.3",
  "num-traits",
  "rand",

@@ -32,7 +32,7 @@ pub(crate) use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::*;
 pub use latest_keepalives::*;
-pub use message_deserializer::{AsyncBufferReader, MessageDeserializer};
+pub use message_deserializer::MessageDeserializer;
 pub use message_processor::*;
 pub use message_publisher::*;
 pub use network::*;

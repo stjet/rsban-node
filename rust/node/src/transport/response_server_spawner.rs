@@ -16,8 +16,8 @@ use rsnano_network::{Channel, Network, NetworkInfo, NullNetworkObserver};
 use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
 
-pub(crate) struct ResponseServerFactory {
-    pub(crate) runtime: Arc<AsyncRuntime>,
+pub(crate) struct ResponseServerSpawner {
+    pub(crate) tokio: tokio::runtime::Handle,
     pub(crate) stats: Arc<Stats>,
     pub(crate) node_id: KeyPair,
     pub(crate) ledger: Arc<Ledger>,
@@ -33,7 +33,7 @@ pub(crate) struct ResponseServerFactory {
     pub(crate) latest_keepalives: Arc<Mutex<LatestKeepalives>>,
 }
 
-impl ResponseServerFactory {
+impl ResponseServerSpawner {
     #[allow(dead_code)]
     pub(crate) fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
         let ledger = Arc::new(Ledger::new_null());
@@ -47,7 +47,7 @@ impl ResponseServerFactory {
         let block_processor = Arc::new(BlockProcessor::new_test_instance(ledger.clone()));
         let clock = Arc::new(SteadyClock::new_null());
         Self {
-            runtime: runtime.clone(),
+            tokio: runtime.tokio.handle().clone(),
             stats: stats.clone(),
             node_id: KeyPair::from(42),
             ledger: ledger.clone(),
@@ -79,18 +79,18 @@ impl ResponseServerFactory {
         }
     }
 
-    pub(crate) fn start_outbound(&self, channel: Arc<Channel>) {
-        let response_server = self.start_response_server(channel);
-        self.runtime.tokio.spawn(async move {
+    pub(crate) fn spawn_outbound(&self, channel: Arc<Channel>) {
+        let response_server = self.spawn_response_server(channel);
+        self.tokio.spawn(async move {
             response_server.initiate_handshake().await;
         });
     }
 
-    pub(crate) fn start_inbound(&self, channel: Arc<Channel>) {
-        self.start_response_server(channel);
+    pub(crate) fn spawn_inbound(&self, channel: Arc<Channel>) {
+        self.spawn_response_server(channel);
     }
 
-    fn start_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
+    fn spawn_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
         let server = Arc::new(ResponseServer::new(
             self.network.clone(),
             self.inbound_queue.clone(),
@@ -101,7 +101,7 @@ impl ResponseServerFactory {
             true,
             self.syn_cookies.clone(),
             self.node_id.clone(),
-            self.runtime.clone(),
+            self.tokio.clone(),
             self.ledger.clone(),
             self.workers.clone(),
             self.block_processor.clone(),
@@ -111,9 +111,7 @@ impl ResponseServerFactory {
         ));
 
         let server_l = server.clone();
-        self.runtime
-            .tokio
-            .spawn(async move { server_l.run().await });
+        self.tokio.spawn(async move { server_l.run().await });
 
         server
     }

@@ -1,4 +1,4 @@
-use super::{ResponseServerFactory, TcpConfig};
+use super::{ResponseServerSpawner, TcpConfig};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
@@ -19,9 +19,9 @@ pub struct PeerConnector {
     network: Arc<Network>,
     network_observer: Arc<dyn NetworkObserver>,
     stats: Arc<Stats>,
-    runtime: Arc<AsyncRuntime>,
+    tokio: tokio::runtime::Handle,
     cancel_token: CancellationToken,
-    response_server_factory: Arc<ResponseServerFactory>,
+    response_server_factory: Arc<ResponseServerSpawner>,
     connect_listener: OutputListenerMt<SocketAddrV6>,
     clock: Arc<SteadyClock>,
 }
@@ -32,8 +32,8 @@ impl PeerConnector {
         network: Arc<Network>,
         network_observer: Arc<dyn NetworkObserver>,
         stats: Arc<Stats>,
-        runtime: Arc<AsyncRuntime>,
-        response_server_factory: Arc<ResponseServerFactory>,
+        tokio: tokio::runtime::Handle,
+        response_server_factory: Arc<ResponseServerSpawner>,
         clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
@@ -41,7 +41,7 @@ impl PeerConnector {
             network,
             network_observer,
             stats,
-            runtime,
+            tokio,
             cancel_token: CancellationToken::new(),
             response_server_factory,
             connect_listener: OutputListenerMt::new(),
@@ -56,9 +56,9 @@ impl PeerConnector {
             network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
             network_observer: Arc::new(NullNetworkObserver::new()),
             stats: Arc::new(Default::default()),
-            runtime: runtime.clone(),
+            tokio: runtime.tokio.handle().clone(),
             cancel_token: CancellationToken::new(),
-            response_server_factory: Arc::new(ResponseServerFactory::new_null(runtime.clone())),
+            response_server_factory: Arc::new(ResponseServerSpawner::new_null(runtime.clone())),
             connect_listener: OutputListenerMt::new(),
             clock: Arc::new(SteadyClock::new_null()),
         }
@@ -81,7 +81,7 @@ impl PeerConnector {
             ChannelMode::Realtime,
         )?;
 
-        self.response_server_factory.start_outbound(channel);
+        self.response_server_factory.spawn_outbound(channel);
         Ok(())
     }
 
@@ -135,7 +135,7 @@ impl PeerConnectorExt for Arc<PeerConnector> {
         self.stats.inc(StatType::Network, DetailType::MergePeer);
 
         let self_l = Arc::clone(self);
-        self.runtime.tokio.spawn(async move {
+        self.tokio.spawn(async move {
             tokio::select! {
                 result =  self_l.connect_impl(peer) =>{
                     if let Err(e) = result {

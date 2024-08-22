@@ -367,7 +367,7 @@ impl NetworkInfo {
         self.excluded_peers.is_excluded(peer_addr, now)
     }
 
-    pub(crate) fn add_attempt(&mut self, remote: SocketAddrV6, now: Timestamp) -> bool {
+    pub(crate) fn add_outbound_attempt(&mut self, remote: SocketAddrV6, now: Timestamp) -> bool {
         let count = self.attempts.count_by_address(remote.ip());
         if count >= self.network_config.max_attempts_per_ip {
             self.stats.inc_dir(
@@ -397,17 +397,26 @@ impl NetworkInfo {
     ) -> anyhow::Result<Arc<ChannelInfo>> {
         let result = self.can_add_connection(&peer_addr, direction, planned_mode, now);
         if result != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::AcceptRejected,
-                direction.into(),
-            );
-            if direction == ChannelDirection::Outbound {
-                self.stats.inc_dir(
-                    StatType::TcpListener,
-                    DetailType::ConnectFailure,
-                    Direction::Out,
-                );
+            match direction {
+                ChannelDirection::Inbound => {
+                    self.stats.inc_dir(
+                        StatType::TcpListener,
+                        DetailType::AcceptRejected,
+                        Direction::In,
+                    );
+                }
+                ChannelDirection::Outbound => {
+                    self.stats.inc_dir(
+                        StatType::TcpListener,
+                        DetailType::ConnectRejected,
+                        Direction::Out,
+                    );
+                    self.stats.inc_dir(
+                        StatType::TcpListener,
+                        DetailType::ConnectFailure,
+                        Direction::Out,
+                    );
+                }
             }
             debug!(?peer_addr, ?direction, "Rejected connection");
             if direction == ChannelDirection::Inbound {
@@ -841,9 +850,18 @@ impl NetworkInfo {
         planned_mode: ChannelMode,
         now: Timestamp,
     ) -> AcceptResult {
+        if self.network_config.disable_network {
+            return AcceptResult::Rejected;
+        }
+
         if self.excluded_peers.is_excluded(peer_addr, now) {
             return AcceptResult::Rejected;
         }
+
+        if self.check_limits(&peer_addr, direction) == AcceptResult::Rejected {
+            return AcceptResult::Rejected;
+        }
+
         if direction == ChannelDirection::Outbound {
             if self.can_add_outbound_connection(&peer_addr, planned_mode, now) {
                 AcceptResult::Accepted
@@ -851,20 +869,16 @@ impl NetworkInfo {
                 AcceptResult::Rejected
             }
         } else {
-            self.check_limits(&peer_addr, direction)
+            AcceptResult::Accepted
         }
     }
 
-    pub(crate) fn can_add_outbound_connection(
+    fn can_add_outbound_connection(
         &mut self,
         peer: &SocketAddrV6,
         planned_mode: ChannelMode,
         now: Timestamp,
     ) -> bool {
-        if self.network_config.disable_network {
-            return false;
-        }
-
         // Don't contact invalid IPs
         if self.not_a_peer(peer, self.network_config.allow_local_peers) {
             return false;
@@ -893,17 +907,6 @@ impl NetworkInfo {
             .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
         {
             return false;
-        }
-
-        if self.check_limits(peer, ChannelDirection::Outbound) != AcceptResult::Accepted {
-            self.stats.inc_dir(
-                StatType::TcpListener,
-                DetailType::ConnectRejected,
-                Direction::Out,
-            );
-            // Refusal reason should be logged earlier
-
-            return false; // Rejected
         }
 
         self.stats.inc_dir(
@@ -1099,6 +1102,12 @@ impl Drop for NetworkInfo {
         self.stop();
     }
 }
+
+pub trait NetworkInfoObserver {}
+
+pub struct NetworkInfoStats {}
+
+impl NetworkInfoObserver for NetworkInfoStats {}
 
 #[cfg(test)]
 mod tests {

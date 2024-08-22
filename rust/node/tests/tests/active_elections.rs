@@ -2,11 +2,11 @@ use rsnano_core::{
     work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource,
     DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
     stats::{DetailType, Direction, StatType},
-    transport::ChannelId,
     wallets::WalletsExt,
 };
 use std::{
@@ -88,9 +88,9 @@ fn inactive_votes_cache_basic() {
     let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(100),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -124,7 +124,7 @@ fn non_final() {
     let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(100),
         Account::from(42).into(),
         &DEV_GENESIS_KEY,
@@ -184,9 +184,9 @@ fn inactive_votes_cache_fork() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(100),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -194,9 +194,9 @@ fn inactive_votes_cache_fork() {
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(200),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -253,15 +253,15 @@ fn inactive_votes_cache_existing_vote() {
     let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - rep_weight,
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
-        key.public_key(),
+        key.account(),
         BlockHash::zero(),
         key.public_key(),
         rep_weight,
@@ -342,9 +342,9 @@ fn inactive_votes_cache_multiple_votes() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::nano(100_000),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -352,15 +352,15 @@ fn inactive_votes_cache_multiple_votes() {
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::nano(100_000),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash().into()),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
-        key.public_key(),
+        key.account(),
         BlockHash::zero(),
         key.public_key(),
         Amount::nano(100_000),
@@ -423,23 +423,23 @@ fn inactive_votes_cache_election_start() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - amount,
-        key1.public_key().into(),
+        key1.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - (amount * 2),
-        key2.public_key().into(),
+        key2.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash().into()),
     ));
     let open1 = BlockEnum::State(StateBlock::new(
-        key1.public_key(),
+        key1.account(),
         BlockHash::zero(),
         key1.public_key(),
         amount,
@@ -448,7 +448,7 @@ fn inactive_votes_cache_election_start() {
         node.work_generate_dev(key1.public_key().into()),
     ));
     let open2 = BlockEnum::State(StateBlock::new(
-        key2.public_key(),
+        key2.account(),
         BlockHash::zero(),
         key2.public_key(),
         amount,
@@ -465,7 +465,7 @@ fn inactive_votes_cache_election_start() {
     let send3 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send2.hash(),
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         send2.balance() - Amount::raw(1),
         Account::from(2).into(),
         &DEV_GENESIS_KEY,
@@ -474,7 +474,7 @@ fn inactive_votes_cache_election_start() {
     let send4 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send3.hash(),
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         send3.balance() - Amount::raw(1),
         Account::from(3).into(),
         &DEV_GENESIS_KEY,
@@ -554,9 +554,9 @@ fn republish_winner() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::nano(1000),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -579,9 +579,9 @@ fn republish_winner() {
         let fork = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
-            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_PUB_KEY,
             Amount::MAX - Amount::raw(1 + i),
-            key.public_key().into(),
+            key.account().into(),
             &DEV_GENESIS_KEY,
             node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
@@ -601,9 +601,9 @@ fn republish_winner() {
     let fork = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::nano(2000),
-        key.public_key().into(),
+        key.account().into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
@@ -643,7 +643,7 @@ fn confirm_election_by_request() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(100),
         1.into(),
         &DEV_GENESIS_KEY,
@@ -708,7 +708,7 @@ fn confirm_election_by_request() {
 
     // Add representative (node1) to disabled rep crawler of node2
     node2.online_reps.lock().unwrap().vote_observed_directly(
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         peers[0].channel_id(),
         node2.steady_clock.now(),
     );
@@ -740,7 +740,7 @@ fn confirm_frontier() {
     let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(100),
         1.into(),
         &DEV_GENESIS_KEY,
@@ -785,7 +785,7 @@ fn confirm_frontier() {
         .random_realtime_channels(1, 0);
     assert!(!peers.is_empty());
     node2.online_reps.lock().unwrap().vote_observed_directly(
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         peers[0].channel_id(),
         node2.steady_clock.now(),
     );

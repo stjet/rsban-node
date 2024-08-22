@@ -1,13 +1,11 @@
 use super::{Channel, SynCookies};
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::TrafficType,
-};
+use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, PublicKey};
 use rsnano_messages::{
     Message, MessageSerializer, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
     ProtocolInfo,
 };
+use rsnano_network::TrafficType;
 use std::{
     net::SocketAddrV6,
     sync::{

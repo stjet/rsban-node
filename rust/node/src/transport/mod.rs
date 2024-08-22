@@ -1,4 +1,3 @@
-mod attempt_container;
 mod bandwidth_limiter;
 mod block_deserializer;
 mod channel;
@@ -13,6 +12,7 @@ mod message_publisher;
 mod network;
 mod network_filter;
 mod network_info;
+mod network_stats;
 mod network_threads;
 mod peer_cache_connector;
 mod peer_cache_updater;
@@ -44,6 +44,7 @@ pub use message_publisher::*;
 pub use network::*;
 pub use network_filter::NetworkFilter;
 pub use network_info::*;
+pub use network_stats::*;
 pub(crate) use network_threads::*;
 pub use peer_cache_connector::*;
 pub use peer_cache_updater::*;
@@ -52,7 +53,8 @@ pub(crate) use peer_exclusion::PeerExclusion;
 pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
 pub(crate) use response_server_factory::*;
-use std::fmt::{Debug, Display};
+use rsnano_network::ChannelDirection;
+use std::fmt::Debug;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 use token_bucket::TokenBucket;
@@ -60,37 +62,6 @@ pub use tokio_socket_facade::*;
 pub use vec_buffer_reader::VecBufferReader;
 
 use crate::stats;
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
-pub struct ChannelId(usize);
-
-impl ChannelId {
-    pub const LOOPBACK: Self = Self(0);
-    pub const MIN: Self = Self(usize::MIN);
-    pub const MAX: Self = Self(usize::MAX);
-
-    pub fn as_usize(&self) -> usize {
-        self.0
-    }
-}
-
-impl Display for ChannelId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
-    }
-}
-
-impl Debug for ChannelId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
-    }
-}
-
-impl From<usize> for ChannelId {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
 
 /// Policy to affect at which stage a buffer can be dropped
 #[derive(PartialEq, Eq, FromPrimitive, Debug, Clone, Copy)]
@@ -100,14 +71,6 @@ pub enum DropPolicy {
     /// Should not be dropped by bandwidth limiter,
     /// but it can still be dropped if the write queue is full
     ShouldNotDrop,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, FromPrimitive, Debug)]
-pub enum ChannelDirection {
-    /// Socket was created by accepting an incoming connection
-    Inbound,
-    /// Socket was created by initiating an outgoing connection
-    Outbound,
 }
 
 impl From<ChannelDirection> for stats::Direction {
@@ -137,11 +100,4 @@ impl ChannelMode {
             ChannelMode::Realtime => "realtime",
         }
     }
-}
-
-#[derive(FromPrimitive, Copy, Clone, Debug)]
-pub enum TrafficType {
-    Generic,
-    /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
-    Bootstrap,
 }

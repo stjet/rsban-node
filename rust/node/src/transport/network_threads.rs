@@ -1,6 +1,6 @@
 use super::{
     DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, NetworkInfo, PeerConnector,
-    PeerConnectorExt, SynCookies, TrafficType,
+    PeerConnectorExt, SynCookies,
 };
 use crate::{
     config::{NodeConfig, NodeFlags},
@@ -9,12 +9,13 @@ use crate::{
 };
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_messages::{Keepalive, Message};
+use rsnano_network::TrafficType;
 use rsnano_nullable_clock::SteadyClock;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::JoinHandle,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 pub(crate) struct NetworkThreads {

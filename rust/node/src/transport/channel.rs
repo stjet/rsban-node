@@ -1,17 +1,15 @@
 use super::{
     write_queue::{WriteQueue, WriteQueueReceiver},
-    AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkInfo,
-    OutboundBandwidthLimiter, TrafficType,
+    AsyncBufferReader, ChannelDirection, ChannelInfo, DropPolicy, NetworkInfo,
+    OutboundBandwidthLimiter,
 };
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::into_ipv6_socket_address,
-};
+use crate::stats::{DetailType, Direction, StatType, Stats};
 use async_trait::async_trait;
 use rsnano_core::{
     utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
-    Account,
+    PublicKey,
 };
+use rsnano_network::{utils::into_ipv6_socket_address, ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
@@ -73,6 +71,7 @@ impl Channel {
                 TEST_ENDPOINT_1,
                 TEST_ENDPOINT_2,
                 ChannelDirection::Outbound,
+                u8::MAX,
                 Timestamp::new_test_instance(),
             )),
             Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
@@ -150,7 +149,7 @@ impl Channel {
         self.channel_id
     }
 
-    pub fn set_node_id(&self, id: Account) {
+    pub fn set_node_id(&self, id: PublicKey) {
         self.network_info
             .read()
             .unwrap()

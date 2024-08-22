@@ -1,7 +1,9 @@
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message};
-use rsnano_node::transport::{ChannelId, ChannelMode, DropPolicy, TrafficType};
+use rsnano_network::ChannelId;
+use rsnano_network::TrafficType;
+use rsnano_node::transport::{ChannelMode, DropPolicy};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_always_eq, assert_never, assert_timely_eq, System};
 
@@ -90,14 +92,14 @@ fn rep_weight() {
     let block1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - amount_not_pr,
-        keypair1.public_key().into(),
+        keypair1.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
     let block2 = BlockEnum::State(StateBlock::new(
-        keypair1.public_key(),
+        keypair1.account(),
         BlockHash::zero(),
         keypair1.public_key(),
         amount_not_pr,
@@ -108,14 +110,14 @@ fn rep_weight() {
     let block3 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         block1.hash(),
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - amount_not_pr - amount_pr,
-        keypair2.public_key().into(),
+        keypair2.account().into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(block1.hash().into()),
     ));
     let block4 = BlockEnum::State(StateBlock::new(
-        keypair2.public_key(),
+        keypair2.account(),
         BlockHash::zero(),
         keypair2.public_key(),
         amount_pr,

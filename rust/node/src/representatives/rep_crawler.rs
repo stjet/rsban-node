@@ -4,19 +4,20 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::{
-        ChannelId, ChannelInfo, DropPolicy, MessagePublisher, NetworkInfo, PeerConnector,
-        PeerConnectorExt, TrafficType,
+        ChannelInfo, DropPolicy, MessagePublisher, NetworkInfo, PeerConnector, PeerConnectorExt,
     },
-    utils::{into_ipv6_socket_address, AsyncRuntime},
+    utils::AsyncRuntime,
     NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
-    BlockHash, Root, Vote,
+    Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{ConfirmReq, Keepalive, Message};
+use rsnano_network::utils::into_ipv6_socket_address;
+use rsnano_network::{ChannelId, TrafficType};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     collections::HashMap,
@@ -287,7 +288,7 @@ impl RepCrawler {
             if rep_weight < minimum {
                 debug!(
                     "Ignoring vote from account: {} with too little voting weight: {}",
-                    vote.voting_account.encode_account(),
+                    Account::from(vote.voting_account).encode_account(),
                     rep_weight.to_string_dec()
                 );
                 continue;
@@ -303,14 +304,14 @@ impl RepCrawler {
                 InsertResult::Inserted => {
                     info!(
                         "Found representative: {} at channel: {}",
-                        vote.voting_account.encode_account(),
+                        Account::from(vote.voting_account).encode_account(),
                         channel_id
                     );
                 }
                 InsertResult::ChannelChanged(previous) => {
                     warn!(
                         "Updated representative: {} at channel: {} (was at: {})",
-                        vote.voting_account.encode_account(),
+                        Account::from(vote.voting_account).encode_account(),
                         channel_id,
                         previous
                     )

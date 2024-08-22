@@ -1,9 +1,10 @@
 use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
+use rsnano_network::TrafficType;
 use rsnano_node::{
     stats::{DetailType, Direction, StatType},
-    transport::{ChannelMode, DropPolicy, TrafficType},
+    transport::{ChannelMode, DropPolicy},
 };
 use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{
@@ -154,7 +155,7 @@ fn receivable_processor_confirm_insufficient_pos() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(1),
         Account::zero().into(),
         &DEV_GENESIS_KEY,
@@ -184,7 +185,7 @@ fn receivable_processor_confirm_sufficient_pos() {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
-        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_PUB_KEY,
         Amount::MAX - Amount::raw(1),
         Account::zero().into(),
         &DEV_GENESIS_KEY,

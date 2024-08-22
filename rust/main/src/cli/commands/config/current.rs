@@ -2,7 +2,7 @@ use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_node::config::{get_node_toml_config_path, get_rpc_toml_config_path, DaemonToml};
-use rsnano_rpc::RpcToml;
+use rsnano_rpc_server::RpcServerToml;
 use std::fs::read_to_string;
 use toml::from_str;
 
@@ -51,11 +51,12 @@ impl CurrentArgs {
             if rpc_toml_config_path.exists() {
                 let toml_str = read_to_string(&rpc_toml_config_path)?;
 
-                let current_rpc_toml: RpcToml = from_str(&toml_str)?;
+                let current_rpc_server_toml: RpcServerToml = from_str(&toml_str)?;
 
-                let default_rpc_toml = RpcToml::default();
+                let default_rpc_server_toml = RpcServerToml::default();
 
-                let merged_toml_str = current_rpc_toml.merge_defaults(&default_rpc_toml)?;
+                let merged_toml_str =
+                    current_rpc_server_toml.merge_defaults(&default_rpc_server_toml)?;
 
                 println!("{}", merged_toml_str);
             }

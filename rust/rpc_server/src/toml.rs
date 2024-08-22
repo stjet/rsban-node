@@ -1,27 +1,27 @@
-use super::rpc_config::{RpcConfig, RpcLoggingConfig, RpcProcessConfig};
+use super::config::{RpcServerConfig, RpcServerLoggingConfig, RpcServerProcessConfig};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
-pub struct RpcToml {
+pub struct RpcServerToml {
     pub address: Option<String>,
     pub enable_control: Option<bool>,
     pub max_json_depth: Option<u8>,
     pub max_request_size: Option<u64>,
     pub port: Option<u16>,
-    pub logging: Option<RpcLoggingToml>,
-    pub process: Option<RpcProcessToml>,
+    pub logging: Option<RpcServerLoggingToml>,
+    pub process: Option<RpcServerProcessToml>,
 }
 
-impl Default for RpcToml {
+impl Default for RpcServerToml {
     fn default() -> Self {
-        let config = RpcConfig::default();
+        let config = RpcServerConfig::default();
         (&config).into()
     }
 }
 
-impl RpcToml {
-    pub fn merge_defaults(&self, default_config: &RpcToml) -> Result<String> {
+impl RpcServerToml {
+    pub fn merge_defaults(&self, default_config: &RpcServerToml) -> Result<String> {
         let defaults_str = toml::to_string(default_config)?;
         let current_str = toml::to_string(self)?;
 
@@ -75,9 +75,23 @@ impl RpcToml {
     }
 }
 
-impl From<&RpcToml> for RpcConfig {
-    fn from(toml: &RpcToml) -> Self {
-        let mut config = RpcConfig::default();
+impl From<&RpcServerConfig> for RpcServerToml {
+    fn from(config: &RpcServerConfig) -> Self {
+        Self {
+            address: Some(config.address.clone()),
+            port: Some(config.port),
+            enable_control: Some(config.enable_control),
+            max_json_depth: Some(config.max_json_depth),
+            max_request_size: Some(config.max_request_size),
+            logging: Some((&config.rpc_logging).into()),
+            process: Some((&config.rpc_process).into()),
+        }
+    }
+}
+
+impl From<&RpcServerToml> for RpcServerConfig {
+    fn from(toml: &RpcServerToml) -> Self {
+        let mut config = RpcServerConfig::default();
         if let Some(address) = &toml.address {
             config.address = address.clone();
         }
@@ -103,43 +117,29 @@ impl From<&RpcToml> for RpcConfig {
     }
 }
 
-impl From<&RpcConfig> for RpcToml {
-    fn from(config: &RpcConfig) -> Self {
-        Self {
-            address: Some(config.address.clone()),
-            port: Some(config.port),
-            enable_control: Some(config.enable_control),
-            max_json_depth: Some(config.max_json_depth),
-            max_request_size: Some(config.max_request_size),
-            logging: Some((&config.rpc_logging).into()),
-            process: Some((&config.rpc_process).into()),
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize)]
-pub struct RpcLoggingToml {
+pub struct RpcServerLoggingToml {
     pub log_rpc: Option<bool>,
 }
 
-impl Default for RpcLoggingToml {
+impl Default for RpcServerLoggingToml {
     fn default() -> Self {
-        let config = RpcLoggingConfig::new();
+        let config = RpcServerLoggingConfig::default();
         (&config).into()
     }
 }
 
-impl From<&RpcLoggingConfig> for RpcLoggingToml {
-    fn from(config: &RpcLoggingConfig) -> Self {
+impl From<&RpcServerLoggingConfig> for RpcServerLoggingToml {
+    fn from(config: &RpcServerLoggingConfig) -> Self {
         Self {
             log_rpc: Some(config.log_rpc),
         }
     }
 }
 
-impl From<&RpcLoggingToml> for RpcLoggingConfig {
-    fn from(toml: &RpcLoggingToml) -> Self {
-        let mut config = RpcLoggingConfig::new();
+impl From<&RpcServerLoggingToml> for RpcServerLoggingConfig {
+    fn from(toml: &RpcServerLoggingToml) -> Self {
+        let mut config = RpcServerLoggingConfig::default();
         if let Some(log_rpc) = toml.log_rpc {
             config.log_rpc = log_rpc;
         }
@@ -148,22 +148,22 @@ impl From<&RpcLoggingToml> for RpcLoggingConfig {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct RpcProcessToml {
+pub struct RpcServerProcessToml {
     pub io_threads: Option<u32>,
     pub ipc_address: Option<String>,
     pub ipc_port: Option<u16>,
     pub num_ipc_connections: Option<u32>,
 }
 
-impl Default for RpcProcessToml {
+impl Default for RpcServerProcessToml {
     fn default() -> Self {
-        let config = RpcProcessConfig::default();
+        let config = RpcServerProcessConfig::default();
         (&config).into()
     }
 }
 
-impl From<&RpcProcessConfig> for RpcProcessToml {
-    fn from(config: &RpcProcessConfig) -> Self {
+impl From<&RpcServerProcessConfig> for RpcServerProcessToml {
+    fn from(config: &RpcServerProcessConfig) -> Self {
         Self {
             io_threads: Some(config.io_threads),
             ipc_address: Some(config.ipc_address.clone()),
@@ -173,9 +173,9 @@ impl From<&RpcProcessConfig> for RpcProcessToml {
     }
 }
 
-impl From<&RpcProcessToml> for RpcProcessConfig {
-    fn from(toml: &RpcProcessToml) -> Self {
-        let mut config = RpcProcessConfig::default();
+impl From<&RpcServerProcessToml> for RpcServerProcessConfig {
+    fn from(toml: &RpcServerProcessToml) -> Self {
+        let mut config = RpcServerProcessConfig::default();
         if let Some(io_threads) = toml.io_threads {
             config.io_threads = io_threads;
         }
@@ -194,7 +194,7 @@ impl From<&RpcProcessToml> for RpcProcessConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::{RpcConfig, RpcToml};
+    use crate::{RpcServerConfig, RpcServerToml};
     use toml::{from_str, to_string};
 
     static DEFAULT_TOML_STR: &str = r#"
@@ -231,21 +231,22 @@ mod tests {
 
     #[test]
     fn deserialize_defaults() {
-        let deserialized_toml: RpcToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
+        let deserialized_toml: RpcServerToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
 
-        let default_rpc_config = RpcConfig::default();
-        let deserialized_rpc_config: RpcConfig = (&deserialized_toml).into();
+        let default_rpc_config = RpcServerConfig::default();
+        let deserialized_rpc_config: RpcServerConfig = (&deserialized_toml).into();
 
         assert_eq!(&deserialized_rpc_config, &default_rpc_config);
     }
 
     #[test]
     fn deserialize_no_defaults() {
-        let rpc_toml: RpcToml = from_str(MODIFIED_TOML_STR).expect("Failed to deserialize TOML");
+        let rpc_toml: RpcServerToml =
+            from_str(MODIFIED_TOML_STR).expect("Failed to deserialize TOML");
 
-        let deserialized_rpc_config: RpcConfig = (&rpc_toml).into();
+        let deserialized_rpc_config: RpcServerConfig = (&rpc_toml).into();
 
-        let default_rpc_config = RpcConfig::default();
+        let default_rpc_config = RpcServerConfig::default();
 
         assert_ne!(deserialized_rpc_config.address, default_rpc_config.address);
         assert_ne!(
@@ -289,20 +290,20 @@ mod tests {
     fn deserialize_empty() {
         let toml_str = "";
 
-        let rpc_toml: RpcToml = from_str(&toml_str).expect("Failed to deserialize TOML");
+        let rpc_toml: RpcServerToml = from_str(&toml_str).expect("Failed to deserialize TOML");
 
-        let deserialized_rpc_config: RpcConfig = (&rpc_toml).into();
+        let deserialized_rpc_config: RpcServerConfig = (&rpc_toml).into();
 
-        let default_rpc_config = RpcConfig::default();
+        let default_rpc_config = RpcServerConfig::default();
 
         assert_eq!(&deserialized_rpc_config, &default_rpc_config);
     }
 
     #[test]
     fn serialize_defaults() {
-        let default_rpc_config = RpcConfig::default();
+        let default_rpc_config = RpcServerConfig::default();
 
-        let default_rpc_toml: RpcToml = (&default_rpc_config).into();
+        let default_rpc_toml: RpcServerToml = (&default_rpc_config).into();
 
         let serialized_toml = to_string(&default_rpc_toml).unwrap();
 

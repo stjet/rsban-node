@@ -1,5 +1,4 @@
 mod block_deserializer;
-mod channel;
 mod fair_queue;
 mod handshake_process;
 mod inbound_message_queue;
@@ -22,7 +21,6 @@ mod tokio_socket_facade;
 mod vec_buffer_reader;
 
 pub use block_deserializer::read_block;
-pub use channel::*;
 pub(crate) use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::*;
@@ -39,7 +37,6 @@ pub use peer_connector::*;
 pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
 pub(crate) use response_server_factory::*;
-use rsnano_network::ChannelDirection;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 pub use tokio_socket_facade::*;

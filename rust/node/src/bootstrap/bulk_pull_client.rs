@@ -14,12 +14,13 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::BootstrapMode,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{read_block, ChannelReader},
+    transport::read_block,
     utils::{AsyncRuntime, ThreadPool},
 };
 use async_trait::async_trait;
 use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
 use rsnano_messages::{BulkPull, Message};
+use rsnano_network::ChannelReader;
 use tracing::{debug, trace};
 
 pub struct BulkPullClient {

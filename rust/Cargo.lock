@@ -1930,6 +1930,7 @@ dependencies = [
  "rand",
  "rsnano_core",
  "rsnano_nullable_clock",
+ "rsnano_nullable_tcp",
  "tokio",
  "tracing",
 ]

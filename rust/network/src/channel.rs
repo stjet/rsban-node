@@ -1,14 +1,14 @@
-use async_trait::async_trait;
-use rsnano_core::{
-    utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
-    PublicKey,
-};
-use rsnano_network::{
+use crate::{
     bandwidth_limiter::OutboundBandwidthLimiter,
     utils::into_ipv6_socket_address,
     write_queue::{WriteQueue, WriteQueueReceiver},
     AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkInfo,
     NetworkObserver, NullNetworkObserver, TrafficType,
+};
+use async_trait::async_trait;
+use rsnano_core::{
+    utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
+    PublicKey,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_nullable_tcp::TcpStream;

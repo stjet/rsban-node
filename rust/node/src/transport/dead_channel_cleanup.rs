@@ -1,5 +1,4 @@
-use super::NetworkInfo;
-use rsnano_network::ChannelId;
+use rsnano_network::{ChannelId, NetworkInfo};
 use rsnano_nullable_clock::SteadyClock;
 use std::{
     sync::{Arc, RwLock},

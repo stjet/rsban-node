@@ -1,6 +1,6 @@
 use super::{
     Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, NetworkFilter,
-    NetworkInfo, NetworkStats, ResponseServer, ResponseServerExt, SynCookies,
+    NetworkStats, ResponseServer, ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -12,6 +12,7 @@ use crate::{
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
+use rsnano_network::NetworkInfo;
 use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
 

@@ -6,13 +6,13 @@ use super::{
 use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{MessagePublisher, Network, NetworkInfo, NetworkStats},
+    transport::{MessagePublisher, Network, NetworkStats},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
 use rsnano_core::{utils::PropertyTree, Account, BlockHash};
-use rsnano_network::{ChannelDirection, ChannelMode};
+use rsnano_network::{ChannelDirection, ChannelMode, NetworkInfo};
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStreamFactory;
 use std::{

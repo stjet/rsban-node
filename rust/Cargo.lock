@@ -1924,8 +1924,10 @@ version = "0.1.0"
 dependencies = [
  "num-derive 0.3.3",
  "num-traits",
+ "rand",
  "rsnano_core",
  "rsnano_nullable_clock",
+ "tracing",
 ]
 
 [[package]]

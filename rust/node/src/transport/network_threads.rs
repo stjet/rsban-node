@@ -1,5 +1,5 @@
 use super::{
-    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, NetworkInfo, PeerConnector,
+    DeadChannelCleanup, DropPolicy, LatestKeepalives, MessagePublisher, PeerConnector,
     PeerConnectorExt, SynCookies,
 };
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
 };
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_messages::{Keepalive, Message};
-use rsnano_network::TrafficType;
+use rsnano_network::{NetworkInfo, TrafficType};
 use rsnano_nullable_clock::SteadyClock;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},

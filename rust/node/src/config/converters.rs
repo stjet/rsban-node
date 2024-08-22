@@ -1,8 +1,9 @@
+use rsnano_network::NetworkConfig;
+
 use super::{AccountSetsToml, FrontiersConfirmationMode, GlobalConfig};
 use crate::{
     block_processing::{BacklogPopulationConfig, BlockProcessorConfig},
     bootstrap::{AccountSetsConfig, BootstrapAscendingConfig, BootstrapInitiatorConfig},
-    transport::NetworkConfig,
 };
 use std::time::Duration;
 

@@ -1,10 +1,9 @@
-use super::NetworkInfo;
 use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
 };
 use rsnano_ledger::Ledger;
-use rsnano_network::ChannelInfo;
+use rsnano_network::{ChannelInfo, NetworkInfo};
 use rsnano_nullable_clock::SystemTimeFactory;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{

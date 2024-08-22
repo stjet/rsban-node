@@ -165,7 +165,7 @@ pub extern "C" fn rsn_node_tcp_channels(handle: &NodeHandle) -> *mut TcpChannels
 #[no_mangle]
 pub extern "C" fn rsn_node_network_filter(handle: &NodeHandle) -> *mut NetworkFilterHandle {
     Box::into_raw(Box::new(NetworkFilterHandle(Arc::clone(
-        &handle.0.network.publish_filter,
+        &handle.0.publish_filter,
     ))))
 }
 

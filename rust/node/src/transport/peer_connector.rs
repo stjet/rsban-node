@@ -1,64 +1,63 @@
-use super::{ResponseServerSpawner, TcpConfig};
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::AsyncRuntime,
-};
+use super::{NullResponseServerSpawner, ResponseServerSpawner};
+use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_network::{
     ChannelDirection, ChannelMode, Network, NetworkObserver, NullNetworkObserver,
 };
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
-use std::{net::SocketAddrV6, sync::Arc};
+use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
 /// Establishes a network connection to a given peer
 pub struct PeerConnector {
-    config: TcpConfig,
+    connect_timeout: Duration,
     network: Arc<Network>,
     network_observer: Arc<dyn NetworkObserver>,
     stats: Arc<Stats>,
     tokio: tokio::runtime::Handle,
     cancel_token: CancellationToken,
-    response_server_factory: Arc<ResponseServerSpawner>,
+    response_server_spawner: Arc<dyn ResponseServerSpawner>,
     connect_listener: OutputListenerMt<SocketAddrV6>,
     clock: Arc<SteadyClock>,
 }
 
 impl PeerConnector {
+    const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
+
     pub(crate) fn new(
-        config: TcpConfig,
+        connect_timeout: Duration,
         network: Arc<Network>,
         network_observer: Arc<dyn NetworkObserver>,
         stats: Arc<Stats>,
         tokio: tokio::runtime::Handle,
-        response_server_factory: Arc<ResponseServerSpawner>,
+        response_server_spawner: Arc<dyn ResponseServerSpawner>,
         clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
-            config,
+            connect_timeout,
             network,
             network_observer,
             stats,
             tokio,
             cancel_token: CancellationToken::new(),
-            response_server_factory,
+            response_server_spawner,
             connect_listener: OutputListenerMt::new(),
             clock,
         }
     }
 
     #[allow(dead_code)]
-    pub(crate) fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
+    pub(crate) fn new_null(tokio: tokio::runtime::Handle) -> Self {
         Self {
-            config: Default::default(),
-            network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
+            connect_timeout: Self::DEFAULT_TIMEOUT,
+            network: Arc::new(Network::new_null(tokio.clone())),
             network_observer: Arc::new(NullNetworkObserver::new()),
             stats: Arc::new(Default::default()),
-            tokio: runtime.tokio.handle().clone(),
+            tokio: tokio.clone(),
             cancel_token: CancellationToken::new(),
-            response_server_factory: Arc::new(ResponseServerSpawner::new_null(runtime.clone())),
+            response_server_spawner: Arc::new(NullResponseServerSpawner::new()),
             connect_listener: OutputListenerMt::new(),
             clock: Arc::new(SteadyClock::new_null()),
         }
@@ -81,7 +80,7 @@ impl PeerConnector {
             ChannelMode::Realtime,
         )?;
 
-        self.response_server_factory.spawn_outbound(channel);
+        self.response_server_spawner.spawn(channel);
         Ok(())
     }
 
@@ -148,7 +147,7 @@ impl PeerConnectorExt for Arc<PeerConnector> {
                     }
 
                 },
-                _ = tokio::time::sleep(self_l.config.connect_timeout) =>{
+                _ = tokio::time::sleep(self_l.connect_timeout) =>{
                     self_l.stats
                         .inc(StatType::TcpListener, DetailType::AttemptTimeout);
                     debug!(
@@ -178,10 +177,9 @@ mod tests {
     use super::*;
     use rsnano_core::utils::TEST_ENDPOINT_1;
 
-    #[test]
-    fn track_connections() {
-        let runtime = Arc::new(AsyncRuntime::default());
-        let peer_connector = Arc::new(PeerConnector::new_null(runtime));
+    #[tokio::test]
+    async fn track_connections() {
+        let peer_connector = Arc::new(PeerConnector::new_null(tokio::runtime::Handle::current()));
         let connect_tracker = peer_connector.track_connections();
 
         peer_connector.connect_to(TEST_ENDPOINT_1);

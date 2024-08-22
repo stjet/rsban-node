@@ -29,9 +29,9 @@ use crate::{
     },
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
-        LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NetworkFilter, NetworkThreads,
-        PeerCacheConnector, PeerCacheUpdater, PeerConnector, RealtimeMessageHandler,
-        ResponseServerSpawner, SynCookies, TcpListener, TcpListenerExt,
+        LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NanoResponseServerSpawner,
+        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        RealtimeMessageHandler, SynCookies, TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -511,7 +511,7 @@ impl Node {
         let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
         dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));
 
-        let response_server_factory = Arc::new(ResponseServerSpawner {
+        let response_server_spawner = Arc::new(NanoResponseServerSpawner {
             tokio: tokio_handle.clone(),
             stats: stats.clone(),
             node_id: node_id.clone(),
@@ -529,12 +529,12 @@ impl Node {
         });
 
         let peer_connector = Arc::new(PeerConnector::new(
-            config.tcp.clone(),
+            config.tcp.connect_timeout,
             network.clone(),
             network_observer.clone(),
             stats.clone(),
             tokio_handle.clone(),
-            response_server_factory.clone(),
+            response_server_spawner.clone(),
             steady_clock.clone(),
         ));
 
@@ -565,7 +565,7 @@ impl Node {
             network.clone(),
             async_rt.clone(),
             stats.clone(),
-            response_server_factory.clone(),
+            response_server_spawner.clone(),
         ));
 
         let hinted_scheduler = Arc::new(HintedScheduler::new(

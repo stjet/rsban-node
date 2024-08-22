@@ -1,4 +1,4 @@
-use super::ResponseServerSpawner;
+use super::{NanoResponseServerSpawner, ResponseServerSpawner};
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
@@ -27,7 +27,7 @@ pub struct TcpListener {
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
-    response_server_factory: Arc<ResponseServerSpawner>,
+    response_server_spawner: Arc<dyn ResponseServerSpawner>,
 }
 
 impl Drop for TcpListener {
@@ -47,7 +47,7 @@ impl TcpListener {
         network: Arc<Network>,
         runtime: Arc<AsyncRuntime>,
         stats: Arc<Stats>,
-        response_server_factory: Arc<ResponseServerSpawner>,
+        response_server_factory: Arc<NanoResponseServerSpawner>,
     ) -> Self {
         Self {
             port: AtomicU16::new(port),
@@ -60,7 +60,7 @@ impl TcpListener {
             stats,
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
-            response_server_factory,
+            response_server_spawner: response_server_factory,
         }
     }
 
@@ -145,7 +145,7 @@ impl TcpListenerExt for Arc<TcpListener> {
                     ChannelMode::Undefined,
                 ) {
                     Ok(channel) => {
-                        self.response_server_factory.spawn_inbound(channel);
+                        self.response_server_spawner.spawn(channel);
                     }
                     Err(e) => {
                         warn!("Could not accept incoming connection: {:?}", e);

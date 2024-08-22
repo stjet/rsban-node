@@ -12,11 +12,28 @@ use crate::{
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
-use rsnano_network::{Channel, Network, NetworkInfo, NullNetworkObserver};
+use rsnano_network::{Channel, ChannelDirection, Network, NetworkInfo, NullNetworkObserver};
 use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
 
-pub(crate) struct ResponseServerSpawner {
+/// Responsable for asynchronously launching a response server for a given channel
+pub trait ResponseServerSpawner: Send + Sync {
+    fn spawn(&self, channel: Arc<Channel>);
+}
+
+pub struct NullResponseServerSpawner {}
+
+impl NullResponseServerSpawner {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl ResponseServerSpawner for NullResponseServerSpawner {
+    fn spawn(&self, _channel: Arc<Channel>) {}
+}
+
+pub struct NanoResponseServerSpawner {
     pub(crate) tokio: tokio::runtime::Handle,
     pub(crate) stats: Arc<Stats>,
     pub(crate) node_id: KeyPair,
@@ -33,7 +50,7 @@ pub(crate) struct ResponseServerSpawner {
     pub(crate) latest_keepalives: Arc<Mutex<LatestKeepalives>>,
 }
 
-impl ResponseServerSpawner {
+impl NanoResponseServerSpawner {
     #[allow(dead_code)]
     pub(crate) fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
         let ledger = Arc::new(Ledger::new_null());
@@ -86,10 +103,6 @@ impl ResponseServerSpawner {
         });
     }
 
-    pub(crate) fn spawn_inbound(&self, channel: Arc<Channel>) {
-        self.spawn_response_server(channel);
-    }
-
     fn spawn_response_server(&self, channel: Arc<Channel>) -> Arc<ResponseServer> {
         let server = Arc::new(ResponseServer::new(
             self.network.clone(),
@@ -114,5 +127,16 @@ impl ResponseServerSpawner {
         self.tokio.spawn(async move { server_l.run().await });
 
         server
+    }
+}
+
+impl ResponseServerSpawner for NanoResponseServerSpawner {
+    fn spawn(&self, channel: Arc<Channel>) {
+        match channel.info.direction() {
+            ChannelDirection::Inbound => {
+                self.spawn_response_server(channel);
+            }
+            ChannelDirection::Outbound => self.spawn_outbound(channel),
+        }
     }
 }

@@ -33,7 +33,7 @@ pub use peer_cache_updater::*;
 pub use peer_connector::*;
 pub use realtime_message_handler::RealtimeMessageHandler;
 pub use response_server::*;
-pub(crate) use response_server_spawner::*;
+pub use response_server_spawner::*;
 pub use syn_cookies::SynCookies;
 pub use tcp_listener::*;
 pub use vec_buffer_reader::VecBufferReader;

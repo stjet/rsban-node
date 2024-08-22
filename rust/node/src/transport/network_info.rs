@@ -1,13 +1,14 @@
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
+    transport::NetworkStats,
     utils::{
         ipv4_address_or_ipv6_subnet, is_ipv4_mapped, map_address_to_subnetwork, reserved_address,
     },
 };
 
 use super::{
-    attempt_container::AttemptContainer, AcceptResult, ChannelDirection, ChannelId, ChannelMode,
-    ChannelsInfo, PeerExclusion, TrafficType,
+    attempt_container::AttemptContainer, ChannelDirection, ChannelId, ChannelMode, PeerExclusion,
+    TrafficType,
 };
 use num::FromPrimitive;
 use rand::{seq::SliceRandom, thread_rng};
@@ -318,6 +319,18 @@ pub struct NetworkInfo {
     excluded_peers: PeerExclusion,
 }
 
+pub enum NetworkError {
+    MaxConnections,
+    MaxConnectionsPerSubnetwork,
+    MaxConnectionsPerIp,
+    /// Peer is excluded due to bad behavior
+    PeerExcluded,
+    InvalidIp,
+    /// We are already connected to that peer and we tried to connect a second time
+    DuplicateConnection,
+    Rejected,
+}
+
 impl NetworkInfo {
     pub fn new(network_config: NetworkConfig, stats: Arc<Stats>) -> Self {
         Self {
@@ -396,7 +409,8 @@ impl NetworkInfo {
         now: Timestamp,
     ) -> anyhow::Result<Arc<ChannelInfo>> {
         let result = self.can_add_connection(&peer_addr, direction, planned_mode, now);
-        if result != AcceptResult::Accepted {
+        if let Err(e) = result {
+            NetworkStats::new(self.stats.clone()).error(e, &peer_addr, direction);
             match direction {
                 ChannelDirection::Inbound => {
                     self.stats.inc_dir(
@@ -637,85 +651,6 @@ impl NetworkInfo {
         (self.len_sqrt() * scale).ceil() as usize
     }
 
-    pub fn check_limits(
-        &mut self,
-        peer: &SocketAddrV6,
-        direction: ChannelDirection,
-    ) -> AcceptResult {
-        if !self.network_config.disable_max_peers_per_ip {
-            let count = self.count_by_ip(peer.ip());
-            if count >= self.network_config.max_peers_per_ip {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxPerIp,
-                    direction.into(),
-                );
-                debug!(
-                    "Max connections per IP reached ({}, count: {}), unable to open new connection",
-                    peer.ip(),
-                    count
-                );
-                return AcceptResult::Rejected;
-            }
-        }
-
-        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
-        if !self.network_config.disable_max_peers_per_subnetwork && !is_ipv4_mapped(&peer.ip()) {
-            let subnet = map_address_to_subnetwork(&peer.ip());
-            let count = self.count_by_subnet(&subnet);
-            if count >= self.network_config.max_peers_per_subnetwork {
-                self.stats.inc_dir(
-                    StatType::TcpListenerRejected,
-                    DetailType::MaxPerSubnetwork,
-                    direction.into(),
-                );
-                debug!(
-                    "Max connections per subnetwork reached ({}), unable to open new connection",
-                    peer.ip()
-                );
-                return AcceptResult::Rejected;
-            }
-        }
-
-        match direction {
-            ChannelDirection::Inbound => {
-                let count = self.count_by_direction(ChannelDirection::Inbound);
-
-                if count >= self.network_config.max_inbound_connections {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttempts,
-                        direction.into(),
-                    );
-                    debug!(
-                        "Max inbound connections reached ({}), unable to accept new connection: {}",
-                        count,
-                        peer.ip()
-                    );
-                    return AcceptResult::Rejected;
-                }
-            }
-            ChannelDirection::Outbound => {
-                let count = self.count_by_direction(ChannelDirection::Outbound);
-
-                if count >= self.network_config.max_outbound_connections {
-                    self.stats.inc_dir(
-                        StatType::TcpListenerRejected,
-                        DetailType::MaxAttempts,
-                        direction.into(),
-                    );
-                    debug!(
-                        "Max outbound connections reached ({}), unable to initiate new connection: {}",
-                        count, peer.ip()
-                    );
-                    return AcceptResult::Rejected;
-                }
-            }
-        }
-
-        AcceptResult::Accepted
-    }
-
     fn count_by_ip(&self, ip: &Ipv6Addr) -> usize {
         self.channels
             .values()
@@ -801,122 +736,99 @@ impl NetworkInfo {
             .collect()
     }
 
-    pub(crate) fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
+    fn max_ip_connections(&self, endpoint: &SocketAddrV6) -> bool {
         if self.network_config.disable_max_peers_per_ip {
             return false;
         }
-        let mut result;
-        let address = ipv4_address_or_ipv6_subnet(endpoint.ip());
-        result = self.count_by_ip(&address) >= self.network_config.max_peers_per_ip;
-        if !result {
-            result =
-                self.attempts.count_by_address(&address) >= self.network_config.max_peers_per_ip;
-        }
-        if result {
-            self.stats
-                .inc_dir(StatType::Tcp, DetailType::MaxPerIp, Direction::Out);
-        }
-        result
+        let count =
+            self.count_by_ip(&endpoint.ip()) + self.attempts.count_by_address(&endpoint.ip());
+        count >= self.network_config.max_peers_per_ip
     }
 
-    pub(crate) fn max_ip_or_subnetwork_connections(&self, endpoint: &SocketAddrV6) -> bool {
-        self.max_ip_connections(endpoint) || self.max_subnetwork_connections(endpoint)
-    }
-
-    pub(crate) fn max_subnetwork_connections(&self, endoint: &SocketAddrV6) -> bool {
+    fn max_subnetwork_connections(&self, peer: &SocketAddrV6) -> bool {
         if self.network_config.disable_max_peers_per_subnetwork {
             return false;
         }
 
-        let subnet = map_address_to_subnetwork(endoint.ip());
-        let is_max = {
-            self.count_by_subnet(&subnet) >= self.network_config.max_peers_per_subnetwork
-                || self.attempts.count_by_subnetwork(&subnet)
-                    >= self.network_config.max_peers_per_subnetwork
-        };
-
-        if is_max {
-            self.stats
-                .inc_dir(StatType::Tcp, DetailType::MaxPerSubnetwork, Direction::Out);
+        // If the address is IPv4 we don't check for a network limit, since its address space isn't big as IPv6/64.
+        if is_ipv4_mapped(&peer.ip()) {
+            return false;
         }
 
-        is_max
+        let subnet = map_address_to_subnetwork(peer.ip());
+        let subnet_count =
+            self.count_by_subnet(&subnet) + self.attempts.count_by_subnetwork(&subnet);
+
+        subnet_count >= self.network_config.max_peers_per_subnetwork
     }
 
     pub fn can_add_connection(
         &mut self,
-        peer_addr: &SocketAddrV6,
+        peer: &SocketAddrV6,
         direction: ChannelDirection,
         planned_mode: ChannelMode,
         now: Timestamp,
-    ) -> AcceptResult {
+    ) -> Result<(), NetworkError> {
         if self.network_config.disable_network {
-            return AcceptResult::Rejected;
+            return Err(NetworkError::MaxConnections);
         }
 
-        if self.excluded_peers.is_excluded(peer_addr, now) {
-            return AcceptResult::Rejected;
-        }
-
-        if self.check_limits(&peer_addr, direction) == AcceptResult::Rejected {
-            return AcceptResult::Rejected;
-        }
-
-        if direction == ChannelDirection::Outbound {
-            if self.can_add_outbound_connection(&peer_addr, planned_mode, now) {
-                AcceptResult::Accepted
-            } else {
-                AcceptResult::Rejected
-            }
-        } else {
-            AcceptResult::Accepted
-        }
-    }
-
-    fn can_add_outbound_connection(
-        &mut self,
-        peer: &SocketAddrV6,
-        planned_mode: ChannelMode,
-        now: Timestamp,
-    ) -> bool {
-        // Don't contact invalid IPs
-        if self.not_a_peer(peer, self.network_config.allow_local_peers) {
-            return false;
-        }
-
-        // Don't overload single IP
-        if self.max_ip_or_subnetwork_connections(peer) {
-            return false;
+        let count = self.count_by_direction(direction);
+        if count >= self.max_connections(direction) {
+            return Err(NetworkError::MaxConnections);
         }
 
         if self.excluded_peers.is_excluded(peer, now) {
-            return false;
+            return Err(NetworkError::PeerExcluded);
         }
 
-        // Don't connect to nodes that already sent us something
-        if self
-            .find_channels_by_remote_addr(peer)
-            .iter()
-            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
-        {
-            return false;
-        }
-        if self
-            .find_channels_by_peering_addr(peer)
-            .iter()
-            .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
-        {
-            return false;
+        if !self.network_config.disable_max_peers_per_ip {
+            let count = self.count_by_ip(peer.ip());
+            if count >= self.network_config.max_peers_per_ip {
+                return Err(NetworkError::MaxConnectionsPerIp);
+            }
         }
 
-        self.stats.inc_dir(
-            StatType::TcpListener,
-            DetailType::ConnectInitiate,
-            Direction::Out,
-        );
-        debug!("Initiate outgoing connection to: {}", peer);
+        // Don't overload single IP
+        if self.max_ip_connections(peer) {
+            return Err(NetworkError::MaxConnectionsPerIp);
+        }
 
-        true
+        if self.max_subnetwork_connections(peer) {
+            return Err(NetworkError::MaxConnectionsPerSubnetwork);
+        }
+
+        // Don't contact invalid IPs
+        if self.not_a_peer(peer, self.network_config.allow_local_peers) {
+            return Err(NetworkError::InvalidIp);
+        }
+
+        if direction == ChannelDirection::Outbound {
+            // Don't connect to nodes that already sent us something
+            if self
+                .find_channels_by_remote_addr(peer)
+                .iter()
+                .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+            {
+                return Err(NetworkError::DuplicateConnection);
+            }
+            if self
+                .find_channels_by_peering_addr(peer)
+                .iter()
+                .any(|c| c.mode() == planned_mode || c.mode() == ChannelMode::Undefined)
+            {
+                return Err(NetworkError::DuplicateConnection);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn max_connections(&self, direction: ChannelDirection) -> usize {
+        match direction {
+            ChannelDirection::Inbound => self.network_config.max_inbound_connections,
+            ChannelDirection::Outbound => self.network_config.max_outbound_connections,
+        }
     }
 
     pub(crate) fn set_peering_addr(&self, channel_id: ChannelId, peering_addr: SocketAddrV6) {
@@ -1103,11 +1015,14 @@ impl Drop for NetworkInfo {
     }
 }
 
-pub trait NetworkInfoObserver {}
-
-pub struct NetworkInfoStats {}
-
-impl NetworkInfoObserver for NetworkInfoStats {}
+#[derive(Default)]
+pub(crate) struct ChannelsInfo {
+    pub total: usize,
+    pub realtime: usize,
+    pub bootstrap: usize,
+    pub inbound: usize,
+    pub outbound: usize,
+}
 
 #[cfg(test)]
 mod tests {

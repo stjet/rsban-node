@@ -177,20 +177,3 @@ impl DeadChannelCleanupStep for NetworkCleanup {
         }
     }
 }
-
-#[derive(PartialEq, Eq)]
-pub enum AcceptResult {
-    Invalid,
-    Accepted,
-    Rejected,
-    Error,
-}
-
-#[derive(Default)]
-pub(crate) struct ChannelsInfo {
-    pub total: usize,
-    pub realtime: usize,
-    pub bootstrap: usize,
-    pub inbound: usize,
-    pub outbound: usize,
-}

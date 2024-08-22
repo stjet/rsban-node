@@ -78,6 +78,7 @@ impl AttemptContainer {
     }
 
     pub fn count_by_subnetwork(&self, subnet: &Ipv6Addr) -> usize {
+        // TODO use map_address_to_subnetwork
         match self.by_subnetwork.get(subnet) {
             Some(entries) => entries.len(),
             None => 0,
@@ -85,6 +86,7 @@ impl AttemptContainer {
     }
 
     pub fn count_by_address(&self, address: &Ipv6Addr) -> usize {
+        // TODO use ipv4_address_or_ipv6_subnet!
         match self.by_address.get(address) {
             Some(entries) => entries.len(),
             None => 0,

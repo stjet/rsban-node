@@ -26,7 +26,7 @@ use crate::{
     transport::{
         ChannelId, DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory,
         LatestKeepalives, MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkInfo,
-        NetworkOptions, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
+        NetworkOptions, NetworkStats, NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector,
         PeerCacheUpdater, PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies,
         TcpListener, TcpListenerExt, TrafficType,
     },
@@ -233,6 +233,8 @@ impl Node {
             global_config.into(),
             stats.clone(),
         )));
+
+        let network_stats = NetworkStats::new(stats.clone());
 
         let mut dead_channel_cleanup = DeadChannelCleanup::new(
             steady_clock.clone(),
@@ -478,6 +480,7 @@ impl Node {
             flags.clone(),
             network.clone(),
             network_info.clone(),
+            network_stats.clone(),
             async_rt.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
@@ -520,6 +523,7 @@ impl Node {
         let peer_connector = Arc::new(PeerConnector::new(
             config.tcp.clone(),
             network.clone(),
+            network_stats.clone(),
             stats.clone(),
             async_rt.clone(),
             response_server_factory.clone(),

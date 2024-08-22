@@ -17,9 +17,7 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::ascending::ordered_tags::QueryType,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{
-        BandwidthLimiter, ChannelId, DropPolicy, MessagePublisher, NetworkInfo, TrafficType,
-    },
+    transport::{BandwidthLimiter, DropPolicy, MessagePublisher, NetworkInfo, TrafficType},
 };
 use num::integer::sqrt;
 use rand::{thread_rng, RngCore};
@@ -32,6 +30,7 @@ use rsnano_messages::{
     AscPullAck, AscPullAckType, AscPullReq, AscPullReqType, BlocksAckPayload, BlocksReqPayload,
     HashType, Message,
 };
+use rsnano_network::ChannelId;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     sync::{Arc, Condvar, Mutex, MutexGuard, RwLock},

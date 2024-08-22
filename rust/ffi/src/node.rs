@@ -25,10 +25,11 @@ use crate::{
 use rsnano_core::{
     utils::NULL_ENDPOINT, Amount, BlockEnum, BlockHash, PublicKey, Root, Vote, VoteCode, VoteSource,
 };
+use rsnano_network::ChannelId;
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     node::{Node, NodeExt},
-    transport::{ChannelId, PeerConnectorExt},
+    transport::PeerConnectorExt,
 };
 use std::{
     collections::VecDeque,

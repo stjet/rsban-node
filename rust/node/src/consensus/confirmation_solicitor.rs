@@ -1,11 +1,12 @@
 use super::{Election, ElectionData};
 use crate::{
     representatives::PeeredRep,
-    transport::{ChannelId, DropPolicy, MessagePublisher, NetworkInfo, TrafficType},
+    transport::{DropPolicy, MessagePublisher, NetworkInfo, TrafficType},
     NetworkParams,
 };
 use rsnano_core::{BlockHash, Root};
 use rsnano_messages::{ConfirmReq, Message, Publish};
+use rsnano_network::ChannelId;
 use std::{
     cmp::max,
     collections::{HashMap, HashSet},

@@ -1,7 +1,7 @@
 use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
+    transport::{DeadChannelCleanupStep, DeadChannelCleanupTarget, FairQueue},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, TomlWriter},
@@ -9,6 +9,7 @@ use rsnano_core::{
     BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
+use rsnano_network::ChannelId;
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,

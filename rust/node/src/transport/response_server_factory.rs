@@ -1,12 +1,12 @@
 use super::{
     Channel, InboundMessageQueue, LatestKeepalives, MessagePublisher, Network, NetworkFilter,
-    NetworkStats, ResponseServer, ResponseServerExt, SynCookies,
+    ResponseServer, ResponseServerExt, SynCookies,
 };
 use crate::{
     block_processing::BlockProcessor,
     bootstrap::{BootstrapInitiator, BootstrapInitiatorConfig},
     config::NodeFlags,
-    stats::Stats,
+    stats::{adapters::NetworkStats, Stats},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };

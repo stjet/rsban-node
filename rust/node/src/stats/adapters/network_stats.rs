@@ -1,6 +1,5 @@
-use super::ChannelDirection;
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_network::NetworkError;
+use rsnano_network::{ChannelDirection, NetworkError};
 use std::{net::SocketAddrV6, sync::Arc};
 use tracing::debug;
 

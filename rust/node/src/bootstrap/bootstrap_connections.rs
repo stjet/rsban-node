@@ -5,8 +5,8 @@ use super::{
 };
 use crate::{
     block_processing::BlockProcessor,
-    stats::{DetailType, Direction, StatType, Stats},
-    transport::{MessagePublisher, Network, NetworkStats},
+    stats::{adapters::NetworkStats, DetailType, Direction, StatType, Stats},
+    transport::{MessagePublisher, Network},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
 };
 use async_trait::async_trait;

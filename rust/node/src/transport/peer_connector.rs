@@ -1,6 +1,6 @@
-use super::{ChannelDirection, Network, NetworkStats, ResponseServerFactory, TcpConfig};
+use super::{ChannelDirection, Network, ResponseServerFactory, TcpConfig};
 use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{adapters::NetworkStats, DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
 };
 use rsnano_network::ChannelMode;

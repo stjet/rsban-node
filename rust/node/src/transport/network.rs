@@ -2,7 +2,10 @@ use super::{
     Channel, ChannelDirection, DeadChannelCleanupStep, DeadChannelCleanupTarget, DropPolicy,
     NetworkFilter, OutboundBandwidthLimiter,
 };
-use crate::{stats::Stats, transport::NetworkStats, NetworkParams, DEV_NETWORK_PARAMS};
+use crate::{
+    stats::{adapters::NetworkStats, Stats},
+    NetworkParams, DEV_NETWORK_PARAMS,
+};
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_network::{
     utils::into_ipv6_socket_address, ChannelId, ChannelMode, NetworkInfo, TrafficType,

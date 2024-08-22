@@ -22,13 +22,15 @@ use crate::{
     node_id_key_file::NodeIdKeyFile,
     pruning::{LedgerPruning, LedgerPruningExt},
     representatives::{OnlineReps, RepCrawler, RepCrawlerExt},
-    stats::{DetailType, Direction, LedgerStats, StatType, Stats},
+    stats::{
+        adapters::{LedgerStats, NetworkStats},
+        DetailType, Direction, StatType, Stats,
+    },
     transport::{
         DeadChannelCleanup, DropPolicy, InboundMessageQueue, KeepaliveFactory, LatestKeepalives,
-        MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkOptions, NetworkStats,
-        NetworkThreads, OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater,
-        PeerConnector, RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener,
-        TcpListenerExt,
+        MessageProcessor, MessagePublisher, Network, NetworkFilter, NetworkOptions, NetworkThreads,
+        OutboundBandwidthLimiter, PeerCacheConnector, PeerCacheUpdater, PeerConnector,
+        RealtimeMessageHandler, ResponseServerFactory, SynCookies, TcpListener, TcpListenerExt,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,

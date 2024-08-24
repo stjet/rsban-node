@@ -1,23 +1,14 @@
-use rsnano_core::{Account, Amount};
-use serde::{
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Serialize,
-};
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountBalanceRequest {
-    pub account: Account,
-    pub only_confirmed: Option<bool>,
-}
+use rsnano_core::Amount;
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 #[derive(PartialEq, Eq, Debug, Deserialize)]
-pub struct AccountBalanceResponse {
+pub struct AccountBalanceDto {
     pub balance: Amount,
     pub pending: Amount,
     pub receivable: Amount,
 }
 
-impl AccountBalanceResponse {
+impl AccountBalanceDto {
     pub fn new(balance: Amount, pending: Amount, receivable: Amount) -> Self {
         Self {
             balance,
@@ -27,7 +18,7 @@ impl AccountBalanceResponse {
     }
 }
 
-impl Serialize for AccountBalanceResponse {
+impl Serialize for AccountBalanceDto {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

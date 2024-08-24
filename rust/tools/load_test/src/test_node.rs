@@ -10,7 +10,7 @@ use rsnano_node::{
     unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoResponse, KeyPairResponse};
+use rsnano_rpc_messages::{AccountInfoDto, KeyCreateDto};
 use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::{
     collections::HashMap,
@@ -86,7 +86,7 @@ impl TestNode {
         destination_count: usize,
         send_count: usize,
         simultaneous_process_calls: usize,
-    ) -> Result<HashMap<Account, AccountInfoResponse>> {
+    ) -> Result<HashMap<Account, AccountInfoDto>> {
         let destination_accounts = self.create_destination_accounts(destination_count).await?;
         let wallet = self.node_client.wallet_create_rpc().await?;
         self.add_genesis_account(wallet).await?;
@@ -111,13 +111,11 @@ impl TestNode {
 
     async fn add_destination_accounts(
         &self,
-        destination_accounts: &[KeyPairResponse],
+        destination_accounts: &[KeyCreateDto],
         wallet: WalletId,
     ) -> Result<()> {
         for account in destination_accounts {
-            self.node_client
-                .wallet_add(wallet, account.private_key)
-                .await?;
+            self.node_client.wallet_add(wallet, account.private).await?;
         }
         Ok(())
     }
@@ -125,7 +123,7 @@ impl TestNode {
     async fn create_destination_accounts(
         &self,
         destination_count: usize,
-    ) -> Result<Vec<KeyPairResponse>> {
+    ) -> Result<Vec<KeyCreateDto>> {
         let mut destination_accounts = Vec::with_capacity(destination_count);
         for _ in 0..destination_count {
             let acc = self.node_client.key_create_rpc().await?;
@@ -134,7 +132,7 @@ impl TestNode {
         Ok(destination_accounts)
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfoResponse> {
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         self.node_client.account_info(account).await
     }
 }

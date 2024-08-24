@@ -16,6 +16,7 @@ pub trait NetworkObserver: Send + Sync {
     fn attempt_timeout(&self, _peer: SocketAddrV6) {}
     fn attempt_cancelled(&self, _peer: SocketAddrV6) {}
     fn merge_peer(&self) {}
+    fn accept_failure(&self) {}
 }
 
 pub struct NullNetworkObserver {}

@@ -1,10 +1,8 @@
-use super::NanoResponseServerSpawner;
-use crate::{
-    stats::{DetailType, Direction, StatType, Stats},
-    utils::AsyncRuntime,
-};
+use crate::utils::AsyncRuntime;
 use async_trait::async_trait;
-use rsnano_network::{ChannelDirection, ChannelMode, Network, ResponseServerSpawner};
+use rsnano_network::{
+    ChannelDirection, ChannelMode, Network, NetworkObserver, ResponseServerSpawner,
+};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
@@ -22,7 +20,7 @@ use tracing::{debug, error, warn};
 pub struct TcpListener {
     port: AtomicU16,
     network: Arc<Network>,
-    stats: Arc<Stats>,
+    network_observer: Arc<dyn NetworkObserver>,
     runtime: Arc<AsyncRuntime>,
     data: Mutex<TcpListenerData>,
     condition: Condvar,
@@ -45,22 +43,22 @@ impl TcpListener {
     pub(crate) fn new(
         port: u16,
         network: Arc<Network>,
+        network_observer: Arc<dyn NetworkObserver>,
         runtime: Arc<AsyncRuntime>,
-        stats: Arc<Stats>,
-        response_server_factory: Arc<NanoResponseServerSpawner>,
+        response_server_spawner: Arc<dyn ResponseServerSpawner>,
     ) -> Self {
         Self {
             port: AtomicU16::new(port),
             network,
+            network_observer,
             data: Mutex::new(TcpListenerData {
                 stopped: false,
                 local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
             runtime: Arc::clone(&runtime),
-            stats,
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
-            response_server_spawner: response_server_factory,
+            response_server_spawner,
         }
     }
 
@@ -130,11 +128,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                 self.network.wait_for_available_inbound_slot().await;
 
                 let Ok((stream, _)) = listener.accept().await else {
-                    self.stats.inc_dir(
-                        StatType::TcpListener,
-                        DetailType::AcceptFailure,
-                        Direction::In,
-                    );
+                    warn!("Could not accept incoming connection");
+                    self.network_observer.accept_failure();
                     continue;
                 };
 

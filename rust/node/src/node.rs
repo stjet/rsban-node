@@ -563,8 +563,8 @@ impl Node {
         let tcp_listener = Arc::new(TcpListener::new(
             network_info.read().unwrap().listening_port(),
             network.clone(),
+            network_observer.clone(),
             async_rt.clone(),
-            stats.clone(),
             response_server_spawner.clone(),
         ));
 

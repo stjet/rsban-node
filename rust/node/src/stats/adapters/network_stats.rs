@@ -213,6 +213,13 @@ impl NetworkObserver for NetworkStats {
         self.0.inc(StatType::Network, DetailType::MergePeer);
     }
 
+    fn accept_failure(&self) {
+        self.0.inc_dir(
+            StatType::TcpListener,
+            DetailType::AcceptFailure,
+            Direction::In,
+        );
+    }
 }
 
 impl From<ChannelDirection> for Direction {

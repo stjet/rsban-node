@@ -83,13 +83,14 @@ impl Channel {
         channel
     }
 
-    pub async fn create(
+    pub fn create(
         channel_info: Arc<ChannelInfo>,
         stream: TcpStream,
         limiter: Arc<OutboundBandwidthLimiter>,
         network_info: Arc<RwLock<NetworkInfo>>,
         clock: Arc<SteadyClock>,
         observer: Arc<dyn NetworkObserver>,
+        handle: &tokio::runtime::Handle,
     ) -> Arc<Self> {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
@@ -106,7 +107,7 @@ impl Channel {
         }));
 
         // process write queue:
-        tokio::spawn(async move {
+        handle.spawn(async move {
             while let Some((entry, _)) = receiver.pop().await {
                 let mut written = 0;
                 let buffer = &entry.buffer;
@@ -137,7 +138,7 @@ impl Channel {
 
         let channel = Arc::new(channel);
         let channel_l = channel.clone();
-        tokio::spawn(async move { channel_l.ongoing_checkup().await });
+        handle.spawn(async move { channel_l.ongoing_checkup().await });
         channel
     }
 

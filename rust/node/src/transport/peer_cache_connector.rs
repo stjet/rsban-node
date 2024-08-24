@@ -1,10 +1,10 @@
-use super::PeerConnector;
 use crate::stats::{DetailType, StatType};
 use crate::{
     stats::Stats,
     utils::{CancellationToken, Runnable},
 };
 use rsnano_ledger::Ledger;
+use rsnano_network::PeerConnector;
 use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tracing::info;
 

@@ -1,4 +1,4 @@
-use rsnano_network::{
+use crate::{
     ChannelDirection, ChannelMode, Network, NetworkObserver, NullNetworkObserver,
     NullResponseServerSpawner, ResponseServerSpawner,
 };
@@ -23,7 +23,7 @@ pub struct PeerConnector {
 impl PeerConnector {
     const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
-    pub(crate) fn new(
+    pub fn new(
         connect_timeout: Duration,
         network: Arc<Network>,
         network_observer: Arc<dyn NetworkObserver>,
@@ -43,8 +43,7 @@ impl PeerConnector {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn new_null(tokio: tokio::runtime::Handle) -> Self {
+    pub fn new_null(tokio: tokio::runtime::Handle) -> Self {
         Self {
             connect_timeout: Self::DEFAULT_TIMEOUT,
             network: Arc::new(Network::new_null(tokio.clone())),

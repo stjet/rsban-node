@@ -6,6 +6,7 @@ mod dead_channel_cleanup;
 mod network;
 mod network_info;
 mod network_observer;
+mod peer_connector;
 pub mod peer_exclusion;
 mod response_server_spawner;
 pub mod token_bucket;
@@ -20,6 +21,7 @@ pub use network::*;
 pub use network_info::*;
 pub use network_observer::*;
 use num_derive::FromPrimitive;
+pub use peer_connector::*;
 pub use response_server_spawner::*;
 use std::fmt::{Debug, Display};
 

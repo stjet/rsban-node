@@ -1,15 +1,17 @@
 @startuml "Split crates"
 
-[nullables]
 [core]
 [ledger]
 [store_lmdb]
 [messages]
+[network]
 [node]
 [main]
-[rpc]
 [ffi]
 [C++ node]
+[rpc_messages]
+[rpc_server]
+[rpc_client]
 
 folder "nullables"{
 [fs]
@@ -23,13 +25,19 @@ folder "nullables"{
 
 [C++ node] --> [ffi]
 [main] --> [node]
-[main] --> [rpc]
-[rpc] --> [node]
+[main] --> [rpc_server]
+[rpc_server] --> [node]
+[rpc_server] --> [rpc_messages]
+[rpc_client] --> [rpc_messages]
+[rpc_messages] --> [core]
 [node] --> [ledger]
 [node] --> [messages]
+[node] --> [network]
 [messages] --> [core]
+[network] --> [core]
 [ledger] --> [store_lmdb]
 [store_lmdb] --> [core]
 [ffi] --> [node]
+[core] --> "nullables"
 
 @enduml

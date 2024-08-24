@@ -8,7 +8,7 @@ use crate::{
     bootstrap::BootstrapAttemptWallet,
     config::NodeFlags,
     stats::{DetailType, Direction, StatType, Stats},
-    transport::{MessagePublisher, Network, NetworkInfo},
+    transport::{MessagePublisher, Network},
     utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
     websocket::WebsocketListener,
     NetworkParams,
@@ -20,6 +20,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
+use rsnano_network::{NetworkInfo, NetworkObserver};
 use rsnano_nullable_clock::SteadyClock;
 use std::{
     collections::{HashMap, VecDeque},
@@ -119,6 +120,7 @@ impl BootstrapInitiator {
         flags: NodeFlags,
         network: Arc<Network>,
         network_info: Arc<RwLock<NetworkInfo>>,
+        network_stats: Arc<dyn NetworkObserver>,
         runtime: Arc<AsyncRuntime>,
         workers: Arc<dyn ThreadPool>,
         network_params: NetworkParams,
@@ -156,6 +158,7 @@ impl BootstrapInitiator {
                 config,
                 network,
                 network_info,
+                network_stats,
                 runtime,
                 workers,
                 stats,

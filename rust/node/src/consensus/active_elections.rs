@@ -10,7 +10,7 @@ use crate::{
     consensus::VoteApplierExt,
     representatives::OnlineReps,
     stats::{DetailType, Direction, Sample, StatType, Stats},
-    transport::{DropPolicy, MessagePublisher, NetworkFilter, NetworkInfo},
+    transport::{MessagePublisher, NetworkFilter},
     utils::HardenedConstants,
     wallets::Wallets,
     NetworkParams,
@@ -22,6 +22,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
+use rsnano_network::{DropPolicy, NetworkInfo};
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
@@ -734,7 +735,7 @@ impl ActiveElections {
         let mut sorted_votes: BTreeMap<TallyKey, Vec<VoteWithWeightInfo>> = BTreeMap::new();
         let guard = election.mutex.lock().unwrap();
         for (&representative, info) in &guard.last_votes {
-            if representative == HardenedConstants::get().not_an_account {
+            if representative == HardenedConstants::get().not_an_account_key {
                 continue;
             }
             let weight = self.ledger.weight(&representative);

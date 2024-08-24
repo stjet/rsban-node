@@ -1239,7 +1239,10 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_node",
- "rsnano_rpc",
+ "rsnano_rpc_client",
+ "rsnano_rpc_messages",
+ "rsnano_rpc_server",
+ "serde",
  "serde_json",
  "tokio",
  "toml 0.8.15",
@@ -1877,8 +1880,9 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",
+ "rsnano_network",
  "rsnano_node",
- "rsnano_rpc",
+ "rsnano_rpc_server",
  "rsnano_store_lmdb",
  "tokio",
  "toml 0.8.15",
@@ -1918,6 +1922,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsnano_network"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "mock_instant",
+ "num-derive 0.3.3",
+ "num-traits",
+ "rand",
+ "rsnano_core",
+ "rsnano_nullable_clock",
+ "rsnano_nullable_tcp",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "rsnano_node"
 version = "0.1.0"
 dependencies = [
@@ -1941,6 +1962,7 @@ dependencies = [
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",
+ "rsnano_network",
  "rsnano_nullable_clock",
  "rsnano_nullable_fs",
  "rsnano_nullable_http_client",
@@ -1983,7 +2005,7 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",
- "rsnano_rpc",
+ "rsnano_rpc_server",
  "rsnano_store_lmdb",
  "tokio",
  "toml 0.8.15",
@@ -2045,26 +2067,40 @@ name = "rsnano_output_tracker"
 version = "0.1.0"
 
 [[package]]
-name = "rsnano_rpc"
+name = "rsnano_rpc_client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest 0.11.27",
+ "rsnano_core",
+ "rsnano_rpc_messages",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rsnano_rpc_messages"
+version = "0.1.0"
+dependencies = [
+ "rsnano_core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rsnano_rpc_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "mock_instant",
- "rand",
- "reqwest 0.11.27",
  "rsnano_core",
- "rsnano_ledger",
  "rsnano_node",
+ "rsnano_rpc_messages",
  "serde",
  "serde_json",
- "test_helpers",
  "tokio",
- "tokio-util",
  "toml 0.8.15",
  "tracing",
- "tracing-subscriber",
- "tracing-test",
 ]
 
 [[package]]
@@ -2443,16 +2479,12 @@ checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 name = "test_helpers"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "axum",
  "mock_instant",
- "reqwest 0.11.27",
  "rsnano_core",
+ "rsnano_network",
  "rsnano_node",
  "rsnano_nullable_tcp",
- "rsnano_rpc",
- "serde_json",
- "tokio",
  "tracing-subscriber",
  "tracing-test",
 ]

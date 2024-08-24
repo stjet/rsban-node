@@ -1,16 +1,17 @@
 use super::OnlineReps;
-use crate::transport::{ChannelId, DeadChannelCleanupStep, DeadChannelCleanupTarget};
+use rsnano_core::Account;
+use rsnano_network::{ChannelId, DeadChannelCleanupStep};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-impl DeadChannelCleanupTarget for Arc<Mutex<OnlineReps>> {
-    fn dead_channel_cleanup_step(&self) -> Box<dyn DeadChannelCleanupStep> {
-        Box::new(OnlineRepsCleanup(self.clone()))
+/// Removes reps with dead channels
+pub struct OnlineRepsCleanup(Arc<Mutex<OnlineReps>>);
+
+impl OnlineRepsCleanup {
+    pub fn new(reps: Arc<Mutex<OnlineReps>>) -> Self {
+        Self(reps)
     }
 }
-
-/// Removes reps with dead channels
-pub(crate) struct OnlineRepsCleanup(Arc<Mutex<OnlineReps>>);
 
 impl DeadChannelCleanupStep for OnlineRepsCleanup {
     fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
@@ -20,7 +21,7 @@ impl DeadChannelCleanupStep for OnlineRepsCleanup {
             for rep in removed_reps {
                 info!(
                     "Evicting representative {} with dead channel",
-                    rep.encode_account(),
+                    Account::from(rep).encode_account(),
                 );
             }
         }

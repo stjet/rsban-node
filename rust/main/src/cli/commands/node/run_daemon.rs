@@ -11,7 +11,7 @@ use rsnano_node::{
     utils::AsyncRuntime,
     NetworkParams,
 };
-use rsnano_rpc::{run_rpc_server, RpcConfig, RpcToml};
+use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
 use std::{
     fs::read_to_string,
     net::{IpAddr, SocketAddr},
@@ -147,14 +147,14 @@ impl RunDaemonArgs {
 
         let rpc_toml_config_path = get_rpc_toml_config_path(&path);
 
-        let rpc_config = if rpc_toml_config_path.exists() {
-            let rpc_toml_str = read_to_string(rpc_toml_config_path)?;
+        let rpc_server_config = if rpc_toml_config_path.exists() {
+            let rpc_server_toml_str = read_to_string(rpc_toml_config_path)?;
 
-            let rpc_toml: RpcToml = from_str(&rpc_toml_str)?;
+            let rpc_server_toml: RpcServerToml = from_str(&rpc_server_toml_str)?;
 
-            (&rpc_toml).into()
+            (&rpc_server_toml).into()
         } else {
-            RpcConfig::default()
+            RpcServerConfig::default()
         };
 
         let mut flags = NodeFlags::new();
@@ -183,12 +183,12 @@ impl RunDaemonArgs {
         node.start();
 
         let rpc_server = if daemon_config.rpc_enable {
-            let ip_addr = IpAddr::from_str(&rpc_config.address)?;
-            let socket_addr = SocketAddr::new(ip_addr, rpc_config.port);
+            let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
+            let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
             Some(tokio::spawn(run_rpc_server(
                 node.clone(),
                 socket_addr,
-                rpc_config.enable_control,
+                rpc_server_config.enable_control,
             )))
         } else {
             None

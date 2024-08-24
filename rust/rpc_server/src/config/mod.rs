@@ -1,6 +1,9 @@
+mod toml;
+
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::config::NetworkConstants;
 use std::net::Ipv6Addr;
+pub use toml::*;
 
 #[derive(Debug, PartialEq)]
 pub struct RpcServerConfig {

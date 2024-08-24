@@ -65,8 +65,3 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .insert("Content-Type", "application/json".parse().unwrap());
     request
 }
-
-pub(crate) fn format_error_message(error: &str) -> String {
-    let json_value = json!({ "error": error });
-    to_string_pretty(&json_value).unwrap()
-}

@@ -532,7 +532,6 @@ impl Node {
             config.tcp.connect_timeout,
             network.clone(),
             network_observer.clone(),
-            stats.clone(),
             tokio_handle.clone(),
             response_server_spawner.clone(),
             steady_clock.clone(),

@@ -1,10 +1,10 @@
-use super::{NanoResponseServerSpawner, ResponseServerSpawner};
+use super::NanoResponseServerSpawner;
 use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     utils::AsyncRuntime,
 };
 use async_trait::async_trait;
-use rsnano_network::{ChannelDirection, ChannelMode, Network};
+use rsnano_network::{ChannelDirection, ChannelMode, Network, ResponseServerSpawner};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},

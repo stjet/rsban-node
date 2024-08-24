@@ -12,26 +12,11 @@ use crate::{
 };
 use rsnano_core::KeyPair;
 use rsnano_ledger::Ledger;
-use rsnano_network::{Channel, ChannelDirection, Network, NetworkInfo, NullNetworkObserver};
+use rsnano_network::{
+    Channel, ChannelDirection, Network, NetworkInfo, NullNetworkObserver, ResponseServerSpawner,
+};
 use rsnano_nullable_clock::SteadyClock;
 use std::sync::{Arc, Mutex, RwLock};
-
-/// Responsable for asynchronously launching a response server for a given channel
-pub trait ResponseServerSpawner: Send + Sync {
-    fn spawn(&self, channel: Arc<Channel>);
-}
-
-pub struct NullResponseServerSpawner {}
-
-impl NullResponseServerSpawner {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl ResponseServerSpawner for NullResponseServerSpawner {
-    fn spawn(&self, _channel: Arc<Channel>) {}
-}
 
 pub struct NanoResponseServerSpawner {
     pub(crate) tokio: tokio::runtime::Handle,

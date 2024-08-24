@@ -1,21 +1,18 @@
-use super::{NullResponseServerSpawner, ResponseServerSpawner};
-use crate::stats::{DetailType, Direction, StatType, Stats};
 use rsnano_network::{
     ChannelDirection, ChannelMode, Network, NetworkObserver, NullNetworkObserver,
+    NullResponseServerSpawner, ResponseServerSpawner,
 };
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
-use tracing::debug;
 
 /// Establishes a network connection to a given peer
 pub struct PeerConnector {
     connect_timeout: Duration,
     network: Arc<Network>,
     network_observer: Arc<dyn NetworkObserver>,
-    stats: Arc<Stats>,
     tokio: tokio::runtime::Handle,
     cancel_token: CancellationToken,
     response_server_spawner: Arc<dyn ResponseServerSpawner>,
@@ -30,7 +27,6 @@ impl PeerConnector {
         connect_timeout: Duration,
         network: Arc<Network>,
         network_observer: Arc<dyn NetworkObserver>,
-        stats: Arc<Stats>,
         tokio: tokio::runtime::Handle,
         response_server_spawner: Arc<dyn ResponseServerSpawner>,
         clock: Arc<SteadyClock>,
@@ -39,7 +35,6 @@ impl PeerConnector {
             connect_timeout,
             network,
             network_observer,
-            stats,
             tokio,
             cancel_token: CancellationToken::new(),
             response_server_spawner,
@@ -54,7 +49,6 @@ impl PeerConnector {
             connect_timeout: Self::DEFAULT_TIMEOUT,
             network: Arc::new(Network::new_null(tokio.clone())),
             network_observer: Arc::new(NullNetworkObserver::new()),
-            stats: Arc::new(Default::default()),
             tokio: tokio.clone(),
             cancel_token: CancellationToken::new(),
             response_server_spawner: Arc::new(NullResponseServerSpawner::new()),
@@ -102,41 +96,28 @@ impl PeerConnector {
             }
         }
 
-        self.stats.inc(StatType::Network, DetailType::MergePeer);
+        self.network_observer.merge_peer();
 
         let network_l = self.network.clone();
         let response_server_spawner_l = self.response_server_spawner.clone();
-        let stats_l = self.stats.clone();
         let connect_timeout = self.connect_timeout;
         let cancel_token = self.cancel_token.clone();
+        let observer = self.network_observer.clone();
 
         self.tokio.spawn(async move {
             tokio::select! {
                 result =  connect_impl(peer, &network_l, &*response_server_spawner_l) =>{
                     if let Err(e) = result {
-                        stats_l.inc_dir(
-                            StatType::TcpListener,
-                            DetailType::ConnectError,
-                            Direction::Out,
-                        );
-                        debug!("Error connecting to: {} ({:?})", peer, e);
+                        observer.connect_error(peer, e);
                     }
 
                 },
                 _ = tokio::time::sleep(connect_timeout) =>{
-                    stats_l
-                        .inc(StatType::TcpListener, DetailType::AttemptTimeout);
-                    debug!(
-                        "Connection attempt timed out: {}",
-                        peer,
-                    );
+                    observer.attempt_timeout(peer);
 
                 }
                 _ = cancel_token.cancelled() =>{
-                    debug!(
-                        "Connection attempt cancelled: {}",
-                        peer,
-                    );
+                    observer.attempt_cancelled(peer);
 
                 }
             }

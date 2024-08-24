@@ -1,6 +1,4 @@
-mod account_create;
-
-pub use account_create::*;
+use super::account_create;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -10,7 +8,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountCreateRequest, RpcCommand, RpcCommand::AccountCreate};
+use rsnano_rpc_messages::{AccountCreateArgs, RpcCommand, WalletsRpcCommand};
 use serde_json::{json, to_string_pretty};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -56,9 +54,12 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        AccountCreate(AccountCreateRequest { wallet, index }) => {
-            account_create(rpc_service.node, wallet, index).await
-        }
+        RpcCommand::Wallets(wallets_rpc_command) => match wallets_rpc_command {
+            WalletsRpcCommand::AccountCreate(AccountCreateArgs { wallet, index }) => {
+                account_create(rpc_service.node, wallet, index).await
+            }
+            _ => todo!(),
+        },
         _ => todo!(),
     };
 

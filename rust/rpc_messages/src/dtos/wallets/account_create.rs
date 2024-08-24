@@ -1,27 +1,21 @@
-use rsnano_core::{Account, WalletId};
+use rsnano_core::Account;
 use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
 };
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountCreateRequest {
-    pub wallet: WalletId,
-    pub index: Option<u32>,
-}
-
 #[derive(PartialEq, Eq, Debug, Deserialize)]
-pub struct AccountCreateResponse {
+pub struct AccountCreateDto {
     pub account: Account,
 }
 
-impl AccountCreateResponse {
+impl AccountCreateDto {
     pub fn new(account: Account) -> Self {
         Self { account }
     }
 }
 
-impl Serialize for AccountCreateResponse {
+impl Serialize for AccountCreateDto {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

@@ -1,5 +1,5 @@
 mod config;
-mod server;
+mod service;
 
 pub use config::*;
-pub use server::*;
+pub use service::*;

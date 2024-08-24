@@ -1,7 +1,6 @@
-use anyhow::Result;
 use rsnano_core::{Account, Amount};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::AccountBalanceResponse;
+use rsnano_rpc_messages::AccountBalanceDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -29,7 +28,7 @@ pub async fn account_balance(
         .ledger
         .account_receivable(&tx, &account, only_confirmed);
 
-    let account_balance = AccountBalanceResponse::new(balance, pending, pending);
+    let account_balance = AccountBalanceDto::new(balance, pending, pending);
 
     to_string_pretty(&account_balance).unwrap()
 }

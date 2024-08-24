@@ -1,4 +1,3 @@
-use super::account_balance;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -8,12 +7,13 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand::AccountBalance;
-use rsnano_rpc_messages::{AccountBalanceRequest, RpcCommand};
+use rsnano_rpc_messages::{AccountBalanceArgs, LedgerRpcCommand, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::account_balance;
 
 #[derive(Clone)]
 struct RpcService {
@@ -54,10 +54,13 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        AccountBalance(AccountBalanceRequest {
-            account,
-            only_confirmed,
-        }) => account_balance(rpc_service.node, account, only_confirmed).await,
+        RpcCommand::Ledger(ledger_rpc_command) => match ledger_rpc_command {
+            LedgerRpcCommand::AccountBalance(AccountBalanceArgs {
+                account,
+                include_only_confirmed,
+            }) => account_balance(rpc_service.node, account, include_only_confirmed).await,
+            _ => todo!(),
+        },
         _ => todo!(),
     };
 

@@ -1,7 +1,7 @@
 use crate::{ProgramArgs, TestNode};
 use anyhow::{bail, Result};
 use rsnano_core::Account;
-use rsnano_rpc_messages::AccountInfoResponse;
+use rsnano_rpc_messages::AccountInfoDto;
 use std::{collections::HashMap, time::Duration};
 use tokio::time::{sleep, Instant};
 
@@ -58,9 +58,7 @@ impl LoadTest {
         Ok(())
     }
 
-    async fn create_send_and_receive_blocks(
-        &self,
-    ) -> Result<HashMap<Account, AccountInfoResponse>> {
+    async fn create_send_and_receive_blocks(&self) -> Result<HashMap<Account, AccountInfoDto>> {
         println!("Beginning tests");
         self.primary_node()
             .create_send_and_receive_blocks(
@@ -73,7 +71,7 @@ impl LoadTest {
 
     async fn wait_for_nodes_to_catch_up(
         &self,
-        expected_account_info: &HashMap<Account, AccountInfoResponse>,
+        expected_account_info: &HashMap<Account, AccountInfoDto>,
     ) -> Result<()> {
         println!("Waiting for nodes to catch up...");
         let timer = Instant::now();

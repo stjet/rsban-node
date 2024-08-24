@@ -1,7 +1,5 @@
 mod config;
-mod server;
-mod toml;
+mod service;
 
 pub use config::*;
-pub use server::*;
-pub use toml::*;
+pub use service::*;

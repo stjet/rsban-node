@@ -2083,6 +2083,7 @@ name = "rsnano_rpc_messages"
 version = "0.1.0"
 dependencies = [
  "rsnano_core",
+ "rsnano_node",
  "serde",
  "serde_json",
 ]

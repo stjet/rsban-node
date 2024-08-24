@@ -21,7 +21,17 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
+    pub async fn account_balance(
+        &self,
+        account: Account,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<AccountBalanceResponse> {
+        let cmd = RpcCommand::account_balance(account, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn account_info(&self, account: Account) -> Result<AccountInfoResponse> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -33,7 +43,7 @@ impl NanoRpcClient {
         destination: Account,
         block: impl Into<JsonBlock>,
     ) -> Result<()> {
-        let request = RpcCommand::Receive(ReceiveCmd {
+        let request = RpcCommand::Receive(ReceiveRequest {
             wallet,
             account: destination,
             block: block.into(),
@@ -48,7 +58,7 @@ impl NanoRpcClient {
         source: Account,
         destination: Account,
     ) -> Result<JsonBlock> {
-        let request = RpcCommand::Send(SendCmd {
+        let request = RpcCommand::Send(SendRequest {
             wallet,
             source,
             destination,
@@ -75,7 +85,7 @@ impl NanoRpcClient {
         Ok(())
     }
 
-    pub async fn key_create_rpc(&self) -> Result<KeyPairDto> {
+    pub async fn key_create_rpc(&self) -> Result<KeyPairResponse> {
         let cmd = RpcCommand::KeyCreate;
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

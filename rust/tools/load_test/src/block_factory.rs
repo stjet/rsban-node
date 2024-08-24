@@ -3,7 +3,7 @@ use rand::Rng;
 use rsnano_core::{Account, WalletId};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
+use rsnano_rpc_messages::{AccountInfoResponse, KeyPairResponse};
 use std::{
     collections::HashMap,
     io::Write,
@@ -18,10 +18,10 @@ use tokio::{spawn, sync::Semaphore, time::sleep};
 pub async fn create_send_and_receive_blocks(
     send_count: usize,
     simultaneous_process_calls: usize,
-    destination_accounts: Vec<KeyPairDto>,
+    destination_accounts: Vec<KeyPairResponse>,
     wallet: WalletId,
     node_client: Arc<NanoRpcClient>,
-) -> Result<HashMap<Account, AccountInfoDto>> {
+) -> Result<HashMap<Account, AccountInfoResponse>> {
     let factory = Arc::new(BlockFactory {
         send_count,
         simultaneous_calls_semaphore: Arc::new(Semaphore::new(simultaneous_process_calls)),
@@ -61,7 +61,7 @@ struct BlockFactory {
     send_count: usize,
     simultaneous_calls_semaphore: Arc<Semaphore>,
     send_calls_remaining: AtomicUsize,
-    destination_accounts: Vec<KeyPairDto>,
+    destination_accounts: Vec<KeyPairResponse>,
     wallet: WalletId,
     node_client: Arc<NanoRpcClient>,
 }
@@ -79,7 +79,7 @@ impl BlockFactory {
         self.send_count - self.send_calls_remaining.load(Ordering::SeqCst)
     }
 
-    fn get_destination_account(&self, send_no: usize) -> &KeyPairDto {
+    fn get_destination_account(&self, send_no: usize) -> &KeyPairResponse {
         if send_no < self.destination_accounts.len() {
             &self.destination_accounts[send_no]
         } else {
@@ -110,8 +110,8 @@ impl BlockFactory {
 
 async fn get_account_info(
     node_client: &NanoRpcClient,
-    accounts: &[KeyPairDto],
-) -> Result<HashMap<Account, AccountInfoDto>> {
+    accounts: &[KeyPairResponse],
+) -> Result<HashMap<Account, AccountInfoResponse>> {
     let mut account_info = HashMap::new();
     for account in accounts {
         let account = account.as_string;

@@ -7,7 +7,7 @@ use serde::{
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountBalanceRequest {
     pub account: Account,
-    pub only_confirmed: Option<bool>,
+    pub include_only_confirmed: Option<bool>,
 }
 
 #[derive(PartialEq, Eq, Debug, Deserialize)]

@@ -1,4 +1,5 @@
 mod account_balance;
+mod account_create;
 mod account_info;
 mod keepalive;
 mod keypair;
@@ -8,6 +9,7 @@ mod stop;
 mod wallet_add;
 
 pub use account_balance::*;
+pub use account_create::*;
 pub use account_info::*;
 pub use keepalive::*;
 pub use keypair::*;
@@ -23,6 +25,7 @@ pub use wallet_add::*;
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
     AccountBalance(AccountBalanceRequest),
+    AccountCreate(AccountCreateRequest),
     AccountInfo(AccountInfoRequest),
     WalletAdd(WalletAddRequest),
     Receive(ReceiveRequest),
@@ -37,8 +40,12 @@ impl RpcCommand {
     pub fn account_balance(account: Account, include_only_confirmed: Option<bool>) -> Self {
         Self::AccountBalance(AccountBalanceRequest {
             account,
-            only_confirmed: include_only_confirmed,
+            include_only_confirmed,
         })
+    }
+
+    pub fn account_create(wallet: WalletId, index: Option<u32>) -> Self {
+        Self::AccountCreate(AccountCreateRequest { wallet, index })
     }
 
     pub fn account_info(account: Account) -> Self {

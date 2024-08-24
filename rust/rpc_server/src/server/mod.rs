@@ -1,3 +1,6 @@
+mod account_create;
+
+pub use account_create::*;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -7,7 +10,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
+use rsnano_rpc_messages::{AccountCreateRequest, RpcCommand, RpcCommand::AccountCreate};
 use serde_json::{json, to_string_pretty};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -53,6 +56,9 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        AccountCreate(AccountCreateRequest { wallet, index }) => {
+            account_create(rpc_service.node, wallet, index).await
+        }
         _ => todo!(),
     };
 
@@ -64,4 +70,9 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .headers_mut()
         .insert("Content-Type", "application/json".parse().unwrap());
     request
+}
+
+pub(crate) fn format_error_message(error: &str) -> String {
+    let json_value = json!({ "error": error });
+    to_string_pretty(&json_value).unwrap()
 }

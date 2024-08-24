@@ -31,7 +31,7 @@ use crate::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
         LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NanoResponseServerSpawner,
         NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater,
-        RealtimeMessageHandler, SynCookies, TcpListener, TcpListenerExt,
+        RealtimeMessageHandler, SynCookies,
     },
     utils::{
         AsyncRuntime, LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread,
@@ -53,7 +53,7 @@ use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{
     ChannelId, DeadChannelCleanup, DropPolicy, Network, NetworkCleanup, NetworkInfo, PeerConnector,
-    TrafficType,
+    TcpListener, TcpListenerExt, TrafficType,
 };
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
@@ -564,7 +564,7 @@ impl Node {
             network_info.read().unwrap().listening_port(),
             network.clone(),
             network_observer.clone(),
-            async_rt.clone(),
+            tokio_handle.clone(),
             response_server_spawner.clone(),
         ));
 

@@ -1,8 +1,5 @@
-use crate::utils::AsyncRuntime;
+use crate::{ChannelDirection, ChannelMode, Network, NetworkObserver, ResponseServerSpawner};
 use async_trait::async_trait;
-use rsnano_network::{
-    ChannelDirection, ChannelMode, Network, NetworkObserver, ResponseServerSpawner,
-};
 use rsnano_nullable_tcp::TcpStream;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
@@ -21,7 +18,7 @@ pub struct TcpListener {
     port: AtomicU16,
     network: Arc<Network>,
     network_observer: Arc<dyn NetworkObserver>,
-    runtime: Arc<AsyncRuntime>,
+    tokio: tokio::runtime::Handle,
     data: Mutex<TcpListenerData>,
     condition: Condvar,
     cancel_token: CancellationToken,
@@ -40,11 +37,11 @@ struct TcpListenerData {
 }
 
 impl TcpListener {
-    pub(crate) fn new(
+    pub fn new(
         port: u16,
         network: Arc<Network>,
         network_observer: Arc<dyn NetworkObserver>,
-        runtime: Arc<AsyncRuntime>,
+        tokio: tokio::runtime::Handle,
         response_server_spawner: Arc<dyn ResponseServerSpawner>,
     ) -> Self {
         Self {
@@ -55,7 +52,7 @@ impl TcpListener {
                 stopped: false,
                 local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
-            runtime: Arc::clone(&runtime),
+            tokio,
             condition: Condvar::new(),
             cancel_token: CancellationToken::new(),
             response_server_spawner,
@@ -88,7 +85,7 @@ pub trait TcpListenerExt {
 impl TcpListenerExt for Arc<TcpListener> {
     fn start(&self) {
         let self_l = Arc::clone(self);
-        self.runtime.tokio.spawn(async move {
+        self.tokio.spawn(async move {
             let port = self_l.port.load(Ordering::SeqCst);
             let Ok(listener) = tokio::net::TcpListener::bind(SocketAddr::new(
                 IpAddr::V6(Ipv6Addr::UNSPECIFIED),

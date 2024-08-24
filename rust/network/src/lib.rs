@@ -9,6 +9,7 @@ mod network_observer;
 mod peer_connector;
 pub mod peer_exclusion;
 mod response_server_spawner;
+mod tcp_listener;
 pub mod token_bucket;
 pub mod utils;
 pub mod write_queue;
@@ -24,6 +25,7 @@ use num_derive::FromPrimitive;
 pub use peer_connector::*;
 pub use response_server_spawner::*;
 use std::fmt::{Debug, Display};
+pub use tcp_listener::*;
 
 #[macro_use]
 extern crate anyhow;

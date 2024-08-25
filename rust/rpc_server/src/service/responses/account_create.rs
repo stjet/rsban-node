@@ -56,7 +56,6 @@ mod tests {
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
 
         node.wallets.create(wallet_id);
-        node.wallets.ensure_wallet_is_unlocked(wallet_id, "");
 
         let result = node
             .async_rt

@@ -1,4 +1,3 @@
-use rsnano_core::Account;
 use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
@@ -6,11 +5,11 @@ use serde::{
 
 #[derive(PartialEq, Eq, Debug, Deserialize)]
 pub struct AccountCreateDto {
-    pub account: Account,
+    pub account: String,
 }
 
 impl AccountCreateDto {
-    pub fn new(account: Account) -> Self {
+    pub fn new(account: String) -> Self {
         Self { account }
     }
 }

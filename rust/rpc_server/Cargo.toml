@@ -18,4 +18,3 @@ tracing = "0.1"
 
 [dev-dependencies]
 test_helpers = { path = "../tools/test_helpers" }
-rsnano_ledger = { path = "../ledger" }

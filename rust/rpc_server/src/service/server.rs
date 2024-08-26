@@ -8,7 +8,6 @@ use axum::{
 };
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::RpcCommand;
-use serde_json::{json, to_string_pretty};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;

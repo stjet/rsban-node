@@ -56,13 +56,46 @@ mod tests {
         let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
 
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
-
         node.wallets.create(wallet_id);
 
         let result = node
             .async_rt
             .tokio
             .block_on(async { rpc_client.account_create(wallet_id, None).await.unwrap() });
+
+        assert!(node.wallets.exists(&result.account.into()));
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_index_max() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let port = get_available_port();
+        let rpc_server_config = RpcServerConfig::default();
+        let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
+        let socket_addr = SocketAddr::new(ip_addr, port);
+
+        let server =
+            node.clone()
+                .async_rt
+                .tokio
+                .spawn(run_rpc_server(node.clone(), socket_addr, true));
+
+        let rpc_url = format!("http://[::1]:{}/", port);
+        let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
+
+        let wallet_id = WalletId::from_bytes(thread_rng().gen());
+        node.wallets.create(wallet_id);
+
+        let result = node.async_rt.tokio.block_on(async {
+            rpc_client
+                .account_create(wallet_id, Some(u32::MAX))
+                .await
+                .unwrap()
+        });
 
         assert!(node.wallets.exists(&result.account.into()));
 

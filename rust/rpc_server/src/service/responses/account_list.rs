@@ -15,3 +15,30 @@ pub async fn account_list(node: Arc<Node>, wallet: WalletId) -> String {
         Err(_) => format_error_message("Wallet not found"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rsnano_node::wallets::WalletsExt;
+    use test_helpers::{create_wallet, setup_rpc_client_and_server, System};
+
+    #[test]
+    fn account_list() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+
+        let wallet = create_wallet(node.clone());
+
+        let pk = node.wallets.deterministic_insert2(&wallet, false).unwrap();
+
+        let result = node
+            .async_rt
+            .tokio
+            .block_on(async { rpc_client.account_list(wallet).await.unwrap() });
+
+        assert_eq!(vec![pk], result.accounts);
+
+        server.abort();
+    }
+}

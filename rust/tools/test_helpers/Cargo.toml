@@ -17,3 +17,4 @@ tracing-test = "0"
 tokio = { version = "1" }
 reqwest = { version = "0" }
 anyhow = "1"
+rand = { version = "0.8.4" }

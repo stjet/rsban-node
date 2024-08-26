@@ -6,7 +6,7 @@ use serde::{
 
 #[derive(PartialEq, Eq, Debug, Deserialize)]
 pub struct AccountListDto {
-    accounts: Vec<PublicKey>,
+    pub accounts: Vec<PublicKey>,
 }
 
 impl AccountListDto {

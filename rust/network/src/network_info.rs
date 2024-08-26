@@ -301,7 +301,7 @@ impl NetworkInfo {
 
     fn close_idle_channels(&mut self, now: Timestamp, cutoff_period: Duration) {
         for entry in self.channels.values() {
-            if now - entry.last_packet_sent() >= cutoff_period {
+            if now - entry.last_activity() >= cutoff_period {
                 debug!(remote_addr = ?entry.peer_addr(), channel_id = %entry.channel_id(), mode = ?entry.mode(), "Closing idle channel");
                 entry.close();
             }
@@ -640,7 +640,7 @@ impl NetworkInfo {
         let mut result = Vec::new();
         for channel in self.channels.values() {
             if channel.mode() == ChannelMode::Realtime
-                && now - channel.last_packet_sent() >= min_idle_time
+                && now - channel.last_activity() >= min_idle_time
             {
                 result.push(channel.channel_id());
             }
@@ -851,7 +851,7 @@ mod tests {
         }
 
         #[test]
-        fn purge_if_last_packet_sent_is_above_timeout() {
+        fn purge_if_last_activitiy_is_above_timeout() {
             let mut network = NetworkInfo::new_test_instance();
             let now = Timestamp::new_test_instance();
             let channel = network
@@ -863,7 +863,7 @@ mod tests {
                     now,
                 )
                 .unwrap();
-            channel.set_last_packet_sent(now - Duration::from_secs(300));
+            channel.set_last_activity(now - Duration::from_secs(300));
             network.purge(now, Duration::from_secs(1));
             assert_eq!(network.len(), 0);
         }
@@ -881,7 +881,7 @@ mod tests {
                     now,
                 )
                 .unwrap();
-            channel.set_last_packet_sent(now);
+            channel.set_last_activity(now);
             network.purge(now, Duration::from_secs(1));
             assert_eq!(network.len(), 1);
         }

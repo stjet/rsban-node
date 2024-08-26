@@ -32,8 +32,6 @@ pub struct ChannelInfo {
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
     last_activity: AtomicU64,
     last_bootstrap_attempt: AtomicU64,
-    last_packet_received: AtomicU64,
-    last_packet_sent: AtomicU64,
 
     /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
@@ -68,8 +66,6 @@ impl ChannelInfo {
             direction,
             last_activity: AtomicU64::new(now.into()),
             last_bootstrap_attempt: AtomicU64::new(0),
-            last_packet_received: AtomicU64::new(now.into()),
-            last_packet_sent: AtomicU64::new(now.into()),
             timeout_seconds: AtomicU64::new(DEFAULT_TIMEOUT),
             timed_out: AtomicBool::new(false),
             socket_type: AtomicU8::new(ChannelMode::Undefined as u8),
@@ -216,23 +212,6 @@ impl ChannelInfo {
     pub fn set_last_bootstrap_attempt(&self, now: Timestamp) {
         self.last_bootstrap_attempt
             .store(now.into(), Ordering::Relaxed);
-    }
-
-    pub fn last_packet_received(&self) -> Timestamp {
-        self.last_packet_received.load(Ordering::Relaxed).into()
-    }
-
-    pub fn set_last_packet_received(&self, now: Timestamp) {
-        self.last_packet_received
-            .store(now.into(), Ordering::Relaxed);
-    }
-
-    pub fn last_packet_sent(&self) -> Timestamp {
-        self.last_packet_sent.load(Ordering::Relaxed).into()
-    }
-
-    pub fn set_last_packet_sent(&self, now: Timestamp) {
-        self.last_packet_sent.store(now.into(), Ordering::Relaxed);
     }
 
     pub fn is_queue_full(&self, traffic_type: TrafficType) -> bool {

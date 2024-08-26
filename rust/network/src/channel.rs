@@ -95,8 +95,14 @@ impl Channel {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
         let info = channel_info.clone();
-        let (channel, mut receiver) =
-            Self::new(channel_info, network_info, stream, limiter, clock, observer);
+        let (channel, mut receiver) = Self::new(
+            channel_info,
+            network_info,
+            stream,
+            limiter,
+            clock.clone(),
+            observer.clone(),
+        );
 
         let write_queue = Arc::downgrade(&channel.write_queue);
         info.set_queue_full_query(Box::new(move |traffic_type| {
@@ -117,6 +123,8 @@ impl Channel {
                             Ok(n) => {
                                 written += n;
                                 if written >= buffer.len() {
+                                    observer.send_succeeded(written);
+                                    info.set_last_activity(clock.now());
                                     break;
                                 }
                             }
@@ -140,10 +148,6 @@ impl Channel {
         let channel_l = channel.clone();
         handle.spawn(async move { channel_l.ongoing_checkup().await });
         channel
-    }
-
-    fn update_last_activity(&self) {
-        self.info.set_last_activity(self.clock.now());
     }
 
     pub fn channel_id(&self) -> ChannelId {
@@ -192,8 +196,7 @@ impl Channel {
 
         if result.is_ok() {
             self.observer.send_succeeded(buf_size);
-            self.update_last_activity();
-            self.info.set_last_packet_sent(self.clock.now());
+            self.info.set_last_activity(self.clock.now());
         } else {
             self.observer.send_failed();
             debug!(channel_id = %self.channel_id(), remote_addr = ?self.info.peer_addr(), "Closing channel after write error");
@@ -201,8 +204,6 @@ impl Channel {
         }
 
         result?;
-
-        self.info.set_last_packet_sent(self.clock.now());
         Ok(())
     }
 
@@ -227,18 +228,11 @@ impl Channel {
             // TODO notify bandwidth limiter that we are sending it anyway
         }
 
-        let buf_size = buffer.len();
-
         let (inserted, write_error) = self
             .write_queue
             .try_insert(Arc::new(buffer.to_vec()), traffic_type); // TODO don't copy into vec. Split into fixed size packets
 
-        if inserted {
-            //TODO raise event when actually written to stream
-            self.observer.send_succeeded(buf_size);
-            self.update_last_activity();
-            self.info.set_last_packet_sent(self.clock.now());
-        } else if write_error {
+        if write_error {
             self.observer.send_failed();
             self.info.close();
             debug!(peer_addr = ?self.info.peer_addr(), channel_id = %self.channel_id(), mode = ?self.info.mode(), "Closing socket after write error");
@@ -303,8 +297,7 @@ impl AsyncBufferReader for Channel {
                             read += n;
                             if read >= count {
                                 self.observer.read_succeeded(count);
-                                self.update_last_activity();
-                                self.info.set_last_packet_received(self.clock.now());
+                                self.info.set_last_activity(self.clock.now());
                                 return Ok(());
                             }
                         }

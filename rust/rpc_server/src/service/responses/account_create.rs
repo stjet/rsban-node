@@ -13,16 +13,20 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
     };
 
     match result {
-        Ok(account) => to_string_pretty(&AccountCreateDto::new(account.encode_hex())).unwrap(),
+        Ok(account) => {
+            println!("{:?}", account.as_account());
+            to_string_pretty(&AccountCreateDto::new(account)).unwrap()
+        }
         Err(_) => format_error_message("Wallet error"),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{run_rpc_server, RpcServerConfig};
     use rand::{thread_rng, Rng};
     use reqwest::Url;
-    use rsnano_core::{PublicKey, WalletId};
+    use rsnano_core::WalletId;
     use rsnano_node::wallets::WalletsExt;
     use rsnano_rpc_client::NanoRpcClient;
     use std::{
@@ -31,8 +35,6 @@ mod tests {
         sync::Arc,
     };
     use test_helpers::{get_available_port, System};
-
-    use crate::{run_rpc_server, RpcServerConfig};
 
     #[test]
     fn account_create_index_none() {
@@ -62,9 +64,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.account_create(wallet_id, None).await.unwrap() });
 
-        assert!(node
-            .wallets
-            .exists(&PublicKey::decode_hex(&result.account).unwrap()));
+        assert!(node.wallets.exists(&result.account.into()));
 
         server.abort();
     }

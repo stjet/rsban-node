@@ -13,26 +13,14 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
     };
 
     match result {
-        Ok(account) => {
-            println!("{:?}", account.as_account());
-            to_string_pretty(&AccountCreateDto::new(account)).unwrap()
-        }
+        Ok(account) => to_string_pretty(&AccountCreateDto::new(account)).unwrap(),
         Err(_) => format_error_message("Wallet error"),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rand::{thread_rng, Rng};
-    use rsnano_core::WalletId;
-    use rsnano_node::{node::Node, wallets::WalletsExt};
-    use test_helpers::{setup_rpc_client_and_server, System};
-
-    fn create_wallet(node: &Node) -> WalletId {
-        let wallet_id = WalletId::from_bytes(thread_rng().gen());
-        node.wallets.create(wallet_id);
-        wallet_id
-    }
+    use test_helpers::{create_wallet, setup_rpc_client_and_server, System};
 
     #[test]
     fn account_create_index_none() {
@@ -41,7 +29,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
-        let wallet_id = create_wallet(&node);
+        let wallet_id = create_wallet(node.clone());
 
         let result = node
             .async_rt
@@ -60,7 +48,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
-        let wallet_id = create_wallet(&node);
+        let wallet_id = create_wallet(node.clone());
 
         let result = node.async_rt.tokio.block_on(async {
             rpc_client

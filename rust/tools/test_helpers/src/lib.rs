@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 use reqwest::Url;
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
@@ -454,4 +455,10 @@ pub fn setup_rpc_client_and_server(
     let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
 
     (rpc_client, server)
+}
+
+pub fn create_wallet(node: Arc<Node>) -> WalletId {
+    let wallet_id = WalletId::from_bytes(thread_rng().gen());
+    node.wallets.create(wallet_id);
+    wallet_id
 }

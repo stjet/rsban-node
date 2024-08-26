@@ -9,7 +9,6 @@ use axum::{
 };
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{AccountCreateArgs, RpcCommand, WalletsRpcCommand};
-use serde_json::{json, to_string_pretty};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -71,9 +70,4 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .headers_mut()
         .insert("Content-Type", "application/json".parse().unwrap());
     request
-}
-
-pub(crate) fn format_error_message(error: &str) -> String {
-    let json_value = json!({ "error": error });
-    to_string_pretty(&json_value).unwrap()
 }

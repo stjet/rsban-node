@@ -11,8 +11,22 @@ pub enum LedgerRpcCommand {
 }
 
 impl LedgerRpcCommand {
-    pub fn account_info(account: Account) -> Self {
-        Self::AccountInfo(AccountInfoArgs { account })
+    pub fn account_info(
+        account: Account,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        pending: Option<bool>,
+        receivable: Option<bool>,
+        include_confirmed: Option<bool>,
+    ) -> Self {
+        Self::AccountInfo(AccountInfoArgs {
+            account,
+            representative,
+            weight,
+            pending,
+            receivable,
+            include_confirmed,
+        })
     }
 }
 
@@ -24,7 +38,7 @@ mod tests {
     #[test]
     fn deserialize() {
         let account = Account::from(123);
-        let cmd = LedgerRpcCommand::account_info(account);
+        let cmd = LedgerRpcCommand::account_info(account, None, None, None, None, None);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: LedgerRpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)

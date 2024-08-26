@@ -17,3 +17,37 @@ pub struct AccountInfoDto {
     pub pending: Option<u128>,
     pub receivable: Option<u128>,
 }
+
+impl AccountInfoDto {
+    pub fn new(
+        frontier: BlockHash,
+        open_block: BlockHash,
+        representative_block: BlockHash,
+        balance: u128,
+        modified_timestamp: u64,
+        block_count: u64,
+        account_version: u8,
+        confirmation_height: u64,
+        confirmation_height_frontier: BlockHash,
+        representative: Option<Account>,
+        weight: Option<u128>,
+        pending: Option<u128>,
+        receivable: Option<u128>,
+    ) -> Self {
+        AccountInfoDto {
+            frontier,
+            open_block,
+            representative_block,
+            balance,
+            modified_timestamp,
+            block_count,
+            account_version,
+            confirmation_height,
+            confirmation_height_frontier,
+            representative,
+            weight,
+            pending,
+            receivable,
+        }
+    }
+}

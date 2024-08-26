@@ -21,8 +21,23 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
-        let cmd = LedgerRpcCommand::account_info(account);
+    pub async fn account_info(
+        &self,
+        account: Account,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        pending: Option<bool>,
+        receivable: Option<bool>,
+        include_confirmed: Option<bool>,
+    ) -> Result<AccountInfoDto> {
+        let cmd = LedgerRpcCommand::account_info(
+            account,
+            representative,
+            weight,
+            pending,
+            receivable,
+            include_confirmed,
+        );
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

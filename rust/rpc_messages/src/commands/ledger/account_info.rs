@@ -4,6 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountInfoArgs {
     pub account: Account,
+    pub representative: Option<bool>,
+    pub weight: Option<bool>,
+    pub pending: Option<bool>,
+    pub receivable: Option<bool>,
+    pub include_confirmed: Option<bool>,
 }
 
 #[cfg(test)]
@@ -15,8 +20,14 @@ mod tests {
     #[test]
     fn serialize_account_info_command() {
         assert_eq!(
-            serde_json::to_string_pretty(&LedgerRpcCommand::account_info(Account::from(123)))
-                .unwrap(),
+            serde_json::to_string_pretty(&LedgerRpcCommand::account_info(
+                Account::from(123),
+                None,
+                None,
+                None,
+                None
+            ))
+            .unwrap(),
             r#"{
   "action": "account_info",
   "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549"
@@ -27,7 +38,7 @@ mod tests {
     #[test]
     fn derialize_account_info_command() {
         let account = Account::from(123);
-        let cmd = LedgerRpcCommand::account_info(account);
+        let cmd = LedgerRpcCommand::account_info(account, None, None, None, None);
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: LedgerRpcCommand = from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)

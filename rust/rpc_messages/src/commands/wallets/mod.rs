@@ -1,9 +1,11 @@
+mod account_remove;
 mod receive;
 mod send;
 mod wallet_add;
 
+pub use account_remove::*;
 pub use receive::*;
-use rsnano_core::{RawKey, WalletId};
+use rsnano_core::{Account, RawKey, WalletId};
 pub use send::*;
 use serde::{Deserialize, Serialize};
 pub use wallet_add::*;
@@ -15,6 +17,7 @@ pub enum WalletsRpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
+    AccountRemove(AccountRemoveArgs),
 }
 
 impl WalletsRpcCommand {
@@ -23,5 +26,9 @@ impl WalletsRpcCommand {
             wallet: wallet_id,
             key,
         })
+    }
+
+    pub fn account_remove(wallet: WalletId, account: Account) -> Self {
+        Self::AccountRemove(AccountRemoveArgs { wallet, account })
     }
 }

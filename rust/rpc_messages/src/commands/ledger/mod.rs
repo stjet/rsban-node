@@ -1,28 +1,25 @@
-mod account_balance;
 mod account_info;
+mod account_list;
 
-pub use account_balance::*;
 pub use account_info::*;
-use rsnano_core::Account;
+pub use account_list::*;
+use rsnano_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum LedgerRpcCommand {
-    AccountBalance(AccountBalanceArgs),
     AccountInfo(AccountInfoArgs),
+    AccountList(AccountListArgs),
 }
 
 impl LedgerRpcCommand {
-    pub fn account_balance(account: Account, include_only_confirmed: Option<bool>) -> Self {
-        Self::AccountBalance(AccountBalanceArgs {
-            account,
-            include_only_confirmed,
-        })
-    }
-
     pub fn account_info(account: Account) -> Self {
         Self::AccountInfo(AccountInfoArgs { account })
+    }
+
+    pub fn account_list(wallet: WalletId) -> Self {
+        Self::AccountList(AccountListArgs { wallet })
     }
 }
 

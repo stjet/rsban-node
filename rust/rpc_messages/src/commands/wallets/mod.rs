@@ -1,7 +1,9 @@
+mod accounts_create;
 mod receive;
 mod send;
 mod wallet_add;
 
+pub use accounts_create::*;
 pub use receive::*;
 use rsnano_core::{RawKey, WalletId};
 pub use send::*;
@@ -15,6 +17,7 @@ pub enum WalletsRpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
+    AccountsCreate(AccountsCreateArgs),
 }
 
 impl WalletsRpcCommand {

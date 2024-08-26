@@ -23,40 +23,22 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
 
 #[cfg(test)]
 mod tests {
-    use crate::{run_rpc_server, RpcServerConfig};
     use rand::{thread_rng, Rng};
-    use reqwest::Url;
     use rsnano_core::WalletId;
-    use rsnano_node::wallets::WalletsExt;
-    use rsnano_rpc_client::NanoRpcClient;
-    use std::{
-        net::{IpAddr, SocketAddr},
-        str::FromStr,
-        sync::Arc,
-    };
-    use test_helpers::{get_available_port, System};
+    use rsnano_node::{node::Node, wallets::WalletsExt};
+    use test_helpers::setup_node_client_and_server;
+
+    fn create_wallet(node: &Node) -> WalletId {
+        let wallet_id = WalletId::from_bytes(thread_rng().gen());
+        node.wallets.create(wallet_id);
+        wallet_id
+    }
 
     #[test]
     fn account_create_index_none() {
-        let mut system = System::new();
-        let node = system.make_node();
+        let (node, rpc_client, server) = setup_node_client_and_server();
 
-        let port = get_available_port();
-        let rpc_server_config = RpcServerConfig::default();
-        let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, port);
-
-        let server =
-            node.clone()
-                .async_rt
-                .tokio
-                .spawn(run_rpc_server(node.clone(), socket_addr, true));
-
-        let rpc_url = format!("http://[::1]:{}/", port);
-        let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
-
-        let wallet_id = WalletId::from_bytes(thread_rng().gen());
-        node.wallets.create(wallet_id);
+        let wallet_id = create_wallet(&node);
 
         let result = node
             .async_rt
@@ -70,25 +52,9 @@ mod tests {
 
     #[test]
     fn account_create_index_max() {
-        let mut system = System::new();
-        let node = system.make_node();
+        let (node, rpc_client, server) = setup_node_client_and_server();
 
-        let port = get_available_port();
-        let rpc_server_config = RpcServerConfig::default();
-        let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, port);
-
-        let server =
-            node.clone()
-                .async_rt
-                .tokio
-                .spawn(run_rpc_server(node.clone(), socket_addr, true));
-
-        let rpc_url = format!("http://[::1]:{}/", port);
-        let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
-
-        let wallet_id = WalletId::from_bytes(thread_rng().gen());
-        node.wallets.create(wallet_id);
+        let wallet_id = create_wallet(&node);
 
         let result = node.async_rt.tokio.block_on(async {
             rpc_client

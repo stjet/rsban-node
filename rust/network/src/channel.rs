@@ -3,7 +3,7 @@ use crate::{
     utils::into_ipv6_socket_address,
     write_queue::{WriteQueue, WriteQueueReceiver},
     AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkInfo,
-    NetworkObserver, NullNetworkObserver, TrafficType,
+    NetworkObserver, NullNetworkObserver, TrafficType, WriteQueueAdapter,
 };
 use async_trait::async_trait;
 use rsnano_core::{
@@ -15,10 +15,11 @@ use rsnano_nullable_tcp::TcpStream;
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
     time::Duration,
 };
-use tokio::time::sleep;
+use tokio::{select, time::sleep};
+use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
 pub struct Channel {
@@ -27,9 +28,10 @@ pub struct Channel {
     pub info: Arc<ChannelInfo>,
     limiter: Arc<OutboundBandwidthLimiter>,
     write_queue: Arc<WriteQueue>,
-    stream: Arc<TcpStream>,
+    stream: Weak<TcpStream>,
     clock: Arc<SteadyClock>,
     observer: Arc<dyn NetworkObserver>,
+    cancel_token: CancellationToken,
 }
 
 impl Channel {
@@ -38,10 +40,11 @@ impl Channel {
     fn new(
         channel_info: Arc<ChannelInfo>,
         network_info: Arc<RwLock<NetworkInfo>>,
-        stream: Arc<TcpStream>,
+        stream: Weak<TcpStream>,
         limiter: Arc<OutboundBandwidthLimiter>,
         clock: Arc<SteadyClock>,
         observer: Arc<dyn NetworkObserver>,
+        cancel_token: CancellationToken,
     ) -> (Self, WriteQueueReceiver) {
         let (write_queue, receiver) = WriteQueue::new(Self::MAX_QUEUE_SIZE);
 
@@ -54,6 +57,7 @@ impl Channel {
             stream,
             clock,
             observer,
+            cancel_token,
         };
 
         (channel, receiver)
@@ -75,10 +79,11 @@ impl Channel {
                 Timestamp::new_test_instance(),
             )),
             Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
-            Arc::new(TcpStream::new_null()),
+            Arc::downgrade(&Arc::new(TcpStream::new_null())),
             Arc::new(OutboundBandwidthLimiter::default()),
             Arc::new(SteadyClock::new_null()),
             Arc::new(NullNetworkObserver::new()),
+            CancellationToken::new(),
         );
         channel
     }
@@ -95,50 +100,70 @@ impl Channel {
         let stream = Arc::new(stream);
         let stream_l = stream.clone();
         let info = channel_info.clone();
+        let cancel_token = CancellationToken::new();
         let (channel, mut receiver) = Self::new(
             channel_info,
             network_info,
-            stream,
+            Arc::downgrade(&stream),
             limiter,
             clock.clone(),
             observer.clone(),
+            cancel_token.clone(),
         );
 
         let write_queue = Arc::downgrade(&channel.write_queue);
-        info.set_queue_full_query(Box::new(move |traffic_type| {
-            let Some(queue) = write_queue.upgrade() else {
-                return true;
-            };
-            queue.capacity(traffic_type) <= Self::MAX_QUEUE_SIZE
+        info.set_write_queue(Box::new(WriteQueueAdapterImpl {
+            queue: write_queue,
+            cancel_token: cancel_token.clone(),
         }));
 
         // process write queue:
         handle.spawn(async move {
-            while let Some((entry, _)) = receiver.pop().await {
-                let mut written = 0;
-                let buffer = &entry.buffer;
-                loop {
-                    match stream_l.writable().await {
-                        Ok(()) => match stream_l.try_write(&buffer[written..]) {
-                            Ok(n) => {
-                                written += n;
-                                if written >= buffer.len() {
-                                    observer.send_succeeded(written);
-                                    info.set_last_activity(clock.now());
-                                    break;
+            loop {
+                let res = select! {
+                    _ = cancel_token.cancelled() =>{
+                        return;
+                    },
+                  res = receiver.pop() => res
+                };
+
+                if let Some((entry, _)) = res {
+                    let mut written = 0;
+                    let buffer = &entry.buffer;
+                    loop {
+                        select! {
+                            _ = cancel_token.cancelled() =>{
+                                return;
+                            }
+                            res = stream_l.writable() =>{
+                            match res {
+                            Ok(()) => match stream_l.try_write(&buffer[written..]) {
+                                Ok(n) => {
+                                    written += n;
+                                    if written >= buffer.len() {
+                                        observer.send_succeeded(written);
+                                        info.set_last_activity(clock.now());
+                                        break;
+                                    }
                                 }
-                            }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                continue;
-                            }
+                                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                    continue;
+                                }
+                                Err(_) => {
+                                    info.close();
+                                    return;
+                                }
+                            },
                             Err(_) => {
-                                break;
+                                info.close();
+                                return;
                             }
-                        },
-                        Err(_) => {
-                            break;
+                        }
+                            }
                         }
                     }
+                } else {
+                    break;
                 }
             }
             info.close();
@@ -162,10 +187,15 @@ impl Channel {
     }
 
     pub fn local_addr(&self) -> SocketAddrV6 {
-        self.stream
+        let no_addr = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0);
+        let Some(stream) = self.stream.upgrade() else {
+            return no_addr;
+        };
+
+        stream
             .local_addr()
             .map(|addr| into_ipv6_socket_address(addr))
-            .unwrap_or(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0))
+            .unwrap_or(no_addr)
     }
 
     pub async fn send_buffer(
@@ -173,6 +203,10 @@ impl Channel {
         buffer: &[u8],
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
+        if self.info.is_closed() {
+            bail!("socket closed");
+        }
+
         while self.info.is_queue_full(traffic_type) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
@@ -284,13 +318,24 @@ impl AsyncBufferReader for Channel {
             return Err(anyhow!("Tried to read from a closed TcpStream"));
         }
 
+        let Some(stream) = self.stream.upgrade() else {
+            return Err(anyhow!("TCP stream dropped"));
+        };
+
         let mut read = 0;
         loop {
-            match self.stream.readable().await {
+            let res = select! {
+                _  = self.cancel_token.cancelled() =>{
+                    return Err(anyhow!("cancelled"));
+                },
+                res = stream.readable() => res
+            };
+            match res {
                 Ok(_) => {
-                    match self.stream.try_read(&mut buffer[read..count]) {
+                    match stream.try_read(&mut buffer[read..count]) {
                         Ok(0) => {
                             self.observer.read_failed();
+                            self.info.close();
                             return Err(anyhow!("remote side closed the channel"));
                         }
                         Ok(n) => {
@@ -306,12 +351,14 @@ impl AsyncBufferReader for Channel {
                         }
                         Err(e) => {
                             self.observer.read_failed();
+                            self.info.close();
                             return Err(e.into());
                         }
                     };
                 }
                 Err(e) => {
                     self.observer.read_failed();
+                    self.info.close();
                     return Err(e.into());
                 }
             }
@@ -331,5 +378,23 @@ impl ChannelReader {
 impl AsyncBufferReader for ChannelReader {
     async fn read(&self, buffer: &mut [u8], count: usize) -> anyhow::Result<()> {
         self.0.read(buffer, count).await
+    }
+}
+
+struct WriteQueueAdapterImpl {
+    queue: Weak<WriteQueue>,
+    cancel_token: CancellationToken,
+}
+
+impl WriteQueueAdapter for WriteQueueAdapterImpl {
+    fn is_queue_full(&self, traffic_type: TrafficType) -> bool {
+        match self.queue.upgrade() {
+            Some(queue) => queue.capacity(traffic_type) <= Channel::MAX_QUEUE_SIZE,
+            None => true,
+        }
+    }
+
+    fn close(&self) {
+        self.cancel_token.cancel();
     }
 }

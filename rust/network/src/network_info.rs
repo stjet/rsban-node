@@ -285,18 +285,18 @@ impl NetworkInfo {
     }
 
     /// Returns channel IDs of removed channels
-    pub fn purge(&mut self, now: Timestamp, cutoff_period: Duration) -> Vec<ChannelId> {
+    pub fn purge(&mut self, now: Timestamp, cutoff_period: Duration) -> Vec<Arc<ChannelInfo>> {
         self.close_idle_channels(now, cutoff_period);
 
         // Check if any tcp channels belonging to old protocol versions which may still be alive due to async operations
         self.close_old_protocol_versions(self.network_config.min_protocol_version);
 
         // Remove channels with dead underlying sockets
-        let purged_channel_ids = self.remove_dead_channels();
+        let purged_channels = self.remove_dead_channels();
 
         // Remove keepalive attempt tracking for attempts older than cutoff
         self.attempts.purge(now, cutoff_period);
-        purged_channel_ids
+        purged_channels
     }
 
     fn close_idle_channels(&mut self, now: Timestamp, cutoff_period: Duration) {
@@ -320,7 +320,7 @@ impl NetworkInfo {
     }
 
     /// Removes dead channels and returns their channel ids
-    fn remove_dead_channels(&mut self) -> Vec<ChannelId> {
+    fn remove_dead_channels(&mut self) -> Vec<Arc<ChannelInfo>> {
         let dead_channels: Vec<_> = self
             .channels
             .values()
@@ -333,7 +333,7 @@ impl NetworkInfo {
             self.channels.remove(&channel.channel_id());
         }
 
-        dead_channels.iter().map(|c| c.channel_id()).collect()
+        dead_channels
     }
 
     pub fn is_queue_full(&self, channel_id: ChannelId, traffic_type: TrafficType) -> bool {

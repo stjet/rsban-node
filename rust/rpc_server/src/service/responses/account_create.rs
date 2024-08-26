@@ -13,7 +13,7 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
     };
 
     match result {
-        Ok(account) => to_string_pretty(&AccountCreateDto::new(account)).unwrap(),
+        Ok(account) => to_string_pretty(&AccountCreateDto::new(account.as_account())).unwrap(),
         Err(_) => format_error_message("Wallet error"),
     }
 }

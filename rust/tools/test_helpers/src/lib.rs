@@ -433,14 +433,12 @@ pub fn setup_chains(
     chains
 }
 
-pub fn setup_node_client_and_server() -> (
-    Arc<Node>,
+pub fn setup_rpc_client_and_server(
+    node: Arc<Node>,
+) -> (
     Arc<NanoRpcClient>,
     tokio::task::JoinHandle<Result<(), anyhow::Error>>,
 ) {
-    let mut system = System::new();
-    let node = system.make_node();
-
     let port = get_available_port();
     let rpc_server_config = RpcServerConfig::default();
     let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
@@ -455,5 +453,5 @@ pub fn setup_node_client_and_server() -> (
     let rpc_url = format!("http://[::1]:{}/", port);
     let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
 
-    (node, rpc_client, server)
+    (rpc_client, server)
 }

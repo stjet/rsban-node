@@ -26,7 +26,7 @@ mod tests {
     use rand::{thread_rng, Rng};
     use rsnano_core::WalletId;
     use rsnano_node::{node::Node, wallets::WalletsExt};
-    use test_helpers::setup_node_client_and_server;
+    use test_helpers::{setup_rpc_client_and_server, System};
 
     fn create_wallet(node: &Node) -> WalletId {
         let wallet_id = WalletId::from_bytes(thread_rng().gen());
@@ -36,7 +36,10 @@ mod tests {
 
     #[test]
     fn account_create_index_none() {
-        let (node, rpc_client, server) = setup_node_client_and_server();
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
         let wallet_id = create_wallet(&node);
 
@@ -52,7 +55,10 @@ mod tests {
 
     #[test]
     fn account_create_index_max() {
-        let (node, rpc_client, server) = setup_node_client_and_server();
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
         let wallet_id = create_wallet(&node);
 

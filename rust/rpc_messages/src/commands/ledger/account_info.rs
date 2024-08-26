@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockHash};
+use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]

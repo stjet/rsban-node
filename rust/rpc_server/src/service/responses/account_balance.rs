@@ -26,9 +26,10 @@ pub async fn account_balance(
 
     let pending = node
         .ledger
-        .account_receivable(&tx, &account, only_confirmed);
+        .account_receivable(&tx, &account, only_confirmed)
+        .number();
 
-    let account_balance = AccountBalanceDto::new(balance, pending, pending);
+    let account_balance = AccountBalanceDto::new(balance.number(), pending, pending);
 
     to_string_pretty(&account_balance).unwrap()
 }
@@ -77,14 +78,11 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(
-            result.balance,
-            Amount::raw(340282366920938463463374607431768211455)
-        );
+        assert_eq!(result.balance, 340282366920938463463374607431768211455);
 
-        assert_eq!(result.pending, Amount::zero());
+        assert_eq!(result.pending, 0);
 
-        assert_eq!(result.receivable, Amount::zero());
+        assert_eq!(result.receivable, 0);
 
         server.abort();
     }
@@ -105,14 +103,11 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(
-            result.balance,
-            Amount::raw(340282366920938463463374607431768211455)
-        );
+        assert_eq!(result.balance, 340282366920938463463374607431768211455);
 
-        assert_eq!(result.pending, Amount::zero());
+        assert_eq!(result.pending, 0);
 
-        assert_eq!(result.receivable, Amount::zero());
+        assert_eq!(result.receivable, 0);
 
         server.abort();
     }
@@ -133,14 +128,11 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(
-            result.balance,
-            Amount::raw(340282366920938463463374607431768211454)
-        );
+        assert_eq!(result.balance, 340282366920938463463374607431768211454);
 
-        assert_eq!(result.pending, Amount::raw(1));
+        assert_eq!(result.pending, 1);
 
-        assert_eq!(result.receivable, Amount::raw(1));
+        assert_eq!(result.receivable, 1);
 
         server.abort();
     }

@@ -229,12 +229,12 @@ impl RequestAggregatorLoop {
         for (channel_id, request) in &batch {
             tx.refresh_if_needed();
 
-            if !self
+            let queue_full = self
                 .network
                 .read()
                 .unwrap()
-                .is_queue_full(*channel_id, TrafficType::Generic)
-            {
+                .is_queue_full(*channel_id, TrafficType::Generic);
+            if !queue_full {
                 self.process(&tx, request, *channel_id);
             } else {
                 self.stats.inc_dir(

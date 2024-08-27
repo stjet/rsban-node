@@ -1,7 +1,7 @@
 use reqwest::Url;
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
-    WalletId,
+    utils::get_cpu_count, work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair,
+    Networks, StateBlock, WalletId,
 };
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
@@ -440,7 +440,8 @@ pub fn setup_rpc_client_and_server(
     tokio::task::JoinHandle<Result<(), anyhow::Error>>,
 ) {
     let port = get_available_port();
-    let rpc_server_config = RpcServerConfig::default();
+    let rpc_server_config =
+        RpcServerConfig::default_for(Networks::NanoBetaNetwork, get_cpu_count());
     let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
     let socket_addr = SocketAddr::new(ip_addr, port);
 

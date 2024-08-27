@@ -8,7 +8,6 @@ use rsnano_node::{
         NetworkConstants, NodeFlags,
     },
     node::{Node, NodeExt},
-    utils::AsyncRuntime,
     NetworkParams,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
@@ -118,7 +117,7 @@ pub(crate) struct RunDaemonArgs {
 }
 
 impl RunDaemonArgs {
-    pub(crate) fn run_daemon(&self) -> Result<()> {
+    pub(crate) async fn run_daemon(&self) -> Result<()> {
         let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
             "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
         ));
@@ -155,8 +154,6 @@ impl RunDaemonArgs {
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
 
-        let async_rt = Arc::new(AsyncRuntime::default());
-
         let work = Arc::new(WorkPoolImpl::new(
             network_params.work.clone(),
             node_config.work_threads as usize,
@@ -164,7 +161,7 @@ impl RunDaemonArgs {
         ));
 
         let node = Arc::new(Node::new(
-            async_rt,
+            tokio::runtime::Handle::current(),
             path,
             node_config,
             network_params,

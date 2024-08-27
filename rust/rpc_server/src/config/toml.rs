@@ -1,5 +1,4 @@
-use super::config::{RpcServerConfig, RpcServerLoggingConfig, RpcServerProcessConfig};
-use anyhow::Result;
+use super::{RpcServerConfig, RpcServerLoggingConfig, RpcServerProcessConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]

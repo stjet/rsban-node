@@ -10,10 +10,14 @@ pub use utils::*;
 pub use wallets::*;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
-    Ledger(LedgerRpcCommand),
-    Node(NodeRpcCommand),
-    Utils(UtilsRpcCommand),
-    Wallets(WalletsRpcCommand),
+    AccountInfo(AccountInfoArgs),
+    Keepalive(KeepaliveArgs),
+    Stop,
+    KeyCreate,
+    Receive(ReceiveArgs),
+    Send(SendArgs),
+    WalletAdd(WalletAddArgs),
+    WalletCreate,
 }

@@ -1,7 +1,6 @@
-use reqwest::Url;
 use rsnano_core::{
-    utils::get_cpu_count, work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair,
-    Networks, StateBlock, WalletId,
+    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
+    WalletId,
 };
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
@@ -14,11 +13,8 @@ use rsnano_node::{
     NetworkParams,
 };
 use rsnano_nullable_tcp::TcpStream;
-use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
 use std::{
-    net::{IpAddr, SocketAddr, TcpListener},
-    str::FromStr,
+    net::TcpListener,
     sync::{
         atomic::{AtomicU16, Ordering},
         Arc, OnceLock,
@@ -431,28 +427,4 @@ pub fn setup_chains(
     }
 
     chains
-}
-
-pub fn setup_rpc_client_and_server(
-    node: Arc<Node>,
-) -> (
-    Arc<NanoRpcClient>,
-    tokio::task::JoinHandle<Result<(), anyhow::Error>>,
-) {
-    let port = get_available_port();
-    let rpc_server_config =
-        RpcServerConfig::default_for(Networks::NanoBetaNetwork, get_cpu_count());
-    let ip_addr = IpAddr::from_str(&rpc_server_config.address).unwrap();
-    let socket_addr = SocketAddr::new(ip_addr, port);
-
-    let server = node
-        .clone()
-        .async_rt
-        .tokio
-        .spawn(run_rpc_server(node.clone(), socket_addr, true));
-
-    let rpc_url = format!("http://[::1]:{}/", port);
-    let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
-
-    (rpc_client, server)
 }

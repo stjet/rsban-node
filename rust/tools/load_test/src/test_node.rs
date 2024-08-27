@@ -10,7 +10,7 @@ use rsnano_node::{
     unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoDto, KeyCreateDto};
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
 use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::{
     collections::HashMap,
@@ -111,7 +111,7 @@ impl TestNode {
 
     async fn add_destination_accounts(
         &self,
-        destination_accounts: &[KeyCreateDto],
+        destination_accounts: &[KeyPairDto],
         wallet: WalletId,
     ) -> Result<()> {
         for account in destination_accounts {
@@ -123,7 +123,7 @@ impl TestNode {
     async fn create_destination_accounts(
         &self,
         destination_count: usize,
-    ) -> Result<Vec<KeyCreateDto>> {
+    ) -> Result<Vec<KeyPairDto>> {
         let mut destination_accounts = Vec::with_capacity(destination_count);
         for _ in 0..destination_count {
             let acc = self.node_client.key_create_rpc().await?;

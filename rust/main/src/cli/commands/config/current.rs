@@ -1,10 +1,17 @@
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_node::config::{get_node_toml_config_path, get_rpc_toml_config_path, DaemonToml};
-use rsnano_rpc_server::RpcServerToml;
+use rsnano_core::{utils::get_cpu_count, Networks};
+use rsnano_node::{
+    config::{
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants,
+    },
+    NetworkParams,
+};
+use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::fs::read_to_string;
-use toml::from_str;
+use toml::{from_str, to_string};
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input1")
@@ -30,6 +37,9 @@ pub(crate) struct CurrentArgs {
 impl CurrentArgs {
     pub(crate) fn current(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network);
+        let network = Networks::NanoBetaNetwork;
+        let network_params = NetworkParams::new(network);
+        let parallelism = get_cpu_count();
 
         if self.node {
             let node_toml_config_path = get_node_toml_config_path(&path);
@@ -39,26 +49,30 @@ impl CurrentArgs {
 
                 let current_daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
 
-                let default_daemon_toml = DaemonToml::default();
+                let mut default_daemon_config = DaemonConfig::new(&network_params, parallelism);
 
-                let merged_toml_str = current_daemon_toml.merge_defaults(&default_daemon_toml)?;
+                default_daemon_config.merge_toml(&current_daemon_toml);
 
-                println!("{}", merged_toml_str);
+                let merged_daemon_toml: DaemonToml = (&default_daemon_config).into();
+
+                println!("{}", to_string(&merged_daemon_toml).unwrap());
             }
         } else {
             let rpc_toml_config_path = get_rpc_toml_config_path(&path);
 
             if rpc_toml_config_path.exists() {
-                let toml_str = read_to_string(&rpc_toml_config_path)?;
+                let rpc_toml_str = read_to_string(&rpc_toml_config_path)?;
 
-                let current_rpc_server_toml: RpcServerToml = from_str(&toml_str)?;
+                let current_rpc_toml: RpcServerToml = from_str(&rpc_toml_str)?;
 
-                let default_rpc_server_toml = RpcServerToml::default();
+                let mut default_rpc_config =
+                    RpcServerConfig::new(&NetworkConstants::for_beta(), parallelism);
 
-                let merged_toml_str =
-                    current_rpc_server_toml.merge_defaults(&default_rpc_server_toml)?;
+                default_rpc_config.merge_toml(&current_rpc_toml);
 
-                println!("{}", merged_toml_str);
+                let merged_rpc_toml: RpcServerToml = (&default_rpc_config).into();
+
+                println!("{}", to_string(&merged_rpc_toml).unwrap());
             }
         }
 

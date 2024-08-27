@@ -1,7 +1,11 @@
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_node::config::DaemonToml;
-use rsnano_rpc_server::RpcServerToml;
+use rsnano_core::{utils::get_cpu_count, Networks};
+use rsnano_node::{
+    config::{DaemonConfig, DaemonToml, NetworkConstants},
+    NetworkParams,
+};
+use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::io::BufRead;
 
 #[derive(Parser)]
@@ -22,11 +26,18 @@ pub(crate) struct DefaultArgs {
 
 impl DefaultArgs {
     pub(crate) fn default(&self) -> Result<()> {
+        let network = Networks::NanoBetaNetwork;
+        let network_constants = NetworkParams::new(network);
+        let parallelism = get_cpu_count();
+
         let (toml_str, config_type) = if self.node {
-            let daemon_toml = DaemonToml::default();
+            let daemon_toml: DaemonToml =
+                (&DaemonConfig::new(&network_constants, parallelism)).into();
             (toml::to_string(&daemon_toml)?, "node")
         } else {
-            let rpc_server_toml = RpcServerToml::default();
+            let rpc_server_toml: RpcServerToml =
+                (&RpcServerConfig::new(&NetworkConstants::for_network(network), parallelism))
+                    .into();
             (toml::to_string(&rpc_server_toml)?, "rpc")
         };
 

@@ -32,9 +32,9 @@ pub(crate) struct NodeCommand {
 }
 
 impl NodeCommand {
-    pub(crate) async fn run(&self) -> Result<()> {
+    pub(crate) fn run(&self) -> Result<()> {
         match &self.subcommand {
-            Some(NodeSubcommands::RunDaemon(args)) => args.run_daemon().await?,
+            Some(NodeSubcommands::RunDaemon(args)) => args.run_daemon()?,
             Some(NodeSubcommands::Initialize(args)) => args.initialize()?,
             Some(NodeSubcommands::Version) => Self::version(),
             Some(NodeSubcommands::Diagnostics) => Self::diagnostics()?,

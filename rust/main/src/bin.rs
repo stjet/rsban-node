@@ -4,10 +4,9 @@ use cli::Cli;
 
 mod cli;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-    cli.run().await?;
+    cli.run()?;
 
     Ok(())
 }

@@ -24,7 +24,7 @@ pub async fn account_info(
         info.head,
         info.open_block,
         node.ledger.representative_block_hash(&txn, &info.head),
-        info.balance.number(),
+        info.balance,
         info.modified,
         info.block_count,
         info.epoch as u8,

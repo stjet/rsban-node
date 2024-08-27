@@ -1,4 +1,4 @@
-use rsnano_core::{Account, BlockHash};
+use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -6,8 +6,8 @@ pub struct AccountInfoDto {
     pub frontier: BlockHash,
     pub open_block: BlockHash,
     pub representative_block: BlockHash,
-    pub balance: u128,
-    pub confirmed_balance: Option<u128>,
+    pub balance: Amount,
+    pub confirmed_balance: Option<Amount>,
     pub modified_timestamp: u64,
     pub block_count: u64,
     pub account_version: u8,
@@ -17,11 +17,11 @@ pub struct AccountInfoDto {
     pub confirmed_frontier: Option<BlockHash>,
     pub representative: Option<Account>,
     pub confirmed_representative: Option<Account>,
-    pub weight: Option<u128>,
-    pub pending: Option<u128>,
-    pub receivable: Option<u128>,
-    pub confirmed_pending: Option<u128>,
-    pub confirmed_receivable: Option<u128>,
+    pub weight: Option<Amount>,
+    pub pending: Option<Amount>,
+    pub receivable: Option<Amount>,
+    pub confirmed_pending: Option<Amount>,
+    pub confirmed_receivable: Option<Amount>,
 }
 
 impl AccountInfoDto {
@@ -29,7 +29,7 @@ impl AccountInfoDto {
         frontier: BlockHash,
         open_block: BlockHash,
         representative_block: BlockHash,
-        balance: u128,
+        balance: Amount,
         modified_timestamp: u64,
         block_count: u64,
         account_version: u8,
@@ -57,7 +57,7 @@ impl AccountInfoDto {
         }
     }
 
-    pub fn set_confirmed_balance(&mut self, balance: u128) {
+    pub fn set_confirmed_balance(&mut self, balance: Amount) {
         self.confirmed_balance = Some(balance);
     }
 
@@ -85,23 +85,23 @@ impl AccountInfoDto {
         self.confirmed_representative = Some(representative);
     }
 
-    pub fn set_weight(&mut self, weight: u128) {
+    pub fn set_weight(&mut self, weight: Amount) {
         self.weight = Some(weight);
     }
 
-    pub fn set_pending(&mut self, pending: u128) {
+    pub fn set_pending(&mut self, pending: Amount) {
         self.pending = Some(pending);
     }
 
-    pub fn set_receivable(&mut self, receivable: u128) {
+    pub fn set_receivable(&mut self, receivable: Amount) {
         self.receivable = Some(receivable);
     }
 
-    pub fn set_confirmed_pending(&mut self, pending: u128) {
+    pub fn set_confirmed_pending(&mut self, pending: Amount) {
         self.confirmed_pending = Some(pending);
     }
 
-    pub fn set_confirmed_receivable(&mut self, receivable: u128) {
+    pub fn set_confirmed_receivable(&mut self, receivable: Amount) {
         self.confirmed_receivable = Some(receivable);
     }
 }

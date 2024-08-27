@@ -30,7 +30,7 @@ impl NanoRpcClient {
         receivable: Option<bool>,
         include_confirmed: Option<bool>,
     ) -> Result<AccountInfoDto> {
-        let cmd = LedgerRpcCommand::account_info(
+        let cmd = RpcCommand::account_info(
             account,
             representative,
             weight,

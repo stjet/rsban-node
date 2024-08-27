@@ -1,3 +1,4 @@
+use super::account_info;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -7,14 +8,11 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
-use rsnano_rpc_messages::{AccountInfoArgs, LedgerRpcCommand, RpcCommand};
+use rsnano_rpc_messages::{AccountInfoArgs, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::account_info;
 
 #[derive(Clone)]
 struct RpcService {
@@ -55,28 +53,25 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::Ledger(ledger_rpc_command) => match ledger_rpc_command {
-            LedgerRpcCommand::AccountInfo(AccountInfoArgs {
+        RpcCommand::AccountInfo(AccountInfoArgs {
+            account,
+            representative,
+            weight,
+            pending,
+            receivable,
+            include_confirmed,
+        }) => {
+            account_info(
+                rpc_service.node,
                 account,
                 representative,
                 weight,
                 pending,
                 receivable,
                 include_confirmed,
-            }) => {
-                account_info(
-                    rpc_service.node,
-                    account,
-                    representative,
-                    weight,
-                    pending,
-                    receivable,
-                    include_confirmed,
-                )
-                .await
-            }
-            _ => todo!(),
-        },
+            )
+            .await
+        }
         _ => todo!(),
     };
 

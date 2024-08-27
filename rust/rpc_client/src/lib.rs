@@ -22,18 +22,14 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_create(
-        &self,
-        wallet: WalletId,
-        index: Option<u32>,
-    ) -> Result<AccountCreateDto> {
-        let cmd = WalletsRpcCommand::account_create(wallet, index);
+    pub async fn account_create(&self, wallet: WalletId, index: Option<u32>) -> Result<KeyPairDto> {
+        let cmd = RpcCommand::account_create(wallet, index);
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)
     }
 
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
-        let cmd = LedgerRpcCommand::account_info(account);
+        let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)
     }
@@ -44,7 +40,7 @@ impl NanoRpcClient {
         destination: Account,
         block: impl Into<JsonBlock>,
     ) -> Result<()> {
-        let request = WalletsRpcCommand::Receive(ReceiveArgs {
+        let request = RpcCommand::Receive(ReceiveArgs {
             wallet,
             account: destination,
             block: block.into(),
@@ -59,7 +55,7 @@ impl NanoRpcClient {
         source: Account,
         destination: Account,
     ) -> Result<JsonBlock> {
-        let request = WalletsRpcCommand::Send(SendArgs {
+        let request = RpcCommand::Send(SendArgs {
             wallet,
             source,
             destination,
@@ -81,31 +77,31 @@ impl NanoRpcClient {
     }
 
     pub async fn keepalive(&self, port: u16) -> Result<()> {
-        let request = NodeRpcCommand::keepalive(Ipv6Addr::LOCALHOST, port);
+        let request = RpcCommand::keepalive(Ipv6Addr::LOCALHOST, port);
         self.rpc_request(&request).await?;
         Ok(())
     }
 
-    pub async fn key_create_rpc(&self) -> Result<KeyCreateDto> {
-        let cmd = UtilsRpcCommand::KeyCreate;
+    pub async fn key_create_rpc(&self) -> Result<KeyPairDto> {
+        let cmd = RpcCommand::KeyCreate;
         let json = self.rpc_request(&cmd).await?;
         Ok(from_value(json)?)
     }
 
     pub async fn wallet_create_rpc(&self) -> Result<WalletId> {
-        let cmd = WalletsRpcCommand::WalletCreate;
+        let cmd = RpcCommand::WalletCreate;
         let json = self.rpc_request(&cmd).await?;
         WalletId::decode_hex(json["wallet"].as_str().unwrap())
     }
 
     pub async fn wallet_add(&self, wallet: WalletId, prv_key: RawKey) -> Result<()> {
-        let cmd = WalletsRpcCommand::wallet_add(wallet, prv_key);
+        let cmd = RpcCommand::wallet_add(wallet, prv_key);
         self.rpc_request(&cmd).await?;
         Ok(())
     }
 
     pub async fn stop_rpc(&self) -> Result<()> {
-        self.rpc_request(&NodeRpcCommand::Stop).await?;
+        self.rpc_request(&RpcCommand::Stop).await?;
         Ok(())
     }
 

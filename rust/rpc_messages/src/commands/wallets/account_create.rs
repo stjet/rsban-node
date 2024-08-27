@@ -1,4 +1,4 @@
-use rsnano_core::{Account, WalletId};
+use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]

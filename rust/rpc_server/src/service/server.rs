@@ -8,7 +8,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountCreateArgs, RpcCommand, WalletsRpcCommand};
+use rsnano_rpc_messages::{AccountCreateArgs, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -53,12 +53,9 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::Wallets(wallets_rpc_command) => match wallets_rpc_command {
-            WalletsRpcCommand::AccountCreate(AccountCreateArgs { wallet, index }) => {
-                account_create(rpc_service.node, wallet, index).await
-            }
-            _ => todo!(),
-        },
+        RpcCommand::AccountCreate(AccountCreateArgs { wallet, index }) => {
+            account_create(rpc_service.node, wallet, index).await
+        }
         _ => todo!(),
     };
 

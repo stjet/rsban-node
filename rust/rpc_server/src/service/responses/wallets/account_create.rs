@@ -1,9 +1,10 @@
-use super::format_error_message;
 use rsnano_core::WalletId;
 use rsnano_node::{node::Node, wallets::WalletsExt};
 use rsnano_rpc_messages::AccountCreateDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
+
+use crate::service::responses::format_error_message;
 
 pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32>) -> String {
     let result = if let Some(i) = index {
@@ -20,7 +21,8 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
 
 #[cfg(test)]
 mod tests {
-    use test_helpers::{create_wallet, setup_rpc_client_and_server, System};
+    use crate::test_helpers::{create_wallet, setup_rpc_client_and_server};
+    use test_helpers::System;
 
     #[test]
     fn account_create_index_none() {
@@ -32,7 +34,6 @@ mod tests {
         let wallet_id = create_wallet(node.clone());
 
         let result = node
-            .async_rt
             .tokio
             .block_on(async { rpc_client.account_create(wallet_id, None).await.unwrap() });
 
@@ -50,7 +51,7 @@ mod tests {
 
         let wallet_id = create_wallet(node.clone());
 
-        let result = node.async_rt.tokio.block_on(async {
+        let result = node.tokio.block_on(async {
             rpc_client
                 .account_create(wallet_id, Some(u32::MAX))
                 .await

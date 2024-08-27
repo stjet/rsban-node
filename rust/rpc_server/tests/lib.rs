@@ -23,8 +23,6 @@ pub fn setup_rpc_client_and_server(
     let socket_addr = SocketAddr::new(ip_addr, port);
 
     let server = node
-        .clone()
-        .async_rt
         .tokio
         .spawn(run_rpc_server(node.clone(), socket_addr, true));
 

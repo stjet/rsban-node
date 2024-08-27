@@ -23,7 +23,6 @@ anyhow = "1.0.40"
 rand = { version = "0.8.4" }
 tokio = "1"
 toml = "0.8.15"
-tokio = "1"
 
 [dev-dependencies]
 assert_cmd = "2.0.14"

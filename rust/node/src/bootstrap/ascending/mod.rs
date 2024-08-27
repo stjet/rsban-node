@@ -585,7 +585,7 @@ impl BootstrapAscendingImpl {
         }
 
         if database_limiter.should_pass(1) {
-            let account = self.iterator.next();
+            let account = self.iterator.next(|_| true);
             if !account.is_zero() {
                 stats.inc(StatType::BootstrapAscending, DetailType::NextDatabase);
                 return account;

@@ -4,23 +4,24 @@ use reqwest::Url;
 use rsnano_core::{utils::get_cpu_count, Account, WalletId, DEV_GENESIS_KEY};
 use rsnano_node::{
     config::{
-        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, NetworkConstants,
-        RpcConfig,
+        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
+        NetworkConstants,
     },
-    unique_path,
-    utils::TomlConfig,
-    NetworkParams, DEV_NETWORK_PARAMS,
+    unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_rpc_client::NanoRpcClient;
 use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
+use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::Arc,
     time::Duration,
 };
 use tokio::time::sleep;
+use toml::to_string;
 
 const RPC_PORT_START: u16 = 60000;
 const PEERING_PORT_START: u16 = 61000;
@@ -187,18 +188,25 @@ fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkPar
         .enabled = true;
     daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
     daemon_config.node.use_memory_pools = (index % 2) == 0;
-    let toml = TomlConfig::new();
-    toml.write(get_node_toml_config_path(data_path))?;
+    let daemon_toml: DaemonToml = (&daemon_config).into();
+    fs::write(
+        get_node_toml_config_path(data_path),
+        to_string(&daemon_toml)?,
+    )?;
     Ok(())
 }
 
 fn write_rpc_config(index: usize, data_path: &Path, network_params: &NetworkParams) -> Result<()> {
-    let mut rpc_config = RpcConfig::new(&network_params.network, get_cpu_count());
-    rpc_config.port = RPC_PORT_START + index as u16;
-    rpc_config.enable_control = true;
-    rpc_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;
-    let mut toml_rpc = TomlConfig::new();
-    rpc_config.serialize_toml(&mut toml_rpc)?;
-    toml_rpc.write(get_rpc_toml_config_path(data_path))?;
+    let mut rpc_server_config = RpcServerConfig::new(&network_params.network, get_cpu_count());
+    rpc_server_config.port = RPC_PORT_START + index as u16;
+    rpc_server_config.enable_control = true;
+    rpc_server_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;
+    let rpc_server_toml: RpcServerToml =
+        (&RpcServerConfig::default_for(network_params.network.current_network, get_cpu_count()))
+            .into();
+    fs::write(
+        get_rpc_toml_config_path(data_path),
+        to_string(&rpc_server_toml)?,
+    )?;
     Ok(())
 }

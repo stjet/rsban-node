@@ -1241,9 +1241,11 @@ dependencies = [
  "rsnano_node",
  "rsnano_rpc_client",
  "rsnano_rpc_messages",
+ "rsnano_rpc_server",
  "serde",
  "serde_json",
  "tokio",
+ "toml 0.8.15",
 ]
 
 [[package]]
@@ -1880,6 +1882,7 @@ dependencies = [
  "rsnano_messages",
  "rsnano_network",
  "rsnano_node",
+ "rsnano_rpc_server",
  "rsnano_store_lmdb",
  "tokio",
  "toml 0.8.15",
@@ -2004,6 +2007,7 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",
+ "rsnano_rpc_server",
  "rsnano_store_lmdb",
  "toml 0.8.15",
  "tracing",
@@ -2082,6 +2086,17 @@ dependencies = [
  "rsnano_core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "rsnano_rpc_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rsnano_core",
+ "rsnano_node",
+ "serde",
+ "toml 0.8.15",
 ]
 
 [[package]]

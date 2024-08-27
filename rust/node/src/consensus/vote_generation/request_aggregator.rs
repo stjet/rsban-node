@@ -6,10 +6,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::FairQueue,
 };
-use rsnano_core::{
-    utils::{get_cpu_count, ContainerInfoComponent},
-    BlockHash, Root,
-};
+use rsnano_core::{utils::ContainerInfoComponent, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_network::{ChannelId, DeadChannelCleanupStep, NetworkInfo, TrafficType};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -33,12 +30,6 @@ impl RequestAggregatorConfig {
             max_queue: 128,
             batch_size: 16,
         }
-    }
-}
-
-impl Default for RequestAggregatorConfig {
-    fn default() -> Self {
-        Self::new(get_cpu_count())
     }
 }
 

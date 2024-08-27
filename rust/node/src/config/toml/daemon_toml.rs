@@ -9,25 +9,23 @@ pub struct DaemonToml {
     pub rpc: Option<NodeRpcToml>,
 }
 
-impl From<&DaemonToml> for DaemonConfig {
-    fn from(toml: &DaemonToml) -> Self {
-        let mut config = DaemonConfig::default();
+impl DaemonConfig {
+    pub fn merge_toml(&mut self, toml: &DaemonToml) {
         if let Some(node_toml) = &toml.node {
-            config.node = node_toml.into();
+            self.node.merge_toml(node_toml);
         }
         if let Some(opencl) = &toml.opencl {
             if let Some(enable) = opencl.enable {
-                config.opencl_enable = enable;
+                self.opencl_enable = enable;
             }
-            config.opencl = opencl.into();
+            self.opencl.merge_toml(opencl);
         }
         if let Some(rpc) = &toml.rpc {
             if let Some(enable) = rpc.enable {
-                config.rpc_enable = enable;
+                self.rpc_enable = enable;
             }
-            config.rpc = rpc.into();
+            self.rpc.merge_toml(rpc);
         }
-        config
     }
 }
 
@@ -62,26 +60,14 @@ impl From<&DaemonConfig> for OpenclToml {
     }
 }
 
-impl Default for DaemonToml {
-    fn default() -> Self {
-        Self {
-            node: Some(NodeToml::default()),
-            opencl: Some(OpenclToml::default()),
-            rpc: Some(NodeRpcToml::default()),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use rsnano_core::Networks;
-
     use crate::{
         config::{DaemonConfig, DaemonToml},
         NetworkParams,
     };
+    use rsnano_core::Networks;
+    use std::path::PathBuf;
 
     static DEFAULT_TOML_STR: &str = r#"[node]
         allow_local_peers = true
@@ -478,7 +464,8 @@ mod tests {
         let deserialized_toml: DaemonToml = toml::from_str(&DEFAULT_TOML_STR).unwrap();
         let default_daemon_config = create_default_daemon_config();
 
-        let deserialized_daemon_config: DaemonConfig = (&deserialized_toml).into();
+        let mut deserialized_daemon_config = create_default_daemon_config();
+        deserialized_daemon_config.merge_toml(&deserialized_toml);
 
         assert_eq!(&deserialized_daemon_config, &default_daemon_config);
     }
@@ -488,9 +475,10 @@ mod tests {
         let daemon_toml: DaemonToml =
             toml::from_str(MODIFIED_TOML_STR).expect("Failed to deserialize TOML");
 
-        let deserialized_daemon_config: DaemonConfig = (&daemon_toml).into();
+        let mut deserialized_daemon_config = create_default_daemon_config();
+        deserialized_daemon_config.merge_toml(&daemon_toml);
 
-        let default_daemon_config = DaemonConfig::default();
+        let default_daemon_config = create_default_daemon_config();
 
         // Node section
         assert_ne!(
@@ -1399,12 +1387,11 @@ mod tests {
     #[test]
     fn deserialize_empty() {
         let toml_str = "";
-
         let daemon_toml: DaemonToml = toml::from_str(toml_str).expect("Failed to deserialize TOML");
 
-        let deserialized_daemon_config: DaemonConfig = (&daemon_toml).into();
-
-        let default_daemon_config = DaemonConfig::default();
+        let mut deserialized_daemon_config = create_default_daemon_config();
+        deserialized_daemon_config.merge_toml(&daemon_toml);
+        let default_daemon_config = create_default_daemon_config();
 
         assert_eq!(&deserialized_daemon_config, &default_daemon_config);
     }

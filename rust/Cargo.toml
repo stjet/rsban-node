@@ -12,6 +12,7 @@ members = [
     "network",
     "rpc_messages",
     "rpc_client",
+    "rpc_server",
     "store_lmdb",
     "ledger",
     "node",

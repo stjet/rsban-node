@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
+use rsnano_rpc_messages::RpcCommand;
 use rsnano_rpc_messages::{AccountInfoArgs, LedgerRpcCommand, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;

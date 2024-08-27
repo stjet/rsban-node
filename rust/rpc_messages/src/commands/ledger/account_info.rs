@@ -13,15 +13,16 @@ pub struct AccountInfoArgs {
 
 #[cfg(test)]
 mod tests {
-    use crate::commands::LedgerRpcCommand;
+    use crate::RpcCommand;
     use rsnano_core::Account;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
     fn serialize_account_info_command() {
         assert_eq!(
-            serde_json::to_string_pretty(&LedgerRpcCommand::account_info(
+            serde_json::to_string_pretty(&RpcCommand::account_info(
                 Account::from(123),
+                None,
                 None,
                 None,
                 None,
@@ -38,9 +39,9 @@ mod tests {
     #[test]
     fn derialize_account_info_command() {
         let account = Account::from(123);
-        let cmd = LedgerRpcCommand::account_info(account, None, None, None, None);
+        let cmd = RpcCommand::account_info(account, None, None, None, None, None);
         let serialized = to_string_pretty(&cmd).unwrap();
-        let deserialized: LedgerRpcCommand = from_str(&serialized).unwrap();
+        let deserialized: RpcCommand = from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
     }
 }

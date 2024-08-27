@@ -1,9 +1,9 @@
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockEnum, KeyPair, Networks, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
 use rsnano_node::{
-    config::NodeConfig,
+    config::{NetworkConstants, NodeConfig},
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketConfig},
 };
 use std::time::Duration;
@@ -19,13 +19,13 @@ fn started_election() {
         websocket_config: WebsocketConfig {
             enabled: true,
             port: websocket_port,
-            ..Default::default()
+            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
         },
         ..System::default_config()
     };
     let node1 = system.build_node().config(config).finish();
     let channel1 = make_fake_channel(&node1);
-    node1.async_rt.tokio.block_on(async {
+    node1.tokio.block_on(async {
         let (mut ws_stream, _) =
             tokio_tungstenite::connect_async(format!("ws://[::1]:{}", websocket_port))
                 .await
@@ -87,13 +87,13 @@ fn stopped_election() {
         websocket_config: WebsocketConfig {
             enabled: true,
             port: websocket_port,
-            ..Default::default()
+            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
         },
         ..System::default_config()
     };
     let node1 = system.build_node().config(config).finish();
     let channel1 = make_fake_channel(&node1);
-    node1.async_rt.tokio.block_on(async {
+    node1.tokio.block_on(async {
         let (mut ws_stream, _) =
             tokio_tungstenite::connect_async(format!("ws://[::1]:{}", websocket_port))
                 .await

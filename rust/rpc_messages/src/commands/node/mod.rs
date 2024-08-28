@@ -1,5 +1,4 @@
 mod keepalive;
-mod stop;
 
 use super::RpcCommand;
 pub use keepalive::*;

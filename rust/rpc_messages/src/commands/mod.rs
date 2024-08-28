@@ -21,3 +21,9 @@ pub enum RpcCommand {
     WalletAdd(WalletAddArgs),
     WalletCreate,
 }
+
+impl RpcCommand {
+    pub fn key_create() -> Self {
+        Self::KeyCreate
+    }
+}

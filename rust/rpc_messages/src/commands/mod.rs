@@ -10,10 +10,31 @@ pub use utils::*;
 pub use wallets::*;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
-    Ledger(LedgerRpcCommand),
-    Node(NodeRpcCommand),
-    Utils(UtilsRpcCommand),
-    Wallets(WalletsRpcCommand),
+    AccountInfo(AccountInfoArgs),
+    Keepalive(KeepaliveArgs),
+    Stop,
+    KeyCreate,
+    Receive(ReceiveArgs),
+    Send(SendArgs),
+    WalletAdd(WalletAddArgs),
+    WalletCreate,
+    AccountRemove(AccountRemoveArgs),
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RpcCommand;
+    use serde_json::to_string_pretty;
+
+    #[test]
+    fn serialize_stop_command() {
+        assert_eq!(
+            to_string_pretty(&RpcCommand::Stop).unwrap(),
+            r#"{
+  "action": "stop"
+}"#
+        )
+    }
 }

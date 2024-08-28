@@ -7,7 +7,7 @@ use crate::{
     block_processing::BlockProcessor,
     stats::{DetailType, Direction, StatType, Stats},
     transport::MessagePublisher,
-    utils::{AsyncRuntime, ThreadPool, ThreadPoolImpl},
+    utils::{ThreadPool, ThreadPoolImpl},
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
@@ -96,7 +96,7 @@ impl BootstrapConnections {
         }
     }
 
-    pub fn new_null(runtime: Arc<AsyncRuntime>) -> Self {
+    pub fn new_null(tokio_handle: tokio::runtime::Handle) -> Self {
         Self {
             condition: Condvar::new(),
             populate_connections_started: AtomicBool::new(false),
@@ -106,16 +106,16 @@ impl BootstrapConnections {
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
-            network: Arc::new(Network::new_null(runtime.tokio.handle().clone())),
+            network: Arc::new(Network::new_null(tokio_handle.clone())),
             network_info: Arc::new(RwLock::new(NetworkInfo::new_test_instance())),
             network_stats: Arc::new(NullNetworkObserver::new()),
             workers: Arc::new(ThreadPoolImpl::new_null()),
-            tokio: runtime.tokio.handle().clone(),
+            tokio: tokio_handle.clone(),
             stats: Arc::new(Stats::default()),
             block_processor: Arc::new(BlockProcessor::new_null()),
             bootstrap_initiator: Mutex::new(None),
             pulls_cache: Arc::new(Mutex::new(PullsCache::new())),
-            message_publisher: MessagePublisher::new_null(runtime.tokio.handle().clone()),
+            message_publisher: MessagePublisher::new_null(tokio_handle.clone()),
             clock: Arc::new(SteadyClock::new_null()),
         }
     }
@@ -243,14 +243,13 @@ pub trait BootstrapConnectionsExt {
 impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     fn pool_connection(&self, client_a: Arc<BootstrapClient>, new_client: bool, push_front: bool) {
         let mut guard = self.mutex.lock().unwrap();
-        if !self.stopped.load(Ordering::SeqCst)
-            && !client_a.pending_stop()
-            && !self
-                .network_info
-                .write()
-                .unwrap()
-                .is_excluded(&client_a.remote_addr(), self.clock.now())
-        {
+        let excluded = self
+            .network_info
+            .write()
+            .unwrap()
+            .is_excluded(&client_a.remote_addr(), self.clock.now());
+
+        if !self.stopped.load(Ordering::SeqCst) && !client_a.pending_stop() && !excluded {
             client_a.set_timeout(self.config.idle_timeout);
             // Push into idle deque
             if !push_front {
@@ -510,14 +509,15 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     .write()
                     .unwrap()
                     .bootstrap_peer(self.clock.now()); // Legacy bootstrap is compatible with older version of protocol
+                let excluded = self
+                    .network_info
+                    .write()
+                    .unwrap()
+                    .is_excluded(&endpoint, self.clock.now());
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
                     && (self.config.allow_bootstrap_peers_duplicates
                         || !endpoints.contains(&endpoint))
-                    && !self
-                        .network_info
-                        .write()
-                        .unwrap()
-                        .is_excluded(&endpoint, self.clock.now())
+                    && !excluded
                 {
                     let success = self.tokio.block_on(self.connect_client(endpoint, false));
                     if success {

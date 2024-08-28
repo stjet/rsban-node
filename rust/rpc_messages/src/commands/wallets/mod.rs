@@ -1,26 +1,16 @@
 mod account_remove;
-mod receive;
-mod send;
-mod wallet_add;
+mod receive_args;
+mod send_args;
+mod wallet_add_args;
 
+use super::RpcCommand;
 pub use account_remove::*;
-pub use receive::*;
-use rsnano_core::{Account, RawKey, WalletId};
-pub use send::*;
-use serde::{Deserialize, Serialize};
-pub use wallet_add::*;
+pub use receive_args::*;
+use rsnano_core::{RawKey, WalletId};
+pub use send_args::*;
+pub use wallet_add_args::*;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "snake_case")]
-pub enum WalletsRpcCommand {
-    Receive(ReceiveArgs),
-    Send(SendArgs),
-    WalletAdd(WalletAddArgs),
-    WalletCreate,
-    AccountRemove(AccountRemoveArgs),
-}
-
-impl WalletsRpcCommand {
+impl RpcCommand {
     pub fn wallet_add(wallet_id: WalletId, key: RawKey) -> Self {
         Self::WalletAdd(WalletAddArgs {
             wallet: wallet_id,

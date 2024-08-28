@@ -4,7 +4,6 @@ use crate::{
     consensus::ActiveElections,
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::MessagePublisher,
-    utils::AsyncRuntime,
     NetworkParams,
 };
 use bounded_vec_deque::BoundedVecDeque;
@@ -39,7 +38,7 @@ pub struct RepCrawler {
     network_params: NetworkParams,
     network_info: Arc<RwLock<NetworkInfo>>,
     peer_connector: Arc<PeerConnector>,
-    async_rt: Arc<AsyncRuntime>,
+    tokio: tokio::runtime::Handle,
     condition: Condvar,
     ledger: Arc<Ledger>,
     active: Arc<ActiveElections>,
@@ -58,7 +57,7 @@ impl RepCrawler {
         config: NodeConfig,
         network_params: NetworkParams,
         network_info: Arc<RwLock<NetworkInfo>>,
-        async_rt: Arc<AsyncRuntime>,
+        tokio: tokio::runtime::Handle,
         ledger: Arc<Ledger>,
         active: Arc<ActiveElections>,
         peer_connector: Arc<PeerConnector>,
@@ -72,7 +71,7 @@ impl RepCrawler {
             config,
             network_params,
             network_info: network_info.clone(),
-            async_rt,
+            tokio,
             condition: Condvar::new(),
             ledger,
             active,
@@ -382,16 +381,17 @@ impl RepCrawler {
         let peer_connector = self.peer_connector.clone();
         let network_info = self.network_info.clone();
         let publisher = self.message_publisher.clone();
-        self.async_rt.tokio.spawn(async move {
+        self.tokio.spawn(async move {
             match tokio::net::lookup_host((address.as_str(), port)).await {
                 Ok(addresses) => {
                     for address in addresses {
                         let endpoint = into_ipv6_socket_address(address);
-                        match network_info
+                        let channel_id = network_info
                             .read()
                             .unwrap()
-                            .find_realtime_channel_by_peering_addr(&endpoint)
-                        {
+                            .find_realtime_channel_by_peering_addr(&endpoint);
+
+                        match channel_id {
                             Some(channel_id) => {
                                 let mut peers = [NULL_ENDPOINT; 8];
                                 network_info

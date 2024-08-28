@@ -35,7 +35,7 @@ pub async fn account_balance(
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helpers::setup_rpc_client_and_server;
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::node::Node;

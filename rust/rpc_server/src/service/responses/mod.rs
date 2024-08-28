@@ -28,7 +28,7 @@ mod test_helpers {
     };
     use test_helpers::get_available_port;
 
-    fn setup_rpc_client_and_server(
+    pub(crate) fn setup_rpc_client_and_server(
         node: Arc<Node>,
     ) -> (
         Arc<NanoRpcClient>,

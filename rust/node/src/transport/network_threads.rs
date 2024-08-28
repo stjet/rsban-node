@@ -317,6 +317,9 @@ impl ReachoutLoop {
 
             if let Some(keepalive) = self.latest_keepalives.lock().unwrap().pop_random() {
                 for peer in keepalive.peers {
+                    if peer.ip().is_unspecified() {
+                        continue;
+                    }
                     self.stats.inc(StatType::Network, DetailType::ReachoutLive);
                     self.peer_connector.connect_to(peer);
 

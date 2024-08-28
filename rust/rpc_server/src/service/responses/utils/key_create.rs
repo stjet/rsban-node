@@ -1,6 +1,6 @@
 use rsnano_core::{Account, KeyPair};
 use rsnano_rpc_messages::KeyPairDto;
-use toml::to_string_pretty;
+use serde_json::to_string_pretty;
 
 pub async fn key_create() -> String {
     let keypair = KeyPair::new();

@@ -7,16 +7,21 @@ use std::sync::Arc;
 
 pub async fn account_move(
     node: Arc<Node>,
+    enable_control: bool,
     wallet: WalletId,
     source: WalletId,
     accounts: Vec<Account>,
 ) -> String {
-    let public_keys: Vec<PublicKey> = accounts.iter().map(|account| account.into()).collect();
-    let result = node.wallets.move_accounts(&source, &wallet, &public_keys);
+    if enable_control {
+        let public_keys: Vec<PublicKey> = accounts.iter().map(|account| account.into()).collect();
+        let result = node.wallets.move_accounts(&source, &wallet, &public_keys);
 
-    match result {
-        Ok(_) => to_string_pretty(&AccountMovedDto::new(true)).unwrap(),
-        Err(e) => format_error_message(&e.to_string()),
+        match result {
+            Ok(_) => to_string_pretty(&AccountMovedDto::new(true)).unwrap(),
+            Err(e) => format_error_message(&e.to_string()),
+        }
+    } else {
+        format_error_message("RPC control is disabled")
     }
 }
 
@@ -32,7 +37,7 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let wallet = WalletId::random();
         let source = WalletId::random();
@@ -69,6 +74,38 @@ mod tests {
 
         server.abort();
     }
-}
 
-// todo: test enable control
+    #[test]
+    fn account_remove_fails_without_enable_control() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(wallet);
+        node.wallets.create(source);
+
+        let account = node
+            .wallets
+            .deterministic_insert2(&source, false)
+            .unwrap()
+            .into();
+
+        let wallet_accounts = node.wallets.get_accounts_of_wallet(&wallet).unwrap();
+        let source_accounts = node.wallets.get_accounts_of_wallet(&source).unwrap();
+
+        assert!(!wallet_accounts.contains(&account));
+        assert!(source_accounts.contains(&account));
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![account]).await });
+
+        assert!(result.is_err());
+
+        server.abort();
+    }
+}

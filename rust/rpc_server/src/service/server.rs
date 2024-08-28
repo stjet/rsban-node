@@ -1,3 +1,4 @@
+use super::account_move;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -12,8 +13,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::account_move;
 
 #[derive(Clone)]
 struct RpcService {
@@ -58,7 +57,16 @@ async fn handle_rpc(
             wallet,
             source,
             accounts,
-        }) => account_move(rpc_service.node, wallet, source, accounts).await,
+        }) => {
+            account_move(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet,
+                source,
+                accounts,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

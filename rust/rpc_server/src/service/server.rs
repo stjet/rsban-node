@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::wallet_create;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,8 +54,11 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletCreate => wallet_create(rpc_service.node).await,
         _ => todo!(),
     };
+
+    println!("{:?}", response);
 
     (StatusCode::OK, response).into_response()
 }

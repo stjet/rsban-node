@@ -1,9 +1,13 @@
 use rsnano_core::WalletId;
+use rsnano_node::{node::Node, wallets::WalletsExt};
 use rsnano_rpc_messages::WalletCreatedDto;
-use toml::to_string_pretty;
+use serde_json::to_string_pretty;
+use std::sync::Arc;
 
-pub async fn wallet_create() -> String {
+pub async fn wallet_create(node: Arc<Node>) -> String {
     let wallet = WalletId::random();
+
+    node.wallets.create(wallet);
 
     to_string_pretty(&WalletCreatedDto::new(wallet)).unwrap()
 }

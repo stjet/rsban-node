@@ -54,7 +54,7 @@ async fn handle_rpc(
 ) -> Response {
     let response = match rpc_command {
         RpcCommand::AccountsCreate(AccountsCreateArgs { wallet, count }) => {
-            accounts_create(rpc_service.node, wallet, count).await
+            accounts_create(rpc_service.node, rpc_service.enable_control, wallet, count).await
         }
         _ => todo!(),
     };

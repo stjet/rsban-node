@@ -1,10 +1,9 @@
+use crate::service::responses::format_error_message;
 use rsnano_core::WalletId;
 use rsnano_node::{node::Node, wallets::WalletsExt};
 use rsnano_rpc_messages::AccountCreatedDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
-
-use crate::service::responses::format_error_message;
 
 pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32>) -> String {
     let result = if let Some(i) = index {
@@ -21,7 +20,7 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helpers::{create_wallet, setup_rpc_client_and_server};
+    use crate::service::responses::test_helpers::{create_wallet, setup_rpc_client_and_server};
     use test_helpers::System;
 
     #[test]

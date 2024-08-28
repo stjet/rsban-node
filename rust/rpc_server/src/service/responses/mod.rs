@@ -17,9 +17,10 @@ fn format_error_message(error: &str) -> String {
 #[cfg(test)]
 mod test_helpers {
     use crate::{run_rpc_server, RpcServerConfig};
+    use rand::{thread_rng, Rng};
     use reqwest::Url;
-    use rsnano_core::{utils::get_cpu_count, Networks};
-    use rsnano_node::node::Node;
+    use rsnano_core::{utils::get_cpu_count, Networks, WalletId};
+    use rsnano_node::{node::Node, wallets::WalletsExt};
     use rsnano_rpc_client::NanoRpcClient;
     use std::{
         net::{IpAddr, SocketAddr},
@@ -28,7 +29,7 @@ mod test_helpers {
     };
     use test_helpers::get_available_port;
 
-    fn setup_rpc_client_and_server(
+    pub(crate) fn setup_rpc_client_and_server(
         node: Arc<Node>,
     ) -> (
         Arc<NanoRpcClient>,
@@ -48,5 +49,11 @@ mod test_helpers {
         let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
 
         (rpc_client, server)
+    }
+
+    pub(crate) fn create_wallet(node: Arc<Node>) -> WalletId {
+        let wallet_id = WalletId::from_bytes(thread_rng().gen());
+        node.wallets.create(wallet_id);
+        wallet_id
     }
 }

@@ -1,3 +1,4 @@
+use super::wallet_create;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -12,8 +13,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::wallet_create;
 
 #[derive(Clone)]
 struct RpcService {
@@ -54,11 +53,11 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::WalletCreate => wallet_create(rpc_service.node).await,
+        RpcCommand::WalletCreate => {
+            wallet_create(rpc_service.node, rpc_service.enable_control).await
+        }
         _ => todo!(),
     };
-
-    println!("{:?}", response);
 
     (StatusCode::OK, response).into_response()
 }

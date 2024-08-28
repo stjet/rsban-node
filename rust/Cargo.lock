@@ -2268,7 +2268,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "rand",
  "reqwest 0.12.7",
  "rsnano_core",
  "rsnano_node",

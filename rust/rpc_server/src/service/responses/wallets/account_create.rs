@@ -20,7 +20,9 @@ pub async fn account_create(node: Arc<Node>, wallet: WalletId, index: Option<u32
 
 #[cfg(test)]
 mod tests {
-    use crate::service::responses::test_helpers::{create_wallet, setup_rpc_client_and_server};
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_core::WalletId;
+    use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
     #[test]
@@ -30,7 +32,9 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
-        let wallet_id = create_wallet(node.clone());
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
 
         let result = node
             .tokio
@@ -48,7 +52,9 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
 
-        let wallet_id = create_wallet(node.clone());
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
 
         let result = node.tokio.block_on(async {
             rpc_client

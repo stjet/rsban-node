@@ -17,4 +17,3 @@ toml = "0.8.15"
 tracing = "0.1"
 test_helpers = { path = "../tools/test_helpers" }
 reqwest = { version = "0" }
-rand = { version = "0.8.4" }

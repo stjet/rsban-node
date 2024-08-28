@@ -1,10 +1,9 @@
+use crate::service::responses::format_error_message;
 use rsnano_core::{Account, PublicKey, WalletId};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::AccountMovedDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
-
-use crate::service::responses::format_error_message;
 
 pub async fn account_move(
     node: Arc<Node>,

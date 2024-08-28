@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountMoveDto {
+pub struct AccountMovedDto {
     pub moved: bool,
 }
 
-impl AccountMoveDto {
+impl AccountMovedDto {
     pub fn new(moved: bool) -> Self {
         Self { moved }
     }

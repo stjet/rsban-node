@@ -10,7 +10,7 @@ use rsnano_node::{
     unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoDto, KeyCreateDto};
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
 use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::{
     collections::HashMap,
@@ -111,7 +111,7 @@ impl TestNode {
 
     async fn add_destination_accounts(
         &self,
-        destination_accounts: &[KeyCreateDto],
+        destination_accounts: &[KeyPairDto],
         wallet: WalletId,
     ) -> Result<()> {
         for account in destination_accounts {
@@ -123,7 +123,7 @@ impl TestNode {
     async fn create_destination_accounts(
         &self,
         destination_count: usize,
-    ) -> Result<Vec<KeyCreateDto>> {
+    ) -> Result<Vec<KeyPairDto>> {
         let mut destination_accounts = Vec::with_capacity(destination_count);
         for _ in 0..destination_count {
             let acc = self.node_client.key_create_rpc().await?;
@@ -186,7 +186,7 @@ fn write_node_config(index: usize, data_path: &Path, network_params: &NetworkPar
         .enabled = true;
     daemon_config.node.ipc_config.transport_tcp.port = IPC_PORT_START + index as u16;
     daemon_config.node.use_memory_pools = (index % 2) == 0;
-    let daemon_toml = DaemonToml::default();
+    let daemon_toml: DaemonToml = (&daemon_config).into();
     fs::write(
         get_node_toml_config_path(data_path),
         to_string(&daemon_toml)?,
@@ -199,7 +199,9 @@ fn write_rpc_config(index: usize, data_path: &Path, network_params: &NetworkPara
     rpc_server_config.port = RPC_PORT_START + index as u16;
     rpc_server_config.enable_control = true;
     rpc_server_config.rpc_process.ipc_port = IPC_PORT_START + index as u16;
-    let rpc_server_toml = RpcServerToml::default();
+    let rpc_server_toml: RpcServerToml =
+        (&RpcServerConfig::default_for(network_params.network.current_network, get_cpu_count()))
+            .into();
     fs::write(
         get_rpc_toml_config_path(data_path),
         to_string(&rpc_server_toml)?,

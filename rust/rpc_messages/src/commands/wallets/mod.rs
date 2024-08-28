@@ -1,30 +1,24 @@
 mod accounts_create;
-mod receive;
-mod send;
-mod wallet_add;
+mod receive_args;
+mod send_args;
+mod wallet_add_args;
 
+use super::RpcCommand;
 pub use accounts_create::*;
-pub use receive::*;
+pub use receive_args::*;
 use rsnano_core::{RawKey, WalletId};
-pub use send::*;
-use serde::{Deserialize, Serialize};
-pub use wallet_add::*;
+pub use send_args::*;
+pub use wallet_add_args::*;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "snake_case")]
-pub enum WalletsRpcCommand {
-    Receive(ReceiveArgs),
-    Send(SendArgs),
-    WalletAdd(WalletAddArgs),
-    WalletCreate,
-    AccountsCreate(AccountsCreateArgs),
-}
-
-impl WalletsRpcCommand {
+impl RpcCommand {
     pub fn wallet_add(wallet_id: WalletId, key: RawKey) -> Self {
         Self::WalletAdd(WalletAddArgs {
             wallet: wallet_id,
             key,
         })
+    }
+
+    pub fn accounts_create(wallet: WalletId, count: u64) -> Self {
+        Self::AccountsCreate(AccountsCreateArgs { wallet, count })
     }
 }

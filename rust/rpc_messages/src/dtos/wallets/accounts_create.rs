@@ -2,11 +2,11 @@ use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsCreateDto {
+pub struct AccountsCreatedDto {
     pub accounts: Vec<Account>,
 }
 
-impl AccountsCreateDto {
+impl AccountsCreatedDto {
     pub fn new(accounts: Vec<Account>) -> Self {
         Self { accounts }
     }

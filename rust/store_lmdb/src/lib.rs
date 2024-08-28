@@ -32,16 +32,17 @@ pub use lmdb_env::*;
 pub use online_weight_store::LmdbOnlineWeightStore;
 pub use peer_store::*;
 pub use pending_store::{ConfiguredPendingDatabaseBuilder, LmdbPendingStore};
-use primitive_types::U256;
 pub use pruned_store::{ConfiguredPrunedDatabaseBuilder, LmdbPrunedStore};
 pub use rep_weight_store::*;
-use rsnano_core::utils::{get_cpu_count, PropertyTree};
 use rsnano_nullable_lmdb::{
     InactiveTransaction, LmdbDatabase, LmdbEnvironment, RoCursor, RoTransaction, RwTransaction,
 };
-#[cfg(feature = "output_tracking")]
-use rsnano_output_tracker::{OutputListener, OutputTracker};
-use std::rc::Rc;
+pub use store::{create_backup_file, LedgerCache, LmdbStore};
+pub use version_store::LmdbVersionStore;
+pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
+
+use primitive_types::U256;
+use rsnano_core::utils::{get_cpu_count, PropertyTree};
 use std::{
     any::Any,
     cmp::{max, min},
@@ -49,9 +50,11 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-pub use store::{create_backup_file, LedgerCache, LmdbStore};
-pub use version_store::LmdbVersionStore;
-pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
+
+#[cfg(feature = "output_tracking")]
+use rsnano_output_tracker::{OutputListener, OutputTracker};
+#[cfg(feature = "output_tracking")]
+use std::rc::Rc;
 
 pub trait Transaction {
     fn as_any(&self) -> &dyn Any;

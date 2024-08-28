@@ -21,7 +21,7 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         node.tokio
             .block_on(async { rpc_client.key_create().await.unwrap() });

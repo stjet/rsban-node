@@ -54,7 +54,13 @@ async fn handle_rpc(
 ) -> Response {
     let response = match rpc_command {
         RpcCommand::AccountRemove(AccountRemoveArgs { wallet, account }) => {
-            account_remove(rpc_service.node, wallet, account).await
+            account_remove(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet,
+                account,
+            )
+            .await
         }
         _ => todo!(),
     };

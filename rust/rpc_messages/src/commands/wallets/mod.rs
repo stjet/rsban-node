@@ -6,7 +6,7 @@ mod wallet_add_args;
 use super::RpcCommand;
 pub use account_remove::*;
 pub use receive_args::*;
-use rsnano_core::{RawKey, WalletId};
+use rsnano_core::{Account, RawKey, WalletId};
 pub use send_args::*;
 pub use wallet_add_args::*;
 

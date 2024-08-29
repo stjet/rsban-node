@@ -1,3 +1,3 @@
-mod wallet_created;
+mod wallet;
 
-pub use wallet_created::*;
+pub use wallet::*;

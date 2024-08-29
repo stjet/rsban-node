@@ -21,7 +21,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn wallet_create(&self) -> Result<WalletCreatedDto> {
+    pub async fn wallet_create(&self) -> Result<WalletDto> {
         let cmd = RpcCommand::wallet_create();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

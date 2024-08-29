@@ -85,7 +85,7 @@ impl BootstrapAscending {
                 throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
             }),
             condition: Condvar::new(),
-            database_limiter: BandwidthLimiter::new(1.0, config.database_requests_limit),
+            database_limiter: BandwidthLimiter::new(1.0, config.database_rate_limit),
             config,
             stats,
             network_info,
@@ -610,9 +610,12 @@ fn compute_throttle_size(ledger: &Ledger, config: &BootstrapAscendingConfig) -> 
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BootstrapAscendingConfig {
+    pub enable: bool,
+    pub enable_database_scan: bool,
+    pub enable_dependency_walker: bool,
     /// Maximum number of un-responded requests per channel
     pub requests_limit: usize,
-    pub database_requests_limit: usize,
+    pub database_rate_limit: usize,
     pub pull_count: usize,
     pub request_timeout: Duration,
     pub throttle_coefficient: usize,
@@ -621,20 +624,25 @@ pub struct BootstrapAscendingConfig {
     pub block_wait_count: usize,
     /** Minimum accepted protocol version used when bootstrapping */
     pub min_protocol_version: u8,
+    pub max_requests: usize,
 }
 
 impl Default for BootstrapAscendingConfig {
     fn default() -> Self {
         Self {
+            enable: true,
+            enable_database_scan: true,
+            enable_dependency_walker: true,
             requests_limit: 64,
-            database_requests_limit: 1024,
+            database_rate_limit: 1024,
             pull_count: BlocksAckPayload::MAX_BLOCKS,
             request_timeout: Duration::from_secs(3),
-            throttle_coefficient: 16,
+            throttle_coefficient: 8 * 1024,
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
             block_wait_count: 1000,
-            min_protocol_version: 0x14,
+            min_protocol_version: 0x14, // TODO don't hard code
+            max_requests: 1024 * 16,
         }
     }
 }

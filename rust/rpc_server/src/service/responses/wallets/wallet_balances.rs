@@ -30,3 +30,62 @@ pub async fn wallet_balances(
     }
     to_string_pretty(&WalletBalancesDto::new(balances)).unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_core::{Account, Amount};
+    use rsnano_node::wallets::WalletsExt;
+    use rsnano_rpc_messages::{AccountBalanceDto, WalletBalancesDto};
+    use std::collections::HashMap;
+    use test_helpers::System;
+
+    #[test]
+    fn wallet_balances_threshold_none() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        node.wallets.create(1.into());
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_balances(1.into(), None).await.unwrap() });
+
+        let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+        let expected_result = WalletBalancesDto {
+            balances: expected_balances,
+        };
+
+        assert_eq!(result, expected_result);
+
+        server.abort();
+    }
+
+    #[test]
+    fn wallet_balances_threshold_some() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        node.wallets.create(1.into());
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .wallet_balances(1.into(), Some(Amount::zero()))
+                .await
+                .unwrap()
+        });
+
+        let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+        let expected_result = WalletBalancesDto {
+            balances: expected_balances,
+        };
+
+        assert_eq!(result, expected_result);
+
+        server.abort();
+    }
+}

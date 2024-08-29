@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct WalletBalancesDto {
-    balances: HashMap<Account, AccountBalanceDto>,
+    pub balances: HashMap<Account, AccountBalanceDto>,
 }
 
 impl WalletBalancesDto {

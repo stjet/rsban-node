@@ -1,5 +1,12 @@
+use crate::RpcCommand;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
+
+impl RpcCommand {
+    pub fn account_info(account: Account) -> Self {
+        Self::AccountInfo(AccountInfoArgs { account })
+    }
+}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountInfoArgs {

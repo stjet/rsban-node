@@ -1,7 +1,7 @@
-mod keepalive_args;
+mod keepalive;
 
 use super::RpcCommand;
-pub use keepalive_args::*;
+pub use keepalive::*;
 use std::net::Ipv6Addr;
 
 impl RpcCommand {

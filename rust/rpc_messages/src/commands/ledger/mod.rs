@@ -1,7 +1,7 @@
-mod account_info_args;
+mod account_info;
 
 use super::RpcCommand;
-pub use account_info_args::*;
+pub use account_info::*;
 use rsnano_core::Account;
 
 impl RpcCommand {

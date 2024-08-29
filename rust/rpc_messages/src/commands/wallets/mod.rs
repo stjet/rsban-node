@@ -1,18 +1,9 @@
-mod receive_args;
-mod send_args;
-mod wallet_add_args;
+mod receive;
+mod send;
+mod wallet_add;
 
 use super::RpcCommand;
-pub use receive_args::*;
+pub use receive::*;
 use rsnano_core::{RawKey, WalletId};
-pub use send_args::*;
-pub use wallet_add_args::*;
-
-impl RpcCommand {
-    pub fn wallet_add(wallet_id: WalletId, key: RawKey) -> Self {
-        Self::WalletAdd(WalletAddArgs {
-            wallet: wallet_id,
-            key,
-        })
-    }
-}
+pub use send::*;
+pub use wallet_add::*;

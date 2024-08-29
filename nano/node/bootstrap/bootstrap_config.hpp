@@ -37,14 +37,19 @@ public:
 
 	nano::error deserialize (nano::tomlconfig & toml);
 
+	bool enable;
+	bool enable_database_scan;
+	bool enable_dependency_walker;
+
 	// Maximum number of un-responded requests per channel
 	std::size_t requests_limit;
-	std::size_t database_requests_limit;
+	std::size_t database_rate_limit;
 	std::size_t pull_count;
 	std::chrono::milliseconds request_timeout;
 	std::size_t throttle_coefficient;
 	std::chrono::milliseconds throttle_wait;
 	std::size_t block_wait_count;
+	std::size_t max_requests;
 
 	nano::account_sets_config account_sets;
 };

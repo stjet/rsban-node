@@ -631,7 +631,7 @@ impl Node {
             stats.clone(),
             network_info.clone(),
             message_publisher.clone(),
-            global_config.into(),
+            global_config.node_config.bootstrap_ascending.clone(),
         ));
 
         let local_block_broadcaster = Arc::new(LocalBlockBroadcaster::new(

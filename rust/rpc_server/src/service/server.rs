@@ -7,11 +7,13 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
+use rsnano_rpc_messages::{RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::wallet_add;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +54,16 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletAdd(WalletAddArgs { wallet, key, work }) => {
+            wallet_add(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet,
+                key,
+                work,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

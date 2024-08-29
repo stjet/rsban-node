@@ -105,7 +105,7 @@ impl TestNode {
 
     async fn add_genesis_account(&self, wallet: WalletId) -> Result<()> {
         self.node_client
-            .wallet_add(wallet, DEV_GENESIS_KEY.private_key())
+            .wallet_add(wallet, DEV_GENESIS_KEY.private_key(), None)
             .await
     }
 
@@ -115,7 +115,9 @@ impl TestNode {
         wallet: WalletId,
     ) -> Result<()> {
         for account in destination_accounts {
-            self.node_client.wallet_add(wallet, account.private).await?;
+            self.node_client
+                .wallet_add(wallet, account.private, None)
+                .await?;
         }
         Ok(())
     }

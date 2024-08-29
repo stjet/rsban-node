@@ -69,7 +69,7 @@ mod tests {
 
         send_block(node.clone());
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node.tokio.block_on(async {
             rpc_client
@@ -97,7 +97,7 @@ mod tests {
 
         send_block(node.clone());
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node.tokio.block_on(async {
             rpc_client
@@ -125,7 +125,7 @@ mod tests {
 
         send_block(node.clone());
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone());
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node.tokio.block_on(async {
             rpc_client

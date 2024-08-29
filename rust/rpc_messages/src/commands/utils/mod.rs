@@ -1,7 +1,3 @@
-use super::RpcCommand;
+mod key_create;
 
-impl RpcCommand {
-    pub fn key_create() -> Self {
-        Self::KeyCreate
-    }
-}
+pub use key_create::*;

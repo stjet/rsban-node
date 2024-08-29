@@ -1,28 +1,9 @@
-mod account_move_args;
-mod receive_args;
-mod send_args;
-mod wallet_add_args;
+mod account_move;
+mod receive;
+mod send;
+mod wallet_add;
 
-use super::RpcCommand;
-pub use account_move_args::*;
-pub use receive_args::*;
-use rsnano_core::{Account, RawKey, WalletId};
-pub use send_args::*;
-pub use wallet_add_args::*;
-
-impl RpcCommand {
-    pub fn wallet_add(wallet_id: WalletId, key: RawKey) -> Self {
-        Self::WalletAdd(WalletAddArgs {
-            wallet: wallet_id,
-            key,
-        })
-    }
-
-    pub fn account_move(wallet: WalletId, source: WalletId, accounts: Vec<Account>) -> Self {
-        Self::AccountMove(AccountMoveArgs {
-            wallet,
-            source,
-            accounts,
-        })
-    }
-}
+pub use account_move::*;
+pub use receive::*;
+pub use send::*;
+pub use wallet_add::*;

@@ -1,12 +1,11 @@
 use super::{
     ordered_blocking::{BlockingEntry, OrderedBlocking},
-    ordered_priorities::OrderedPriorities,
+    ordered_priorities::{OrderedPriorities, Priority},
 };
 use crate::{
     bootstrap::ascending::ordered_priorities::PriorityEntry,
     stats::{DetailType, StatType, Stats},
 };
-use ordered_float::OrderedFloat;
 use rand::{
     distributions::{Distribution, WeightedIndex},
     thread_rng, RngCore,
@@ -49,11 +48,11 @@ pub(crate) struct AccountSets {
 }
 
 impl AccountSets {
-    pub const PRIORITY_INITIAL: OrderedFloat<f32> = OrderedFloat(8.0);
-    pub const PRIORITY_INCREASE: OrderedFloat<f32> = OrderedFloat(2.0);
-    pub const PRIORITY_DECREASE: OrderedFloat<f32> = OrderedFloat(0.5);
-    pub const PRIORITY_MAX: OrderedFloat<f32> = OrderedFloat(32.0);
-    pub const PRIORITY_CUTOFF: OrderedFloat<f32> = OrderedFloat(1.0);
+    pub const PRIORITY_INITIAL: Priority = Priority::new(8.0);
+    pub const PRIORITY_INCREASE: f64 = 2.0;
+    pub const PRIORITY_DECREASE: Priority = Priority::new(0.5);
+    pub const PRIORITY_MAX: Priority = Priority::new(32.0);
+    pub const PRIORITY_CUTOFF: Priority = Priority::new(1.0);
 
     pub fn new(stats: Arc<Stats>, config: AccountSetsConfig) -> Self {
         Self {
@@ -220,7 +219,7 @@ impl AccountSets {
             return Account::zero();
         }
 
-        let mut weights: Vec<f32> = Vec::new();
+        let mut weights: Vec<f64> = Vec::new();
         let mut candidates: Vec<Account> = Vec::new();
         //
         let mut iterations = 0;
@@ -236,7 +235,7 @@ impl AccountSets {
 
             if self.check_timestamp(&entry.account) {
                 candidates.push(entry.account);
-                weights.push(*entry.priority);
+                weights.push(entry.priority.into());
             }
         }
 
@@ -262,15 +261,15 @@ impl AccountSets {
     }
 
     #[allow(dead_code)]
-    fn priority(&self, account: &Account) -> f32 {
+    fn priority(&self, account: &Account) -> Priority {
         if self.blocked(account) {
-            return 0.0;
+            return Priority::ZERO;
         }
 
         if let Some(existing) = self.priorities.get(account) {
-            *existing.priority
+            existing.priority
         } else {
-            *Self::PRIORITY_CUTOFF
+            Self::PRIORITY_CUTOFF
         }
     }
 
@@ -313,7 +312,7 @@ mod tests {
             sets.block(account, hash);
 
             assert!(sets.blocked(&account));
-            assert_eq!(sets.priority(&account), 0f32);
+            assert_eq!(sets.priority(&account), Priority::ZERO);
         });
     }
 
@@ -333,7 +332,7 @@ mod tests {
     #[test]
     fn priority_base() {
         fixture(|sets| {
-            assert_eq!(sets.priority(&Account::from(1)), 1f32);
+            assert_eq!(sets.priority(&Account::from(1)), Priority::new(1.0));
         });
     }
 
@@ -350,7 +349,7 @@ mod tests {
             sets.block(account, hash);
             sets.unblock(account, None);
 
-            assert_eq!(sets.priority(&account), 16f32);
+            assert_eq!(sets.priority(&account), Priority::new(16.0));
         });
     }
 
@@ -360,10 +359,10 @@ mod tests {
             let account = Account::from(1);
 
             sets.priority_up(&account);
-            assert_eq!(sets.priority(&account), *AccountSets::PRIORITY_INITIAL);
+            assert_eq!(sets.priority(&account), AccountSets::PRIORITY_INITIAL);
 
             sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), 7.5f32);
+            assert_eq!(sets.priority(&account), Priority::new(7.5));
         });
     }
 
@@ -374,7 +373,7 @@ mod tests {
             let account = Account::from(1);
 
             sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), 1f32);
+            assert_eq!(sets.priority(&account), Priority::new(1.0));
         });
     }
 
@@ -387,7 +386,7 @@ mod tests {
             for _ in 0..10 {
                 sets.priority_up(&account);
             }
-            assert_eq!(sets.priority(&account), *AccountSets::PRIORITY_MAX);
+            assert_eq!(sets.priority(&account), AccountSets::PRIORITY_MAX);
         });
     }
 

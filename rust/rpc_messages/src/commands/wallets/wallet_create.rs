@@ -14,9 +14,9 @@ mod tests {
     #[test]
     fn serialize_wallet_create_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::Stop).unwrap(),
+            to_string_pretty(&RpcCommand::WalletCreate).unwrap(),
             r#"{
-  "action": "stop"
+  "action": "wallet_create"
 }"#
         )
     }

@@ -1,7 +1,7 @@
 use crate::service::responses::format_error_message;
 use rsnano_core::{Account, WalletId};
 use rsnano_node::{node::Node, wallets::WalletsExt};
-use rsnano_rpc_messages::AccountsCreatedDto;
+use rsnano_rpc_messages::AccountsDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ pub async fn accounts_create(
                 .into();
             accounts.push(account)
         }
-        to_string_pretty(&AccountsCreatedDto::new(accounts)).unwrap()
+        to_string_pretty(&AccountsDto::new(accounts)).unwrap()
     } else {
         format_error_message("RPC control is disabled")
     }

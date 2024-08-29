@@ -18,7 +18,6 @@ pub struct AccountCreateArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::WalletId;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -46,8 +45,7 @@ mod tests {
 
     #[test]
     fn deserialize_account_create_command_index_none() {
-        let wallet = WalletId::random();
-        let cmd = RpcCommand::account_create(wallet, None);
+        let cmd = RpcCommand::account_create(1.into(), None);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
@@ -55,8 +53,7 @@ mod tests {
 
     #[test]
     fn deserialize_account_create_command_index_some() {
-        let wallet = WalletId::random();
-        let cmd = RpcCommand::account_create(wallet, Some(1));
+        let cmd = RpcCommand::account_create(1.into(), Some(1));
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)

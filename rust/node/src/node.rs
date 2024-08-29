@@ -1414,6 +1414,8 @@ impl NodeExt for Arc<Node> {
         self.backlog_population.start();
         self.bootstrap_server.start();
         if !self.flags.disable_ascending_bootstrap {
+            self.ascendboot
+                .initialize(&self.network_params.ledger.genesis_account);
             self.ascendboot.start();
         }
         if let Some(ws_listener) = &self.websocket {

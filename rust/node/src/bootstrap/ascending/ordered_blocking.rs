@@ -1,5 +1,4 @@
-use super::ordered_priorities::PriorityEntry;
-use ordered_float::OrderedFloat;
+use super::ordered_priorities::{Priority, PriorityEntry, PriorityKeyDesc};
 use rsnano_core::{Account, BlockHash};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -13,7 +12,7 @@ pub(crate) struct BlockingEntry {
 }
 
 impl BlockingEntry {
-    fn priority(&self) -> OrderedFloat<f32> {
+    fn priority(&self) -> Priority {
         self.original_entry.priority
     }
 }
@@ -24,7 +23,8 @@ impl BlockingEntry {
 pub(crate) struct OrderedBlocking {
     by_account: BTreeMap<Account, BlockingEntry>,
     sequenced: VecDeque<Account>,
-    by_priority: BTreeMap<OrderedFloat<f32>, VecDeque<Account>>,
+    // descending
+    by_priority: BTreeMap<PriorityKeyDesc, VecDeque<Account>>,
 }
 
 impl OrderedBlocking {
@@ -44,7 +44,10 @@ impl OrderedBlocking {
 
         self.by_account.insert(account, entry);
         self.sequenced.push_back(account);
-        self.by_priority.entry(prio).or_default().push_back(account);
+        self.by_priority
+            .entry(prio.into())
+            .or_default()
+            .push_back(account);
         true
     }
 
@@ -59,17 +62,17 @@ impl OrderedBlocking {
     pub fn remove(&mut self, account: &Account) {
         if let Some(entry) = self.by_account.remove(account) {
             self.sequenced.retain(|i| i != account);
-            let accounts = self.by_priority.get_mut(&entry.priority()).unwrap();
+            let accounts = self.by_priority.get_mut(&entry.priority().into()).unwrap();
             if accounts.len() > 1 {
                 accounts.retain(|i| i != account);
             } else {
-                self.by_priority.remove(&entry.priority());
+                self.by_priority.remove(&entry.priority().into());
             }
         }
     }
 
     pub fn pop_lowest_priority(&mut self) -> Option<BlockingEntry> {
-        if let Some(mut entry) = self.by_priority.first_entry() {
+        if let Some(mut entry) = self.by_priority.last_entry() {
             let accounts = entry.get_mut();
             let account = accounts[0];
             if accounts.len() > 1 {

@@ -21,11 +21,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_remove(
-        &self,
-        wallet: WalletId,
-        account: Account,
-    ) -> Result<AccountRemovedDto> {
+    pub async fn account_remove(&self, wallet: WalletId, account: Account) -> Result<RemovedDto> {
         let cmd = RpcCommand::account_remove(wallet, account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

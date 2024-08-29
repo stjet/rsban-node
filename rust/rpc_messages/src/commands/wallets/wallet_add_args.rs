@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct WalletAddArgs {
     pub wallet: WalletId,
     pub key: RawKey,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub work: Option<bool>,
 }
 

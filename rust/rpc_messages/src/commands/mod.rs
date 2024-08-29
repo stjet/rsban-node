@@ -22,12 +22,6 @@ pub enum RpcCommand {
     WalletCreate,
 }
 
-impl RpcCommand {
-    pub fn wallet_create() -> Self {
-        Self::WalletCreate
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;

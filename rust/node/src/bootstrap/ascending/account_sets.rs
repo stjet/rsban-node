@@ -54,7 +54,7 @@ impl AccountSets {
     pub const PRIORITY_MAX: Priority = Priority::new(32.0);
     pub const PRIORITY_CUTOFF: Priority = Priority::new(1.0);
 
-    pub fn new(stats: Arc<Stats>, config: AccountSetsConfig) -> Self {
+    pub fn new(config: AccountSetsConfig, stats: Arc<Stats>) -> Self {
         Self {
             stats,
             config,
@@ -109,6 +109,29 @@ impl AccountSets {
             self.stats.inc(
                 StatType::BootstrapAscendingAccounts,
                 DetailType::DeprioritizeFailed,
+            );
+        }
+    }
+
+    pub fn priority_set(&mut self, account: &Account) {
+        if account.is_zero() {
+            return;
+        }
+
+        if !self.blocked(account) {
+            if !self.priorities.contains(account) {
+                self.stats.inc(
+                    StatType::BootstrapAscendingAccounts,
+                    DetailType::PriorityInsert,
+                );
+                self.priorities
+                    .insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
+                self.trim_overflow();
+            }
+        } else {
+            self.stats.inc(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PrioritizeFailed,
             );
         }
     }
@@ -393,7 +416,7 @@ mod tests {
     fn fixture(mut f: impl FnMut(&mut AccountSets)) {
         let stats = Arc::new(Stats::default());
         let config = AccountSetsConfig::default();
-        let mut sets = AccountSets::new(stats, config);
+        let mut sets = AccountSets::new(config, stats);
         f(&mut sets);
     }
 }

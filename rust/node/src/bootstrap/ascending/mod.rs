@@ -78,7 +78,7 @@ impl BootstrapAscending {
             timeout_thread: Mutex::new(None),
             mutex: Mutex::new(BootstrapAscendingImpl {
                 stopped: false,
-                accounts: AccountSets::new(Arc::clone(&stats), config.account_sets.clone()),
+                accounts: AccountSets::new(config.account_sets.clone(), Arc::clone(&stats)),
                 scoring: PeerScoring::new(config.clone()),
                 iterator: BufferedIterator::new(Arc::clone(&ledger)),
                 tags: OrderedTags::default(),

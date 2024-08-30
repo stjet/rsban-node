@@ -7,7 +7,7 @@ pub async fn wallet_lock(node: Arc<Node>, enable_control: bool, wallet: WalletId
     if enable_control {
         match node.wallets.lock(&wallet) {
             Ok(()) => format_bool_message("locked", true),
-            Err(_) => format_error_message("Failed to lock wallet"),
+            Err(e) => format_error_message(&e.to_string()),
         }
     } else {
         format_error_message("RPC control is disabled")

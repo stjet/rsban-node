@@ -660,7 +660,13 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
                         for (result, context) in batch {
                             // Do not try to unnecessarily bootstrap live traffic chains
                             if context.source == BlockSource::Bootstrap {
-                                guard.inspect(&self_l.ledger, &tx, *result, &context.block);
+                                guard.inspect(
+                                    &self_l.ledger,
+                                    &tx,
+                                    *result,
+                                    &context.block,
+                                    context.source,
+                                );
                                 should_notify = true;
                             }
                         }
@@ -751,6 +757,7 @@ impl BootstrapAscendingImpl {
         tx: &LmdbReadTransaction,
         status: BlockStatus,
         block: &Arc<BlockEnum>,
+        source: BlockSource,
     ) {
         let hash = block.hash();
 
@@ -779,9 +786,11 @@ impl BootstrapAscendingImpl {
                 self.accounts.block(account, source);
             }
             BlockStatus::GapPrevious => {
-                if block.block_type() == BlockType::State {
-                    let account = block.account_field().unwrap();
-                    self.accounts.priority_set(&account);
+                if source == BlockSource::Live {
+                    if block.block_type() == BlockType::State {
+                        let account = block.account_field().unwrap();
+                        self.accounts.priority_set(&account);
+                    }
                 }
             }
             _ => {

@@ -14,12 +14,10 @@ pub async fn accounts_create(
     if enable_control {
         let mut accounts: Vec<Account> = vec![];
         for _ in 0..count as usize {
-            let account = node
-                .wallets
-                .deterministic_insert2(&wallet, false)
-                .unwrap()
-                .into();
-            accounts.push(account)
+            match node.wallets.deterministic_insert2(&wallet, false) {
+                Ok(account) => accounts.push(account.into()),
+                Err(e) => return format_error_message(&e.to_string()),
+            }
         }
         to_string_pretty(&AccountsDto::new(accounts)).unwrap()
     } else {

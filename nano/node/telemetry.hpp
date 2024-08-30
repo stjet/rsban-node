@@ -35,7 +35,7 @@ public:
 		bool enable_ongoing_broadcasts{ true };
 
 		config (nano::node_config const & config, nano::node_flags const & flags) :
-			enable_ongoing_requests{ !flags.disable_ongoing_telemetry_requests () },
+			enable_ongoing_requests{ false },
 			enable_ongoing_broadcasts{ !flags.disable_providing_telemetry_metrics () }
 		{
 		}

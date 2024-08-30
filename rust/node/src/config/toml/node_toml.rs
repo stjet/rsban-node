@@ -269,6 +269,9 @@ impl NodeConfig {
             if let Some(database_rate_limit) = ascending_toml.database_rate_limit {
                 config.database_rate_limit = database_rate_limit;
             }
+            if let Some(database_warmup_ratio) = ascending_toml.database_warmup_ratio {
+                config.database_warmup_ratio = database_warmup_ratio;
+            }
             if let Some(pull_count) = ascending_toml.max_pull_count {
                 config.max_pull_count = pull_count;
             }

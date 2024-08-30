@@ -267,7 +267,7 @@ impl Node {
         ));
 
         let telemetry_config = TelementryConfig {
-            enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
+            enable_ongoing_requests: false,
             enable_ongoing_broadcasts: !flags.disable_providing_telemetry_metrics,
         };
 

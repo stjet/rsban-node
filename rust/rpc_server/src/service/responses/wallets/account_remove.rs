@@ -10,10 +10,9 @@ pub async fn account_remove(
     account: Account,
 ) -> String {
     if enable_control {
-        if node.wallets.remove_key(&wallet, &account.into()).is_ok() {
-            format_bool_message("removed", true)
-        } else {
-            format_bool_message("removed", false)
+        match node.wallets.remove_key(&wallet, &account.into()) {
+            Ok(()) => format_bool_message("removed", true),
+            Err(e) => format_error_message(&e.to_string()),
         }
     } else {
         format_error_message("RPC control is disabled")

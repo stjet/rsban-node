@@ -6,7 +6,7 @@ use std::sync::Arc;
 pub async fn wallet_contains(node: Arc<Node>, wallet: WalletId, account: Account) -> String {
     let wallet_accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
         Ok(accounts) => accounts,
-        Err(_) => return format_error_message("Failed to get accounts of wallet"),
+        Err(e) => return format_error_message(&e.to_string()),
     };
 
     if wallet_accounts.contains(&account) {

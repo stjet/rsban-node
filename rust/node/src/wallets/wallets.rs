@@ -36,6 +36,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::{Duration, Instant},
 };
+use strum_macros::Display;
 use tracing::{info, warn};
 
 #[derive(FromPrimitive, Debug)]

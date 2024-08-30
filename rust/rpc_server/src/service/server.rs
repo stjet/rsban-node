@@ -1,3 +1,4 @@
+use super::wallet_lock;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -7,7 +8,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
+use rsnano_rpc_messages::{RpcCommand, WalletLockArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -52,6 +53,9 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletLock(WalletLockArgs { wallet }) => {
+            wallet_lock(rpc_service.node, rpc_service.enable_control, wallet).await
+        }
         _ => todo!(),
     };
 

@@ -20,6 +20,7 @@ pub enum RpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
+    WalletLock(WalletLockArgs),
 }
 
 #[cfg(test)]

@@ -1,8 +1,6 @@
-use crate::service::responses::format_error_message;
+use crate::service::responses::{format_bool_message, format_error_message};
 use rsnano_core::{Account, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RemovedDto;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 
 pub async fn account_remove(
@@ -12,11 +10,11 @@ pub async fn account_remove(
     account: Account,
 ) -> String {
     if enable_control {
-        let mut removed = RemovedDto::new(false);
         if node.wallets.remove_key(&wallet, &account.into()).is_ok() {
-            removed.removed = true;
+            format_bool_message("removed", true)
+        } else {
+            format_bool_message("removed", false)
         }
-        to_string_pretty(&removed).unwrap()
     } else {
         format_error_message("RPC control is disabled")
     }

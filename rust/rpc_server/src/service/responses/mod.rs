@@ -14,6 +14,16 @@ fn format_error_message(error: &str) -> String {
     to_string_pretty(&json_value).unwrap()
 }
 
+fn format_bool_message(key: &str, value: bool) -> String {
+    let json_value = json!({ key: value });
+    to_string_pretty(&json_value).unwrap()
+}
+
+fn format_success_message() -> String {
+    let json_value = json!({ "success": "" });
+    to_string_pretty(&json_value).unwrap()
+}
+
 #[cfg(test)]
 mod test_helpers {
     use crate::run_rpc_server;

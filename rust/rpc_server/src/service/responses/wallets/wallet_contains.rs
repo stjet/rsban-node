@@ -1,8 +1,6 @@
-use crate::service::responses::format_error_message;
+use crate::service::responses::{format_bool_message, format_error_message};
 use rsnano_core::{Account, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::ExistsDto;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 
 pub async fn wallet_contains(node: Arc<Node>, wallet: WalletId, account: Account) -> String {
@@ -11,12 +9,11 @@ pub async fn wallet_contains(node: Arc<Node>, wallet: WalletId, account: Account
         Err(_) => return format_error_message("Failed to get accounts of wallet"),
     };
 
-    let mut wallet_contains = ExistsDto::new(false);
     if wallet_accounts.contains(&account) {
-        wallet_contains.exists = true;
+        format_bool_message("exists", true)
+    } else {
+        format_bool_message("exists", false)
     }
-
-    to_string_pretty(&wallet_contains).unwrap()
 }
 
 #[cfg(test)]
@@ -52,7 +49,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.exists, true);
+        assert_eq!(result.get("exists").unwrap(), true);
 
         server.abort();
     }
@@ -75,7 +72,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.exists, false);
+        assert_eq!(result.get("exists").unwrap(), false);
 
         server.abort();
     }

@@ -3,6 +3,7 @@ use reqwest::{Client, Url};
 use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
+use serde_json::Value;
 use std::{net::Ipv6Addr, time::Duration};
 
 pub struct NanoRpcClient {
@@ -26,10 +27,9 @@ impl NanoRpcClient {
         wallet: WalletId,
         source: WalletId,
         account: Vec<Account>,
-    ) -> Result<MovedDto> {
+    ) -> Result<Value> {
         let cmd = RpcCommand::account_move(wallet, source, account);
-        let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        Ok(self.rpc_request(&cmd).await?)
     }
 
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {

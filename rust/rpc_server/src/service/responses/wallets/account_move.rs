@@ -1,8 +1,6 @@
-use crate::service::responses::format_error_message;
+use crate::service::responses::{format_bool_message, format_error_message};
 use rsnano_core::{Account, PublicKey, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::MovedDto;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 
 pub async fn account_move(
@@ -17,7 +15,7 @@ pub async fn account_move(
         let result = node.wallets.move_accounts(&source, &wallet, &public_keys);
 
         match result {
-            Ok(_) => to_string_pretty(&MovedDto::new(true)).unwrap(),
+            Ok(_) => format_bool_message("moved", true),
             Err(e) => format_error_message(&e.to_string()),
         }
     } else {
@@ -64,7 +62,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.moved, true);
+        assert_eq!(result.get("moved").unwrap(), true);
 
         let new_wallet_accounts = node.wallets.get_accounts_of_wallet(&wallet).unwrap();
         let new_source_accounts = node.wallets.get_accounts_of_wallet(&source).unwrap();

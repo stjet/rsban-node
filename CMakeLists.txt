@@ -423,6 +423,7 @@ set(BOOST_MODULE_LIBS
     iterator
     lexical_cast
     property_tree
+    lambda
     log
     logic
     math
@@ -453,6 +454,7 @@ set(BOOST_MODULE_LIBS
     static_assert
     static_string
     system
+    test
     thread
     throw_exception
     tokenizer

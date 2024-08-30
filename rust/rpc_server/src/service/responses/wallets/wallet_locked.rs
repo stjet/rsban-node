@@ -1,13 +1,11 @@
-use crate::service::responses::format_error_message;
+use crate::service::responses::{format_bool_message, format_error_message};
 use rsnano_core::WalletId;
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::LockedDto;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 
 pub async fn wallet_locked(node: Arc<Node>, wallet: WalletId) -> String {
     match node.wallets.valid_password(&wallet) {
-        Ok(valid) => to_string_pretty(&LockedDto::new(!valid)).unwrap(),
+        Ok(valid) => format_bool_message("locked", !valid),
         Err(_) => format_error_message("Wallet error"),
     }
 }
@@ -20,7 +18,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn wallet_locked() {
+    fn wallet_locked_false() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -36,13 +34,13 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
 
-        assert_eq!(result.locked, false);
+        assert_eq!(result.get("locked").unwrap(), false);
 
         server.abort();
     }
 
     #[test]
-    fn wallet_locked_fails_without_enable_control() {
+    fn wallet_locked_true() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -58,7 +56,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
 
-        assert_eq!(result.locked, true);
+        assert_eq!(result.get("locked").unwrap(), true);
 
         server.abort();
     }

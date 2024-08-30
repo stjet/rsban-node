@@ -61,6 +61,7 @@ pub trait Transaction {
     fn refresh(&mut self);
     fn refresh_if_needed(&mut self);
     fn is_refresh_needed(&self) -> bool;
+    fn is_refresh_needed_with(&self, max_duration: Duration) -> bool;
     fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]>;
     fn exists(&self, db: LmdbDatabase, key: &[u8]) -> bool {
         match self.get(db, key) {
@@ -188,7 +189,11 @@ impl Transaction for LmdbReadTransaction {
     }
 
     fn is_refresh_needed(&self) -> bool {
-        self.start.elapsed() > Duration::from_millis(500)
+        self.is_refresh_needed_with(Duration::from_millis(500))
+    }
+
+    fn is_refresh_needed_with(&self, max_duration: Duration) -> bool {
+        self.start.elapsed() > max_duration
     }
 
     fn refresh_if_needed(&mut self) {
@@ -403,9 +408,12 @@ impl Transaction for LmdbWriteTransaction {
     }
 
     fn is_refresh_needed(&self) -> bool {
-        self.start.elapsed() > Duration::from_millis(500)
+        self.is_refresh_needed_with(Duration::from_millis(500))
     }
 
+    fn is_refresh_needed_with(&self, max_duration: Duration) -> bool {
+        self.start.elapsed() > max_duration
+    }
     fn refresh_if_needed(&mut self) {
         if self.is_refresh_needed() {
             self.refresh();

@@ -6,7 +6,7 @@ use std::sync::Arc;
 pub async fn wallet_locked(node: Arc<Node>, wallet: WalletId) -> String {
     match node.wallets.valid_password(&wallet) {
         Ok(valid) => format_bool_message("locked", !valid),
-        Err(_) => format_error_message("Wallet error"),
+        Err(e) => format_error_message(&e.to_string()),
     }
 }
 

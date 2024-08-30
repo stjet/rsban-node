@@ -139,7 +139,7 @@ impl BootstrapAscending {
                 AscPullReqType::Blocks(BlocksReqPayload {
                     start_type,
                     start: tag.start,
-                    count: self.config.pull_count as u8,
+                    count: self.config.max_pull_count as u8,
                 })
             }
             QueryType::AccountInfoByHash => AscPullReqType::AccountInfo(AccountInfoReqPayload {
@@ -203,7 +203,8 @@ impl BootstrapAscending {
     /* Ensure there is enough space in blockprocessor for queuing new blocks */
     fn wait_blockprocessor(&self) {
         self.wait(|_| {
-            self.block_processor.queue_len(BlockSource::Bootstrap) < self.config.block_wait_count
+            self.block_processor.queue_len(BlockSource::Bootstrap)
+                < self.config.block_processor_theshold
         });
     }
 
@@ -230,7 +231,12 @@ impl BootstrapAscending {
     fn wait_database(&self, should_throttle: bool) -> Account {
         let mut result = Account::zero();
         self.wait(|i| {
-            result = i.next_database(should_throttle, &self.database_limiter, &self.stats);
+            result = i.next_database(
+                should_throttle,
+                &self.database_limiter,
+                &self.stats,
+                self.config.database_warmup_ratio,
+            );
             !result.is_zero()
         });
 
@@ -255,6 +261,9 @@ impl BootstrapAscending {
     ) -> bool {
         debug_assert!(count > 0);
         debug_assert!(count <= BootstrapServer::MAX_BLOCKS);
+
+        // Limit the max number of blocks to pull
+        let count = min(count, self.config.max_pull_count);
 
         let info = {
             let tx = self.ledger.read_txn();
@@ -834,10 +843,12 @@ impl BootstrapAscendingImpl {
         should_throttle: bool,
         database_limiter: &BandwidthLimiter,
         stats: &Stats,
+        warmup_ratio: usize,
     ) -> Account {
+        debug_assert!(warmup_ratio > 0);
+
         // Throttling increases the weight of database requests
-        // TODO: Make this ratio configurable
-        if !database_limiter.should_pass(if should_throttle { 22 } else { 1 }) {
+        if !database_limiter.should_pass(if should_throttle { warmup_ratio } else { 1 }) {
             return Account::zero();
         }
 
@@ -920,18 +931,19 @@ pub struct BootstrapAscendingConfig {
     pub enable: bool,
     pub enable_database_scan: bool,
     pub enable_dependency_walker: bool,
-    /// Maximum number of un-responded requests per channel
-    pub requests_limit: usize,
+    /// Maximum number of un-responded requests per channel, should be lower or equal to bootstrap server max queue size
+    pub channel_limit: usize,
     pub database_rate_limit: usize,
-    pub pull_count: usize,
+    pub database_warmup_ratio: usize,
+    pub max_pull_count: usize,
     pub request_timeout: Duration,
     pub throttle_coefficient: usize,
     pub throttle_wait: Duration,
-    pub account_sets: AccountSetsConfig,
-    pub block_wait_count: usize,
+    pub block_processor_theshold: usize,
     /** Minimum accepted protocol version used when bootstrapping */
     pub min_protocol_version: u8,
     pub max_requests: usize,
+    pub account_sets: AccountSetsConfig,
 }
 
 impl Default for BootstrapAscendingConfig {
@@ -940,16 +952,17 @@ impl Default for BootstrapAscendingConfig {
             enable: true,
             enable_database_scan: true,
             enable_dependency_walker: true,
-            requests_limit: 64,
-            database_rate_limit: 1024,
-            pull_count: BlocksAckPayload::MAX_BLOCKS,
+            channel_limit: 16,
+            database_rate_limit: 256,
+            database_warmup_ratio: 10,
+            max_pull_count: BlocksAckPayload::MAX_BLOCKS,
             request_timeout: Duration::from_secs(3),
             throttle_coefficient: 8 * 1024,
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
-            block_wait_count: 1000,
+            block_processor_theshold: 1000,
             min_protocol_version: 0x14, // TODO don't hard code
-            max_requests: 1024 * 16,
+            max_requests: 1024,
         }
     }
 }

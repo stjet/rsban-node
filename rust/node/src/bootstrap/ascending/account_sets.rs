@@ -342,6 +342,14 @@ impl AccountSets {
         self.blocking.len()
     }
 
+    pub fn priority_half_full(&self) -> bool {
+        self.priorities.len() > self.config.priorities_max / 2
+    }
+
+    pub fn blocked_half_full(&self) -> bool {
+        self.blocking.len() > self.config.blocking_max / 2
+    }
+
     /// Accounts in the ledger but not in priority list are assumed priority 1.0f
     /// Blocked accounts are assumed priority 0.0f
     #[allow(dead_code)]

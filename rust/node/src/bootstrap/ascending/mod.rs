@@ -775,18 +775,24 @@ impl BootstrapAscendingImpl {
                 }
             }
             BlockStatus::GapSource => {
-                let account = if block.previous().is_zero() {
-                    block.account_field().unwrap()
-                } else {
-                    ledger.any().block_account(tx, &block.previous()).unwrap()
-                };
-                let source = block.source_or_link();
+                if source == BlockSource::Bootstrap {
+                    let account = if block.previous().is_zero() {
+                        block.account_field().unwrap()
+                    } else {
+                        ledger.any().block_account(tx, &block.previous()).unwrap()
+                    };
+                    let source = block.source_or_link();
 
-                // Mark account as blocked because it is missing the source block
-                self.accounts.block(account, source);
+                    // Mark account as blocked because it is missing the source block
+                    self.accounts.block(account, source);
+                }
             }
             BlockStatus::GapPrevious => {
-                if source == BlockSource::Live {
+                // Prevent live traffic from evicting accounts from the priority list
+                if source == BlockSource::Live
+                    && !self.accounts.priority_half_full()
+                    && !self.accounts.blocked_half_full()
+                {
                     if block.block_type() == BlockType::State {
                         let account = block.account_field().unwrap();
                         self.accounts.priority_set(&account);

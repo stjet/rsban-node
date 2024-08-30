@@ -17,7 +17,7 @@ pub struct AccountRemoveArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::{Account, WalletId};
+    use rsnano_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]

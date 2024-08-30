@@ -19,7 +19,6 @@ mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::WalletId;
     use rsnano_node::wallets::WalletsExt;
-    use rsnano_rpc_messages::RpcCommand;
     use test_helpers::System;
 
     #[test]
@@ -35,12 +34,8 @@ mod tests {
 
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), true);
 
-        node.tokio.block_on(async {
-            rpc_client
-                .rpc_request(&RpcCommand::wallet_lock(wallet_id))
-                .await
-                .unwrap()
-        });
+        node.tokio
+            .block_on(async { rpc_client.wallet_lock(wallet_id).await.unwrap() });
 
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), false);
 
@@ -60,11 +55,9 @@ mod tests {
 
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), true);
 
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .rpc_request(&RpcCommand::wallet_lock(wallet_id))
-                .await
-        });
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_lock(wallet_id).await });
 
         assert!(result.is_err());
 

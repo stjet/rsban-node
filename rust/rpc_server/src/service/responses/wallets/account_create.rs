@@ -20,7 +20,7 @@ pub async fn account_create(
 
         match result {
             Ok(account) => to_string_pretty(&AccountDto::new(account.as_account())).unwrap(),
-            Err(_) => format_error_message("Wallet error"),
+            Err(e) => format_error_message(&e.to_string()),
         }
     } else {
         format_error_message("RPC control is disabled")

@@ -1,5 +1,6 @@
 use crate::RpcCommand;
 use rsnano_core::Account;
+use rsnano_core::{Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -11,6 +12,13 @@ impl RpcCommand {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountInfoArgs {
     pub account: Account,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountInfoDto {
+    pub frontier: BlockHash,
+    pub block_count: u64,
+    pub balance: Amount,
 }
 
 #[cfg(test)]

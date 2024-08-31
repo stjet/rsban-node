@@ -1,12 +1,13 @@
-use crate::service::responses::{format_bool_message, format_error_message};
 use rsnano_core::WalletId;
 use rsnano_node::node::Node;
+use rsnano_rpc_messages::{BoolDto, ErrorDto};
+use serde_json::to_string_pretty;
 use std::sync::Arc;
 
 pub async fn wallet_locked(node: Arc<Node>, wallet: WalletId) -> String {
     match node.wallets.valid_password(&wallet) {
-        Ok(valid) => format_bool_message("locked", !valid),
-        Err(e) => format_error_message(&e.to_string()),
+        Ok(valid) => to_string_pretty(&BoolDto::new("locked".to_string(), !valid)).unwrap(),
+        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
     }
 }
 

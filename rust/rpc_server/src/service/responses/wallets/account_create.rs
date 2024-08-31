@@ -1,7 +1,6 @@
-use crate::service::responses::format_error_message;
 use rsnano_core::WalletId;
 use rsnano_node::{node::Node, wallets::WalletsExt};
-use rsnano_rpc_messages::AccountDto;
+use rsnano_rpc_messages::{AccountDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -17,13 +16,12 @@ pub async fn account_create(
         } else {
             node.wallets.deterministic_insert2(&wallet, false)
         };
-
         match result {
             Ok(account) => to_string_pretty(&AccountDto::new(account.as_account())).unwrap(),
-            Err(e) => format_error_message(&e.to_string()),
+            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {
-        format_error_message("RPC control is disabled")
+        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }
 }
 

@@ -71,20 +71,20 @@ macro_rules! create_rpc_message {
     };
 }
 
-create_rpc_message!(BoolRpcMessage, bool);
+create_rpc_message!(BoolDto, bool);
 create_rpc_message!(AccountRpcMessage, Account);
-create_rpc_message!(AmountRpcMessage, Amount);
+create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashMessage, BlockHash);
 
 #[cfg(test)]
 mod tests {
-    use crate::{AccountRpcMessage, AmountRpcMessage, BlockHashMessage, BoolRpcMessage};
+    use crate::{AccountRpcMessage, AmountDto, BlockHashMessage, BoolDto};
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
     fn serialize_bool_rpc_message() {
-        let bool_dto = BoolRpcMessage::new("key".to_string(), true);
+        let bool_dto = BoolDto::new("key".to_string(), true);
         assert_eq!(
             serde_json::to_string_pretty(&bool_dto).unwrap(),
             r#"{
@@ -95,9 +95,9 @@ mod tests {
 
     #[test]
     fn deserialize_bool_rpc_message() {
-        let bool_dto = BoolRpcMessage::new("flag".to_string(), true);
+        let bool_dto = BoolDto::new("flag".to_string(), true);
         let serialized = to_string_pretty(&bool_dto).unwrap();
-        let deserialized: BoolRpcMessage = from_str(&serialized).unwrap();
+        let deserialized: BoolDto = from_str(&serialized).unwrap();
         assert_eq!(bool_dto, deserialized);
     }
 
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn serialize_amount_rpc_message() {
         let amount = Amount::raw(1000);
-        let amount_rpc = AmountRpcMessage::new("amount".to_string(), amount);
+        let amount_rpc = AmountDto::new("amount".to_string(), amount);
         assert_eq!(
             serde_json::to_string_pretty(&amount_rpc).unwrap(),
             r#"{
@@ -139,9 +139,9 @@ mod tests {
     #[test]
     fn deserialize_amount_rpc_message() {
         let amount = Amount::from(1000);
-        let amount_rpc = AmountRpcMessage::new("amount".to_string(), amount);
+        let amount_rpc = AmountDto::new("amount".to_string(), amount);
         let serialized = to_string_pretty(&amount_rpc).unwrap();
-        let deserialized: AmountRpcMessage = from_str(&serialized).unwrap();
+        let deserialized: AmountDto = from_str(&serialized).unwrap();
         assert_eq!(amount_rpc, deserialized);
     }
 

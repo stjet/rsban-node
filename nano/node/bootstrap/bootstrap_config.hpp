@@ -42,13 +42,14 @@ public:
 	bool enable_dependency_walker;
 
 	// Maximum number of un-responded requests per channel
-	std::size_t requests_limit;
+	std::size_t channel_limit;
 	std::size_t database_rate_limit;
-	std::size_t pull_count;
+	std::size_t database_warmup_ratio;
+	std::size_t max_pull_count;
 	std::chrono::milliseconds request_timeout;
 	std::size_t throttle_coefficient;
 	std::chrono::milliseconds throttle_wait;
-	std::size_t block_wait_count;
+	std::size_t block_processor_threshold;
 	std::size_t max_requests;
 
 	nano::account_sets_config account_sets;

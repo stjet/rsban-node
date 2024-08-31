@@ -119,7 +119,6 @@ target_link_libraries(
   nano_store
   secure
   rpc
-  libminiupnpc-static
   Boost::beast
   Boost::log_setup
   Boost::log

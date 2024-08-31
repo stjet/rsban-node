@@ -267,7 +267,7 @@ impl Node {
         ));
 
         let telemetry_config = TelementryConfig {
-            enable_ongoing_requests: !flags.disable_ongoing_telemetry_requests,
+            enable_ongoing_requests: false,
             enable_ongoing_broadcasts: !flags.disable_providing_telemetry_metrics,
         };
 
@@ -1414,6 +1414,8 @@ impl NodeExt for Arc<Node> {
         self.backlog_population.start();
         self.bootstrap_server.start();
         if !self.flags.disable_ascending_bootstrap {
+            self.ascendboot
+                .initialize(&self.network_params.ledger.genesis_account);
             self.ascendboot.start();
         }
         if let Some(ws_listener) = &self.websocket {

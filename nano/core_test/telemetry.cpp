@@ -41,7 +41,6 @@ TEST (telemetry, ongoing_broadcasts)
 {
 	nano::test::system system;
 	nano::node_flags node_flags;
-	node_flags.set_disable_ongoing_telemetry_requests (true);
 	auto & node1 = *system.add_node (node_flags);
 	auto & node2 = *system.add_node (node_flags);
 

@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::{node::Node, wallets::WalletsExt};
-use rsnano_rpc_messages::{AccountDto, ErrorDto};
+use rsnano_rpc_messages::{AccountRpcMessage, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -17,7 +17,11 @@ pub async fn account_create(
             node.wallets.deterministic_insert2(&wallet, false)
         };
         match result {
-            Ok(account) => to_string_pretty(&AccountDto::new(account.as_account())).unwrap(),
+            Ok(account) => to_string_pretty(&AccountRpcMessage::new(
+                "account".to_string(),
+                account.as_account(),
+            ))
+            .unwrap(),
             Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {
@@ -47,7 +51,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.account_create(wallet_id, None).await.unwrap() });
 
-        assert!(node.wallets.exists(&result.account.into()));
+        assert!(node.wallets.exists(&result.value.into()));
 
         server.abort();
     }
@@ -70,7 +74,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert!(node.wallets.exists(&result.account.into()));
+        assert!(node.wallets.exists(&result.value.into()));
 
         server.abort();
     }

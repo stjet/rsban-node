@@ -22,7 +22,11 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_create(&self, wallet: WalletId, index: Option<u32>) -> Result<AccountDto> {
+    pub async fn account_create(
+        &self,
+        wallet: WalletId,
+        index: Option<u32>,
+    ) -> Result<AccountRpcMessage> {
         let cmd = RpcCommand::account_create(wallet, index);
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)

@@ -63,7 +63,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.get("moved").unwrap(), true);
+        assert_eq!(result.value, true);
 
         let new_wallet_accounts = node.wallets.get_accounts_of_wallet(&wallet).unwrap();
         let new_source_accounts = node.wallets.get_accounts_of_wallet(&source).unwrap();

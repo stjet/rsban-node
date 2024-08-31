@@ -84,9 +84,6 @@ pub(crate) struct RunDaemonArgs {
     /// Do not provide any telemetry data to nodes requesting it. Responses are still made to requests, but they will have an empty payload.
     #[arg(long)]
     disable_providing_telemetry_metrics: bool,
-    /// Disables ongoing telemetry requests to peers
-    #[arg(long)]
-    disable_ongoing_telemetry_requests: bool,
     /// Disable deletion of unchecked blocks after processing.
     #[arg(long)]
     disable_block_processor_unchecked_deletion: bool,
@@ -253,9 +250,6 @@ impl RunDaemonArgs {
         }
         if self.disable_providing_telemetry_metrics {
             node_flags.set_disable_providing_telemetry_metrics(true);
-        }
-        if self.disable_ongoing_telemetry_requests {
-            node_flags.set_disable_ongoing_telemetry_requests(true);
         }
         if self.disable_block_processor_unchecked_deletion {
             node_flags.set_disable_block_processor_unchecked_deletion(true);

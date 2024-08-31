@@ -225,10 +225,10 @@ mod tests {
         enable = false
         enable_database_scan = false
         enable_dependency_walker = false
-        block_wait_count = 999
+        block_processor_threshold = 999
         database_rate_limit = 999
-        pull_count = 999
-        requests_limit = 999
+        max_pull_count = 999
+        channel_limit = 999
         throttle_coefficient = 999
         throttle_wait = 999
         request_timeout = 999
@@ -846,20 +846,26 @@ mod tests {
 
         // Bootstrap Ascending section
         assert_ne!(
-            deserialized.node.bootstrap_ascending.block_wait_count,
-            default_cfg.node.bootstrap_ascending.block_wait_count
+            deserialized
+                .node
+                .bootstrap_ascending
+                .block_processor_theshold,
+            default_cfg
+                .node
+                .bootstrap_ascending
+                .block_processor_theshold
         );
         assert_ne!(
             deserialized.node.bootstrap_ascending.database_rate_limit,
             default_cfg.node.bootstrap_ascending.database_rate_limit
         );
         assert_ne!(
-            deserialized.node.bootstrap_ascending.pull_count,
-            default_cfg.node.bootstrap_ascending.pull_count
+            deserialized.node.bootstrap_ascending.max_pull_count,
+            default_cfg.node.bootstrap_ascending.max_pull_count
         );
         assert_ne!(
-            deserialized.node.bootstrap_ascending.requests_limit,
-            default_cfg.node.bootstrap_ascending.requests_limit
+            deserialized.node.bootstrap_ascending.channel_limit,
+            default_cfg.node.bootstrap_ascending.channel_limit
         );
         assert_ne!(
             deserialized.node.bootstrap_ascending.throttle_coefficient,

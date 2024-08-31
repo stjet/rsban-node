@@ -6,10 +6,6 @@ use crate::{
     bootstrap::ascending::ordered_priorities::PriorityEntry,
     stats::{DetailType, StatType, Stats},
 };
-use rand::{
-    distributions::{Distribution, WeightedIndex},
-    thread_rng, RngCore,
-};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, BlockHash,
@@ -48,13 +44,13 @@ pub(crate) struct AccountSets {
 }
 
 impl AccountSets {
-    pub const PRIORITY_INITIAL: Priority = Priority::new(8.0);
-    pub const PRIORITY_INCREASE: f64 = 2.0;
-    pub const PRIORITY_DECREASE: Priority = Priority::new(0.5);
-    pub const PRIORITY_MAX: Priority = Priority::new(32.0);
-    pub const PRIORITY_CUTOFF: Priority = Priority::new(1.0);
+    pub const PRIORITY_INITIAL: Priority = Priority::new(2.0);
+    pub const PRIORITY_INCREASE: Priority = Priority::new(2.0);
+    pub const PRIORITY_DIVIDE: f64 = 2.0;
+    pub const PRIORITY_MAX: Priority = Priority::new(128.0);
+    pub const PRIORITY_CUTOFF: Priority = Priority::new(0.15);
 
-    pub fn new(stats: Arc<Stats>, config: AccountSetsConfig) -> Self {
+    pub fn new(config: AccountSetsConfig, stats: Arc<Stats>) -> Self {
         Self {
             stats,
             config,
@@ -63,20 +59,30 @@ impl AccountSets {
         }
     }
 
+    /**
+     * If an account is not blocked, increase its priority.
+     * If the account does not exist in priority set and is not blocked, inserts a new entry.
+     * Current implementation increases priority by 1.0f each increment
+     */
     pub fn priority_up(&mut self, account: &Account) {
+        if account.is_zero() {
+            return;
+        }
+
         if !self.blocked(account) {
             self.stats
                 .inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
 
             if !self.priorities.change_priority(account, |prio| {
-                Some(min(prio * Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
+                Some(min(prio + Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
             }) {
-                self.priorities
-                    .insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
                 self.stats.inc(
                     StatType::BootstrapAscendingAccounts,
                     DetailType::PriorityInsert,
                 );
+
+                self.priorities
+                    .insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
 
                 self.trim_overflow();
             }
@@ -88,14 +94,22 @@ impl AccountSets {
         }
     }
 
+    /**
+     * Decreases account priority
+     * Current implementation divides priority by 2.0f and saturates down to 1.0f.
+     */
     pub fn priority_down(&mut self, account: &Account) {
+        if account.is_zero() {
+            return;
+        }
+
         if !self.priorities.change_priority(account, |prio| {
             self.stats.inc(
                 StatType::BootstrapAscendingAccounts,
                 DetailType::Deprioritize,
             );
 
-            let priority_new = prio - Self::PRIORITY_DECREASE;
+            let priority_new = prio / Self::PRIORITY_DIVIDE;
             if priority_new <= Self::PRIORITY_CUTOFF {
                 self.stats.inc(
                     StatType::BootstrapAscendingAccounts,
@@ -113,19 +127,56 @@ impl AccountSets {
         }
     }
 
+    pub fn priority_set(&mut self, account: &Account) {
+        Self::priority_set_impl(account, &self.stats, &self.blocking, &mut self.priorities);
+        self.trim_overflow();
+    }
+
+    fn priority_set_impl(
+        account: &Account,
+        stats: &Stats,
+        blocking: &OrderedBlocking,
+        priorities: &mut OrderedPriorities,
+    ) {
+        if account.is_zero() {
+            return;
+        }
+
+        if !blocking.contains(account) {
+            if !priorities.contains(account) {
+                stats.inc(
+                    StatType::BootstrapAscendingAccounts,
+                    DetailType::PriorityInsert,
+                );
+                priorities.insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
+            }
+        } else {
+            stats.inc(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PrioritizeFailed,
+            );
+        }
+    }
+
     pub fn block(&mut self, account: Account, dependency: BlockHash) {
+        debug_assert!(!account.is_zero());
+
         self.stats
             .inc(StatType::BootstrapAscendingAccounts, DetailType::Block);
 
-        let entry = self.priorities.remove(&account).unwrap_or_default();
+        let entry = self
+            .priorities
+            .remove(&account)
+            .unwrap_or_else(|| PriorityEntry::new(account, Priority::ZERO));
+
         self.stats.inc(
             StatType::BootstrapAscendingAccounts,
             DetailType::PriorityEraseBlock,
         );
 
         self.blocking.insert(BlockingEntry {
-            account,
             dependency,
+            dependency_account: Account::zero(), //TODO
             original_entry: entry,
         });
         self.stats.inc(
@@ -137,8 +188,11 @@ impl AccountSets {
     }
 
     pub fn unblock(&mut self, account: Account, hash: Option<BlockHash>) {
-        // Unblock only if the dependency is fulfilled
+        if account.is_zero() {
+            return;
+        }
 
+        // Unblock only if the dependency is fulfilled
         if let Some(existing) = self.blocking.get(&account) {
             let hash_matches = if let Some(hash) = hash {
                 hash == existing.dependency
@@ -171,41 +225,50 @@ impl AccountSets {
     }
 
     pub fn timestamp_set(&mut self, account: &Account) {
+        debug_assert!(!account.is_zero());
+
         let tstamp = Instant::now();
         self.priorities.change_timestamp(account, Some(tstamp));
     }
 
     pub fn timestamp_reset(&mut self, account: &Account) {
+        debug_assert!(!account.is_zero());
+
         self.priorities.change_timestamp(account, None);
     }
 
-    /// Returns false if the account is busy
-    fn check_timestamp(&self, account: &Account) -> bool {
-        if let Some(entry) = self.priorities.get(account) {
-            if entry
-                .timestamp
-                .map(|i| i.elapsed())
-                .unwrap_or(Duration::MAX)
-                < self.config.cooldown
-            {
-                return false;
-            }
+    /// Sets information about the account chain that contains the block hash
+    pub fn dependency_update(&mut self, dependency: &BlockHash, dependency_account: Account) {
+        debug_assert!(!dependency_account.is_zero());
+        let updated = self
+            .blocking
+            .modify_dependency_account(dependency, dependency_account);
+        if updated > 0 {
+            self.stats.add(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::DependencyUpdate,
+                updated as u64,
+            );
+        } else {
+            self.stats.inc(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::DependencyUpdateFailed,
+            );
         }
-
-        true
     }
 
     fn trim_overflow(&mut self) {
-        if self.priorities.len() > self.config.priorities_max {
-            self.priorities.pop_lowest_priority();
+        while self.priorities.len() > self.config.priorities_max {
+            // Erase the oldest entry
+            self.priorities.pop_front();
             self.stats.inc(
                 StatType::BootstrapAscendingAccounts,
                 DetailType::PriorityEraseOverflow,
             );
         }
-        if self.blocking.len() > self.config.blocking_max {
-            // Evict the lowest priority entry
-            self.blocking.pop_lowest_priority();
+        while self.blocking.len() > self.config.blocking_max {
+            // Erase the oldest entry
+            self.blocking.pop_front();
 
             self.stats.inc(
                 StatType::BootstrapAscendingAccounts,
@@ -214,42 +277,61 @@ impl AccountSets {
         }
     }
 
-    pub fn next(&self) -> Account {
+    /// Sampling
+    pub fn next_priority(&self, filter: impl Fn(&Account) -> bool) -> Account {
         if self.priorities.is_empty() {
             return Account::zero();
         }
 
-        let mut weights: Vec<f64> = Vec::new();
-        let mut candidates: Vec<Account> = Vec::new();
-        //
-        let mut iterations = 0;
-        while candidates.len() < self.config.consideration_count
-            && iterations < self.config.consideration_count * 10
-        {
-            iterations += 1;
-            debug_assert_eq!(candidates.len(), weights.len());
+        let cutoff = Instant::now() - self.config.cooldown;
 
-            // Use a dedicated, uniformly distributed field for sampling to avoid problematic corner case when accounts in the queue are very close together
-            let search = thread_rng().next_u64();
-            let entry = self.priorities.wrapping_lower_bound(search).unwrap();
+        self.priorities
+            .next_priority(cutoff, filter)
+            .unwrap_or_default()
+    }
 
-            if self.check_timestamp(&entry.account) {
-                candidates.push(entry.account);
-                weights.push(entry.priority.into());
+    pub fn next_blocking(&self, filter: impl Fn(&BlockHash) -> bool) -> BlockHash {
+        if self.blocking.len() == 0 {
+            return BlockHash::zero();
+        }
+
+        self.blocking.next(filter).unwrap_or_default()
+    }
+
+    /// Sets information about the account chain that contains the block hash
+    pub fn sync_dependencies(&mut self) {
+        // Sample all accounts with a known dependency account (> account 0)
+        let begin = Account::zero().inc().unwrap();
+        for entry in self.blocking.iter_start_dep_account(begin) {
+            if self.priorities.len() >= self.config.priorities_max {
+                break;
+            }
+
+            if !self.blocked(&entry.dependency_account)
+                && !self.prioritized(&entry.dependency_account)
+            {
+                self.stats.inc(
+                    StatType::BootstrapAscendingAccounts,
+                    DetailType::SyncDependencies,
+                );
+                Self::priority_set_impl(
+                    &entry.dependency_account,
+                    &self.stats,
+                    &self.blocking,
+                    &mut self.priorities,
+                );
             }
         }
 
-        if candidates.is_empty() {
-            return Account::zero(); // All sampled accounts are busy
-        }
-
-        let dist = WeightedIndex::new(weights).unwrap();
-        let selection = dist.sample(&mut thread_rng());
-        candidates[selection]
+        self.trim_overflow();
     }
 
     fn blocked(&self, account: &Account) -> bool {
         self.blocking.contains(account)
+    }
+
+    fn prioritized(&self, account: &Account) -> bool {
+        self.priorities.contains(account)
     }
 
     pub fn priority_len(&self) -> usize {
@@ -260,20 +342,30 @@ impl AccountSets {
         self.blocking.len()
     }
 
-    #[allow(dead_code)]
-    fn priority(&self, account: &Account) -> Priority {
-        if self.blocked(account) {
-            return Priority::ZERO;
-        }
+    pub fn priority_half_full(&self) -> bool {
+        self.priorities.len() > self.config.priorities_max / 2
+    }
 
-        if let Some(existing) = self.priorities.get(account) {
-            existing.priority
-        } else {
-            Self::PRIORITY_CUTOFF
+    pub fn blocked_half_full(&self) -> bool {
+        self.blocking.len() > self.config.blocking_max / 2
+    }
+
+    /// Accounts in the ledger but not in priority list are assumed priority 1.0f
+    /// Blocked accounts are assumed priority 0.0f
+    #[allow(dead_code)]
+    pub fn priority(&self, account: &Account) -> Priority {
+        if !self.blocked(account) {
+            if let Some(existing) = self.priorities.get(account) {
+                return existing.priority;
+            }
         }
+        return Priority::ZERO;
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        // Count blocking entries with their dependency account unknown
+        let blocking_unknown = self.blocking.count_by_dependency_account(&Account::zero());
+
         ContainerInfoComponent::Composite(
             name.into(),
             vec![
@@ -286,6 +378,11 @@ impl AccountSets {
                     name: "blocking".to_string(),
                     count: self.blocking.len(),
                     sizeof_element: OrderedBlocking::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "blocking_unknown".to_string(),
+                    count: blocking_unknown,
+                    sizeof_element: 0,
                 }),
             ],
         )
@@ -332,7 +429,7 @@ mod tests {
     #[test]
     fn priority_base() {
         fixture(|sets| {
-            assert_eq!(sets.priority(&Account::from(1)), Priority::new(1.0));
+            assert_eq!(sets.priority(&Account::from(1)), Priority::ZERO);
         });
     }
 
@@ -349,7 +446,7 @@ mod tests {
             sets.block(account, hash);
             sets.unblock(account, None);
 
-            assert_eq!(sets.priority(&account), Priority::new(16.0));
+            assert_eq!(sets.priority(&account), Priority::new(4.0));
         });
     }
 
@@ -362,7 +459,7 @@ mod tests {
             assert_eq!(sets.priority(&account), AccountSets::PRIORITY_INITIAL);
 
             sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), Priority::new(7.5));
+            assert_eq!(sets.priority(&account), Priority::new(1.0));
         });
     }
 
@@ -373,7 +470,7 @@ mod tests {
             let account = Account::from(1);
 
             sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), Priority::new(1.0));
+            assert_eq!(sets.priority(&account), Priority::ZERO);
         });
     }
 
@@ -383,7 +480,7 @@ mod tests {
         fixture(|sets| {
             let account = Account::from(1);
 
-            for _ in 0..10 {
+            for _ in 0..100 {
                 sets.priority_up(&account);
             }
             assert_eq!(sets.priority(&account), AccountSets::PRIORITY_MAX);
@@ -393,7 +490,7 @@ mod tests {
     fn fixture(mut f: impl FnMut(&mut AccountSets)) {
         let stats = Arc::new(Stats::default());
         let config = AccountSetsConfig::default();
-        let mut sets = AccountSets::new(stats, config);
+        let mut sets = AccountSets::new(config, stats);
         f(&mut sets);
     }
 }

@@ -44,7 +44,7 @@ impl PeerScoring {
         self.scoring.iter_by_outstanding().find_map(|score| {
             if let Some(channel) = score.channel.upgrade() {
                 if !channel.is_queue_full(TrafficType::Generic)
-                    && score.outstanding < self.config.requests_limit
+                    && score.outstanding < self.config.channel_limit
                 {
                     return Some(channel);
                 }

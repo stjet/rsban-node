@@ -19,7 +19,6 @@ pub struct NodeFlags {
     pub disable_request_loop: bool, // For testing only
     pub disable_tcp_realtime: bool,
     pub disable_providing_telemetry_metrics: bool,
-    pub disable_ongoing_telemetry_requests: bool,
     pub disable_block_processor_unchecked_deletion: bool,
     pub disable_block_processor_republishing: bool,
     pub allow_bootstrap_peers_duplicates: bool,
@@ -59,7 +58,6 @@ impl NodeFlags {
             disable_request_loop: false,
             disable_tcp_realtime: false,
             disable_providing_telemetry_metrics: false,
-            disable_ongoing_telemetry_requests: false,
             disable_block_processor_unchecked_deletion: false,
             disable_block_processor_republishing: false,
             allow_bootstrap_peers_duplicates: false,
@@ -143,10 +141,6 @@ impl NodeFlags {
 
     pub fn set_disable_providing_telemetry_metrics(&mut self, value: bool) {
         self.disable_providing_telemetry_metrics = value;
-    }
-
-    pub fn set_disable_ongoing_telemetry_requests(&mut self, value: bool) {
-        self.disable_ongoing_telemetry_requests = value;
     }
 
     pub fn set_disable_block_processor_unchecked_deletion(&mut self, value: bool) {

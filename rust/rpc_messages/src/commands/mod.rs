@@ -1,8 +1,10 @@
+mod common;
 mod ledger;
 mod node;
 mod utils;
 mod wallets;
 
+pub use common::*;
 pub use ledger::*;
 pub use node::*;
 use serde::{Deserialize, Serialize};
@@ -12,7 +14,7 @@ pub use wallets::*;
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
-    AccountInfo(AccountInfoArgs),
+    AccountInfo(AccountArg),
     Keepalive(KeepaliveArgs),
     Stop,
     KeyCreate,
@@ -20,6 +22,7 @@ pub enum RpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
+    AccountBlockCount(AccountArg),
 }
 
 #[cfg(test)]

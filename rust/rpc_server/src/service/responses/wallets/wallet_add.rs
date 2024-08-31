@@ -1,7 +1,6 @@
-use crate::service::responses::format_error_message;
 use rsnano_core::{RawKey, WalletId};
 use rsnano_node::{node::Node, wallets::WalletsExt};
-use rsnano_rpc_messages::AccountDto;
+use rsnano_rpc_messages::{AccountDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -16,10 +15,10 @@ pub async fn wallet_add(
         let generate_work = work.unwrap_or(false);
         match node.wallets.insert_adhoc2(&wallet, &raw_key, generate_work) {
             Ok(account) => to_string_pretty(&AccountDto::new(account.as_account())).unwrap(),
-            Err(_) => format_error_message("Failed to add key to wallet"),
+            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {
-        format_error_message("RPC control is disabled")
+        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }
 }
 

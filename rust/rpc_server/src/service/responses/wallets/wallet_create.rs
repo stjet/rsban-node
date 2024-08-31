@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::{node::Node, wallets::WalletsExt};
-use rsnano_rpc_messages::{ErrorDto, WalletDto};
+use rsnano_rpc_messages::{ErrorDto, WalletRpcMessage};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ pub async fn wallet_create(node: Arc<Node>, enable_control: bool) -> String {
     if enable_control {
         let wallet = WalletId::random();
         node.wallets.create(wallet);
-        to_string_pretty(&WalletDto::new(wallet)).unwrap()
+        to_string_pretty(&WalletRpcMessage::new(wallet)).unwrap()
     } else {
         to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }

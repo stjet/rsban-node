@@ -137,22 +137,7 @@ impl RealtimeMessageHandler {
                 );
             }
             Message::TelemetryReq => {
-                // Send an empty telemetry_ack if we do not want, just to acknowledge that we have received the message to
-                // remove any timeouts on the server side waiting for a message.
-                let data = if !self.flags.disable_providing_telemetry_metrics {
-                    let telemetry_data = self.telemetry.local_telemetry();
-                    Some(telemetry_data)
-                } else {
-                    None
-                };
-
-                let msg = Message::TelemetryAck(TelemetryAck(data));
-                self.message_publisher.lock().unwrap().try_send(
-                    channel.channel_id(),
-                    &msg,
-                    DropPolicy::ShouldNotDrop,
-                    TrafficType::Generic,
-                );
+                // Ignore telemetry requests as telemetry is being periodically broadcasted since V25+
             }
             Message::TelemetryAck(ack) => self.telemetry.process(&ack, channel),
             Message::AscPullReq(req) => {

@@ -267,8 +267,6 @@ public:
 	void set_disable_tcp_realtime (bool value);
 	bool disable_providing_telemetry_metrics () const;
 	void set_disable_providing_telemetry_metrics (bool value);
-	bool disable_ongoing_telemetry_requests () const;
-	void set_disable_ongoing_telemetry_requests (bool value);
 	bool disable_block_processor_unchecked_deletion () const;
 	void set_disable_block_processor_unchecked_deletion (bool value);
 	bool disable_block_processor_republishing () const;

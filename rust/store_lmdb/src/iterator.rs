@@ -1,7 +1,7 @@
 use crate::{LmdbDatabase, Transaction};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_LAST, MDB_NEXT, MDB_SET_RANGE};
 use rsnano_core::utils::{
-    BufferReader, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize,
+    BufferReader, Deserialize, FixedSizeSerialize, MemoryStream, MutStreamAdapter, Serialize,
 };
 use rsnano_nullable_lmdb::RoCursor;
 use std::{
@@ -254,43 +254,54 @@ where
     }
 }
 
-pub struct LmdbIterator<'txn, K, V, F>
+pub struct LmdbIterator<'txn, K, V>
 where
-    F: Fn(&[u8], &[u8]) -> (K, V),
+    K: Serialize,
 {
     cursor: RoCursor<'txn>,
     operation: MDB_cursor_op,
-    convert: F,
+    convert: fn(&[u8], &[u8]) -> (K, V),
 }
 
-impl<'txn, K, V, F> LmdbIterator<'txn, K, V, F>
+impl<'txn, K, V> LmdbIterator<'txn, K, V>
 where
-    F: Fn(&[u8], &[u8]) -> (K, V),
+    K: Serialize,
 {
-    pub fn new(cursor: RoCursor<'txn>, convert: F) -> Self {
+    pub fn new(cursor: RoCursor<'txn>, convert: fn(&[u8], &[u8]) -> (K, V)) -> Self {
         Self {
             cursor,
             operation: MDB_FIRST,
             convert,
         }
     }
+
+    pub fn start_at(&mut self, k: &K) -> Option<(K, V)> {
+        self.operation = MDB_NEXT;
+        let mut buffer = [0; 64];
+        let mut key_buffer = MutStreamAdapter::new(&mut buffer);
+        k.serialize(&mut key_buffer);
+        self.read(MDB_SET_RANGE, Some(key_buffer.written()))
+    }
+
+    fn read(&self, operation: MDB_cursor_op, key: Option<&[u8]>) -> Option<(K, V)> {
+        match self.cursor.get(key, None, operation) {
+            Err(lmdb::Error::NotFound) => None,
+            Ok((Some(k), v)) => Some((self.convert)(k, v)),
+            Ok(_) => panic!("No key returned"),
+            Err(e) => panic!("Read error {:?}", e),
+        }
+    }
 }
 
-impl<'txn, K, V, F> Iterator for LmdbIterator<'txn, K, V, F>
+impl<'txn, K, V> Iterator for LmdbIterator<'txn, K, V>
 where
-    F: Fn(&[u8], &[u8]) -> (K, V),
+    K: Serialize,
 {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.cursor.get(None, None, self.operation) {
-            Err(lmdb::Error::NotFound) => None,
-            Ok((Some(k), v)) => {
-                self.operation = MDB_NEXT;
-                Some((self.convert)(k, v))
-            }
-            Ok(_) => panic!("No key returned"),
-            Err(e) => panic!("Read error {:?}", e),
-        }
+        let result = self.read(self.operation, None);
+        self.operation = MDB_NEXT;
+        result
     }
 }

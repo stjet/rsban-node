@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_core::{Account, Amount, JsonBlock, PublicKey, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
@@ -21,7 +21,11 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn accounts_create(&self, wallet: WalletId, count: u64) -> Result<AccountsDto> {
+    pub async fn accounts_create(
+        &self,
+        wallet: WalletId,
+        count: u64,
+    ) -> Result<AccountsRpcMessage> {
         let cmd = RpcCommand::accounts_create(wallet, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

@@ -182,15 +182,15 @@ impl BacklogPopulationThread {
                 let mut transaction = self.ledger.store.tx_begin_read();
 
                 let mut count = 0u32;
-                let mut i = self.ledger.any().accounts_range(&transaction, next..);
-                while let Some((account, info)) = i.next() {
+                let mut it = self.ledger.any().accounts_range(&transaction, next..);
+                while let Some((account, info)) = it.next() {
                     if count >= chunk_size {
                         break;
                     }
-                    if transaction.is_refresh_needed() {
-                        drop(i);
+                    if transaction.is_refresh_needed_with(Duration::from_millis(100)) {
+                        drop(it);
                         transaction.refresh();
-                        i = self.ledger.any().accounts_range(&transaction, account..);
+                        it = self.ledger.any().accounts_range(&transaction, account..);
                     }
 
                     self.stats.inc(StatType::Backlog, DetailType::Total);

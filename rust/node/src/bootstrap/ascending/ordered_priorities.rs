@@ -1,20 +1,21 @@
 use ordered_float::OrderedFloat;
 use rand::{thread_rng, RngCore};
 use rsnano_core::Account;
+use std::collections::VecDeque;
 use std::mem::size_of;
-use std::ops::Bound;
+use std::ops::{Add, Bound, Deref, Div, Mul, Sub};
 use std::{collections::BTreeMap, time::Instant};
 
 #[derive(Clone, Default)]
 pub(crate) struct PriorityEntry {
     pub account: Account,
-    pub priority: OrderedFloat<f32>,
+    pub priority: Priority,
     pub timestamp: Option<Instant>,
     pub id: u64, // Uniformly distributed, used for random querying
 }
 
 impl PriorityEntry {
-    pub fn new(account: Account, priority: OrderedFloat<f32>) -> Self {
+    pub fn new(account: Account, priority: Priority) -> Self {
         Self {
             account,
             priority,
@@ -24,14 +25,105 @@ impl PriorityEntry {
     }
 }
 
+#[derive(PartialEq, Eq, Default, Clone, Copy, Ord, PartialOrd)]
+pub struct Priority(OrderedFloat<f64>);
+
+impl Priority {
+    pub const fn new(value: f64) -> Self {
+        Self(OrderedFloat(value))
+    }
+
+    pub const ZERO: Self = Self(OrderedFloat(0.0));
+}
+
+impl Add for Priority {
+    type Output = Priority;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl Sub for Priority {
+    type Output = Priority;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
+}
+
+impl Mul<f64> for Priority {
+    type Output = Priority;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self(self.0 * rhs)
+    }
+}
+
+impl Div<f64> for Priority {
+    type Output = Priority;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Self(self.0 / rhs)
+    }
+}
+
+impl From<Priority> for f64 {
+    fn from(value: Priority) -> Self {
+        value.0 .0
+    }
+}
+
+impl std::fmt::Debug for Priority {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0 .0, f)
+    }
+}
+
+impl std::fmt::Display for Priority {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0 .0, f)
+    }
+}
+
+#[derive(PartialEq, Eq, Default, Clone, Copy)]
+pub(crate) struct PriorityKeyDesc(pub Priority);
+
+impl Ord for PriorityKeyDesc {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // order descending
+        other.0.cmp(&self.0)
+    }
+}
+
+impl PartialOrd for PriorityKeyDesc {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Deref for PriorityKeyDesc {
+    type Target = Priority;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<Priority> for PriorityKeyDesc {
+    fn from(value: Priority) -> Self {
+        Self(value)
+    }
+}
+
 /// Tracks the ongoing account priorities
 /// This only stores account priorities > 1.0f.
 #[derive(Default)]
 pub(crate) struct OrderedPriorities {
     by_id: BTreeMap<u64, PriorityEntry>,
     by_account: BTreeMap<Account, u64>,
-    sequenced: Vec<u64>,
-    by_priority: BTreeMap<OrderedFloat<f32>, Vec<u64>>,
+    sequenced: VecDeque<u64>,
+    by_priority: BTreeMap<PriorityKeyDesc, Vec<u64>>, // descending
 }
 
 impl OrderedPriorities {
@@ -67,13 +159,21 @@ impl OrderedPriorities {
 
         self.by_id.insert(id, entry);
         self.by_account.insert(account, id);
-        self.sequenced.push(id);
-        self.by_priority.entry(priority).or_default().push(id);
+        self.sequenced.push_back(id);
+        self.by_priority
+            .entry(priority.into())
+            .or_default()
+            .push(id);
         true
     }
 
+    pub fn pop_front(&mut self) -> Option<PriorityEntry> {
+        let id = self.sequenced.pop_front()?;
+        Some(self.remove_id(id))
+    }
+
     pub fn pop_lowest_priority(&mut self) -> Option<PriorityEntry> {
-        if let Some(mut entry) = self.by_priority.first_entry() {
+        if let Some(mut entry) = self.by_priority.last_entry() {
             let ids = entry.get_mut();
             let id = ids[0];
             if ids.len() == 1 {
@@ -99,7 +199,7 @@ impl OrderedPriorities {
     pub fn change_priority(
         &mut self,
         account: &Account,
-        mut f: impl FnMut(OrderedFloat<f32>) -> Option<OrderedFloat<f32>>,
+        mut f: impl FnMut(Priority) -> Option<Priority>,
     ) -> bool {
         if let Some(&id) = self.by_account.get(account) {
             if let Some(entry) = self.by_id.get_mut(&id) {
@@ -119,6 +219,27 @@ impl OrderedPriorities {
         false
     }
 
+    pub fn next_priority(
+        &self,
+        cutoff: Instant,
+        filter: impl Fn(&Account) -> bool,
+    ) -> Option<Account> {
+        self.by_priority
+            .values()
+            .flatten()
+            .map(|id| self.by_id.get(id).unwrap())
+            .find(|entry| {
+                let Some(ts) = entry.timestamp else {
+                    return false;
+                };
+                if ts > cutoff {
+                    return false;
+                }
+                filter(&entry.account)
+            })
+            .map(|e| e.account)
+    }
+
     pub fn wrapping_lower_bound(&self, value: u64) -> Option<&PriorityEntry> {
         let result = self
             .by_id
@@ -133,20 +254,18 @@ impl OrderedPriorities {
         }
     }
 
-    fn change_priority_internal(
-        &mut self,
-        id: u64,
-        old_prio: OrderedFloat<f32>,
-        new_prio: OrderedFloat<f32>,
-    ) {
-        if let Some(ids) = self.by_priority.get_mut(&old_prio) {
+    fn change_priority_internal(&mut self, id: u64, old_prio: Priority, new_prio: Priority) {
+        if let Some(ids) = self.by_priority.get_mut(&old_prio.into()) {
             if ids.len() == 1 {
-                self.by_priority.remove(&old_prio);
+                self.by_priority.remove(&old_prio.into());
             } else {
                 ids.retain(|i| *i != id)
             }
         }
-        self.by_priority.entry(new_prio).or_default().push(id);
+        self.by_priority
+            .entry(new_prio.into())
+            .or_default()
+            .push(id);
     }
 
     pub fn remove(&mut self, account: &Account) -> Option<PriorityEntry> {
@@ -160,19 +279,20 @@ impl OrderedPriorities {
         }
     }
 
-    fn remove_id(&mut self, id: u64) {
+    fn remove_id(&mut self, id: u64) -> PriorityEntry {
         let entry = self.by_id.remove(&id).unwrap();
         self.by_account.remove(&entry.account);
         self.sequenced.retain(|i| *i != id);
         self.remove_priority(id, entry.priority);
+        entry
     }
 
-    fn remove_priority(&mut self, id: u64, priority: OrderedFloat<f32>) {
-        let ids = self.by_priority.get_mut(&priority).unwrap();
+    fn remove_priority(&mut self, id: u64, priority: Priority) {
+        let ids = self.by_priority.get_mut(&priority.into()).unwrap();
         if ids.len() > 1 {
             ids.retain(|i| *i != id);
         } else {
-            self.by_priority.remove(&priority);
+            self.by_priority.remove(&priority.into());
         }
     }
 }

@@ -1,3 +1,4 @@
+#include "nano/lib/numbers.hpp"
 #include "nano/lib/rsnano.hpp"
 #include "nano/lib/rsnanoutils.hpp"
 
@@ -20,6 +21,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <limits>
 #include <vector>
 
 namespace
@@ -2420,9 +2422,11 @@ public:
 			tree.put ("previous", block_a.previous ().to_string ());
 		}
 		auto balance (block_a.balance ().number ());
-		auto previous_balance = handler.node.ledger.any ().block_balance (transaction, block_a.previous ());
-		if (!previous_balance)
+		auto previous_balance_raw = handler.node.ledger.any ().block_balance (transaction, block_a.previous ());
+		auto previous_balance = previous_balance_raw.value_or (0);
+		if (!block_a.previous().is_zero() && !previous_balance_raw.has_value())
 		{
+			// If previous hash is non-zero and we can't query the balance, e.g. it's pruned, we can't determine the block type
 			if (raw)
 			{
 				tree.put ("subtype", "unknown");
@@ -2432,7 +2436,7 @@ public:
 				tree.put ("type", "unknown");
 			}
 		}
-		else if (balance < previous_balance.value ().number ())
+		else if (balance < previous_balance.number ())
 		{
 			if (should_ignore_account (block_a.link_field ().value ().as_account ()))
 			{
@@ -2448,7 +2452,7 @@ public:
 				tree.put ("type", "send");
 			}
 			tree.put ("account", block_a.link_field ().value ().to_account ());
-			tree.put ("amount", (previous_balance.value ().number () - balance).convert_to<std::string> ());
+			tree.put ("amount", (previous_balance.number () - balance).convert_to<std::string> ());
 		}
 		else
 		{
@@ -2459,7 +2463,7 @@ public:
 					tree.put ("subtype", "change");
 				}
 			}
-			else if (balance == previous_balance.value ().number () && handler.node.ledger.is_epoch_link (block_a.link_field ().value ()))
+			else if (balance == previous_balance.number () && handler.node.ledger.is_epoch_link (block_a.link_field ().value ()))
 			{
 				if (raw && accounts_filter.empty ())
 				{
@@ -2487,7 +2491,7 @@ public:
 				{
 					tree.put ("account", source_account.value ().to_account ());
 				}
-				tree.put ("amount", (balance - previous_balance.value ().number ()).convert_to<std::string> ());
+				tree.put ("amount", (balance - previous_balance.number ()).convert_to<std::string> ());
 			}
 		}
 	}
@@ -4210,27 +4214,47 @@ void nano::json_handler::unopened ()
 	if (!ec)
 	{
 		auto transaction = node.store.tx_begin_read ();
-		auto & ledger = node.ledger;
+		auto iterator = node.store.pending ().begin(*transaction, nano::pending_key (start, 0));
+		auto end = node.store.pending ().end();
+		nano::account current_account = start;
+		nano::uint128_t current_account_sum{ 0 };
 		boost::property_tree::ptree accounts;
-		for (auto iterator = ledger.any ().receivable_upper_bound (*transaction, start, 0); !iterator.is_end () && accounts.size () < count;)
+		while (iterator != end && accounts.size () < count)
 		{
-			auto const & [key, info] = *iterator;
-			nano::account account = key.account;
-			if (!node.store.account ().exists (*transaction, account))
+			nano::pending_key key{ iterator->first };
+			nano::account account{ key.account };
+			nano::pending_info info{ iterator->second };
+			if (node.store.account().exists(*transaction, account))
 			{
-				nano::uint128_t current_account_sum{ 0 };
-				while (!iterator.is_end ())
+				if (account.number () == std::numeric_limits<nano::uint256_t>::max ())
 				{
-					auto const & [key, info] = *iterator;
-					current_account_sum += info.amount.number ();
-					++iterator;
+					break;
 				}
-				if (current_account_sum >= threshold.number ())
-				{
-					accounts.put (account.to_account (), current_account_sum.convert_to<std::string> ());
-				}
+				// Skip existing accounts
+				iterator = node.store.pending().begin(*transaction, nano::pending_key (account.number () + 1, 0));
 			}
-			iterator = ledger.any ().receivable_upper_bound (*transaction, account);
+			else 
+			{
+				if (account != current_account)
+				{
+					if (current_account_sum > 0)
+					{
+						if (current_account_sum >= threshold.number ())
+						{
+							accounts.put (current_account.to_account (), current_account_sum.convert_to<std::string> ());
+						}
+						current_account_sum = 0;
+					}
+					current_account = account;
+				}
+				current_account_sum += info.amount.number ();
+				++iterator;
+			}
+		}
+		// last one after iterator reaches end
+		if (accounts.size () < count && current_account_sum > 0 && current_account_sum >= threshold.number ())
+		{
+			accounts.put (current_account.to_account (), current_account_sum.convert_to<std::string> ());
 		}
 		response_l.add_child ("accounts", accounts);
 	}

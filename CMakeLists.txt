@@ -308,7 +308,7 @@ endif()
 
 if(WIN32)
   find_library(PSAPI Psapi)
-  add_definitions(-D_WIN32_WINNT=0x0600 -DWINVER=0x0600 -DMINIUPNP_STATICLIB
+  add_definitions(-D_WIN32_WINNT=0x0600 -DWINVER=0x0600 
                   -D_CRT_SECURE_NO_WARNINGS -DNOGDI /EHsc)
 else()
   if(NANO_FUZZER_TEST)
@@ -423,6 +423,7 @@ set(BOOST_MODULE_LIBS
     iterator
     lexical_cast
     property_tree
+    lambda
     log
     logic
     math
@@ -453,6 +454,7 @@ set(BOOST_MODULE_LIBS
     static_assert
     static_string
     system
+    test
     thread
     throw_exception
     tokenizer
@@ -494,12 +496,6 @@ include_directories(submodules/fmt/include)
 add_definitions(-DSPDLOG_FMT_EXTERNAL)
 add_subdirectory(submodules/spdlog EXCLUDE_FROM_ALL)
 include_directories(submodules/spdlog/include)
-
-# miniupnp
-set(UPNPC_BUILD_SHARED
-    OFF
-    CACHE BOOL "")
-add_subdirectory(submodules/miniupnp/miniupnpc EXCLUDE_FROM_ALL)
 
 set(BUILD_SHARED
     OFF

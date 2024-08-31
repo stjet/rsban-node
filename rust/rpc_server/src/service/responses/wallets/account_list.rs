@@ -1,7 +1,6 @@
-use crate::service::responses::format_error_message;
 use rsnano_core::WalletId;
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::AccountListDto;
+use rsnano_rpc_messages::{AccountListDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -11,7 +10,7 @@ pub async fn account_list(node: Arc<Node>, wallet: WalletId) -> String {
             let account_list = AccountListDto::new(accounts);
             to_string_pretty(&account_list).unwrap()
         }
-        Err(_) => format_error_message("Wallet not found"),
+        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
     }
 }
 

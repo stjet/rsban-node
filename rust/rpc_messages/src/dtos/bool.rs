@@ -1,24 +1,23 @@
-use std::fmt;
-
 use serde::{
     de::{self, MapAccess, Visitor},
     ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BoolMessageDto {
+pub struct BoolDto {
     pub key: String,
     pub value: bool,
 }
 
-impl BoolMessageDto {
+impl BoolDto {
     pub fn new(key: String, value: bool) -> Self {
         Self { key, value }
     }
 }
 
-impl Serialize for BoolMessageDto {
+impl Serialize for BoolDto {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -29,7 +28,7 @@ impl Serialize for BoolMessageDto {
     }
 }
 
-impl<'de> Deserialize<'de> for BoolMessageDto {
+impl<'de> Deserialize<'de> for BoolDto {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -37,13 +36,13 @@ impl<'de> Deserialize<'de> for BoolMessageDto {
         struct BoolMessageDtoVisitor;
 
         impl<'de> Visitor<'de> for BoolMessageDtoVisitor {
-            type Value = BoolMessageDto;
+            type Value = BoolDto;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("a map with a single key-value pair where value is a bool")
             }
 
-            fn visit_map<A>(self, mut map: A) -> Result<BoolMessageDto, A::Error>
+            fn visit_map<A>(self, mut map: A) -> Result<BoolDto, A::Error>
             where
                 A: MapAccess<'de>,
             {
@@ -60,7 +59,7 @@ impl<'de> Deserialize<'de> for BoolMessageDto {
                     ));
                 }
 
-                Ok(BoolMessageDto { key, value })
+                Ok(BoolDto { key, value })
             }
         }
 
@@ -75,7 +74,7 @@ mod tests {
 
     #[test]
     fn serialize_true() {
-        let dto = BoolMessageDto {
+        let dto = BoolDto {
             key: String::from("test_key"),
             value: true,
         };
@@ -89,7 +88,7 @@ mod tests {
 
     #[test]
     fn serialize_false() {
-        let dto = BoolMessageDto {
+        let dto = BoolDto {
             key: String::from("another_key"),
             value: false,
         };
@@ -104,10 +103,10 @@ mod tests {
     #[test]
     fn deserialize_true() {
         let json_str = r#"{"key1": true}"#;
-        let deserialized: BoolMessageDto = from_str(json_str).unwrap();
+        let deserialized: BoolDto = from_str(json_str).unwrap();
         assert_eq!(
             deserialized,
-            BoolMessageDto {
+            BoolDto {
                 key: "key1".to_string(),
                 value: true,
             }
@@ -117,10 +116,10 @@ mod tests {
     #[test]
     fn deserialize_false() {
         let json_str = r#"{"key_false": false}"#;
-        let deserialized: BoolMessageDto = from_str(json_str).unwrap();
+        let deserialized: BoolDto = from_str(json_str).unwrap();
         assert_eq!(
             deserialized,
-            BoolMessageDto {
+            BoolDto {
                 key: "key_false".to_string(),
                 value: false,
             }

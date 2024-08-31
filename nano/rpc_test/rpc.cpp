@@ -18,6 +18,7 @@
 #include <nano/rpc_test/rpc_context.hpp>
 #include <nano/rpc_test/test_response.hpp>
 #include <nano/secure/ledger.hpp>
+#include <nano/test_common/chains.hpp>
 #include <nano/test_common/network.hpp>
 #include <nano/test_common/system.hpp>
 #include <nano/test_common/telemetry.hpp>
@@ -1342,6 +1343,26 @@ TEST (rpc, history_pruning)
 	ASSERT_EQ ("N/A", entry.get<std::string> ("account", "N/A"));
 	ASSERT_EQ ("N/A", entry.get<std::string> ("amount", "N/A"));
 	ASSERT_EQ (usend->hash ().to_string (), entry.get<std::string> ("hash"));
+}
+
+TEST (rpc, account_history_state_open)
+{
+	nano::test::system system;
+	nano::keypair key;
+	auto node0 = add_ipc_enabled_node (system);
+	auto blocks = nano::test::setup_new_account (system, *node0, 1, nano::dev::genesis_key, key, key.pub, true);
+	auto const rpc_ctx = add_rpc (system, node0);
+	boost::property_tree::ptree request;
+	request.put ("action", "account_history");
+	request.put ("account", key.pub.to_account ());
+	request.put ("count", 1);
+	auto response (wait_response (system, rpc_ctx, request, 10s));
+	auto & history_node (response.get_child ("history"));
+	ASSERT_EQ (1, history_node.size ());
+	auto history0 = *history_node.begin ();
+	ASSERT_EQ ("1", history0.second.get<std::string> ("height"));
+	ASSERT_EQ ("receive", history0.second.get<std::string> ("type"));
+	ASSERT_EQ (blocks.second->hash ().to_string (), history0.second.get<std::string> ("hash"));
 }
 
 TEST (rpc, process_block)
@@ -5602,6 +5623,28 @@ TEST (rpc, unopened)
 		ASSERT_EQ ("1", accounts.get<std::string> (account1.to_account ()));
 	}
 	{
+		// using count=1 and a known unopened account1 number should get a single result
+		boost::property_tree::ptree request;
+		request.put ("action", "unopened");
+		request.put ("count", "1");
+		request.put ("account", account1.to_account());
+		auto response (wait_response (system, rpc_ctx, request));
+		auto & accounts (response.get_child ("accounts"));
+		ASSERT_EQ (1, accounts.size ());
+		ASSERT_EQ ("1", accounts.get<std::string> (account1.to_account ()));
+	}
+	{
+		// using count=1 and a known unopened account2 number should get a single result
+		boost::property_tree::ptree request;
+		request.put ("action", "unopened");
+		request.put ("count", "1");
+		request.put ("account", account2.to_account());
+		auto response (wait_response (system, rpc_ctx, request));
+		auto & accounts (response.get_child ("accounts"));
+		ASSERT_EQ (1, accounts.size ());
+		ASSERT_EQ ("10", accounts.get<std::string> (account2.to_account ()));
+	}
+	{
 		// using threshold at 5 should get a single result
 		boost::property_tree::ptree request;
 		request.put ("action", "unopened");
@@ -5610,6 +5653,32 @@ TEST (rpc, unopened)
 		auto & accounts (response.get_child ("accounts"));
 		ASSERT_EQ (1, accounts.size ());
 		ASSERT_EQ ("10", accounts.get<std::string> (account2.to_account ()));
+	}
+}
+
+// Check that the "unopened" RPC can seek
+// Request unopened for the genesis account while there in an unopened account with the max account number
+TEST (rpc, unopened_seek)
+{
+	nano::test::system system;
+	auto node = add_ipc_enabled_node (system);
+	auto wallet_id = node->wallets.first_wallet_id ();
+	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
+	nano::account last_account{ std::numeric_limits<nano::uint256_t>::max () };
+	auto genesis (node->latest (nano::dev::genesis_key.pub));
+	ASSERT_FALSE (genesis.is_zero ());
+	auto send (node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, last_account, 1));
+	ASSERT_NE (nullptr, send);
+	auto const rpc_ctx = add_rpc (system, node);
+	{
+		boost::property_tree::ptree request;
+		request.put ("action", "unopened");
+		request.put ("count", "1");
+		request.put ("account", nano::dev::genesis_key.pub.to_account());
+		auto response (wait_response (system, rpc_ctx, request));
+		auto & accounts (response.get_child ("accounts"));
+		ASSERT_EQ (1, accounts.size ());
+		ASSERT_EQ ("1", accounts.get<std::string> (last_account.to_account ()));
 	}
 }
 

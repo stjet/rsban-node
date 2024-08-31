@@ -3,6 +3,7 @@ use crate::{
     PEERS_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
+use rsnano_core::utils::{BufferWriter, Serialize};
 use rsnano_nullable_lmdb::ConfiguredDatabase;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
@@ -80,12 +81,22 @@ impl LmdbPeerStore {
         let cursor = txn
             .open_ro_cursor(self.database)
             .expect("Could not read peer store database");
-        LmdbIterator::new(cursor, |k, v| {
+        PeerIterator(LmdbIterator::new(cursor, |k, v| {
             (
                 EndpointBytes::try_from(k).unwrap().into(),
                 TimeBytes::try_from(v).unwrap().into(),
             )
-        })
+        }))
+    }
+}
+
+pub struct PeerIterator<'txn>(LmdbIterator<'txn, EndpointBytes, TimeBytes>);
+
+impl<'txn> Iterator for PeerIterator<'txn> {
+    type Item = (SocketAddrV6, SystemTime);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(k, v)| (k.into(), v.into()))
     }
 }
 
@@ -96,6 +107,12 @@ impl Deref for EndpointBytes {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Serialize for EndpointBytes {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
+        stream.write_bytes_safe(&self.0)
     }
 }
 

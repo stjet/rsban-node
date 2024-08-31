@@ -71,16 +71,35 @@ macro_rules! create_rpc_message {
     };
 }
 
-create_rpc_message!(BoolDto, bool);
+create_rpc_message!(BoolRpcMessage, bool);
 create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountRpcMessage, Amount);
 create_rpc_message!(BlockHashMessage, BlockHash);
 
 #[cfg(test)]
 mod tests {
-    use crate::AccountRpcMessage;
-    use rsnano_core::Account;
+    use crate::{AccountRpcMessage, AmountRpcMessage, BlockHashMessage, BoolRpcMessage};
+    use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::{from_str, to_string_pretty};
+
+    #[test]
+    fn serialize_bool_rpc_message() {
+        let bool_dto = BoolRpcMessage::new("key".to_string(), true);
+        assert_eq!(
+            serde_json::to_string_pretty(&bool_dto).unwrap(),
+            r#"{
+  "key": true
+}"#
+        );
+    }
+
+    #[test]
+    fn deserialize_bool_rpc_message() {
+        let bool_dto = BoolRpcMessage::new("flag".to_string(), true);
+        let serialized = to_string_pretty(&bool_dto).unwrap();
+        let deserialized: BoolRpcMessage = from_str(&serialized).unwrap();
+        assert_eq!(bool_dto, deserialized);
+    }
 
     #[test]
     fn serialize_account_rpc_message() {
@@ -103,5 +122,47 @@ mod tests {
         let serialized = to_string_pretty(&account_arg).unwrap();
         let deserialized: AccountRpcMessage = from_str(&serialized).unwrap();
         assert_eq!(account_arg, deserialized)
+    }
+
+    #[test]
+    fn serialize_amount_rpc_message() {
+        let amount = Amount::raw(1000);
+        let amount_rpc = AmountRpcMessage::new("amount".to_string(), amount);
+        assert_eq!(
+            serde_json::to_string_pretty(&amount_rpc).unwrap(),
+            r#"{
+  "amount": "1000"
+}"#
+        );
+    }
+
+    #[test]
+    fn deserialize_amount_rpc_message() {
+        let amount = Amount::from(1000);
+        let amount_rpc = AmountRpcMessage::new("amount".to_string(), amount);
+        let serialized = to_string_pretty(&amount_rpc).unwrap();
+        let deserialized: AmountRpcMessage = from_str(&serialized).unwrap();
+        assert_eq!(amount_rpc, deserialized);
+    }
+
+    #[test]
+    fn serialize_block_hash_message() {
+        let block_hash = BlockHash::from(123);
+        let block_hash_message = BlockHashMessage::new("block_hash".to_string(), block_hash);
+        assert_eq!(
+            serde_json::to_string_pretty(&block_hash_message).unwrap(),
+            r#"{
+  "block_hash": "000000000000000000000000000000000000000000000000000000000000007B"
+}"#
+        );
+    }
+
+    #[test]
+    fn deserialize_block_hash_message() {
+        let block_hash = BlockHash::from(123);
+        let block_hash_message = BlockHashMessage::new("block_hash".to_string(), block_hash);
+        let serialized = to_string_pretty(&block_hash_message).unwrap();
+        let deserialized: BlockHashMessage = from_str(&serialized).unwrap();
+        assert_eq!(block_hash_message, deserialized);
     }
 }

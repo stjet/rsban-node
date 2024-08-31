@@ -13,8 +13,6 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
-use super::account_get;
-
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -54,7 +52,6 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountGet(key_rpc_message) => account_get(key_rpc_message.key).await,
         _ => todo!(),
     };
 

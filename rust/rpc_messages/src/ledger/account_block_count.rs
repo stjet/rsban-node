@@ -1,9 +1,21 @@
-use crate::{AccountArg, RpcCommand};
+use crate::{AccountRpcMessage, RpcCommand};
 use rsnano_core::Account;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn account_block_count(account: Account) -> Self {
-        Self::AccountBlockCount(AccountArg { account })
+        Self::AccountBlockCount(AccountRpcMessage::new("account".to_string(), account))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountBlockCountDto {
+    pub block_count: u64,
+}
+
+impl AccountBlockCountDto {
+    pub fn new(block_count: u64) -> Self {
+        Self { block_count }
     }
 }
 

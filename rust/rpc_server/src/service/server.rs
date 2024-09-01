@@ -54,8 +54,8 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountBlockCount(account_arg) => {
-            account_block_count(rpc_service.node, account_arg.account).await
+        RpcCommand::AccountBlockCount(account_rpc_message) => {
+            account_block_count(rpc_service.node, account_rpc_message.value).await
         }
         _ => todo!(),
     };

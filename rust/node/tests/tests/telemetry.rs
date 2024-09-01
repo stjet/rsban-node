@@ -40,13 +40,7 @@ fn invalid_signature() {
 fn basic() {
     let mut system = System::new();
     let node_client = system.make_node();
-    let node_server = system
-        .build_node()
-        .flags(NodeFlags {
-            disable_ongoing_telemetry_requests: true,
-            ..Default::default()
-        })
-        .finish();
+    let node_server = system.make_node();
 
     // Request telemetry metrics
     let channel = node_client

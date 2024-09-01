@@ -1,0 +1,31 @@
+use rsnano_node::node::Node;
+use rsnano_rpc_messages::BlockCountDto;
+use serde_json::to_string_pretty;
+use std::sync::Arc;
+
+pub async fn block_count(node: Arc<Node>) -> String {
+    let count = node.ledger.block_count();
+    let unchecked = node.unchecked.buffer_count() as u64;
+    let cemented = node.ledger.cemented_count();
+    let block_count = BlockCountDto::new(count, unchecked, cemented);
+    to_string_pretty(&block_count).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use test_helpers::System;
+
+    #[test]
+    fn account_block_count() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        node.tokio
+            .block_on(async { rpc_client.block_count().await.unwrap() });
+
+        server.abort();
+    }
+}

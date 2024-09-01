@@ -21,7 +21,8 @@ pub struct AccountBalanceArgs {
 impl AccountBalanceArgs {
     pub fn new(account: Account, include_only_confirmed: Option<bool>) -> Self {
         Self {
-            account, include_only_confirmed,
+            account,
+            include_only_confirmed,
         }
     }
 }
@@ -45,9 +46,40 @@ impl AccountBalanceDto {
 
 #[cfg(test)]
 mod tests {
-    use crate::RpcCommand;
-    use rsnano_core::Account;
+    use crate::{AccountBalanceDto, RpcCommand};
+    use rsnano_core::{Account, Amount};
     use serde_json::to_string_pretty;
+
+    #[test]
+    fn serialize_account_balance_dto() {
+        let account_balance = AccountBalanceDto {
+            balance: Amount::raw(1000),
+            pending: Amount::raw(200),
+            receivable: Amount::raw(300),
+        };
+
+        let serialized = serde_json::to_string(&account_balance).unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{"balance":"1000","pending":"200","receivable":"300"}"#
+        );
+    }
+
+    #[test]
+    fn deserialize_account_balance_dto() {
+        let json_str = r#"{"balance":"1000","pending":"200","receivable":"300"}"#;
+
+        let deserialized: AccountBalanceDto = serde_json::from_str(json_str).unwrap();
+
+        let expected = AccountBalanceDto {
+            balance: Amount::raw(1000),
+            pending: Amount::raw(200),
+            receivable: Amount::raw(300),
+        };
+
+        assert_eq!(deserialized, expected);
+    }
 
     #[test]
     fn serialize_account_balance_command_include_only_confirmed_none() {

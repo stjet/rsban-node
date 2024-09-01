@@ -22,7 +22,7 @@ impl NanoRpcClient {
     }
 
     pub async fn block_count(&self) -> Result<BlockCountDto> {
-        let cmd = RpcCommand::block_count();
+        let cmd = RpcCommand::BlockCount;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

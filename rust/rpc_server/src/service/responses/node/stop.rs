@@ -1,7 +1,7 @@
 use rsnano_node::node::{Node, NodeExt};
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
+use serde_json::to_string_pretty;
 use std::sync::Arc;
-use toml::to_string_pretty;
 
 pub async fn stop(node: Arc<Node>, enable_control: bool) -> String {
     if enable_control {

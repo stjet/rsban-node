@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn stop(&self) -> Result<SuccessDto> {
+        let cmd = RpcCommand::Stop;
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
@@ -91,12 +97,6 @@ impl NanoRpcClient {
         let cmd = RpcCommand::wallet_add(wallet, prv_key);
         self.rpc_request(&cmd).await?;
         Ok(())
-    }
-
-    pub async fn stop(&self) -> Result<SuccessDto> {
-        let cmd = RpcCommand::Stop;
-        let json = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(json)?)
     }
 
     async fn rpc_request<T>(&self, request: &T) -> Result<serde_json::Value>

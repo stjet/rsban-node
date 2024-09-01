@@ -17,7 +17,7 @@ mod tests {
     use serde_json;
 
     #[test]
-    fn serialize() {
+    fn serialize_error_dto() {
         let error_dto = ErrorDto::new("An error occurred".to_string());
         let serialized = serde_json::to_string(&error_dto).unwrap();
         let expected_json = r#"{"error":"An error occurred"}"#;
@@ -25,7 +25,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize() {
+    fn deserialize_error_dto() {
         let json_str = r#"{"error":"An error occurred"}"#;
         let deserialized: ErrorDto = serde_json::from_str(json_str).unwrap();
         let expected_error_dto = ErrorDto::new("An error occurred".to_string());

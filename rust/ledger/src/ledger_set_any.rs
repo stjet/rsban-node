@@ -1,9 +1,9 @@
-use std::ops::{Deref, RangeBounds};
-
 use rsnano_core::{
+    utils::{BufferReader, Deserialize},
     Account, AccountInfo, Amount, BlockEnum, BlockHash, PendingInfo, PendingKey, QualifiedRoot,
 };
-use rsnano_store_lmdb::{LmdbPendingStore, LmdbStore, Transaction};
+use rsnano_store_lmdb::{LmdbIterator, LmdbPendingStore, LmdbStore, Transaction};
+use std::ops::{Deref, RangeBounds};
 
 pub struct LedgerSetAny<'a> {
     store: &'a LmdbStore,
@@ -120,13 +120,13 @@ impl<'a> LedgerSetAny<'a> {
     where
         'a: 'txn,
     {
-        AnyReceivableIterator::<'txn> {
+        AnyReceivableIterator::<'txn>::new(
             txn,
-            pending: self.store.pending.deref(),
-            requested_account: account,
-            actual_account: Some(account),
-            next_hash: hash.inc(),
-        }
+            self.store.pending.deref(),
+            account,
+            Some(account),
+            hash.inc(),
+        )
     }
 
     /// Returns the next receivable entry for an account greater than 'account'
@@ -139,20 +139,20 @@ impl<'a> LedgerSetAny<'a> {
         'a: 'txn,
     {
         match account.inc() {
-            None => AnyReceivableIterator::<'txn> {
+            None => AnyReceivableIterator::<'txn>::new(
                 txn,
-                pending: self.store.pending.deref(),
-                requested_account: Default::default(),
-                actual_account: None,
-                next_hash: None,
-            },
-            Some(account) => AnyReceivableIterator::<'txn> {
+                self.store.pending.deref(),
+                Default::default(),
+                None,
+                None,
+            ),
+            Some(account) => AnyReceivableIterator::<'txn>::new(
                 txn,
-                pending: self.store.pending.deref(),
-                requested_account: account,
-                actual_account: None,
-                next_hash: Some(BlockHash::zero()),
-            },
+                self.store.pending.deref(),
+                account,
+                None,
+                Some(BlockHash::zero()),
+            ),
         }
     }
 
@@ -165,13 +165,13 @@ impl<'a> LedgerSetAny<'a> {
     where
         'a: 'txn,
     {
-        AnyReceivableIterator::<'txn> {
+        AnyReceivableIterator::<'txn>::new(
             txn,
-            pending: self.store.pending.deref(),
-            requested_account: account,
-            actual_account: None,
-            next_hash: Some(BlockHash::zero()),
-        }
+            self.store.pending.deref(),
+            account,
+            None,
+            Some(BlockHash::zero()),
+        )
     }
 
     pub fn receivable_exists(&self, txn: &dyn Transaction, account: Account) -> bool {
@@ -202,6 +202,40 @@ pub struct AnyReceivableIterator<'a> {
     pub requested_account: Account,
     pub actual_account: Option<Account>,
     pub next_hash: Option<BlockHash>,
+    inner: LmdbIterator<'a, PendingKey, PendingInfo>,
+    is_first: bool,
+}
+
+impl<'a> AnyReceivableIterator<'a> {
+    pub fn new(
+        txn: &'a dyn Transaction,
+        pending: &'a LmdbPendingStore,
+        requested_account: Account,
+        actual_account: Option<Account>,
+        next_hash: Option<BlockHash>,
+    ) -> Self {
+        let cursor = txn
+            .open_ro_cursor(pending.database())
+            .expect("could not read from account store");
+
+        Self {
+            txn,
+            requested_account,
+            actual_account,
+            next_hash,
+            pending,
+            inner: LmdbIterator::new(cursor, read_pending_entry),
+            is_first: true,
+        }
+    }
+}
+
+fn read_pending_entry(key: &[u8], value: &[u8]) -> (PendingKey, PendingInfo) {
+    let mut stream = BufferReader::new(key);
+    let key = PendingKey::deserialize(&mut stream).unwrap();
+    let mut stream = BufferReader::new(value);
+    let info = PendingInfo::deserialize(&mut stream).unwrap();
+    (key, info)
 }
 
 impl<'a> Iterator for AnyReceivableIterator<'a> {
@@ -209,26 +243,131 @@ impl<'a> Iterator for AnyReceivableIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let hash = self.next_hash?;
-        let it = self.pending.begin_at_key(
-            self.txn,
-            &PendingKey::new(self.actual_account.unwrap_or(self.requested_account), hash),
-        );
+        if self.is_first {
+            self.is_first = false;
+            let (key, info) = self
+                .inner
+                .start_at(&PendingKey::new(self.requested_account, hash))?;
+            if let Some(actual) = self.actual_account {
+                if actual != key.receiving_account {
+                    return None;
+                }
+            }
+            self.actual_account = Some(key.receiving_account);
+            return Some((key, info));
+        }
 
-        let (key, info) = it.current()?;
+        let (key, info) = self.inner.next()?;
         match self.actual_account {
             Some(account) => {
                 if key.receiving_account == account {
                     self.next_hash = key.send_block_hash.inc();
-                    Some((key.clone(), info.clone()))
+                    Some((key, info))
                 } else {
                     None
                 }
             }
             None => {
                 self.actual_account = Some(key.receiving_account);
-                self.next_hash = key.send_block_hash.inc();
-                Some((key.clone(), info.clone()))
+                Some((key, info))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Ledger;
+
+    #[test]
+    fn iter_all_lower_bound() {
+        let key1 = PendingKey::new(Account::from(1), BlockHash::from(100));
+        let key2 = PendingKey::new(Account::from(1), BlockHash::from(101));
+        let key3 = PendingKey::new(Account::from(3), BlockHash::from(4));
+
+        test_lower_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(0),
+            &[key1.clone(), key2.clone()],
+        );
+        test_lower_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(1),
+            &[key1.clone(), key2.clone()],
+        );
+        test_lower_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(3),
+            &[key3.clone()],
+        );
+        test_lower_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(4),
+            &[],
+        );
+    }
+
+    #[test]
+    fn iter_all_upper_bound() {
+        let key1 = PendingKey::new(Account::from(1), BlockHash::from(100));
+        let key2 = PendingKey::new(Account::from(1), BlockHash::from(101));
+        let key3 = PendingKey::new(Account::from(3), BlockHash::from(4));
+        test_upper_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(0),
+            &[key1.clone(), key2.clone()],
+        );
+        test_upper_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(1),
+            &[key3.clone()],
+        );
+        test_upper_bound(
+            &[key1.clone(), key2.clone(), key3.clone()],
+            Account::from(4),
+            &[],
+        );
+    }
+
+    fn test_upper_bound(
+        existing_keys: &[PendingKey],
+        queried_account: Account,
+        expected_result: &[PendingKey],
+    ) {
+        let ledger = ledger_with_pending_entries(existing_keys);
+        let tx = ledger.read_txn();
+        let result: Vec<_> = ledger
+            .any()
+            .receivable_upper_bound(&tx, queried_account)
+            .map(|(k, _)| k)
+            .collect();
+
+        assert_eq!(result, expected_result);
+    }
+
+    fn test_lower_bound(
+        existing_keys: &[PendingKey],
+        queried_account: Account,
+        expected_result: &[PendingKey],
+    ) {
+        let ledger = ledger_with_pending_entries(existing_keys);
+        let tx = ledger.read_txn();
+        let result: Vec<_> = ledger
+            .any()
+            .receivable_lower_bound(&tx, queried_account)
+            .map(|(k, _)| k)
+            .collect();
+
+        assert_eq!(result, expected_result);
+    }
+
+    fn ledger_with_pending_entries(existing_keys: &[PendingKey]) -> Ledger {
+        let info = PendingInfo::new_test_instance();
+        let mut builder = Ledger::new_null_builder();
+        for key in existing_keys {
+            builder = builder.pending(key, &info);
+        }
+        builder.finish()
     }
 }

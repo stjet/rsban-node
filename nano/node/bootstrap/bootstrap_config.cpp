@@ -67,12 +67,13 @@ rsnano::BootstrapAscendingConfigDto nano::bootstrap_ascending_config::to_dto () 
 {
 	rsnano::BootstrapAscendingConfigDto dto;
 	dto.database_rate_limit = database_rate_limit;
-	dto.requests_limit = requests_limit;
-	dto.pull_count = pull_count;
+	dto.database_warmup_ratio = database_warmup_ratio;
+	dto.channel_limit = channel_limit;
+	dto.max_pull_count = max_pull_count;
 	dto.timeout_ms = request_timeout.count ();
 	dto.throttle_coefficient = throttle_coefficient;
 	dto.throttle_wait_ms = throttle_wait.count ();
-	dto.block_wait_count = block_wait_count;
+	dto.block_processor_threshold = block_processor_threshold;
 	dto.account_sets = account_sets.to_dto ();
 	dto.enable = enable;
 	dto.enable_database_scan = enable_database_scan;
@@ -84,12 +85,13 @@ rsnano::BootstrapAscendingConfigDto nano::bootstrap_ascending_config::to_dto () 
 void nano::bootstrap_ascending_config::load_dto (rsnano::BootstrapAscendingConfigDto const & dto)
 {
 	database_rate_limit = dto.database_rate_limit;
-	requests_limit = dto.requests_limit;
-	pull_count = dto.pull_count;
+	database_warmup_ratio = dto.database_warmup_ratio;
+	channel_limit = dto.channel_limit;
+	max_pull_count = dto.max_pull_count;
 	request_timeout = std::chrono::milliseconds{ dto.timeout_ms };
 	throttle_coefficient = dto.throttle_coefficient;
 	throttle_wait = std::chrono::milliseconds{ dto.throttle_wait_ms };
-	block_wait_count = dto.block_wait_count;
+	block_processor_threshold = dto.block_processor_threshold;
 	account_sets.load_dto (dto.account_sets);
 	enable = dto.enable;
 	enable_database_scan = dto.enable_database_scan;
@@ -102,13 +104,14 @@ nano::error nano::bootstrap_ascending_config::deserialize (nano::tomlconfig & to
 	toml.get ("enable", enable);
 	toml.get ("enable_database_scan", enable_database_scan);
 	toml.get ("enable_dependency_walker", enable_dependency_walker);
-	toml.get ("requests_limit", requests_limit);
+	toml.get ("channel_limit", channel_limit);
 	toml.get ("database_rate_limit", database_rate_limit);
-	toml.get ("pull_count", pull_count);
+	toml.get ("database_warmup_ratio", database_warmup_ratio);
+	toml.get ("max_pull_count", max_pull_count);
 	toml.get_duration ("request_timeout", request_timeout);
 	toml.get ("throttle_coefficient", throttle_coefficient);
 	toml.get_duration ("throttle_wait", throttle_wait);
-	toml.get ("block_wait_count", block_wait_count);
+	toml.get ("block_processor_threshold", block_processor_threshold);
 	toml.get ("max_requests", max_requests);
 
 	if (toml.has_key ("account_sets"))

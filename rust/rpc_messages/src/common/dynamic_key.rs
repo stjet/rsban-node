@@ -74,16 +74,16 @@ macro_rules! create_rpc_message {
 create_rpc_message!(BoolDto, bool);
 create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
-create_rpc_message!(BlockHashMessage, BlockHash);
+create_rpc_message!(BlockHashRpcMessage, BlockHash);
 
 #[cfg(test)]
 mod tests {
-    use crate::{AccountRpcMessage, AmountDto, BlockHashMessage, BoolDto};
+    use crate::{AccountRpcMessage, AmountDto, BlockHashRpcMessage, BoolDto};
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
-    fn serialize_bool_rpc_message() {
+    fn serialize_bool_dto() {
         let bool_dto = BoolDto::new("key".to_string(), true);
         assert_eq!(
             serde_json::to_string_pretty(&bool_dto).unwrap(),
@@ -94,7 +94,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_bool_rpc_message() {
+    fn deserialize_bool_dto() {
         let bool_dto = BoolDto::new("flag".to_string(), true);
         let serialized = to_string_pretty(&bool_dto).unwrap();
         let deserialized: BoolDto = from_str(&serialized).unwrap();
@@ -146,9 +146,9 @@ mod tests {
     }
 
     #[test]
-    fn serialize_block_hash_message() {
+    fn serialize_block_hash_rpc_message() {
         let block_hash = BlockHash::from(123);
-        let block_hash_message = BlockHashMessage::new("block_hash".to_string(), block_hash);
+        let block_hash_message = BlockHashRpcMessage::new("block_hash".to_string(), block_hash);
         assert_eq!(
             serde_json::to_string_pretty(&block_hash_message).unwrap(),
             r#"{
@@ -158,11 +158,11 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_block_hash_message() {
+    fn deserialize_block_hash_rpc_message() {
         let block_hash = BlockHash::from(123);
-        let block_hash_message = BlockHashMessage::new("block_hash".to_string(), block_hash);
+        let block_hash_message = BlockHashRpcMessage::new("block_hash".to_string(), block_hash);
         let serialized = to_string_pretty(&block_hash_message).unwrap();
-        let deserialized: BlockHashMessage = from_str(&serialized).unwrap();
+        let deserialized: BlockHashRpcMessage = from_str(&serialized).unwrap();
         assert_eq!(block_hash_message, deserialized);
     }
 }

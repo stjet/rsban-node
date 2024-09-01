@@ -19,7 +19,7 @@ mod tests {
     use serde_json;
 
     #[test]
-    fn serialize() {
+    fn serialize_success_dto() {
         let error_dto = SuccessDto::new();
         let serialized = serde_json::to_string(&error_dto).unwrap();
         let expected_json = r#"{"success":""}"#;
@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize() {
+    fn deserialize_success_dto() {
         let json_str = r#"{"success":""}"#;
         let deserialized: SuccessDto = serde_json::from_str(json_str).unwrap();
         let expected_error_dto = SuccessDto::new();

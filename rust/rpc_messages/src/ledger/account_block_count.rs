@@ -9,11 +9,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountBlockCountDto {
+pub struct BlockCountDto {
     pub block_count: u64,
 }
 
-impl AccountBlockCountDto {
+impl BlockCountDto {
     pub fn new(block_count: u64) -> Self {
         Self { block_count }
     }
@@ -21,7 +21,7 @@ impl AccountBlockCountDto {
 
 #[cfg(test)]
 mod tests {
-    use crate::RpcCommand;
+    use crate::{BlockCountDto, RpcCommand};
     use rsnano_core::Account;
     use serde_json::{from_str, to_string_pretty};
 
@@ -44,5 +44,23 @@ mod tests {
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
+    }
+
+    #[test]
+    fn deserialize_block_count_dto() {
+        let block_count_dto = BlockCountDto::new(1);
+        let serialized = to_string_pretty(&block_count_dto).unwrap();
+        let deserialized: BlockCountDto = from_str(&serialized).unwrap();
+        assert_eq!(block_count_dto, deserialized);
+    }
+
+    #[test]
+    fn serialize_block_count_dto() {
+        assert_eq!(
+            serde_json::to_string_pretty(&BlockCountDto::new(1)).unwrap(),
+            r#"{
+  "block_count": 1
+}"#
+        )
     }
 }

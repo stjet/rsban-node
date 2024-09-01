@@ -1,12 +1,5 @@
-use crate::RpcCommand;
 use rsnano_core::{Account, PublicKey, RawKey};
 use serde::{Deserialize, Serialize};
-
-impl RpcCommand {
-    pub fn key_create() -> Self {
-        Self::KeyCreate
-    }
-}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct KeyPairDto {

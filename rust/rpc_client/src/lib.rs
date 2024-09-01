@@ -22,7 +22,7 @@ impl NanoRpcClient {
     }
 
     pub async fn key_create(&self) -> Result<KeyPairDto> {
-        let cmd = RpcCommand::key_create();
+        let cmd = RpcCommand::KeyCreate;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

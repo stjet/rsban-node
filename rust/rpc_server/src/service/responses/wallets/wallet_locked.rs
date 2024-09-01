@@ -35,7 +35,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
 
-        assert_eq!(result.get("locked").unwrap(), false);
+        assert_eq!(result.value, false);
 
         server.abort();
     }
@@ -57,7 +57,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
 
-        assert_eq!(result.get("locked").unwrap(), true);
+        assert_eq!(result.value, true);
 
         server.abort();
     }

@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::Account;
+use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -16,6 +16,31 @@ pub struct AccountBalanceArgs {
     pub account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_only_confirmed: Option<bool>,
+}
+
+impl AccountBalanceArgs {
+    pub fn new(account: Account, include_only_confirmed: Option<bool>) -> Self {
+        Self {
+            account, include_only_confirmed,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountBalanceDto {
+    pub balance: Amount,
+    pub pending: Amount,
+    pub receivable: Amount,
+}
+
+impl AccountBalanceDto {
+    pub fn new(balance: Amount, pending: Amount, receivable: Amount) -> Self {
+        Self {
+            balance,
+            pending,
+            receivable,
+        }
+    }
 }
 
 #[cfg(test)]

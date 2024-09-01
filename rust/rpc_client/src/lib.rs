@@ -4,6 +4,7 @@ use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
+use crate::AccountBalanceDto;
 
 pub struct NanoRpcClient {
     url: Url,

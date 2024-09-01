@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::account_weight;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,9 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::AccountWeight(account_rpc_message) => {
+            account_weight(rpc_service.node, account_rpc_message.value).await
+        }
         _ => todo!(),
     };
 

@@ -22,7 +22,7 @@ impl NanoRpcClient {
     }
 
     pub async fn uptime(&self) -> Result<UptimeDto> {
-        let cmd = RpcCommand::Uptime;
+        let cmd = RpcCommand::uptime();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

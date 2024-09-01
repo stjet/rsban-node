@@ -22,7 +22,7 @@ impl NanoRpcClient {
     }
 
     pub async fn stop(&self) -> Result<SuccessDto> {
-        let cmd = RpcCommand::Stop;
+        let cmd = RpcCommand::stop();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

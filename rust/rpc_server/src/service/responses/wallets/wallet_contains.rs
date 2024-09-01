@@ -50,7 +50,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.get("exists").unwrap(), true);
+        assert_eq!(result.value, true);
 
         server.abort();
     }
@@ -73,7 +73,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.get("exists").unwrap(), false);
+        assert_eq!(result.value, false);
 
         server.abort();
     }

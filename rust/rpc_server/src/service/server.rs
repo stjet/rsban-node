@@ -1,3 +1,4 @@
+use super::wallet_contains;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -12,8 +13,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::wallet_contains;
 
 #[derive(Clone)]
 struct RpcService {

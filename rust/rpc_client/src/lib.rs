@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_core::{Account, Amount, JsonBlock, PublicKey, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use serde_json::Value;

@@ -1,9 +1,8 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, PublicKey, RawKey, WalletId};
+use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
-use serde_json::Value;
 use std::{net::Ipv6Addr, time::Duration};
 
 pub struct NanoRpcClient {
@@ -94,8 +93,10 @@ impl NanoRpcClient {
         Ok(())
     }
 
-    pub async fn stop(&self) -> Result<Value> {
-        Ok(self.rpc_request(&RpcCommand::Stop).await?)
+    pub async fn stop(&self) -> Result<SuccessDto> {
+        let cmd = RpcCommand::Stop;
+        let json = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(json)?)
     }
 
     async fn rpc_request<T>(&self, request: &T) -> Result<serde_json::Value>

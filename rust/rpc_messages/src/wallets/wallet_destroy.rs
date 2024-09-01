@@ -1,10 +1,10 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, WalletRpcMessage};
 use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn wallet_destroy(wallet: WalletId) -> Self {
-        Self::WalletDestroy(WalletDestroyArgs { wallet })
+        Self::WalletDestroy(WalletRpcMessage::new(wallet))
     }
 }
 

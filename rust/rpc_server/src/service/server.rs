@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::wallet_add_watch;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,15 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletAddWatch(args) => {
+            wallet_add_watch(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.accounts,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::nano_to_raw;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::NanoToRaw(args) => nano_to_raw(args.amount).await,
         _ => todo!(),
     };
 

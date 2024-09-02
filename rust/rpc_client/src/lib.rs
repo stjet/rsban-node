@@ -21,6 +21,17 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn bootstrap(
+        &self,
+        address: Ipv6Addr,
+        port: u16,
+        id: Option<String>,
+    ) -> Result<SuccessDto> {
+        let cmd = RpcCommand::bootstrap(address, port, id);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::bootstrap;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,15 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::Bootstrap(bootstrap_args) => {
+            bootstrap(
+                rpc_service.node,
+                bootstrap_args.address,
+                bootstrap_args.port,
+                bootstrap_args.id,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

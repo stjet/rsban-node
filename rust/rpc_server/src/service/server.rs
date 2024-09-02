@@ -7,11 +7,13 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
+use rsnano_rpc_messages::{AccountRpcMessage, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::validate_account_number;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::ValidateAccountNumber(_) => validate_account_number().await,
         _ => todo!(),
     };
 

@@ -22,7 +22,7 @@ pub enum RpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
-    NanoToRaw(NanoToRawArgs),
+    NanoToRaw(AmountRpcMessage),
 }
 
 #[cfg(test)]

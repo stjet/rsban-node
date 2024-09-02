@@ -1,3 +1,4 @@
+use super::nano_to_raw;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -12,8 +13,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::nano_to_raw;
 
 #[derive(Clone)]
 struct RpcService {
@@ -54,7 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::NanoToRaw(args) => nano_to_raw(args.amount).await,
+        RpcCommand::NanoToRaw(amount_rpc_message) => nano_to_raw(amount_rpc_message.value).await,
         _ => todo!(),
     };
 

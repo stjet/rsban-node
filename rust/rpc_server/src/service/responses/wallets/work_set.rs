@@ -11,9 +11,13 @@ pub async fn work_set(
     account: Account,
     work: u64,
 ) -> String {
-    match node.wallets.work_set(&wallet, &account.into(), work) {
-        Ok(_) => to_string_pretty(&SuccessDto::new()).unwrap(),
-        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+    if enable_control {
+        match node.wallets.work_set(&wallet, &account.into(), work) {
+            Ok(_) => to_string_pretty(&SuccessDto::new()).unwrap(),
+            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        }
+    } else {
+        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }
 }
 
@@ -56,7 +60,10 @@ mod tests {
                 .await
         });
 
-        assert!(result.is_err());
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
 
         server.abort();
     }

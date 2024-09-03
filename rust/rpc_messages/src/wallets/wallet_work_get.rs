@@ -10,11 +10,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletWorkGetDto {
+pub struct AccountsWithWorkDto {
     pub works: HashMap<Account, WorkNonce>,
 }
 
-impl WalletWorkGetDto {
+impl AccountsWithWorkDto {
     pub fn new(works: HashMap<Account, WorkNonce>) -> Self {
         Self { works }
     }
@@ -22,7 +22,7 @@ impl WalletWorkGetDto {
 
 #[cfg(test)]
 mod tests {
-    use crate::{RpcCommand, WalletWorkGetDto};
+    use crate::{AccountsWithWorkDto, RpcCommand};
     use rsnano_core::{Account, WalletId, WorkNonce};
     use serde_json::to_string_pretty;
     use std::collections::HashMap;
@@ -32,7 +32,7 @@ mod tests {
         let mut works_map = HashMap::new();
         works_map.insert(Account::zero(), WorkNonce::from(1));
 
-        let works = WalletWorkGetDto::new(works_map);
+        let works = AccountsWithWorkDto::new(works_map);
 
         let expected_json = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
@@ -43,12 +43,12 @@ mod tests {
     #[test]
     fn deserialize_wallet_work_get_dto() {
         let json_data = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
-        let works: WalletWorkGetDto = serde_json::from_str(json_data).unwrap();
+        let works: AccountsWithWorkDto = serde_json::from_str(json_data).unwrap();
 
         let mut expected_works_map = HashMap::new();
         expected_works_map.insert(Account::zero(), WorkNonce::from(1));
 
-        let expected_works = WalletWorkGetDto {
+        let expected_works = AccountsWithWorkDto {
             works: expected_works_map,
         };
 

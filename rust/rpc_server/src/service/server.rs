@@ -8,7 +8,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountRemoveArgs, RpcCommand};
+use rsnano_rpc_messages::RpcCommand;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -53,12 +53,12 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountRemove(AccountRemoveArgs { wallet, account }) => {
+        RpcCommand::AccountRemove(args) => {
             account_remove(
                 rpc_service.node,
                 rpc_service.enable_control,
-                wallet,
-                account,
+                args.wallet,
+                args.account,
             )
             .await
         }

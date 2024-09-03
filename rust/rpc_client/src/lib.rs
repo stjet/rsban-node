@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn password_change(&self, wallet: WalletId, password: String) -> Result<SuccessDto> {
+        let cmd = RpcCommand::password_change(wallet, password);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

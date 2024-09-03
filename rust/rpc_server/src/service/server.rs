@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::password_change;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,15 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::PasswordChange(args) => {
+            password_change(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.password,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

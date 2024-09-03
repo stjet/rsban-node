@@ -75,10 +75,11 @@ create_rpc_message!(BoolDto, bool);
 create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashRpcMessage, BlockHash);
+create_rpc_message!(U64RpcMessage, u64);
 
 #[cfg(test)]
 mod tests {
-    use crate::{AccountRpcMessage, AmountDto, BlockHashRpcMessage, BoolDto};
+    use crate::{AccountRpcMessage, AmountDto, BlockHashRpcMessage, BoolDto, U64RpcMessage};
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::{from_str, to_string_pretty};
 
@@ -163,6 +164,25 @@ mod tests {
         let block_hash_message = BlockHashRpcMessage::new("block_hash".to_string(), block_hash);
         let serialized = to_string_pretty(&block_hash_message).unwrap();
         let deserialized: BlockHashRpcMessage = from_str(&serialized).unwrap();
+        assert_eq!(block_hash_message, deserialized);
+    }
+
+    #[test]
+    fn serialize_u64_rpc_message() {
+        let block_hash_message = U64RpcMessage::new("key".to_string(), 1);
+        assert_eq!(
+            serde_json::to_string_pretty(&block_hash_message).unwrap(),
+            r#"{
+      "key": 1
+    }"#
+        );
+    }
+
+    #[test]
+    fn deserialize_u64_rpc_message() {
+        let block_hash_message = U64RpcMessage::new("key".to_string(), 1);
+        let serialized = to_string_pretty(&block_hash_message).unwrap();
+        let deserialized: U64RpcMessage = from_str(&serialized).unwrap();
         assert_eq!(block_hash_message, deserialized);
     }
 }

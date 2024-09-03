@@ -1,3 +1,4 @@
+use super::wallet_receivable;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -52,6 +53,9 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletReceivable(args) => {
+            wallet_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await
+        }
         _ => todo!(),
     };
 

@@ -1,10 +1,10 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, WalletWithAccountArgs};
 use rsnano_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn wallet_contains(wallet: WalletId, account: Account) -> Self {
-        Self::WalletContains(WalletContainsArgs { wallet, account })
+        Self::WalletContains(WalletWithAccountArgs::new(wallet, account))
     }
 }
 

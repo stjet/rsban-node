@@ -53,8 +53,8 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::WalletContains(WalletContainsArgs { wallet, account }) => {
-            wallet_contains(rpc_service.node, wallet, account).await
+        RpcCommand::WalletContains(args) => {
+            wallet_contains(rpc_service.node, args.wallet, args.account).await
         }
         _ => todo!(),
     };

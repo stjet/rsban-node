@@ -7,6 +7,7 @@ mod error;
 mod key;
 mod success;
 mod wallet;
+mod wallet_with_account;
 mod wallet_with_password;
 
 pub use accounts::*;
@@ -18,4 +19,5 @@ pub use error::*;
 pub use key::*;
 pub use success::*;
 pub use wallet::*;
+pub use wallet_with_account::*;
 pub use wallet_with_password::*;

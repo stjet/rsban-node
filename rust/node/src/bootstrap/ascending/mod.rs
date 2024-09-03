@@ -88,7 +88,7 @@ impl BootstrapAscending {
             threads: Mutex::new(None),
             mutex: Arc::new(Mutex::new(BootstrapAscendingImpl {
                 stopped: false,
-                accounts: AccountSets::new(config.account_sets.clone(), Arc::clone(&stats)),
+                accounts: AccountSets::new(config.account_sets.clone()),
                 scoring: PeerScoring::new(config.clone()),
                 iterator: BufferedIterator::new(Arc::clone(&ledger)),
                 tags: OrderedTags::default(),
@@ -586,12 +586,43 @@ impl BootstrapAscending {
             // Prioritize account containing the dependency
             {
                 let mut guard = self.mutex.lock().unwrap();
-                guard
+                let updated = guard
                     .accounts
                     .dependency_update(&tag.hash, response.account);
-                guard.accounts.priority_set(&response.account);
+                if updated > 0 {
+                    self.stats.add(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::DependencyUpdate,
+                        updated as u64,
+                    );
+                } else {
+                    self.stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::DependencyUpdateFailed,
+                    );
+                }
+
+                if guard.accounts.priority_set(&response.account) {
+                    self.priority_inserted();
+                } else {
+                    self.priority_insertion_failed()
+                };
             }
         }
+    }
+
+    fn priority_inserted(&self) {
+        self.stats.inc(
+            StatType::BootstrapAscendingAccounts,
+            DetailType::PriorityInsert,
+        );
+    }
+
+    fn priority_insertion_failed(&self) {
+        self.stats.inc(
+            StatType::BootstrapAscendingAccounts,
+            DetailType::PrioritizeFailed,
+        );
     }
 
     /// Verifies whether the received response is valid. Returns:
@@ -712,11 +743,18 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
                     }
                 }
             }));
-        self.mutex
+
+        if self
+            .mutex
             .lock()
             .unwrap()
             .accounts
-            .priority_set(genesis_account);
+            .priority_set(genesis_account)
+        {
+            self.priority_inserted()
+        } else {
+            self.priority_insertion_failed()
+        };
     }
 
     fn start(&self) {
@@ -801,7 +839,15 @@ impl BootstrapAscendingImpl {
             BlockStatus::Progress => {
                 let account = block.account();
                 // If we've inserted any block in to an account, unmark it as blocked
-                self.accounts.unblock(account, None);
+                if self.accounts.unblock(account, None) {
+                    stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Unblock);
+                } else {
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::UnblockFailed,
+                    );
+                }
+
                 match self.accounts.priority_up(&account) {
                     PriorityUpResult::Updated => {
                         stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
@@ -824,8 +870,26 @@ impl BootstrapAscendingImpl {
 
                 if block.is_send() {
                     let destination = block.destination().unwrap();
-                    self.accounts.unblock(destination, Some(hash)); // Unblocking automatically inserts account into priority set
-                    self.accounts.priority_set(&destination);
+                    // Unblocking automatically inserts account into priority set
+                    if self.accounts.unblock(destination, Some(hash)) {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Unblock);
+                    } else {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::UnblockFailed,
+                        );
+                    }
+                    if self.accounts.priority_set(&destination) {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityInsert,
+                        );
+                    } else {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PrioritizeFailed,
+                        );
+                    };
                 }
             }
             BlockStatus::GapSource => {
@@ -839,6 +903,15 @@ impl BootstrapAscendingImpl {
 
                     // Mark account as blocked because it is missing the source block
                     self.accounts.block(account, source);
+                    stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Block);
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::PriorityEraseBlock,
+                    );
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::BlockingInsert,
+                    );
                 }
             }
             BlockStatus::GapPrevious => {
@@ -849,7 +922,17 @@ impl BootstrapAscendingImpl {
                 {
                     if block.block_type() == BlockType::State {
                         let account = block.account_field().unwrap();
-                        self.accounts.priority_set(&account);
+                        if self.accounts.priority_set(&account) {
+                            stats.inc(
+                                StatType::BootstrapAscendingAccounts,
+                                DetailType::PriorityInsert,
+                            );
+                        } else {
+                            stats.inc(
+                                StatType::BootstrapAscendingAccounts,
+                                DetailType::PrioritizeFailed,
+                            );
+                        }
                     }
                 }
             }
@@ -953,7 +1036,17 @@ impl BootstrapAscendingImpl {
         if self.sync_dependencies_interval.elapsed() >= Duration::from_secs(60) {
             self.sync_dependencies_interval = Instant::now();
             stats.inc(StatType::BootstrapAscending, DetailType::SyncDependencies);
-            self.accounts.sync_dependencies();
+            let (inserted, insert_failed) = self.accounts.sync_dependencies();
+            stats.add(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PriorityInsert,
+                inserted as u64,
+            );
+            stats.add(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PrioritizeFailed,
+                insert_failed as u64,
+            );
         }
     }
 }

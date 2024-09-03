@@ -1,6 +1,6 @@
 use super::{
     ordered_blocking::{BlockingEntry, OrderedBlocking},
-    ordered_priorities::OrderedPriorities,
+    ordered_priorities::{ChangePriorityResult, OrderedPriorities},
     priority::Priority,
 };
 use crate::{
@@ -37,12 +37,28 @@ impl Default for AccountSetsConfig {
     }
 }
 
-/// This struct tracks accounts various account sets which are shared among the multiple bootstrap threads
+/// This struct tracks various account sets which are shared among the multiple bootstrap threads
 pub(crate) struct AccountSets {
     stats: Arc<Stats>,
     config: AccountSetsConfig,
     priorities: OrderedPriorities,
     blocking: OrderedBlocking,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum PriorityUpResult {
+    Inserted,
+    Updated,
+    InvalidAccount,
+    AccountBlocked,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum PriorityDownResult {
+    Deprioritized,
+    Erased,
+    AccountNotFound,
+    InvalidAccount,
 }
 
 impl AccountSets {
@@ -64,39 +80,39 @@ impl AccountSets {
     /**
      * If an account is not blocked, increase its priority.
      * If the account does not exist in priority set and is not blocked, inserts a new entry.
-     * Current implementation increases priority by 1.0f each increment
      */
-    pub fn priority_up(&mut self, account: &Account) {
+    pub fn priority_up(&mut self, account: &Account) -> PriorityUpResult {
         if account.is_zero() {
-            return;
+            return PriorityUpResult::InvalidAccount;
         }
 
         if !self.blocked(account) {
-            self.stats
-                .inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
+            let updated = self
+                .priorities
+                .change_priority(account, Self::higher_priority);
 
-            if !self.priorities.change_priority(account, |prio| {
-                Some(min(prio + Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
-            }) {
-                self.stats.inc(
-                    StatType::BootstrapAscendingAccounts,
-                    DetailType::PriorityInsert,
-                );
+            match updated {
+                ChangePriorityResult::Updated | ChangePriorityResult::Deleted => {
+                    PriorityUpResult::Updated
+                }
+                ChangePriorityResult::NotFound => {
+                    self.priorities.insert(PriorityEntry::new(
+                        Self::new_id(),
+                        *account,
+                        Self::PRIORITY_INITIAL,
+                    ));
 
-                self.priorities.insert(PriorityEntry::new(
-                    Self::new_id(),
-                    *account,
-                    Self::PRIORITY_INITIAL,
-                ));
-
-                self.trim_overflow();
+                    self.trim_overflow();
+                    PriorityUpResult::Inserted
+                }
             }
         } else {
-            self.stats.inc(
-                StatType::BootstrapAscendingAccounts,
-                DetailType::PrioritizeFailed,
-            );
+            PriorityUpResult::AccountBlocked
         }
+    }
+
+    fn higher_priority(priority: Priority) -> Option<Priority> {
+        Some(min(priority + Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
     }
 
     fn new_id() -> u64 {
@@ -107,32 +123,24 @@ impl AccountSets {
      * Decreases account priority
      * Current implementation divides priority by 2.0f and saturates down to 1.0f.
      */
-    pub fn priority_down(&mut self, account: &Account) {
+    pub fn priority_down(&mut self, account: &Account) -> PriorityDownResult {
         if account.is_zero() {
-            return;
+            return PriorityDownResult::InvalidAccount;
         }
 
-        if !self.priorities.change_priority(account, |prio| {
-            self.stats.inc(
-                StatType::BootstrapAscendingAccounts,
-                DetailType::Deprioritize,
-            );
-
+        let change_result = self.priorities.change_priority(account, |prio| {
             let priority_new = prio / Self::PRIORITY_DIVIDE;
             if priority_new <= Self::PRIORITY_CUTOFF {
-                self.stats.inc(
-                    StatType::BootstrapAscendingAccounts,
-                    DetailType::PriorityEraseThreshold,
-                );
                 None
             } else {
                 Some(priority_new)
             }
-        }) {
-            self.stats.inc(
-                StatType::BootstrapAscendingAccounts,
-                DetailType::DeprioritizeFailed,
-            );
+        });
+
+        match change_result {
+            ChangePriorityResult::Updated => PriorityDownResult::Deprioritized,
+            ChangePriorityResult::Deleted => PriorityDownResult::Erased,
+            ChangePriorityResult::NotFound => PriorityDownResult::AccountNotFound,
         }
     }
 
@@ -273,23 +281,13 @@ impl AccountSets {
         }
     }
 
+    /// Erase the oldest entries
     fn trim_overflow(&mut self) {
         while self.priorities.len() > self.config.priorities_max {
-            // Erase the oldest entry
             self.priorities.pop_front();
-            self.stats.inc(
-                StatType::BootstrapAscendingAccounts,
-                DetailType::PriorityEraseOverflow,
-            );
         }
         while self.blocking.len() > self.config.blocking_max {
-            // Erase the oldest entry
             self.blocking.pop_front();
-
-            self.stats.inc(
-                StatType::BootstrapAscendingAccounts,
-                DetailType::BlockingEraseOverflow,
-            );
         }
     }
 
@@ -456,8 +454,8 @@ mod tests {
             let account = Account::from(1);
             let hash = BlockHash::from(2);
 
-            sets.priority_up(&account);
-            sets.priority_up(&account);
+            assert_eq!(sets.priority_up(&account), PriorityUpResult::Inserted);
+            assert_eq!(sets.priority_up(&account), PriorityUpResult::Updated);
 
             sets.block(account, hash);
             sets.unblock(account, None);

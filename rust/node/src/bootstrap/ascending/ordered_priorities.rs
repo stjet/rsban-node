@@ -21,6 +21,15 @@ impl PriorityEntry {
             id,
         }
     }
+
+    pub fn new_test_instance() -> Self {
+        Self {
+            account: Account::from(7),
+            priority: Priority::new(3.0),
+            timestamp: None,
+            id: 42,
+        }
+    }
 }
 
 /// Tracks the ongoing account priorities
@@ -31,6 +40,12 @@ pub(crate) struct OrderedPriorities {
     by_account: BTreeMap<Account, u64>,
     sequenced: VecDeque<u64>,
     by_priority: BTreeMap<PriorityKeyDesc, Vec<u64>>, // descending
+}
+
+pub(crate) enum ChangePriorityResult {
+    Updated,
+    Deleted,
+    NotFound,
 }
 
 impl OrderedPriorities {
@@ -89,23 +104,24 @@ impl OrderedPriorities {
         &mut self,
         account: &Account,
         mut f: impl FnMut(Priority) -> Option<Priority>,
-    ) -> bool {
+    ) -> ChangePriorityResult {
         if let Some(&id) = self.by_account.get(account) {
-            if let Some(entry) = self.by_id.get_mut(&id) {
-                let old_prio = entry.priority;
-                if let Some(new_prio) = f(entry.priority) {
-                    entry.priority = new_prio;
-                    if new_prio != old_prio {
-                        let id = entry.id;
-                        self.change_priority_internal(id, old_prio, new_prio)
-                    }
-                } else {
-                    self.remove_id(id);
+            let entry = self.by_id.get_mut(&id).unwrap();
+            let old_prio = entry.priority;
+            if let Some(new_prio) = f(entry.priority) {
+                entry.priority = new_prio;
+                if new_prio != old_prio {
+                    let id = entry.id;
+                    self.change_priority_internal(id, old_prio, new_prio)
                 }
-                return true;
+                ChangePriorityResult::Updated
+            } else {
+                self.remove_id(id);
+                ChangePriorityResult::Deleted
             }
+        } else {
+            ChangePriorityResult::NotFound
         }
-        false
     }
 
     pub fn next_priority(

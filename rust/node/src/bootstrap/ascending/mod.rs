@@ -538,7 +538,31 @@ impl BootstrapAscending {
                     .inc(StatType::BootstrapAscendingVerify, DetailType::NothingNew);
 
                 let mut guard = self.mutex.lock().unwrap();
-                guard.accounts.priority_down(&tag.account);
+                match guard.accounts.priority_down(&tag.account) {
+                    PriorityDownResult::Deprioritized => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::Deprioritize,
+                        );
+                    }
+                    PriorityDownResult::Erased => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::Deprioritize,
+                        );
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityEraseThreshold,
+                        );
+                    }
+                    PriorityDownResult::AccountNotFound => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::DeprioritizeFailed,
+                        );
+                    }
+                    PriorityDownResult::InvalidAccount => {}
+                }
                 if tag.source == QuerySource::Database {
                     guard.throttle.add(false);
                 }
@@ -673,6 +697,7 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
                                 guard.inspect(
                                     &self_l.ledger,
                                     &tx,
+                                    &self_l.stats,
                                     *result,
                                     &context.block,
                                     context.source,
@@ -765,6 +790,7 @@ impl BootstrapAscendingImpl {
         &mut self,
         ledger: &Ledger,
         tx: &LmdbReadTransaction,
+        stats: &Stats,
         status: BlockStatus,
         block: &Arc<BlockEnum>,
         source: BlockSource,
@@ -776,7 +802,25 @@ impl BootstrapAscendingImpl {
                 let account = block.account();
                 // If we've inserted any block in to an account, unmark it as blocked
                 self.accounts.unblock(account, None);
-                self.accounts.priority_up(&account);
+                match self.accounts.priority_up(&account) {
+                    PriorityUpResult::Updated => {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
+                    }
+                    PriorityUpResult::Inserted => {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityInsert,
+                        );
+                    }
+                    PriorityUpResult::AccountBlocked => {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PrioritizeFailed,
+                        );
+                    }
+                    PriorityUpResult::InvalidAccount => {}
+                }
 
                 if block.is_send() {
                     let destination = block.destination().unwrap();

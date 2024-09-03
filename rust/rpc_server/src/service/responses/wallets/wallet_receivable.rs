@@ -4,7 +4,12 @@ use rsnano_rpc_messages::{ErrorDto, WalletReceivableDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, wallet: WalletId) -> String {
+pub async fn wallet_receivable(
+    node: Arc<Node>,
+    enable_control: bool,
+    wallet: WalletId,
+    count: u64,
+) -> String {
     if enable_control {
         let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
             Ok(accounts) => accounts,
@@ -19,6 +24,7 @@ pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, wallet: Wa
                 .ledger
                 .any()
                 .receivable_upper_bound(&tx, account)
+                .take(count as usize)
                 .map(|(k, _)| k)
                 .collect();
             pending_keys_vec.push(pending_keys);
@@ -64,7 +70,7 @@ mod tests {
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.wallet_receivable(wallet).await.unwrap() });
+            .block_on(async { rpc_client.wallet_receivable(wallet, 1).await.unwrap() });
 
         server.abort();
     }
@@ -78,7 +84,7 @@ mod tests {
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.wallet_receivable(WalletId::zero()).await });
+            .block_on(async { rpc_client.wallet_receivable(WalletId::zero(), 1).await });
 
         assert_eq!(
             result.err().map(|e| e.to_string()),

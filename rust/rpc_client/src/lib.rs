@@ -21,8 +21,12 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn wallet_receivable(&self, wallet: WalletId) -> Result<WalletReceivableDto> {
-        let cmd = RpcCommand::wallet_receivable(wallet);
+    pub async fn wallet_receivable(
+        &self,
+        wallet: WalletId,
+        count: u64,
+    ) -> Result<WalletReceivableDto> {
+        let cmd = RpcCommand::wallet_receivable(wallet, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

@@ -1,23 +1,15 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, WalletWithCountArgs};
 use rsnano_core::WalletId;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn accounts_create(wallet: WalletId, count: u64) -> Self {
-        Self::AccountsCreate(AccountsCreateArgs { wallet, count })
+        Self::AccountsCreate(WalletWithCountArgs::new(wallet, count))
     }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsCreateArgs {
-    pub wallet: WalletId,
-    pub count: u64,
 }
 
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::WalletId;
     use serde_json::to_string_pretty;
 
     #[test]

@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ErrorDto, WalletWorkGetDto};
+use rsnano_rpc_messages::{AccountsWithWorkDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -22,7 +22,7 @@ pub async fn wallet_work_get(node: Arc<Node>, enable_control: bool, wallet: Wall
             }
         }
 
-        to_string_pretty(&WalletWorkGetDto::new(works)).unwrap()
+        to_string_pretty(&AccountsWithWorkDto::new(works)).unwrap()
     } else {
         to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }

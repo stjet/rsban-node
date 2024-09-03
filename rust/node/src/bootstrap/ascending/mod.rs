@@ -27,7 +27,7 @@ use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockEnum, BlockHash, BlockType, HashOrAccount,
+    Account, AccountInfo, BlockEnum, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{
@@ -37,7 +37,7 @@ use rsnano_messages::{
 use rsnano_network::{
     bandwidth_limiter::BandwidthLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
 };
-use rsnano_nullable_clock::SteadyClock;
+use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     cmp::{max, min},
@@ -66,6 +66,7 @@ pub struct BootstrapAscending {
     /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
     /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
     database_limiter: BandwidthLimiter,
+    clock: Arc<SteadyClock>,
 }
 
 struct Threads {
@@ -96,7 +97,7 @@ impl BootstrapAscending {
                 tags: OrderedTags::default(),
                 throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
                 sync_dependencies_interval: Instant::now(),
-                clock,
+                clock: clock.clone(),
             })),
             condition: Arc::new(Condvar::new()),
             database_limiter: BandwidthLimiter::new(1.0, config.database_rate_limit),
@@ -105,6 +106,7 @@ impl BootstrapAscending {
             network_info,
             ledger,
             message_publisher: Mutex::new(message_publisher),
+            clock,
         }
     }
 
@@ -123,7 +125,24 @@ impl BootstrapAscending {
         }
     }
 
-    fn send(&self, channel_id: ChannelId, tag: AsyncTag) {
+    fn send(&self, channel_id: ChannelId, request: &Message) {
+        self.stats
+            .inc(StatType::BootstrapAscending, DetailType::Request);
+
+        let query_type = QueryType::from(request);
+        self.stats
+            .inc(StatType::BootstrapAscendingRequest, query_type.into());
+
+        // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
+        self.message_publisher.lock().unwrap().try_send(
+            channel_id,
+            &request,
+            DropPolicy::CanDrop,
+            TrafficType::Bootstrap,
+        );
+    }
+
+    fn create_asc_pull_request(&self, tag: &AsyncTag) -> Message {
         debug_assert!(tag.source != QuerySource::Invalid);
 
         {
@@ -153,24 +172,10 @@ impl BootstrapAscending {
             QueryType::Invalid => panic!("invalid query type"),
         };
 
-        let request = Message::AscPullReq(AscPullReq {
+        Message::AscPullReq(AscPullReq {
             id: tag.id,
             req_type,
-        });
-
-        self.stats
-            .inc(StatType::BootstrapAscending, DetailType::Request);
-
-        self.stats
-            .inc(StatType::BootstrapAscendingRequest, tag.query_type.into());
-
-        // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        self.message_publisher.lock().unwrap().try_send(
-            channel_id,
-            &request,
-            DropPolicy::CanDrop,
-            TrafficType::Bootstrap,
-        );
+        })
     }
 
     pub fn priority_len(&self) -> usize {
@@ -256,26 +261,35 @@ impl BootstrapAscending {
         result
     }
 
-    fn request(
-        &self,
-        account: Account,
-        count: usize,
-        channel_id: ChannelId,
-        source: QuerySource,
-    ) -> bool {
-        debug_assert!(count > 0);
-        debug_assert!(count <= BootstrapServer::MAX_BLOCKS);
-
-        // Limit the max number of blocks to pull
-        let count = min(count, self.config.max_pull_count);
-
-        let info = {
+    fn request(&self, account: Account, count: usize, channel_id: ChannelId, source: QuerySource) {
+        let account_info = {
             let tx = self.ledger.read_txn();
             self.ledger.store.account.get(&tx, &account)
         };
+        let id = thread_rng().next_u64();
+        let now = self.clock.now();
+
+        let request = self.create_blocks_request(id, account, account_info, count, source, now);
+
+        self.send(channel_id, &request);
+    }
+
+    fn create_blocks_request(
+        &self,
+        id: u64,
+        account: Account,
+        account_info: Option<AccountInfo>,
+        count: usize,
+        source: QuerySource,
+        now: Timestamp,
+    ) -> Message {
+        // Limit the max number of blocks to pull
+        debug_assert!(count > 0);
+        debug_assert!(count <= BootstrapServer::MAX_BLOCKS);
+        let count = min(count, self.config.max_pull_count);
 
         // Check if the account picked has blocks, if it does, start the pull from the highest block
-        let (query_type, start, hash) = match info {
+        let (query_type, start, hash) = match account_info {
             Some(info) => (
                 QueryType::BlocksByHash,
                 HashOrAccount::from(info.head),
@@ -289,9 +303,9 @@ impl BootstrapAscending {
         };
 
         let tag = AsyncTag {
-            id: thread_rng().next_u64(),
+            id,
             account,
-            timestamp: Instant::now(),
+            timestamp: now,
             query_type,
             start,
             source,
@@ -299,12 +313,16 @@ impl BootstrapAscending {
             count,
         };
 
-        self.send(channel_id, tag);
-
-        true // Request sent
+        self.create_asc_pull_request(&tag)
     }
 
-    fn request_info(&self, hash: BlockHash, channel_id: ChannelId, source: QuerySource) -> bool {
+    fn create_account_info_request(
+        &self,
+        id: u64,
+        hash: BlockHash,
+        source: QuerySource,
+        now: Timestamp,
+    ) -> Message {
         let tag = AsyncTag {
             query_type: QueryType::AccountInfoByHash,
             source,
@@ -312,13 +330,11 @@ impl BootstrapAscending {
             account: Account::zero(),
             hash,
             count: 0,
-            id: thread_rng().next_u64(),
-            timestamp: Instant::now(),
+            id,
+            timestamp: now,
         };
 
-        self.send(channel_id, tag);
-
-        true // Request sent
+        self.create_asc_pull_request(&tag)
     }
 
     fn run_one_priority(&self) {
@@ -390,7 +406,12 @@ impl BootstrapAscending {
         if blocking.is_zero() {
             return;
         }
-        self.request_info(blocking, channel_id, QuerySource::Blocking);
+
+        let now = self.clock.now();
+        let id = thread_rng().next_u64();
+        let request = self.create_account_info_request(id, blocking, QuerySource::Blocking, now);
+
+        self.send(channel_id, &request);
     }
 
     fn run_dependencies(&self) {
@@ -409,6 +430,7 @@ impl BootstrapAscending {
         while !guard.stopped {
             self.stats
                 .inc(StatType::BootstrapAscending, DetailType::LoopCleanup);
+
             guard.cleanup_and_sync(&self.network_info, &self.ledger, &self.config, &self.stats);
 
             guard = self
@@ -458,7 +480,7 @@ impl BootstrapAscending {
 
         self.stats.sample(
             Sample::BootstrapTagDuration,
-            tag.timestamp.elapsed().as_millis() as i64,
+            tag.timestamp.elapsed(self.clock.now()).as_millis() as i64,
             (0, self.config.request_timeout.as_millis() as i64),
         );
 
@@ -1025,7 +1047,7 @@ impl BootstrapAscendingImpl {
 
         self.throttle.resize(compute_throttle_size(ledger, config));
 
-        let cutoff = Instant::now() - config.request_timeout;
+        let cutoff = self.clock.now() - config.request_timeout;
         let should_timeout = |tag: &AsyncTag| tag.timestamp < cutoff;
 
         while let Some(front) = self.tags.front() {
@@ -1105,6 +1127,23 @@ impl Default for BootstrapAscendingConfig {
             block_processor_theshold: 1000,
             min_protocol_version: 0x14, // TODO don't hard code
             max_requests: 1024,
+        }
+    }
+}
+
+impl From<&Message> for QueryType {
+    fn from(value: &Message) -> Self {
+        if let Message::AscPullReq(req) = value {
+            match &req.req_type {
+                AscPullReqType::Blocks(b) => match b.start_type {
+                    HashType::Account => QueryType::BlocksByAccount,
+                    HashType::Block => QueryType::BlocksByHash,
+                },
+                AscPullReqType::AccountInfo(_) => QueryType::AccountInfoByHash,
+                AscPullReqType::Frontiers(_) => QueryType::Invalid,
+            }
+        } else {
+            QueryType::Invalid
         }
     }
 }

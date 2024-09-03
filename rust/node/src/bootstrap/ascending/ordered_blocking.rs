@@ -1,4 +1,7 @@
-use super::ordered_priorities::{Priority, PriorityEntry, PriorityKeyDesc};
+use super::{
+    ordered_priorities::PriorityEntry,
+    priority::{Priority, PriorityKeyDesc},
+};
 use rsnano_core::{Account, BlockHash};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -108,17 +111,6 @@ impl OrderedBlocking {
     pub fn pop_front(&mut self) -> Option<BlockingEntry> {
         let account = self.sequenced.pop_front()?;
         self.remove(&account)
-    }
-
-    pub fn pop_lowest_priority(&mut self) -> Option<BlockingEntry> {
-        if let Some((_, accounts)) = self.by_priority.last_key_value() {
-            let account = accounts[0];
-            let result = self.by_account.remove(&account).unwrap();
-            self.remove_indexes(&result);
-            Some(result)
-        } else {
-            None
-        }
     }
 
     pub fn modify_dependency_account(

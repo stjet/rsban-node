@@ -1,9 +1,7 @@
-use ordered_float::OrderedFloat;
-use rand::{thread_rng, RngCore};
+use super::priority::{Priority, PriorityKeyDesc};
 use rsnano_core::Account;
 use std::collections::VecDeque;
 use std::mem::size_of;
-use std::ops::{Add, Bound, Deref, Div, Mul, Sub};
 use std::{collections::BTreeMap, time::Instant};
 
 #[derive(Clone, Default)]
@@ -15,104 +13,13 @@ pub(crate) struct PriorityEntry {
 }
 
 impl PriorityEntry {
-    pub fn new(account: Account, priority: Priority) -> Self {
+    pub fn new(id: u64, account: Account, priority: Priority) -> Self {
         Self {
             account,
             priority,
             timestamp: None,
-            id: thread_rng().next_u64(),
+            id,
         }
-    }
-}
-
-#[derive(PartialEq, Eq, Default, Clone, Copy, Ord, PartialOrd)]
-pub struct Priority(OrderedFloat<f64>);
-
-impl Priority {
-    pub const fn new(value: f64) -> Self {
-        Self(OrderedFloat(value))
-    }
-
-    pub const ZERO: Self = Self(OrderedFloat(0.0));
-}
-
-impl Add for Priority {
-    type Output = Priority;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
-    }
-}
-
-impl Sub for Priority {
-    type Output = Priority;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
-    }
-}
-
-impl Mul<f64> for Priority {
-    type Output = Priority;
-
-    fn mul(self, rhs: f64) -> Self::Output {
-        Self(self.0 * rhs)
-    }
-}
-
-impl Div<f64> for Priority {
-    type Output = Priority;
-
-    fn div(self, rhs: f64) -> Self::Output {
-        Self(self.0 / rhs)
-    }
-}
-
-impl From<Priority> for f64 {
-    fn from(value: Priority) -> Self {
-        value.0 .0
-    }
-}
-
-impl std::fmt::Debug for Priority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0 .0, f)
-    }
-}
-
-impl std::fmt::Display for Priority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0 .0, f)
-    }
-}
-
-#[derive(PartialEq, Eq, Default, Clone, Copy)]
-pub(crate) struct PriorityKeyDesc(pub Priority);
-
-impl Ord for PriorityKeyDesc {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // order descending
-        other.0.cmp(&self.0)
-    }
-}
-
-impl PartialOrd for PriorityKeyDesc {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Deref for PriorityKeyDesc {
-    type Target = Priority;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<Priority> for PriorityKeyDesc {
-    fn from(value: Priority) -> Self {
-        Self(value)
     }
 }
 
@@ -172,24 +79,6 @@ impl OrderedPriorities {
         Some(self.remove_id(id))
     }
 
-    pub fn pop_lowest_priority(&mut self) -> Option<PriorityEntry> {
-        if let Some(mut entry) = self.by_priority.last_entry() {
-            let ids = entry.get_mut();
-            let id = ids[0];
-            if ids.len() == 1 {
-                entry.remove();
-            } else {
-                ids.pop();
-            }
-            let entry = self.by_id.remove(&id).unwrap();
-            self.sequenced.retain(|i| *i != entry.id);
-            self.by_account.remove(&entry.account);
-            Some(entry)
-        } else {
-            None
-        }
-    }
-
     pub fn change_timestamp(&mut self, account: &Account, timestamp: Option<Instant>) {
         if let Some(id) = self.by_account.get(account) {
             self.by_id.get_mut(id).unwrap().timestamp = timestamp;
@@ -229,28 +118,24 @@ impl OrderedPriorities {
             .flatten()
             .map(|id| self.by_id.get(id).unwrap())
             .find(|entry| {
-                let Some(ts) = entry.timestamp else {
-                    return false;
-                };
-                if ts > cutoff {
-                    return false;
+                if let Some(ts) = entry.timestamp {
+                    if ts > cutoff {
+                        return false;
+                    }
                 }
                 filter(&entry.account)
             })
             .map(|e| e.account)
     }
 
-    pub fn wrapping_lower_bound(&self, value: u64) -> Option<&PriorityEntry> {
-        let result = self
-            .by_id
-            .range((Bound::Included(value), Bound::Unbounded))
-            .map(|(_, v)| v)
-            .next();
-
-        if result.is_none() {
-            self.by_id.first_key_value().map(|(_, v)| v)
+    pub fn remove(&mut self, account: &Account) -> Option<PriorityEntry> {
+        if let Some(id) = self.by_account.remove(account) {
+            let entry = self.by_id.remove(&id).unwrap();
+            self.sequenced.retain(|i| *i != id);
+            self.remove_priority(id, entry.priority);
+            Some(entry)
         } else {
-            result
+            None
         }
     }
 
@@ -266,17 +151,6 @@ impl OrderedPriorities {
             .entry(new_prio.into())
             .or_default()
             .push(id);
-    }
-
-    pub fn remove(&mut self, account: &Account) -> Option<PriorityEntry> {
-        if let Some(id) = self.by_account.remove(account) {
-            let entry = self.by_id.remove(&id).unwrap();
-            self.sequenced.retain(|i| *i != id);
-            self.remove_priority(id, entry.priority);
-            Some(entry)
-        } else {
-            None
-        }
     }
 
     fn remove_id(&mut self, id: u64) -> PriorityEntry {
@@ -295,4 +169,45 @@ impl OrderedPriorities {
             self.by_priority.remove(&priority.into());
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let mut priorities = OrderedPriorities::default();
+        assert_eq!(priorities.len(), 0);
+        assert!(priorities.is_empty());
+        assert!(priorities.get(&Account::from(1)).is_none());
+        assert_eq!(priorities.contains(&Account::from(1)), false);
+        assert!(priorities.pop_front().is_none());
+        assert!(priorities.remove(&Account::from(1)).is_none());
+    }
+
+    #[test]
+    fn insert_one() {
+        let mut priorities = OrderedPriorities::default();
+        let account = Account::from(1);
+        priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5)));
+        assert_eq!(priorities.len(), 1);
+        assert_eq!(priorities.is_empty(), false);
+        assert_eq!(priorities.contains(&account), true);
+        assert!(priorities.get(&account).is_some());
+    }
+
+    #[test]
+    fn insert_two() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(3.5)));
+        assert_eq!(priorities.len(), 2);
+        assert_eq!(priorities.is_empty(), false);
+        assert_eq!(priorities.contains(&Account::from(1)), true);
+        assert_eq!(priorities.contains(&Account::from(2)), true);
+    }
+
+    #[test]
+    fn dont_insert_when_id_already_taken() {}
 }

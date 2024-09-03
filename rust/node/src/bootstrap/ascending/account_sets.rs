@@ -1,11 +1,13 @@
 use super::{
     ordered_blocking::{BlockingEntry, OrderedBlocking},
-    ordered_priorities::{OrderedPriorities, Priority},
+    ordered_priorities::OrderedPriorities,
+    priority::Priority,
 };
 use crate::{
     bootstrap::ascending::ordered_priorities::PriorityEntry,
     stats::{DetailType, StatType, Stats},
 };
+use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, BlockHash,
@@ -81,8 +83,11 @@ impl AccountSets {
                     DetailType::PriorityInsert,
                 );
 
-                self.priorities
-                    .insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
+                self.priorities.insert(PriorityEntry::new(
+                    Self::new_id(),
+                    *account,
+                    Self::PRIORITY_INITIAL,
+                ));
 
                 self.trim_overflow();
             }
@@ -92,6 +97,10 @@ impl AccountSets {
                 DetailType::PrioritizeFailed,
             );
         }
+    }
+
+    fn new_id() -> u64 {
+        thread_rng().next_u64()
     }
 
     /**
@@ -148,7 +157,11 @@ impl AccountSets {
                     StatType::BootstrapAscendingAccounts,
                     DetailType::PriorityInsert,
                 );
-                priorities.insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
+                priorities.insert(PriorityEntry::new(
+                    Self::new_id(),
+                    *account,
+                    Self::PRIORITY_INITIAL,
+                ));
             }
         } else {
             stats.inc(
@@ -167,7 +180,7 @@ impl AccountSets {
         let entry = self
             .priorities
             .remove(&account)
-            .unwrap_or_else(|| PriorityEntry::new(account, Priority::ZERO));
+            .unwrap_or_else(|| PriorityEntry::new(Self::new_id(), account, Priority::ZERO));
 
         self.stats.inc(
             StatType::BootstrapAscendingAccounts,
@@ -209,8 +222,11 @@ impl AccountSets {
                     debug_assert!(existing.original_entry.account == account);
                     self.priorities.insert(existing.original_entry.clone());
                 } else {
-                    self.priorities
-                        .insert(PriorityEntry::new(account, Self::PRIORITY_INITIAL));
+                    self.priorities.insert(PriorityEntry::new(
+                        Self::new_id(),
+                        account,
+                        Self::PRIORITY_INITIAL,
+                    ));
                 }
                 self.blocking.remove(&account);
 

@@ -4,6 +4,7 @@ mod ordered_blocking;
 mod ordered_priorities;
 mod ordered_tags;
 mod peer_scoring;
+mod priority;
 mod throttle;
 
 use self::{
@@ -21,8 +22,8 @@ use crate::{
 };
 pub use account_sets::AccountSetsConfig;
 use num::clamp;
-use ordered_priorities::Priority;
 use ordered_tags::QuerySource;
+use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},

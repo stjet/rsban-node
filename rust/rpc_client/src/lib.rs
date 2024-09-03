@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId, WorkNonce};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
@@ -25,7 +25,7 @@ impl NanoRpcClient {
         &self,
         wallet: WalletId,
         account: Account,
-        work: u64,
+        work: WorkNonce,
     ) -> Result<SuccessDto> {
         let cmd = RpcCommand::work_set(wallet, account, work);
         let result = self.rpc_request(&cmd).await?;

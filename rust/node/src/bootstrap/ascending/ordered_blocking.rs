@@ -271,19 +271,19 @@ mod tests {
 
         blocking.insert(BlockingEntry {
             dependency: BlockHash::from(100),
-            original_entry: PriorityEntry::new(1, Account::from(1000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(1000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 
         blocking.insert(BlockingEntry {
             dependency: BlockHash::from(200),
-            original_entry: PriorityEntry::new(2, Account::from(2000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(2000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 
         blocking.insert(BlockingEntry {
             dependency: BlockHash::from(300),
-            original_entry: PriorityEntry::new(3, Account::from(3000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(3000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 
@@ -299,13 +299,13 @@ mod tests {
 
         blocking.insert(BlockingEntry {
             dependency: BlockHash::from(100),
-            original_entry: PriorityEntry::new(1, Account::from(1000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(1000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 
         blocking.insert(BlockingEntry {
             dependency: BlockHash::from(200),
-            original_entry: PriorityEntry::new(2, Account::from(2000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(2000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 
@@ -327,7 +327,7 @@ mod tests {
         let dependency = BlockHash::from(100);
         blocking.insert(BlockingEntry {
             dependency,
-            original_entry: PriorityEntry::new(1, Account::from(1000), Priority::new(1.0)),
+            original_entry: PriorityEntry::new(Account::from(1000), Priority::new(1.0)),
             dependency_account: Account::zero(),
         });
 

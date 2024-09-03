@@ -4,7 +4,6 @@ use super::{
     priority::Priority,
 };
 use crate::bootstrap::ascending::ordered_priorities::PriorityEntry;
-use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, BlockHash,
@@ -90,11 +89,8 @@ impl AccountSets {
                     PriorityUpResult::Updated
                 }
                 ChangePriorityResult::NotFound => {
-                    self.priorities.insert(PriorityEntry::new(
-                        Self::new_id(),
-                        *account,
-                        Self::PRIORITY_INITIAL,
-                    ));
+                    self.priorities
+                        .insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
 
                     self.trim_overflow();
                     PriorityUpResult::Inserted
@@ -107,10 +103,6 @@ impl AccountSets {
 
     fn higher_priority(priority: Priority) -> Option<Priority> {
         Some(min(priority + Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
-    }
-
-    fn new_id() -> u64 {
-        thread_rng().next_u64()
     }
 
     /**
@@ -154,11 +146,7 @@ impl AccountSets {
         }
 
         if !blocking.contains(account) && !priorities.contains(account) {
-            priorities.insert(PriorityEntry::new(
-                Self::new_id(),
-                *account,
-                Self::PRIORITY_INITIAL,
-            ));
+            priorities.insert(PriorityEntry::new(*account, Self::PRIORITY_INITIAL));
             true
         } else {
             false
@@ -171,7 +159,7 @@ impl AccountSets {
         let entry = self
             .priorities
             .remove(&account)
-            .unwrap_or_else(|| PriorityEntry::new(Self::new_id(), account, Priority::ZERO));
+            .unwrap_or_else(|| PriorityEntry::new(account, Priority::ZERO));
 
         self.blocking.insert(BlockingEntry {
             dependency,
@@ -201,11 +189,8 @@ impl AccountSets {
                     debug_assert!(existing.original_entry.account == account);
                     self.priorities.insert(existing.original_entry.clone());
                 } else {
-                    self.priorities.insert(PriorityEntry::new(
-                        Self::new_id(),
-                        account,
-                        Self::PRIORITY_INITIAL,
-                    ));
+                    self.priorities
+                        .insert(PriorityEntry::new(account, Self::PRIORITY_INITIAL));
                 }
                 self.blocking.remove(&account);
 

@@ -1,3 +1,4 @@
+use super::wallet_info;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -52,6 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletInfo(args) => wallet_info(rpc_service.node, args.wallet).await,
         _ => todo!(),
     };
 

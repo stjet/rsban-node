@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn accounts_frontiers(&self, accounts: Vec<Account>) -> Result<FrontiersDto> {
+        let cmd = RpcCommand::accounts_frontiers(accounts);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

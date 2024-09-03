@@ -37,6 +37,7 @@ use rsnano_messages::{
 use rsnano_network::{
     bandwidth_limiter::BandwidthLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
 };
+use rsnano_nullable_clock::SteadyClock;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
     cmp::{max, min},
@@ -82,6 +83,7 @@ impl BootstrapAscending {
         network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
         config: BootstrapAscendingConfig,
+        clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
             block_processor,
@@ -94,6 +96,7 @@ impl BootstrapAscending {
                 tags: OrderedTags::default(),
                 throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
                 sync_dependencies_interval: Instant::now(),
+                clock,
             })),
             condition: Arc::new(Condvar::new()),
             database_limiter: BandwidthLimiter::new(1.0, config.database_rate_limit),
@@ -818,6 +821,7 @@ struct BootstrapAscendingImpl {
     tags: OrderedTags,
     throttle: Throttle,
     sync_dependencies_interval: Instant,
+    clock: Arc<SteadyClock>,
 }
 
 impl BootstrapAscendingImpl {
@@ -950,7 +954,7 @@ impl BootstrapAscendingImpl {
     }
 
     fn next_priority(&mut self, stats: &Stats) -> (Account, Priority) {
-        let account = self.accounts.next_priority(|account| {
+        let account = self.accounts.next_priority(self.clock.now(), |account| {
             self.tags.count_by_account(account, QuerySource::Priority) < 4
         });
 
@@ -959,7 +963,7 @@ impl BootstrapAscendingImpl {
         }
 
         stats.inc(StatType::BootstrapAscendingNext, DetailType::NextPriority);
-        self.accounts.timestamp_set(&account);
+        self.accounts.timestamp_set(&account, self.clock.now());
 
         // TODO: Priority could be returned by the accounts.next_priority() call
         (account, self.accounts.priority(&account))

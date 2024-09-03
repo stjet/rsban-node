@@ -8,6 +8,7 @@ use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Account, BlockHash,
 };
+use rsnano_nullable_clock::Timestamp;
 use std::{
     cmp::min,
     time::{Duration, Instant},
@@ -105,10 +106,7 @@ impl AccountSets {
         Some(min(priority + Self::PRIORITY_INCREASE, Self::PRIORITY_MAX))
     }
 
-    /**
-     * Decreases account priority
-     * Current implementation divides priority by 2.0f and saturates down to 1.0f.
-     */
+    /// Decreases account priority
     pub fn priority_down(&mut self, account: &Account) -> PriorityDownResult {
         if account.is_zero() {
             return PriorityDownResult::InvalidAccount;
@@ -202,11 +200,9 @@ impl AccountSets {
         false
     }
 
-    pub fn timestamp_set(&mut self, account: &Account) {
+    pub fn timestamp_set(&mut self, account: &Account, now: Timestamp) {
         debug_assert!(!account.is_zero());
-
-        let tstamp = Instant::now();
-        self.priorities.change_timestamp(account, Some(tstamp));
+        self.priorities.change_timestamp(account, Some(now));
     }
 
     pub fn timestamp_reset(&mut self, account: &Account) {
@@ -239,12 +235,12 @@ impl AccountSets {
     }
 
     /// Sampling
-    pub fn next_priority(&self, filter: impl Fn(&Account) -> bool) -> Account {
+    pub fn next_priority(&self, now: Timestamp, filter: impl Fn(&Account) -> bool) -> Account {
         if self.priorities.is_empty() {
             return Account::zero();
         }
 
-        let cutoff = Instant::now() - self.config.cooldown;
+        let cutoff = now - self.config.cooldown;
 
         self.priorities
             .next_priority(cutoff, filter)
@@ -353,107 +349,100 @@ impl AccountSets {
     }
 }
 
+impl Default for AccountSets {
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn empty_blocked() {
-        fixture(|sets| {
-            assert_eq!(sets.blocked(&Account::from(1)), false);
-        });
+        let sets = AccountSets::default();
+        assert_eq!(sets.blocked(&Account::from(1)), false);
     }
 
     #[test]
     fn block() {
-        fixture(|sets| {
-            let account = Account::from(1);
-            let hash = BlockHash::from(2);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
+        let hash = BlockHash::from(2);
 
-            sets.block(account, hash);
+        sets.block(account, hash);
 
-            assert!(sets.blocked(&account));
-            assert_eq!(sets.priority(&account), Priority::ZERO);
-        });
+        assert!(sets.blocked(&account));
+        assert_eq!(sets.priority(&account), Priority::ZERO);
     }
 
     #[test]
     fn unblock() {
-        fixture(|sets| {
-            let account = Account::from(1);
-            let hash = BlockHash::from(2);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
+        let hash = BlockHash::from(2);
 
-            sets.block(account, hash);
-            assert!(sets.unblock(account, None));
+        sets.block(account, hash);
+        assert!(sets.unblock(account, None));
 
-            assert_eq!(sets.blocked(&account), false);
-        });
+        assert_eq!(sets.blocked(&account), false);
     }
 
     #[test]
     fn priority_base() {
-        fixture(|sets| {
-            assert_eq!(sets.priority(&Account::from(1)), Priority::ZERO);
-        });
+        let sets = AccountSets::default();
+        assert_eq!(sets.priority(&Account::from(1)), Priority::ZERO);
     }
 
     // When account is unblocked, check that it retains it former priority
     #[test]
     fn priority_unblock_keep() {
-        fixture(|sets| {
-            let account = Account::from(1);
-            let hash = BlockHash::from(2);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
+        let hash = BlockHash::from(2);
 
-            assert_eq!(sets.priority_up(&account), PriorityUpResult::Inserted);
-            assert_eq!(sets.priority_up(&account), PriorityUpResult::Updated);
+        assert_eq!(sets.priority_up(&account), PriorityUpResult::Inserted);
+        assert_eq!(sets.priority_up(&account), PriorityUpResult::Updated);
 
-            sets.block(account, hash);
-            sets.unblock(account, None);
+        sets.block(account, hash);
+        sets.unblock(account, None);
 
-            assert_eq!(sets.priority(&account), Priority::new(4.0));
-        });
+        assert_eq!(sets.priority(&account), Priority::new(4.0));
     }
 
     #[test]
     fn priority_up_down() {
-        fixture(|sets| {
-            let account = Account::from(1);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
 
-            sets.priority_up(&account);
-            assert_eq!(sets.priority(&account), AccountSets::PRIORITY_INITIAL);
+        sets.priority_up(&account);
+        assert_eq!(sets.priority(&account), AccountSets::PRIORITY_INITIAL);
 
-            sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), Priority::new(1.0));
-        });
+        sets.priority_down(&account);
+        assert_eq!(sets.priority(&account), Priority::new(1.0));
     }
 
     // Check that priority downward saturates to 1.0f
     #[test]
     fn priority_down_saturates() {
-        fixture(|sets| {
-            let account = Account::from(1);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
 
-            sets.priority_down(&account);
-            assert_eq!(sets.priority(&account), Priority::ZERO);
-        });
+        sets.priority_down(&account);
+
+        assert_eq!(sets.priority(&account), Priority::ZERO);
     }
 
     // Ensure priority value is bounded
     #[test]
     fn saturate_priority() {
-        fixture(|sets| {
-            let account = Account::from(1);
+        let mut sets = AccountSets::default();
+        let account = Account::from(1);
 
-            for _ in 0..100 {
-                sets.priority_up(&account);
-            }
-            assert_eq!(sets.priority(&account), AccountSets::PRIORITY_MAX);
-        });
-    }
-
-    fn fixture(mut f: impl FnMut(&mut AccountSets)) {
-        let config = AccountSetsConfig::default();
-        let mut sets = AccountSets::new(config);
-        f(&mut sets);
+        for _ in 0..100 {
+            sets.priority_up(&account);
+        }
+        assert_eq!(sets.priority(&account), AccountSets::PRIORITY_MAX);
     }
 }

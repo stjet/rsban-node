@@ -1,14 +1,15 @@
 use super::priority::{Priority, PriorityKeyDesc};
 use rsnano_core::Account;
+use rsnano_nullable_clock::Timestamp;
+use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::mem::size_of;
-use std::{collections::BTreeMap, time::Instant};
 
 #[derive(Clone, Default)]
 pub(crate) struct PriorityEntry {
     pub account: Account,
     pub priority: Priority,
-    pub timestamp: Option<Instant>,
+    pub timestamp: Option<Timestamp>,
 }
 
 impl PriorityEntry {
@@ -20,6 +21,7 @@ impl PriorityEntry {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_test_instance() -> Self {
         Self {
             account: Account::from(7),
@@ -86,7 +88,7 @@ impl OrderedPriorities {
         Some(self.remove_account(&account))
     }
 
-    pub fn change_timestamp(&mut self, account: &Account, timestamp: Option<Instant>) {
+    pub fn change_timestamp(&mut self, account: &Account, timestamp: Option<Timestamp>) {
         if let Some(entry) = self.by_account.get_mut(account) {
             entry.timestamp = timestamp;
         }
@@ -116,7 +118,7 @@ impl OrderedPriorities {
 
     pub fn next_priority(
         &self,
-        cutoff: Instant,
+        cutoff: Timestamp,
         filter: impl Fn(&Account) -> bool,
     ) -> Option<Account> {
         self.by_priority
@@ -238,7 +240,7 @@ mod tests {
         let account = Account::from(1);
         let mut priorities = OrderedPriorities::default();
         priorities.insert(PriorityEntry::new(account, Priority::new(2.5)));
-        let now = Instant::now();
+        let now = Timestamp::new_test_instance();
 
         priorities.change_timestamp(&account, Some(now));
 
@@ -246,14 +248,13 @@ mod tests {
     }
 
     mod next_priority {
-        use std::time::Duration;
-
         use super::*;
+        use std::time::Duration;
 
         #[test]
         fn empty() {
             let priorities = OrderedPriorities::default();
-            let next = priorities.next_priority(Instant::now(), |_account| true);
+            let next = priorities.next_priority(Timestamp::new_test_instance(), |_account| true);
             assert!(next.is_none());
         }
 
@@ -264,7 +265,7 @@ mod tests {
             priorities.insert(PriorityEntry::new(account, Priority::new(2.5)));
 
             let next = priorities
-                .next_priority(Instant::now(), |_account| true)
+                .next_priority(Timestamp::new_test_instance(), |_account| true)
                 .unwrap();
 
             assert_eq!(next, account);
@@ -278,7 +279,7 @@ mod tests {
             priorities.insert(PriorityEntry::new(Account::from(3), Priority::new(3.5)));
 
             let next = priorities
-                .next_priority(Instant::now(), |_account| true)
+                .next_priority(Timestamp::new_test_instance(), |_account| true)
                 .unwrap();
 
             assert_eq!(next, Account::from(2));
@@ -286,18 +287,19 @@ mod tests {
 
         #[test]
         fn cutoff() {
+            let now = Timestamp::new_test_instance();
             let a = PriorityEntry::new(Account::from(1), Priority::new(2.5));
             let mut b = PriorityEntry::new(Account::from(2), Priority::new(10.0));
-            b.timestamp = Some(Instant::now());
+            b.timestamp = Some(now);
             let mut c = PriorityEntry::new(Account::from(3), Priority::new(3.5));
-            c.timestamp = Some(Instant::now() - Duration::from_secs(60));
+            c.timestamp = Some(now - Duration::from_secs(60));
             let mut priorities = OrderedPriorities::default();
             priorities.insert(a);
             priorities.insert(b);
             priorities.insert(c);
 
             let next = priorities
-                .next_priority(Instant::now() - Duration::from_secs(30), |_account| true)
+                .next_priority(now - Duration::from_secs(30), |_account| true)
                 .unwrap();
 
             assert_eq!(next, Account::from(3));
@@ -314,7 +316,9 @@ mod tests {
             priorities.insert(c);
 
             let next = priorities
-                .next_priority(Instant::now(), |account| *account == Account::from(1))
+                .next_priority(Timestamp::new_test_instance(), |account| {
+                    *account == Account::from(1)
+                })
                 .unwrap();
 
             assert_eq!(next, Account::from(1));
@@ -342,7 +346,9 @@ mod tests {
             new_priority
         );
 
-        let next = priorities.next_priority(Instant::now(), |_| true).unwrap();
+        let next = priorities
+            .next_priority(Timestamp::new_test_instance(), |_| true)
+            .unwrap();
         assert_eq!(next, Account::from(2));
     }
 

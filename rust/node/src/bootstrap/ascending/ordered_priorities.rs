@@ -140,13 +140,7 @@ impl OrderedPriorities {
     }
 
     fn change_priority_internal(&mut self, id: u64, old_prio: Priority, new_prio: Priority) {
-        if let Some(ids) = self.by_priority.get_mut(&old_prio.into()) {
-            if ids.len() == 1 {
-                self.by_priority.remove(&old_prio.into());
-            } else {
-                ids.retain(|i| *i != id)
-            }
-        }
+        self.remove_priority(id, old_prio);
         self.by_priority
             .entry(new_prio.into())
             .or_default()
@@ -190,7 +184,7 @@ mod tests {
     fn insert_one() {
         let mut priorities = OrderedPriorities::default();
         let account = Account::from(1);
-        priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5)));
+        assert!(priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5))));
         assert_eq!(priorities.len(), 1);
         assert_eq!(priorities.is_empty(), false);
         assert_eq!(priorities.contains(&account), true);
@@ -200,8 +194,8 @@ mod tests {
     #[test]
     fn insert_two() {
         let mut priorities = OrderedPriorities::default();
-        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
-        priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(3.5)));
+        assert!(priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5))));
+        assert!(priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(3.5))));
         assert_eq!(priorities.len(), 2);
         assert_eq!(priorities.is_empty(), false);
         assert_eq!(priorities.contains(&Account::from(1)), true);
@@ -209,5 +203,176 @@ mod tests {
     }
 
     #[test]
-    fn dont_insert_when_id_already_taken() {}
+    fn dont_insert_when_id_already_taken() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        let inserted =
+            priorities.insert(PriorityEntry::new(42, Account::from(2), Priority::new(3.5)));
+        assert_eq!(inserted, false);
+        assert_eq!(priorities.len(), 1);
+    }
+
+    #[test]
+    fn dont_insert_when_account_already_present() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        let inserted =
+            priorities.insert(PriorityEntry::new(43, Account::from(1), Priority::new(3.5)));
+        assert_eq!(inserted, false);
+        assert_eq!(priorities.len(), 1);
+    }
+
+    #[test]
+    fn pop_front() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(2.5)));
+        priorities.insert(PriorityEntry::new(44, Account::from(3), Priority::new(2.5)));
+
+        assert_eq!(priorities.pop_front().unwrap().id, 42);
+        assert_eq!(priorities.pop_front().unwrap().id, 43);
+        assert_eq!(priorities.pop_front().unwrap().id, 44);
+        assert!(priorities.pop_front().is_none());
+    }
+
+    #[test]
+    fn change_timestamp() {
+        let account = Account::from(1);
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5)));
+        let now = Instant::now();
+
+        priorities.change_timestamp(&account, Some(now));
+
+        assert_eq!(priorities.get(&account).unwrap().timestamp, Some(now));
+    }
+
+    mod next_priority {
+        use std::time::Duration;
+
+        use super::*;
+
+        #[test]
+        fn empty() {
+            let priorities = OrderedPriorities::default();
+            let next = priorities.next_priority(Instant::now(), |_account| true);
+            assert!(next.is_none());
+        }
+
+        #[test]
+        fn one_item() {
+            let mut priorities = OrderedPriorities::default();
+            let account = Account::from(1);
+            priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5)));
+
+            let next = priorities
+                .next_priority(Instant::now(), |_account| true)
+                .unwrap();
+
+            assert_eq!(next, account);
+        }
+
+        #[test]
+        fn ordered_by_priority_desc() {
+            let mut priorities = OrderedPriorities::default();
+            priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+            priorities.insert(PriorityEntry::new(
+                43,
+                Account::from(2),
+                Priority::new(10.0),
+            ));
+            priorities.insert(PriorityEntry::new(44, Account::from(3), Priority::new(3.5)));
+
+            let next = priorities
+                .next_priority(Instant::now(), |_account| true)
+                .unwrap();
+
+            assert_eq!(next, Account::from(2));
+        }
+
+        #[test]
+        fn cutoff() {
+            let a = PriorityEntry::new(42, Account::from(1), Priority::new(2.5));
+            let mut b = PriorityEntry::new(43, Account::from(2), Priority::new(10.0));
+            b.timestamp = Some(Instant::now());
+            let mut c = PriorityEntry::new(44, Account::from(3), Priority::new(3.5));
+            c.timestamp = Some(Instant::now() - Duration::from_secs(60));
+            let mut priorities = OrderedPriorities::default();
+            priorities.insert(a);
+            priorities.insert(b);
+            priorities.insert(c);
+
+            let next = priorities
+                .next_priority(Instant::now() - Duration::from_secs(30), |_account| true)
+                .unwrap();
+
+            assert_eq!(next, Account::from(3));
+        }
+
+        #[test]
+        fn filter() {
+            let a = PriorityEntry::new(42, Account::from(1), Priority::new(2.5));
+            let b = PriorityEntry::new(43, Account::from(2), Priority::new(10.0));
+            let c = PriorityEntry::new(44, Account::from(3), Priority::new(3.5));
+            let mut priorities = OrderedPriorities::default();
+            priorities.insert(a);
+            priorities.insert(b);
+            priorities.insert(c);
+
+            let next = priorities
+                .next_priority(Instant::now(), |account| *account == Account::from(1))
+                .unwrap();
+
+            assert_eq!(next, Account::from(1));
+        }
+    }
+
+    #[test]
+    fn change_priority() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(3.0)));
+        priorities.insert(PriorityEntry::new(44, Account::from(3), Priority::new(3.5)));
+
+        let mut old_priority = Priority::ZERO;
+        let new_priority = Priority::new(10.0);
+
+        priorities.change_priority(&Account::from(2), |old_prio| {
+            old_priority = old_prio;
+            Some(new_priority)
+        });
+
+        assert_eq!(old_priority, Priority::new(3.0));
+        assert_eq!(
+            priorities.get(&Account::from(2)).unwrap().priority,
+            new_priority
+        );
+
+        let next = priorities.next_priority(Instant::now(), |_| true).unwrap();
+        assert_eq!(next, Account::from(2));
+    }
+
+    #[test]
+    fn remove_by_priority_change() {
+        let mut priorities = OrderedPriorities::default();
+        let account = Account::from(1);
+        priorities.insert(PriorityEntry::new(42, account, Priority::new(2.5)));
+
+        priorities.change_priority(&account, |_| None);
+
+        assert_eq!(priorities.len(), 0);
+    }
+
+    #[test]
+    fn remove() {
+        let mut priorities = OrderedPriorities::default();
+        priorities.insert(PriorityEntry::new(42, Account::from(1), Priority::new(2.5)));
+        priorities.insert(PriorityEntry::new(43, Account::from(2), Priority::new(3.0)));
+        priorities.insert(PriorityEntry::new(44, Account::from(3), Priority::new(3.5)));
+
+        let removed = priorities.remove(&Account::from(2)).unwrap();
+
+        assert_eq!(removed.id, 43);
+        assert_eq!(priorities.len(), 2);
+    }
 }

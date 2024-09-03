@@ -1,6 +1,6 @@
 use rsnano_core::{Account, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ErrorDto, SuccessDto, U64RpcMessage};
+use rsnano_rpc_messages::{ErrorDto, WorkDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -12,7 +12,7 @@ pub async fn work_get(
 ) -> String {
     if enable_control {
         match node.wallets.work_get2(&wallet, &account.into()) {
-            Ok(work) => to_string_pretty(&U64RpcMessage::new("work".to_string(), work)).unwrap(),
+            Ok(work) => to_string_pretty(&WorkDto::new(work.into())).unwrap(),
             Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {
@@ -23,7 +23,7 @@ pub async fn work_get(
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{Account, WalletId};
+    use rsnano_core::{Account, WalletId, WorkNonce};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
@@ -45,7 +45,7 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.work_get(wallet, account).await.unwrap() });
 
-        assert_eq!(result.value, 1);
+        assert_eq!(result.work, WorkNonce::from(1));
 
         server.abort();
     }

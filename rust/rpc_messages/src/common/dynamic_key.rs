@@ -173,8 +173,8 @@ mod tests {
         assert_eq!(
             serde_json::to_string_pretty(&block_hash_message).unwrap(),
             r#"{
-      "key": 1
-    }"#
+  "key": 1
+}"#
         );
     }
 

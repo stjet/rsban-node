@@ -20,7 +20,7 @@ mod tests {
     use serde_json;
 
     #[test]
-    fn serialize_success_dto() {
+    fn serialize_frontiers_dto() {
         let mut frontiers = HashMap::new();
         frontiers.insert(Account::zero(), BlockHash::zero());
         let frontiers_dto = FrontiersDto::new(frontiers);
@@ -30,7 +30,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_success_dto() {
+    fn deserialize_frontiers_dto() {
         let json_str = r#"{"frontiers":""}"#;
         let deserialized: FrontiersDto = serde_json::from_str(json_str).unwrap();
         let expected_error_dto = FrontiersDto::new();

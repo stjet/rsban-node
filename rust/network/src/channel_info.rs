@@ -7,7 +7,7 @@ use rsnano_nullable_clock::Timestamp;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicU8, Ordering},
         Mutex,
     },
     time::Duration,
@@ -30,8 +30,8 @@ pub struct ChannelInfo {
     direction: ChannelDirection,
 
     /// the timestamp (in seconds since epoch) of the last time there was successful activity on the socket
-    last_activity: AtomicU64,
-    last_bootstrap_attempt: AtomicU64,
+    last_activity: AtomicI64,
+    last_bootstrap_attempt: AtomicI64,
 
     /// Duration in seconds of inactivity that causes a socket timeout
     /// activity is any successful connect, send or receive event
@@ -64,8 +64,8 @@ impl ChannelInfo {
             // TODO set protocol version to 0
             protocol_version: AtomicU8::new(protocol_version),
             direction,
-            last_activity: AtomicU64::new(now.into()),
-            last_bootstrap_attempt: AtomicU64::new(0),
+            last_activity: AtomicI64::new(now.into()),
+            last_bootstrap_attempt: AtomicI64::new(0),
             timeout_seconds: AtomicU64::new(DEFAULT_TIMEOUT),
             timed_out: AtomicBool::new(false),
             socket_type: AtomicU8::new(ChannelMode::Undefined as u8),

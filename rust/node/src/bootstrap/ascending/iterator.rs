@@ -1,8 +1,7 @@
-use std::{collections::VecDeque, sync::Arc};
-
 use rsnano_core::Account;
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
+use std::{collections::VecDeque, sync::Arc};
 
 enum TableType {
     Account,

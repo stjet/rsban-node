@@ -1,3 +1,3 @@
-mod key_pair;
+mod key_expand;
 
-pub use key_pair::*;
+pub use key_expand::*;

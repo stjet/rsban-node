@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn key_expand(&self, key: RawKey) -> Result<KeyPairDto> {
+        let cmd = RpcCommand::key_expand(key);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

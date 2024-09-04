@@ -18,7 +18,7 @@ mod tests {
         assert_eq!(
             to_string_pretty(&RpcCommand::wallet_representative(WalletId::zero())).unwrap(),
             r#"{
-  "action": "wallet_create"
+  "action": "wallet_representative"
 }"#
         )
     }

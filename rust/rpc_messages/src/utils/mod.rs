@@ -1,3 +1,3 @@
-mod key_pair;
+mod deterministic_key;
 
-pub use key_pair::*;
+pub use deterministic_key::*;

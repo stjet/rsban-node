@@ -1,8 +1,8 @@
 use rsnano_core::{Account, BlockHash, HashOrAccount};
+use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,
-    time::Instant,
 };
 
 use crate::stats::DetailType;
@@ -45,7 +45,7 @@ pub(crate) struct AsyncTag {
     pub hash: BlockHash,
     pub count: usize,
     pub id: u64,
-    pub timestamp: Instant,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Default)]

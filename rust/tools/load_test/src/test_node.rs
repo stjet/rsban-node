@@ -88,7 +88,7 @@ impl TestNode {
         simultaneous_process_calls: usize,
     ) -> Result<HashMap<Account, AccountInfoDto>> {
         let destination_accounts = self.create_destination_accounts(destination_count).await?;
-        let wallet = self.node_client.wallet_create_rpc().await?;
+        let wallet = self.node_client.wallet_create().await?.wallet;
         self.add_genesis_account(wallet).await?;
         self.add_destination_accounts(&destination_accounts, wallet)
             .await?;

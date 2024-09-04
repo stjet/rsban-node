@@ -10,16 +10,16 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsnano_core::{Account, WalletId};
     use serde_json::to_string_pretty;
 
     #[test]
     fn serialize_wallet_frontiers_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_frontiers(vec![Account::zero()])).unwrap(),
+            to_string_pretty(&RpcCommand::wallet_frontiers(WalletId::zero())).unwrap(),
             r#"{
   "action": "wallet_frontiers",
-  "wallet": ""
+  "wallet": "0000000000000000000000000000000000000000000000000000000000000000"
 }"#
         )
     }
@@ -28,10 +28,10 @@ mod tests {
     fn deserialize_wallet_frontiers_command() {
         let json_str = r#"{
     "action": "wallet_frontiers",
-    "wallet": ""
+    "wallet": "0000000000000000000000000000000000000000000000000000000000000000"
     }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command = RpcCommand::wallet_frontiers(vec![Account::zero()]);
+        let expected_command = RpcCommand::wallet_frontiers(WalletId::zero());
         assert_eq!(deserialized, expected_command);
     }
 }

@@ -19,7 +19,7 @@ mod tests {
     use serde_json::{from_str, to_string};
 
     #[test]
-    fn serialize_wallet_with_accunt_args() {
+    fn serialize_wallet_with_account_args() {
         let wallet_rpc_message = WalletWithAccountArgs::new(WalletId::zero(), Account::zero());
 
         let serialized = to_string(&wallet_rpc_message).unwrap();
@@ -34,7 +34,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_wallet_with_accunt_args() {
+    fn deserialize_wallet_with_account_args() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
             "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"

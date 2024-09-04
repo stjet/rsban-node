@@ -21,7 +21,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn raw_to_nano(&self, amount: Amount) -> Result<AmountRpcMessage> {
+    pub async fn raw_to_nano(&self, amount: Amount) -> Result<AmountDto> {
         let cmd = RpcCommand::raw_to_nano(amount);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

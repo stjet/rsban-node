@@ -25,7 +25,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn account_block_count() {
+    fn account_representative() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -33,12 +33,12 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .account_representative(DEV_GENESIS_ACCOUNT.to_owned())
+                .account_representative(*DEV_GENESIS_ACCOUNT)
                 .await
                 .unwrap()
         });
 
-        assert_eq!(result.value, DEV_GENESIS_ACCOUNT.to_owned());
+        assert_eq!(result.value, *DEV_GENESIS_ACCOUNT);
 
         server.abort();
     }

@@ -14,7 +14,7 @@ mod tests {
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
-    fn serialize_account_representative_command() {
+    fn serialize_account_block_count_command() {
         assert_eq!(
             serde_json::to_string_pretty(&RpcCommand::account_representative(Account::from(123)))
                 .unwrap(),
@@ -26,7 +26,7 @@ mod tests {
     }
 
     #[test]
-    fn derialize_account_representative_command() {
+    fn derialize_account_block_count_command() {
         let account = Account::from(123);
         let cmd = RpcCommand::account_representative(account);
         let serialized = to_string_pretty(&cmd).unwrap();
@@ -34,3 +34,5 @@ mod tests {
         assert_eq!(cmd, deserialized)
     }
 }
+
+AccountsRepresentativesDto

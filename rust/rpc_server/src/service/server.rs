@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::peers;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
         _ => todo!(),
     };
 

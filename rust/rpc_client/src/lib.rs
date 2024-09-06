@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_core::{Account, Amount, BlockHash, JsonBlock, RawKey, WalletId, WorkNonce};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
@@ -27,16 +27,34 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn receive(
+        &self,
+        wallet: WalletId,
+        destination: Account,
+        block: BlockHash,
+        work: Option<WorkNonce>
+    ) -> Result<BlockHashRpcMessage> {
+        let cmd = RpcCommand::Receive(ReceiveArgs {
+            wallet,
+            account: destination,
+            block,
+            work: None
+        });
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn receive_block(
         &self,
         wallet: WalletId,
         destination: Account,
-        block: impl Into<JsonBlock>,
+        block: BlockHash,
     ) -> Result<()> {
         let request = RpcCommand::Receive(ReceiveArgs {
             wallet,
             account: destination,
-            block: block.into(),
+            block,
+            work: None
         });
         self.rpc_request(&request).await?;
         Ok(())
@@ -66,7 +84,7 @@ impl NanoRpcClient {
         destination: Account,
     ) -> Result<()> {
         let block = self.send_block(wallet, source, destination).await?;
-        self.receive_block(wallet, destination, block).await
+        self.receive_block(wallet, destination, BlockHash::zero()).await
     }
 
     pub async fn keepalive(&self, port: u16) -> Result<()> {

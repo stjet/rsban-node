@@ -42,6 +42,20 @@ impl NanoRpcClient {
         Ok(())
     }
 
+    pub async fn send(
+        &self,
+        wallet: WalletId,
+        source: Account,
+        destination: Account,
+        amount: Amount,
+        work: Option<bool>,
+        id: Option<String>,
+    ) -> Result<BlockHashRpcMessage> {
+        let request = RpcCommand::Send(SendArgs::new(wallet, source, destination, amount, work, id));
+        let result = self.rpc_request(&request).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn send_block(
         &self,
         wallet: WalletId,
@@ -53,6 +67,8 @@ impl NanoRpcClient {
             source,
             destination,
             amount: Amount::raw(1),
+            work: None,
+            id: None
         });
         let json = self.rpc_request(&request).await?;
         let block = json["block"].as_str().unwrap().to_owned();

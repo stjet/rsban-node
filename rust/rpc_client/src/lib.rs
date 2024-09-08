@@ -21,6 +21,16 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn accounts_balances(
+        &self,
+        accounts: Vec<Account>,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<AccountsBalancesDto> {
+        let cmd = RpcCommand::accounts_balances(accounts, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

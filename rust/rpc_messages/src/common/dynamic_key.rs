@@ -75,6 +75,7 @@ create_rpc_message!(BoolDto, bool);
 create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashRpcMessage, BlockHash);
+create_rpc_message!(BlocksHashesRpcMessage, Vec<BlockHash>);
 create_rpc_message!(U64RpcMessage, u64);
 
 #[cfg(test)]

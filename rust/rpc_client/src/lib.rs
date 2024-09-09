@@ -20,7 +20,13 @@ impl NanoRpcClient {
                 .unwrap(),
         }
     }
-    
+
+    pub async fn successors(&self, block: BlockHash, count: u64, offset: Option<u64>, reverse: Option<bool>) -> Result<BlocksDto> {
+        let cmd = RpcCommand::successors(block, count, offset, reverse);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn chain(&self, block: BlockHash, count: u64, offset: Option<u64>, reverse: Option<bool>) -> Result<BlocksDto> {
         let cmd = RpcCommand::chain(block, count, offset, reverse);
         let result = self.rpc_request(&cmd).await?;

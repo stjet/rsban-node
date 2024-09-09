@@ -1,37 +1,10 @@
-use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ChainArgs, BlocksDto};
-use rsnano_core::BlockHash;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
+use rsnano_node::node::Node;
+use rsnano_rpc_messages::ChainArgs;
+use super::chain;
 
-pub async fn chain(node: Arc<Node>, args: ChainArgs, successors: bool) -> String {
-    let successors = successors != args.reverse.unwrap_or(false);
-    let mut hash = args.block;
-    let count = args.count;
-    let mut offset = args.offset.unwrap_or(0);
-    let mut blocks = Vec::new();
-
-    let txn = node.store.tx_begin_read();
-    
-    while !hash.is_zero() && blocks.len() < count as usize {
-        if let Some(block) = node.ledger.any().get_block(&txn, &hash) {
-            if offset > 0 {
-                offset -= 1;
-            } else {
-                blocks.push(hash);
-            }
-
-            hash = if successors {
-                node.ledger.any().block_successor(&txn, &hash).unwrap_or_else(BlockHash::zero)
-            } else {
-                block.previous()
-            };
-        } else {
-            hash = BlockHash::zero();
-        }
-    }
-
-    to_string_pretty(&BlocksDto::new(blocks)).unwrap()
+pub async fn successors(node: Arc<Node>, args: ChainArgs, successors: bool) -> String {
+    chain(node, args, successors).await
 }
 
 #[cfg(test)]
@@ -65,7 +38,7 @@ mod tests {
     }
 
     #[test]
-    fn chain() {
+    fn successors() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -83,9 +56,8 @@ mod tests {
 
     let blocks = result.blocks;
 
-    assert_eq!(blocks.len(), 2);
+    assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0], block.hash());
-    assert_eq!(blocks[1], *DEV_GENESIS_HASH);
 
     server.abort();
     

@@ -3,7 +3,7 @@ use crate::RpcCommand;
 use serde::{Serialize, Deserialize};
 
 impl RpcCommand {
-    pub fn chain(block: BlockHash, count: u64, offset: Option<u64>, reverse: Option<bool>) -> Self {
+    pub fn successors(block: BlockHash, count: u64, offset: Option<u64>, reverse: Option<bool>) -> Self {
         Self::Chain(ChainArgs::new(block, count, offset, reverse))
     }
 }

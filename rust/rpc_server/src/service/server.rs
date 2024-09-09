@@ -54,7 +54,8 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::Chain(args) => chain(rpc_service.node, args).await,
+        RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
+        RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
         _ => todo!(),
     };
 

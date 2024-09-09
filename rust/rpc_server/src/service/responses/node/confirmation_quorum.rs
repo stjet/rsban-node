@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::ConfirmationQuorumDto;
+use rsnano_rpc_messages::{ConfirmationQuorumDto, PeerDetailsDto};
 use serde_json::to_string_pretty;
 
 pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) -> String {
@@ -13,19 +14,28 @@ pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) ->
         online_stake_total: quorum.online_weight(),
         trended_stake_total: quorum.trended_weight(),
         peers_stake_total: quorum.peered_weight(),
-        //peers: None,
+        peers: None,
     };
 
-    /*if peer_details.unwrap_or(false) {
-        let details = node.ledger.representative_details();
-        let peers = details.iter().map(|detail| PeerDetails {
-            account: detail.account.to_string(),
-            ip: detail.endpoint.to_string(),
-            weight: detail.weight.to_string(),
+    if peer_details.unwrap_or(false) {
+        let peers = quorum.peered_reps().iter().map(|rep| {
+            let endpoint = node
+                .network_info
+                .read()
+                .unwrap()
+                .get(rep.channel_id)
+                .map(|c| c.peer_addr())
+                .unwrap_or(NULL_ENDPOINT);
+
+            PeerDetailsDto {
+                account: rep.account.into(),
+                ip: endpoint,
+                weight: node.ledger.weight(&rep.account),
+            }
         }).collect();
 
-        response.peers = Some(peers);
-    }*/
+        confirmation_quorum_dto.peers = Some(peers);
+    }
 
     to_string_pretty(&confirmation_quorum_dto).unwrap()
 }

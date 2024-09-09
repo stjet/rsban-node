@@ -1,5 +1,5 @@
-use rsnano_core::Amount;
-use rsnano_node::config::Peer;
+use std::net::SocketAddrV6;
+use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use crate::RpcCommand;
 
@@ -29,5 +29,12 @@ pub struct ConfirmationQuorumDto {
     pub online_stake_total: Amount,
     pub peers_stake_total: Amount,
     pub trended_stake_total: Amount,
-    //pub peers: Option<PeerDto>,
+    pub peers: Option<Vec<PeerDetailsDto>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct PeerDetailsDto {
+    pub account: Account,
+    pub ip: SocketAddrV6,
+    pub weight: Amount,
 }

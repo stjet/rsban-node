@@ -19,6 +19,7 @@ use rsnano_core::{
     Account, Amount, PublicKey, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
+use serde::{Deserialize, Serialize};
 use std::{cmp::max, fmt, net::Ipv6Addr, str::FromStr, time::Duration};
 
 #[repr(u8)]
@@ -112,7 +113,7 @@ pub struct NodeConfig {
     pub monitor: MonitorConfig,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Peer {
     pub address: String,
     pub port: u16,

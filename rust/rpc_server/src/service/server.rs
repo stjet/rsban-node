@@ -6,12 +6,15 @@ use axum::{
     middleware::map_request,
     Router,
 };
+use rsnano_core::work;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::RpcCommand;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::work_peer_add;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +55,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WorkPeerAdd(args) => work_peer_add(rpc_service.node, rpc_service.enable_control, args.address, args.port).await,
         _ => todo!(),
     };
 

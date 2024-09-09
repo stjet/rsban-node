@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn work_peer_add(&self, address: Ipv6Addr, port: u16) -> Result<SuccessDto> {
+        let cmd = RpcCommand::work_peer_add(address, port);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

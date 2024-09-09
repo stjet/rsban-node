@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 pub async fn chain(node: Arc<Node>, args: ChainArgs) -> String {
     let successors = args.reverse.map_or(false, |r| !r);
-    println!("{:?}", successors);
     let mut hash = args.block;
     let count = args.count;
     let mut offset = args.offset.unwrap_or(0);

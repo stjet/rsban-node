@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
-use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_core::{Account, Amount, BlockHash, JsonBlock, RawKey, WalletId, WorkNonce};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
@@ -19,6 +19,12 @@ impl NanoRpcClient {
                 .build()
                 .unwrap(),
         }
+    }
+
+    pub async fn work_validate(&self, work: WorkNonce, hash: BlockHash) -> Result<WorkValidateDto> {
+        let cmd = RpcCommand::work_validate(work, hash);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
     }
 
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {

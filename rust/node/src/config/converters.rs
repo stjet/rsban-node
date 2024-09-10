@@ -1,7 +1,7 @@
 use super::{FrontiersConfirmationMode, GlobalConfig};
 use crate::{
     block_processing::{BacklogPopulationConfig, BlockProcessorConfig},
-    bootstrap::{BootstrapAscendingConfig, BootstrapInitiatorConfig},
+    bootstrap::BootstrapInitiatorConfig,
 };
 use rsnano_network::{bandwidth_limiter::OutboundBandwidthLimiterConfig, NetworkConfig};
 use std::time::Duration;
@@ -21,23 +21,6 @@ impl From<&GlobalConfig> for BlockProcessorConfig {
             full_size: value.flags.block_processor_full_size,
             batch_size: value.flags.block_processor_batch_size,
             work_thresholds: value.network_params.work.clone(),
-        }
-    }
-}
-
-impl From<&GlobalConfig> for BootstrapAscendingConfig {
-    fn from(value: &GlobalConfig) -> Self {
-        let config = &value.node_config.bootstrap_ascending;
-        Self {
-            requests_limit: config.requests_limit,
-            database_requests_limit: config.database_requests_limit,
-            pull_count: config.pull_count,
-            request_timeout: config.request_timeout,
-            throttle_coefficient: config.throttle_coefficient,
-            throttle_wait: config.throttle_wait,
-            account_sets: config.account_sets.clone(),
-            block_wait_count: config.block_wait_count,
-            min_protocol_version: value.network_params.network.bootstrap_protocol_version_min,
         }
     }
 }

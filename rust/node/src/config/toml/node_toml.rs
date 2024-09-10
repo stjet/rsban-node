@@ -9,7 +9,7 @@ use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct NodeToml {
     pub allow_local_peers: Option<bool>,
     pub background_threads: Option<u32>,
@@ -249,8 +249,47 @@ impl NodeConfig {
         if let Some(priority_bucket_toml) = &toml.priority_bucket {
             self.priority_bucket = priority_bucket_toml.into();
         }
-        if let Some(bootstrap_ascending_toml) = &toml.bootstrap_ascending {
-            self.bootstrap_ascending = bootstrap_ascending_toml.into();
+        if let Some(ascending_toml) = &toml.bootstrap_ascending {
+            let config = &mut self.bootstrap_ascending;
+            if let Some(enable) = &ascending_toml.enable {
+                config.enable = *enable;
+            }
+            if let Some(enable) = &ascending_toml.enable_dependency_walker {
+                config.enable_dependency_walker = *enable;
+            }
+            if let Some(enable) = &ascending_toml.enable_databaser_scan {
+                config.enable_database_scan = *enable;
+            }
+            if let Some(account_sets) = &ascending_toml.account_sets {
+                config.account_sets = account_sets.into();
+            }
+            if let Some(block_wait_count) = ascending_toml.block_processor_threshold {
+                config.block_processor_theshold = block_wait_count;
+            }
+            if let Some(database_rate_limit) = ascending_toml.database_rate_limit {
+                config.database_rate_limit = database_rate_limit;
+            }
+            if let Some(database_warmup_ratio) = ascending_toml.database_warmup_ratio {
+                config.database_warmup_ratio = database_warmup_ratio;
+            }
+            if let Some(pull_count) = ascending_toml.max_pull_count {
+                config.max_pull_count = pull_count;
+            }
+            if let Some(requests_limit) = ascending_toml.channel_limit {
+                config.channel_limit = requests_limit;
+            }
+            if let Some(timeout) = &ascending_toml.request_timeout {
+                config.request_timeout = Duration::from_millis(*timeout);
+            }
+            if let Some(throttle_wait) = &ascending_toml.throttle_wait {
+                config.throttle_wait = Duration::from_millis(*throttle_wait);
+            }
+            if let Some(throttle_coefficient) = ascending_toml.throttle_coefficient {
+                config.throttle_coefficient = throttle_coefficient;
+            }
+            if let Some(max) = ascending_toml.max_requests {
+                config.max_requests = max;
+            }
         }
         if let Some(bootstrap_server_toml) = &toml.bootstrap_server {
             self.bootstrap_server = bootstrap_server_toml.into();
@@ -404,5 +443,90 @@ impl From<&NodeConfig> for NodeToml {
             rep_crawler: Some(config.into()),
             experimental: Some(config.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::toml::AccountSetsToml;
+
+    #[test]
+    fn merge_bootstrap_ascending_toml() {
+        let sets_toml = AccountSetsToml {
+            blocking_max: Some(200),
+            consideration_count: Some(201),
+            cooldown: Some(203),
+            priorities_max: Some(204),
+        };
+
+        let ascending_toml = BootstrapAscendingToml {
+            enable: Some(false),
+            enable_databaser_scan: Some(false),
+            enable_dependency_walker: Some(false),
+            block_processor_threshold: Some(100),
+            database_rate_limit: Some(101),
+            max_pull_count: Some(102),
+            channel_limit: Some(103),
+            throttle_coefficient: Some(104),
+            throttle_wait: Some(105),
+            request_timeout: Some(106),
+            max_requests: Some(107),
+            database_warmup_ratio: Some(108),
+            account_sets: Some(sets_toml),
+        };
+
+        let toml = NodeToml {
+            bootstrap_ascending: Some(ascending_toml),
+            ..Default::default()
+        };
+
+        let mut cfg = NodeConfig::new_test_instance();
+        cfg.merge_toml(&toml);
+
+        let ascending = &cfg.bootstrap_ascending;
+        assert_eq!(ascending.enable, false);
+        assert_eq!(ascending.enable_database_scan, false);
+        assert_eq!(ascending.enable_dependency_walker, false);
+        assert_eq!(ascending.block_processor_theshold, 100);
+        assert_eq!(ascending.database_rate_limit, 101);
+        assert_eq!(ascending.max_pull_count, 102);
+        assert_eq!(ascending.channel_limit, 103);
+        assert_eq!(ascending.throttle_coefficient, 104);
+        assert_eq!(ascending.throttle_wait, Duration::from_millis(105));
+        assert_eq!(ascending.request_timeout, Duration::from_millis(106));
+        assert_eq!(ascending.max_requests, 107);
+        assert_eq!(ascending.database_warmup_ratio, 108);
+
+        let sets = &cfg.bootstrap_ascending.account_sets;
+        assert_eq!(sets.blocking_max, 200);
+        assert_eq!(sets.consideration_count, 201);
+        assert_eq!(sets.cooldown, Duration::from_millis(203));
+        assert_eq!(sets.priorities_max, 204);
+    }
+
+    #[test]
+    fn create_bootstrap_ascending_toml() {
+        let cfg = NodeConfig::new_test_instance();
+        let toml = NodeToml::from(&cfg);
+        let ascending_toml = toml.bootstrap_ascending.as_ref().unwrap();
+        assert_eq!(ascending_toml.enable, Some(true));
+        assert_eq!(ascending_toml.enable_databaser_scan, Some(true));
+        assert_eq!(ascending_toml.enable_dependency_walker, Some(true));
+        assert_eq!(ascending_toml.block_processor_threshold, Some(1000));
+        assert_eq!(ascending_toml.database_rate_limit, Some(256));
+        assert_eq!(ascending_toml.database_warmup_ratio, Some(10));
+        assert_eq!(ascending_toml.max_pull_count, Some(128));
+        assert_eq!(ascending_toml.channel_limit, Some(16));
+        assert_eq!(ascending_toml.throttle_coefficient, Some(1024 * 8));
+        assert_eq!(ascending_toml.throttle_wait, Some(100));
+        assert_eq!(ascending_toml.request_timeout, Some(3000));
+        assert_eq!(ascending_toml.max_requests, Some(1024));
+
+        let sets_toml = ascending_toml.account_sets.as_ref().unwrap();
+        assert_eq!(sets_toml.consideration_count, Some(4));
+        assert_eq!(sets_toml.priorities_max, Some(1024 * 256));
+        assert_eq!(sets_toml.blocking_max, Some(1024 * 256));
+        assert_eq!(sets_toml.cooldown, Some(3000));
     }
 }

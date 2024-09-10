@@ -53,25 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountInfo(AccountInfoArgs {
-            account,
-            representative,
-            weight,
-            pending,
-            receivable,
-            include_confirmed,
-        }) => {
-            account_info(
-                rpc_service.node,
-                account,
-                representative,
-                weight,
-                pending,
-                receivable,
-                include_confirmed,
-            )
-            .await
-        }
+        RpcCommand::AccountInfo(args) => account_info(rpc_service.node, args).await,
         _ => todo!(),
     };
 

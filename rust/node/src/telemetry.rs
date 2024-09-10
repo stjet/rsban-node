@@ -29,7 +29,6 @@ use rsnano_network::{ChannelId, ChannelInfo, ChannelMode, DropPolicy, NetworkInf
  * Those intervals are configurable via `telemetry_request_interval` & `telemetry_broadcast_interval` network constants
  * Telemetry datas are only removed after becoming stale (configurable via `telemetry_cache_cutoff` network constant), so peer data will still be available for a short period after that peer is disconnected
  *
- * Requests can be disabled via `disable_ongoing_telemetry_requests` node flag
  * Broadcasts can be disabled via `disable_providing_telemetry_metrics` node flag
  *
  */

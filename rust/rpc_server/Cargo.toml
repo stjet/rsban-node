@@ -14,8 +14,10 @@ anyhow = "1.0.40"
 axum = "0.7.5"
 toml = "0.8.15"
 tracing = "0.1"
+rsnano_ledger = { path = "../ledger" }
 
 [dev-dependencies]
 test_helpers = { path = "../tools/test_helpers" }
 reqwest = { version = "0" }
 rsnano_rpc_client = { path = "../rpc_client" }
+

@@ -21,6 +21,13 @@ impl NanoRpcClient {
         }
     }
 
+
+    pub async fn sign(&self, key: Option<RawKey>, wallet: Option<WalletId>, account: Option<Account>, block: JsonBlock) -> Result<SignDto> {
+        let cmd = RpcCommand::sign(key, wallet, account, block);
+        let json = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(json)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

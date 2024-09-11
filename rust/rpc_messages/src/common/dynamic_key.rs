@@ -4,7 +4,7 @@ use serde::{
     ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 #[macro_export]
 macro_rules! create_rpc_message {
@@ -76,6 +76,7 @@ create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashRpcMessage, BlockHash);
 create_rpc_message!(U64RpcMessage, u64);
+create_rpc_message!(AccountsReceivablesDto, BTreeMap<Account, Vec<BlockHash>>);
 
 #[cfg(test)]
 mod tests {

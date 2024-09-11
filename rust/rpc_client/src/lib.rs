@@ -21,6 +21,26 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn receivable(&self, account: Account,
+        count: u64,
+        threshold: Option<Amount>,
+        source: Option<bool>,
+        include_active: Option<bool>,
+        min_version: Option<bool>,
+        sorting: Option<bool>,
+        include_only_confirmed: Option<bool>) -> Result<AccountInfoDto> {
+        let cmd = RpcCommand::receivable(account,
+            count,
+            threshold,
+            source,
+            include_active,
+            min_version,
+            sorting,
+            include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

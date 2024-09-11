@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::bootstrap_lazy;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
         _ => todo!(),
     };
 

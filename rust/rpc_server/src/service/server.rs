@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use super::wallet_representative_set;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -52,6 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet_with_account.wallet, args.wallet_with_account.account, args.update_existing_accounts).await,
         _ => todo!(),
     };
 

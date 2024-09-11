@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn wallet_republish(&self, wallet: WalletId, count: u64) -> Result<BlocksDto> {
+        let cmd = RpcCommand::wallet_republish(wallet, count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

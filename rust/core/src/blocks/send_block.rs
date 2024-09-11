@@ -326,7 +326,7 @@ impl From<JsonSendBlock> for SendBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonSendBlock {
     pub previous: BlockHash,
     pub destination: Account,

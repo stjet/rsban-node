@@ -479,7 +479,7 @@ impl serde::Serialize for BlockEnum {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum JsonBlock {
     Open(JsonOpenBlock),

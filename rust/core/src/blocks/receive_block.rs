@@ -234,7 +234,7 @@ impl Block for ReceiveBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonReceiveBlock {
     pub previous: BlockHash,
     pub source: BlockHash,

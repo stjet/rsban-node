@@ -257,7 +257,7 @@ impl Block for OpenBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonOpenBlock {
     pub account: Account,
     pub source: BlockHash,

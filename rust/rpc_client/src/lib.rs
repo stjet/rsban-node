@@ -21,6 +21,12 @@ impl NanoRpcClient {
         }
     }
 
+    pub async fn bootstrap_any(&self, force: Option<bool>, id: Option<String>, account: Option<Account>) -> Result<SuccessDto> {
+        let cmd = RpcCommand::bootstrap_any(force, id, account);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

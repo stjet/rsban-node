@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::unchecked_get;
 
 #[derive(Clone)]
 struct RpcService {
@@ -52,6 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
+        RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
         _ => todo!(),
     };
 

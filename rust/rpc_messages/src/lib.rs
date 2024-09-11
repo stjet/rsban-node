@@ -22,6 +22,7 @@ pub enum RpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
+    UncheckedGet(BlockHashRpcMessage)
 }
 
 #[cfg(test)]

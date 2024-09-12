@@ -1,7 +1,6 @@
-use rsnano_core::NodeId;
-use serde::{Deserialize, Serialize};
+use rsnano_core::Account;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
-
 use crate::RpcCommand;
 
 impl RpcCommand {
@@ -27,10 +26,27 @@ pub enum PeerInfo {
     Simple(String),
     Detailed {
         protocol_version: u8,
-        node_id: NodeId,
+        #[serde(serialize_with = "serialize_node_id", deserialize_with = "deserialize_node_id")]
+        node_id: Account,
         #[serde(rename = "type")]
         connection_type: String,
     },
+}
+
+fn serialize_node_id<S>(account: &Account, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&account.to_node_id())
+}
+
+fn deserialize_node_id<'de, D>(deserializer: D) -> Result<Account, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let node_id_str = String::deserialize(deserializer)?;
+    let account_str = node_id_str.replacen("node", "nano", 1);
+    Account::decode_account(&account_str).map_err(serde::de::Error::custom)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -87,7 +103,7 @@ mod tests {
             "[::ffff:172.17.0.1]:7075".to_string(),
             PeerInfo::Detailed {
                 protocol_version: 18,
-                node_id: NodeId::decode("node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap(),
+                node_id: Account::decode_account("nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap(),
                 connection_type: "tcp".to_string(),
             },
         );
@@ -112,7 +128,7 @@ mod tests {
                 match peer_info {
                     PeerInfo::Detailed { protocol_version, node_id, connection_type } => {
                         assert_eq!(protocol_version, &18);
-                        assert_eq!(node_id, &NodeId::decode("node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap());
+                        assert_eq!(node_id, &Account::decode_account("nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap());
                         assert_eq!(connection_type, "tcp");
                     }
                     PeerInfo::Simple(_) => panic!("Expected Detailed, got Simple"),

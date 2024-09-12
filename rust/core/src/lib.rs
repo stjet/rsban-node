@@ -11,7 +11,6 @@ mod account;
 mod amount;
 mod block_hash;
 mod vote;
-mod node_id;
 
 pub use account::Account;
 pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
@@ -23,7 +22,6 @@ pub use block_hash::{BlockHash, BlockHashBuilder};
 use rand::{thread_rng, Rng};
 use serde::de::{Unexpected, Visitor};
 pub use vote::*;
-pub use node_id::*;
 
 mod key_pair;
 pub use key_pair::{

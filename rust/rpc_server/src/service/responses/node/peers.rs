@@ -1,5 +1,4 @@
 use std::{collections::HashMap, sync::Arc};
-use rsnano_core::NodeId;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto};
 
@@ -16,7 +15,7 @@ pub async fn peers(node: Arc<Node>, peer_details: Option<bool>) -> String {
             channel.ipv4_address_or_ipv6_subnet().to_string(),
             PeerInfo::Detailed {
                 protocol_version: channel.protocol_version(),
-                node_id: NodeId::new(channel.node_id().unwrap().into()),
+                node_id: channel.node_id().unwrap().into(),
                 connection_type: "tcp".to_string(),
             }
         );

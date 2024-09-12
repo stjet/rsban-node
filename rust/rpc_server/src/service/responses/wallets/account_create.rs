@@ -9,12 +9,14 @@ pub async fn account_create(
     enable_control: bool,
     wallet: WalletId,
     index: Option<u32>,
+    work: Option<bool>
 ) -> String {
     if enable_control {
+        let work = work.unwrap_or(true);
         let result = if let Some(i) = index {
-            node.wallets.deterministic_insert_at(&wallet, i, false)
+            node.wallets.deterministic_insert_at(&wallet, i, work)
         } else {
-            node.wallets.deterministic_insert2(&wallet, false)
+            node.wallets.deterministic_insert2(&wallet, work)
         };
         match result {
             Ok(account) => to_string_pretty(&AccountRpcMessage::new(
@@ -37,7 +39,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn account_create_index_none() {
+    fn account_create_options_none() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -49,7 +51,7 @@ mod tests {
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.account_create(wallet_id, None).await.unwrap() });
+            .block_on(async { rpc_client.account_create(wallet_id, None, None).await.unwrap() });
 
         assert!(node.wallets.exists(&result.value.into()));
 
@@ -69,7 +71,7 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .account_create(wallet_id, Some(u32::MAX))
+                .account_create(wallet_id, Some(u32::MAX), None)
                 .await
                 .unwrap()
         });
@@ -92,7 +94,7 @@ mod tests {
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.account_create(wallet_id, None).await });
+            .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
 
         assert!(result.is_err());
 

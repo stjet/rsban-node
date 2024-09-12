@@ -106,7 +106,7 @@ impl DistributedWorkFactory {
             .await
     }
 
-    async fn generate_in_local_work_pool(&self, root: Root, difficulty: u64) -> Option<u64> {
+    pub async fn generate_in_local_work_pool(&self, root: Root, difficulty: u64) -> Option<u64> {
         let (tx, rx) = oneshot::channel::<Option<u64>>();
         self.work_pool.generate_async(
             WorkVersion::Work1,

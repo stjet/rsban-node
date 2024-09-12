@@ -2,12 +2,12 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::mem::size_of;
-
 use crate::Root;
 
-#[derive(Clone, Copy, FromPrimitive)]
+#[derive(Clone, Copy, FromPrimitive, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum WorkVersion {
     Unspecified,
     Work1,

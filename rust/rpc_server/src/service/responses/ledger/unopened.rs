@@ -24,10 +24,6 @@ pub async fn unopened(node: Arc<Node>, enable_control: bool, account: Account, c
         let account = key.receiving_account;
 
         if node.store.account.get(&transaction, &account).is_some() {
-            //if account == Account::max() {
-                //break;
-            //}
-            // Skip existing accounts
             iterator = node.store.pending.begin_at_key(&transaction, key);
         } else {
             if account != current_account {
@@ -44,7 +40,6 @@ pub async fn unopened(node: Arc<Node>, enable_control: bool, account: Account, c
         iterator.next();
     }
 
-    // Handle the last account after the iterator reaches the end
     if accounts.len() < count as usize && !current_account_sum.is_zero() && threshold.map_or(true, |t| current_account_sum >= t) {
         accounts.insert(current_account, current_account_sum);
     }
@@ -84,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn unopened_rpc_response() {
+    fn unopened() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -101,6 +96,27 @@ mod tests {
         });
 
         assert_eq!(result.value.get(&Account::zero()).unwrap(), &Amount::raw(1));
+
+        server.abort();
+    }
+
+    #[test]
+    fn unopened_fails_without_enable_control() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .unopened(Account::zero(), 1, None)
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
 
         server.abort();
     }

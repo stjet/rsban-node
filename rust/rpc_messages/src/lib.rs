@@ -21,7 +21,7 @@ pub enum RpcCommand {
     Receive(ReceiveArgs),
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
-    WalletCreate,
+    WalletCreate(WalletCreateArgs),
 }
 
 #[cfg(test)]

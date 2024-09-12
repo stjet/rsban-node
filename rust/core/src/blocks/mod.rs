@@ -41,7 +41,7 @@ use std::{
 };
 
 #[repr(u8)]
-#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, FromPrimitive, Serialize, Deserialize)]
 pub enum BlockType {
     Invalid = 0,
     NotABlock = 1,

@@ -54,7 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::RepresentativesOnline => representatives_online(rpc_service.node).await,
+        RpcCommand::RepresentativesOnline(args) => representatives_online(rpc_service.node, args.weight, args.accounts).await,
         _ => todo!(),
     };
 

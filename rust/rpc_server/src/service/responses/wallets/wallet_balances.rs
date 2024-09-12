@@ -1,6 +1,6 @@
 use rsnano_core::{Amount, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountBalanceDto, WalletBalancesDto};
+use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -26,7 +26,7 @@ pub async fn wallet_balances(
             balances.insert(account, account_balance);
         }
     }
-    to_string_pretty(&WalletBalancesDto::new(balances)).unwrap()
+    to_string_pretty(&AccountsBalancesDto { balances }).unwrap()
 }
 
 #[cfg(test)]
@@ -37,7 +37,7 @@ mod tests {
     };
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{node::Node, wallets::WalletsExt};
-    use rsnano_rpc_messages::{AccountBalanceDto, WalletBalancesDto};
+    use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto};
     use std::{collections::HashMap, sync::Arc, time::Duration};
     use test_helpers::{assert_timely_msg, System};
 
@@ -74,7 +74,7 @@ mod tests {
             .block_on(async { rpc_client.wallet_balances(1.into(), None).await.unwrap() });
 
         let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
-        let expected_result = WalletBalancesDto {
+        let expected_result = AccountsBalancesDto {
             balances: expected_balances,
         };
 
@@ -114,7 +114,7 @@ mod tests {
             public_key.into(),
             AccountBalanceDto::new(Amount::zero(), Amount::raw(1), Amount::raw(1)),
         );
-        let expected_result = WalletBalancesDto {
+        let expected_result = AccountsBalancesDto {
             balances: expected_balances,
         };
 
@@ -147,7 +147,7 @@ mod tests {
         });
 
         let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
-        let expected_result = WalletBalancesDto {
+        let expected_result = AccountsBalancesDto {
             balances: expected_balances,
         };
 

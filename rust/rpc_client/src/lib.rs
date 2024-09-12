@@ -25,7 +25,7 @@ impl NanoRpcClient {
         &self,
         wallet: WalletId,
         threshold: Option<Amount>,
-    ) -> Result<WalletBalancesDto> {
+    ) -> Result<AccountsBalancesDto> {
         let cmd = RpcCommand::wallet_balances(wallet, threshold);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

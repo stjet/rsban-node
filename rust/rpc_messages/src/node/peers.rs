@@ -1,3 +1,4 @@
+use rsnano_core::NodeId;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -20,13 +21,13 @@ impl PeersArgs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PeerInfo {
     Simple(String),
     Detailed {
-        protocol_version: String,
-        node_id: String,
+        protocol_version: u8,
+        node_id: NodeId,
         #[serde(rename = "type")]
         connection_type: String,
     },
@@ -85,8 +86,8 @@ mod tests {
         detailed_peers.insert(
             "[::ffff:172.17.0.1]:7075".to_string(),
             PeerInfo::Detailed {
-                protocol_version: "18".to_string(),
-                node_id: "node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3".to_string(),
+                protocol_version: 18,
+                node_id: NodeId::decode("node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap(),
                 connection_type: "tcp".to_string(),
             },
         );
@@ -96,12 +97,12 @@ mod tests {
         };
 
         let json = serde_json::to_string(&peers).unwrap();
-        assert_eq!(json, r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#);
+        assert_eq!(json, r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#);
     }
 
     #[test]
     fn deserialize_detailed_peers() {
-        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#;
+        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#;
         let peers: PeersDto = serde_json::from_str(json).unwrap();
 
         match peers.peers {
@@ -110,8 +111,8 @@ mod tests {
                 let peer_info = map.get("[::ffff:172.17.0.1]:7075").unwrap();
                 match peer_info {
                     PeerInfo::Detailed { protocol_version, node_id, connection_type } => {
-                        assert_eq!(protocol_version, "18");
-                        assert_eq!(node_id, "node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3");
+                        assert_eq!(protocol_version, &18);
+                        assert_eq!(node_id, &NodeId::decode("node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3").unwrap());
                         assert_eq!(connection_type, "tcp");
                     }
                     PeerInfo::Simple(_) => panic!("Expected Detailed, got Simple"),

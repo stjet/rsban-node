@@ -1,4 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
+use rsnano_core::NodeId;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto};
 
@@ -14,8 +15,8 @@ pub async fn peers(node: Arc<Node>, peer_details: Option<bool>) -> String {
         peers.insert(
             channel.ipv4_address_or_ipv6_subnet().to_string(),
             PeerInfo::Detailed {
-                protocol_version: channel.node_id().unwrap_or_default().to_node_id(),
-                node_id: channel.protocol_version().to_string(),
+                protocol_version: channel.protocol_version(),
+                node_id: NodeId::new(channel.node_id().unwrap().into()),
                 connection_type: "tcp".to_string(),
             }
         );
@@ -42,7 +43,7 @@ mod tests {
     fn peers_without_details() {
         let mut system = System::new();
         let node1 = system.make_node();
-        let node2 = system.make_node();
+        let _node2 = system.make_node();
 
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
@@ -53,7 +54,6 @@ mod tests {
         match result.peers {
             PeerData::Simple(peers) => {
                 assert!(!peers.is_empty());
-                // Add more specific assertions for Simple peer data
             },
             PeerData::Detailed(_) => panic!("Expected Simple peer data"),
         }
@@ -65,7 +65,7 @@ mod tests {
     fn peers_with_details() {
         let mut system = System::new();
         let node1 = system.make_node();
-        let node2 = system.make_node();
+        let _node2 = system.make_node();
 
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
@@ -73,16 +73,15 @@ mod tests {
             rpc_client.peers(Some(true)).await.unwrap()
         });
 
+        println!("{:?}", result);
+
         match result.peers {
             PeerData::Detailed(peers) => {
                 assert!(!peers.is_empty());
-                // Add more specific assertions for Detailed peer data
             },
             PeerData::Simple(_) => panic!("Expected Detailed peer data"),
         }
 
         server.abort();
     }
-
-    // Additional tests can be added here
 }

@@ -21,8 +21,8 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn representatives(&self) -> Result<AccountsWithAmountsDto> {
-        let cmd = RpcCommand::representatives();
+    pub async fn representatives(&self, count: Option<u64>, sorting: Option<bool>) -> Result<AccountsWithAmountsDto> {
+        let cmd = RpcCommand::representatives(count, sorting);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

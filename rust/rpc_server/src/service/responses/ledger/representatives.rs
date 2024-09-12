@@ -4,12 +4,23 @@ use rsnano_node::node::Node;
 use rsnano_rpc_messages::AccountsWithAmountsDto;
 use serde_json::to_string_pretty;
 
-pub async fn representatives(node: Arc<Node>) -> String {
-    let representatives: HashMap<Account, Amount> = node.ledger.rep_weights.read()
+pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Option<bool>) -> String {
+    let mut representatives: Vec<(Account, Amount)> = node.ledger.rep_weights.read()
         .iter()
         .map(|(pk, amount)| (Account::from(pk), *amount))
         .collect();
-    to_string_pretty(&AccountsWithAmountsDto::new("representatives".to_string(), representatives)).unwrap()
+
+    if sorting.unwrap_or(false) {
+        representatives.sort_by(|a, b| b.1.cmp(&a.1));
+    }
+
+    let count = count.unwrap_or(std::u64::MAX);
+    let limited_representatives: HashMap<Account, Amount> = representatives
+        .into_iter()
+        .take(count as usize)
+        .collect();
+
+    to_string_pretty(&AccountsWithAmountsDto::new("representatives".to_string(), limited_representatives)).unwrap()
 }
 
 #[cfg(test)]
@@ -29,7 +40,7 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .representatives()
+                .representatives(None, None)
                 .await
                 .unwrap()
         });

@@ -22,7 +22,7 @@ pub enum RpcCommand {
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
     WalletCreate,
-    Representatives,
+    Representatives(RepresentativesArgs),
 }
 
 #[cfg(test)]

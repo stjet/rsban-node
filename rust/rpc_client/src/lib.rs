@@ -26,7 +26,7 @@ impl NanoRpcClient {
         threshold: Option<Amount>,
         source: Option<bool>,
         sorting: Option<bool>,
-        include_only_confirmed: Option<bool>) -> Result<AccountsReceivablesDto> {
+        include_only_confirmed: Option<bool>) -> Result<ReceivableDto> {
         let cmd = RpcCommand::accounts_receivable(accounts,
             count,
             threshold,

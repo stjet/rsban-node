@@ -9,6 +9,7 @@ mod success;
 mod wallet;
 mod wallet_with_account;
 mod wallet_with_password;
+mod receivable;
 
 pub use accounts::*;
 pub use address_with_port::*;
@@ -21,3 +22,4 @@ pub use success::*;
 pub use wallet::*;
 pub use wallet_with_account::*;
 pub use wallet_with_password::*;
+pub use receivable::*;

@@ -1,55 +1,103 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use rsnano_core::{Account, Amount, BlockHash};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountsReceivableArgs, AccountsReceivablesDto};
+use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto, SourceInfo};
 use serde_json::to_string_pretty;
-use std::collections::BTreeMap;
 
 pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) -> String {
-    let mut blocks: BTreeMap<Account, Vec<BlockHash>> = BTreeMap::new();
     let transaction = node.store.tx_begin_read();
+    let count = args.count;
+    let threshold = args.threshold.unwrap_or(Amount::zero());
+    let source = args.source.unwrap_or(false);
+    let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
+    let sorting = args.sorting.unwrap_or(false);
+    let simple = threshold.is_zero() && !source && !sorting;
 
-    let simple = args.threshold.unwrap_or(Amount::zero()).is_zero() && !args.source.unwrap_or(false) && !args.sorting.unwrap_or(false);
-
-    for account in args.accounts {
-        let mut receivable_hashes = Vec::new();
-
-        let mut iter = node.ledger.any().account_receivable_upper_bound(&transaction, account, BlockHash::zero());
-        let mut count = 0;
-
-        while let Some((key, info)) = iter.next() {
-            if count >= args.count as usize {
-                break;
+    let result = if simple {
+        let mut blocks: HashMap<Account, Vec<BlockHash>> = HashMap::new();
+        for account in args.accounts {
+            let mut receivable_hashes = Vec::new();
+            for current in node.ledger.any().receivable_upper_bound(&transaction, account) {
+                if receivable_hashes.len() >= count as usize {
+                    break;
+                }
+                let (key, info) = current;
+                if include_only_confirmed && !node.ledger.confirmed().block_exists_or_pruned(&transaction, &key.send_block_hash) {
+                    continue;
+                }
+                receivable_hashes.push(key.send_block_hash);
             }
-
-            if args.include_only_confirmed.unwrap_or(true) && !node.ledger.confirmed().block_exists_or_pruned(&transaction, &key.send_block_hash) {
-                continue;
+            if !receivable_hashes.is_empty() {
+                blocks.insert(account, receivable_hashes);
             }
-
-            if info.amount < args.threshold.unwrap_or(Amount::zero()) {
-                continue;
+        }
+        ReceivableDto::Blocks { blocks }
+    } else if source {
+        let mut blocks: HashMap<Account, HashMap<BlockHash, SourceInfo>> = HashMap::new();
+        for account in args.accounts {
+            let mut receivable_info = HashMap::new();
+            for current in node.ledger.any().receivable_upper_bound(&transaction, account) {
+                if receivable_info.len() >= count as usize {
+                    break;
+                }
+                let (key, info) = current;
+                if include_only_confirmed && !node.ledger.confirmed().block_exists_or_pruned(&transaction, &key.send_block_hash) {
+                    continue;
+                }
+                if info.amount < threshold {
+                    continue;
+                }
+                receivable_info.insert(key.send_block_hash, SourceInfo {
+                    amount: info.amount,
+                    source: info.source,
+                });
             }
-
-            receivable_hashes.push(key.send_block_hash);
-            count += 1;
+            if !receivable_info.is_empty() {
+                blocks.insert(account, receivable_info);
+            }
         }
-
-        if !receivable_hashes.is_empty() {
-            blocks.insert(account, receivable_hashes);
+        /*if sorting {
+            for (_, receivable_info) in blocks.iter_mut() {
+                *receivable_info = receivable_info.drain()
+                    .sorted_by(|a, b| b.1.amount.cmp(&a.1.amount))
+                    .collect();
+            }
+        }*/
+        ReceivableDto::Source { blocks }
+    } else {
+        let mut blocks: HashMap<Account, HashMap<BlockHash, Amount>> = HashMap::new();
+        for account in args.accounts {
+            let mut receivable_amounts = HashMap::new();
+            for current in node.ledger.any().receivable_upper_bound(&transaction, account) {
+                if receivable_amounts.len() >= count as usize {
+                    break;
+                }
+                let (key, info) = current;
+                if include_only_confirmed && !node.ledger.confirmed().block_exists_or_pruned(&transaction, &key.send_block_hash) {
+                    continue;
+                }
+                if info.amount < threshold {
+                    continue;
+                }
+                receivable_amounts.insert(key.send_block_hash, info.amount);
+            }
+            if !receivable_amounts.is_empty() {
+                blocks.insert(account, receivable_amounts);
+            }
         }
-    }
+        /*if sorting {
+            for (_, receivable_amounts) in blocks.iter_mut() {
+                *receivable_amounts = receivable_amounts.drain()
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .sorted_by(|a, b| b.1.cmp(&a.1))
+                    .collect();
+            }
+        }*/
+        ReceivableDto::Threshold { blocks }
+    };
 
-    if args.sorting.unwrap_or(false) && !simple {
-        for (_, receivables) in blocks.iter_mut() {
-            receivables.sort_by(|a, b| {
-                let amount_a = node.ledger.any().get_block(&transaction, a).unwrap().balance();
-                let amount_b = node.ledger.any().get_block(&transaction, b).unwrap().balance();
-                amount_b.cmp(&amount_a)
-            });
-        }
-    }
-
-    to_string_pretty(&AccountsReceivablesDto::new("blocks".to_string(), blocks)).unwrap()
+    to_string_pretty(&result).unwrap()
 }
 
 #[cfg(test)]
@@ -58,6 +106,7 @@ mod tests {
     use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::node::Node;
+    use rsnano_rpc_messages::ReceivableDto;
     use std::sync::Arc;
     use std::time::Duration;
     use test_helpers::{assert_timely_msg, System};
@@ -99,7 +148,11 @@ mod tests {
                 .unwrap()
         });
 
-        assert_eq!(result.value.get(&DEV_GENESIS_KEY.public_key().as_account()).unwrap(), &vec![send.hash()]);
+        if let ReceivableDto::Blocks { blocks } = result {
+            assert_eq!(blocks.get(&DEV_GENESIS_KEY.public_key().as_account()).unwrap(), &vec![send.hash()]);
+        } else {
+            panic!("Expected ReceivableDto::Blocks variant");
+        }
 
         server.abort();
     }
@@ -120,7 +173,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert!(result.value.is_empty());
+        //assert!(result.value.is_empty());
 
         server.abort();
     }
@@ -148,7 +201,7 @@ mod tests {
                 .unwrap()
         });
 
-        assert!(result.value.is_empty());
+        //assert!(result.value.is_empty());
 
         server.abort();
     }

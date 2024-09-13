@@ -94,7 +94,7 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .accounts_receivable(vec![DEV_GENESIS_KEY.public_key().as_account()], 1, None, None, None, None, Some(false))
+                .accounts_receivable(vec![DEV_GENESIS_KEY.public_key().as_account()], 1, None, None, None, Some(false))
                 .await
                 .unwrap()
         });

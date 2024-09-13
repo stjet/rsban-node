@@ -53,15 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::WalletReceivable(args) => {
-            wallet_receivable(
-                rpc_service.node,
-                rpc_service.enable_control,
-                args.wallet,
-                args.count,
-            )
-            .await
-        }
+        RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
         _ => todo!(),
     };
 

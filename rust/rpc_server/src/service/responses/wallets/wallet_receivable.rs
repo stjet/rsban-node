@@ -1,17 +1,12 @@
-use rsnano_core::{Account, BlockHash, PendingKey, WalletId};
+use rsnano_core::{Account, BlockHash, PendingKey};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ErrorDto, ReceivableDto};
+use rsnano_rpc_messages::{ErrorDto, ReceivableDto, WalletReceivableArgs};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn wallet_receivable(
-    node: Arc<Node>,
-    enable_control: bool,
-    wallet: WalletId,
-    count: u64,
-) -> String {
+pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, args: WalletReceivableArgs) -> String {
     if enable_control {
-        let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
+        let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
             Ok(accounts) => accounts,
             Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         };
@@ -24,7 +19,7 @@ pub async fn wallet_receivable(
                 .ledger
                 .any()
                 .receivable_upper_bound(&tx, account)
-                .take(count as usize)
+                .take(args.count as usize)
                 .map(|(k, _)| k)
                 .collect();
             pending_keys_vec.push(pending_keys);
@@ -49,7 +44,7 @@ pub async fn wallet_receivable(
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{PublicKey, RawKey, WalletId};
+    use rsnano_core::WalletId;
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
@@ -61,20 +56,11 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let wallet = WalletId::zero();
-        let private_key = RawKey::zero();
-        let public_key = PublicKey::try_from(&private_key).unwrap().into();
-
         node.wallets.create(wallet);
-
-        node.wallets
-            .insert_adhoc2(&wallet, &private_key, false)
-            .unwrap();
-
-        node.wallets.work_set(&wallet, &public_key, 1).unwrap();
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.wallet_receivable(wallet, 1).await.unwrap() });
+            .block_on(async { rpc_client.wallet_receivable(wallet, 1, None, None, None, None).await.unwrap() });
 
         server.abort();
     }
@@ -88,7 +74,7 @@ mod tests {
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.wallet_receivable(WalletId::zero(), 1).await });
+            .block_on(async { rpc_client.wallet_receivable(WalletId::zero(), 1, None, None, None, None).await });
 
         assert_eq!(
             result.err().map(|e| e.to_string()),

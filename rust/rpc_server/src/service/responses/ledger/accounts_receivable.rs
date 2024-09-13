@@ -124,4 +124,32 @@ mod tests {
 
         server.abort();
     }
+
+    #[test]
+    fn accounts_receivable_threshold_some() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let _send = send_block(node.clone());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(
+                    vec![DEV_GENESIS_KEY.public_key().as_account()],
+                    1,
+                    Some(Amount::raw(2)), 
+                    None,
+                    None,
+                    Some(false),
+                )
+                .await
+                .unwrap()
+        });
+
+        assert!(result.value.is_empty());
+
+        server.abort();
+    }
 }

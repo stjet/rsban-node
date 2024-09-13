@@ -1,6 +1,6 @@
 use rsnano_core::{Account, BlockHash, PendingKey, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ErrorDto, WalletReceivableDto};
+use rsnano_rpc_messages::{ErrorDto, ReceivableDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -30,13 +30,17 @@ pub async fn wallet_receivable(
             pending_keys_vec.push(pending_keys);
         }
 
-        let blocks: HashMap<Account, BlockHash> = pending_keys_vec
+        let blocks: HashMap<Account, Vec<BlockHash>> = pending_keys_vec
             .into_iter()
             .flatten()
-            .map(|pending_key| (pending_key.receiving_account, pending_key.send_block_hash))
-            .collect();
+            .fold(HashMap::new(), |mut acc, pending_key| {
+                acc.entry(pending_key.receiving_account)
+                    .or_insert_with(Vec::new)
+                    .push(pending_key.send_block_hash);
+                acc
+            });
 
-        to_string_pretty(&WalletReceivableDto::new(blocks)).unwrap()
+        to_string_pretty(&ReceivableDto::new(blocks)).unwrap()
     } else {
         to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }

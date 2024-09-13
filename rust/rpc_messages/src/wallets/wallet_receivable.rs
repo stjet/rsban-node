@@ -59,11 +59,11 @@ impl WalletReceivableArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::WalletId;
+    use rsnano_core::{WalletId, Amount};
     use serde_json::to_string_pretty;
 
     #[test]
-    fn serialize_wallet_receivable_command() {
+    fn serialize_wallet_receivable_command_options_none() {
         assert_eq!(
             to_string_pretty(&RpcCommand::wallet_receivable(WalletId::zero(), 1, None, None, None, None)).unwrap(),
             r#"{
@@ -75,9 +75,47 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_wallet_receivable_command() {
+    fn deserialize_wallet_receivable_command_options_none() {
         let cmd = RpcCommand::wallet_receivable(WalletId::zero(), 1, None, None, None, None);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
+        let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(cmd, deserialized)
+    }
+
+    #[test]
+    fn serialize_wallet_receivable_command_options_some() {
+        assert_eq!(
+            to_string_pretty(&RpcCommand::wallet_receivable(
+                WalletId::zero(),
+                5,
+                Some(Amount::raw(1000)),
+                Some(true),
+                Some(false),
+                Some(true)
+            )).unwrap(),
+            r#"{
+  "action": "wallet_receivable",
+  "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
+  "count": 5,
+  "threshold": "1000",
+  "source": true,
+  "min_version": false,
+  "include_only_confirmed": true
+}"#
+        )
+    }
+
+    #[test]
+    fn deserialize_wallet_receivable_command_options_some() {
+        let cmd = RpcCommand::wallet_receivable(
+            WalletId::zero(),
+            5,
+            Some(Amount::raw(1000)),
+            Some(true),
+            Some(false),
+            Some(true)
+        );
+        let serialized = serde_json::to_string(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
     }

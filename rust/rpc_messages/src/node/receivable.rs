@@ -1,6 +1,5 @@
-use rsnano_core::{Account, Amount, BlockHash};
+use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use crate::RpcCommand;
 
 impl RpcCommand {
@@ -9,7 +8,6 @@ impl RpcCommand {
         count: u64,
         threshold: Option<Amount>,
         source: Option<bool>,
-        include_active: Option<bool>,
         min_version: Option<bool>,
         sorting: Option<bool>,
         include_only_confirmed: Option<bool>
@@ -19,7 +17,6 @@ impl RpcCommand {
             count,
             threshold,
             source,
-            include_active,
             min_version,
             sorting,
             include_only_confirmed
@@ -31,11 +28,15 @@ impl RpcCommand {
 pub struct ReceivableArgs {
     pub account: Account,
     pub count: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<bool>,
-    pub include_active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub min_version: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sorting: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_only_confirmed: Option<bool>
 }
 
@@ -45,7 +46,6 @@ impl ReceivableArgs {
         count: u64,
         threshold: Option<Amount>,
         source: Option<bool>,
-        include_active: Option<bool>,
         min_version: Option<bool>,
         sorting: Option<bool>,
         include_only_confirmed: Option<bool>
@@ -55,7 +55,6 @@ impl ReceivableArgs {
             count,
             threshold,
             source,
-            include_active,
             min_version,
             sorting,
             include_only_confirmed
@@ -63,26 +62,29 @@ impl ReceivableArgs {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct ReceivableDto {
-    pub blocks: HashMap<BlockHash, BlockInfo>,
-}
+#[cfg(test)]
+mod tests {
+    use crate::RpcCommand;
+    use rsnano_core::Account;
+    use serde_json::to_string_pretty;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-
-pub struct BlockInfo {
-    amount: Amount,
-    source: Account,
-}
-
-impl ReceivableDto {
-    pub fn new() -> Self {
-        Self {
-            blocks: HashMap::new(),
-        }
+    #[test]
+    fn serialize_receivable_command() {
+        assert_eq!(
+            to_string_pretty(&RpcCommand::receivable(Account::zero(), 1, None, None, None, None, None)).unwrap(),
+            r#"{
+  "action": "receivable",
+  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+  "count": 1
+}"#
+        )
     }
 
-    pub fn add_block(&mut self, hash: BlockHash, amount: Amount, source: Account) {
-        self.blocks.insert(hash, BlockInfo { amount, source });
+    #[test]
+    fn deserialize_receivable_command() {
+        let cmd = RpcCommand::receivable(Account::zero(), 1, None, None, None, None, None);
+        let serialized = serde_json::to_string_pretty(&cmd).unwrap();
+        let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(cmd, deserialized)
     }
 }

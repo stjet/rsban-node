@@ -25,15 +25,13 @@ impl NanoRpcClient {
         count: u64,
         threshold: Option<Amount>,
         source: Option<bool>,
-        include_active: Option<bool>,
         min_version: Option<bool>,
         sorting: Option<bool>,
-        include_only_confirmed: Option<bool>) -> Result<AccountInfoDto> {
+        include_only_confirmed: Option<bool>) -> Result<ReceivableDto> {
         let cmd = RpcCommand::receivable(account,
             count,
             threshold,
             source,
-            include_active,
             min_version,
             sorting,
             include_only_confirmed);

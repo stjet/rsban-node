@@ -84,7 +84,7 @@ mod tests {
     }
 
     #[test]
-    fn accounts_receivable() {
+    fn accounts_receivable_include_only_confirmed_false() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -100,6 +100,27 @@ mod tests {
         });
 
         assert_eq!(result.value.get(&DEV_GENESIS_KEY.public_key().as_account()).unwrap(), &vec![send.hash()]);
+
+        server.abort();
+    }
+
+    #[test]
+    fn accounts_receivable_options_none() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let _send = send_block(node.clone());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(vec![DEV_GENESIS_KEY.public_key().as_account()], 1, None, None, None, None)
+                .await
+                .unwrap()
+        });
+
+        assert!(result.value.is_empty());
 
         server.abort();
     }

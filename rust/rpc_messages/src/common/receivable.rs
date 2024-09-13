@@ -18,8 +18,8 @@ pub enum ReceivableDto {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SourceInfo {
-    amount: Amount,
-    source: Account,
+    pub amount: Amount,
+    pub source: Account,
 }
 
 impl ReceivableDto {

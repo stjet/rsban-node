@@ -2191,6 +2191,7 @@ dependencies = [
  "axum",
  "reqwest 0.11.27",
  "rsnano_core",
+ "rsnano_ledger",
  "rsnano_node",
  "rsnano_rpc_client",
  "rsnano_rpc_messages",

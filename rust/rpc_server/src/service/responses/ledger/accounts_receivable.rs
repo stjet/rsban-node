@@ -3,6 +3,7 @@ use rsnano_core::{Account, Amount, BlockHash};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto, SourceInfo};
 use serde_json::to_string_pretty;
+use itertools::Itertools;
 
 pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) -> String {
     let transaction = node.store.tx_begin_read();
@@ -36,7 +37,7 @@ pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) 
         let mut blocks: HashMap<Account, HashMap<BlockHash, SourceInfo>> = HashMap::new();
         for account in args.accounts {
             let mut receivable_info = HashMap::new();
-            for current in node.ledger.any().receivable_upper_bound(&transaction, account) {
+            for current in node.ledger.any().account_receivable_upper_bound(&transaction, account, BlockHash::zero()) {
                 if receivable_info.len() >= count as usize {
                     break;
                 }
@@ -56,19 +57,19 @@ pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) 
                 blocks.insert(account, receivable_info);
             }
         }
-        /*if sorting {
+        if sorting {
             for (_, receivable_info) in blocks.iter_mut() {
                 *receivable_info = receivable_info.drain()
                     .sorted_by(|a, b| b.1.amount.cmp(&a.1.amount))
                     .collect();
             }
-        }*/
+        }
         ReceivableDto::Source { blocks }
     } else {
         let mut blocks: HashMap<Account, HashMap<BlockHash, Amount>> = HashMap::new();
         for account in args.accounts {
             let mut receivable_amounts = HashMap::new();
-            for current in node.ledger.any().receivable_upper_bound(&transaction, account) {
+            for current in node.ledger.any().account_receivable_upper_bound(&transaction, account, BlockHash::zero()) {
                 if receivable_amounts.len() >= count as usize {
                     break;
                 }
@@ -85,7 +86,7 @@ pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) 
                 blocks.insert(account, receivable_amounts);
             }
         }
-        /*if sorting {
+        if sorting {
             for (_, receivable_amounts) in blocks.iter_mut() {
                 *receivable_amounts = receivable_amounts.drain()
                     .collect::<Vec<_>>()
@@ -93,11 +94,9 @@ pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) 
                     .sorted_by(|a, b| b.1.cmp(&a.1))
                     .collect();
             }
-        }*/
+        }
         ReceivableDto::Threshold { blocks }
     };
-
-    println!("{:?}", result);
 
     to_string_pretty(&result).unwrap()
 }
@@ -144,8 +143,6 @@ mod tests {
         let private_key = RawKey::zero();
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
-
-        println!("{:?}", node.wallets.get_accounts_of_wallet(&wallet).unwrap());
 
         let send = send_block(node.clone(), public_key.into());
 
@@ -211,19 +208,53 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .accounts_receivable(
-                    vec![DEV_GENESIS_KEY.public_key().as_account()],
-                    1,
-                    Some(Amount::raw(2)), 
-                    None,
-                    None,
-                    Some(false),
-                )
+                .accounts_receivable(vec![public_key.into()], 1, Some(Amount::raw(2)), None, None, Some(false))
                 .await
                 .unwrap()
         });
 
-        //assert!(result.value.is_empty());
+        if let ReceivableDto::Threshold { blocks } = result {
+            assert_eq!(blocks.len(), 0);
+        } else {
+            panic!("Expected ReceivableDto::Threshold variant");
+        }
+
+        server.abort();
+    }
+
+    #[test]
+    fn accounts_receivable_sorting() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let wallet = WalletId::zero();
+        node.wallets.create(wallet);
+        let private_key = RawKey::zero();
+        let public_key: PublicKey = (&private_key).try_into().unwrap();
+        node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
+
+        let send = send_block(node.clone(), public_key.into());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(vec![public_key.into()], 1, None, None, Some(true), Some(false))
+                .await
+                .unwrap()
+        });
+
+        if let ReceivableDto::Threshold { blocks } = result {
+            assert_eq!(blocks.len(), 1);
+            let (recv_account, recv_blocks) = blocks.iter().next().unwrap();
+            assert_eq!(recv_account, &public_key.into());
+            assert_eq!(recv_blocks.len(), 1);
+            let (block_hash, amount) = recv_blocks.iter().next().unwrap();
+            assert_eq!(block_hash, &send.hash());
+            assert_eq!(amount, &Amount::raw(1));
+        } else {
+            panic!("Expected ReceivableDto::Threshold variant");
+        }
 
         server.abort();
     }

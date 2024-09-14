@@ -112,29 +112,33 @@ mod tests {
     use std::time::Duration;
     use test_helpers::{assert_timely_msg, System};
 
-    fn send_block(node: Arc<Node>, account: Account) -> BlockEnum {
-        let send1 = BlockEnum::State(StateBlock::new(
+    fn send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+        let transaction = node.ledger.read_txn();
+        let previous = node.ledger.any().account_head(&transaction, &*DEV_GENESIS_ACCOUNT).unwrap_or(*DEV_GENESIS_HASH);
+        let balance = node.ledger.any().account_balance(&transaction, &*DEV_GENESIS_ACCOUNT).unwrap_or(Amount::MAX);
+
+        let send = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
+            previous,
             *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(1),
+            balance - amount,
             account.into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(previous.into()),
         ));
 
-        node.process_active(send1.clone());
+        node.process_active(send.clone());
         assert_timely_msg(
             Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
+            || node.active.active(&send),
+            "not active on node",
         );
 
-        send1
+        send
     }
 
     #[test]
-    fn accounts_receivable_include_only_confirmed_true() {
+    fn accounts_receivable_include_only_confirmed() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -144,7 +148,51 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result1 = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
+                .await
+                .unwrap()
+        });
+
+        if let ReceivableDto::Blocks { blocks } = result1 {
+            assert!(blocks.is_empty());
+        } else {
+            panic!("Expected ReceivableDto::Blocks variant");
+        }
+
+        let result2 = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(false))
+                .await
+                .unwrap()
+        });
+
+        if let ReceivableDto::Blocks { blocks } = result2 {
+            assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
+        } else {
+            panic!("Expected ReceivableDto::Blocks variant");
+        }
+
+        server.abort();
+    }
+
+    #[test]
+    fn accounts_receivable_options_none() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let wallet = WalletId::zero();
+        node.wallets.create(wallet);
+        let private_key = RawKey::zero();
+        let public_key: PublicKey = (&private_key).try_into().unwrap();
+        node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
+
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
         node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
@@ -166,64 +214,6 @@ mod tests {
     }
 
     #[test]
-    fn accounts_receivable_include_only_confirmed_false() {
-        let mut system = System::new();
-        let node = system.make_node();
-
-        let wallet = WalletId::zero();
-        node.wallets.create(wallet);
-        let private_key = RawKey::zero();
-        let public_key: PublicKey = (&private_key).try_into().unwrap();
-        node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
-
-        let send = send_block(node.clone(), public_key.into());
-
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
-
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(false))
-                .await
-                .unwrap()
-        });
-
-        if let ReceivableDto::Blocks { blocks } = result {
-            assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
-        } else {
-            panic!("Expected ReceivableDto::Blocks variant");
-        }
-
-        server.abort();
-    }
-
-    #[test]
-    fn accounts_receivable_options_none() {
-        let mut system = System::new();
-        let node = system.make_node();
-
-        let wallet = WalletId::zero();
-        node.wallets.create(wallet);
-        let private_key = RawKey::zero();
-        let public_key: PublicKey = (&private_key).try_into().unwrap();
-        node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
-
-        let send = send_block(node.clone(), public_key.into());
-
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
-
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .accounts_receivable(vec![DEV_GENESIS_KEY.public_key().as_account()], 1, None, None, None, None)
-                .await
-                .unwrap()
-        });
-
-        //assert!(result.value.is_empty());
-
-        server.abort();
-    }
-
-    #[test]
     fn accounts_receivable_threshold_some() {
         let mut system = System::new();
         let node = system.make_node();
@@ -234,19 +224,22 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
+        let send2 = send_block(node.clone(), public_key.into(), Amount::raw(2));
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send2.hash());
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .accounts_receivable(vec![public_key.into()], 1, Some(Amount::raw(2)), None, None, Some(false))
+                .accounts_receivable(vec![public_key.into()], 2, Some(Amount::raw(1)), None, None, None)
                 .await
                 .unwrap()
         });
 
         if let ReceivableDto::Threshold { blocks } = result {
-            assert_eq!(blocks.len(), 0);
+            assert_eq!(blocks.get(&public_key.into()).unwrap().get(&send2.hash()).unwrap(), &Amount::raw(2));
         } else {
             panic!("Expected ReceivableDto::Threshold variant");
         }
@@ -265,7 +258,7 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 

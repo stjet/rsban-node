@@ -2,7 +2,7 @@ use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(PartialEq, Eq, Debug, Serialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ReceivableDto {
     Blocks {
@@ -14,47 +14,6 @@ pub enum ReceivableDto {
     Source {
         blocks: HashMap<Account, HashMap<BlockHash, SourceInfo>>,
     },
-}
-
-// Add a custom deserialize implementation
-impl<'de> Deserialize<'de> for ReceivableDto {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        
-        if let Some(blocks) = value.get("blocks") {
-            if blocks.is_object() {
-                let first_entry = blocks.as_object().unwrap().values().next();
-                if let Some(first_entry) = first_entry {
-                    if first_entry.is_array() {
-                        return Ok(ReceivableDto::Blocks {
-                            blocks: serde_json::from_value(blocks.clone()).map_err(serde::de::Error::custom)?,
-                        });
-                    } else if first_entry.is_object() {
-                        let first_value = first_entry.as_object().unwrap().values().next();
-                        if let Some(first_value) = first_value {
-                            if first_value.is_object() && first_value.get("amount").is_some() {
-                                return Ok(ReceivableDto::Source {
-                                    blocks: serde_json::from_value(blocks.clone()).map_err(serde::de::Error::custom)?,
-                                });
-                            } else {
-                                return Ok(ReceivableDto::Threshold {
-                                    blocks: serde_json::from_value(blocks.clone()).map_err(serde::de::Error::custom)?,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Default to Threshold if structure is unclear or empty
-        Ok(ReceivableDto::Threshold {
-            blocks: HashMap::new(),
-        })
-    }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]

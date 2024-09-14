@@ -134,6 +134,38 @@ mod tests {
     }
 
     #[test]
+    fn accounts_receivable_include_only_confirmed_true() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let wallet = WalletId::zero();
+        node.wallets.create(wallet);
+        let private_key = RawKey::zero();
+        let public_key: PublicKey = (&private_key).try_into().unwrap();
+        node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
+
+        let send = send_block(node.clone(), public_key.into());
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
+                .await
+                .unwrap()
+        });
+
+        if let ReceivableDto::Blocks { blocks } = result {
+            assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
+        } else {
+            panic!("Expected ReceivableDto::Blocks variant");
+        }
+
+        server.abort();
+    }
+
+    #[test]
     fn accounts_receivable_include_only_confirmed_false() {
         let mut system = System::new();
         let node = system.make_node();

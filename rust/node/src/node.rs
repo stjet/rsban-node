@@ -658,14 +658,12 @@ impl Node {
             publish_filter.clone(),
             block_processor.clone(),
             config.clone(),
-            flags.clone(),
             wallets.clone(),
             request_aggregator.clone(),
             vote_processor_queue.clone(),
             telemetry.clone(),
             bootstrap_server.clone(),
             ascendboot.clone(),
-            message_publisher.clone(),
         ));
 
         let keepalive_factory = Arc::new(KeepaliveFactory {

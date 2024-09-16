@@ -16,24 +16,25 @@ impl FrontiersDto {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::frontiers;
     use serde_json;
 
     #[test]
-    fn serialize_success_dto() {
+    fn serialize_frontiers_dto() {
         let mut frontiers = HashMap::new();
         frontiers.insert(Account::zero(), BlockHash::zero());
         let frontiers_dto = FrontiersDto::new(frontiers);
         let serialized = serde_json::to_string(&frontiers_dto).unwrap();
-        let expected_json = r#"{"frontiers":[""]}"#;
+        let expected_json = r#"{"frontiers":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000000000000000000000000000000000000000000000000000000"}}"#;
         assert_eq!(serialized, expected_json);
     }
 
     #[test]
-    fn deserialize_success_dto() {
-        let json_str = r#"{"frontiers":""}"#;
+    fn deserialize_frontiers_dto() {
+        let json_str = r#"{"frontiers":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000000000000000000000000000000000000000000000000000000"}}"#;
         let deserialized: FrontiersDto = serde_json::from_str(json_str).unwrap();
-        let expected_error_dto = FrontiersDto::new();
+        let mut frontiers = HashMap::new();
+        frontiers.insert(Account::zero(), BlockHash::zero());
+        let expected_error_dto = FrontiersDto::new(frontiers);
         assert_eq!(deserialized, expected_error_dto);
     }
 }

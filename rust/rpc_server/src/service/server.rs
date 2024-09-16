@@ -54,7 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations).await,
+        RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations, args.count).await,
         _ => todo!(),
     };
 

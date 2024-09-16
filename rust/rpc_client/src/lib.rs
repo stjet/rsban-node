@@ -21,8 +21,8 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn republish(&self, hash: BlockHash, sources: Option<bool>, destinations: Option<bool>) -> Result<BlocksDto> {
-        let cmd = RpcCommand::republish(hash, sources, destinations);
+    pub async fn republish(&self, hash: BlockHash, sources: Option<u64>, destinations: Option<u64>, count: Option<u64>) -> Result<BlocksDto> {
+        let cmd = RpcCommand::republish(hash, sources, destinations, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

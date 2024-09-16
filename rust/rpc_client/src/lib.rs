@@ -30,7 +30,7 @@ impl NanoRpcClient {
         min_version: Option<bool>,
         include_only_confirmed: Option<bool>
     ) -> Result<ReceivableDto> {
-        let cmd = RpcCommand::wallet_receivable(wallet, count, threshold, source, min_version, include_only_confirmed);
+        let cmd = RpcCommand::wallet_receivable(WalletWithCountArgs::new(wallet, count), threshold, source, min_version, include_only_confirmed);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

@@ -20,8 +20,8 @@ mod tests {
 
     #[test]
     fn serialize_success_dto() {
-        let error_dto = SuccessDto::new();
-        let serialized = serde_json::to_string(&error_dto).unwrap();
+        let success_dto = SuccessDto::new();
+        let serialized = serde_json::to_string(&success_dto).unwrap();
         let expected_json = r#"{"success":""}"#;
         assert_eq!(serialized, expected_json);
     }

@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount, BlockHash, PendingKey, Epoch};
+use rsnano_core::{Amount, BlockHash};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{ErrorDto, ReceivableDto, WalletReceivableArgs, SourceInfo};
+use rsnano_rpc_messages::{ReceivableDto, WalletReceivableArgs, SourceInfo};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
 
@@ -9,7 +9,7 @@ pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, args: Wall
         return json!({"error": "RPC control is disabled"}).to_string();
     }
 
-    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
+    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet_with_count.wallet) {
         Ok(accounts) => accounts,
         Err(e) => return json!({"error": e.to_string()}).to_string(),
     };
@@ -23,8 +23,8 @@ pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, args: Wall
         let mut account_blocks_source: HashMap<BlockHash, SourceInfo> = HashMap::new();
         let mut account_blocks_threshold: HashMap<BlockHash, Amount> = HashMap::new();
         let mut account_blocks_default: Vec<BlockHash> = Vec::new();
-        for (key, info) in node.ledger.any().receivable_upper_bound(&tx, account)
-            .take(args.count as usize)
+        for (key, info) in node.ledger.any().account_receivable_upper_bound(&tx, account, BlockHash::zero())
+            .take(args.wallet_with_count.count as usize)
         {
             if args.include_only_confirmed.unwrap_or(true) && 
                !node.ledger.confirmed().block_exists_or_pruned(&tx, &key.send_block_hash) {
@@ -74,35 +74,11 @@ pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, args: Wall
 
 #[cfg(test)]
 mod tests {
-    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{Account, Amount, BlockEnum, PublicKey, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY};
-    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{node::Node, wallets::WalletsExt};
+    use crate::service::responses::test_helpers::{send_block, setup_rpc_client_and_server};
+    use rsnano_core::{Amount, PublicKey, RawKey, WalletId};
+    use rsnano_node::wallets::WalletsExt;
     use rsnano_rpc_messages::ReceivableDto;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use test_helpers::{assert_timely_msg, System};
-
-    fn send_block(node: Arc<Node>, account: Account) -> BlockEnum {
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(1),
-            account.into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
-
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
-
-        send1
-    }
+    use test_helpers::System;
 
     #[test]
     fn wallet_receivable_include_only_confirmed_false() {
@@ -115,7 +91,7 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
@@ -126,8 +102,6 @@ mod tests {
                 .unwrap()
         });
         
-        println!("{:?}", result);
-
         if let ReceivableDto::Blocks { blocks } = result {
             assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
         } else {
@@ -148,7 +122,10 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let _send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
+
+        node.ledger.confirmed().block_exists_or_pruned(&node.ledger.read_txn(), &send.hash());
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
@@ -158,6 +135,12 @@ mod tests {
                 .await
                 .unwrap()
         });
+
+        if let ReceivableDto::Blocks { blocks } = result {
+            assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
+        } else {
+            panic!("Expected ReceivableDto::Blocks");
+        }
 
         server.abort();
     }
@@ -173,7 +156,10 @@ mod tests {
         let public_key: PublicKey = (&private_key).try_into().unwrap();
         node.wallets.insert_adhoc2(&wallet, &private_key, false).unwrap();
 
-        let _send = send_block(node.clone(), public_key.into());
+        let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
+        let send2 = send_block(node.clone(), public_key.into(), Amount::raw(2));
+        node.ledger.confirm(&mut node.ledger.rw_txn(), send2.hash());
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
@@ -181,8 +167,8 @@ mod tests {
             rpc_client
                 .wallet_receivable(
                     wallet,
-                    1,
-                    Some(Amount::raw(2)), 
+                     2,
+                    Some(Amount::raw(1)), 
                     None,
                     None,
                     Some(false),
@@ -190,6 +176,15 @@ mod tests {
                 .await
                 .unwrap()
         });
+
+        if let ReceivableDto::Threshold { blocks } = result {
+            let account_blocks = blocks.get(&public_key.into()).unwrap();
+            assert_eq!(account_blocks.len(), 2);
+            assert_eq!(account_blocks.get(&send.hash()).unwrap(), &Amount::raw(1));
+            assert_eq!(account_blocks.get(&send2.hash()).unwrap(), &Amount::raw(2));
+        } else {
+            panic!("Expected ReceivableDto::Threshold");
+        }
 
         server.abort();
     }

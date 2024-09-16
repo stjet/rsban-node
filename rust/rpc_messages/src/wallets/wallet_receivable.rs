@@ -2,18 +2,18 @@ use rsnano_core::{Amount, WalletId};
 use serde::{Deserialize, Serialize};
 use crate::RpcCommand;
 
+use super::{wallet_with_count, WalletWithCountArgs};
+
 impl RpcCommand {
     pub fn wallet_receivable(
-        wallet: WalletId,
-        count: u64,
+        wallet_with_count: WalletWithCountArgs,
         threshold: Option<Amount>,
         source: Option<bool>,
         min_version: Option<bool>,
         include_only_confirmed: Option<bool>
     ) -> Self {
         Self::WalletReceivable(WalletReceivableArgs {
-            wallet,
-            count,
+            wallet_with_count,
             threshold,
             source,
             min_version,
@@ -24,8 +24,8 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct WalletReceivableArgs {
-    pub wallet: WalletId,
-    pub count: u64,
+    #[serde(flatten)]
+    pub wallet_with_count: WalletWithCountArgs,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,8 +46,7 @@ impl WalletReceivableArgs {
         include_only_confirmed: Option<bool>
     ) -> Self {
         Self {
-            wallet,
-            count,
+            wallet_with_count: WalletWithCountArgs { wallet, count },
             threshold,
             source,
             min_version,
@@ -58,6 +57,7 @@ impl WalletReceivableArgs {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::RpcCommand;
     use rsnano_core::{WalletId, Amount};
     use serde_json::to_string_pretty;
@@ -65,7 +65,10 @@ mod tests {
     #[test]
     fn serialize_wallet_receivable_command_options_none() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_receivable(WalletId::zero(), 1, None, None, None, None)).unwrap(),
+            to_string_pretty(&RpcCommand::wallet_receivable(
+                WalletWithCountArgs { wallet: WalletId::zero(), count: 1 },
+                None, None, None, None
+            )).unwrap(),
             r#"{
   "action": "wallet_receivable",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -76,7 +79,10 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_command_options_none() {
-        let cmd = RpcCommand::wallet_receivable(WalletId::zero(), 1, None, None, None, None);
+        let cmd = RpcCommand::wallet_receivable(
+            WalletWithCountArgs { wallet: WalletId::zero(), count: 1 },
+            None, None, None, None
+        );
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
@@ -86,8 +92,7 @@ mod tests {
     fn serialize_wallet_receivable_command_options_some() {
         assert_eq!(
             to_string_pretty(&RpcCommand::wallet_receivable(
-                WalletId::zero(),
-                5,
+                WalletWithCountArgs { wallet: WalletId::zero(), count: 5 },
                 Some(Amount::raw(1000)),
                 Some(true),
                 Some(false),
@@ -108,8 +113,7 @@ mod tests {
     #[test]
     fn deserialize_wallet_receivable_command_options_some() {
         let cmd = RpcCommand::wallet_receivable(
-            WalletId::zero(),
-            5,
+            WalletWithCountArgs { wallet: WalletId::zero(), count: 5 },
             Some(Amount::raw(1000)),
             Some(true),
             Some(false),

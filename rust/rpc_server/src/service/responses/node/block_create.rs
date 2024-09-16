@@ -200,8 +200,8 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
-    use rsnano_ledger::DEV_GENESIS_HASH;
+    use rsnano_core::{Amount, StateBlock, WalletId, DEV_GENESIS_KEY};
+    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
@@ -209,7 +209,9 @@ mod tests {
     #[test]
     fn block_create_state() {
         let mut system = System::new();
-        let node = system.make_node();
+        let mut config = System::default_config();
+        config.online_weight_minimum = Amount::MAX;
+        let node = system.build_node().config(config).finish();
 
         let wallet_id = WalletId::zero();
         node.wallets.create(wallet_id);
@@ -217,32 +219,38 @@ mod tests {
 
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let key_pair = KeyPair::new();
-        let account: Account = key_pair.public_key().into();
-        let genesis_hash = node.network_params.ledger.genesis.hash();
-        let genesis_account: Account = DEV_GENESIS_KEY.public_key().into();
-        let balance = node.network_params.ledger.genesis_amount - Amount::raw(1);
+        // Create and process send1 block
+        let key1 = KeyPair::new();
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(100),
+            key1.account().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
 
-        let work = node.tokio.block_on(async {
-            node.distributed_work.make(genesis_hash.into(), node.network_params.work.threshold_base(WorkVersion::Work1), Some(genesis_account)).await.unwrap()
-        });
+        println!("Send1 block: {:?}", &send1);
+        node.process(send1.clone()).unwrap();
 
+        // Create receive block for key1
         let result = node.tokio.block_on(async {
             rpc_client
                 .block_create(
                     BlockType::State,
-                    Some(balance),
-                    Some(DEV_GENESIS_KEY.private_key()), 
-                    Some(wallet_id),
-                    Some(genesis_account),
-                    None, 
-                    None, 
-                    Some(genesis_account),
-                    Some(account.into()),
-                    Some(*DEV_GENESIS_HASH),
-                    Some(work.into()),
+                    Some(Amount::raw(100)),
+                    Some(key1.private_key()),
                     None,
-                    None, 
+                    Some(key1.account()),
+                    None,
+                    None,
+                    Some(key1.account()),
+                    Some(send1.hash().into()),
+                    None,
+                    None,
+                    None,
+                    None,
                 )
                 .await
                 .unwrap()
@@ -254,8 +262,14 @@ mod tests {
         assert_eq!(block.block_type(), BlockType::State);
         assert_eq!(block.hash(), block_hash);
 
-        println!("{:?}", block);
+        println!("Receive block: {:?}", block);
 
-        //node.process(block.clone()).unwrap();
+        // Process the receive block
+        node.process(block.clone()).unwrap();
+
+        // Verify the balance of key1's account
+        let tx = node.ledger.read_txn();
+        let balance = node.ledger.any().account_balance(&tx, &key1.account()).unwrap();
+        assert_eq!(balance, Amount::raw(100));
     }
 }

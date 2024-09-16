@@ -60,12 +60,12 @@ mod tests {
     use std::{sync::Arc, time::Duration};
 
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{Amount, BlockEnum, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, BlockEnum, StateBlock, WalletId, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{node::Node, wallets::WalletsExt};
     use test_helpers::{assert_timely_msg, System};
 
-    fn send_block(node: Arc<Node>) {
+    fn send_block(node: Arc<Node>) -> BlockEnum {
         let send1 = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -82,6 +82,8 @@ mod tests {
             || node.active.active(&send1),
             "not active on node 1",
         );
+
+        send1
     }
 
     #[test]
@@ -89,7 +91,7 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
 
-        send_block(node.clone());
+        let send = send_block(node.clone());
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
@@ -104,6 +106,9 @@ mod tests {
         let result = node
             .tokio
             .block_on(async { rpc_client.wallet_republish(wallet, 1).await.unwrap() });
+
+        assert!(result.blocks.len() == 1, "Expected 1 block, got {}", result.blocks.len());
+        assert_eq!(result.blocks[0], send.hash(), "Unexpected block hash");
 
         server.abort();
     }

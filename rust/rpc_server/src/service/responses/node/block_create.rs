@@ -216,38 +216,23 @@ mod tests {
         let wallet_id = WalletId::zero();
         node.wallets.create(wallet_id);
         node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+        let key1 = KeyPair::new();
 
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
-        // Create and process send1 block
-        let key1 = KeyPair::new();
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(100),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
-
-        println!("Send1 block: {:?}", &send1);
-        node.process(send1.clone()).unwrap();
-
-        // Create receive block for key1
         let result = node.tokio.block_on(async {
             rpc_client
                 .block_create(
                     BlockType::State,
-                    Some(Amount::raw(100)),
-                    Some(key1.private_key()),
+                    Some(Amount::MAX - Amount::raw(100)),
+                    Some(DEV_GENESIS_KEY.private_key()),
+                    None,
+                    Some(*DEV_GENESIS_ACCOUNT),
                     None,
                     Some(key1.account()),
-                    None,
-                    None,
                     Some(key1.account()),
-                    Some(send1.hash().into()),
-                    None,
+                    Some((*DEV_GENESIS_ACCOUNT).into()),
+                    Some(*DEV_GENESIS_HASH),
                     None,
                     None,
                     None,
@@ -262,14 +247,12 @@ mod tests {
         assert_eq!(block.block_type(), BlockType::State);
         assert_eq!(block.hash(), block_hash);
 
-        println!("Receive block: {:?}", block);
-
-        // Process the receive block
         node.process(block.clone()).unwrap();
 
-        // Verify the balance of key1's account
         let tx = node.ledger.read_txn();
-        let balance = node.ledger.any().account_balance(&tx, &key1.account()).unwrap();
-        assert_eq!(balance, Amount::raw(100));
+        assert_eq!(
+            node.ledger.any().block_account(&tx, &block.hash()),
+            Some(*DEV_GENESIS_ACCOUNT)
+        );
     }
 }

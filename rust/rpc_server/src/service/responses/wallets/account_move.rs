@@ -32,7 +32,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn account_remove() {
+    fn account_move() {
         let mut system = System::new();
         let node = system.make_node();
 

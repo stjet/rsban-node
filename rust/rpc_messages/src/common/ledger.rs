@@ -1,14 +1,16 @@
-use rsnano_core::{Account, Amount, BlockHash, WalletId};
+use rsnano_core::{Account, Amount, BlockHash};
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LedgerArgs {
-    pub wallet: WalletId,
+    pub account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub representative: Option<Account>,
+    pub count: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<Amount>,
+    pub representative: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receivable: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -20,9 +22,10 @@ pub struct LedgerArgs {
 }
 
 impl LedgerArgs {
-    pub fn new(wallet: WalletId, representative: Option<Account>, weight: Option<Amount>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Self {
+    pub fn new(account: Account, count: Option<u64>, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Self {
         Self {
-            wallet,
+            account,
+            count,
             representative,
             weight,
             receivable,
@@ -35,11 +38,11 @@ impl LedgerArgs {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LedgerDto {
-    pub accounts: HashMap<Account, AccountInfo>,
+    pub accounts: HashMap<Account, LedgerAccountInfo>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountInfo {
+pub struct LedgerAccountInfo {
     pub frontier: BlockHash,
     pub open_block: BlockHash,
     pub representative_block: BlockHash,
@@ -52,7 +55,7 @@ pub struct AccountInfo {
     pub receivable: Option<Amount>,
 }
 
-impl AccountInfo {
+impl LedgerAccountInfo {
     pub fn new(
         frontier: BlockHash,
         open_block: BlockHash,

@@ -21,8 +21,8 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn ledger(&self, wallet: WalletId, representative: Option<Account>, weight: Option<Amount>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Result<LedgerDto> {
-        let cmd = RpcCommand::ledger(wallet, representative, weight, receivable, modified_since, sorting, threshold);
+    pub async fn ledger(&self, account: Account, count: Option<u64>, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Result<LedgerDto> {
+        let cmd = RpcCommand::ledger(account, count, representative, weight, receivable, modified_since, sorting, threshold);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

@@ -52,7 +52,7 @@ impl WorkRequest {
 }
 
 pub struct DistributedWorkFactory {
-    work_pool: Arc<WorkPoolImpl>,
+    pub work_pool: Arc<WorkPoolImpl>,
     pub tokio: tokio::runtime::Handle,
 }
 

@@ -9,7 +9,6 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-
 pub struct AccountsCreateArgs {
     #[serde(flatten)]
     pub wallet_with_count: WalletWithCountArgs,
@@ -25,7 +24,6 @@ impl AccountsCreateArgs {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -1,12 +1,16 @@
 use std::sync::Arc;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateDto, ErrorDto};
-use rsnano_core::{Account, BlockBuilder, BlockType, KeyPair, PublicKey, RawKey, WorkVersion};
+use rsnano_core::{Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, BlockType, Epoch, KeyPair, PendingKey, PublicKey, RawKey, WorkVersion};
 use serde_json::to_string_pretty;
 
 pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCreateArgs) -> String {
+    if !enable_control {
+        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+    }
+
     let work_version = args.version.unwrap_or(WorkVersion::Work1);
-    let difficulty = args.difficulty.unwrap(); //_or_else(|| node.work_thresholds.threshold_base(work_version));
+    let difficulty = args.difficulty.unwrap_or_else(|| node.ledger.constants.work.threshold_base(work_version));
 
     let wallet = args.wallet;
     let account = args.account;
@@ -16,8 +20,8 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
     let amount = args.balance;
     let work = args.work;
 
-    let mut previous = args.previous;
-    let mut balance = args.balance;
+    let mut previous = args.previous.unwrap_or(BlockHash::zero());
+    let mut balance = args.balance.unwrap_or(Amount::zero());
     let mut prv_key = RawKey::default();
 
     if work.is_none() && !node.distributed_work.work_generation_enabled() {
@@ -29,8 +33,8 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
             return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap();
         }
         let tx = node.ledger.read_txn();
-        previous = node.ledger.any().account_head(&tx, &account.into()).unwrap();
-        balance = node.ledger.any().account_balance(&tx, &account.into()).unwrap();
+        previous = node.ledger.any().account_head(&tx, &account).unwrap();
+        balance = node.ledger.any().account_balance(&tx, &account).unwrap();
     }
 
     if let Some(key) = args.key {
@@ -44,7 +48,6 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
     let pub_key: PublicKey = (&prv_key).try_into().unwrap();
     let pub_key: Account = pub_key.into();
 
-    // Validate account if provided
     if let Some(account) = account {
         if account != pub_key {
             return to_string_pretty(&ErrorDto::new("Block create public key mismatch".to_string())).unwrap();
@@ -53,13 +56,13 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
 
     let key_pair: KeyPair = prv_key.into();
 
-    let block = match args.block_type {
+    let mut block = match args.block_type {
         BlockType::State => {
-            if !representative.is_zero() && (!args.link.unwrap().is_zero() || args.link.is_some()) {
+            if !representative.is_none() && (!args.link.unwrap_or_default().is_zero() || args.link.is_some()) {
                 let builder = BlockBuilder::state();
                 builder.account(pub_key)
                     .previous(previous)
-                    .representative(representative)
+                    .representative(representative.unwrap())
                     .balance(balance)
                     .link(args.link.unwrap_or_default())
                     .sign(&key_pair)
@@ -69,11 +72,11 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
             }
         },
         BlockType::LegacyOpen => {
-            if !representative.is_zero() && source.is_some() {
+            if !representative.is_none() && source.is_some() {
                 let builder = BlockBuilder::legacy_open();
                 builder.account(pub_key)
                     .source(source.unwrap())
-                    .representative(representative.into())
+                    .representative(representative.unwrap().into())
                     .sign(&key_pair)
                     .build()
             } else {
@@ -92,10 +95,10 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
             }
         },
         BlockType::LegacyChange => {
-            if !representative.is_zero() {
+            if !representative.is_none() {
                 let builder = BlockBuilder::legacy_change();
                 builder.previous(previous)
-                    .representative(representative.into())
+                    .representative(representative.unwrap().into())
                     .sign(&key_pair)
                     .build()
             } else {
@@ -103,9 +106,10 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
             }
         },
         BlockType::LegacySend => {
-            if destination.is_some() && !balance.is_zero() && !amount.is_zero() {
+            if destination.is_some() && !balance.is_zero() && !amount.is_none() {
+                let amount = amount.unwrap();
                 if balance >= amount {
-                    let mut builder = BlockBuilder::legacy_send();
+                    let builder = BlockBuilder::legacy_send();
                     builder.previous(previous)
                         .destination(destination.unwrap())
                         .balance(balance - amount)
@@ -123,22 +127,135 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
 
     let root = if !previous.is_zero() { previous } else { pub_key.into() };
 
-    /*if work.is_none() {
+    if work.is_none() {
         let difficulty = if args.difficulty.is_none() {
-            node.ledger.difficulty(&block)
+            difficulty_ledger(node.clone(),&block)
         } else {
             difficulty
         };
 
-        let work = node.work_generate(work_version, root, difficulty, Some(pub_key)).await?;
+        let work = match node.distributed_work.make(root.into(), difficulty, Some(pub_key)).await {
+            Some(work) => work,
+            None => return to_string_pretty(&ErrorDto::new("Failed to generate work".to_string())).unwrap(),
+        };
         block.set_work(work);
     } else {
-        block.set_work(work.unwrap());
-    }*/
+        block.set_work(work.unwrap().into());
+    }
 
     let hash = block.hash();
-    //let difficulty = node.work_difficulty(&block);
+    let difficulty = block.work();
     let json_block = block.json_representation();
 
-    to_string_pretty(&BlockCreateDto::new(hash, 0, json_block)).unwrap()
+    to_string_pretty(&BlockCreateDto::new(hash, difficulty, json_block)).unwrap()
+}
+
+pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
+    let mut details = BlockDetails::new(Epoch::Epoch0, false, false, false);
+    let mut details_found = false;
+
+    let transaction = node.store.tx_begin_read();
+    
+    // Previous block find
+    let mut block_previous: Option<BlockEnum> = None;
+    let previous = block.previous();
+    if !previous.is_zero() {
+        block_previous = node.ledger.any().get_block(&transaction, &previous);
+    }
+
+    // Send check
+    if let Some(prev_block) = &block_previous {
+        let is_send = node.ledger.any().block_balance(&transaction, &previous) > block.balance_field();
+        details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);
+        details_found = true;
+    }
+
+    // Epoch check
+    if let Some(prev_block) = &block_previous {
+        let epoch = prev_block.sideband().unwrap().details.epoch;
+        details = BlockDetails::new(epoch, details.is_send, details.is_receive, details.is_epoch);
+    }
+
+    // Link check
+    if let Some(link) = block.link_field() {
+        if !details.is_send {
+            if let Some(block_link) = node.ledger.any().get_block(&transaction, &link.into()) {
+                let account = block.account_field().unwrap();
+                if node.ledger.any().get_pending(&transaction, &PendingKey::new(account, link.into())).is_some() {
+                    let epoch = std::cmp::max(details.epoch, block_link.sideband().unwrap().details.epoch);
+                    details = BlockDetails::new(epoch, details.is_send, true, details.is_epoch);
+                    details_found = true;
+                }
+            }
+        }
+    }
+
+    if details_found {
+        node.network_params.work.threshold(&details)
+    } else {
+        node.network_params.work.threshold_base(block.work_version())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
+    use rsnano_ledger::DEV_GENESIS_HASH;
+    use rsnano_node::wallets::WalletsExt;
+    use test_helpers::System;
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+
+    #[test]
+    fn block_create_state() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let wallet_id = WalletId::zero();
+        node.wallets.create(wallet_id);
+        node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+
+        let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let key_pair = KeyPair::new();
+        let account: Account = key_pair.public_key().into();
+        let genesis_hash = node.network_params.ledger.genesis.hash();
+        let genesis_account: Account = DEV_GENESIS_KEY.public_key().into();
+        let balance = node.network_params.ledger.genesis_amount - Amount::raw(1);
+
+        let work = node.tokio.block_on(async {
+            node.distributed_work.make(genesis_hash.into(), node.network_params.work.threshold_base(WorkVersion::Work1), Some(genesis_account)).await.unwrap()
+        });
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .block_create(
+                    BlockType::State,
+                    Some(balance),
+                    Some(DEV_GENESIS_KEY.private_key()), 
+                    Some(wallet_id),
+                    Some(genesis_account),
+                    None, 
+                    None, 
+                    Some(genesis_account),
+                    Some(account.into()),
+                    Some(*DEV_GENESIS_HASH),
+                    Some(work.into()),
+                    None,
+                    None, 
+                )
+                .await
+                .unwrap()
+        });
+
+        let block_hash = result.hash;
+        let block: BlockEnum = result.block.into();
+
+        assert_eq!(block.block_type(), BlockType::State);
+        assert_eq!(block.hash(), block_hash);
+
+        println!("{:?}", block);
+
+        //node.process(block.clone()).unwrap();
+    }
 }

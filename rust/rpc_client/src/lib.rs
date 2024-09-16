@@ -23,15 +23,15 @@ impl NanoRpcClient {
 
     pub async fn block_create(&self, 
         block_type: BlockType,
-        balance: Amount,
+        balance: Option<Amount>,
         key: Option<RawKey>,
         wallet: Option<WalletId>,
         account: Option<Account>,
         source: Option<BlockHash>,
         destination: Option<Account>,
-        representative: Account,
+        representative: Option<Account>,
         link: Option<Link>,
-        previous: BlockHash,
+        previous: Option<BlockHash>,
         work: Option<WorkNonce>,
         version: Option<WorkVersion>,
         difficulty: Option<u64>,) -> Result<BlockCreateDto> {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{ErrorDto, WorkGenerateArgs, WorkGenerateDto};
-use rsnano_core::{Account, BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey, WorkVersion};
+use rsnano_core::{BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey, WorkVersion};
 use serde_json::to_string_pretty;
 
 pub async fn work_generate(node: Arc<Node>, enable_control: bool, args: WorkGenerateArgs) -> String {
@@ -119,5 +119,47 @@ fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
         node.network_params.work.threshold(&details)
     } else {
         node.network_params.work.threshold_base(block.work_version())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use super::*;
+    use rsnano_core::{BlockHash, WorkVersion};
+    use test_helpers::System;
+
+    #[test]
+    fn work_generate() {
+        let mut system = System::new();
+        let node = system.build_node().finish();
+
+        let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let hash = BlockHash::from_bytes([1; 32]);
+
+        let work_generate_dto = node.tokio.block_on(async { rpc_client.work_generate(
+            hash,
+            None, // difficulty
+            None, // multiplier
+            None, // version
+            None, // account
+            None, // block
+            None, // use_peers
+            ).await.unwrap()
+        });
+
+        assert_eq!(hash, work_generate_dto.hash);
+        
+        let work: u64 = work_generate_dto.work.into();
+        let result_difficulty = node.network_params.work.difficulty(WorkVersion::Work1, &hash.into(), work);
+        
+        assert_eq!(result_difficulty, work_generate_dto.difficulty);
+        
+        let expected_multiplier = DifficultyV1::to_multiplier(
+            result_difficulty,
+            node.ledger.constants.work.threshold_base(WorkVersion::Work1)
+        );
+        assert!((expected_multiplier - work_generate_dto.multiplier.unwrap()).abs() < 1e-6);
     }
 }

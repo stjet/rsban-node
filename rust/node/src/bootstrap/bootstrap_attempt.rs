@@ -5,7 +5,7 @@ use crate::{
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex_ne, utils::PropertyTree, Account, BlockEnum};
+use rsnano_core::{encode_hex, utils::PropertyTree, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use serde::Serialize;
@@ -85,7 +85,7 @@ impl BootstrapAttempt {
         incremental_id: u64,
     ) -> Result<Self> {
         let id = if id.is_empty() {
-            encode_hex_ne(HardenedConstants::get().random_128)
+            encode_hex(HardenedConstants::get().random_128)
         } else {
             id
         };

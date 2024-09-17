@@ -68,21 +68,17 @@ mod tests {
             rpc_client.unchecked_get(open.hash()).await.unwrap()
         });
 
-        // Check that the timestamp is less than or equal to the current time
         let current_timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
         assert!(unchecked_dto.modified_timestamp <= current_timestamp);
 
-        // Convert the contents to a JsonBlock
         let json_block: JsonBlock = unchecked_dto.contents;
 
-        // Assert that it's a state block
         assert!(matches!(json_block, JsonBlock::State(_)));
 
         if let JsonBlock::State(state_block) = json_block {
-            // Add assertions for state block fields
             assert_eq!(state_block.account, key.account());
             assert_eq!(state_block.previous, BlockHash::zero());
             assert_eq!(state_block.representative, key.account());

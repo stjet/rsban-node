@@ -296,7 +296,7 @@ impl WorkThresholds {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::JsonBlock;
+    use crate::{Amount, BlockHash, JsonBlock};
 
     #[test]
     fn test_parse_threshold() {
@@ -424,6 +424,17 @@ mod tests {
             .unwrap()
             .into();
         let thresholds = WorkThresholds::publish_full();
+        assert_eq!(
+            block.hash(),
+            BlockHash::decode_hex(
+                "A170D51B94E00371ACE76E35AC81DC9405D5D04D4CEBC399AEACE07AE05DD293"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            block.balance(),
+            Amount::raw(337010421085160209006996005437231978653)
+        );
         assert_eq!(thresholds.validate_entry_block(&block), false);
         assert_eq!(thresholds.difficulty_block(&block), 18446743921403126366);
     }

@@ -1,15 +1,14 @@
-use std::sync::Arc;
-use rsnano_core::{BlockHash, UncheckedInfo, UncheckedKey};
+use std::sync::{Arc, Mutex};
+use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{UncheckedKeysDto, UncheckedKeyDto};
 use serde_json::to_string_pretty;
-use std::sync::Mutex;
 
-pub async fn unchecked_keys(node: Arc<Node>, key: BlockHash, count: u64) -> String {
+pub async fn unchecked_keys(node: Arc<Node>, key: HashOrAccount, count: u64) -> String {
     let unchecked_keys = Arc::new(Mutex::new(Vec::new()));
 
     node.unchecked.for_each_with_dependency(
-        &key.into(),
+        &key,
         &mut {
             let unchecked_keys = Arc::clone(&unchecked_keys);
             move |unchecked_key: &UncheckedKey, info: &UncheckedInfo| {
@@ -37,69 +36,55 @@ pub async fn unchecked_keys(node: Arc<Node>, key: BlockHash, count: u64) -> Stri
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{Amount, BlockBuilder, BlockHash, DEV_GENESIS_KEY};
-    use rsnano_ledger::DEV_GENESIS_HASH;
-    use rsnano_node::node::Node;
-    use std::sync::Arc;
-    use std::time::Duration;
+    use rsnano_core::{BlockHash, KeyPair, StateBlockBuilder};
     use test_helpers::{assert_timely_msg, System};
-
-    fn setup_test_environment(node: Arc<Node>) -> BlockHash {
-        let genesis_hash = *DEV_GENESIS_HASH;
-        let key = rsnano_core::KeyPair::new();
-
-        // Create and process send block
-        let send = BlockBuilder::legacy_send()
-            .previous(genesis_hash)
-            .destination(key.public_key().into())
-            .balance(Amount::raw(100))
-            .sign(DEV_GENESIS_KEY.clone())
-            .work(node.work_generate_dev(genesis_hash.into()))
-            .build();
-
-        node.process_active(send.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send),
-            "send not active on node 1",
-        );
-
-        // Create and process open block
-        let open = BlockBuilder::legacy_open()
-            .source(send.hash())
-            .representative(key.public_key().into())
-            .account(key.public_key().into())
-            .sign(&key)
-            .work(node.work_generate_dev(key.public_key().into()))
-            .build();
-
-        node.process(open.clone()).unwrap();
-       /*assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&open),
-            "open not active on node 1",
-        );*/
-
-        send.hash()
-    }
+    use tokio::time::Duration;
 
     #[test]
-    fn unchecked_keys() {
+    fn test_unchecked_keys() {
         let mut system = System::new();
-        let node = system.make_node();
+        let node = system.build_node().finish();
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let hash = setup_test_environment(node.clone());
+        let key = KeyPair::new();
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+        let open = StateBlockBuilder::new()
+            .account(key.account())
+            .previous(BlockHash::zero())
+            .representative(key.account())
+            .balance(1)
+            .link(key.account())
+            .sign(&key)
+            .work(node.work_generate_dev(key.account().into()))
+            .build();
 
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .unchecked_keys(hash, 1)
-                .await
-                .unwrap()
+        let open2 = StateBlockBuilder::new()
+            .account(key.account())
+            .previous(BlockHash::zero())
+            .representative(key.account())
+            .balance(2)
+            .link(key.account())
+            .sign(&key)
+            .work(node.work_generate_dev(key.account().into()))
+            .build();
+
+        node.process_active(open.clone());
+
+        node.process_active(open2.clone());
+
+        assert_timely_msg(
+            Duration::from_secs(10),
+            || node.unchecked.len() == 2,
+            "Expected 2 unchecked blocks after 10 seconds",
+        );
+
+        let unchecked_dto = node.tokio.block_on(async {
+            rpc_client.unchecked_keys(key.account().into(), 2).await.unwrap()
         });
 
-        println!("{:?}", result);
+        assert_eq!(unchecked_dto.unchecked.len(), 2);
+        assert!(unchecked_dto.unchecked[0].hash == open.hash());
+        assert!(unchecked_dto.unchecked[1].hash == open2.hash());
 
         server.abort();
     }

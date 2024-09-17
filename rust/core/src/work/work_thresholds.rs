@@ -1,6 +1,6 @@
 use crate::{
     BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root,
-    StubDifficulty, WorkVersion, ACTIVE_NETWORK,
+    StubDifficulty, WorkVersion,
 };
 use once_cell::sync::Lazy;
 use std::cmp::{max, min};
@@ -293,12 +293,6 @@ impl WorkThresholds {
     }
 }
 
-impl Default for WorkThresholds {
-    fn default() -> Self {
-        Self::default_for(ACTIVE_NETWORK.lock().unwrap().clone())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -431,5 +425,6 @@ mod tests {
             .into();
         let thresholds = WorkThresholds::publish_full();
         assert_eq!(thresholds.validate_entry_block(&block), false);
+        assert_eq!(thresholds.difficulty_block(&block), 18446743921403126366);
     }
 }

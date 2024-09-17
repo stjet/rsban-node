@@ -11,7 +11,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
-use rsnano_core::{utils::PropertyTree, Account, BlockHash};
+use rsnano_core::{utils::PropertyTree, Account, BlockHash, Networks};
 use rsnano_network::{
     ChannelDirection, ChannelMode, Network, NetworkInfo, NetworkObserver, NullNetworkObserver,
 };
@@ -102,7 +102,7 @@ impl BootstrapConnections {
             populate_connections_started: AtomicBool::new(false),
             attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
             mutex: Mutex::new(BootstrapConnectionsData::default()),
-            config: BootstrapInitiatorConfig::default(),
+            config: BootstrapInitiatorConfig::default_for(Networks::NanoDevNetwork),
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),

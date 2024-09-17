@@ -78,7 +78,7 @@ use std::{
 };
 use std::{num::ParseIntError, sync::LazyLock};
 
-pub fn encode_hex(i: u128) -> String {
+pub fn encode_hex_ne(i: u128) -> String {
     let mut result = String::with_capacity(32);
     for byte in i.to_ne_bytes() {
         write!(&mut result, "{:02X}", byte).unwrap();

@@ -302,6 +302,7 @@ impl Default for WorkThresholds {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::JsonBlock;
 
     #[test]
     fn test_parse_threshold() {
@@ -413,5 +414,22 @@ mod tests {
             ),
             0xfffffe0000000000
         );
+    }
+
+    #[test]
+    fn validate_real_block() {
+        let json_block = r###"{
+  "type": "send",
+  "previous": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19B728948",
+  "destination": "nano_13ezf4od79h1tgj9aiu4djzcmmguendtjfuhwfukhuucboua8cpoihmh8byo",
+  "balance": "FD89D89D89D89D89D89D89D89D89D89D",
+  "signature": "5B11B17DB9C8FE0CC58CAC6A6EECEF9CB122DA8A81C6D3DB1B5EE3AB065AA8F8CB1D6765C8EB91B58530C5FF5987AD95E6D34BB57F44257E20795EE412E61600",
+  "work": "3c82cc724905ee95"
+}"###;
+        let block: BlockEnum = serde_json::from_str::<JsonBlock>(json_block)
+            .unwrap()
+            .into();
+        let thresholds = WorkThresholds::publish_full();
+        assert_eq!(thresholds.validate_entry_block(&block), false);
     }
 }

@@ -1018,6 +1018,17 @@ pub trait WalletsExt {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
+    fn receive_action2(
+        &self,
+        wallet_id: &WalletId,
+        send_hash: BlockHash,
+        representative: PublicKey,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum>;
+
     fn receive_async_wallet(
         &self,
         wallet: Arc<Wallet>,
@@ -1492,6 +1503,21 @@ impl WalletsExt for Arc<Wallets> {
             }
         }
         block
+    }
+
+    fn receive_action2(
+        &self,
+        wallet_id: &WalletId,
+        send_hash: BlockHash,
+        representative: PublicKey,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id).unwrap();
+        self.receive_action(wallet, send_hash, representative, amount, account, work, generate_work)
     }
 
     fn receive_action(

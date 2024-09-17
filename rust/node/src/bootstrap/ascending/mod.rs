@@ -163,7 +163,7 @@ impl BootstrapAscending {
                 AscPullReqType::Blocks(BlocksReqPayload {
                     start_type,
                     start: tag.start,
-                    count: self.config.max_pull_count as u8,
+                    count: tag.count as u8,
                 })
             }
             QueryType::AccountInfoByHash => AscPullReqType::AccountInfo(AccountInfoReqPayload {

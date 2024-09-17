@@ -4,7 +4,8 @@ use serde::{Serialize, Deserialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LedgerArgs {
-    pub account: Account,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -22,7 +23,7 @@ pub struct LedgerArgs {
 }
 
 impl LedgerArgs {
-    pub fn new(account: Account, count: Option<u64>, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Self {
+    pub fn new(account: Option<Account>, count: Option<u64>, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Self {
         Self {
             account,
             count,

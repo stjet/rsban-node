@@ -3,7 +3,7 @@ use rsnano_core::{Account, Amount};
 
 impl RpcCommand {
     pub fn ledger(
-        account: Account,
+        account: Option<Account>,
         count: Option<u64>,
         representative: Option<bool>,
         weight: Option<bool>,

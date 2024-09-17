@@ -17,7 +17,6 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
     let representative = args.representative.unwrap_or(false);
     let weight = args.weight.unwrap_or(false);
 
-    let mut accounts_json: HashMap<Account, LedgerAccountInfo> = HashMap::new();
     let block_transaction = node.store.tx_begin_read();
 
     // Function to process an account
@@ -40,46 +39,80 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
                 receivable_opt = Some(account_receivable);
             }
 
-            let entry = LedgerAccountInfo::new(
-                info.head,
-                info.open_block,
-                node.ledger.representative_block_hash(&block_transaction, &info.head),
-                info.balance,
-                info.modified,
-                info.block_count,
-                representative_opt,
-                weight_opt,
-                receivable_opt,
-                receivable_opt
-            );
-
             let total_balance = info.balance + receivable_opt.unwrap_or(Amount::zero());
             if total_balance >= threshold {
+                let entry = LedgerAccountInfo::new(
+                    info.head,
+                    info.open_block,
+                    node.ledger.representative_block_hash(&block_transaction, &info.head),
+                    info.balance,
+                    info.modified,
+                    info.block_count,
+                    representative_opt,
+                    weight_opt,
+                    receivable_opt,
+                    receivable_opt
+                );
                 accounts_json.insert(account, entry);
             }
         }
     };
 
-    let mut start_account = args.account;
+    let mut accounts_json: HashMap<Account, LedgerAccountInfo> = HashMap::new();
+    let mut current_account = args.account;
 
     if !sorting {
-        // Iterate through accounts
-        while let Some(info) = node.store.account.get(&block_transaction, &start_account) {
-            process_account(start_account, &info, &mut accounts_json);
+        let mut iter = node.store.account.iter(&block_transaction);
+        let mut current = iter.next();
+
+        loop {
+            let (account, info) = match current_account {
+                Some(account) => {
+                    if let Some(info) = node.store.account.get(&block_transaction, &account) {
+                        (account, info)
+                    } else {
+                        break;
+                    }
+                },
+                None => {
+                    if let Some((account, info)) = current.clone() {
+                        (account, info)
+                    } else {
+                        break;
+                    }
+                }
+            };
+
+            process_account(account, &info, &mut accounts_json);
+
             if accounts_json.len() >= count as usize {
                 break;
             }
-            start_account = node.store.account.iter(&block_transaction).next().unwrap().0;
+
+            current = iter.next();
         }
     } else {
-        // Sorting implementation
         let mut ledger_l: Vec<(Amount, Account)> = Vec::new();
-        while let Some(info) = node.store.account.get(&block_transaction, &start_account) {
-            if info.modified >= modified_since {
-                ledger_l.push((info.balance, start_account));
-            }
-            start_account = node.store.account.iter(&block_transaction).next().unwrap().0;
+        match current_account {
+            Some(account) => {
+                let mut iter = node.store.account.begin_account(&block_transaction, &account);
+                while let Some((current_account, info)) = iter.current() {
+                    if info.modified >= modified_since {
+                        ledger_l.push((info.balance, *current_account));
+                    }
+                    iter.next();
+                }
+            },
+            None => {
+                let iter = node.store.account.iter(&block_transaction);
+                for (account, info) in iter {
+                    if info.modified >= modified_since {
+                        ledger_l.push((info.balance, account));
+                    }
+                }
+            },
         }
+
         ledger_l.sort_by(|a, b| b.0.cmp(&a.0));
         for (_, account) in ledger_l {
             if let Some(info) = node.store.account.get(&block_transaction, &account) {
@@ -135,26 +168,22 @@ mod tests {
     }
 
     #[test]
-    fn test_ledger_basic_info() {
+    fn ledger_genesis() {
         let mut system = System::new();
         let node = system.build_node().finish();
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let (keys, send_block, open_block) = setup_test_environment(node.clone());
-
-        let send_amount = Amount::MAX - Amount::from(100);
-
         let result = node.tokio.block_on(async {
             rpc_client
                 .ledger(
-                    keys.account(),
-                    Some(1), // sorting
-                    Some(true),    // count
-                    Some(true), // representative
-                    Some(true), // weight
-                    None, // pending
-                    None,       // modified_since
-                    None,       // threshold
+                    None,
+                    None, 
+                    None,   
+                    None, 
+                    None, 
+                    None, 
+                    None, 
+                    None, 
                 )
                 .await
                 .unwrap()
@@ -162,20 +191,7 @@ mod tests {
 
         let accounts = result.accounts;
         assert_eq!(accounts.len(), 1);
-
-        println!("{:?}", accounts);
-        println!("{:?}", keys.account());
-
-        /*let account_info = accounts.get(&keys.account()).unwrap();
-        assert_eq!(account_info.frontier, open_block.hash());
-        assert_eq!(account_info.open_block, open_block.hash());
-        assert_eq!(account_info.representative_block, open_block.hash());
-        assert_eq!(account_info.balance, send_amount);
-        assert_eq!(account_info.block_count, 1);
-        assert_eq!(account_info.representative, Some(*DEV_GENESIS_ACCOUNT));
-        assert_eq!(account_info.weight, Some(Amount::zero()));
-        assert_eq!(account_info.pending, Some(Amount::zero()));
-        assert_eq!(account_info.receivable, Some(Amount::zero()));*/
+        assert!(accounts.contains_key(&DEV_GENESIS_ACCOUNT));
     }
 
     /*#[test]

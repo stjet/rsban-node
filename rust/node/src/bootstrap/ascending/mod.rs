@@ -653,36 +653,28 @@ impl BootstrapAscending {
 
     // TODO: This is called from a very congested blockprocessor thread. Offload this work to a dedicated processing thread
     fn batch_processed(&self, batch: &[(BlockStatus, Arc<BlockProcessorContext>)]) {
-        let mut should_notify = false;
         {
             let mut guard = self.mutex.lock().unwrap();
             let tx = self.ledger.read_txn();
             for (result, context) in batch {
-                // Do not try to unnecessarily bootstrap live traffic chains
-                if context.source == BlockSource::Bootstrap {
-                    let account = context.block.account_field().unwrap_or_else(|| {
-                        self.ledger
-                            .any()
-                            .block_account(&tx, &context.block.previous())
-                            .unwrap()
-                    });
+                let account = context.block.account_field().unwrap_or_else(|| {
+                    self.ledger
+                        .any()
+                        .block_account(&tx, &context.block.previous())
+                        .unwrap_or_default()
+                });
 
-                    guard.inspect(
-                        &self.stats,
-                        *result,
-                        &context.block,
-                        context.source,
-                        &account,
-                    );
-
-                    should_notify = true;
-                }
+                guard.inspect(
+                    &self.stats,
+                    *result,
+                    &context.block,
+                    context.source,
+                    &account,
+                );
             }
         }
 
-        if should_notify {
-            self.condition.notify_all();
-        }
+        self.condition.notify_all();
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -863,6 +855,7 @@ impl BootstrapAscendingLogic {
             }
             BlockStatus::GapSource => {
                 if source == BlockSource::Bootstrap {
+                    assert!(!account.is_zero());
                     let source = block.source_or_link();
 
                     // Mark account as blocked because it is missing the source block

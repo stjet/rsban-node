@@ -15,7 +15,7 @@ use std::{
 pub struct UncheckedMap {
     join_handle: Mutex<Option<JoinHandle<()>>>,
     thread: Arc<UncheckedMapThread>,
-    mutable: Arc<Mutex<ThreadMutableData>>,
+    pub mutable: Arc<Mutex<ThreadMutableData>>,
     condition: Arc<Condvar>,
     stats: Arc<Stats>,
     max_unchecked_blocks: usize,
@@ -192,11 +192,11 @@ impl Drop for UncheckedMap {
     }
 }
 
-struct ThreadMutableData {
+pub struct ThreadMutableData {
     stopped: bool,
     buffer: VecDeque<HashOrAccount>,
     writing_back_buffer: bool,
-    entries_container: EntriesContainer,
+    pub entries_container: EntriesContainer,
     satisfied_callback: Option<Box<dyn Fn(&UncheckedInfo) + Send>>,
 }
 

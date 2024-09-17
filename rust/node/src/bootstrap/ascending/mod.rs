@@ -651,6 +651,7 @@ impl BootstrapAscending {
         );
     }
 
+    // TODO: This is called from a very congested blockprocessor thread. Offload this work to a dedicated processing thread
     fn batch_processed(&self, batch: &[(BlockStatus, Arc<BlockProcessorContext>)]) {
         let mut should_notify = false;
         {

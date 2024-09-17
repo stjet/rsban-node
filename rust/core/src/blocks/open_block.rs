@@ -100,7 +100,7 @@ impl OpenBlock {
         let signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
-        let work = u64::from_be_bytes(work_bytes);
+        let work = u64::from_le_bytes(work_bytes);
         Ok(OpenBlock {
             work,
             signature,
@@ -190,7 +190,7 @@ impl Block for OpenBlock {
         self.hashables.representative.serialize(writer);
         self.hashables.account.serialize(writer);
         self.signature.serialize(writer);
-        writer.write_bytes_safe(&self.work.to_be_bytes());
+        writer.write_bytes_safe(&self.work.to_le_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {

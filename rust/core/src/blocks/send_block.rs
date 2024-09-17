@@ -119,7 +119,7 @@ impl SendBlock {
 
         let mut buffer = [0u8; 8];
         stream.read_bytes(&mut buffer, 8)?;
-        let work = u64::from_be_bytes(buffer);
+        let work = u64::from_le_bytes(buffer);
         Ok(SendBlock {
             hashables,
             signature,
@@ -251,7 +251,7 @@ impl Block for SendBlock {
     fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter) {
         self.hashables.serialize(writer);
         self.signature.serialize(writer);
-        writer.write_bytes_safe(&self.work.to_be_bytes());
+        writer.write_bytes_safe(&self.work.to_le_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {

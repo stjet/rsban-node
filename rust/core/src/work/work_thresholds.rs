@@ -284,8 +284,10 @@ impl WorkThresholds {
 
     //todo return true if valid!
     pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
-        self.difficulty_block(block)
-            < self.threshold_entry(block.block_type(), block.work_version())
+        let difficulty = self.difficulty_block(block);
+        let threshold = self.threshold_entry(block.block_type(), block.work_version());
+        let is_invalid = difficulty < threshold;
+        is_invalid
     }
 
     pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {

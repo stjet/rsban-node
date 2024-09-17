@@ -172,6 +172,7 @@ impl Debug for Election {
     }
 }
 
+#[derive(Debug)]
 pub struct ElectionData {
     pub status: ElectionStatus,
     pub state: ElectionState,
@@ -252,7 +253,7 @@ impl ElectionData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VoteInfo {
     pub time: SystemTime, // TODO use Instant
     pub timestamp: u64,

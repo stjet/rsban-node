@@ -47,7 +47,7 @@ impl From<ElectionStatusType> for DetailType {
 }
 
 /// Information on the status of an election
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ElectionStatus {
     pub winner: Option<Arc<BlockEnum>>,
     pub tally: Amount,

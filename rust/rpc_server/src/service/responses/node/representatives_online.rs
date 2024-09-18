@@ -13,8 +13,7 @@ pub async fn representatives_online(
     let online_reps = lock.online_reps();
     let weight = weight.unwrap_or(false);
 
-    let mut representatives_with_weight = HashMap::new();
-    let mut representatives_without_weight = HashMap::new();
+    let mut representatives = HashMap::new();
 
     let accounts_to_filter = accounts.unwrap_or_default();
     let filtering = !accounts_to_filter.is_empty();
@@ -22,25 +21,20 @@ pub async fn representatives_online(
     for pk in online_reps {
         let account = Account::from(pk.clone());
 
-        if filtering {
-            if !accounts_to_filter.contains(&account) {
-                continue;
-            }
+        if filtering && !accounts_to_filter.contains(&account) {
+            continue;
         }
 
-        if weight {
-            let account_weight = node.ledger.weight(&pk);
-            representatives_with_weight.insert(account, account_weight);
+        let account_weight = if weight {
+            Some(node.ledger.weight(&pk))
         } else {
-            representatives_without_weight.insert(account, String::new());
-        }
+            None
+        };
+
+        representatives.insert(account, account_weight);
     }
 
-    let dto = if weight {
-        RepresentativesOnlineDto::WithWeight(representatives_with_weight)
-    } else {
-        RepresentativesOnlineDto::WithoutWeight(representatives_without_weight)
-    };
+    let dto = RepresentativesOnlineDto { representatives };
 
     to_string_pretty(&dto).unwrap()
 }
@@ -48,51 +42,14 @@ pub async fn representatives_online(
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
-
-    use super::*;
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::wallets::{Wallet, WalletsExt};
-    use rsnano_rpc_client::NanoRpcClient;
+    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
+    use rsnano_node::wallets::WalletsExt;
     use test_helpers::{assert_timely_msg, System};
-    use rsnano_core::{Amount, PublicKey, WalletId, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
 
     #[test]
     fn representatives_online() {
-        let mut system = System::new();
-        let node = system.make_node();
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
-
-        let result = node.tokio.block_on(async {
-            rpc_client.representatives_online(None, None).await.unwrap()
-        });
-
-        assert_eq!(result.value.len(), 1);
-        assert!(result.value.contains_key(&DEV_GENESIS_ACCOUNT));
-
-        server.abort();
-    }
-
-    #[test]
-    fn representatives_online_with_weight() {
-        let mut system = System::new();
-        let node = system.make_node();
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
-
-        let result = node.tokio.block_on(async {
-            rpc_client.representatives_online(Some(true), None).await.unwrap()
-        });
-
-        assert_eq!(result.value.len(), 1);
-        let (account, weight) = result.value.iter().next().unwrap();
-        assert_eq!(*account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(*weight, Amount::MAX);
-
-        server.abort();
-    }
-
-    #[test]
-    fn representatives_online_with_accounts_filter() {
         let mut system = System::new();
         let node = system.make_node();
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
@@ -103,40 +60,50 @@ mod tests {
         node.wallets.create(wallet2);
         node.wallets.insert_adhoc2(&wallet, &(*DEV_GENESIS_KEY).private_key(), true).unwrap();
         let new_rep = node.wallets.deterministic_insert2(&wallet2, true).unwrap();
-        let send_amount = Amount::from(1000000);
-        
+        let send_amount = Amount::raw(1_000_000_000_000_000_000_000_000u128); // 1 Gxrb
+
+        // Send funds to new representative
         let send = node.wallets.send_action2(&wallet, *DEV_GENESIS_ACCOUNT, new_rep.into(), send_amount, 0, true, None).unwrap();
-        let send_hash = send.hash();
         node.process_active(send.clone());
 
         assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send),
-            "open not active on node 1",
+            Duration::from_secs(10),
+            || node.online_reps.lock().unwrap().online_reps().next().is_some(),
+            "representatives not online",
         );
 
-        //let wallets = node.wallets.mutex.lock().unwrap();
-        //let wallet = wallets.get(&wallet).unwrap();
+        // Check online weight
+        let online_weight = node.online_reps.lock().unwrap().online_weight();
+        assert_eq!(online_weight, Amount::MAX - send_amount);
 
-        let receive = node.wallets.receive_action2(&wallet2, send_hash, new_rep, send_amount, new_rep.into(), 0, true).unwrap();
-        /*node.process_active(receive);
-
-        let change = node.wallets.change_action(&wallet, *DEV_GENESIS_ACCOUNT, new_rep, 0, true).unwrap();
-        node.process_active(change);
-
-        // Wait for the new representative to be recognized
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
-        let filtered_accounts = vec![Account::from(new_rep)];
-        
+        // RPC call
         let result = node.tokio.block_on(async {
-            rpc_client.representatives_online(Some(true), Some(filtered_accounts)).await.unwrap()
+            rpc_client.representatives_online(Some(false), None).await.unwrap()
         });
-            
-        assert_eq!(result.value.len(), 1);
-        assert!(result.value.contains_key(&Account::from(new_rep)));
-        assert_eq!(result.value[&Account::from(new_rep)], send_amount);*/
+
+        // Check if genesis account is in the representatives list
+        assert!(result.value.contains_key(&(*DEV_GENESIS_ACCOUNT)));
+
+        // Ensure weight is not included
+        assert!(result.value.values().all(|v| v.is_none()));
+
+        // Check with weight
+        let result_with_weight = node.tokio.block_on(async {
+            rpc_client.representatives_online(Some(true), None).await.unwrap()
+        });
+
+        // Check if genesis account is in the representatives list and has the correct weight
+        let genesis_weight = result_with_weight.value.get(&(DEV_GENESIS_ACCOUNT)).unwrap().unwrap();
+        assert_eq!(genesis_weight, (Amount::MAX - send_amount));
+
+        // Ensure the block is received
+        assert_timely_msg(
+            Duration::from_secs(5),
+            || node.ledger.any().get_block(&node.ledger.read_txn(), &send.hash()).is_some(),
+            "send block not received",
+        );
 
         server.abort();
     }
 }
+

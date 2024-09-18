@@ -76,7 +76,7 @@ create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashRpcMessage, BlockHash);
 create_rpc_message!(U64RpcMessage, u64);
-create_rpc_message!(AccountsWithAmountsDto, HashMap<Account, Amount>);
+create_rpc_message!(AccountsWithAmountsDto, HashMap<Account, Option<Amount>>);
 
 
 #[cfg(test)]
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn serialize_accounts_with_amounts_dto() {
         let mut accounts = HashMap::new();
-        accounts.insert(Account::zero(), Amount::from(1000));
+        accounts.insert(Account::zero(), Some(Amount::from(1000)));
         
         let message = AccountsWithAmountsDto::new("accounts".to_string(), accounts);
         
@@ -218,6 +218,6 @@ mod tests {
         let deserialized: AccountsWithAmountsDto = serde_json::from_str(json).unwrap();
         
         assert_eq!(deserialized.key, "accounts");
-        assert_eq!(deserialized.value.get(&Account::zero()), Some(&Amount::from(1000)));
+        assert_eq!(deserialized.value.get(&Account::zero()), Some(&Some(Amount::from(1000))));
     }
 }

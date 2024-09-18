@@ -1551,7 +1551,6 @@ impl WalletsExt for Arc<Wallets> {
                 "Not receiving block {} due to minimum receive threshold",
                 send_hash
             );
-            println!(".............");
             return None;
         }
 
@@ -1601,13 +1600,13 @@ impl WalletsExt for Arc<Wallets> {
                         epoch = pending_info.epoch;
                     }
                 } else {
-                    println!("Unable to receive, wallet locked");
+                    warn!("Unable to receive, wallet locked");
                 }
             } else {
-                println!("Ledger doesn't have this marked as available to receive anymore")
+                warn!("Ledger doesn't have this marked as available to receive anymore")
             }
         } else {
-            println!("Ledger doesn't have this block anymore.")
+            warn!("Ledger doesn't have this block anymore.")
         }
 
         if let Some(b) = block {
@@ -1623,11 +1622,9 @@ impl WalletsExt for Arc<Wallets> {
                 )
                 .is_err()
             {
-                println!("!!!!!!!!!!!!!!!");
                 // Return null block after work generation or ledger process error
                 block = None;
             } else {
-                println!("????????????????");
                 // block arc gets changed by block_processor! So we have to copy it back.
                 block = Some(arc_block.deref().clone())
             }

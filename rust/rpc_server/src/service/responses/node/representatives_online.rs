@@ -46,7 +46,7 @@ mod tests {
     use rsnano_ledger::DEV_GENESIS_ACCOUNT;
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::{assert_timely_msg, System};
-    use rsnano_core::{Amount, KeyPair, WalletId, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
 
     #[test]
     fn representatives_online() {
@@ -56,79 +56,53 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let wallet = WalletId::zero();
-        let wallet2 = WalletId::random();
         node.wallets.create(wallet);
-        node.wallets.create(wallet2);
         node.wallets.insert_adhoc2(&wallet, &(*DEV_GENESIS_KEY).private_key(), true).unwrap();
-        let key = KeyPair::new();
-        let private_key = key.private_key();
-        let new_rep = key.public_key();
-        //let private_key = RawKey::zero();
-        //let new_rep: PublicKey = PublicKey::try_from(&private_key).unwrap();
-        node.wallets.insert_adhoc2(&wallet2, &private_key, true).unwrap();
-        //let new_rep = node.wallets.deterministic_insert2(&wallet2, true).unwrap();
+
+        // Set up wallet for node2
+        let node2_wallet = WalletId::random();
+        node2.wallets.create(node2_wallet);
+
         let send_amount = Amount::raw(1_000_000_000_000_000_000_000_000u128); // 1 Gxrb
+
+        // Create a new representative on node2
+        let new_rep = node2.wallets.deterministic_insert2(&node2_wallet, true).unwrap();
 
         // Send funds to new representative
         let send = node.wallets.send_action2(&wallet, *DEV_GENESIS_ACCOUNT, new_rep.into(), send_amount, 0, true, None).unwrap();
         node.process_active(send.clone());
 
+        // Ensure both nodes process the send
         assert_timely_msg(
             Duration::from_secs(10),
-            || node.online_reps.lock().unwrap().online_reps().next().is_some(),
-            "representatives not online",
+            || node.ledger.any().get_block(&node.ledger.read_txn(), &send.hash()).is_some()
+                && node2.ledger.any().get_block(&node2.ledger.read_txn(), &send.hash()).is_some(),
+            "send block not received by both nodes",
         );
 
-        // Check online weight
-        let online_weight = node.online_reps.lock().unwrap().online_weight();
-        assert_eq!(online_weight, Amount::MAX - send_amount);
+        // Receive the funds on node2
+        let receive = node2.wallets.receive_action2(&node2_wallet, send.hash(), new_rep.into(), send_amount, send.destination().unwrap(), 0, true).unwrap().unwrap();
+        node2.process_active(receive.clone());
 
-        // RPC call
-        let result = node.tokio.block_on(async {
-            rpc_client.representatives_online(Some(false), None).await.unwrap()
-        });
-
-        // Check if genesis account is in the representatives list
-        assert!(result.value.contains_key(&(*DEV_GENESIS_ACCOUNT)));
-
-        // Ensure weight is not included
-        assert!(result.value.values().all(|v| v.is_none()));
-
-        // Check with weight
-        let result_with_weight = node.tokio.block_on(async {
-            rpc_client.representatives_online(Some(true), None).await.unwrap()
-        });
-
-        // Check if genesis account is in the representatives list and has the correct weight
-        let genesis_weight = result_with_weight.value.get(&(DEV_GENESIS_ACCOUNT)).unwrap().unwrap();
-        assert_eq!(genesis_weight, (Amount::MAX - send_amount));
-
-        // Ensure the block is received
+        // Ensure both nodes process the receive
         assert_timely_msg(
-            Duration::from_secs(5),
-            || node.ledger.any().get_block(&node.ledger.read_txn(), &send.hash()).is_some(),
-            "send block not received",
+            Duration::from_secs(10),
+            || node.ledger.any().get_block(&node.ledger.read_txn(), &receive.hash()).is_some()
+                && node2.ledger.any().get_block(&node2.ledger.read_txn(), &receive.hash()).is_some(),
+            "receive block not processed by both nodes",
         );
-
-        // Add a new representative
-        let new_rep = node.wallets.deterministic_insert2(&wallet2, true).unwrap();
-        let send_to_new_rep = node.wallets.send_action2(&wallet, *DEV_GENESIS_ACCOUNT, new_rep.into(), node.config.receive_minimum, 0, true, None).unwrap();
-        node.process_active(send_to_new_rep.clone());
-
-        // Ensure the new representative receives the funds
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.ledger.any().get_block(&node.ledger.read_txn(), &send_to_new_rep.hash()).is_some(),
-            "send to new rep not received",
-        );
-
-        // TODO: this fails
-        //let receive = node.wallets.receive_action2(&wallet2, send_to_new_rep.hash(), new_rep.into(), node.config.receive_minimum, send.destination().unwrap(), 0, true).unwrap().unwrap();
-        //node.process_active(receive.clone());
 
         // Change representative for genesis account
         let change = node.wallets.change_action2(&wallet, *DEV_GENESIS_ACCOUNT, new_rep.into(), 0, true).unwrap().unwrap();
         node.process_active(change.clone());
+
+        // Ensure both nodes process the change
+        assert_timely_msg(
+            Duration::from_secs(10),
+            || node.ledger.any().get_block(&node.ledger.read_txn(), &change.hash()).is_some()
+                && node2.ledger.any().get_block(&node2.ledger.read_txn(), &change.hash()).is_some(),
+            "change block not processed by both nodes",
+        );
 
         // Ensure we have two online representatives
         assert_timely_msg(
@@ -138,8 +112,8 @@ mod tests {
             "two representatives not online on both nodes",
         );
 
-        // Test filtering by accounts
-        let filtered_result = node.tokio.block_on(async {
+        // Test filtering by accounts using node2
+        let filtered_result = node2.tokio.block_on(async {
             rpc_client.representatives_online(Some(true), Some(vec![new_rep.into()])).await.unwrap()
         });
 

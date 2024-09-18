@@ -2,8 +2,9 @@ use std::sync::Arc;
 use rsnano_core::BlockHash;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::BoolDto;
+use serde_json::to_string_pretty;
 
-pub async fn receivable_exists(node: Arc<Node>, hash: BlockHash, include_active: Option<bool>, include_only_confirmed: Option<bool>) -> BoolDto {
+pub async fn receivable_exists(node: Arc<Node>, hash: BlockHash, include_active: Option<bool>, include_only_confirmed: Option<bool>) -> String {
     let include_active = include_active.unwrap_or(false);
     let include_only_confirmed = include_only_confirmed.unwrap_or(true);
     let txn = node.ledger.read_txn();
@@ -25,9 +26,8 @@ pub async fn receivable_exists(node: Arc<Node>, hash: BlockHash, include_active:
         } else {
             false
         };
-    
 
-    BoolDto::new("exists".to_string(), exists)
+    to_string_pretty(&BoolDto::new("exists".to_string(), exists)).unwrap()
 }
 
 fn block_confirmed(node: Arc<Node>, hash: &BlockHash, include_active: bool, include_only_confirmed: bool) -> bool {
@@ -48,4 +48,100 @@ fn block_confirmed(node: Arc<Node>, hash: &BlockHash, include_active: bool, incl
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+    use rsnano_node::node::Node;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use test_helpers::{assert_timely_msg, System};
+
+    fn send_block(node: Arc<Node>) -> BlockEnum {
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1),
+            DEV_GENESIS_KEY.account().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+
+        node.process_active(send1.clone());
+        assert_timely_msg(
+            Duration::from_secs(5),
+            || node.active.active(&send1),
+            "not active on node 1",
+        );
+
+        send1
+    }
+
+    #[test]
+    fn receivable_exists_confirmed() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let send = send_block(node.clone());
+        node.confirm(send.hash().clone());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .receivable_exists(send.hash(), None, Some(true))
+                .await
+                .unwrap()
+        });
+
+        assert_eq!(result.value, true);
+
+        server.abort();
+    }
+
+    #[test]
+    fn test_receivable_exists_unconfirmed() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let send = send_block(node.clone());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .receivable_exists(send.hash(), Some(true), Some(false))
+                .await
+                .unwrap()
+        });
+
+        assert_eq!(result.value, true);
+
+        server.abort();
+    }
+
+    #[test]
+    fn test_receivable_exists_non_existent() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let non_existent_hash = BlockHash::zero();
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .receivable_exists(non_existent_hash, None, None)
+                .await
+                .unwrap()
+        });
+
+        assert_eq!(result.value, false);
+
+        server.abort();
+    }
 }

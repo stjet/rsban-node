@@ -1007,6 +1007,15 @@ pub trait WalletsExt {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
+    fn change_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        representative: PublicKey,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<Option<BlockEnum>, WalletsError>;
+
     fn receive_action(
         &self,
         wallet: &Arc<Wallet>,
@@ -1027,7 +1036,7 @@ pub trait WalletsExt {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Option<BlockEnum>;
+    ) -> Result<Option<BlockEnum>, WalletsError>;
 
     fn receive_async_wallet(
         &self,
@@ -1505,19 +1514,26 @@ impl WalletsExt for Arc<Wallets> {
         block
     }
 
-    fn receive_action2(
+    fn change_action2(
         &self,
         wallet_id: &WalletId,
-        send_hash: BlockHash,
+        source: Account,
         representative: PublicKey,
-        amount: Amount,
-        account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Option<BlockEnum> {
+    ) -> Result<Option<BlockEnum>, WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let wallet = Wallets::get_wallet(&guard, &wallet_id).unwrap();
-        self.receive_action(wallet, send_hash, representative, amount, account, work, generate_work)
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        if wallet.store.find(&tx, &source.into()).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+
+        Ok(self.change_action(wallet, source, representative, work, generate_work))
     }
 
     fn receive_action(
@@ -1535,6 +1551,7 @@ impl WalletsExt for Arc<Wallets> {
                 "Not receiving block {} due to minimum receive threshold",
                 send_hash
             );
+            println!(".............");
             return None;
         }
 
@@ -1584,13 +1601,13 @@ impl WalletsExt for Arc<Wallets> {
                         epoch = pending_info.epoch;
                     }
                 } else {
-                    warn!("Unable to receive, wallet locked");
+                    println!("Unable to receive, wallet locked");
                 }
             } else {
-                // Ledger doesn't have this marked as available to receive anymore
+                println!("Ledger doesn't have this marked as available to receive anymore")
             }
         } else {
-            // Ledger doesn't have this block anymore.
+            println!("Ledger doesn't have this block anymore.")
         }
 
         if let Some(b) = block {
@@ -1606,15 +1623,49 @@ impl WalletsExt for Arc<Wallets> {
                 )
                 .is_err()
             {
+                println!("!!!!!!!!!!!!!!!");
                 // Return null block after work generation or ledger process error
                 block = None;
             } else {
+                println!("????????????????");
                 // block arc gets changed by block_processor! So we have to copy it back.
                 block = Some(arc_block.deref().clone())
             }
         }
 
         block
+    }
+
+    fn receive_action2(
+        &self,
+        wallet_id: &WalletId,
+        send_hash: BlockHash,
+        representative: PublicKey,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<Option<BlockEnum>, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        if wallet.store.find(&tx, &account.into()).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+
+        Ok(self.receive_action(
+            wallet,
+            send_hash,
+            representative,
+            amount,
+            account,
+            work,
+            generate_work,
+        ))
     }
 
     fn receive_async_wallet(
@@ -1689,7 +1740,7 @@ impl WalletsExt for Arc<Wallets> {
         representative: PublicKey,
         amount: Amount,
     ) -> Result<(), ()> {
-        let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
+        let result = Arc::new((Condvar::new(), Mutex::new((false, BlockHash::zero())))); // done, result
         let result_clone = Arc::clone(&result);
         self.receive_async_wallet(
             wallet,
@@ -1698,7 +1749,8 @@ impl WalletsExt for Arc<Wallets> {
             amount,
             block.destination().unwrap(),
             Box::new(move |block| {
-                *result_clone.1.lock().unwrap() = (true, block.is_some());
+                *result_clone.1.lock().unwrap() =
+                    (true, block.map(|b| b.hash()).unwrap_or_default());
                 result_clone.0.notify_all();
             }),
             0,
@@ -1706,7 +1758,7 @@ impl WalletsExt for Arc<Wallets> {
         );
         let mut guard = result.1.lock().unwrap();
         guard = result.0.wait_while(guard, |i| !i.0).unwrap();
-        if guard.1 {
+        if guard.1 != BlockHash::zero() {
             Ok(())
         } else {
             Err(())

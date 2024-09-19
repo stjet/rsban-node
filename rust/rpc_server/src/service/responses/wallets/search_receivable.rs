@@ -19,7 +19,8 @@ pub async fn search_receivable(node: Arc<Node>, enable_control: bool, wallet: Wa
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::WalletId;
+    use rsnano_core::{Account, Amount, BlockBuilder, WalletId, DEV_GENESIS_KEY};
+    use rsnano_ledger::DEV_GENESIS_PUB_KEY;
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
@@ -30,11 +31,47 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.wallets.create(WalletId::zero());
+        // Create a wallet and insert the genesis key
+        let wallet_id = WalletId::zero();
+        node.wallets.create(wallet_id);
+        node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
 
-        node
-            .tokio
-            .block_on(async { rpc_client.search_receivable(WalletId::zero()).await.unwrap() });
+        // Get the latest block hash for the genesis account
+        let genesis_pub: Account = (*DEV_GENESIS_PUB_KEY).into();
+        let latest = node.latest(&genesis_pub);
+
+        // Create a send block
+        let receive_minimum = node.config.receive_minimum.clone();
+        let send_amount = receive_minimum + Amount::raw(1);
+        let block = BlockBuilder::legacy_send()
+            .previous(latest)
+            .destination(genesis_pub)
+            .balance(Amount::MAX - send_amount)
+            .sign(DEV_GENESIS_KEY.clone())
+            .build();
+
+        // Process the send block
+        node.process_active(block);
+
+        // Call search_receivable
+        node.tokio.block_on(async {
+            rpc_client.search_receivable(wallet_id).await.unwrap();
+        });
+
+        // Check that the balance has been updated
+        let final_balance = node.tokio.block_on(async {
+            let timeout = std::time::Duration::from_secs(10);
+            let start = std::time::Instant::now();
+            loop {
+                let balance = node.balance(&genesis_pub.into());
+                if balance == Amount::MAX || start.elapsed() > timeout {
+                    return balance;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        });
+
+        assert_eq!(final_balance, Amount::MAX);
 
         server.abort();
     }

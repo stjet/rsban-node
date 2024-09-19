@@ -344,6 +344,12 @@ impl Telemetry {
     }
 
     pub fn local_telemetry(&self) -> TelemetryData {
+        let peer_count = self
+            .network_info
+            .read()
+            .unwrap()
+            .count_by_mode(ChannelMode::Realtime) as u32;
+
         let mut telemetry_data = TelemetryData {
             node_id: self.node_id.public_key(),
             block_count: self.ledger.block_count(),
@@ -353,11 +359,7 @@ impl Telemetry {
             uptime: self.startup_time.elapsed().as_secs(),
             unchecked_count: self.unchecked.len() as u64,
             genesis_block: self.network_params.ledger.genesis.hash(),
-            peer_count: self
-                .network_info
-                .read()
-                .unwrap()
-                .count_by_mode(ChannelMode::Realtime) as u32,
+            peer_count,
             account_count: self.ledger.account_count(),
             major_version: MAJOR_VERSION,
             minor_version: MINOR_VERSION,

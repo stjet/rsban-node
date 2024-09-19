@@ -423,7 +423,8 @@ pub struct RepDetailsHandle(Vec<(PublicKey, SocketAddrV6, Amount)>);
 #[no_mangle]
 pub extern "C" fn rsn_node_representative_details(handle: &NodeHandle) -> *mut RepDetailsHandle {
     let mut result = Vec::new();
-    for rep in handle.0.online_reps.lock().unwrap().peered_reps() {
+    let reps = handle.0.online_reps.lock().unwrap().peered_reps();
+    for rep in reps {
         let endpoint = handle
             .0
             .network_info

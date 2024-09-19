@@ -242,12 +242,13 @@ pub trait BootstrapConnectionsExt {
 #[async_trait]
 impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
     fn pool_connection(&self, client_a: Arc<BootstrapClient>, new_client: bool, push_front: bool) {
-        let mut guard = self.mutex.lock().unwrap();
         let excluded = self
             .network_info
             .write()
             .unwrap()
             .is_excluded(&client_a.remote_addr(), self.clock.now());
+
+        let mut guard = self.mutex.lock().unwrap();
 
         if !self.stopped.load(Ordering::SeqCst) && !client_a.pending_stop() && !excluded {
             client_a.set_timeout(self.config.idle_timeout);
@@ -505,9 +506,9 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             // Not many peers respond, need to try to make more connections than we need.
             for _ in 0..delta {
                 let (endpoint, excluded) = {
-                    let mut guard = self.network_info.write().unwrap();
-                    let endpoint = guard.bootstrap_peer(self.clock.now()); // Legacy bootstrap is compatible with older version of protocol
-                    let excluded = guard.is_excluded(&endpoint, self.clock.now());
+                    let mut network = self.network_info.write().unwrap();
+                    let endpoint = network.bootstrap_peer(self.clock.now()); // Legacy bootstrap is compatible with older version of protocol
+                    let excluded = network.is_excluded(&endpoint, self.clock.now());
                     (endpoint, excluded)
                 };
                 if endpoint != SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0)
@@ -555,6 +556,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 ChannelMode::Bootstrap,
                 self.clock.now(),
             ) {
+                drop(network_info);
                 self.network_stats
                     .error(e, &peer_addr, ChannelDirection::Outbound);
                 return false;

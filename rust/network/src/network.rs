@@ -131,7 +131,8 @@ impl Network {
         drop_policy: DropPolicy,
         traffic_type: TrafficType,
     ) -> bool {
-        if let Some(channel) = self.channels.lock().unwrap().get(&channel_id).cloned() {
+        let channel = self.channels.lock().unwrap().get(&channel_id).cloned();
+        if let Some(channel) = channel {
             channel.try_send_buffer(buffer, drop_policy, traffic_type)
         } else {
             false
@@ -145,7 +146,6 @@ impl Network {
         traffic_type: TrafficType,
     ) -> anyhow::Result<()> {
         let channel = self.channels.lock().unwrap().get(&channel_id).cloned();
-
         if let Some(channel) = channel {
             channel.send_buffer(buffer, traffic_type).await
         } else {

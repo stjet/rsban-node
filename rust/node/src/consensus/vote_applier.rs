@@ -290,7 +290,8 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 self.vote_generators
                     .generate_final_vote(&election.root, &status_winner_hash);
             }
-            if election_lock.final_weight >= self.online_reps.lock().unwrap().quorum_delta() {
+            let quorum_delta = self.online_reps.lock().unwrap().quorum_delta();
+            if election_lock.final_weight >= quorum_delta {
                 self.confirm_once(election_lock, election);
             }
         }

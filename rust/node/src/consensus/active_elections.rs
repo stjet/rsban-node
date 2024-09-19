@@ -301,7 +301,8 @@ impl ActiveElections {
             _ => {}
         }
 
-        if !self.election_end.lock().unwrap().is_empty() {
+        let is_end_empty = self.election_end.lock().unwrap().is_empty();
+        if !is_end_empty {
             let amount = self
                 .ledger
                 .any()
@@ -777,12 +778,11 @@ impl ActiveElections {
         let elections = Self::list_active_impl(this_loop_target, &guard);
         drop(guard);
 
-        let mut solicitor = ConfirmationSolicitor::new(
-            &self.network_params,
-            &self.network_info,
-            self.message_publisher.lock().unwrap().clone(),
-        );
-        solicitor.prepare(&self.online_reps.lock().unwrap().peered_principal_reps());
+        let publisher = self.message_publisher.lock().unwrap().clone();
+        let mut solicitor =
+            ConfirmationSolicitor::new(&self.network_params, &self.network_info, publisher);
+        let peered_prs = self.online_reps.lock().unwrap().peered_principal_reps();
+        solicitor.prepare(&peered_prs);
 
         /*
          * Loop through active elections in descending order of proof-of-work difficulty, requesting confirmation

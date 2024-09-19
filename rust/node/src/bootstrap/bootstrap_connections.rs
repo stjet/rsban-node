@@ -279,6 +279,7 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
             .unwrap()
             .find(pull.bootstrap_id as usize)
             .cloned();
+
         if let Some(attempt_l) = attempt_l {
             attempt_l.inc_requeued_pulls();
             let mut is_lazy = false;

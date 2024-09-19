@@ -705,13 +705,14 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
                 }
             }));
 
-        if self
+        let inserted = self
             .mutex
             .lock()
             .unwrap()
             .accounts
-            .priority_set(genesis_account)
-        {
+            .priority_set(genesis_account);
+
+        if inserted {
             self.priority_inserted()
         } else {
             self.priority_insertion_failed()

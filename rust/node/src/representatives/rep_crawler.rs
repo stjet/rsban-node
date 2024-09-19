@@ -519,12 +519,13 @@ impl RepCrawlerImpl {
         );
 
         random_peers.retain(|channel| {
-            match self
+            let elapsed = self
                 .online_reps
                 .lock()
                 .unwrap()
-                .last_request_elapsed(channel.channel_id(), now)
-            {
+                .last_request_elapsed(channel.channel_id(), now);
+
+            match elapsed {
                 Some(last_request_elapsed) => {
                     // Throttle queries to active reps
                     last_request_elapsed >= rep_query_interval

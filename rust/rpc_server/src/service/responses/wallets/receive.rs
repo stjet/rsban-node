@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use rsnano_core::{BlockEnum, BlockHash, PendingKey, StateBlock, WorkVersion};
-use rsnano_node::{node::Node, wallets::WalletsExt, work::WorkRequest};
+use rsnano_node::{node::Node, wallets::{self, WalletsExt}, work::WorkRequest};
 use rsnano_rpc_messages::{BlockHashRpcMessage, ErrorDto, ReceiveArgs};
 use serde_json::to_string_pretty;
 
@@ -25,21 +25,18 @@ pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -
     // Get representative for new accounts
     let representative = node.wallets.get_representative(args.wallet).unwrap_or_default();
 
+    let wallets = node.wallets.mutex.lock().unwrap();
+    let wallet = wallets.get(&args.wallet).unwrap().to_owned();
+
+    let block = node.ledger.any().get_block(&node.ledger.read_txn(), &args.block).unwrap();
+
     // Perform receive action
-    let receive = node.wallets.receive_action2(
-        &args.wallet,
-        args.block,
-        representative,
-        pending_info.unwrap().amount,
-        args.account,
-        args.work.unwrap_or(0.into()).into(),
-        args.work.is_none()
-    );
+    let receive = node.wallets.receive_sync(wallet, &block, representative, node.config.receive_minimum);
 
     match receive {
-        Ok(Some(block)) => to_string_pretty(&BlockHashRpcMessage::new("block".to_string(), block.hash())).unwrap(),
-        Ok(None) => to_string_pretty(&ErrorDto::new("Failed to create receive block".to_string())).unwrap(),
-        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        Ok(_) => to_string_pretty(&BlockHashRpcMessage::new("block".to_string(), block.hash())).unwrap(),
+        //Ok(None) => to_string_pretty(&ErrorDto::new("Failed to create receive block".to_string())).unwrap(),
+        Err(e) => to_string_pretty(&ErrorDto::new("Receive error".to_string())).unwrap(),
     }
 }
 

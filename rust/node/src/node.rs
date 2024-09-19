@@ -1130,6 +1130,24 @@ impl Node {
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let network = self
+            .network_info
+            .read()
+            .unwrap()
+            .collect_container_info("tcp_channels");
+
+        let online_reps = self
+            .online_reps
+            .lock()
+            .unwrap()
+            .collect_container_info("online_reps");
+
+        let vote_cache = self
+            .vote_cache
+            .lock()
+            .unwrap()
+            .collect_container_info("vote_cache");
+
         ContainerInfoComponent::Composite(
             name.into(),
             vec![
@@ -1141,10 +1159,7 @@ impl Node {
                 ContainerInfoComponent::Composite(
                     "network".to_string(),
                     vec![
-                        self.network_info
-                            .read()
-                            .unwrap()
-                            .collect_container_info("tcp_channels"),
+                        network,
                         self.syn_cookies.collect_container_info("syn_cookies"),
                     ],
                 ),
@@ -1157,10 +1172,7 @@ impl Node {
                 self.rep_crawler.collect_container_info("rep_crawler"),
                 self.block_processor
                     .collect_container_info("block_processor"),
-                self.online_reps
-                    .lock()
-                    .unwrap()
-                    .collect_container_info("online_reps"),
+                online_reps,
                 self.history.collect_container_info("history"),
                 self.confirming_set.collect_container_info("confirming_set"),
                 self.request_aggregator
@@ -1175,10 +1187,7 @@ impl Node {
                         self.priority_scheduler.collect_container_info("priority"),
                     ],
                 ),
-                self.vote_cache
-                    .lock()
-                    .unwrap()
-                    .collect_container_info("vote_cache"),
+                vote_cache,
                 self.vote_router.collect_container_info("vote_router"),
                 self.vote_generators
                     .collect_container_info("vote_generators"),

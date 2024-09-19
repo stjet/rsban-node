@@ -1148,7 +1148,8 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     fn stop(&self) {
         self.mutex.lock().unwrap().stopped = true;
         self.condition.notify_all();
-        if let Some(join_handle) = self.thread.lock().unwrap().take() {
+        let join_handle = self.thread.lock().unwrap().take();
+        if let Some(join_handle) = join_handle {
             join_handle.join().unwrap();
         }
         self.clear();

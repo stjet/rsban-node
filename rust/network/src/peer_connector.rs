@@ -81,8 +81,6 @@ impl PeerConnector {
                 return false;
             }
 
-            self.network_observer.connection_attempt(&peer);
-
             if let Err(e) = network.validate_new_connection(
                 &peer,
                 ChannelDirection::Outbound,
@@ -97,6 +95,7 @@ impl PeerConnector {
             }
         }
 
+        self.network_observer.connection_attempt(&peer);
         self.network_observer.merge_peer();
 
         let network_l = self.network.clone();

@@ -94,7 +94,8 @@ impl ConfirmingSet {
 
     pub fn stop(&self) {
         self.thread.stop();
-        if let Some(handle) = self.join_handle.lock().unwrap().take() {
+        let handle = self.join_handle.lock().unwrap().take();
+        if let Some(handle) = handle {
             handle.join().unwrap();
         }
         self.thread.notification_workers.stop();

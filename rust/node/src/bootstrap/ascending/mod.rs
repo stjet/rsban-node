@@ -114,7 +114,8 @@ impl BootstrapAscending {
     pub fn stop(&self) {
         self.mutex.lock().unwrap().stopped = true;
         self.condition.notify_all();
-        if let Some(threads) = self.threads.lock().unwrap().take() {
+        let threads = self.threads.lock().unwrap().take();
+        if let Some(threads) = threads {
             threads.priorities.join().unwrap();
             threads.timeout.join().unwrap();
             if let Some(database) = threads.database {

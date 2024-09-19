@@ -561,7 +561,6 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                     .error(e, &peer_addr, ChannelDirection::Outbound);
                 return false;
             }
-            self.network_stats.connection_attempt(&peer_addr);
 
             if let Err(e) = network_info.validate_new_connection(
                 &peer_addr,
@@ -579,6 +578,8 @@ impl BootstrapConnectionsExt for Arc<BootstrapConnections> {
                 return false;
             }
         }
+
+        self.network_stats.connection_attempt(&peer_addr);
 
         let tcp_stream_factory = Arc::new(TcpStreamFactory::new());
         let tcp_stream = match tokio::time::timeout(

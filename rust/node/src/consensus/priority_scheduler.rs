@@ -79,10 +79,12 @@ impl PriorityScheduler {
     pub fn stop(&self) {
         self.mutex.lock().unwrap().stopped = true;
         self.condition.notify_all();
-        if let Some(handle) = self.thread.lock().unwrap().take() {
+        let handle = self.thread.lock().unwrap().take();
+        if let Some(handle) = handle {
             handle.join().unwrap();
         }
-        if let Some(handle) = self.cleanup_thread.lock().unwrap().take() {
+        let handle = self.cleanup_thread.lock().unwrap().take();
+        if let Some(handle) = handle {
             handle.join().unwrap();
         }
     }

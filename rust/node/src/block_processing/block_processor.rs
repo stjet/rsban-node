@@ -241,7 +241,8 @@ impl BlockProcessor {
     pub fn stop(&self) {
         self.processor_loop.mutex.lock().unwrap().stopped = true;
         self.processor_loop.condition.notify_all();
-        if let Some(join_handle) = self.thread.lock().unwrap().take() {
+        let join_handle = self.thread.lock().unwrap().take();
+        if let Some(join_handle) = join_handle {
             join_handle.join().unwrap();
         }
     }

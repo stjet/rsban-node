@@ -98,7 +98,6 @@ impl Network {
             channel_info,
             stream,
             self.limiter.clone(),
-            self.info.clone(),
             self.clock.clone(),
             self.observer.clone(),
             &self.handle,

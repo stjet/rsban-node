@@ -76,7 +76,7 @@ pub struct Wallets {
     ledger: Arc<Ledger>,
     last_log: Mutex<Option<Instant>>,
     distributed_work: Arc<DistributedWorkFactory>,
-    work_thresholds: WorkThresholds,
+    pub work_thresholds: WorkThresholds,
     network_params: NetworkParams,
     pub delayed_work: Mutex<HashMap<Account, Root>>,
     workers: Arc<dyn ThreadPool>,
@@ -1018,6 +1018,17 @@ pub trait WalletsExt {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
+    fn receive_action2(
+        &self,
+        wallet_id: &WalletId,
+        send_hash: BlockHash,
+        representative: PublicKey,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<Option<BlockEnum>, WalletsError>;
+
     fn receive_async_wallet(
         &self,
         wallet: Arc<Wallet>,
@@ -1589,6 +1600,31 @@ impl WalletsExt for Arc<Wallets> {
         }
 
         block
+    }
+
+    fn receive_action2(
+        &self,
+        wallet_id: &WalletId,
+        send_hash: BlockHash,
+        representative: PublicKey,
+        amount: Amount,
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<Option<BlockEnum>, WalletsError> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
+        
+        let tx = self.env.tx_begin_read();
+        if !wallet.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
+
+        if wallet.store.find(&tx, &account.into()).is_end() {
+            return Err(WalletsError::AccountNotFound);
+        }
+
+        Ok(self.receive_action(wallet, send_hash, representative, amount, account, work, generate_work))
     }
 
     fn receive_async_wallet(

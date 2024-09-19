@@ -185,13 +185,13 @@ impl ResponseServer {
             return false;
         }
 
-        if self
+        let bootstrap_count = self
             .network_info
             .read()
             .unwrap()
-            .count_by_mode(ChannelMode::Bootstrap)
-            >= self.connections_max
-        {
+            .count_by_mode(ChannelMode::Bootstrap);
+
+        if bootstrap_count >= self.connections_max {
             return false;
         }
 

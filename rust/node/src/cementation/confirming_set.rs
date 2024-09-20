@@ -201,11 +201,18 @@ impl ConfirmingSetThread {
         std::mem::swap(&mut notification.cemented, cemented);
         std::mem::swap(&mut notification.already_cemented, already_cemented);
 
-        // Wait for the worker thread if too many notifications are queued
+        let mut guard = self.mutex.lock().unwrap();
         while self.notification_workers.num_queued_tasks() >= self.config.max_queued_notifications {
             self.stats
                 .inc(StatType::ConfirmingSet, DetailType::Cooldown);
-            sleep(Duration::from_millis(100));
+            guard = self
+                .condition
+                .wait_timeout_while(guard, Duration::from_millis(100), |g| !g.stopped)
+                .unwrap()
+                .0;
+            if guard.stopped {
+                return;
+            }
         }
 
         let observers = self.observers.clone();

@@ -131,7 +131,7 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
-    fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
+    pub fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
         // All values should be serialized in big endian
         self.node_id.serialize(writer);
         writer.write_u64_be_safe(self.block_count);

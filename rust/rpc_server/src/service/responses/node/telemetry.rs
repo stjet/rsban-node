@@ -7,18 +7,16 @@ pub async fn telemetry(node: Arc<Node>, address: Option<Ipv6Addr>, port: Option<
     if address.is_some() || port.is_some() {
         let address = address.unwrap();
         let port = port.unwrap();
-                    let endpoint = SocketAddrV6::new(address, port, 0, 0);
+        let endpoint = SocketAddrV6::new(address, port, 0, 0);
 
-                    if address.is_loopback() && port == node.network.port() {
-                        return to_string_pretty(&node.telemetry.local_telemetry()).unwrap();
-                    }
+        if address.is_loopback() && port == node.network.port() {
+            return to_string_pretty(&node.telemetry.local_telemetry()).unwrap();
+        }
 
-                    match node.telemetry.get_telemetry(&endpoint.into()) {
-                        Some(data) => to_string_pretty(&data).unwrap(),
-                        None => to_string_pretty(&ErrorDto::new("Peer not found".to_string())).unwrap()
-                    }
-                
-               
+        match node.telemetry.get_telemetry(&endpoint.into()) {
+            Some(data) => to_string_pretty(&data).unwrap(),
+            None => to_string_pretty(&ErrorDto::new("Peer not found".to_string())).unwrap()
+        }          
     } else {
         let output_raw = raw.unwrap_or(false);
 
@@ -43,6 +41,7 @@ mod tests {
     use test_helpers::{assert_timely_eq, establish_tcp, System};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use std::time::Duration;
+    use rsnano_messages::TelemetryData;
 
     #[test]
     fn telemetry_single() {
@@ -60,40 +59,70 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let response = node
-            .tokio
-            .block_on(async { rpc_client.telemetry(Some(*node.tcp_listener.local_address().ip()), Some(node.tcp_listener.local_address().port()), None).await.unwrap() 
+        // Test with valid local address
+        let response = node.tokio.block_on(async {
+            rpc_client.telemetry(Some(*node.tcp_listener.local_address().ip()), Some(node.tcp_listener.local_address().port()), None).await
         });
+        assert!(response.is_ok());
+        assert!(matches!(response.unwrap().metrics[0], TelemetryData { .. }));
 
-        /*let response = telemetry(Arc::new(node), Some("not_a_valid_address".parse().unwrap()), None, None).await;
-        assert!(response.contains("requires_port_and_address"));
-
-        let response = node
-            .tokio
-            .block_on(async { rpc_client.telemetry(Some(node.network.endpoint().ip()), Some(node.network.endpoint().port()), None).await.unwrap() 
+        // Test with invalid address
+        let response = node.tokio.block_on(async {
+            rpc_client.telemetry(Some("::1".parse().unwrap()), Some(65), None).await
         });
+        assert!(response.is_err());
+        assert_eq!(response.unwrap_err().to_string(), "node returned error: \"Peer not found\"");
 
-        // Missing address
-        let response = telemetry(Arc::new(node), None, Some(65), None).await;
-        assert!(response.contains("requires_port_and_address"));
-
-        // Invalid address
-        let response = telemetry(Arc::new(node), Some("not_a_valid_address".parse().unwrap()), Some(65), None).await;
-        assert!(response.contains("invalid_ip_address"));
-
-        // Invalid port
-        let response = telemetry(Arc::new(node), Some(node.network.endpoint().ip()), Some(0), None).await;
-        assert!(response.contains("invalid_port"));
-
-        // Correct address and port
-        let response = telemetry(Arc::new(node), Some(node.network.endpoint().ip()), Some(node.network.endpoint().port()), None).await;
-        let telemetry_data: Value = serde_json::from_str(&response).unwrap();*/
+        // Test with missing address (should return local telemetry)
+        let response = node.tokio.block_on(async {
+            rpc_client.telemetry(None, None, None).await
+        });
+        assert!(response.is_ok());
+        assert!(matches!(response.unwrap().metrics[0], TelemetryData { .. }));
         
-        // Add assertions to compare telemetry_data with node's actual telemetry
-        // This part would depend on the specific structure of your telemetry data
-        //assert!(telemetry_data.get("version").is_some());
-        //assert!(telemetry_data.get("protocol_version").is_some());
-        // ... add more assertions as needed
+        server.abort();
+    }
+
+    #[test]
+    fn telemetry_all() {
+        let mut system = System::new();
+        let node = system.build_node().finish();
+        let peer = system.build_node().finish();
+        establish_tcp(&node, &peer);
+        
+        // Wait until peers are stored
+        assert_timely_eq(
+            Duration::from_secs(10),
+            || node.store.peer.count(&node.store.tx_begin_read()),
+            1
+        );
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        // Test without raw flag (should return local telemetry)
+        let response = node.tokio.block_on(async {
+            rpc_client.telemetry(None, None, None).await
+        });
+        assert!(response.is_ok());
+        let local_telemetry = response.unwrap();
+        assert!(matches!(local_telemetry.metrics[0], TelemetryData { .. }));
+
+        // Test with raw flag
+        let response = node.tokio.block_on(async {
+            rpc_client.telemetry(None, None, Some(true)).await
+        });
+        assert!(response.is_ok());
+        let raw_response = response.unwrap();
+        
+        assert_eq!(raw_response.metrics.len(), 1);
+
+        let peer_telemetry = &raw_response.metrics[0];
+        let local_telemetry = node.telemetry.local_telemetry();
+        assert_eq!(peer_telemetry.genesis_block, local_telemetry.genesis_block);
+
+        // TODO: Verify the endpoint matches a known peer
+        //let endpoint = format!("[{}]:{}", peer_telemetry.p, peer_telemetry["port"]);
+        //assert!(!node.network.info.try_read().unwrap().find_channels_by_peering_addr(&endpoint.parse().unwrap()).is_empty());
         
         server.abort();
     }

@@ -2168,7 +2168,6 @@ dependencies = [
  "anyhow",
  "reqwest 0.11.27",
  "rsnano_core",
- "rsnano_messages",
  "rsnano_rpc_messages",
  "serde",
  "serde_json",
@@ -2179,6 +2178,7 @@ name = "rsnano_rpc_messages"
 version = "0.1.0"
 dependencies = [
  "rsnano_core",
+ "rsnano_messages",
  "rsnano_node",
  "serde",
  "serde_json",

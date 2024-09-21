@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 rsnano_core = { path = "../core" }
-rsnano_messages = { path = "../messages" }
 rsnano_rpc_messages = { path = "../rpc_messages" }
 anyhow = "1"
 reqwest = { version = "0", default-features = false, features = ["json"]}

@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use reqwest::{Client, Url};
 use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
+use rsnano_messages::TelemetryData;
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
@@ -21,7 +22,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn telemetry(&self, raw: Option<bool>, address: Option<Ipv6Addr>, port: Option<u16>) -> Result<TelemetryDto> {
+    pub async fn telemetry(&self, address: Option<Ipv6Addr>, port: Option<u16>, raw: Option<bool>) -> Result<TelemetryData> {
         let cmd = RpcCommand::telemetry(raw, address, port);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

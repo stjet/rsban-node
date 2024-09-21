@@ -9,7 +9,8 @@ use rsnano_core::{
     Signature,
 };
 use serde::ser::SerializeStruct;
-use serde_derive::Serialize;
+use serde::{Deserializer, Serializer};
+use serde_derive::{Serialize, Deserialize};
 use std::fmt::Display;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
@@ -23,7 +24,7 @@ pub enum TelemetryMaker {
     RsNano = 3,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct TelemetryData {
     pub signature: Signature,
     pub node_id: PublicKey,
@@ -41,10 +42,32 @@ pub struct TelemetryData {
     pub patch_version: u8,
     pub pre_release_version: u8,
     pub maker: u8, // Where this telemetry information originated
-    #[serde(skip)] // TODO find a way to serialize the timestamp
+    #[serde(
+        serialize_with = "serialize_timestamp",
+        deserialize_with = "deserialize_timestamp"
+    )]
     pub timestamp: SystemTime,
     pub active_difficulty: u64,
     pub unknown_data: Vec<u8>,
+}
+
+fn serialize_timestamp<S>(timestamp: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let ms = timestamp
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    serializer.serialize_u64(ms)
+}
+
+fn deserialize_timestamp<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let ms = <u64 as serde::Deserialize<'de>>::deserialize(deserializer)?;
+    Ok(SystemTime::UNIX_EPOCH + Duration::from_millis(ms))
 }
 
 impl TelemetryData {

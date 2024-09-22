@@ -101,7 +101,7 @@ impl DistributedWorkFactory {
         .await
     }
 
-    pub async fn generate_work(&self, request: WorkRequest) -> Option<u64> {
+    async fn generate_work(&self, request: WorkRequest) -> Option<u64> {
         self.generate_in_local_work_pool(request.root, request.difficulty)
             .await
     }

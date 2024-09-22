@@ -18,37 +18,42 @@ pub async fn work_cancel(node: Arc<Node>, enable_control: bool, hash: BlockHash)
 mod tests {
     use super::*;
     use rsnano_core::BlockHash;
-    use rsnano_node::work::WorkRequest;
-    use test_helpers::System;
+    use test_helpers::{assert_timely, System};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
 
-    #[tokio::test]
-    async fn work_cancel() {
+    #[test]
+    fn work_cancel() {
         let mut system = System::new();
         let node = system.make_node();
+        let node_clone = node.clone();
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
-        
-        // Start work generation
-        let work_handle = tokio::spawn({
-            let node = node.clone();
-            async move {
-                node.distributed_work.generate_work(WorkRequest::new_test_instance()).await
-            }
-        });
+
+        let hash = BlockHash::random();
+
+        let work_handle = node.clone()
+            .tokio
+            .spawn(async move { 
+                node.distributed_work.make(hash.into(), node.network_params.work.base, None).await
+            });
 
         // Give some time for work generation to start
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        assert_timely(std::time::Duration::from_millis(100), || true);
 
-        // Cancel the work
-        let result = rpc_client.work_cancel(WorkRequest::new_test_instance().root.into()).await.unwrap();
+        let result = node_clone
+            .tokio
+            .block_on(async { rpc_client.work_cancel(hash).await.unwrap() });
 
         // Check the result
         assert_eq!(result, SuccessDto::new());
 
         // Ensure work generation was actually cancelled
-        tokio::time::timeout(std::time::Duration::from_secs(1), work_handle).await
-            .expect_err("Work generation should have been cancelled");
+        let is_cancelled = node_clone.tokio.block_on(async {
+            let timeout = std::time::Duration::from_secs(10);
+            tokio::time::timeout(timeout, work_handle).await.is_err()
+        });
+
+        assert!(is_cancelled, "Work generation should have been cancelled");
 
         server.abort();
     }

@@ -37,8 +37,10 @@ mod tests {
                 node.distributed_work.make(hash.into(), node.network_params.work.base, None).await
             });
 
-        // Give some time for work generation to start
-        assert_timely(std::time::Duration::from_millis(100), || true);
+        assert_timely(
+            std::time::Duration::from_millis(100),
+            || node_clone.tokio.block_on(async { !work_handle.is_finished() })
+        );
 
         let result = node_clone
             .tokio
@@ -48,12 +50,13 @@ mod tests {
         assert_eq!(result, SuccessDto::new());
 
         // Ensure work generation was actually cancelled
-        let is_cancelled = node_clone.tokio.block_on(async {
-            let timeout = std::time::Duration::from_secs(10);
-            tokio::time::timeout(timeout, work_handle).await.is_err()
-        });
+        assert_timely(
+            std::time::Duration::from_secs(10),
+            || node_clone.tokio.block_on(async { work_handle.is_finished() })
+        );
 
-        assert!(is_cancelled, "Work generation should have been cancelled");
+        let work_result = node_clone.tokio.block_on(async { work_handle.await.unwrap() });
+        assert_eq!(work_result.unwrap(), 0, "Work generation should have been cancelled");
 
         server.abort();
     }

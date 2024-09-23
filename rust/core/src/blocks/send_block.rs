@@ -158,7 +158,7 @@ impl SendBlock {
     pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
         let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
         let destination = Account::decode_account(reader.get_string("destination")?)?;
-        let balance = Amount::decode_dec(reader.get_string("balance")?)?;
+        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
         let signature = Signature::decode_hex(reader.get_string("signature")?)?;
         let work = u64_from_hex_str(reader.get_string("work")?)?;
         Ok(SendBlock {
@@ -258,7 +258,7 @@ impl Block for SendBlock {
         writer.put_string("type", "send")?;
         writer.put_string("previous", &self.hashables.previous.encode_hex())?;
         writer.put_string("destination", &self.hashables.destination.encode_account())?;
-        writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
+        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
         writer.put_string("work", &to_hex_string(self.work))?;
         writer.put_string("signature", &self.signature.encode_hex())?;
         Ok(())

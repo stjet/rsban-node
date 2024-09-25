@@ -51,7 +51,7 @@ impl ChangeBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
 
         Self {
             work,

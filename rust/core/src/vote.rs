@@ -78,7 +78,6 @@ impl Vote {
         };
         result.signature = sign_message(
             &keys.private_key(),
-            &result.voting_account.into(),
             result.hash().as_bytes(),
         );
         result

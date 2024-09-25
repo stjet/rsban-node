@@ -143,6 +143,8 @@ pub fn validate_block_signature(block: &StateBlock) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::BlockHash;
+
     use super::*;
 
     #[test]
@@ -181,6 +183,25 @@ mod tests {
         let signature_a = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         let signature_b = sign_message(&keypair.private_key(), &keypair.public_key(), &data);
         assert_eq!(signature_a, signature_b);
+    }
+
+    // This block signature caused issues during live bootstrap. This was fixed by enabeling the
+    // feature "legacy-compatibility" for the crate ed25519-dalek-blake2b
+    #[test]
+    fn regression_validate_weird_signature() {
+        let public_key = PublicKey::decode_hex(
+            "49FEC0594D6E7F7040312E400F5F5285CB51FAF5DD8EB10CADBB02915058CCF7",
+        )
+        .unwrap();
+
+        let hash = BlockHash::decode_hex(
+            "E03D646E37DAE61E4D21281054418EF733CCFB9943B424B36B203ED063340A88",
+        )
+        .unwrap();
+
+        let signature = Signature::decode_hex("3C14AF3E82BFC7DFD04EDF1639CDBF3580C02450CED478F269A4169A941617097D73A77721B62847558659371DBC3F6830724A7A55117750E5743562D1CF671E").unwrap();
+
+        validate_message(&public_key, hash.as_bytes(), &signature).unwrap();
     }
 
     mod key_pair_factory {

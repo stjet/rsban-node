@@ -12,7 +12,7 @@ aes = "0"
 anyhow = "1"
 blake2 = "0.10"
 ctr = "0"
-ed25519-dalek-blake2b = "1"
+ed25519-dalek-blake2b = { version = "1", features = ["legacy_compatibility"] }
 hex = "0"
 num = "0"
 num-traits = "0"

@@ -274,9 +274,9 @@ impl PublicKey {
 impl TryFrom<&RawKey> for PublicKey {
     type Error = anyhow::Error;
     fn try_from(prv: &RawKey) -> Result<Self, Self::Error> {
-        let secret = ed25519_dalek_blake2b::SecretKey::from_bytes(prv.as_bytes())
-            .map_err(|_| anyhow!("could not extract secret key"))?;
-        let public = ed25519_dalek_blake2b::PublicKey::from(&secret);
+        let secret = ed25519_dalek::SecretKey::from(*prv.as_bytes());
+        let signing_key = ed25519_dalek::SigningKey::from(&secret);
+        let public = ed25519_dalek::VerifyingKey::from(&signing_key);
         Ok(PublicKey::from_bytes(public.to_bytes()))
     }
 }

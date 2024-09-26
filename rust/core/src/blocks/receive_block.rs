@@ -47,7 +47,7 @@ impl ReceiveBlock {
     ) -> Self {
         let hashables = ReceiveHashables { previous, source };
         let hash = LazyBlockHash::new();
-        let signature = sign_message(priv_key, pub_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(priv_key, hash.hash(&hashables).as_bytes());
 
         Self {
             work,

@@ -90,7 +90,7 @@ impl SendBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(private_key, public_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(private_key, hash.hash(&hashables).as_bytes());
 
         Self {
             hashables,

@@ -253,24 +253,6 @@ pub extern "C" fn rsn_active_transactions_vacancy(
 }
 
 #[no_mangle]
-pub extern "C" fn rsn_active_transactions_vacancy_update(handle: &ActiveTransactionsHandle) {
-    (handle.vacancy_update.lock().unwrap())();
-}
-
-#[no_mangle]
-pub extern "C" fn rsn_active_transactions_set_vacancy_update(
-    handle: &ActiveTransactionsHandle,
-    context: *mut c_void,
-    callback: VoidPointerCallback,
-    drop_context: VoidPointerCallback,
-) {
-    let ctx_wrapper = ContextWrapper::new(context, drop_context);
-    *handle.vacancy_update.lock().unwrap() = Box::new(move || unsafe {
-        callback(ctx_wrapper.get_context());
-    })
-}
-
-#[no_mangle]
 pub extern "C" fn rsn_active_transactions_clear(handle: &ActiveTransactionsHandle) {
     handle.clear();
 }

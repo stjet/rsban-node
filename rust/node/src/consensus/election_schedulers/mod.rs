@@ -14,6 +14,7 @@ use rsnano_core::{
     utils::ContainerInfoComponent, Account, AccountInfo, BlockEnum, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::sync::{Arc, Mutex};
 
@@ -22,6 +23,7 @@ pub struct ElectionSchedulers {
     optimistic: Arc<OptimisticScheduler>,
     hinted: Arc<HintedScheduler>,
     pub manual: Arc<ManualScheduler>,
+    notify_listener: OutputListenerMt<()>,
 }
 
 impl ElectionSchedulers {
@@ -71,6 +73,7 @@ impl ElectionSchedulers {
             optimistic,
             hinted,
             manual,
+            notify_listener: OutputListenerMt::new(),
         }
     }
 
@@ -95,6 +98,7 @@ impl ElectionSchedulers {
     }
 
     pub fn notify(&self) {
+        self.notify_listener.emit(());
         self.priority.notify();
         self.hinted.notify();
         self.optimistic.notify();
@@ -111,6 +115,10 @@ impl ElectionSchedulers {
         if priority_scheduler_enabled {
             self.priority.start();
         }
+    }
+
+    pub fn track_notify(&self) -> Arc<OutputTrackerMt<()>> {
+        self.notify_listener.track()
     }
 
     pub fn stop(&self) {

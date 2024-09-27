@@ -6,6 +6,7 @@ use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
+    consensus::{ActiveElectionsExt, ElectionBehavior},
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
 };
@@ -805,4 +806,38 @@ fn confirm_frontier() {
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 2);
     assert_timely(Duration::from_secs(5), || node2.active.len() == 0);
     assert!(election2.confirmation_request_count.load(Ordering::SeqCst) > 0);
+}
+
+#[test]
+fn vacancy() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.active_elections.size = 1;
+    let node = system.build_node().config(config).finish();
+    let notify_tracker = node.election_schedulers.track_notify();
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+    node.process(send.clone()).unwrap();
+    assert_eq!(1, node.active.vacancy(ElectionBehavior::Priority),);
+    assert_eq!(0, node.active.len());
+    let election1 = start_election(&node, &send.hash());
+    assert_timely_eq(Duration::from_secs(1), || notify_tracker.output().len(), 1);
+    notify_tracker.clear();
+    assert_eq!(0, node.active.vacancy(ElectionBehavior::Priority));
+    assert_eq!(1, node.active.len());
+    node.active.force_confirm(&election1);
+    assert_timely_eq(Duration::from_secs(1), || notify_tracker.output().len(), 1);
+    assert_eq!(1, node.active.vacancy(ElectionBehavior::Priority));
+    assert_eq!(0, node.active.len());
 }

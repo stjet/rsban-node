@@ -12,8 +12,7 @@ use crate::{
     consensus::{
         election_schedulers::ElectionSchedulers, get_bootstrap_weights, log_bootstrap_weights,
         AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
-        ElectionStatusType, HintedScheduler, LocalVoteHistory, ManualScheduler,
-        OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        ElectionStatusType, LocalVoteHistory, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
         RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorCleanup, VoteApplier,
         VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
         VoteProcessorExt, VoteProcessorQueue, VoteProcessorQueueCleanup, VoteRouter,
@@ -581,6 +580,7 @@ impl Node {
                 schedulers.activate_successors(tx, block);
             }
         }));
+        active_elections.set_election_schedulers(&election_schedulers);
 
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.request_aggregator.clone(),
@@ -772,16 +772,6 @@ impl Node {
                 }
             }
         }));
-
-        let schedulers_weak = Arc::downgrade(&election_schedulers);
-        // Notify election schedulers when AEC frees election slot
-        *active_elections.vacancy_update.lock().unwrap() = Box::new(move || {
-            let Some(schedulers) = schedulers_weak.upgrade() else {
-                return;
-            };
-
-            schedulers.notify();
-        });
 
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
         let message_publisher_l = Arc::new(Mutex::new(message_publisher.clone()));

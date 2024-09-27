@@ -1,7 +1,8 @@
 use super::{
-    confirmation_solicitor::ConfirmationSolicitor, Election, ElectionBehavior, ElectionData,
-    ElectionState, ElectionStatus, ElectionStatusType, RecentlyConfirmedCache, VoteApplier,
-    VoteCache, VoteCacheProcessor, VoteGenerators, VoteRouter, NEXT_ELECTION_ID,
+    confirmation_solicitor::ConfirmationSolicitor, election_schedulers::ElectionSchedulers,
+    Election, ElectionBehavior, ElectionData, ElectionState, ElectionStatus, ElectionStatusType,
+    RecentlyConfirmedCache, VoteApplier, VoteCache, VoteCacheProcessor, VoteGenerators, VoteRouter,
+    NEXT_ELECTION_ID,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -87,7 +88,7 @@ pub struct ActiveElections {
     vote_generators: Arc<VoteGenerators>,
     publish_filter: Arc<NetworkFilter>,
     network_info: Arc<RwLock<NetworkInfo>>,
-    pub vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
+    vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
     active_started_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
@@ -169,6 +170,18 @@ impl ActiveElections {
             steady_clock,
             message_publisher: Mutex::new(message_publisher),
         }
+    }
+
+    pub(crate) fn set_election_schedulers(&self, schedulers: &Arc<ElectionSchedulers>) {
+        let schedulers_weak = Arc::downgrade(&schedulers);
+        // Notify election schedulers when AEC frees election slot
+        *self.vacancy_update.lock().unwrap() = Box::new(move || {
+            let Some(schedulers) = schedulers_weak.upgrade() else {
+                return;
+            };
+
+            schedulers.notify();
+        });
     }
 
     pub fn len(&self) -> usize {

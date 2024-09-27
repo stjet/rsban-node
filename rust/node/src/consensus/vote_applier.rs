@@ -176,13 +176,18 @@ impl VoteApplier {
             guard.remove(hash)
         };
 
+        self.vacancy_changed();
+
+        election
+    }
+
+    fn vacancy_changed(&self) {
         let schedulers = self.election_schedulers.read().unwrap();
         if let Some(schedulers) = &*schedulers {
             if let Some(schedulers) = schedulers.upgrade() {
                 schedulers.notify();
             }
         }
-        election
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

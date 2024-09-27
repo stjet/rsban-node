@@ -2,7 +2,7 @@ use rsnano_core::{
     work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource,
     DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
@@ -17,7 +17,8 @@ use std::{
     time::Duration,
 };
 use test_helpers::{
-    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, start_election, System,
+    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, setup_chain,
+    setup_independent_blocks, start_election, System,
 };
 
 /// What this test is doing:
@@ -840,4 +841,56 @@ fn vacancy() {
     assert_timely(Duration::from_secs(1), || notify_tracker.output().len() > 0);
     assert_eq!(1, node.active.vacancy(ElectionBehavior::Priority));
     assert_eq!(0, node.active.len());
+}
+
+/// Ensures that election winners set won't grow without bounds when cementing
+/// is slower that the rate of confirming new elections
+#[test]
+fn bound_election_winners() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    // Set election winner limit to a low value
+    config.active_elections.max_election_winners = 5;
+    let node = system.build_node().config(config).finish();
+
+    // Start elections for a couple of blocks, number of elections is larger than the election winner set limit
+    let blocks = setup_independent_blocks(&node, 10, &DEV_GENESIS_KEY);
+    assert_timely(Duration::from_secs(5), || {
+        blocks.iter().all(|block| node.active.active(block))
+    });
+
+    {
+        // Prevent cementing of confirmed blocks
+        let _write_guard = node.ledger.write_queue.wait(Writer::Testing);
+        let _tx = node.ledger.rw_txn();
+
+        // Ensure that when the number of election winners reaches the limit, AEC vacancy reflects that
+        assert!(node.active.vacancy(ElectionBehavior::Priority) > 0);
+
+        for index in 0..node.config.active_elections.max_election_winners {
+            let election = node.vote_router.election(&blocks[index].hash()).unwrap();
+            node.active.force_confirm(&election);
+        }
+
+        assert_timely_eq(
+            Duration::from_secs(5),
+            || node.active.vacancy(ElectionBehavior::Priority),
+            0,
+        );
+
+        // Confirming more elections should make the vacancy negative
+        for index in 0..blocks.len() {
+            let election = node.vote_router.election(&blocks[index].hash()).unwrap();
+            node.active.force_confirm(&election);
+        }
+
+        assert_timely(Duration::from_secs(5), || {
+            node.active.vacancy(ElectionBehavior::Priority) < 0
+        });
+        // Release the guard to allow cementing, there should be some vacancy now
+    }
+
+    assert_timely(Duration::from_secs(5), || {
+        node.active.vacancy(ElectionBehavior::Priority) > 0
+    });
 }

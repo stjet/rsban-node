@@ -428,3 +428,51 @@ pub fn setup_chains(
 
     chains
 }
+
+pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<BlockEnum> {
+    let mut blocks = Vec::new();
+    let account: Account = source.public_key().into();
+    let mut latest = node.latest(&account);
+    let mut balance = node.balance(&account);
+
+    for _ in 0..count {
+        let key = KeyPair::new();
+
+        balance -= 1;
+
+        let send = BlockEnum::State(StateBlock::new(
+            account,
+            latest,
+            source.public_key(),
+            balance,
+            key.public_key().as_account().into(),
+            source,
+            node.work_generate_dev(latest.into()),
+        ));
+
+        latest = send.hash();
+
+        let open = BlockEnum::State(StateBlock::new(
+            key.public_key().into(),
+            BlockHash::zero(),
+            key.public_key(),
+            Amount::raw(1),
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(key.public_key().into()),
+        ));
+
+        node.process_multi(&[send.clone(), open.clone()]);
+        // Ensure blocks are in the ledger
+        assert_timely(Duration::from_secs(5), || {
+            node.block_hashes_exist([send.hash(), open.hash()])
+        });
+
+        blocks.push(open);
+    }
+
+    // Confirm whole genesis chain at once
+    node.confirm(latest);
+
+    blocks
+}

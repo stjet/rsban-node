@@ -27,7 +27,7 @@ use rsnano_network::{DropPolicy, NetworkInfo};
 use rsnano_nullable_clock::SteadyClock;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
-    cmp::max,
+    cmp::{max, min},
     collections::{BTreeMap, HashMap},
     mem::size_of,
     ops::Deref,
@@ -382,6 +382,12 @@ impl ActiveElections {
 
     /// How many election slots are available for specified election type
     pub fn vacancy(&self, behavior: ElectionBehavior) -> i64 {
+        let election_vacancy = self.election_vacancy(behavior);
+        let winners_vacancy = self.election_winners_vacancy();
+        min(election_vacancy, winners_vacancy)
+    }
+
+    fn election_vacancy(&self, behavior: ElectionBehavior) -> i64 {
         let guard = self.mutex.lock().unwrap();
         match behavior {
             ElectionBehavior::Manual => i64::MAX,
@@ -392,6 +398,11 @@ impl ActiveElections {
                 self.limit(behavior) as i64 - guard.count_by_behavior(behavior) as i64
             }
         }
+    }
+
+    fn election_winners_vacancy(&self) -> i64 {
+        self.config.max_election_winners as i64
+            - self.vote_applier.election_winner_details_len() as i64
     }
 
     pub fn clear(&self) {

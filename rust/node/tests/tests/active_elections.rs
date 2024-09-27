@@ -17,8 +17,8 @@ use std::{
     time::Duration,
 };
 use test_helpers::{
-    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, setup_chain,
-    setup_independent_blocks, start_election, System,
+    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
+    setup_chain, setup_independent_blocks, start_election, System,
 };
 
 /// What this test is doing:
@@ -893,4 +893,59 @@ fn bound_election_winners() {
     assert_timely(Duration::from_secs(5), || {
         node.active.vacancy(ElectionBehavior::Priority) > 0
     });
+}
+
+/// Blocks should only be broadcasted when they are active in the AEC
+#[test]
+fn broadcast_block_on_activation() {
+    let mut system = System::new();
+    let mut config1 = System::default_config();
+    // Deactivates elections on both nodes.
+    config1.active_elections.size = 0;
+    config1.bootstrap_ascending.enable = false;
+
+    let mut config2 = System::default_config();
+    config2.active_elections.size = 0;
+    config2.bootstrap_ascending.enable = false;
+
+    // Disables bootstrap listener to make sure the block won't be shared by this channel.
+    let flags = NodeFlags {
+        disable_bootstrap_listener: true,
+        ..Default::default()
+    };
+
+    let node1 = system
+        .build_node()
+        .config(config1)
+        .flags(flags.clone())
+        .finish();
+    let node2 = system.build_node().config(config2).flags(flags).finish();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    // Adds a block to the first node
+    node1.process_active(send1.clone());
+
+    // The second node should not have the block
+    assert_never(Duration::from_millis(500), || {
+        node2.block(&send1.hash()).is_some()
+    });
+
+    // Activating the election should broadcast the block
+    node1.election_schedulers.add_manual(send1.clone().into());
+    assert_timely(Duration::from_secs(5), || {
+        node1.active.active_root(&send1.qualified_root())
+    });
+    assert_timely(Duration::from_secs(5), || node2.block_exists(&send1.hash()));
 }

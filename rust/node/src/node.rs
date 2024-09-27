@@ -10,14 +10,13 @@ use crate::{
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        get_bootstrap_weights, log_bootstrap_weights, AccountBalanceChangedCallback,
-        ActiveElections, ActiveElectionsExt, ElectionEndCallback, ElectionStatusType,
-        HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
-        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
-        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
-        RequestAggregator, RequestAggregatorCleanup, VoteApplier, VoteBroadcaster, VoteCache,
-        VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
-        VoteProcessorQueueCleanup, VoteRouter,
+        election_schedulers::ElectionSchedulers, get_bootstrap_weights, log_bootstrap_weights,
+        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
+        ElectionStatusType, HintedScheduler, LocalVoteHistory, ManualScheduler,
+        OptimisticScheduler, PriorityScheduler, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
+        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorCleanup, VoteApplier,
+        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
+        VoteProcessorExt, VoteProcessorQueue, VoteProcessorQueueCleanup, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -113,10 +112,7 @@ pub struct Node {
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
     pub rep_crawler: Arc<RepCrawler>,
     pub tcp_listener: Arc<TcpListener>,
-    hinted_scheduler: Arc<HintedScheduler>,
-    pub manual_scheduler: Arc<ManualScheduler>,
-    optimistic_scheduler: Arc<OptimisticScheduler>,
-    pub priority_scheduler: Arc<PriorityScheduler>,
+    pub election_schedulers: Arc<ElectionSchedulers>,
     pub request_aggregator: Arc<RequestAggregator>,
     pub backlog_population: Arc<BacklogPopulation>,
     ascendboot: Arc<BootstrapAscending>,
@@ -568,8 +564,9 @@ impl Node {
             response_server_spawner.clone(),
         ));
 
-        let hinted_scheduler = Arc::new(HintedScheduler::new(
-            config.hinted_scheduler.clone(),
+        let election_schedulers = Arc::new(ElectionSchedulers::new(
+            &config,
+            network_params.network.clone(),
             active_elections.clone(),
             ledger.clone(),
             stats.clone(),
@@ -578,31 +575,10 @@ impl Node {
             online_reps.clone(),
         ));
 
-        let manual_scheduler = Arc::new(ManualScheduler::new(
-            stats.clone(),
-            active_elections.clone(),
-        ));
-
-        let optimistic_scheduler = Arc::new(OptimisticScheduler::new(
-            config.optimistic_scheduler.clone(),
-            stats.clone(),
-            active_elections.clone(),
-            network_params.network.clone(),
-            ledger.clone(),
-            confirming_set.clone(),
-        ));
-
-        let priority_scheduler = Arc::new(PriorityScheduler::new(
-            config.priority_bucket.clone(),
-            ledger.clone(),
-            stats.clone(),
-            active_elections.clone(),
-        ));
-
-        let priority_clone = Arc::downgrade(&priority_scheduler);
+        let schedulers_clone = Arc::downgrade(&election_schedulers);
         active_elections.set_activate_successors_callback(Box::new(move |tx, block| {
-            if let Some(priority) = priority_clone.upgrade() {
-                priority.activate_successors(tx, block);
+            if let Some(schedulers) = schedulers_clone.upgrade() {
+                schedulers.activate_successors(tx, block);
             }
         }));
 
@@ -621,8 +597,7 @@ impl Node {
             global_config.into(),
             ledger.clone(),
             stats.clone(),
-            optimistic_scheduler.clone(),
-            priority_scheduler.clone(),
+            election_schedulers.clone(),
         ));
 
         let ascendboot = Arc::new(BootstrapAscending::new(
@@ -648,7 +623,7 @@ impl Node {
 
         let process_live_dispatcher = Arc::new(ProcessLiveDispatcher::new(
             ledger.clone(),
-            priority_scheduler.clone(),
+            election_schedulers.clone(),
             websocket.clone(),
         ));
 
@@ -704,10 +679,10 @@ impl Node {
 
         debug!("Constructing node...");
 
-        let manual_weak = Arc::downgrade(&manual_scheduler);
+        let schedulers_weak = Arc::downgrade(&election_schedulers);
         wallets.set_start_election_callback(Box::new(move |block| {
-            if let Some(manual) = manual_weak.upgrade() {
-                manual.push(block, None);
+            if let Some(schedulers) = schedulers_weak.upgrade() {
+                schedulers.add_manual(block);
             }
         }));
 
@@ -798,24 +773,14 @@ impl Node {
             }
         }));
 
-        let priority_w = Arc::downgrade(&priority_scheduler);
-        let hinted_w = Arc::downgrade(&hinted_scheduler);
-        let optimistic_w = Arc::downgrade(&optimistic_scheduler);
+        let schedulers_weak = Arc::downgrade(&election_schedulers);
         // Notify election schedulers when AEC frees election slot
         *active_elections.vacancy_update.lock().unwrap() = Box::new(move || {
-            let Some(priority) = priority_w.upgrade() else {
-                return;
-            };
-            let Some(hinted) = hinted_w.upgrade() else {
-                return;
-            };
-            let Some(optimistic) = optimistic_w.upgrade() else {
+            let Some(schedulers) = schedulers_weak.upgrade() else {
                 return;
             };
 
-            priority.notify();
-            hinted.notify();
-            optimistic.notify();
+            schedulers.notify();
         });
 
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
@@ -1109,10 +1074,7 @@ impl Node {
             bootstrap_initiator,
             rep_crawler,
             tcp_listener,
-            hinted_scheduler,
-            manual_scheduler,
-            optimistic_scheduler,
-            priority_scheduler,
+            election_schedulers,
             request_aggregator,
             backlog_population,
             ascendboot,
@@ -1177,16 +1139,8 @@ impl Node {
                 self.confirming_set.collect_container_info("confirming_set"),
                 self.request_aggregator
                     .collect_container_info("request_aggregator"),
-                ContainerInfoComponent::Composite(
-                    "election_scheduler".to_string(),
-                    vec![
-                        self.hinted_scheduler.collect_container_info("hinted"),
-                        self.manual_scheduler.collect_container_info("manual"),
-                        self.optimistic_scheduler
-                            .collect_container_info("optimistic"),
-                        self.priority_scheduler.collect_container_info("priority"),
-                    ],
-                ),
+                self.election_schedulers
+                    .collect_container_info("election_scheduler"),
                 vote_cache,
                 self.vote_router.collect_container_info("vote_router"),
                 self.vote_generators
@@ -1413,12 +1367,8 @@ impl NodeExt for Arc<Node> {
         self.vote_generators.start();
         self.request_aggregator.start();
         self.confirming_set.start();
-        self.hinted_scheduler.start();
-        self.manual_scheduler.start();
-        self.optimistic_scheduler.start();
-        if self.config.priority_scheduler_enabled {
-            self.priority_scheduler.start();
-        }
+        self.election_schedulers
+            .start(self.config.priority_scheduler_enabled);
         self.backlog_population.start();
         self.bootstrap_server.start();
         if !self.flags.disable_ascending_bootstrap {
@@ -1481,10 +1431,7 @@ impl NodeExt for Arc<Node> {
         self.vote_cache_processor.stop();
         self.vote_processor.stop();
         self.rep_tiers.stop();
-        self.hinted_scheduler.stop();
-        self.manual_scheduler.stop();
-        self.optimistic_scheduler.stop();
-        self.priority_scheduler.stop();
+        self.election_schedulers.stop();
         self.active.stop();
         self.vote_generators.stop();
         self.confirming_set.stop();

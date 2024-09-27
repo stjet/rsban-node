@@ -254,14 +254,14 @@ pub extern "C" fn rsn_node_tcp_listener(handle: &NodeHandle) -> *mut TcpListener
 #[no_mangle]
 pub extern "C" fn rsn_node_manual(handle: &NodeHandle) -> *mut ManualSchedulerHandle {
     Box::into_raw(Box::new(ManualSchedulerHandle(Arc::clone(
-        &handle.0.manual_scheduler,
+        &handle.0.election_schedulers.manual,
     ))))
 }
 
 #[no_mangle]
 pub extern "C" fn rsn_node_priority(handle: &NodeHandle) -> *mut ElectionSchedulerHandle {
     Box::into_raw(Box::new(ElectionSchedulerHandle(Arc::clone(
-        &handle.0.priority_scheduler,
+        &handle.0.election_schedulers.priority,
     ))))
 }
 

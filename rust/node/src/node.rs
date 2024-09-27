@@ -574,12 +574,6 @@ impl Node {
             online_reps.clone(),
         ));
 
-        let schedulers_clone = Arc::downgrade(&election_schedulers);
-        active_elections.set_activate_successors_callback(Box::new(move |tx, block| {
-            if let Some(schedulers) = schedulers_clone.upgrade() {
-                schedulers.activate_successors(tx, block);
-            }
-        }));
         active_elections.set_election_schedulers(&election_schedulers);
 
         let request_aggregator = Arc::new(RequestAggregator::new(

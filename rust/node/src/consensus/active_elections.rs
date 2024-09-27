@@ -31,7 +31,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     mem::size_of,
     ops::Deref,
-    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard, RwLock},
+    sync::{atomic::Ordering, Arc, Condvar, Mutex, MutexGuard, RwLock, Weak},
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -88,12 +88,11 @@ pub struct ActiveElections {
     vote_generators: Arc<VoteGenerators>,
     publish_filter: Arc<NetworkFilter>,
     network_info: Arc<RwLock<NetworkInfo>>,
-    vacancy_update: Mutex<Box<dyn Fn() + Send + Sync>>,
+    election_schedulers: RwLock<Option<Weak<ElectionSchedulers>>>,
     vote_cache: Arc<Mutex<VoteCache>>,
     stats: Arc<Stats>,
     active_started_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
     active_stopped_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
-    activate_successors: Mutex<Box<dyn Fn(&LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>>,
     election_end: Mutex<Vec<ElectionEndCallback>>,
     account_balance_changed: AccountBalanceChangedCallback,
     online_reps: Arc<Mutex<OnlineReps>>,
@@ -153,12 +152,10 @@ impl ActiveElections {
             vote_generators,
             publish_filter,
             network_info,
-            vacancy_update: Mutex::new(Box::new(|| {})),
             vote_cache,
             stats,
             active_started_observer: Mutex::new(Vec::new()),
             active_stopped_observer: Mutex::new(Vec::new()),
-            activate_successors: Mutex::new(Box::new(|_tx, _block| {})),
             election_end: Mutex::new(vec![election_end]),
             account_balance_changed,
             online_reps,
@@ -169,19 +166,12 @@ impl ActiveElections {
             vote_cache_processor,
             steady_clock,
             message_publisher: Mutex::new(message_publisher),
+            election_schedulers: RwLock::new(None),
         }
     }
 
     pub(crate) fn set_election_schedulers(&self, schedulers: &Arc<ElectionSchedulers>) {
-        let schedulers_weak = Arc::downgrade(&schedulers);
-        // Notify election schedulers when AEC frees election slot
-        *self.vacancy_update.lock().unwrap() = Box::new(move || {
-            let Some(schedulers) = schedulers_weak.upgrade() else {
-                return;
-            };
-
-            schedulers.notify();
-        });
+        *self.election_schedulers.write().unwrap() = Some(Arc::downgrade(&schedulers));
     }
 
     pub fn len(&self) -> usize {
@@ -272,16 +262,6 @@ impl ActiveElections {
 
     pub fn recently_cemented_list(&self) -> BoundedVecDeque<ElectionStatus> {
         self.recently_cemented.lock().unwrap().clone()
-    }
-
-    /*
-     * Callbacks
-     */
-    pub fn set_activate_successors_callback(
-        &self,
-        callback: Box<dyn Fn(&LmdbReadTransaction, &Arc<BlockEnum>) + Send + Sync>,
-    ) {
-        *self.activate_successors.lock().unwrap() = callback;
     }
 
     //--------------------------------------------------------------------------------
@@ -418,7 +398,24 @@ impl ActiveElections {
             guard.roots.clear();
         }
 
-        (self.vacancy_update.lock().unwrap())()
+        self.vacancy_updated();
+    }
+
+    /// Notify election schedulers when AEC frees election slot
+    fn vacancy_updated(&self) {
+        self.do_election_schedulers(|s| s.notify());
+    }
+
+    fn do_election_schedulers(&self, f: impl FnOnce(&ElectionSchedulers)) {
+        let schedulers = self.election_schedulers.read().unwrap();
+        let Some(schedulers) = &*schedulers else {
+            return;
+        };
+        let Some(schedulers) = schedulers.upgrade() else {
+            return;
+        };
+
+        f(&schedulers)
     }
 
     pub fn active_root(&self, root: &QualifiedRoot) -> bool {
@@ -680,7 +677,7 @@ impl ActiveElections {
             callback(election)
         }
 
-        (self.vacancy_update.lock().unwrap())();
+        self.vacancy_updated();
 
         for (hash, block) in blocks {
             // Notify observers about dropped elections & blocks lost confirmed elections
@@ -1239,9 +1236,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         // Next-block activations are only done for blocks with previously active elections
         if cemented_bootstrap_count_reached && was_active && !self.flags.disable_activate_successors
         {
-            let guard = self.activate_successors.lock().unwrap();
-            //TODO remove Arc
-            (guard)(tx, &Arc::new(block.clone()));
+            self.do_election_schedulers(|s| s.activate_successors(tx, block));
         }
     }
 
@@ -1349,7 +1344,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                     (callback)(hash);
                 }
             }
-            self.vacancy_update.lock().unwrap()();
+            self.vacancy_updated();
         }
 
         // Votes are generated for inserted or ongoing elections

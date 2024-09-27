@@ -47,16 +47,18 @@ pub type AccountBalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Syn
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActiveElectionsConfig {
-    // Maximum number of simultaneous active elections (AEC size)
+    /// Maximum number of simultaneous active elections (AEC size)
     pub size: usize,
-    // Limit of hinted elections as percentage of `active_elections_size`
+    /// Limit of hinted elections as percentage of `active_elections_size`
     pub hinted_limit_percentage: usize,
-    // Limit of optimistic elections as percentage of `active_elections_size`
+    /// Limit of optimistic elections as percentage of `active_elections_size`
     pub optimistic_limit_percentage: usize,
-    // Maximum confirmation history size
+    /// Maximum confirmation history size
     pub confirmation_history_size: usize,
-    // Maximum cache size for recently_confirmed
+    /// Maximum cache size for recently_confirmed
     pub confirmation_cache: usize,
+    /// Maximum size of election winner details set
+    pub max_election_winners: usize,
 }
 
 impl Default for ActiveElectionsConfig {
@@ -67,6 +69,7 @@ impl Default for ActiveElectionsConfig {
             optimistic_limit_percentage: 10,
             confirmation_history_size: 2048,
             confirmation_cache: 65536,
+            max_election_winners: 1024 * 16,
         }
     }
 }

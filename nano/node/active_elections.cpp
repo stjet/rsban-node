@@ -295,13 +295,14 @@ nano::active_elections_config::active_elections_config (rsnano::ActiveElectionsC
 	hinted_limit_percentage{ dto.hinted_limit_percentage },
 	optimistic_limit_percentage{ dto.optimistic_limit_percentage },
 	confirmation_history_size{ dto.confirmation_history_size },
-	confirmation_cache{ dto.confirmation_cache }
+	confirmation_cache{ dto.confirmation_cache },
+	max_election_winners{ dto.max_election_winners}
 {
 }
 
 rsnano::ActiveElectionsConfigDto nano::active_elections_config::into_dto () const
 {
-	return { size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache };
+	return { size, hinted_limit_percentage, optimistic_limit_percentage, confirmation_history_size, confirmation_cache, max_election_winners };
 }
 
 nano::error nano::active_elections_config::deserialize (nano::tomlconfig & toml)

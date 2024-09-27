@@ -462,7 +462,7 @@ impl Node {
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,
-            vote_applier,
+            vote_applier.clone(),
             vote_router.clone(),
             vote_cache_processor.clone(),
             steady_clock.clone(),
@@ -575,6 +575,7 @@ impl Node {
         ));
 
         active_elections.set_election_schedulers(&election_schedulers);
+        vote_applier.set_election_schedulers(&election_schedulers);
 
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.request_aggregator.clone(),

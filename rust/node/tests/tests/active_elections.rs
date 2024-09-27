@@ -832,12 +832,12 @@ fn vacancy() {
     assert_eq!(1, node.active.vacancy(ElectionBehavior::Priority),);
     assert_eq!(0, node.active.len());
     let election1 = start_election(&node, &send.hash());
-    assert_timely_eq(Duration::from_secs(1), || notify_tracker.output().len(), 1);
+    assert_timely(Duration::from_secs(1), || notify_tracker.output().len() > 0);
     notify_tracker.clear();
     assert_eq!(0, node.active.vacancy(ElectionBehavior::Priority));
     assert_eq!(1, node.active.len());
     node.active.force_confirm(&election1);
-    assert_timely_eq(Duration::from_secs(1), || notify_tracker.output().len(), 1);
+    assert_timely(Duration::from_secs(1), || notify_tracker.output().len() > 0);
     assert_eq!(1, node.active.vacancy(ElectionBehavior::Priority));
     assert_eq!(0, node.active.len());
 }

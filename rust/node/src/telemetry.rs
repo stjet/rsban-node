@@ -378,12 +378,12 @@ impl Telemetry {
     }
 }
 
-pub const MAJOR_VERSION: u8 = 1; // TODO: get this from cmake
+pub const MAJOR_VERSION: u8 = 2; // TODO: get this from cmake
 pub const MINOR_VERSION: u8 = 0; // TODO: get this from cmake
 pub const PATCH_VERSION: u8 = 0; // TODO: get this from cmake
 pub const PRE_RELEASE_VERSION: u8 = 99; // TODO: get this from cmake
 pub const BUILD_INFO: &'static str = "TODO get buildinfo";
-pub const VERSION_STRING: &'static str = "1.0"; // TODO: get this from cmake
+pub const VERSION_STRING: &'static str = "2.0"; // TODO: get this from cmake
 
 #[derive(Clone, Hash, Copy, PartialEq, Eq, Default)]
 struct VendorVersion {

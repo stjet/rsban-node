@@ -312,7 +312,7 @@ pub fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     );
 
     let block = node.block(hash).unwrap();
-    node.manual_scheduler.push(Arc::new(block.clone()), None);
+    node.election_schedulers.add_manual(Arc::new(block.clone()));
     // wait for the election to appear
     assert_timely_msg(
         Duration::from_secs(5),
@@ -336,7 +336,7 @@ pub fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
 pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     for hash in hashes {
         let block = node.block(hash).unwrap();
-        node.manual_scheduler.push(Arc::new(block), None);
+        node.election_schedulers.add_manual(Arc::new(block));
     }
 }
 
@@ -427,4 +427,52 @@ pub fn setup_chains(
     }
 
     chains
+}
+
+pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<BlockEnum> {
+    let mut blocks = Vec::new();
+    let account: Account = source.public_key().into();
+    let mut latest = node.latest(&account);
+    let mut balance = node.balance(&account);
+
+    for _ in 0..count {
+        let key = KeyPair::new();
+
+        balance -= 1;
+
+        let send = BlockEnum::State(StateBlock::new(
+            account,
+            latest,
+            source.public_key(),
+            balance,
+            key.public_key().as_account().into(),
+            source,
+            node.work_generate_dev(latest.into()),
+        ));
+
+        latest = send.hash();
+
+        let open = BlockEnum::State(StateBlock::new(
+            key.public_key().into(),
+            BlockHash::zero(),
+            key.public_key(),
+            Amount::raw(1),
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(key.public_key().into()),
+        ));
+
+        node.process_multi(&[send.clone(), open.clone()]);
+        // Ensure blocks are in the ledger
+        assert_timely(Duration::from_secs(5), || {
+            node.block_hashes_exist([send.hash(), open.hash()])
+        });
+
+        blocks.push(open);
+    }
+
+    // Confirm whole genesis chain at once
+    node.confirm(latest);
+
+    blocks
 }

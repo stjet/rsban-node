@@ -1389,7 +1389,6 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
         Arc::new(OutboundBandwidthLimiter::default()),
-        node.network_info.clone(),
         node.steady_clock.clone(),
         Arc::new(NullNetworkObserver::new()),
         &node.tokio,

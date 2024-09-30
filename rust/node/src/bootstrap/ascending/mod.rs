@@ -4,6 +4,7 @@ mod ordered_blocking;
 mod ordered_priorities;
 mod ordered_tags;
 mod peer_scoring;
+mod priority;
 mod throttle;
 
 use self::{
@@ -14,19 +15,19 @@ use self::{
     throttle::Throttle,
 };
 use crate::{
-    block_processing::{BlockProcessor, BlockSource},
+    block_processing::{BlockProcessor, BlockProcessorContext, BlockSource},
     bootstrap::{ascending::ordered_tags::QueryType, BootstrapServer},
     stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::MessagePublisher,
 };
 pub use account_sets::AccountSetsConfig;
 use num::clamp;
-use ordered_priorities::Priority;
 use ordered_tags::QuerySource;
+use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, BlockEnum, BlockHash, BlockType, HashOrAccount,
+    Account, AccountInfo, BlockEnum, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{
@@ -36,7 +37,7 @@ use rsnano_messages::{
 use rsnano_network::{
     bandwidth_limiter::BandwidthLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
 };
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     cmp::{max, min},
     sync::{Arc, Condvar, Mutex, RwLock},
@@ -55,15 +56,15 @@ pub struct BootstrapAscending {
     block_processor: Arc<BlockProcessor>,
     ledger: Arc<Ledger>,
     stats: Arc<Stats>,
-    network_info: Arc<RwLock<NetworkInfo>>,
     message_publisher: Mutex<MessagePublisher>,
     threads: Mutex<Option<Threads>>,
-    mutex: Arc<Mutex<BootstrapAscendingImpl>>,
+    mutex: Arc<Mutex<BootstrapAscendingLogic>>,
     condition: Arc<Condvar>,
     config: BootstrapAscendingConfig,
     /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
     /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
     database_limiter: BandwidthLimiter,
+    clock: Arc<SteadyClock>,
 }
 
 struct Threads {
@@ -81,33 +82,40 @@ impl BootstrapAscending {
         network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
         config: BootstrapAscendingConfig,
+        clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
             block_processor,
             threads: Mutex::new(None),
-            mutex: Arc::new(Mutex::new(BootstrapAscendingImpl {
+            mutex: Arc::new(Mutex::new(BootstrapAscendingLogic {
                 stopped: false,
-                accounts: AccountSets::new(config.account_sets.clone(), Arc::clone(&stats)),
+                accounts: AccountSets::new(config.account_sets.clone()),
                 scoring: PeerScoring::new(config.clone()),
                 iterator: BufferedIterator::new(Arc::clone(&ledger)),
                 tags: OrderedTags::default(),
-                throttle: Throttle::new(compute_throttle_size(&ledger, &config)),
+                throttle: Throttle::new(compute_throttle_size(
+                    ledger.account_count(),
+                    config.throttle_coefficient,
+                )),
                 sync_dependencies_interval: Instant::now(),
+                config: config.clone(),
+                network_info,
             })),
             condition: Arc::new(Condvar::new()),
             database_limiter: BandwidthLimiter::new(1.0, config.database_rate_limit),
             config,
             stats,
-            network_info,
             ledger,
             message_publisher: Mutex::new(message_publisher),
+            clock,
         }
     }
 
     pub fn stop(&self) {
         self.mutex.lock().unwrap().stopped = true;
         self.condition.notify_all();
-        if let Some(threads) = self.threads.lock().unwrap().take() {
+        let threads = self.threads.lock().unwrap().take();
+        if let Some(threads) = threads {
             threads.priorities.join().unwrap();
             threads.timeout.join().unwrap();
             if let Some(database) = threads.database {
@@ -119,7 +127,24 @@ impl BootstrapAscending {
         }
     }
 
-    fn send(&self, channel_id: ChannelId, tag: AsyncTag) {
+    fn send(&self, channel_id: ChannelId, request: &Message) {
+        self.stats
+            .inc(StatType::BootstrapAscending, DetailType::Request);
+
+        let query_type = QueryType::from(request);
+        self.stats
+            .inc(StatType::BootstrapAscendingRequest, query_type.into());
+
+        // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
+        self.message_publisher.lock().unwrap().try_send(
+            channel_id,
+            &request,
+            DropPolicy::CanDrop,
+            TrafficType::Bootstrap,
+        );
+    }
+
+    fn create_asc_pull_request(&self, tag: &AsyncTag) -> Message {
         debug_assert!(tag.source != QuerySource::Invalid);
 
         {
@@ -139,7 +164,7 @@ impl BootstrapAscending {
                 AscPullReqType::Blocks(BlocksReqPayload {
                     start_type,
                     start: tag.start,
-                    count: self.config.max_pull_count as u8,
+                    count: tag.count as u8,
                 })
             }
             QueryType::AccountInfoByHash => AscPullReqType::AccountInfo(AccountInfoReqPayload {
@@ -149,24 +174,10 @@ impl BootstrapAscending {
             QueryType::Invalid => panic!("invalid query type"),
         };
 
-        let request = Message::AscPullReq(AscPullReq {
+        Message::AscPullReq(AscPullReq {
             id: tag.id,
             req_type,
-        });
-
-        self.stats
-            .inc(StatType::BootstrapAscending, DetailType::Request);
-
-        self.stats
-            .inc(StatType::BootstrapAscendingRequest, tag.query_type.into());
-
-        // TODO: There is no feedback mechanism if bandwidth limiter starts dropping our requests
-        self.message_publisher.lock().unwrap().try_send(
-            channel_id,
-            &request,
-            DropPolicy::CanDrop,
-            TrafficType::Bootstrap,
-        );
+        })
     }
 
     pub fn priority_len(&self) -> usize {
@@ -182,7 +193,7 @@ impl BootstrapAscending {
     }
 
     /* Waits for a condition to be satisfied with incremental backoff */
-    fn wait(&self, mut predicate: impl FnMut(&mut BootstrapAscendingImpl) -> bool) {
+    fn wait(&self, mut predicate: impl FnMut(&mut BootstrapAscendingLogic) -> bool) {
         let mut guard = self.mutex.lock().unwrap();
         let mut interval = Duration::from_millis(5);
         while !guard.stopped && !predicate(&mut guard) {
@@ -222,7 +233,7 @@ impl BootstrapAscending {
     fn wait_priority(&self) -> (Account, Priority) {
         let mut result = (Account::zero(), Priority::ZERO);
         self.wait(|i| {
-            result = i.next_priority(&self.stats);
+            result = i.next_priority(&self.stats, self.clock.now());
             !result.0.is_zero()
         });
         result
@@ -252,26 +263,35 @@ impl BootstrapAscending {
         result
     }
 
-    fn request(
-        &self,
-        account: Account,
-        count: usize,
-        channel_id: ChannelId,
-        source: QuerySource,
-    ) -> bool {
-        debug_assert!(count > 0);
-        debug_assert!(count <= BootstrapServer::MAX_BLOCKS);
-
-        // Limit the max number of blocks to pull
-        let count = min(count, self.config.max_pull_count);
-
-        let info = {
+    fn request(&self, account: Account, count: usize, channel_id: ChannelId, source: QuerySource) {
+        let account_info = {
             let tx = self.ledger.read_txn();
             self.ledger.store.account.get(&tx, &account)
         };
+        let id = thread_rng().next_u64();
+        let now = self.clock.now();
+
+        let request = self.create_blocks_request(id, account, account_info, count, source, now);
+
+        self.send(channel_id, &request);
+    }
+
+    fn create_blocks_request(
+        &self,
+        id: u64,
+        account: Account,
+        account_info: Option<AccountInfo>,
+        count: usize,
+        source: QuerySource,
+        now: Timestamp,
+    ) -> Message {
+        // Limit the max number of blocks to pull
+        debug_assert!(count > 0);
+        debug_assert!(count <= BootstrapServer::MAX_BLOCKS);
+        let count = min(count, self.config.max_pull_count);
 
         // Check if the account picked has blocks, if it does, start the pull from the highest block
-        let (query_type, start, hash) = match info {
+        let (query_type, start, hash) = match account_info {
             Some(info) => (
                 QueryType::BlocksByHash,
                 HashOrAccount::from(info.head),
@@ -285,9 +305,9 @@ impl BootstrapAscending {
         };
 
         let tag = AsyncTag {
-            id: thread_rng().next_u64(),
+            id,
             account,
-            timestamp: Instant::now(),
+            timestamp: now,
             query_type,
             start,
             source,
@@ -295,12 +315,16 @@ impl BootstrapAscending {
             count,
         };
 
-        self.send(channel_id, tag);
-
-        true // Request sent
+        self.create_asc_pull_request(&tag)
     }
 
-    fn request_info(&self, hash: BlockHash, channel_id: ChannelId, source: QuerySource) -> bool {
+    fn create_account_info_request(
+        &self,
+        id: u64,
+        hash: BlockHash,
+        source: QuerySource,
+        now: Timestamp,
+    ) -> Message {
         let tag = AsyncTag {
             query_type: QueryType::AccountInfoByHash,
             source,
@@ -308,13 +332,11 @@ impl BootstrapAscending {
             account: Account::zero(),
             hash,
             count: 0,
-            id: thread_rng().next_u64(),
-            timestamp: Instant::now(),
+            id,
+            timestamp: now,
         };
 
-        self.send(channel_id, tag);
-
-        true // Request sent
+        self.create_asc_pull_request(&tag)
     }
 
     fn run_one_priority(&self) {
@@ -386,7 +408,12 @@ impl BootstrapAscending {
         if blocking.is_zero() {
             return;
         }
-        self.request_info(blocking, channel_id, QuerySource::Blocking);
+
+        let now = self.clock.now();
+        let id = thread_rng().next_u64();
+        let request = self.create_account_info_request(id, blocking, QuerySource::Blocking, now);
+
+        self.send(channel_id, &request);
     }
 
     fn run_dependencies(&self) {
@@ -405,7 +432,8 @@ impl BootstrapAscending {
         while !guard.stopped {
             self.stats
                 .inc(StatType::BootstrapAscending, DetailType::LoopCleanup);
-            guard.cleanup_and_sync(&self.network_info, &self.ledger, &self.config, &self.stats);
+
+            guard.cleanup_and_sync(self.ledger.account_count(), &self.stats, self.clock.now());
 
             guard = self
                 .condition
@@ -454,7 +482,7 @@ impl BootstrapAscending {
 
         self.stats.sample(
             Sample::BootstrapTagDuration,
-            tag.timestamp.elapsed().as_millis() as i64,
+            tag.timestamp.elapsed(self.clock.now()).as_millis() as i64,
             (0, self.config.request_timeout.as_millis() as i64),
         );
 
@@ -479,7 +507,7 @@ impl BootstrapAscending {
         self.stats
             .inc(StatType::BootstrapAscendingProcess, DetailType::Blocks);
 
-        let result = self.verify(response, tag);
+        let result = verify_response(response, tag);
         match result {
             VerifyResult::Ok => {
                 self.stats
@@ -537,7 +565,31 @@ impl BootstrapAscending {
                     .inc(StatType::BootstrapAscendingVerify, DetailType::NothingNew);
 
                 let mut guard = self.mutex.lock().unwrap();
-                guard.accounts.priority_down(&tag.account);
+                match guard.accounts.priority_down(&tag.account) {
+                    PriorityDownResult::Deprioritized => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::Deprioritize,
+                        );
+                    }
+                    PriorityDownResult::Erased => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::Deprioritize,
+                        );
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityEraseThreshold,
+                        );
+                    }
+                    PriorityDownResult::AccountNotFound => {
+                        self.stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::DeprioritizeFailed,
+                        );
+                    }
+                    PriorityDownResult::InvalidAccount => {}
+                }
                 if tag.source == QuerySource::Database {
                     guard.throttle.add(false);
                 }
@@ -561,86 +613,73 @@ impl BootstrapAscending {
             // Prioritize account containing the dependency
             {
                 let mut guard = self.mutex.lock().unwrap();
-                guard
+                let updated = guard
                     .accounts
                     .dependency_update(&tag.hash, response.account);
-                guard.accounts.priority_set(&response.account);
+                if updated > 0 {
+                    self.stats.add(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::DependencyUpdate,
+                        updated as u64,
+                    );
+                } else {
+                    self.stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::DependencyUpdateFailed,
+                    );
+                }
+
+                if guard.accounts.priority_set(&response.account) {
+                    self.priority_inserted();
+                } else {
+                    self.priority_insertion_failed()
+                };
             }
         }
     }
 
-    /// Verifies whether the received response is valid. Returns:
-    /// - invalid: when received blocks do not correspond to requested hash/account or they do not make a valid chain
-    /// - nothing_new: when received response indicates that the account chain does not have more blocks
-    /// - ok: otherwise, if all checks pass
-    fn verify(&self, response: &BlocksAckPayload, tag: &AsyncTag) -> VerifyResult {
-        let blocks = response.blocks();
-        if blocks.is_empty() {
-            return VerifyResult::NothingNew;
-        }
-        if blocks.len() == 1 && blocks.front().unwrap().hash() == tag.start.into() {
-            return VerifyResult::NothingNew;
-        }
-        if blocks.len() > tag.count {
-            return VerifyResult::Invalid;
+    fn priority_inserted(&self) {
+        self.stats.inc(
+            StatType::BootstrapAscendingAccounts,
+            DetailType::PriorityInsert,
+        );
+    }
+
+    fn priority_insertion_failed(&self) {
+        self.stats.inc(
+            StatType::BootstrapAscendingAccounts,
+            DetailType::PrioritizeFailed,
+        );
+    }
+
+    // TODO: This is called from a very congested blockprocessor thread. Offload this work to a dedicated processing thread
+    fn batch_processed(&self, batch: &[(BlockStatus, Arc<BlockProcessorContext>)]) {
+        {
+            let mut guard = self.mutex.lock().unwrap();
+            let tx = self.ledger.read_txn();
+            for (result, context) in batch {
+                let account = context.block.account_field().unwrap_or_else(|| {
+                    self.ledger
+                        .any()
+                        .block_account(&tx, &context.block.previous())
+                        .unwrap_or_default()
+                });
+
+                guard.inspect(
+                    &self.stats,
+                    *result,
+                    &context.block,
+                    context.source,
+                    &account,
+                );
+            }
         }
 
-        let first = blocks.front().unwrap();
-        match tag.query_type {
-            QueryType::BlocksByHash => {
-                if first.hash() != tag.start.into() {
-                    // TODO: Stat & log
-                    return VerifyResult::Invalid;
-                }
-            }
-            QueryType::BlocksByAccount => {
-                // Open & state blocks always contain account field
-                if first.account_field().unwrap() != tag.start.into() {
-                    // TODO: Stat & log
-                    return VerifyResult::Invalid;
-                }
-            }
-            QueryType::AccountInfoByHash | QueryType::Invalid => {
-                return VerifyResult::Invalid;
-            }
-        }
-
-        // Verify blocks make a valid chain
-        let mut previous_hash = first.hash();
-        for block in blocks.iter().skip(1) {
-            if block.previous() != previous_hash {
-                // TODO: Stat & log
-                return VerifyResult::Invalid; // Blocks do not make a chain
-            }
-            previous_hash = block.hash();
-        }
-
-        VerifyResult::Ok
+        self.condition.notify_all();
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "tags".to_string(),
-                    count: guard.tags.len(),
-                    sizeof_element: OrderedTags::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "throttle".to_string(),
-                    count: guard.throttle.len(),
-                    sizeof_element: 0,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "throttle_success".to_string(),
-                    count: guard.throttle.successes(),
-                    sizeof_element: 0,
-                }),
-                guard.accounts.collect_container_info("accounts"),
-            ],
-        )
+        self.mutex.lock().unwrap().collect_container_info(name)
     }
 }
 
@@ -662,35 +701,22 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
         self.block_processor
             .add_batch_processed_observer(Box::new(move |batch| {
                 if let Some(self_l) = self_w.upgrade() {
-                    let mut should_notify = false;
-                    {
-                        let mut guard = self_l.mutex.lock().unwrap();
-                        let tx = self_l.ledger.read_txn();
-                        for (result, context) in batch {
-                            // Do not try to unnecessarily bootstrap live traffic chains
-                            if context.source == BlockSource::Bootstrap {
-                                guard.inspect(
-                                    &self_l.ledger,
-                                    &tx,
-                                    *result,
-                                    &context.block,
-                                    context.source,
-                                );
-                                should_notify = true;
-                            }
-                        }
-                    }
-
-                    if should_notify {
-                        self_l.condition.notify_all();
-                    }
+                    self_l.batch_processed(batch);
                 }
             }));
-        self.mutex
+
+        let inserted = self
+            .mutex
             .lock()
             .unwrap()
             .accounts
             .priority_set(genesis_account);
+
+        if inserted {
+            self.priority_inserted()
+        } else {
+            self.priority_insertion_failed()
+        };
     }
 
     fn start(&self) {
@@ -746,7 +772,7 @@ impl BootstrapAscendingExt for Arc<BootstrapAscending> {
     }
 }
 
-struct BootstrapAscendingImpl {
+struct BootstrapAscendingLogic {
     stopped: bool,
     accounts: AccountSets,
     scoring: PeerScoring,
@@ -754,19 +780,21 @@ struct BootstrapAscendingImpl {
     tags: OrderedTags,
     throttle: Throttle,
     sync_dependencies_interval: Instant,
+    config: BootstrapAscendingConfig,
+    network_info: Arc<RwLock<NetworkInfo>>,
 }
 
-impl BootstrapAscendingImpl {
+impl BootstrapAscendingLogic {
     /// Inspects a block that has been processed by the block processor
     /// - Marks an account as blocked if the result code is gap source as there is no reason request additional blocks for this account until the dependency is resolved
     /// - Marks an account as forwarded if it has been recently referenced by a block that has been inserted.
     fn inspect(
         &mut self,
-        ledger: &Ledger,
-        tx: &LmdbReadTransaction,
+        stats: &Stats,
         status: BlockStatus,
-        block: &Arc<BlockEnum>,
+        block: &BlockEnum,
         source: BlockSource,
+        account: &Account,
     ) {
         let hash = block.hash();
 
@@ -774,26 +802,75 @@ impl BootstrapAscendingImpl {
             BlockStatus::Progress => {
                 let account = block.account();
                 // If we've inserted any block in to an account, unmark it as blocked
-                self.accounts.unblock(account, None);
-                self.accounts.priority_up(&account);
+                if self.accounts.unblock(account, None) {
+                    stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Unblock);
+                } else {
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::UnblockFailed,
+                    );
+                }
+
+                match self.accounts.priority_up(&account) {
+                    PriorityUpResult::Updated => {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
+                    }
+                    PriorityUpResult::Inserted => {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Prioritize);
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityInsert,
+                        );
+                    }
+                    PriorityUpResult::AccountBlocked => {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PrioritizeFailed,
+                        );
+                    }
+                    PriorityUpResult::InvalidAccount => {}
+                }
 
                 if block.is_send() {
                     let destination = block.destination().unwrap();
-                    self.accounts.unblock(destination, Some(hash)); // Unblocking automatically inserts account into priority set
-                    self.accounts.priority_set(&destination);
+                    // Unblocking automatically inserts account into priority set
+                    if self.accounts.unblock(destination, Some(hash)) {
+                        stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Unblock);
+                    } else {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::UnblockFailed,
+                        );
+                    }
+                    if self.accounts.priority_set(&destination) {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PriorityInsert,
+                        );
+                    } else {
+                        stats.inc(
+                            StatType::BootstrapAscendingAccounts,
+                            DetailType::PrioritizeFailed,
+                        );
+                    };
                 }
             }
             BlockStatus::GapSource => {
                 if source == BlockSource::Bootstrap {
-                    let account = if block.previous().is_zero() {
-                        block.account_field().unwrap()
-                    } else {
-                        ledger.any().block_account(tx, &block.previous()).unwrap()
-                    };
+                    assert!(!account.is_zero());
                     let source = block.source_or_link();
 
                     // Mark account as blocked because it is missing the source block
-                    self.accounts.block(account, source);
+                    self.accounts.block(*account, source);
+                    stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Block);
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::PriorityEraseBlock,
+                    );
+                    stats.inc(
+                        StatType::BootstrapAscendingAccounts,
+                        DetailType::BlockingInsert,
+                    );
                 }
             }
             BlockStatus::GapPrevious => {
@@ -804,7 +881,17 @@ impl BootstrapAscendingImpl {
                 {
                     if block.block_type() == BlockType::State {
                         let account = block.account_field().unwrap();
-                        self.accounts.priority_set(&account);
+                        if self.accounts.priority_set(&account) {
+                            stats.inc(
+                                StatType::BootstrapAscendingAccounts,
+                                DetailType::PriorityInsert,
+                            );
+                        } else {
+                            stats.inc(
+                                StatType::BootstrapAscendingAccounts,
+                                DetailType::PrioritizeFailed,
+                            );
+                        }
                     }
                 }
             }
@@ -821,8 +908,8 @@ impl BootstrapAscendingImpl {
             .count()
     }
 
-    fn next_priority(&mut self, stats: &Stats) -> (Account, Priority) {
-        let account = self.accounts.next_priority(|account| {
+    fn next_priority(&mut self, stats: &Stats, now: Timestamp) -> (Account, Priority) {
+        let account = self.accounts.next_priority(now, |account| {
             self.tags.count_by_account(account, QuerySource::Priority) < 4
         });
 
@@ -831,7 +918,7 @@ impl BootstrapAscendingImpl {
         }
 
         stats.inc(StatType::BootstrapAscendingNext, DetailType::NextPriority);
-        self.accounts.timestamp_set(&account);
+        self.accounts.timestamp_set(&account, now);
 
         // TODO: Priority could be returned by the accounts.next_priority() call
         (account, self.accounts.priority(&account))
@@ -880,20 +967,17 @@ impl BootstrapAscendingImpl {
         blocking
     }
 
-    fn cleanup_and_sync(
-        &mut self,
-        network: &RwLock<NetworkInfo>,
-        ledger: &Ledger,
-        config: &BootstrapAscendingConfig,
-        stats: &Stats,
-    ) {
-        self.scoring
-            .sync(&network.read().unwrap().list_realtime_channels(0));
+    fn cleanup_and_sync(&mut self, account_count: u64, stats: &Stats, now: Timestamp) {
+        let channels = self.network_info.read().unwrap().list_realtime_channels(0);
+        self.scoring.sync(&channels);
         self.scoring.timeout();
 
-        self.throttle.resize(compute_throttle_size(ledger, config));
+        self.throttle.resize(compute_throttle_size(
+            account_count,
+            self.config.throttle_coefficient,
+        ));
 
-        let cutoff = Instant::now() - config.request_timeout;
+        let cutoff = now - self.config.request_timeout;
         let should_timeout = |tag: &AsyncTag| tag.timestamp < cutoff;
 
         while let Some(front) = self.tags.front() {
@@ -908,22 +992,103 @@ impl BootstrapAscendingImpl {
         if self.sync_dependencies_interval.elapsed() >= Duration::from_secs(60) {
             self.sync_dependencies_interval = Instant::now();
             stats.inc(StatType::BootstrapAscending, DetailType::SyncDependencies);
-            self.accounts.sync_dependencies();
+            let (inserted, insert_failed) = self.accounts.sync_dependencies();
+            stats.add(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PriorityInsert,
+                inserted as u64,
+            );
+            stats.add(
+                StatType::BootstrapAscendingAccounts,
+                DetailType::PrioritizeFailed,
+                insert_failed as u64,
+            );
         }
+    }
+
+    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        ContainerInfoComponent::Composite(
+            name.into(),
+            vec![
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "tags".to_string(),
+                    count: self.tags.len(),
+                    sizeof_element: OrderedTags::ELEMENT_SIZE,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "throttle".to_string(),
+                    count: self.throttle.len(),
+                    sizeof_element: 0,
+                }),
+                ContainerInfoComponent::Leaf(ContainerInfo {
+                    name: "throttle_success".to_string(),
+                    count: self.throttle.successes(),
+                    sizeof_element: 0,
+                }),
+                self.accounts.collect_container_info("accounts"),
+            ],
+        )
     }
 }
 
 // Calculates a lookback size based on the size of the ledger where larger ledgers have a larger sample count
-fn compute_throttle_size(ledger: &Ledger, config: &BootstrapAscendingConfig) -> usize {
-    let ledger_size = ledger.account_count();
-
-    let target = if ledger_size > 0 {
-        config.throttle_coefficient * ((ledger_size as f64).ln() as usize)
+fn compute_throttle_size(account_count: u64, throttle_coefficient: usize) -> usize {
+    let target = if account_count > 0 {
+        throttle_coefficient * ((account_count as f64).ln() as usize)
     } else {
         0
     };
     const MIN_SIZE: usize = 16;
     max(target, MIN_SIZE)
+}
+
+/// Verifies whether the received response is valid. Returns:
+/// - invalid: when received blocks do not correspond to requested hash/account or they do not make a valid chain
+/// - nothing_new: when received response indicates that the account chain does not have more blocks
+/// - ok: otherwise, if all checks pass
+fn verify_response(response: &BlocksAckPayload, tag: &AsyncTag) -> VerifyResult {
+    let blocks = response.blocks();
+    if blocks.is_empty() {
+        return VerifyResult::NothingNew;
+    }
+    if blocks.len() == 1 && blocks.front().unwrap().hash() == tag.start.into() {
+        return VerifyResult::NothingNew;
+    }
+    if blocks.len() > tag.count {
+        return VerifyResult::Invalid;
+    }
+
+    let first = blocks.front().unwrap();
+    match tag.query_type {
+        QueryType::BlocksByHash => {
+            if first.hash() != tag.start.into() {
+                // TODO: Stat & log
+                return VerifyResult::Invalid;
+            }
+        }
+        QueryType::BlocksByAccount => {
+            // Open & state blocks always contain account field
+            if first.account_field().unwrap() != tag.start.into() {
+                // TODO: Stat & log
+                return VerifyResult::Invalid;
+            }
+        }
+        QueryType::AccountInfoByHash | QueryType::Invalid => {
+            return VerifyResult::Invalid;
+        }
+    }
+
+    // Verify blocks make a valid chain
+    let mut previous_hash = first.hash();
+    for block in blocks.iter().skip(1) {
+        if block.previous() != previous_hash {
+            // TODO: Stat & log
+            return VerifyResult::Invalid; // Blocks do not make a chain
+        }
+        previous_hash = block.hash();
+    }
+
+    VerifyResult::Ok
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -963,6 +1128,23 @@ impl Default for BootstrapAscendingConfig {
             block_processor_theshold: 1000,
             min_protocol_version: 0x14, // TODO don't hard code
             max_requests: 1024,
+        }
+    }
+}
+
+impl From<&Message> for QueryType {
+    fn from(value: &Message) -> Self {
+        if let Message::AscPullReq(req) = value {
+            match &req.req_type {
+                AscPullReqType::Blocks(b) => match b.start_type {
+                    HashType::Account => QueryType::BlocksByAccount,
+                    HashType::Block => QueryType::BlocksByHash,
+                },
+                AscPullReqType::AccountInfo(_) => QueryType::AccountInfoByHash,
+                AscPullReqType::Frontiers(_) => QueryType::Invalid,
+            }
+        } else {
+            QueryType::Invalid
         }
     }
 }

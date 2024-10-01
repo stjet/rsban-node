@@ -96,7 +96,56 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
 
-        assert!(result.is_err());
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_fails_wallet_locked() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        node.wallets.lock(&wallet_id).unwrap();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet is locked\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_fails_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
 
         server.abort();
     }

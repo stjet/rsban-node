@@ -209,4 +209,29 @@ mod tests {
 
         server.abort();
     }
+
+    #[test]
+    fn account_move_fails_account_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(wallet);
+        node.wallets.create(source);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![Account::zero()]).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Account not found\"".to_string())
+        );
+
+        server.abort();
+    }
 }

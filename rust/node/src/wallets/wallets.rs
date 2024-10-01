@@ -573,7 +573,7 @@ impl Wallets {
         let mut tx = self.env.tx_begin_write();
         target
             .store.move_keys(&mut tx, &source.store, accounts)
-            .map_err(|_| WalletsError::Generic)
+            .map_err(|_| WalletsError::AccountNotFound)
     }
 
     pub fn backup(&self, path: &Path) -> anyhow::Result<()> {

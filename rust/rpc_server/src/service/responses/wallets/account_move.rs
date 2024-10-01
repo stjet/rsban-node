@@ -7,13 +7,13 @@ use std::sync::Arc;
 pub async fn account_move(
     node: Arc<Node>,
     enable_control: bool,
-    wallet: WalletId,
+    target: WalletId,
     source: WalletId,
     accounts: Vec<Account>,
 ) -> String {
     if enable_control {
         let public_keys: Vec<PublicKey> = accounts.iter().map(|account| account.into()).collect();
-        let result = node.wallets.move_accounts(&source, &wallet, &public_keys);
+        let result = node.wallets.move_accounts(&source, &target, &public_keys);
 
         match result {
             Ok(()) => to_string_pretty(&BoolDto::new("moved".to_string(), true)).unwrap(),
@@ -27,7 +27,7 @@ pub async fn account_move(
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::WalletId;
+    use rsnano_core::{Account, WalletId};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
@@ -104,6 +104,108 @@ mod tests {
             .block_on(async { rpc_client.account_move(wallet, source, vec![account]).await });
 
         assert!(result.is_err());
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_move_fails_source_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(wallet);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![Account::zero()]).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_move_fails_target_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(source);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![Account::zero()]).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_move_fails_source_locked() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(wallet);
+        node.wallets.create(source);
+
+        node.wallets.lock(&source).unwrap();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![Account::zero()]).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet is locked\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_move_fails_target_locked() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet = WalletId::random();
+        let source = WalletId::random();
+
+        node.wallets.create(wallet);
+        node.wallets.create(source);
+
+        node.wallets.lock(&wallet).unwrap();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_move(wallet, source, vec![Account::zero()]).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet is locked\"".to_string())
+        );
 
         server.abort();
     }

@@ -308,7 +308,7 @@ endif()
 
 if(WIN32)
   find_library(PSAPI Psapi)
-  add_definitions(-D_WIN32_WINNT=0x0600 -DWINVER=0x0600 
+  add_definitions(-D_WIN32_WINNT=0x0600 -DWINVER=0x0600
                   -D_CRT_SECURE_NO_WARNINGS -DNOGDI /EHsc)
 else()
   if(NANO_FUZZER_TEST)

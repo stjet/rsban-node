@@ -14,13 +14,10 @@ pub async fn wallet_create(node: Arc<Node>, enable_control: bool, seed: Option<R
     let mut wallet_create_dto = WalletCreateDto::new(wallet);
 
     if let Some(seed) = seed {
-        match node.wallets.change_seed(wallet, &seed, 0) {
-            Ok((restored_count, first_account)) => {
-                wallet_create_dto.last_restored_account = Some(first_account);
-                wallet_create_dto.restored_count = Some(restored_count);
-            }
-            Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
-        }
+        let (restored_count, first_account) = node.wallets.change_seed(wallet, &seed, 0)
+            .expect("This should not fail since the wallet was just created"); 
+        wallet_create_dto.last_restored_account = Some(first_account);
+        wallet_create_dto.restored_count = Some(restored_count);
     }
 
     to_string_pretty(&wallet_create_dto).unwrap()
@@ -84,7 +81,10 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_create(None).await });
 
-        assert!(result.is_err());
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
 
         server.abort();
     }

@@ -19,7 +19,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn account_block_count() {
+    fn account_weight() {
         let mut system = System::new();
         let node = system.make_node();
 

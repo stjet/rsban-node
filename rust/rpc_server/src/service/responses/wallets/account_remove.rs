@@ -23,7 +23,7 @@ pub async fn account_remove(
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::WalletId;
+    use rsnano_core::{Account, WalletId};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
 
@@ -41,8 +41,7 @@ mod tests {
         let account = node
             .wallets
             .deterministic_insert2(&wallet, false)
-            .unwrap()
-            .into();
+            .unwrap();
 
         assert!(node.wallets.exists(&account));
 
@@ -72,8 +71,7 @@ mod tests {
         let account = node
             .wallets
             .deterministic_insert2(&wallet, false)
-            .unwrap()
-            .into();
+            .unwrap();
 
         assert!(node.wallets.exists(&account));
 
@@ -84,6 +82,50 @@ mod tests {
         assert_eq!(
             result.err().map(|e| e.to_string()),
             Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_remove_fails_wallet_locked() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        node.wallets.lock(&wallet_id).unwrap();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_remove(wallet_id, Account::zero()).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet is locked\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_remove_fails_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_remove(WalletId::zero(), Account::zero()).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
         );
 
         server.abort();

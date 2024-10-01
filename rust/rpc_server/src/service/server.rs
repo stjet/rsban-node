@@ -7,7 +7,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountBalanceArgs, RpcCommand};
+use rsnano_rpc_messages::RpcCommand;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -54,10 +54,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountBalance(AccountBalanceArgs {
-            account,
-            include_only_confirmed,
-        }) => account_balance(rpc_service.node, account, include_only_confirmed).await,
+        RpcCommand::AccountBalance(args) => account_balance(rpc_service.node, args.account, args.include_only_confirmed).await,
         _ => todo!(),
     };
 

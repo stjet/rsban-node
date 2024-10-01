@@ -35,32 +35,9 @@ pub async fn account_balance(
 
 #[cfg(test)]
 mod tests {
-    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
-    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::node::Node;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use test_helpers::{assert_timely_msg, System};
-
-    fn send_block(node: Arc<Node>) {
-        let send1 = BlockEnum::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(1),
-            DEV_GENESIS_KEY.account().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-        ));
-
-        node.process_active(send1.clone());
-        assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&send1),
-            "not active on node 1",
-        );
-    }
+    use test_helpers::{send_block, setup_rpc_client_and_server};
+    use rsnano_core::{Amount, DEV_GENESIS_KEY};
+    use test_helpers::System;
 
     #[test]
     fn account_balance_only_confirmed_none() {

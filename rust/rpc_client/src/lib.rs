@@ -5,6 +5,7 @@ pub use reqwest::Url;
 use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
+use serde_json::{from_str, from_value, Value};
 use std::{net::Ipv6Addr, time::Duration};
 
 pub struct NanoRpcClient {
@@ -33,10 +34,21 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn account_create(
+        &self,
+        wallet: WalletId,
+        index: Option<u32>,
+        work: Option<bool>,
+    ) -> Result<AccountRpcMessage> {
+        let cmd = RpcCommand::account_create(wallet, index, work);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        Ok(from_value(result)?)
     }
 
     pub async fn receive_block(
@@ -68,7 +80,7 @@ impl NanoRpcClient {
         });
         let json = self.rpc_request(&request).await?;
         let block = json["block"].as_str().unwrap().to_owned();
-        Ok(serde_json::from_str(&block)?)
+        Ok(from_str(&block)?)
     }
 
     pub async fn send_receive(
@@ -90,7 +102,7 @@ impl NanoRpcClient {
     pub async fn key_create_rpc(&self) -> Result<KeyPairDto> {
         let cmd = RpcCommand::KeyCreate;
         let json = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(json)?)
+        Ok(from_value(json)?)
     }
 
     pub async fn wallet_create_rpc(&self) -> Result<WalletId> {
@@ -110,7 +122,7 @@ impl NanoRpcClient {
         Ok(())
     }
 
-    async fn rpc_request<T>(&self, request: &T) -> Result<serde_json::Value>
+    async fn rpc_request<T>(&self, request: &T) -> Result<Value>
     where
         T: Serialize,
     {
@@ -121,7 +133,7 @@ impl NanoRpcClient {
             .send()
             .await?
             .error_for_status()?
-            .json::<serde_json::Value>()
+            .json::<Value>()
             .await?;
 
         if let Some(error) = result.get("error") {

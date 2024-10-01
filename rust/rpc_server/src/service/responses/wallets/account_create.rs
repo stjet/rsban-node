@@ -11,28 +11,30 @@ pub async fn account_create(
     index: Option<u32>,
     work: Option<bool>
 ) -> String {
-    if enable_control {
-        let work = work.unwrap_or(true);
-        let result = if let Some(i) = index {
-            node.wallets.deterministic_insert_at(&wallet, i, work)
-        } else {
-            node.wallets.deterministic_insert2(&wallet, work)
-        };
-        match result {
-            Ok(account) => to_string_pretty(&AccountRpcMessage::new(
-                "account".to_string(),
-                account.as_account(),
-            ))
-            .unwrap(),
-            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
-        }
-    } else {
-        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
+    if !enable_control {
+        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+    }
+
+    let work = work.unwrap_or(true);
+    
+    let result = match index {
+        Some(i) => node.wallets.deterministic_insert_at(&wallet, i, work),
+        None => node.wallets.deterministic_insert2(&wallet, work),
+    };
+
+    match result {
+        Ok(account) => to_string_pretty(&AccountRpcMessage::new(
+            "account".to_string(),
+            account.as_account(),
+        )).unwrap(),
+        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::WalletId;
     use rsnano_node::wallets::WalletsExt;
@@ -77,6 +79,54 @@ mod tests {
         });
 
         assert!(node.wallets.exists(&result.value.into()));
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_work_true() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_create(wallet_id, None, Some(true)).await.unwrap() });
+
+        assert!(node.wallets.exists(&result.value.into()));
+
+        sleep(Duration::from_millis(10000));
+
+        assert_ne!(node.wallets.work_get2(&wallet_id, &result.value.into()).unwrap(), 0);
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_work_false() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.account_create(wallet_id, None, Some(false)).await.unwrap() });
+
+        assert!(node.wallets.exists(&result.value.into()));
+
+        sleep(Duration::from_millis(10000));
+
+        assert_eq!(node.wallets.work_get2(&wallet_id, &result.value.into()).unwrap(), 0);
 
         server.abort();
     }

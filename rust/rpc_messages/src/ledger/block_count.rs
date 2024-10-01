@@ -9,9 +9,9 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlockCountDto {
-    count: u64,
-    unchecked: u64,
-    cemented: u64,
+    pub count: u64,
+    pub unchecked: u64,
+    pub cemented: u64,
 }
 
 impl BlockCountDto {

@@ -17,14 +17,18 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn account_block_count() {
+    fn block_count() {
         let mut system = System::new();
         let node = system.make_node();
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.tokio
+        let result = node.tokio
             .block_on(async { rpc_client.block_count().await.unwrap() });
+
+        assert_eq!(result.count, 1);
+        assert_eq!(result.cemented, 1);
+        assert_eq!(result.unchecked, 0);
 
         server.abort();
     }

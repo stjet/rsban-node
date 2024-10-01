@@ -61,4 +61,23 @@ mod tests {
 
         server.abort();
     }
+
+    #[test]
+    fn wallet_locked_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_locked(WalletId::zero()).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
+
+        server.abort();
+    }
 }

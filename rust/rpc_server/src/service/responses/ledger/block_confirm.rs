@@ -33,6 +33,7 @@ pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> String {
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_core::BlockHash;
     use rsnano_ledger::DEV_GENESIS_HASH;
     use test_helpers::System;
 
@@ -51,6 +52,27 @@ mod tests {
         });
 
         assert_eq!(result.value, true);
+
+        server.abort();
+    }
+
+    #[test]
+    fn block_confirm_fails_with_block_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .block_confirm(BlockHash::zero())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Block not found\"".to_string())
+        );
 
         server.abort();
     }

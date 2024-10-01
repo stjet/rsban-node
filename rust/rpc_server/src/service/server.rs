@@ -15,9 +15,9 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 #[derive(Clone)]
-pub struct RpcService {
-    pub node: Arc<Node>,
-    pub enable_control: bool,
+struct RpcService {
+    node: Arc<Node>,
+    enable_control: bool,
 }
 
 pub async fn run_rpc_server(
@@ -53,7 +53,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountsCreate(args) => accounts_create(rpc_service, args).await,
+        RpcCommand::AccountsCreate(args) => accounts_create(rpc_service.node, rpc_service.enable_control, args).await,
         _ => todo!(),
     };
 

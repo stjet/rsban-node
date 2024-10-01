@@ -3,7 +3,7 @@ use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn accounts_create(wallet: WalletId, count: u64, work: Option<bool>) -> Self {
+    pub fn accounts_create(wallet: WalletId, count: u32, work: Option<bool>) -> Self {
         Self::AccountsCreate(AccountsCreateArgs::new(wallet, count, work))
     }
 }
@@ -17,7 +17,7 @@ pub struct AccountsCreateArgs {
 }
 
 impl AccountsCreateArgs {
-    pub fn new(wallet: WalletId, count: u64, work: Option<bool>) -> Self {
+    pub fn new(wallet: WalletId, count: u32, work: Option<bool>) -> Self {
         Self {
             wallet_with_count: WalletWithCountArgs::new(wallet, count),
             work,

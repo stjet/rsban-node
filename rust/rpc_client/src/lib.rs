@@ -24,7 +24,7 @@ impl NanoRpcClient {
     pub async fn accounts_create(
         &self,
         wallet: WalletId,
-        count: u64,
+        count: u32,
         work: Option<bool>
     ) -> Result<AccountsRpcMessage> {
         let cmd = RpcCommand::accounts_create(wallet, count, work);

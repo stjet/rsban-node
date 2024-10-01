@@ -4,6 +4,7 @@ use rsnano_core::{Account, Amount, JsonBlock, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use std::{net::Ipv6Addr, time::Duration};
+use crate::AccountBalanceDto;
 
 pub struct NanoRpcClient {
     url: Url,
@@ -19,6 +20,16 @@ impl NanoRpcClient {
                 .build()
                 .unwrap(),
         }
+    }
+
+    pub async fn account_balance(
+        &self,
+        account: Account,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<AccountBalanceDto> {
+        let cmd = RpcCommand::account_balance(account, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
     }
 
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {

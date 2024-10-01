@@ -28,6 +28,8 @@ pub async fn wallet_add(
 
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::{PublicKey, RawKey, WalletId};
     use rsnano_node::wallets::WalletsExt;
@@ -80,7 +82,77 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_add(wallet_id, private_key, None).await });
 
-        assert!(result.is_err());
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn wallet_add_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_add(WalletId::zero(), RawKey::zero(), None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn wallet_add_work_true() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        let private_key = RawKey::random();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_add(wallet_id, private_key, Some(true)).await.unwrap() });
+
+        sleep(Duration::from_millis(2000));
+
+        assert_ne!(node.wallets.work_get2(&wallet_id, &result.value.into()).unwrap(), 0);
+
+        server.abort();
+    }
+
+    #[test]
+    fn wallet_add_work_false() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let wallet_id = WalletId::random();
+
+        node.wallets.create(wallet_id);
+
+        let private_key = RawKey::random();
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_add(wallet_id, private_key, Some(false)).await.unwrap() });
+
+        sleep(Duration::from_millis(2000));
+
+        assert_eq!(node.wallets.work_get2(&wallet_id, &result.value.into()).unwrap(), 0);
 
         server.abort();
     }

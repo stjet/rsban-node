@@ -7,10 +7,9 @@ pub use service::*;
 #[cfg(test)]
 mod test_helpers {
     use crate::{run_rpc_server, RpcServerConfig};
-    use reqwest::Url;
     use rsnano_core::{utils::get_cpu_count, Networks};
     use rsnano_node::node::Node;
-    use rsnano_rpc_client::NanoRpcClient;
+    use rsnano_rpc_client::{NanoRpcClient, Url};
     use std::{
         net::{IpAddr, SocketAddr},
         str::FromStr,

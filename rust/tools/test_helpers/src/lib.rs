@@ -1,4 +1,3 @@
-use reqwest::Url;
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
     WalletId, DEV_GENESIS_KEY,
@@ -15,7 +14,7 @@ use rsnano_node::{
     NetworkParams,
 };
 use rsnano_nullable_tcp::TcpStream;
-use rsnano_rpc_client::NanoRpcClient;
+use rsnano_rpc_client::{NanoRpcClient, Url};
 use rsnano_rpc_server::run_rpc_server;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener},

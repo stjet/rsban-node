@@ -19,11 +19,12 @@ pub async fn block_account(node: Arc<Node>, hash: BlockHash) -> String {
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_core::BlockHash;
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
     use test_helpers::System;
 
     #[test]
-    fn account_block() {
+    fn block_account() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -37,6 +38,27 @@ mod tests {
         });
 
         assert_eq!(result.value, DEV_GENESIS_ACCOUNT.to_owned());
+
+        server.abort();
+    }
+
+    #[test]
+    fn block_account_fails_with_block_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .block_account(BlockHash::zero())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Block not found\"".to_string())
+        );
 
         server.abort();
     }

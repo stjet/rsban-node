@@ -865,51 +865,6 @@ TEST (bulk, genesis)
 	node2->stop ();
 }
 
-TEST (bulk, offline_send)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	node_flags.set_disable_lazy_bootstrap (true);
-
-	auto node1 = system.add_node (config, node_flags);
-	auto wallet_id = node1->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	const auto amount = node1->config->receive_minimum.number ();
-	auto node2 = system.make_disconnected_node ();
-	nano::keypair key2;
-	auto wallet_id2{ nano::random_wallet_id () };
-	node2->wallets.create (wallet_id2);
-	nano::account account;
-	ASSERT_EQ (nano::wallets_error::none, node2->wallets.insert_adhoc (wallet_id2, key2.prv, true, account));
-
-	// send amount from genesis to key2, it will be autoreceived
-	auto wallet_id1 = node1->wallets.first_wallet_id ();
-	auto send1 (node1->wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, node1->config->receive_minimum.number ()));
-	ASSERT_NE (nullptr, send1);
-
-	// Wait to finish election background tasks
-	ASSERT_TIMELY (5s, node1->active.empty ());
-	ASSERT_TIMELY (5s, node1->block_confirmed (send1->hash ()));
-	ASSERT_EQ (std::numeric_limits<nano::uint128_t>::max () - amount, node1->balance (nano::dev::genesis_key.pub));
-
-	// Initiate bootstrap
-	node2->connect (node1->network->endpoint ());
-	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
-
-	// Nodes should find each other after bootstrap initiation
-	ASSERT_TIMELY (5s, !node1->network->empty ());
-	ASSERT_TIMELY (5s, !node2->network->empty ());
-
-	// Send block arrival via bootstrap
-	ASSERT_TIMELY_EQ (5s, node2->balance (nano::dev::genesis_key.pub), std::numeric_limits<nano::uint128_t>::max () - amount);
-	// Receiving send block
-	ASSERT_TIMELY_EQ (5s, node2->balance (key2.pub), amount);
-	node2->stop ();
-}
-
 TEST (bulk, genesis_pruning)
 {
 	nano::test::system system;

@@ -9,6 +9,7 @@ use rsnano_network::{
 };
 use rsnano_node::{
     bootstrap::BulkPullServer,
+    config::NodeConfig,
     node::Node,
     transport::{LatestKeepalives, ResponseServer},
 };
@@ -21,7 +22,9 @@ use rsnano_node::{
 use rsnano_nullable_tcp::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use test_helpers::{assert_timely_eq, assert_timely_msg, get_available_port, System};
+use test_helpers::{
+    assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, System,
+};
 
 mod bootstrap_processor {
     use super::*;
@@ -1382,6 +1385,82 @@ mod bulk_pull_account {
             assert!(pull_server.get_next().is_none());
         }
     }
+}
+
+#[test]
+fn bulk_offline_send() {
+    let mut system = System::new();
+    let config = NodeConfig {
+        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+        ..System::default_config()
+    };
+    let flags = NodeFlags {
+        disable_bootstrap_bulk_push_client: true,
+        disable_lazy_bootstrap: true,
+        ..Default::default()
+    };
+    let node1 = system.build_node().config(config).flags(flags).finish();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    let amount = node1.config.receive_minimum;
+    let node2 = system.make_disconnected_node();
+    let key2 = KeyPair::new();
+    let wallet_id2 = WalletId::random();
+    node2.wallets.create(wallet_id2);
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
+    // send amount from genesis to key2, it will be autoreceived
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.public_key().into(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    // Wait to finish election background tasks
+    assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 0);
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+    assert_eq!(Amount::MAX - amount, node1.balance(&DEV_GENESIS_ACCOUNT));
+
+    // Initiate bootstrap
+    node2
+        .peer_connector
+        .connect_to(node1.tcp_listener.local_address());
+    node2
+        .bootstrap_initiator
+        .bootstrap2(node1.tcp_listener.local_address(), "".into());
+
+    // Nodes should find each other after bootstrap initiation
+    assert_timely(Duration::from_secs(5), || {
+        !node1.network_info.read().unwrap().len() > 0
+    });
+    assert_timely(Duration::from_secs(5), || {
+        !node2.network_info.read().unwrap().len() > 0
+    });
+
+    // Send block arrival via bootstrap
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node2.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX - amount,
+    );
+    // Receiving send block
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node2.balance(&key2.public_key().into()),
+        amount,
+    );
 }
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {

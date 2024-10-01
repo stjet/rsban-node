@@ -1388,6 +1388,57 @@ mod bulk_pull_account {
 }
 
 #[test]
+fn bulk_genesis() {
+    let mut system = System::new();
+    let config = NodeConfig {
+        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+        ..System::default_config()
+    };
+    let flags = NodeFlags {
+        disable_bootstrap_bulk_push_client: true,
+        disable_lazy_bootstrap: true,
+        ..Default::default()
+    };
+    let node1 = system.build_node().config(config).flags(flags).finish();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+
+    let node2 = system.make_disconnected_node();
+    let latest1 = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let latest2 = node2.latest(&DEV_GENESIS_ACCOUNT);
+    assert_eq!(latest1, latest2);
+    let key2 = KeyPair::new();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let _send = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.public_key().as_account(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    let latest3 = node1.latest(&DEV_GENESIS_ACCOUNT);
+    assert_ne!(latest1, latest3);
+
+    node2
+        .peer_connector
+        .connect_to(node1.tcp_listener.local_address());
+    node2
+        .bootstrap_initiator
+        .bootstrap2(node1.tcp_listener.local_address(), "".into());
+    assert_timely(Duration::from_secs(10), || {
+        node2.latest(&DEV_GENESIS_ACCOUNT) == node1.latest(&DEV_GENESIS_ACCOUNT)
+    });
+    assert_eq!(
+        node2.latest(&DEV_GENESIS_ACCOUNT),
+        node1.latest(&DEV_GENESIS_ACCOUNT)
+    );
+}
+
+#[test]
 fn bulk_offline_send() {
     let mut system = System::new();
     let config = NodeConfig {

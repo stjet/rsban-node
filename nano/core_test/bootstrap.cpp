@@ -836,35 +836,6 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 	ASSERT_TIMELY (10s, node1->block_or_pruned_exists (send2->hash ()));
 }
 
-TEST (bulk, genesis)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	node_flags.set_disable_lazy_bootstrap (true);
-	auto node1 = system.add_node (config, node_flags);
-	auto wallet_id = node1->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-
-	auto node2 = system.make_disconnected_node ();
-	nano::block_hash latest1 (node1->latest (nano::dev::genesis_key.pub));
-	nano::block_hash latest2 (node2->latest (nano::dev::genesis_key.pub));
-	ASSERT_EQ (latest1, latest2);
-	nano::keypair key2;
-	auto send (node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, 100));
-	ASSERT_NE (nullptr, send);
-	nano::block_hash latest3 (node1->latest (nano::dev::genesis_key.pub));
-	ASSERT_NE (latest1, latest3);
-
-	node2->connect (node1->network->endpoint ());
-	node2->bootstrap_initiator.bootstrap (node1->network->endpoint ());
-	ASSERT_TIMELY_EQ (10s, node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
-	ASSERT_EQ (node2->latest (nano::dev::genesis_key.pub), node1->latest (nano::dev::genesis_key.pub));
-	node2->stop ();
-}
-
 TEST (bulk, genesis_pruning)
 {
 	nano::test::system system;

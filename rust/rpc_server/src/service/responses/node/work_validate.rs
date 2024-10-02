@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use rsnano_core::{BlockDetails, BlockHash, Difficulty, DifficultyV1, WorkNonce, WorkVersion};
+use rsnano_core::{work::WorkThresholds, BlockDetails, BlockHash, Difficulty, DifficultyV1, WorkNonce, WorkVersion};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::WorkValidateDto;
 use serde_json::to_string_pretty;
@@ -7,7 +7,7 @@ use serde_json::to_string_pretty;
 pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) -> String {
     let result_difficulty = node.network_params.work.difficulty(WorkVersion::Work1, &hash.into(), work.into());
 
-    let default_difficulty = DifficultyV1::default().get_difficulty(&hash.into(), work.into());
+    let default_difficulty = node.network_params.work.threshold_base(WorkVersion::Work1);
 
     let valid_all = result_difficulty >= default_difficulty;
 
@@ -32,6 +32,7 @@ pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) ->
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::BlockHash;
+    use rsnano_ledger::DEV_GENESIS_HASH;
     use test_helpers::System;
 
     #[test]
@@ -41,9 +42,21 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
+        let work = node.work_generate_dev((*DEV_GENESIS_HASH).into());
+
         let result = node
             .tokio
-            .block_on(async { rpc_client.work_validate(1.into(), BlockHash::zero()).await.unwrap() });
+            .block_on(async { rpc_client.work_validate(1.into(), *DEV_GENESIS_HASH).await.unwrap() });
+
+        assert_eq!(result.valid_all, false);
+        assert_eq!(result.valid_receive, false);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.work_validate(work.into(), *DEV_GENESIS_HASH).await.unwrap() });
+
+        assert_eq!(result.valid_all, true);
+        assert_eq!(result.valid_receive, true);
 
         server.abort();
     }

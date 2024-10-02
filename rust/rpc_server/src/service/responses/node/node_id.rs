@@ -22,7 +22,7 @@ mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
 
     #[test]
-    fn account_balance_only_confirmed_none() {
+    fn node_id() {
         let mut system = System::new();
         let node = system.make_node();
 

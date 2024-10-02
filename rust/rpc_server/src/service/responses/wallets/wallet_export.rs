@@ -28,6 +28,8 @@ mod tests {
             .tokio
             .block_on(async { rpc_client.wallet_export(wallet).await.unwrap() });
 
+        assert_eq!(result.json, serde_json::to_string(&wallet).unwrap());
+
         server.abort();
     }
 }

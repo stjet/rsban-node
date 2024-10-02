@@ -10,15 +10,15 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct WalletInfoDto {
-    balance: Amount,
-    pending: Amount,
-    receivable: Amount,
-    accounts_count: u64,
-    adhoc_count: u64,
-    deterministic_count: u64,
-    deterministic_index: u32,
-    accounts_block_count: u64,
-    accounts_cemented_block_count: u64,
+    pub balance: Amount,
+    pub pending: Amount,
+    pub receivable: Amount,
+    pub accounts_count: u64,
+    pub adhoc_count: u64,
+    pub deterministic_count: u64,
+    pub deterministic_index: u32,
+    pub accounts_block_count: u64,
+    pub accounts_cemented_block_count: u64,
 }
 
 impl WalletInfoDto {

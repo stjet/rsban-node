@@ -11,6 +11,8 @@ pub async fn uptime(node: Arc<Node>) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use test_helpers::System;
 
@@ -19,10 +21,14 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
 
+        sleep(Duration::from_millis(1000));
+
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.tokio
+        let result = node.tokio
             .block_on(async { rpc_client.uptime().await.unwrap() });
+
+        assert!(result.value > 0);
 
         server.abort();
     }

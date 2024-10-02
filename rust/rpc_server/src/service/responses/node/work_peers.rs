@@ -5,7 +5,7 @@ use serde_json::to_string_pretty;
 
 pub async fn work_peers(node: Arc<Node>, enable_control: bool) -> String {
     if enable_control {
-        let work_peers_dto = WorkPeersDto::new(node.config.work_peers.clone());
+        let work_peers_dto = WorkPeersDto::new(node.config.lock().unwrap().work_peers.clone());
         to_string_pretty(&work_peers_dto).unwrap()
     }
     else {
@@ -15,7 +15,9 @@ pub async fn work_peers(node: Arc<Node>, enable_control: bool) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::net::Ipv6Addr;
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_node::config::Peer;
     use test_helpers::System;
 
     #[test]
@@ -25,9 +27,14 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
+        node.config.lock().unwrap().work_peers.push(Peer::new(Ipv6Addr::LOCALHOST.to_string(), 54000));
+
         let result = node
             .tokio
             .block_on(async { rpc_client.work_peers().await.unwrap() });
+
+        assert_eq!(result.work_peers[0], Peer::new(Ipv6Addr::LOCALHOST.to_string(), 54000));
+        assert_eq!(result.work_peers.len(), 1);
 
         server.abort();
     }

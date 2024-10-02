@@ -23,6 +23,7 @@ pub async fn work_set(
 
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_core::{Account, WalletId};
     use rsnano_node::wallets::WalletsExt;
@@ -35,14 +36,24 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.wallets.create(WalletId::zero());
+        let wallet_id = WalletId::zero();
+        node.wallets.create(wallet_id);
 
         node.tokio.block_on(async {
             rpc_client
-                .work_set(WalletId::zero(), Account::zero(), 1.into())
+                .work_set(wallet_id, Account::zero(), 1.into())
                 .await
                 .unwrap()
         });
+
+        sleep(Duration::from_millis(1000));
+
+        assert_ne!(
+            node.wallets
+                .work_get2(&wallet_id, &Account::zero().into())
+                .unwrap(),
+            0
+        );
 
         server.abort();
     }
@@ -63,6 +74,27 @@ mod tests {
         assert_eq!(
             result.err().map(|e| e.to_string()),
             Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn work_set_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .work_set(WalletId::zero(), Account::zero(), 1.into())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
         );
 
         server.abort();

@@ -23,11 +23,21 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let wallet_id: WalletId = 1.into();
 
         node.wallets.create(wallet_id);
+
+        let _ = node.wallets.enter_password(wallet_id, "password");
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.password_valid(wallet_id).await.unwrap() });
+
+        assert_eq!(result.value, false);
+
+        let _ = node.wallets.enter_password(wallet_id, "");
 
         let result = node
             .tokio
@@ -39,25 +49,20 @@ mod tests {
     }
 
     #[test]
-    fn password_invalid() {
+    fn password_valid_fails_with_wallet_not_found() {
         let mut system = System::new();
         let node = system.make_node();
 
-        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
-
-        let wallet_id: WalletId = 1.into();
-
-        node.wallets.create(wallet_id);
-
-        node.wallets
-            .rekey(&wallet_id, "password".to_string())
-            .unwrap();
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.password_valid(wallet_id).await.unwrap() });
+            .block_on(async { rpc_client.password_valid(WalletId::zero()).await });
 
-        assert_eq!(result.value, true);
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
 
         server.abort();
     }

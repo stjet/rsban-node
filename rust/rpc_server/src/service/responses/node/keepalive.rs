@@ -14,28 +14,32 @@ pub async fn keepalive(
     address: Ipv6Addr,
     port: u16,
 ) -> String {
-    if enable_control {
-        let peering_addr = SocketAddrV6::new(address.into(), port, 0, 0);
-        let channel_id = node
-            .network_info
-            .read()
-            .unwrap()
-            .find_realtime_channel_by_peering_addr(&peering_addr)
-            .ok_or_else(|| to_string_pretty(&ErrorDto::new("Peer not found".to_string())).unwrap());
+    if !enable_control {
+        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
+    }
+    
+    let peering_addr = SocketAddrV6::new(address.into(), port, 0, 0);
+    let channel_id = node
+        .network_info
+        .read()
+        .unwrap()
+        .find_realtime_channel_by_peering_addr(&peering_addr);
 
-        let keepalive = Message::Keepalive(Keepalive::default());
-        let mut publisher = node.message_publisher.lock().unwrap();
+    match channel_id {
+        Some(id) => {
+            let keepalive = Message::Keepalive(Keepalive::default());
+            let mut publisher = node.message_publisher.lock().unwrap();
 
-        publisher.try_send(
-            channel_id.unwrap(),
-            &keepalive,
-            DropPolicy::ShouldNotDrop,
-            TrafficType::Generic,
-        );
+            publisher.try_send(
+                id,
+                &keepalive,
+                DropPolicy::ShouldNotDrop,
+                TrafficType::Generic,
+            );
 
-        to_string_pretty(&SuccessDto::new()).unwrap()
-    } else {
-        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
+            to_string_pretty(&SuccessDto::new()).unwrap()
+        }
+        None => to_string_pretty(&ErrorDto::new("Peer not found".to_string())).unwrap(),
     }
 }
 
@@ -147,6 +151,27 @@ mod tests {
         assert_eq!(
             result.err().map(|e| e.to_string()),
             Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn keepalive_fails_with_peer_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .keepalive(Ipv6Addr::LOCALHOST, get_available_port())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Peer not found\"".to_string())
         );
 
         server.abort();

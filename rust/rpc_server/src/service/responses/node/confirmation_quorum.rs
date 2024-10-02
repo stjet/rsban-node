@@ -43,7 +43,7 @@ pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) ->
 #[cfg(test)]
 mod tests {
     use rsnano_node::{config::NodeFlags, wallets::WalletsExt};
-    use test_helpers::{establish_tcp, System};
+    use test_helpers::{establish_tcp, send_block, System};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_rpc_messages::{ConfirmationQuorumDto, PeerDetailsDto};
     use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
@@ -94,6 +94,12 @@ mod tests {
         let wallet_id = WalletId::zero();
         node1.wallets.create(wallet_id);
         node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+
+        let hash = send_block(node0.clone());
+
+        node0.confirm(hash);
+
+        assert_eq!(node0.block_confirmed(&hash), true);
 
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 

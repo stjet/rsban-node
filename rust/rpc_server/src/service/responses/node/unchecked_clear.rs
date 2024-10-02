@@ -10,10 +10,7 @@ pub async fn unchecked_clear(node: Arc<Node>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::{HashOrAccount, UncheckedInfo};
     use test_helpers::{send_block, System};
 
     #[test]
@@ -23,11 +20,9 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        //let block = send_block(node.clone());
+        send_block(node.clone());
 
-        //node.unchecked.put(HashOrAccount::zero(), UncheckedInfo::new(Arc::new(block)));
-
-        //assert!(!node.unchecked.is_empty());
+        assert!(!node.unchecked.is_empty());
 
         node.tokio.block_on(async {
             rpc_client

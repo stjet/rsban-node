@@ -15,7 +15,9 @@ pub async fn work_peers_clear(node: Arc<Node>, enable_control: bool) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::net::Ipv6Addr;
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+    use rsnano_node::config::Peer;
     use test_helpers::System;
 
     #[test]
@@ -25,9 +27,17 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
+        {
+            let mut config = node.config.lock().unwrap();
+            config.work_peers.push(Peer::new(Ipv6Addr::LOCALHOST.to_string(), 54000));
+            assert_eq!(!config.work_peers.is_empty(), true);
+        }
+
         let result = node
             .tokio
             .block_on(async { rpc_client.work_peers_clear().await.unwrap() });
+
+        assert_eq!(node.config.lock().unwrap().work_peers.is_empty(), true);
 
         server.abort();
     }

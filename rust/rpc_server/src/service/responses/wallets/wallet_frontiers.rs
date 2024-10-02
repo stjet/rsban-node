@@ -24,9 +24,10 @@ pub async fn wallet_frontiers(node: Arc<Node>, wallet: WalletId) -> String {
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use rsnano_core::WalletId;
+    use rsnano_core::{WalletId, DEV_GENESIS_KEY};
+    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
     use rsnano_node::wallets::WalletsExt;
-    use test_helpers::System;
+    use test_helpers::{send_block, System};
 
     #[test]
     fn wallet_frontiers() {
@@ -35,11 +36,18 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.wallets.create(WalletId::zero());
+        let wallet = WalletId::zero();
+
+        node.wallets.create(wallet);
+        node.wallets.insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+
+        let hash = send_block(node.clone());
 
         let result = node
             .tokio
-            .block_on(async { rpc_client.wallet_frontiers(WalletId::zero()).await.unwrap() });
+            .block_on(async { rpc_client.wallet_frontiers(wallet).await.unwrap() });
+
+        assert_eq!(result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(), &hash);
 
         server.abort();
     }

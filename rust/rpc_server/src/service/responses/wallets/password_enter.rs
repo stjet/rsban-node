@@ -19,7 +19,7 @@ mod tests {
     use test_helpers::System;
 
     #[test]
-    fn password_change() {
+    fn password_enter() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -28,6 +28,8 @@ mod tests {
         let wallet_id: WalletId = 1.into();
 
         node.wallets.create(wallet_id);
+        node.wallets.lock(&wallet_id).unwrap();
+        assert!(node.wallets.deterministic_insert2(&wallet_id, false).is_err());
 
         node.tokio.block_on(async {
             rpc_client
@@ -36,11 +38,13 @@ mod tests {
                 .unwrap()
         });
 
+        assert!(node.wallets.deterministic_insert2(&wallet_id, false).is_ok());
+
         server.abort();
     }
 
     #[test]
-    fn password_change_fails_with_invalid_password() {
+    fn password_enter_fails_with_invalid_password() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -59,6 +63,27 @@ mod tests {
         assert_eq!(
             result.err().map(|e| e.to_string()),
             Some("node returned error: \"Invalid password\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn password_enter_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .password_enter(WalletId::zero(), "password".to_string())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
         );
 
         server.abort();

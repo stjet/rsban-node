@@ -16,7 +16,10 @@ pub async fn search_receivable_all(node: Arc<Node>, enable_control: bool) -> Str
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
-    use test_helpers::System;
+    use test_helpers::{send_block, System, assert_timely_eq};
+    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
+    use rsnano_node::wallets::WalletsExt;
+    use std::time::Duration;
 
     #[test]
     fn search_receivable_all() {
@@ -25,9 +28,21 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node
-            .tokio
-            .block_on(async { rpc_client.search_receivable_all().await.unwrap() });
+        let wallet_id = WalletId::zero();
+        node.wallets.create(wallet_id);
+        node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+
+        send_block(node.clone());
+
+        node.tokio.block_on(async {
+            rpc_client.search_receivable_all().await.unwrap();
+        });
+
+        assert_timely_eq(
+            Duration::from_secs(10),
+            || node.balance(&DEV_GENESIS_KEY.account()),
+            Amount::MAX
+        );
 
         server.abort();
     }

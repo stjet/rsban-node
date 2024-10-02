@@ -31,7 +31,7 @@ pub async fn confirmation_active(node: Arc<Node>, announcements: Option<u64>) ->
 
 #[cfg(test)] 
 mod tests {
-    use test_helpers::System;
+    use test_helpers::{send_block, System};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
 
     #[test]
@@ -41,6 +41,8 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
+        send_block(node.clone());
+
         let result = node.tokio.block_on(async {
             rpc_client
                 .confirmation_active(None)
@@ -48,9 +50,9 @@ mod tests {
                 .unwrap()
         });
 
-        assert!(result.confirmations.is_empty());
+        assert!(!result.confirmations.is_empty());
         assert_eq!(result.confirmed, 0);
-        assert_eq!(result.unconfirmed, 0);
+        assert_eq!(result.unconfirmed, 1);
 
         server.abort();
     }

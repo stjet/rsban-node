@@ -68,7 +68,10 @@ mod tests {
                 .await
         });
 
-        assert!(result.is_err());
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
 
         server.abort();
     }

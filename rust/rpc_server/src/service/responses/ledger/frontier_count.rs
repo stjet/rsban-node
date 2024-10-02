@@ -23,8 +23,10 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.tokio
+        let result = node.tokio
             .block_on(async { rpc_client.frontier_count().await.unwrap() });
+
+        assert_eq!(result.value, 1);
 
         server.abort();
     }

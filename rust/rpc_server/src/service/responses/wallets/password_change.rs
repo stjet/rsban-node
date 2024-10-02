@@ -45,6 +45,9 @@ mod tests {
                 .unwrap()
         });
 
+        assert!(node.wallets.attempt_password(&wallet_id, "").is_err());
+        assert!(node.wallets.attempt_password(&wallet_id, "password").is_ok());
+
         server.abort();
     }
 
@@ -68,6 +71,27 @@ mod tests {
         assert_eq!(
             result.err().map(|e| e.to_string()),
             Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn password_change_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .password_change(WalletId::zero(), "password".to_string())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
         );
 
         server.abort();

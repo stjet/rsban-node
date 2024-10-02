@@ -11,7 +11,6 @@ pub async fn delegators(node: Arc<Node>, args: DelegatorsArgs) -> String {
     let start_account = args.start.unwrap_or(Account::zero());
 
     let mut delegators: HashMap<Account, Amount> = HashMap::new();
-    //let store = node.store.read().await;
     let tx = node.ledger.read_txn();
     let mut iter = node.store.account.begin_account(&tx, &start_account);
 

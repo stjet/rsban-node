@@ -10,15 +10,15 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlockInfoDto {
-    block_account: Account,
-    amount: Amount,
-    balance: Amount,
-    height: u64,
-    local_timestamp: u64,
-    successor: BlockHash,
-    confirmed: bool,
-    contents: JsonBlock,
-    subtype: BlockSubType,
+    pub block_account: Account,
+    pub amount: Amount,
+    pub balance: Amount,
+    pub height: u64,
+    pub local_timestamp: u64,
+    pub successor: BlockHash,
+    pub confirmed: bool,
+    pub contents: JsonBlock,
+    pub subtype: BlockSubType,
 }
 
 impl BlockInfoDto {

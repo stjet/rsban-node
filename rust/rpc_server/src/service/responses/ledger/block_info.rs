@@ -48,7 +48,9 @@ pub async fn block_info(node: Arc<Node>, hash: BlockHash) -> String {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_ledger::DEV_GENESIS_HASH;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use rsnano_core::{Amount, BlockHash, BlockSubType};
+    use rsnano_ledger::{DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
     use test_helpers::System;
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
 
@@ -65,6 +67,21 @@ mod tests {
                 .await
                 .unwrap()
         });
+
+        assert_eq!(result.amount, Amount::MAX);
+        assert_eq!(result.balance, Amount::MAX);
+        assert_eq!(result.block_account, *DEV_GENESIS_ACCOUNT);
+        assert_eq!(result.confirmed, true);
+        assert_eq!(result.height, 1);
+        assert_eq!(result.subtype, BlockSubType::Open);
+        assert_eq!(result.successor, BlockHash::zero());
+        assert_eq!(result.contents, DEV_GENESIS.json_representation());
+        
+        let current_unix_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs() as u64;
+        assert!(result.local_timestamp <= current_unix_timestamp);
 
         server.abort();
     }

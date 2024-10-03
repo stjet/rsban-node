@@ -4,7 +4,6 @@ use rsnano_node::node::{Node, NodeExt};
 use rsnano_rpc_messages::{BlocksDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::collections::VecDeque;
-use anyhow::{Result, Context};
 
 pub async fn wallet_republish(node: Arc<Node>, enable_control: bool, wallet: WalletId, count: u64) -> String {
     if !enable_control {
@@ -16,23 +15,18 @@ pub async fn wallet_republish(node: Arc<Node>, enable_control: bool, wallet: Wal
         Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
     };
     
-    match collect_blocks_to_republish(node.clone(), accounts, count).await {
-        Ok((blocks, republish_bundle)) => {
-            node.flood_block_many(republish_bundle.into(), Box::new(|| ()), Duration::from_millis(25));
-            to_string_pretty(&BlocksDto::new(blocks)).unwrap()
-        },
-        Err(_) => to_string_pretty(&ErrorDto::new("Failed to collect blocks to republish".to_string())).unwrap_or_else(|_| "{{\"error\":\"Failed to collect blocks to republish\"}}".to_string()),
-    }
+    let (blocks, republish_bundle) = collect_blocks_to_republish(node.clone(), accounts, count);
+    node.flood_block_many(republish_bundle.into(), Box::new(|| ()), Duration::from_millis(25));
+    to_string_pretty(&BlocksDto::new(blocks)).unwrap()
 }
 
-async fn collect_blocks_to_republish(node: Arc<Node>, accounts: Vec<Account>, count: u64) -> Result<(Vec<BlockHash>, VecDeque<BlockEnum>)> {
+fn collect_blocks_to_republish(node: Arc<Node>, accounts: Vec<Account>, count: u64) -> (Vec<BlockHash>, VecDeque<BlockEnum>) {
     let mut blocks = Vec::new();
     let mut republish_bundle = VecDeque::new();
     let tx = node.ledger.read_txn();
 
     for account in accounts {
-        let mut latest = node.ledger.any().account_head(&tx, &account)
-            .context("Failed to get account head")?;
+        let mut latest = node.ledger.any().account_head(&tx, &account).unwrap();
         let mut hashes = Vec::new();
 
         while !latest.is_zero() && hashes.len() < count as usize {
@@ -52,7 +46,7 @@ async fn collect_blocks_to_republish(node: Arc<Node>, accounts: Vec<Account>, co
         }
     }
 
-    Ok((blocks, republish_bundle))
+    (blocks, republish_bundle)
 }
 
 #[cfg(test)]

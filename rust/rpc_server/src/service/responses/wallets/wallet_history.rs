@@ -132,9 +132,28 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let wallet_history = node.tokio.block_on(async {
             rpc_client.wallet_history(wallet_id, None).await.unwrap()
         });
+
+        assert_eq!(wallet_history.history.len(), 1);
+
+        let entry = &wallet_history.history[0];
+
+        assert_eq!(entry.entry_type, BlockSubType::Receive);
+        assert_eq!(entry.account, *DEV_GENESIS_ACCOUNT);
+        assert_eq!(entry.amount, send_amount);
+        assert_eq!(entry.block_account, keys.account());
+        assert_eq!(entry.hash, open_hash);
+        
+        // Assert that the timestamp is recent (within the last 10 seconds)
+        let current_time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        
+        assert!(entry.local_timestamp <= current_time);
+        assert!(entry.local_timestamp >= current_time - 10);
 
         server.abort();
     }

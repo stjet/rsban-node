@@ -69,7 +69,7 @@ pub async fn wallet_receivable(node: Arc<Node>, enable_control: bool, args: Wall
         ReceivableDto::Blocks { blocks: block_default }
     };
 
-    serde_json::to_string(&result).unwrap()
+    serde_json::to_string_pretty(&result).unwrap()
 }
 
 #[cfg(test)]

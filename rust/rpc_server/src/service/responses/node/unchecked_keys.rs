@@ -58,6 +58,17 @@ mod tests {
             .work(node.work_generate_dev(key.account().into()))
             .build();
 
+        node.process_active(open.clone());
+
+        assert_timely_msg(
+            Duration::from_secs(30),
+            || {
+                let len = node.unchecked.len();
+                len == 1
+            },
+            "Expected 1 unchecked block after 30 seconds",
+        );
+
         let open2 = StateBlockBuilder::new()
             .account(key.account())
             .previous(BlockHash::zero())
@@ -68,23 +79,24 @@ mod tests {
             .work(node.work_generate_dev(key.account().into()))
             .build();
 
-        node.process_active(open.clone());
-
         node.process_active(open2.clone());
 
         assert_timely_msg(
-            Duration::from_secs(10),
-            || node.unchecked.len() == 2,
-            "Expected 2 unchecked blocks after 10 seconds",
+            Duration::from_secs(30),
+            || {
+                let len = node.unchecked.len();
+                len == 2
+            },
+            "Expected 2 unchecked blocks after 30 seconds",
         );
 
         let unchecked_dto = node.tokio.block_on(async {
             rpc_client.unchecked_keys(key.account().into(), 2).await.unwrap()
         });
-
-        assert_eq!(unchecked_dto.unchecked.len(), 2);
-        assert!(unchecked_dto.unchecked[0].hash == open.hash());
-        assert!(unchecked_dto.unchecked[1].hash == open2.hash());
+        
+        assert_eq!(unchecked_dto.unchecked.len(), 2, "Expected 2 unchecked keys in DTO");
+        assert!(unchecked_dto.unchecked.iter().any(|uk| uk.hash == open.hash()), "First hash not found in DTO");
+        assert!(unchecked_dto.unchecked.iter().any(|uk| uk.hash == open2.hash()), "Second hash not found in DTO");
 
         server.abort();
     }

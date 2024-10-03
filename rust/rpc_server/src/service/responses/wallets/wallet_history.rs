@@ -1,12 +1,19 @@
 use std::sync::Arc;
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, PublicKey, WalletId};
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{HistoryEntryDto, WalletHistoryDto};
+use rsnano_rpc_messages::{HistoryEntryDto, WalletHistoryDto, ErrorDto};
 use rsnano_store_lmdb::Transaction;
 use serde_json::to_string_pretty;
 
 pub async fn wallet_history(node: Arc<Node>, wallet: WalletId, modified_since: Option<u64>) -> String {
-    let accounts = node.wallets.get_accounts_of_wallet(&wallet).unwrap();
+    let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
+        Ok(accounts) => accounts,
+        Err(e) => {
+            let error_dto = ErrorDto::new(e.to_string());
+            return to_string_pretty(&error_dto).unwrap();
+        }
+    };
+
     let mut entries: Vec<HistoryEntryDto> = Vec::new();
 
     let block_transaction = node.store.tx_begin_read();
@@ -154,6 +161,25 @@ mod tests {
         
         assert!(entry.local_timestamp <= current_time);
         assert!(entry.local_timestamp >= current_time - 10);
+
+        server.abort();
+    }
+
+    #[test]
+    fn wallet_history_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_history(WalletId::zero(), None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
 
         server.abort();
     }

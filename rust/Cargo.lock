@@ -2623,6 +2623,7 @@ dependencies = [
  "axum",
  "mock_instant",
  "rsnano_core",
+ "rsnano_ledger",
  "rsnano_network",
  "rsnano_node",
  "rsnano_nullable_tcp",

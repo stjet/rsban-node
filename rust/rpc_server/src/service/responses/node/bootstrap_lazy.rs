@@ -21,3 +21,56 @@ pub async fn bootstrap_lazy(node: Arc<Node>, hash: BlockHash, force: Option<bool
 
     to_string_pretty(&BootstrapLazyDto::new(started, key_inserted)).unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use rsnano_core::BlockHash;
+    use rsnano_node::config::NodeFlags;
+    use test_helpers::{send_block, System};
+    use crate::service::responses::test_helpers::setup_rpc_client_and_server;
+
+    #[test]
+    fn bootstrap_any() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let hash = send_block(node.clone());
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .bootstrap_lazy(hash, None, None)
+                .await
+                .unwrap()
+        });
+
+        assert_eq!(result.started, true);
+        assert_eq!(result.key_inserted, true);
+
+        server.abort();
+    }
+
+    #[test]
+    fn bootstrap_any_fails_with_legacy_bootstrap_disabled() {
+        let mut system = System::new();
+        let mut flags = NodeFlags::new();
+        flags.disable_lazy_bootstrap = true;
+        let node = system.build_node().flags(flags).finish();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .bootstrap_lazy(BlockHash::zero(), None, None)
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Lazy bootstrap is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+}

@@ -28,8 +28,8 @@ impl BootsrapLazyArgs {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BootstrapLazyDto {
-    started: bool,
-    key_inserted: bool,
+    pub started: bool,
+    pub key_inserted: bool,
 }
 
 impl BootstrapLazyDto {

@@ -40,6 +40,7 @@ mod tests {
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
     use rsnano_core::PublicKey;
+    use rsnano_rpc_messages::ErrorDto;
 
     #[test]
     fn sign() {
@@ -83,6 +84,37 @@ mod tests {
         assert_eq!(signed_block.block_signature(), send.block_signature());
         
         assert_eq!(signed_block.hash(), send.hash());
+
+        server.abort();
+    }
+
+    #[test]
+    fn sign_without_key() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1_000_000),
+            Account::from(PublicKey::zero()).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .sign(None, None, None, send.json_representation())
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Block create key required\"".to_string())
+        );
 
         server.abort();
     }

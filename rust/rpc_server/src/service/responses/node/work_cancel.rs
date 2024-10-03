@@ -60,4 +60,24 @@ mod tests {
 
         server.abort();
     }
+
+    #[test]
+    fn work_cancel_fails_without_enable_control() {
+        let mut system = System::new();
+        let node = system.make_node();
+        let node_clone = node.clone();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node_clone
+            .tokio
+            .block_on(async { rpc_client.work_cancel(BlockHash::zero()).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );    
+
+        server.abort();
+    }
 }

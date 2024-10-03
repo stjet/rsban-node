@@ -1,7 +1,8 @@
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
-    WalletId,
+    WalletId, DEV_GENESIS_KEY,
 };
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -427,4 +428,23 @@ pub fn setup_chains(
     }
 
     chains
+}
+
+pub fn send_block(node: Arc<Node>) {
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        DEV_GENESIS_KEY.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node.process_active(send1.clone());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.active(&send1),
+        "not active on node 1",
+    );
 }

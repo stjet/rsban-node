@@ -9,9 +9,8 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> String {
     let is_async = args.is_async.unwrap_or(false);
     let block: BlockEnum = args.block.into();
 
-    // Validate work
     if !node.network_params.work.validate_entry(block.work_version(), &block.root(), block.work()) {
-        //return to_string_pretty(&ErrorDto::new("Work low".to_string())).unwrap()
+        return to_string_pretty(&ErrorDto::new("Work low".to_string())).unwrap()
     }
 
     if !is_async {
@@ -74,7 +73,7 @@ mod tests {
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(1),
+            Amount::MAX - Amount::raw(100),
             DEV_GENESIS_KEY.account().into(),
             &DEV_GENESIS_KEY,
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
@@ -86,6 +85,41 @@ mod tests {
                 .await
                 .unwrap()
         });
+
+        assert_eq!(result.value, send1.hash());
+
+        assert_eq!(node.latest(&*DEV_GENESIS_ACCOUNT), send1.hash());
+
+        server.abort();
+    }
+
+    #[test]
+    fn process_fails_with_low_work() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(100),
+            DEV_GENESIS_KEY.account().into(),
+            &DEV_GENESIS_KEY,
+            1,
+        ));
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .process(Some(BlockSubType::Send), send1.json_representation(), None, None, None)
+                .await
+        });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Work low\"".to_string())
+        );
 
         server.abort();
     }

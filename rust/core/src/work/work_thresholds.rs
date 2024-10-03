@@ -279,13 +279,13 @@ impl WorkThresholds {
     //todo return true if valid!
     pub fn validate_entry(&self, work_version: WorkVersion, root: &Root, work: u64) -> bool {
         self.difficulty(work_version, root, work)
-            < self.threshold_entry(BlockType::State, work_version)
+            > self.threshold_entry(BlockType::State, work_version)
     }
 
     //todo return true if valid!
     pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
         self.difficulty_block(block)
-            < self.threshold_entry(block.block_type(), block.work_version())
+            > self.threshold_entry(block.block_type(), block.work_version())
     }
 
     pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {

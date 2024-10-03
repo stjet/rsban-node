@@ -11,18 +11,15 @@ pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -
 
     let txn = node.ledger.read_txn();
     
-    // Check if the block exists
     if !node.ledger.any().block_exists(&txn, &args.block) {
         return to_string_pretty(&ErrorDto::new("Block not found".to_string())).unwrap();
     }
 
-    // Check if the block is pending for the account
     let pending_info = node.ledger.any().get_pending(&txn, &PendingKey::new(args.account, args.block));
     if pending_info.is_none() {
         return to_string_pretty(&ErrorDto::new("Block is not receivable".to_string())).unwrap();
     }
 
-    // Get representative for new accounts
     let representative = node.wallets.get_representative(args.wallet).unwrap_or_default();
 
     let wallets = node.wallets.mutex.lock().unwrap();
@@ -30,7 +27,6 @@ pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -
 
     let block = node.ledger.any().get_block(&node.ledger.read_txn(), &args.block).unwrap();
 
-    // Perform receive action
     let receive = node.wallets.receive_sync(wallet, &block, representative, node.config.receive_minimum);
 
     match receive {
@@ -62,7 +58,6 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        // Send first block (above minimum receive amount)
         let send1 = node.wallets.send_action2(
             &wallet,
             *DEV_GENESIS_ACCOUNT,
@@ -85,7 +80,6 @@ mod tests {
             "Destination account should not exist yet",
         );
 
-        // Send second block (below minimum receive amount)
         let send2 = node.wallets.send_action2(
             &wallet,
             *DEV_GENESIS_ACCOUNT,
@@ -96,7 +90,6 @@ mod tests {
             None
         ).unwrap();
 
-        // Receive the second block
         let block_hash = node.tokio.block_on(async {
             rpc_client
                 .receive(
@@ -109,7 +102,6 @@ mod tests {
                 .unwrap()
         }).value;
 
-        // Verify that the receive transaction was processed
         let tx = node.ledger.read_txn();
         assert_timely_msg(
             Duration::from_secs(5),
@@ -121,13 +113,11 @@ mod tests {
             "Receive block not found in ledger",
         );
 
-        // Verify the balance of the receiving account
         assert_eq!(
             node.ledger.any().account_balance(&tx, &key1.public_key().into()).unwrap(),
             node.config.receive_minimum - Amount::raw(1)
         );
 
-        // Try to receive the same block again (should fail)
         let error_result = node.tokio.block_on(async {
             rpc_client
                 .receive(
@@ -144,7 +134,6 @@ mod tests {
             Some("node returned error: \"Block is not receivable\"".to_string())
         );
 
-        // Try to receive a non-existing block (should fail)
         let non_existing_hash = BlockHash::zero();
         let error_result = node.tokio.block_on(async {
             rpc_client

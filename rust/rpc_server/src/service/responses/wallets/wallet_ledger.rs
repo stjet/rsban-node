@@ -6,70 +6,65 @@ use serde_json::to_string_pretty;
 use std::collections::HashMap;
 
 pub async fn wallet_ledger(node: Arc<Node>, enable_control: bool, args: WalletLedgerArgs) -> String {
-    if enable_control {
-        let representative = args.representative.unwrap_or(false);
-        let weight = args.weight.unwrap_or(false);
-        let receivable = args.receivable.unwrap_or(args.receivable.unwrap_or(false));
-        let modified_since = args.modified_since.unwrap_or(0);
+    if !enable_control {
+        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+    }
 
-        let wallet_id = args.wallet;
-        
-        let mut accounts_json: HashMap<Account, AccountInfo> = HashMap::new();
+    let WalletLedgerArgs {
+        wallet,
+        representative,
+        weight,
+        receivable,
+        modified_since,
+    } = args;
 
-        if let Ok(accounts) = node.wallets.get_accounts_of_wallet(&wallet_id) {
-            let block_transaction = node.store.tx_begin_read();
+    let representative = representative.unwrap_or(false);
+    let weight = weight.unwrap_or(false);
+    let receivable = receivable.unwrap_or(false);
+    let modified_since = modified_since.unwrap_or(0);
 
-            println!("{:?}", accounts);
-
-            for account in accounts {
-                if let Some(info) = node.ledger.any().get_account(&block_transaction, &account) {
-                    if info.modified >= modified_since {
-                        let mut representative_opt = None;
-                        let mut weight_opt = None;
-                        let mut receivable_opt = None;
-
-                        if representative {
-                            representative_opt = Some(info.representative.as_account());
-                        }
-
-                        if weight {
-                            weight_opt = Some(node.ledger.weight_exact(&block_transaction, account.into()));
-                        }
-
-                        if receivable {
-                            let account_receivable = node.ledger.account_receivable(&block_transaction, &account, false);
-                            receivable_opt = Some(account_receivable);
-                        }
-
-                        let entry = AccountInfo::new(
-                            info.head,
-                            info.open_block,
-                            node.ledger.representative_block_hash(&block_transaction, &info.head),
-                            info.balance,
-                            info.modified,
-                            info.block_count,
-                            representative_opt,
-                            weight_opt,
-                            receivable_opt,
-                            receivable_opt
-                        );
-
-                        accounts_json.insert(account, entry);
-                    }
-                }
-                else {
-                    println!("!!!!!!!!!!!!");
-                }
-            }
-
+    match node.wallets.get_accounts_of_wallet(&wallet) {
+        Ok(accounts) => {
+            let accounts_json = get_accounts_info(node, accounts, representative, weight, receivable, modified_since);
             to_string_pretty(&WalletLedgerDto { accounts: accounts_json }).unwrap()
-        } else {
-            to_string_pretty(&ErrorDto::new("Failed to get accounts".to_string())).unwrap()
+        }
+        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+    }
+}
+
+fn get_accounts_info(
+    node: Arc<Node>,
+    accounts: Vec<Account>,
+    representative: bool,
+    weight: bool,
+    receivable: bool,
+    modified_since: u64,
+) -> HashMap<Account, AccountInfo> {
+    let block_transaction = node.store.tx_begin_read();
+    let mut accounts_json = HashMap::new();
+
+    for account in accounts {
+        if let Some(info) = node.ledger.any().get_account(&block_transaction, &account) {
+            if info.modified >= modified_since {
+                let entry = AccountInfo::new(
+                    info.head,
+                    info.open_block,
+                    node.ledger.representative_block_hash(&block_transaction, &info.head),
+                    info.balance,
+                    info.modified,
+                    info.block_count,
+                    representative.then(|| info.representative.as_account()),
+                    weight.then(|| node.ledger.weight_exact(&block_transaction, account.into())),
+                    receivable.then(|| node.ledger.account_receivable(&block_transaction, &account, false)),
+                    receivable.then(|| node.ledger.account_receivable(&block_transaction, &account, false)),
+                );
+
+                accounts_json.insert(account, entry);
+            }
         }
     }
-    else {
-        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
-    }
+
+    accounts_json
 }
 
 #[cfg(test)]
@@ -149,7 +144,6 @@ mod tests {
         assert_eq!(info.receivable, Some(Amount::zero()));
         assert_eq!(info.representative, Some(keys.account()));
 
-        // Test without optional values
         let result_without_optional = node.tokio.block_on(async {
             rpc_client.wallet_ledger(wallet, None, None, None, None).await.unwrap()
         });
@@ -160,6 +154,44 @@ mod tests {
         assert!(info_without_optional.pending.is_none());
         assert!(info_without_optional.receivable.is_none());
         assert!(info_without_optional.representative.is_none());
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_fails_without_enable_control() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_ledger(WalletId::zero(), None, None, None, None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"RPC control is disabled\"".to_string())
+        );
+
+        server.abort();
+    }
+
+    #[test]
+    fn account_create_fails_with_wallet_not_found() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let result = node
+            .tokio
+            .block_on(async { rpc_client.wallet_ledger(WalletId::zero(), None, None, None, None).await });
+
+        assert_eq!(
+            result.err().map(|e| e.to_string()),
+            Some("node returned error: \"Wallet not found\"".to_string())
+        );
 
         server.abort();
     }

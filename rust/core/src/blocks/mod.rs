@@ -77,7 +77,6 @@ impl TryFrom<u8> for BlockType {
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-
 pub enum BlockSubType {
     Send,
     Receive,

@@ -14,6 +14,7 @@ use serde_derive::{Serialize, Deserialize};
 use std::fmt::Display;
 use std::mem::size_of;
 use std::time::{Duration, SystemTime};
+use std::thread::sleep;
 
 #[repr(u8)]
 #[derive(FromPrimitive, Copy, Clone, PartialEq, Eq)]
@@ -55,19 +56,31 @@ fn serialize_timestamp<S>(timestamp: &SystemTime, serializer: S) -> Result<S::Ok
 where
     S: Serializer,
 {
-    let ms = timestamp
+    let duration = timestamp
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
-    serializer.serialize_u64(ms)
+        .unwrap_or_default();
+    let seconds = duration.as_secs();
+    let nanos = duration.subsec_nanos();
+    let mut state = serializer.serialize_struct("SystemTime", 2)?;
+    state.serialize_field("secs", &seconds)?;
+    state.serialize_field("nanos", &nanos)?;
+    state.end()
 }
 
 fn deserialize_timestamp<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let ms = <u64 as serde::Deserialize<'de>>::deserialize(deserializer)?;
-    Ok(SystemTime::UNIX_EPOCH + Duration::from_millis(ms))
+    #[derive(Deserialize)]
+    struct Helper {
+        secs: u64,
+        nanos: u32,
+    }
+
+    use serde::Deserialize;
+
+    let Helper { secs, nanos } = Helper::deserialize(deserializer)?;
+    Ok(SystemTime::UNIX_EPOCH + Duration::new(secs, nanos))
 }
 
 impl TelemetryData {
@@ -391,6 +404,37 @@ mod tests {
         ];
 
         assert_deserializable(&Message::TelemetryAck(TelemetryAck(Some(data))));
+    }
+
+    #[test]
+    fn test_timestamp_accuracy() {
+        let before = SystemTime::now();
+        sleep(Duration::from_millis(10)); // Small delay to ensure time passes
+
+        let mut telemetry_data = TelemetryData::new();
+        telemetry_data.timestamp = SystemTime::now();
+        
+        sleep(Duration::from_millis(10)); // Another small delay
+        let after = SystemTime::now();
+
+        // Check that the timestamp is between 'before' and 'after'
+        assert!(telemetry_data.timestamp >= before);
+        assert!(telemetry_data.timestamp <= after);
+
+        // Serialize and deserialize to ensure accuracy is maintained
+        let json = serde_json::to_string(&telemetry_data).unwrap();
+        let deserialized: TelemetryData = serde_json::from_str(&json).unwrap();
+
+        // Check that the deserialized timestamp is still accurate
+        assert!(deserialized.timestamp >= before);
+        assert!(deserialized.timestamp <= after);
+
+        // Check that the original and deserialized timestamps are equal
+        assert_eq!(telemetry_data.timestamp, deserialized.timestamp);
+
+        // Print time differences for manual verification
+        println!("Time from 'before' to timestamp: {:?}", telemetry_data.timestamp.duration_since(before).unwrap());
+        println!("Time from timestamp to 'after': {:?}", after.duration_since(telemetry_data.timestamp).unwrap());
     }
 
     fn test_data(keys: &KeyPair) -> TelemetryData {

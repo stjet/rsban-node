@@ -17,20 +17,10 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
         if offset > 0 {
             offset -= 1;
         } else if count > 0 {
-            if raw {
-                let entry = create_history_entry(node.clone(), &block, &hash, raw);
+            if let Some(entry) = create_history_entry(node.clone(), &block, &hash, raw) {
                 if should_include_entry(&entry, &args.account_filter) {
                     history.push(entry);
                     count -= 1;
-                }
-            } 
-            else {
-                if block.is_receive() || block.is_send() {
-                    let entry = create_history_entry(node.clone(), &block, &hash, raw);
-                    if should_include_entry(&entry, &args.account_filter) {
-                        history.push(entry);
-                        count -= 1;
-                    }
                 }
             }
         } else {
@@ -78,8 +68,8 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
     to_string_pretty(&account_history).unwrap_or_else(|_| "".to_string())
 }
 
-fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, raw: bool) -> HistoryEntry {
-    let transaction = node.ledger.read_txn();
+fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, raw: bool) -> Option<HistoryEntry> {
+    let transaction = node.store.tx_begin_read();
     let confirmed = node.ledger.confirmed().block_exists_or_pruned(&transaction, hash);
     let local_timestamp = block.sideband().unwrap().timestamp;
     let height = block.sideband().unwrap().height;
@@ -98,33 +88,46 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
             let (amount, source_account) = if open_block.source().as_bytes() == node.ledger.constants.genesis_account.as_bytes() { 
                 (node.ledger.constants.genesis_amount, node.ledger.constants.genesis_account)
             } else {
-                (node.ledger.any().block_amount(&transaction, hash).unwrap_or_default(), node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default())
+                let amount = node.ledger.any().block_amount(&transaction, hash).unwrap_or_default();
+                let source_account = node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default();
+                (amount, source_account)
             };
             (BlockSubType::Receive, source_account, amount)
         },
-        BlockEnum::LegacyChange(change_block) => {
-            (BlockSubType::Change, change_block.representative_field().unwrap().into(), Amount::zero())
+        BlockEnum::LegacyChange(_) => {
+            if raw {
+                (BlockSubType::Change, Account::default(), Amount::zero())
+            } else {
+                return None; // Skip change blocks if not raw
+            }
         },
         BlockEnum::State(state_block) => {
-            let (block_type, account, amount) = if state_block.previous() != BlockHash::zero() {
-                let previous = state_block.previous();
-                let previous_balance = node.ledger.any().block_balance(&transaction, &previous).unwrap_or_default();
+            if state_block.previous().is_zero() {
+                // Open block
+                let source_account = node.ledger.any().block_account(&transaction, &state_block.link().into()).unwrap_or_default();
+                (BlockSubType::Receive, source_account, state_block.balance())
+            } else {
+                let previous_balance = node.ledger.any().block_balance(&transaction, &state_block.previous()).unwrap_or_default();
                 if state_block.balance() < previous_balance {
+                    // Send block
                     (BlockSubType::Send, Account::decode_hex(state_block.link().encode_hex()).unwrap(), previous_balance - state_block.balance())
                 } else if state_block.link().is_zero() {
-                    (BlockSubType::Change, state_block.representative_field().unwrap().into(), Amount::zero())
+                    // Change block
+                    if raw {
+                        (BlockSubType::Change, Account::default(), Amount::zero())
+                    } else {
+                        return None; // Skip change blocks if not raw
+                    }
                 } else {
+                    // Receive block
                     let source_account = node.ledger.any().block_account(&transaction, &state_block.link().into()).unwrap_or_default();
                     (BlockSubType::Receive, source_account, state_block.balance() - previous_balance)
                 }
-            } else {
-                (BlockSubType::Open, state_block.account(), state_block.balance())
-            };
-            (block_type, account, amount)
+            }
         },
     };
 
-    HistoryEntry {
+    Some(HistoryEntry {
         block_type,
         account,
         amount,
@@ -134,7 +137,7 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
         confirmed,
         work: if raw { Some(block.work().into()) } else { None },
         signature: if raw { Some(block.block_signature().clone()) } else { None },
-    }
+    })
 }
 
 fn should_include_entry(entry: &HistoryEntry, account_filter: &Option<Vec<PublicKey>>) -> bool {

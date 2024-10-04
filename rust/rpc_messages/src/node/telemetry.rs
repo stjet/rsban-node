@@ -1,5 +1,6 @@
 use std::net::Ipv6Addr;
 use crate::RpcCommand;
+use rsnano_core::{BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -26,12 +27,70 @@ impl TelemetryArgs {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct TelemetryDto {
-    pub metrics: Vec<TelemetryData>
+    pub block_count: u64,
+    pub cemented_count: u64,
+    pub unchecked_count: u64,
+    pub account_count: u64,
+    pub bandwidth_cap: u64,
+    pub uptime: u64,
+    pub peer_count: u32,
+    pub protocol_version: u8,
+    pub genesis_block: BlockHash,
+    pub major_version: u8,
+    pub minor_version: u8,
+    pub patch_version: u8,
+    pub pre_release_version: u8,
+    pub maker: u8, 
+    pub timestamp: u64,
+    pub active_difficulty: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<Signature>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<PublicKey>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<Ipv6Addr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
 }
 
-impl Serialize for TelemetryDto {
+impl From<TelemetryData> for TelemetryDto {
+    fn from(data: TelemetryData) -> Self {
+        Self {
+            block_count: data.block_count,
+            cemented_count: data.cemented_count,
+            unchecked_count: data.unchecked_count,
+            account_count: data.account_count,
+            bandwidth_cap: data.bandwidth_cap,
+            uptime: data.uptime,
+            peer_count: data.peer_count,
+            protocol_version: data.protocol_version,
+            genesis_block: data.genesis_block,
+            major_version: data.major_version,
+            minor_version: data.minor_version,
+            patch_version: data.patch_version,
+            pre_release_version: data.pre_release_version,
+            maker: data.maker,
+            timestamp: data.timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            active_difficulty: data.active_difficulty,
+            signature: Some(data.signature),
+            node_id: Some(data.node_id),
+            address: None,
+            port: None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct TelemetryDtos {
+    pub metrics: Vec<TelemetryDto>
+}
+
+impl Serialize for TelemetryDtos {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -46,7 +105,7 @@ impl Serialize for TelemetryDto {
     }
 }
 
-impl<'de> Deserialize<'de> for TelemetryDto {
+impl<'de> Deserialize<'de> for TelemetryDtos {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -54,14 +113,14 @@ impl<'de> Deserialize<'de> for TelemetryDto {
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum TelemetryDtoHelper {
-            Single(TelemetryData),
-            Multiple { metrics: Vec<TelemetryData> },
+            Single(TelemetryDto),
+            Multiple { metrics: Vec<TelemetryDto> },
         }
 
         let helper = TelemetryDtoHelper::deserialize(deserializer)?;
         match helper {
-            TelemetryDtoHelper::Single(data) => Ok(TelemetryDto { metrics: vec![data] }),
-            TelemetryDtoHelper::Multiple { metrics } => Ok(TelemetryDto { metrics }),
+            TelemetryDtoHelper::Single(data) => Ok(TelemetryDtos { metrics: vec![data] }),
+            TelemetryDtoHelper::Multiple { metrics } => Ok(TelemetryDtos { metrics }),
         }
     }
 }
@@ -100,12 +159,13 @@ mod tests {
     #[test]
     fn test_telemetry_dto_serialize_single() {
         let data = create_test_telemetry_data();
-        let dto = TelemetryDto { metrics: vec![data.clone()] };
+        let dto = TelemetryDto::from(data);
+        let dtos = TelemetryDtos { metrics: vec![dto.clone()] };
         
-        let serialized = serde_json::to_string(&dto).unwrap();
-        let deserialized: TelemetryData = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&dtos).unwrap();
+        let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
         
-        assert_eq!(data, deserialized);
+        assert_eq!(dtos.metrics, deserialized.metrics);
     }
 
     #[test]
@@ -114,33 +174,26 @@ mod tests {
         let mut data2 = data1.clone();
         data2.block_count = 2000;
         
-        let dto = TelemetryDto { metrics: vec![data1.clone(), data2.clone()] };
+        let dto1 = TelemetryDto::from(data1);
+        let dto2 = TelemetryDto::from(data2);
+        let dtos = TelemetryDtos { metrics: vec![dto1.clone(), dto2.clone()] };
         
-        let serialized = serde_json::to_string(&dto).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&dtos).unwrap();
+        let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
         
-        assert!(deserialized.is_object());
-        assert!(deserialized.get("metrics").is_some());
-        
-        let metrics = deserialized["metrics"].as_array().unwrap();
-        assert_eq!(metrics.len(), 2);
-        
-        let deserialized_data1: TelemetryData = serde_json::from_value(metrics[0].clone()).unwrap();
-        let deserialized_data2: TelemetryData = serde_json::from_value(metrics[1].clone()).unwrap();
-        
-        assert_eq!(data1, deserialized_data1);
-        assert_eq!(data2, deserialized_data2);
+        assert_eq!(dtos.metrics, deserialized.metrics);
     }
 
     #[test]
     fn test_telemetry_dto_deserialize_single() {
         let data = create_test_telemetry_data();
-        let json = serde_json::to_string(&data).unwrap();
+        let dto = TelemetryDto::from(data);
+        let json = serde_json::to_string(&dto).unwrap();
         
-        let deserialized: TelemetryDto = serde_json::from_str(&json).unwrap();
+        let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
         
         assert_eq!(deserialized.metrics.len(), 1);
-        assert_eq!(data, deserialized.metrics[0]);
+        assert_eq!(dto, deserialized.metrics[0]);
     }
 
     #[test]
@@ -149,16 +202,46 @@ mod tests {
         let mut data2 = data1.clone();
         data2.block_count = 2000;
         
+        let dto1 = TelemetryDto::from(data1);
+        let dto2 = TelemetryDto::from(data2);
+        
         let json = format!(
             r#"{{"metrics":[{},{}]}}"#,
-            serde_json::to_string(&data1).unwrap(),
-            serde_json::to_string(&data2).unwrap()
+            serde_json::to_string(&dto1).unwrap(),
+            serde_json::to_string(&dto2).unwrap()
         );
         
-        let deserialized: TelemetryDto = serde_json::from_str(&json).unwrap();
+        let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
         
         assert_eq!(deserialized.metrics.len(), 2);
-        assert_eq!(data1, deserialized.metrics[0]);
-        assert_eq!(data2, deserialized.metrics[1]);
+        assert_eq!(dto1, deserialized.metrics[0]);
+        assert_eq!(dto2, deserialized.metrics[1]);
+    }
+
+    #[test]
+    fn test_telemetry_data_to_dto_conversion() {
+        let data = create_test_telemetry_data();
+        let dto: TelemetryDto = data.clone().into();
+
+        assert_eq!(dto.block_count, data.block_count);
+        assert_eq!(dto.cemented_count, data.cemented_count);
+        assert_eq!(dto.unchecked_count, data.unchecked_count);
+        assert_eq!(dto.account_count, data.account_count);
+        assert_eq!(dto.bandwidth_cap, data.bandwidth_cap);
+        assert_eq!(dto.uptime, data.uptime);
+        assert_eq!(dto.peer_count, data.peer_count);
+        assert_eq!(dto.protocol_version, data.protocol_version);
+        assert_eq!(dto.genesis_block, data.genesis_block);
+        assert_eq!(dto.major_version, data.major_version);
+        assert_eq!(dto.minor_version, data.minor_version);
+        assert_eq!(dto.patch_version, data.patch_version);
+        assert_eq!(dto.pre_release_version, data.pre_release_version);
+        assert_eq!(dto.maker, data.maker);
+        assert_eq!(dto.timestamp, 1623456789);
+        assert_eq!(dto.active_difficulty, data.active_difficulty);
+        assert_eq!(dto.signature, Some(data.signature));
+        assert_eq!(dto.node_id, Some(data.node_id));
+        assert_eq!(dto.address, None);
+        assert_eq!(dto.port, None);
     }
 }

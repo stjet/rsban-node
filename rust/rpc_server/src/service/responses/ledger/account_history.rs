@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, PublicKey};
-use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 use serde_json::to_string_pretty;
@@ -96,12 +95,11 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
             (BlockSubType::Receive, source_account, amount)
         },
         BlockEnum::LegacyOpen(open_block) => {
-            let amount = if open_block.source() == *DEV_GENESIS_HASH {
-                node.ledger.constants.genesis_amount
+            let (amount, source_account) = if open_block.source().as_bytes() == node.ledger.constants.genesis_account.as_bytes() { 
+                (node.ledger.constants.genesis_amount, node.ledger.constants.genesis_account)
             } else {
-                node.ledger.any().block_amount(&transaction, hash).unwrap_or_default()
+                (node.ledger.any().block_amount(&transaction, hash).unwrap_or_default(), node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default())
             };
-            let source_account = node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default();
             (BlockSubType::Receive, source_account, amount)
         },
         BlockEnum::LegacyChange(change_block) => {
@@ -152,8 +150,7 @@ mod tests {
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
-    use rsnano_core::{Account, Amount, BlockHash, BlockSubType, Epoch, PublicKey, Root, WalletId, DEV_GENESIS_KEY};
-    use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
+    use rsnano_core::{BlockSubType, WalletId, DEV_GENESIS_KEY};
 
     #[test]
     fn account_history() {

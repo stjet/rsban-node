@@ -101,11 +101,13 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
             } else {
                 let amount = node.ledger.any().block_amount(&transaction, hash).unwrap_or_default();
                 let source_account = node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default();
-                (amount, source_account)
+                if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
+                    return None;
+                }
+                else {
+                    (amount, source_account)
+                }
             };
-            if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
-                return None;
-            }
             (BlockSubType::Receive, source_account, amount)
         },
         BlockEnum::LegacyChange(_) => {
@@ -343,8 +345,6 @@ mod tests {
                 Some(vec![account2]),
             ).await.unwrap()
         });
-
-        println!("{:?}", account_history_filtered_send);
 
         assert_eq!(account_history_filtered_send.history.len(), 2);
         assert_eq!(account_history_filtered_send.history[0].block_type, BlockSubType::Send);

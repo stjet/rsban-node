@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockHash, BlockSubType, PublicKey, Signature, WorkNonce};
+use rsnano_core::{Account, Amount, BlockHash, BlockSubType, Signature, WorkNonce};
 use serde::{Deserialize, Serialize};
 use crate::RpcCommand;
 
@@ -10,7 +10,7 @@ impl RpcCommand {
         head: Option<BlockHash>,
         offset: Option<u64>,
         reverse: Option<bool>,
-        account_filter: Option<Vec<PublicKey>>,
+        account_filter: Option<Vec<Account>>,
     ) -> Self {
         Self::AccountHistory(AccountHistoryArgs::new(
             account,
@@ -37,7 +37,7 @@ pub struct AccountHistoryArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reverse: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub account_filter: Option<Vec<PublicKey>>,
+    pub account_filter: Option<Vec<Account>>,
 }
 
 impl AccountHistoryArgs {
@@ -48,7 +48,7 @@ impl AccountHistoryArgs {
         head: Option<BlockHash>,
         offset: Option<u64>,
         reverse: Option<bool>,
-        account_filter: Option<Vec<PublicKey>>,
+        account_filter: Option<Vec<Account>>,
     ) -> Self {
         Self {
             account,

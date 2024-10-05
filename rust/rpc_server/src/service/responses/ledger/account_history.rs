@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, PublicKey};
+use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 use serde_json::to_string_pretty;
@@ -7,30 +7,34 @@ use serde_json::to_string_pretty;
 pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> String {
     let transaction = node.store.tx_begin_read();
     let mut history = Vec::new();
-    let mut hash = args.head.unwrap_or_else(|| node.ledger.any().account_head(&transaction, &args.account).unwrap_or_default());
+    let reverse = args.reverse.unwrap_or(false);
+    let mut hash = if reverse {
+        node.ledger.any().get_account(&transaction, &args.account).unwrap_or_default().open_block
+    } else {
+        args.head.unwrap_or_else(|| node.ledger.any().account_head(&transaction, &args.account).unwrap_or_default())
+    };
     let mut count = args.count;
     let mut offset = args.offset.unwrap_or(0);
-    let reverse = args.reverse.unwrap_or(false);
     let raw = args.raw.unwrap_or(false);
+    let account_filter = args.account_filter.clone();
 
     while let Some(block) = node.ledger.get_block(&transaction, &hash) {
         if offset > 0 {
             offset -= 1;
         } else if count > 0 {
-            if let Some(entry) = create_history_entry(node.clone(), &block, &hash, raw) {
-                if should_include_entry(&entry, &args.account_filter) {
-                    history.push(entry);
-                    count -= 1;
-                }
+            if let Some(entry) = create_history_entry(node.clone(), &block, &hash, raw, &account_filter) {
+                history.push(entry);
+                count -= 1;
             }
         } else {
             break;
         }
 
-        hash = if reverse {
-            node.ledger.any().block_successor(&transaction, &hash).unwrap_or_default()
-        } else {
+        hash = if !reverse {
             block.previous()
+        } else {
+            let a = node.ledger.any().block_successor(&transaction, &hash).unwrap_or_default();
+            a
         };
 
         if hash.is_zero() {
@@ -38,9 +42,9 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
         }
     }
 
-    if reverse {
-        history.reverse();
-    }
+    //if reverse {
+        //history.reverse();
+    //}
 
     let next = if !hash.is_zero() {
         Some(hash)
@@ -68,7 +72,7 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
     to_string_pretty(&account_history).unwrap_or_else(|_| "".to_string())
 }
 
-fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, raw: bool) -> Option<HistoryEntry> {
+fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, raw: bool, account_filter: &Option<Vec<Account>>) -> Option<HistoryEntry> {
     let transaction = node.store.tx_begin_read();
     let confirmed = node.ledger.confirmed().block_exists_or_pruned(&transaction, hash);
     let local_timestamp = block.sideband().unwrap().timestamp;
@@ -77,11 +81,18 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
     let (block_type, account, amount) = match block {
         BlockEnum::LegacySend(send_block) => {
             let amount = node.ledger.any().block_amount(&transaction, hash).unwrap_or_default();
-            (BlockSubType::Send, *send_block.destination(), amount)
+            let destination = *send_block.destination();
+            if account_filter.as_ref().map_or(false, |filter| !filter.contains(&destination)) {
+                return None;
+            }
+            (BlockSubType::Send, destination, amount)
         },
         BlockEnum::LegacyReceive(receive_block) => {
             let amount = node.ledger.any().block_amount(&transaction, hash).unwrap_or_default();
             let source_account = node.ledger.any().block_account(&transaction, &receive_block.source()).unwrap_or_default();
+            if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
+                return None;
+            }
             (BlockSubType::Receive, source_account, amount)
         },
         BlockEnum::LegacyOpen(open_block) => {
@@ -92,6 +103,9 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
                 let source_account = node.ledger.any().block_account(&transaction, &open_block.source()).unwrap_or_default();
                 (amount, source_account)
             };
+            if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
+                return None;
+            }
             (BlockSubType::Receive, source_account, amount)
         },
         BlockEnum::LegacyChange(_) => {
@@ -105,12 +119,19 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
             if state_block.previous().is_zero() {
                 // Open block
                 let source_account = node.ledger.any().block_account(&transaction, &state_block.link().into()).unwrap_or_default();
+                if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
+                    return None;
+                }
                 (BlockSubType::Receive, source_account, state_block.balance())
             } else {
                 let previous_balance = node.ledger.any().block_balance(&transaction, &state_block.previous()).unwrap_or_default();
                 if state_block.balance() < previous_balance {
                     // Send block
-                    (BlockSubType::Send, Account::decode_hex(state_block.link().encode_hex()).unwrap(), previous_balance - state_block.balance())
+                    let destination = state_block.link().into();
+                    if account_filter.as_ref().map_or(false, |filter| !filter.contains(&destination)) {
+                        return None;
+                    }
+                    (BlockSubType::Send, destination, previous_balance - state_block.balance())
                 } else if state_block.link().is_zero() {
                     // Change block
                     if raw {
@@ -121,6 +142,9 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
                 } else {
                     // Receive block
                     let source_account = node.ledger.any().block_account(&transaction, &state_block.link().into()).unwrap_or_default();
+                    if account_filter.as_ref().map_or(false, |filter| !filter.contains(&source_account)) {
+                        return None;
+                    }
                     (BlockSubType::Receive, source_account, state_block.balance() - previous_balance)
                 }
             }
@@ -140,20 +164,13 @@ fn create_history_entry(node: Arc<Node>, block: &BlockEnum, hash: &BlockHash, ra
     })
 }
 
-fn should_include_entry(entry: &HistoryEntry, account_filter: &Option<Vec<PublicKey>>) -> bool {
-    account_filter
-        .as_ref()
-        .map(|filter| filter.contains(&entry.account.into()))
-        .unwrap_or(true)
-}
-
 #[cfg(test)]
 mod tests {
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::wallets::WalletsExt;
     use test_helpers::System;
-    use rsnano_core::{BlockSubType, WalletId, DEV_GENESIS_KEY};
+    use rsnano_core::{Account, Amount, BlockSubType, PublicKey, WalletId, DEV_GENESIS_KEY};
 
     #[test]
     fn account_history() {
@@ -178,7 +195,7 @@ mod tests {
             *DEV_GENESIS_ACCOUNT, 
             *DEV_GENESIS_ACCOUNT, 
             node.config.receive_minimum, 
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()), 
+            node.work_generate_dev(change.hash().into()), 
             false, None)
         .unwrap();
 
@@ -192,12 +209,12 @@ mod tests {
             false
         ).unwrap().unwrap();
 
-        /*let usend = node.wallets.send_action2(
+        let usend = node.wallets.send_action2(
             &wallet_id,
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_ACCOUNT,
-            Amount::raw(1_000_000),
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            Amount::nano(1_000),
+            node.work_generate_dev(receive.hash().into()),
             false,
             None
         ).unwrap();
@@ -206,7 +223,7 @@ mod tests {
             &wallet_id,
             usend.hash(),
             *DEV_GENESIS_PUB_KEY,
-            Amount::raw(1_000_000),
+            Amount::nano(1_000),
             *DEV_GENESIS_ACCOUNT,
             node.work_generate_dev(usend.hash().into()),
             false
@@ -216,9 +233,9 @@ mod tests {
             &wallet_id,
             *DEV_GENESIS_ACCOUNT,
             PublicKey::zero(),
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(ureceive.hash().into()),
             false
-        ).unwrap().unwrap();*/
+        ).unwrap().unwrap();
 
         // Set up RPC client and server
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
@@ -236,41 +253,21 @@ mod tests {
         });
 
         assert_eq!(account_history.account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(account_history.history.len(), 3);
+        assert_eq!(account_history.history.len(), 5);
 
         // Verify history entries
         let history = account_history.history;
         assert_eq!(history[0].block_type, BlockSubType::Receive);
-        assert_eq!(history[0].hash, receive.hash());
+        assert_eq!(history[0].hash, ureceive.hash());
         assert_eq!(history[0].account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(history[0].amount, node.config.receive_minimum);
-        assert_eq!(history[0].height, 4);
+        assert_eq!(history[0].amount, Amount::nano(1_000));
+        assert_eq!(history[0].height, 6);
         assert!(!history[0].confirmed);
 
         assert_eq!(history[1].block_type, BlockSubType::Send);
-        assert_eq!(history[1].hash, send.hash());
-        assert_eq!(history[1].account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(history[1].amount, node.config.receive_minimum);
-        assert_eq!(history[1].height, 3);
-        assert!(!history[1].confirmed);
-
-        assert_eq!(history[2].block_type, BlockSubType::Receive);
-        assert_eq!(history[2].hash, *DEV_GENESIS_HASH);
-        assert_eq!(history[2].account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(history[2].amount, node.ledger.constants.genesis_amount);
-        assert_eq!(history[2].height, 1);
-        assert!(history[2].confirmed);
-        //assert_eq!(history[0].block_type, BlockSubType::Send);
-        //assert_eq!(history[0].hash, send.hash());
-        //assert_eq!(history[0].account, *DEV_GENESIS_ACCOUNT);
-        //assert_eq!(history[0].amount, node.config.receive_minimum);
-        //assert_eq!(history[0].height, 2);
-        //assert!(!history[0].confirmed);
-
-        /*assert_eq!(history[1].block_type, BlockSubType::Send);
         assert_eq!(history[1].hash, usend.hash());
         assert_eq!(history[1].account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(history[1].amount, Amount::from_raw(1_000_000));
+        assert_eq!(history[1].amount, Amount::nano(1_000));
         assert_eq!(history[1].height, 5);
         assert!(!history[1].confirmed);
 
@@ -291,65 +288,84 @@ mod tests {
         assert_eq!(history[4].block_type, BlockSubType::Receive);
         assert_eq!(history[4].hash, *DEV_GENESIS_HASH);
         assert_eq!(history[4].account, *DEV_GENESIS_ACCOUNT);
-        assert_eq!(history[4].amount, Amount::max());
+        assert_eq!(history[4].amount, node.ledger.constants.genesis_amount);
         assert_eq!(history[4].height, 1);
-        assert!(history[4].confirmed);*/
+        assert!(history[4].confirmed);
 
         // Test count and reverse
-        /*let result = rpc_client.account_history(
-            AccountHistoryArgs::new(
+        let account_history_reverse = node.tokio.block_on(async {
+            rpc_client.account_history(
                 *DEV_GENESIS_ACCOUNT,
                 1,
-                Some(false),
+                None,
                 None,
                 None,
                 Some(true),
                 None,
-            )
-        ).await.unwrap();
+            ).await.unwrap()
+        });
 
-        let account_history: AccountHistoryDto = serde_json::from_str(&result).unwrap();
-        assert_eq!(account_history.history.len(), 1);
-        assert_eq!(account_history.history[0].height, 1);
-        assert_eq!(account_history.next, Some(change.hash()));
+        assert_eq!(account_history_reverse.history.len(), 1);
+        assert_eq!(account_history_reverse.history[0].height, 1);
+        assert_eq!(account_history_reverse.next, Some(change.hash()));
 
         // Test filtering
-        let account2 = PublicKey::random();
-        node.wallets.deterministic_insert(wallet_id, true, account2).await.unwrap();
-        let send2 = node.wallets.send_action(wallet_id, DEV_GENESIS_ACCOUNT.public_key(), account2, node.config.receive_minimum).await.unwrap();
-        let receive2 = node.wallets.receive_action(wallet_id, send2.hash(), account2, node.config.receive_minimum, send2.destination()).await.unwrap();
+        let account2: Account = node.wallets.deterministic_insert2(&wallet_id, false).unwrap().into();
+        let send2 = node.wallets.send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            account2,
+            node.config.receive_minimum,
+            node.work_generate_dev(uchange.hash().into()),
+            false,
+            None
+        ).unwrap();
+
+        let receive2 = node.wallets.receive_action2(
+            &wallet_id,
+            send2.hash(),
+            account2.into(),
+            node.config.receive_minimum,
+            account2.into(),
+            node.work_generate_dev(send2.hash().into()),
+            false
+        ).unwrap().unwrap();
 
         // Test filter for send state blocks
-        let result = rpc_client.account_history(
-            AccountHistoryArgs::new(
+        let account_history_filtered_send = node.tokio.block_on(async {
+            rpc_client.account_history(
                 *DEV_GENESIS_ACCOUNT,
                 100,
-                Some(false),
                 None,
                 None,
                 None,
+                None, 
                 Some(vec![account2]),
-            )
-        ).await.unwrap();
+            ).await.unwrap()
+        });
 
-        let account_history: AccountHistoryDto = serde_json::from_str(&result).unwrap();
-        assert_eq!(account_history.history.len(), 2);
+        println!("{:?}", account_history_filtered_send);
+
+        assert_eq!(account_history_filtered_send.history.len(), 2);
+        assert_eq!(account_history_filtered_send.history[0].block_type, BlockSubType::Send);
+        assert_eq!(account_history_filtered_send.history[0].account, account2);
 
         // Test filter for receive state blocks
-        let result = rpc_client.account_history(
-            AccountHistoryArgs::new(
-                account2,
+        let account_history_filtered_receive = node.tokio.block_on(async {
+            rpc_client.account_history(
+                account2.into(),
                 100,
-                Some(false),
+                None,
                 None,
                 None,
                 None,
                 Some(vec![*DEV_GENESIS_ACCOUNT]),
-            )
-        ).await.unwrap();
+            ).await.unwrap()
+        });
 
-        let account_history: AccountHistoryDto = serde_json::from_str(&result).unwrap();
-        assert_eq!(account_history.history.len(), 1);*/
+        assert_eq!(account_history_filtered_receive.history.len(), 1);
+        assert_eq!(account_history_filtered_receive.history[0].block_type, BlockSubType::Receive);
+        assert_eq!(account_history_filtered_receive.history[0].account, *DEV_GENESIS_ACCOUNT);
 
         server.abort();
     }

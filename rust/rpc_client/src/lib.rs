@@ -21,7 +21,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn account_history(&self, account: Account, count: u64, raw: Option<bool>, head: Option<BlockHash>, offset: Option<u64>, reverse: Option<bool>, account_filter: Option<Vec<PublicKey>>) -> Result<AccountHistoryDto> {
+    pub async fn account_history(&self, account: Account, count: u64, raw: Option<bool>, head: Option<BlockHash>, offset: Option<u64>, reverse: Option<bool>, account_filter: Option<Vec<Account>>) -> Result<AccountHistoryDto> {
         let cmd = RpcCommand::account_history(account, count, raw, head, offset, reverse, account_filter);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

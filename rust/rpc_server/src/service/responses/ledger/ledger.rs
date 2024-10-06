@@ -174,73 +174,43 @@ mod tests {
         let node = system.build_node().finish();
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
-        //let keys = KeyPair::new();
-        //node.wallets.create(WalletId::zero());
-        //node.wallets.insert_adhoc2(&WalletId::zero(), &keys.private_key(), false).unwrap();
-
         let key = KeyPair::new();
-    let rep_weight = Amount::MAX - Amount::raw(100);
+        let rep_weight = Amount::MAX - Amount::raw(100);
 
-    let send = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - rep_weight,
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - rep_weight,
+            key.account().into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
 
-    let status = node.process_local(send.clone()).unwrap();
+        let status = node.process_local(send.clone()).unwrap();
+        assert_eq!(status, BlockStatus::Progress);
 
-    assert_eq!(status, BlockStatus::Progress);
+        let open = BlockEnum::State(StateBlock::new(
+            key.account(),
+            BlockHash::zero(),
+            *DEV_GENESIS_PUB_KEY,
+            rep_weight,
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(key.public_key().into()),
+        ));
 
-    /*assert_timely_msg(
-        Duration::from_secs(5),
-        || node.active.active(&send),
-        "open block not active",
-    );*/
+        let status = node.process_local(open.clone()).unwrap();
+        assert_eq!(status, BlockStatus::Progress);
 
-    let open = BlockEnum::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        rep_weight,
-        send.hash().into(),
-        &key,
-        node.work_generate_dev(key.public_key().into()),
-    ));
-
-    let status = node.process_local(open.clone()).unwrap();
-
-    assert_eq!(status, BlockStatus::Progress);
-
-    /*assert_timely_msg(
-        Duration::from_secs(5),
-        || node.active.active(&open),
-        "open block not active",
-    );*/
-
-        /*let open_block = BlockBuilder::legacy_open()
-            .account(keys.account())
-            .source(send_block.hash())
-            .sign(&keys)
-            .build();*/
-
-        //node.process_active(open_block.clone());
-
-        /*assert_timely_msg(
-            Duration::from_secs(5),
-            || node.active.active(&open_block),
-            "open block not active",
-        );*/
+        let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
         // Basic ledger test
         let result = node.tokio.block_on(async {
             rpc_client
                 .ledger(
                     None,        // account
-                    Some(2),     // count
+                    Some(1),     // count
                     None,        // representative
                     None,        // weight
                     None,        // receivable
@@ -253,63 +223,39 @@ mod tests {
         });
 
         let accounts = result.accounts;
-        assert_eq!(accounts.len(), 2);
-        let account_info = accounts.get(&key.account()).unwrap();
-        assert_eq!(account_info.frontier, open.hash());
-        assert_eq!(account_info.open_block, open.hash());
-        assert_eq!(account_info.representative_block, open.hash());
-        assert_eq!(account_info.balance, rep_weight);
-        assert!(account_info.modified_timestamp > 0);
-        assert_eq!(account_info.block_count, 1);
-        assert!(account_info.weight.is_none());
-        assert!(account_info.pending.is_none());
-        assert!(account_info.representative.is_none());
-
-        // Test for optional values
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .ledger(
-                    None,        // account
-                    Some(2),     // count
-                    Some(true),  // representative
-                    Some(true),  // weight
-                    Some(true),  // receivable
-                    None,        // modified_since
-                    Some(true),  // sorting
-                    None,        // threshold
-                )
-                .await
-                .unwrap()
-        });
-
-        let accounts = result.accounts;
-        assert_eq!(accounts.len(), 2);
-        let account_info = accounts.get(&key.account()).unwrap();
-        assert_eq!(account_info.weight, Some(Amount::zero()));
-        assert_eq!(account_info.pending, Some(Amount::zero()));
-        assert_eq!(account_info.representative, Some(*DEV_GENESIS_ACCOUNT));
-
-        // Test threshold
-        let genesis_balance = Amount::MAX;
-        let result = node.tokio.block_on(async {
-            rpc_client
-                .ledger(
-                    None,                       // account
-                    Some(2),                    // count
-                    None,                       // representative
-                    None,                       // weight
-                    None,                       // receivable
-                    None,                       // modified_since
-                    Some(true),                 // sorting
-                    Some(rep_weight - Amount::raw(1)), // threshold
-                )
-                .await
-                .unwrap()
-        });
-
-        let accounts = result.accounts;
         assert_eq!(accounts.len(), 1);
-        assert!(accounts.contains_key(&key.account()));
+
+        for (account, info) in accounts {
+            // ASSERT_EQ (key.pub.to_account (), account_text);
+            assert_eq!(key.account(), account);
+
+            // ASSERT_EQ (open->hash ().to_string (), frontier);
+            assert_eq!(open.hash(), info.frontier);
+
+            // ASSERT_EQ (open->hash ().to_string (), open_block);
+            assert_eq!(open.hash(), info.open_block);
+
+            // ASSERT_EQ (open->hash ().to_string (), representative_block);
+            assert_eq!(open.hash(), info.representative_block);
+
+            // ASSERT_EQ (send_amount.convert_to<std::string> (), balance_text);
+            assert_eq!(rep_weight, info.balance);
+
+            // ASSERT_LT (std::abs ((long)time - stol (modified_timestamp)), 5);
+            assert!(((time as i64) - (info.modified_timestamp as i64)).abs() < 5);
+
+            // ASSERT_EQ ("1", block_count);
+            assert_eq!(1, info.block_count);
+
+            // ASSERT_FALSE (weight.is_initialized ());
+            assert!(info.weight.is_none());
+
+            // ASSERT_FALSE (pending.is_initialized ());
+            assert!(info.pending.is_none());
+
+            // ASSERT_FALSE (representative.is_initialized ());
+            assert!(info.representative.is_none());
+        }
     }
 
     #[test]

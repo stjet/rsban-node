@@ -26,10 +26,31 @@ mod tests {
         let mut system = System::new();
         let node = system.make_node();
         let node_clone = node.clone();
+        let node_clone2 = node.clone();
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let hash = BlockHash::random();
+
+        let work_handle = node.clone()
+            .tokio
+            .spawn(async move { 
+                node_clone2.distributed_work.make(hash.into(), node_clone2.network_params.work.base, None).await
+            });
+
+        assert_timely(
+            std::time::Duration::from_millis(100),
+            || node_clone.tokio.block_on(async { !work_handle.is_finished() })
+        );
+
+        // Ensure work generation was actually cancelled
+        assert_timely(
+            std::time::Duration::from_secs(10),
+            || node_clone.tokio.block_on(async { work_handle.is_finished() })
+        );
+
+        let work_result = node_clone.tokio.block_on(async { work_handle.await.unwrap() });
+        assert!(work_result.is_some());
 
         let work_handle = node.clone()
             .tokio

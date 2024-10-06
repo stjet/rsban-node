@@ -9,93 +9,37 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
         return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
     }
 
+    let account = args.account;
+    let count = args.count.unwrap_or(std::u64::MAX);
+    let representative = args.representative.unwrap_or(false);
+    let weight = args.weight.unwrap_or(false);
     let receivable = args.receivable.unwrap_or(false);
     let modified_since = args.modified_since.unwrap_or(0);
     let sorting = args.sorting.unwrap_or(false);
     let threshold = args.threshold.unwrap_or(Amount::zero());
-    let count = args.count.unwrap_or(std::u64::MAX);
-    let representative = args.representative.unwrap_or(false);
-    let weight = args.weight.unwrap_or(false);
-
-    let block_transaction = node.store.tx_begin_read();
-
-    // Function to process an account
-    let process_account = |account: Account, info: &AccountInfo, accounts_json: &mut HashMap<Account, LedgerAccountInfo>| {
-        if info.modified >= modified_since {
-            let mut representative_opt: Option<Account> = None;
-            let mut weight_opt = None;
-            let mut receivable_opt = None;
-
-            if representative {
-                representative_opt = Some(info.representative.as_account());
-            }
-
-            if weight {
-                weight_opt = Some(node.ledger.weight_exact(&block_transaction, account.into()));
-            }
-
-            if receivable {
-                let account_receivable = node.ledger.account_receivable(&block_transaction, &account, false);
-                receivable_opt = Some(account_receivable);
-            }
-
-            let total_balance = info.balance + receivable_opt.unwrap_or(Amount::zero());
-            if total_balance >= threshold {
-                let entry = LedgerAccountInfo::new(
-                    info.head,
-                    info.open_block,
-                    node.ledger.representative_block_hash(&block_transaction, &info.head),
-                    info.balance,
-                    info.modified,
-                    info.block_count,
-                    representative_opt,
-                    weight_opt,
-                    receivable_opt,
-                    receivable_opt
-                );
-                accounts_json.insert(account, entry);
-            }
-        }
-    };
 
     let mut accounts_json: HashMap<Account, LedgerAccountInfo> = HashMap::new();
-    let mut current_account = args.account;
+    let block_transaction = node.store.tx_begin_read();
+
+    let account_iter: Box<dyn Iterator<Item = (Account, AccountInfo)>> = match account {
+        Some(acc) => Box::new(node.store.account.iter_range(&block_transaction, acc..)),
+        None => Box::new(node.store.account.iter(&block_transaction)),
+    };
 
     if !sorting {
-        let mut iter = node.store.account.iter(&block_transaction);
-        let mut current = iter.next();
-
-        loop {
-            let (account, info) = match current_account {
-                Some(account) => {
-                    if let Some(info) = node.store.account.get(&block_transaction, &account) {
-                        (account, info)
-                    } else {
-                        break;
-                    }
-                },
-                None => {
-                    if let Some((account, info)) = current.clone() {
-                        (account, info)
-                    } else {
-                        break;
-                    }
-                }
-            };
-
-            process_account(account, &info, &mut accounts_json);
-
+        for (current_account, info) in account_iter {
+            if info.modified >= modified_since {
+                process_account(node.clone(), current_account, &info, representative, weight, receivable, threshold, &mut accounts_json);
+            }
             if accounts_json.len() >= count as usize {
                 break;
             }
-
-            current = iter.next();
         }
     } else {
         let mut ledger_l: Vec<(Amount, Account)> = Vec::new();
-        match current_account {
-            Some(account) => {
-                let mut iter = node.store.account.begin_account(&block_transaction, &account);
+        match account {
+            Some(acc) => {
+                let mut iter = node.store.account.begin_account(&block_transaction, &acc);
                 while let Some((current_account, info)) = iter.current() {
                     if info.modified >= modified_since {
                         ledger_l.push((info.balance, *current_account));
@@ -116,7 +60,7 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
         ledger_l.sort_by(|a, b| b.0.cmp(&a.0));
         for (_, account) in ledger_l {
             if let Some(info) = node.store.account.get(&block_transaction, &account) {
-                process_account(account, &info, &mut accounts_json);
+                process_account(node.clone(), account, &info, representative, weight, receivable, threshold, &mut accounts_json);
                 if accounts_json.len() >= count as usize {
                     break;
                 }
@@ -127,32 +71,83 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
     to_string_pretty(&LedgerDto { accounts: accounts_json }).unwrap()
 }
 
+fn process_account(
+    node: Arc<Node>,
+    account: Account,
+    info: &AccountInfo,
+    representative: bool,
+    weight: bool,
+    receivable: bool,
+    threshold: Amount,
+    accounts_json: &mut HashMap<Account, LedgerAccountInfo>
+) {
+    let block_transaction = node.ledger.read_txn();
+    let mut representative_opt = None;
+    let mut weight_opt = None;
+    let mut receivable_opt = None;
+
+    if representative {
+        representative_opt = Some(info.representative);
+    }
+    if weight {
+        weight_opt = Some(node.ledger.weight(&account.into()));
+    }
+    if receivable {
+        receivable_opt = Some(node.ledger.account_receivable(&block_transaction, &account, false));
+    }
+
+    let total_balance = info.balance + receivable_opt.unwrap_or(Amount::zero());
+    if total_balance >= threshold {
+        let entry = LedgerAccountInfo::new(
+            info.head,
+            info.open_block,
+            node.ledger.representative_block_hash(&block_transaction, &info.head),
+            info.balance,
+            info.modified,
+            info.block_count,
+            representative_opt.map(|inner| inner.into()),
+            weight_opt,
+            receivable_opt,
+            receivable_opt
+        );
+        accounts_json.insert(account, entry);
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
     use super::*;
-    use rsnano_core::{Amount, Block, BlockEnum, KeyPair, StateBlock};
-    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-    use test_helpers::System;
+    use rsnano_core::{Amount, Block, BlockBuilder, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+    use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+    use rsnano_node::wallets::WalletsExt;
+    use test_helpers::{assert_timely_msg, System};
     use crate::service::responses::test_helpers::setup_rpc_client_and_server;
 
-    fn setup_test_environment(node: Arc<Node>) -> (KeyPair, StateBlock, StateBlock) {
+    fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
         let keys = KeyPair::new();
         let genesis_balance = Amount::MAX;
-        let send_amount = genesis_balance - Amount::from(100);
+        let send_amount = genesis_balance - Amount::raw(100);
         let remaining_balance = genesis_balance - send_amount;
 
-        let send_block = StateBlock::new(
+        let send_block = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
-            (*DEV_GENESIS_ACCOUNT).into(),
+            *DEV_GENESIS_PUB_KEY,
             remaining_balance,
             (*DEV_GENESIS_ACCOUNT).into(),
             &keys,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()));
+            node.work_generate_dev((*DEV_GENESIS_HASH).into())));
 
-        node.process_active(BlockEnum::State(send_block.clone()));
+        node.process_active(send_block.clone());
 
-        let open_block = StateBlock::new(
+        assert_timely_msg(
+            Duration::from_secs(5),
+            || node.active.active(&send_block),
+            "send block not active",
+        );
+
+        let open_block = BlockEnum::State(StateBlock::new(
             keys.account(),
             *DEV_GENESIS_HASH,
             (*DEV_GENESIS_ACCOUNT).into(),
@@ -160,61 +155,153 @@ mod tests {
             keys.account().into(),
             &keys,
             node.work_generate_dev(keys.account().into()),
-        );
+        ));
 
-        node.process_active(BlockEnum::State(open_block.clone()));
+        node.process_active(open_block.clone());
+
+        assert_timely_msg(
+            Duration::from_secs(5),
+            || node.active.active(&open_block),
+            "open block not active",
+        );
 
         (keys, send_block, open_block)
     }
 
     #[test]
-    fn ledger_genesis() {
+    fn test_ledger() {
         let mut system = System::new();
         let node = system.build_node().finish();
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
+        //let keys = KeyPair::new();
+        //node.wallets.create(WalletId::zero());
+        //node.wallets.insert_adhoc2(&WalletId::zero(), &keys.private_key(), false).unwrap();
+
+        let key = KeyPair::new();
+    let rep_weight = Amount::MAX - Amount::raw(100);
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - rep_weight,
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let status = node.process_local(send.clone()).unwrap();
+
+    assert_eq!(status, BlockStatus::Progress);
+
+    /*assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.active(&send),
+        "open block not active",
+    );*/
+
+    let open = BlockEnum::State(StateBlock::new(
+        key.account(),
+        BlockHash::zero(),
+        *DEV_GENESIS_PUB_KEY,
+        rep_weight,
+        send.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+
+    let status = node.process_local(open.clone()).unwrap();
+
+    assert_eq!(status, BlockStatus::Progress);
+
+    /*assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.active(&open),
+        "open block not active",
+    );*/
+
+        /*let open_block = BlockBuilder::legacy_open()
+            .account(keys.account())
+            .source(send_block.hash())
+            .sign(&keys)
+            .build();*/
+
+        //node.process_active(open_block.clone());
+
+        /*assert_timely_msg(
+            Duration::from_secs(5),
+            || node.active.active(&open_block),
+            "open block not active",
+        );*/
+
+        // Basic ledger test
         let result = node.tokio.block_on(async {
             rpc_client
                 .ledger(
-                    None,
-                    None, 
-                    None,   
-                    None, 
-                    None, 
-                    None, 
-                    None, 
-                    None, 
+                    None,        // account
+                    Some(2),     // count
+                    None,        // representative
+                    None,        // weight
+                    None,        // receivable
+                    None,        // modified_since
+                    Some(true),  // sorting
+                    None,        // threshold
                 )
                 .await
                 .unwrap()
         });
 
         let accounts = result.accounts;
-        assert_eq!(accounts.len(), 1);
-        assert!(accounts.contains_key(&DEV_GENESIS_ACCOUNT));
-    }
+        assert_eq!(accounts.len(), 2);
+        let account_info = accounts.get(&key.account()).unwrap();
+        assert_eq!(account_info.frontier, open.hash());
+        assert_eq!(account_info.open_block, open.hash());
+        assert_eq!(account_info.representative_block, open.hash());
+        assert_eq!(account_info.balance, rep_weight);
+        assert!(account_info.modified_timestamp > 0);
+        assert_eq!(account_info.block_count, 1);
+        assert!(account_info.weight.is_none());
+        assert!(account_info.pending.is_none());
+        assert!(account_info.representative.is_none());
 
-    /*#[test]
-    fn test_ledger_threshold() {
-        let system = System::new();
-        let node = system.build_node().finish();
-        let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
-
-        setup_test_environment(node.clone());
-
-        let remaining_balance = Amount::from(rsnano_core::GENESIS_AMOUNT) - Amount::from(rsnano_core::GENESIS_AMOUNT - 100);
-
+        // Test for optional values
         let result = node.tokio.block_on(async {
             rpc_client
                 .ledger(
-                    None,
-                    Some(true),                 // sorting
+                    None,        // account
+                    Some(2),     // count
+                    Some(true),  // representative
+                    Some(true),  // weight
+                    Some(true),  // receivable
+                    None,        // modified_since
+                    Some(true),  // sorting
+                    None,        // threshold
+                )
+                .await
+                .unwrap()
+        });
+
+        let accounts = result.accounts;
+        assert_eq!(accounts.len(), 2);
+        let account_info = accounts.get(&key.account()).unwrap();
+        assert_eq!(account_info.weight, Some(Amount::zero()));
+        assert_eq!(account_info.pending, Some(Amount::zero()));
+        assert_eq!(account_info.representative, Some(*DEV_GENESIS_ACCOUNT));
+
+        // Test threshold
+        let genesis_balance = Amount::MAX;
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .ledger(
+                    None,                       // account
                     Some(2),                    // count
                     None,                       // representative
                     None,                       // weight
-                    None,                       // pending
+                    None,                       // receivable
                     None,                       // modified_since
-                    Some(remaining_balance + 1), // threshold
+                    Some(true),                 // sorting
+                    Some(rep_weight - Amount::raw(1)), // threshold
                 )
                 .await
                 .unwrap()
@@ -226,38 +313,69 @@ mod tests {
     }
 
     #[test]
-    fn test_ledger_pending() {
-        let system = System::new();
+    fn test_ledger_threshold() {
+        let mut system = System::new();
         let node = system.build_node().finish();
         let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
 
-        setup_test_environment(node.clone());
+        let (keys, _, _) = setup_test_environment(node.clone());
 
-        let send_amount = Amount::from(rsnano_core::GENESIS_AMOUNT) - Amount::from(100);
-        let send2_amount = Amount::from(50);
-        let new_remaining_balance = Amount::from(rsnano_core::GENESIS_AMOUNT) - send_amount - send2_amount;
+        let genesis_balance = Amount::MAX;
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .ledger(
+                    None,                       // account
+                    Some(2),                    // count
+                    None,                       // representative
+                    None,                       // weight
+                    None,                       // receivable
+                    None,                       // modified_since
+                    Some(true),                 // sorting
+                    Some(genesis_balance + Amount::raw(1)), // threshold
+                )
+                .await
+                .unwrap()
+        });
 
-        let send2_block = StateBlock::new_send(
-            &send_block.hash(),
-            &key.account(),
+        let accounts = result.accounts;
+        assert_eq!(accounts.len(), 1);
+        assert!(accounts.contains_key(&keys.account()));
+    }
+
+    #[test]
+    fn test_ledger_pending() {
+        let mut system = System::new();
+        let node = system.build_node().finish();
+        let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let (keys, send_block, _) = setup_test_environment(node.clone());
+
+        let send_amount = Amount::MAX - Amount::raw(100);
+        let send2_amount = Amount::raw(50);
+        let new_remaining_balance = Amount::MAX - send_amount - send2_amount;
+
+        let send2_block = StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            send_block.hash(),
+            keys.account().into(),
             new_remaining_balance,
-            &DEV_GENESIS_PUB_KEY,
-            &DEV_GENESIS_KEY,
-            node.work_pool.generate(&send_block.hash()).unwrap(),
-        ).unwrap();
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &keys,
+            node.work_generate_dev(keys.account().into()),
+        );
 
-        node.process_active(&send2_block).unwrap();
+        node.process_active(BlockEnum::State(send2_block.clone()));
 
         let result = node.tokio.block_on(async {
             rpc_client
                 .ledger(
-                    None,
-                    Some(true),                        // sorting
+                    None,                              // account
                     Some(2),                           // count
                     None,                              // representative
                     None,                              // weight
-                    Some(true),                        // pending
+                    None,                              // receivable
                     None,                              // modified_since
+                    Some(true),                        // sorting
                     Some(send_amount + send2_amount),  // threshold
                 )
                 .await
@@ -266,8 +384,8 @@ mod tests {
 
         let accounts = result.accounts;
         assert_eq!(accounts.len(), 1);
-        let account_info = accounts.get(&key.account()).unwrap();
+        let account_info = accounts.get(&keys.account()).unwrap();
         assert_eq!(account_info.balance, send_amount);
         assert_eq!(account_info.pending, Some(send2_amount));
-    }*/
+    }
 }

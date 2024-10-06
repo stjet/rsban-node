@@ -56,7 +56,7 @@ mod tests {
         );
 
         let work_result = node_clone.tokio.block_on(async { work_handle.await.unwrap() });
-        assert_eq!(work_result.unwrap(), 0, "Work generation should have been cancelled");
+        assert!(work_result.is_none());
 
         server.abort();
     }

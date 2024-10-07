@@ -58,4 +58,5 @@ pub enum RpcCommand {
     WalletExport(WalletRpcMessage),
     PasswordChange(WalletWithPasswordArgs),
     PasswordEnter(WalletWithPasswordArgs),
+    PasswordValid(WalletRpcMessage),
 }

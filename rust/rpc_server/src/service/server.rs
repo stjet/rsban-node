@@ -71,6 +71,8 @@ use super::wallet_export;
 
 use super::password_change;
 
+use super::password_valid;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -273,6 +275,7 @@ async fn handle_rpc(
         RpcCommand::PasswordEnter(args) => {
             password_enter(rpc_service.node, args.wallet, args.password).await
         }
+        RpcCommand::PasswordValid(args) => password_valid(rpc_service.node, args.wallet).await,
         _ => todo!(),
     };
 

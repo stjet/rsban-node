@@ -19,6 +19,7 @@ mod wallet_representative;
 mod wallet_work_get;
 mod work_get;
 mod work_set;
+mod password_valid;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -41,3 +42,4 @@ pub use wallet_representative::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
+pub use password_valid::*;

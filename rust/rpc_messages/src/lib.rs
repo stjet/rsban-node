@@ -26,6 +26,7 @@ pub enum RpcCommand {
     AccountBalance(AccountBalanceArgs),
     AccountsCreate(AccountsCreateArgs),
     AccountRemove(WalletWithAccountArgs),
+    AccountMove(AccountMoveArgs),
 }
 
 #[cfg(test)]

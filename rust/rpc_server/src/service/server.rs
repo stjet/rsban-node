@@ -3,6 +3,7 @@ use crate::account_balance;
 use super::account_create;
 use super::accounts_create;
 use super::account_remove;
+use super::account_move;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -12,7 +13,7 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::RpcCommand;
+use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -77,6 +78,20 @@ async fn handle_rpc(
                 rpc_service.enable_control,
                 args.wallet,
                 args.account,
+            )
+            .await
+        }
+        RpcCommand::AccountMove(AccountMoveArgs {
+            wallet,
+            source,
+            accounts,
+        }) => {
+            account_move(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet,
+                source,
+                accounts,
             )
             .await
         }

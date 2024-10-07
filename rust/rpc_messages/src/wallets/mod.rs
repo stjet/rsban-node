@@ -1,6 +1,7 @@
 mod account_create;
 mod accounts_create;
 mod account_remove;
+mod account_move;
 mod receive;
 mod send;
 mod wallet;
@@ -11,6 +12,7 @@ mod wallet_with_count;
 pub use account_create::*;
 pub use accounts_create::*;
 pub use account_remove::*;
+pub use account_move::*;
 pub use receive::*;
 pub use send::*;
 pub use wallet::*;

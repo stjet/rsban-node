@@ -49,7 +49,7 @@ impl NanoRpcClient {
         &self,
         wallet: WalletId,
         count: u32,
-        work: Option<bool>
+        work: Option<bool>,
     ) -> Result<AccountsRpcMessage> {
         let cmd = RpcCommand::accounts_create(wallet, count, work);
         let result = self.rpc_request(&cmd).await?;
@@ -58,6 +58,17 @@ impl NanoRpcClient {
 
     pub async fn account_remove(&self, wallet: WalletId, account: Account) -> Result<BoolDto> {
         let cmd = RpcCommand::account_remove(wallet, account);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn account_move(
+        &self,
+        wallet: WalletId,
+        source: WalletId,
+        account: Vec<Account>,
+    ) -> Result<BoolDto> {
+        let cmd = RpcCommand::account_move(wallet, source, account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

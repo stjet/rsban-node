@@ -562,16 +562,18 @@ impl Wallets {
         source_id: &WalletId,
         target_id: &WalletId,
         accounts: &[PublicKey],
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), WalletsError> {
         let guard = self.mutex.lock().unwrap();
-        let source = guard
-            .get(source_id)
-            .ok_or_else(|| anyhow!("source not found"))?;
+        let source = Self::get_wallet(&guard, source_id)?;
+        let target = Self::get_wallet(&guard, target_id)?;
+        let tx = self.env.tx_begin_read();
+        if !source.store.valid_password(&tx) || !target.store.valid_password(&tx) {
+            return Err(WalletsError::WalletLocked);
+        }
         let mut tx = self.env.tx_begin_write();
-        let target = guard
-            .get(target_id)
-            .ok_or_else(|| anyhow!("target not found"))?;
-        target.store.move_keys(&mut tx, &source.store, accounts)
+        target
+            .store.move_keys(&mut tx, &source.store, accounts)
+            .map_err(|_| WalletsError::AccountNotFound)
     }
 
     pub fn backup(&self, path: &Path) -> anyhow::Result<()> {

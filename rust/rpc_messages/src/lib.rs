@@ -80,5 +80,6 @@ pub enum RpcCommand {
     Blocks(BlocksHashesRpcMessage),
     BlocksInfo(BlocksHashesRpcMessage),
     Chain(ChainArgs),
-    Successors(ChainArgs)
+    Successors(ChainArgs),
+    ConfirmationActive(ConfirmationActiveArgs),
 }

@@ -111,6 +111,8 @@ use super::blocks;
 
 use super::chain;
 
+use super::confirmation_active;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -337,6 +339,7 @@ async fn handle_rpc(
         RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.value).await,
         RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
         RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
+        RpcCommand::ConfirmationActive(args) => confirmation_active(rpc_service.node, args.announcements).await,
         _ => todo!(),
     };
 

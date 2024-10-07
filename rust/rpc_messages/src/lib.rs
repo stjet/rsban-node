@@ -21,13 +21,13 @@ pub enum RpcCommand {
     Receive(ReceiveArgs),
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
-    WalletCreate,
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
     AccountsCreate(AccountsCreateArgs),
     AccountRemove(WalletWithAccountArgs),
     AccountMove(AccountMoveArgs),
-    AccountList(WalletRpcMessage)
+    AccountList(WalletRpcMessage),
+    WalletCreate(WalletCreateArgs),
 }
 
 #[cfg(test)]

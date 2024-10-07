@@ -22,6 +22,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::account_get;
 
 use super::wallet_add;
 
@@ -151,6 +152,7 @@ async fn handle_rpc(
             account_block_count(rpc_service.node, account_rpc_message.value).await
         }
         RpcCommand::AccountKey(account_rpc_message) => account_key(account_rpc_message.value).await,
+        RpcCommand::AccountGet(args) => account_get(args.key).await,
         _ => todo!(),
     };
 

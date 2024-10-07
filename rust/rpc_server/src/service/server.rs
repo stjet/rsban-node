@@ -89,6 +89,8 @@ use super::unopened;
 
 use super::node_id;
 
+use super::send;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -302,6 +304,7 @@ async fn handle_rpc(
         RpcCommand::UncheckedClear => unchecked_clear(rpc_service.node).await,
         RpcCommand::Unopened(args) => unopened(rpc_service.node, rpc_service.enable_control, args.account, args.count, args.threshold).await,
         RpcCommand::NodeId => node_id(rpc_service.node, rpc_service.enable_control).await,
+        RpcCommand::Send(args) => send(rpc_service.node, rpc_service.enable_control, args).await,
         _ => todo!(),
     };
 

@@ -500,7 +500,7 @@ pub fn setup_rpc_client_and_server(
     (rpc_client, server)
 }
 
-pub fn send_block(node: Arc<Node>) {
+pub fn send_block(node: Arc<Node>) -> BlockHash {
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -517,4 +517,6 @@ pub fn send_block(node: Arc<Node>) {
         || node.active.active(&send1),
         "not active on node 1",
     );
+
+    send1.hash()
 }

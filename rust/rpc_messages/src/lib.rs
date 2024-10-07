@@ -52,4 +52,5 @@ pub enum RpcCommand {
     WorkGet(WalletWithAccountArgs),
     WalletWorkGet(WalletRpcMessage),
     AccountsFrontiers(AccountsRpcMessage),
+    WalletFrontiers(WalletRpcMessage),
 }

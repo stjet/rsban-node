@@ -14,6 +14,7 @@ mod representatives;
 mod accounts_representatives;
 mod unopened;
 mod delegators;
+mod delegators_count;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -31,3 +32,4 @@ pub use representatives::*;
 pub use accounts_representatives::*;
 pub use unopened::*;
 pub use delegators::*;
+pub use delegators_count::*;

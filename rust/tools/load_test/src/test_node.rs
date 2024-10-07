@@ -65,7 +65,7 @@ impl TestNode {
     }
 
     pub async fn stop(&mut self) -> Result<()> {
-        self.node_client.stop_rpc().await?;
+        self.node_client.stop().await?;
 
         if let Some(c) = self.node_child.take() {
             wait_for_child_to_exit(c).await;

@@ -32,4 +32,5 @@ pub enum RpcCommand {
     WalletDestroy(WalletRpcMessage),
     WalletLock(WalletRpcMessage),
     WalletLocked(WalletRpcMessage),
+    AccountBlockCount(AccountRpcMessage),
 }

@@ -25,6 +25,8 @@ use tracing::info;
 
 use super::wallet_add;
 
+use super::account_block_count;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -143,6 +145,9 @@ async fn handle_rpc(
             wallet_locked(rpc_service.node, wallet_message_rpc.wallet).await
         }
         RpcCommand::Stop => stop(rpc_service.node, rpc_service.enable_control).await,
+        RpcCommand::AccountBlockCount(account_rpc_message) => {
+            account_block_count(rpc_service.node, account_rpc_message.value).await
+        }
         _ => todo!(),
     };
 

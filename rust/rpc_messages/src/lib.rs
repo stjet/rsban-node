@@ -84,5 +84,6 @@ pub enum RpcCommand {
     ConfirmationActive(ConfirmationActiveArgs),
     ConfirmationQuorum(ConfirmationQuorumArgs),
     WorkValidate(WorkValidateArgs),
-    AccountHistory(AccountHistoryArgs)
+    AccountHistory(AccountHistoryArgs),
+    Sign(SignArgs),
 }

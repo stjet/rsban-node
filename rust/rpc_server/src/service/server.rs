@@ -16,6 +16,7 @@ use crate::uptime;
 use super::work_get;
 use super::wallet_frontiers;
 use super::wallet_info;
+use super::password_enter;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -268,6 +269,9 @@ async fn handle_rpc(
                 args.password,
             )
             .await
+        }
+        RpcCommand::PasswordEnter(args) => {
+            password_enter(rpc_service.node, args.wallet, args.password).await
         }
         _ => todo!(),
     };

@@ -18,6 +18,7 @@ mod delegators_count;
 mod accounts_balances;
 mod block_info;
 mod blocks;
+mod blocks_info;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -39,3 +40,4 @@ pub use delegators_count::*;
 pub use accounts_balances::*;
 pub use block_info::*;
 pub use blocks::*;
+pub use blocks_info::*;

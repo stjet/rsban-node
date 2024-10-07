@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
+use crate::{BlocksHashesRpcMessage, RpcCommand};
 use rsnano_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
-use crate::{BlocksHashesRpcMessage, RpcCommand};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn blocks(blocks: Vec<BlockHash>) -> Self {
@@ -12,7 +11,7 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlocksDto {
-    pub blocks: HashMap<BlockHash, JsonBlock>
+    pub blocks: HashMap<BlockHash, JsonBlock>,
 }
 
 impl BlocksDto {

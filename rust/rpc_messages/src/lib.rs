@@ -77,5 +77,6 @@ pub enum RpcCommand {
     BlockHash(BlockHashArgs),
     AccountsBalances(AccountsBalancesArgs),
     BlockInfo(BlockHashRpcMessage),
-    Blocks(BlocksHashesRpcMessage)
+    Blocks(BlocksHashesRpcMessage),
+    BlocksInfo(BlocksHashesRpcMessage),
 }

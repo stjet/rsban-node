@@ -35,6 +35,7 @@ use super::peers;
 use super::accounts_representatives;
 use super::stats_clear;
 use super::search_receivable_all;
+use super::blocks_info;
 
 use super::wallet_add;
 
@@ -331,6 +332,7 @@ async fn handle_rpc(
         RpcCommand::AccountsBalances(args) => accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await, 
         RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.value).await,
         RpcCommand::Blocks(args) => blocks(rpc_service.node, args.value).await,
+        RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.value).await,
         _ => todo!(),
     };
 

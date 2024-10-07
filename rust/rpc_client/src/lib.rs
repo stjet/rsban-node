@@ -310,13 +310,20 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn representatives(&self, count: Option<u64>, sorting: Option<bool>) -> Result<AccountsWithAmountsDto> {
+    pub async fn representatives(
+        &self,
+        count: Option<u64>,
+        sorting: Option<bool>,
+    ) -> Result<AccountsWithAmountsDto> {
         let cmd = RpcCommand::representatives(count, sorting);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn accounts_representatives(&self, accounts: Vec<Account>) -> Result<AccountsRepresentativesDto> {
+    pub async fn accounts_representatives(
+        &self,
+        accounts: Vec<Account>,
+    ) -> Result<AccountsRepresentativesDto> {
         let cmd = RpcCommand::accounts_representatives(accounts);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -334,8 +341,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-
-    pub async fn unopened(&self, account: Account, count: u64, threshold: Option<Amount>) -> Result<AccountsWithAmountsDto> {
+    pub async fn unopened(
+        &self,
+        account: Account,
+        count: u64,
+        threshold: Option<Amount>,
+    ) -> Result<AccountsWithAmountsDto> {
         let cmd = RpcCommand::unopened(account, count, threshold);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -359,13 +370,24 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_change_seed(&self, wallet: WalletId, seed: RawKey, count: Option<u32>) -> Result<WalletChangeSeedDto> {
+    pub async fn wallet_change_seed(
+        &self,
+        wallet: WalletId,
+        seed: RawKey,
+        count: Option<u32>,
+    ) -> Result<WalletChangeSeedDto> {
         let cmd = RpcCommand::wallet_change_seed(wallet, seed, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn delegators(&self, account: Account, threshold: Option<Amount>, count: Option<u64>, start: Option<Account>) -> Result<AccountsWithAmountsDto> {
+    pub async fn delegators(
+        &self,
+        account: Account,
+        threshold: Option<Amount>,
+        count: Option<u64>,
+        start: Option<Account>,
+    ) -> Result<AccountsWithAmountsDto> {
         let cmd = RpcCommand::delegators(account, threshold, count, start);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -405,6 +427,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn blocks_info(&self, blocks: Vec<BlockHash>) -> Result<BlocksInfoDto> {
+        let cmd = RpcCommand::blocks_info(blocks);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;
@@ -435,7 +463,8 @@ impl NanoRpcClient {
         work: Option<bool>,
         id: Option<String>,
     ) -> Result<BlockHashRpcMessage> {
-        let request = RpcCommand::Send(SendArgs::new(wallet, source, destination, amount, work, id));
+        let request =
+            RpcCommand::Send(SendArgs::new(wallet, source, destination, amount, work, id));
         let result = self.rpc_request(&request).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -452,7 +481,7 @@ impl NanoRpcClient {
             destination,
             amount: Amount::raw(1),
             work: None,
-            id: None
+            id: None,
         });
         let json = self.rpc_request(&request).await?;
         let block = json["block"].as_str().unwrap().to_owned();

@@ -145,10 +145,15 @@ impl NanoRpcClient {
         Ok(from_value(json)?)
     }
 
-    pub async fn wallet_add(&self, wallet: WalletId, prv_key: RawKey) -> Result<()> {
-        let cmd = RpcCommand::wallet_add(wallet, prv_key);
-        self.rpc_request(&cmd).await?;
-        Ok(())
+    pub async fn wallet_add(
+        &self,
+        wallet: WalletId,
+        prv_key: RawKey,
+        work: Option<bool>,
+    ) -> Result<AccountRpcMessage> {
+        let cmd = RpcCommand::wallet_add(wallet, prv_key, work);
+        let json = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn stop_rpc(&self) -> Result<()> {

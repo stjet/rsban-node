@@ -1,12 +1,8 @@
+use super::{
+    account_create, account_list, account_move, account_remove, accounts_create, key_create,
+    wallet_create,
+};
 use crate::account_balance;
-
-use super::account_create;
-use super::accounts_create;
-use super::account_remove;
-use super::account_move;
-use super::account_list;
-use super::wallet_create;
-use super::key_create;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -16,11 +12,13 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand};
+use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+
+use super::wallet_add;
 
 #[derive(Clone)]
 struct RpcService {
@@ -74,7 +72,9 @@ async fn handle_rpc(
         RpcCommand::AccountBalance(args) => {
             account_balance(rpc_service.node, args.account, args.include_only_confirmed).await
         }
-        RpcCommand::AccountsCreate(args) => accounts_create(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountsCreate(args) => {
+            accounts_create(rpc_service.node, rpc_service.enable_control, args).await
+        }
         RpcCommand::AccountRemove(args) => {
             account_remove(
                 rpc_service.node,
@@ -101,8 +101,20 @@ async fn handle_rpc(
         RpcCommand::AccountList(wallet_rpc_message) => {
             account_list(rpc_service.node, wallet_rpc_message.wallet).await
         }
-        RpcCommand::WalletCreate(args) => wallet_create(rpc_service.node, rpc_service.enable_control, args.seed).await,
+        RpcCommand::WalletCreate(args) => {
+            wallet_create(rpc_service.node, rpc_service.enable_control, args.seed).await
+        }
         RpcCommand::KeyCreate => key_create().await,
+        RpcCommand::WalletAdd(WalletAddArgs { wallet, key, work }) => {
+            wallet_add(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet,
+                key,
+                work,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

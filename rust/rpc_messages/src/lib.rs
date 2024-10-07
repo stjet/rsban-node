@@ -37,4 +37,5 @@ pub enum RpcCommand {
     AccountGet(KeyRpcMessage),
     AccountRepresentative(AccountRpcMessage),
     AccountWeight(AccountRpcMessage),
+    AvailableSupply,
 }

@@ -37,6 +37,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::account_history;
 
 use super::wallet_add;
 
@@ -375,6 +376,7 @@ async fn handle_rpc(
             work_validate(rpc_service.node, args.work, args.hash).await
         }
         RpcCommand::AccountInfo(args) => account_info(rpc_service.node, args).await,
+        RpcCommand::AccountHistory(args) => account_history(rpc_service.node, args).await,
         _ => todo!(),
     };
 

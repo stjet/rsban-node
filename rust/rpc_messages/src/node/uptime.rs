@@ -1,40 +1,32 @@
+use crate::RpcCommand;
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-struct Uptime {
-    seconds: u64,
-}
-
-impl Uptime {
-    fn new(seconds: u64) -> Self {
-        Self { seconds }
+impl RpcCommand {
+    pub fn uptime() -> Self {
+        Self::Uptime
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
-    fn serialize_account_block_count_command() {
+    fn serialize_uptime_command() {
         assert_eq!(
-            serde_json::to_string_pretty(&RpcCommand::account_block_count(Account::from(123)))
-                .unwrap(),
+            to_string_pretty(&RpcCommand::Uptime).unwrap(),
             r#"{
-  "action": "account_block_count",
-  "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+  "action": "uptime"
 }"#
-        )
+        );
     }
 
     #[test]
-    fn derialize_account_block_count_command() {
-        let account = Account::from(123);
-        let cmd = RpcCommand::account_block_count(account);
+    fn deserialize_uptime_command() {
+        let cmd = RpcCommand::Uptime;
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
-        assert_eq!(cmd, deserialized)
+        assert_eq!(cmd, deserialized);
     }
 }

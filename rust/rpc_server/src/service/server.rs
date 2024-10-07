@@ -24,6 +24,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 use super::account_get;
+use crate::uptime;
 
 use super::wallet_add;
 
@@ -175,6 +176,7 @@ async fn handle_rpc(
             block_confirm(rpc_service.node, block_hash_rpc_message.value).await
         }
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
+        RpcCommand::Uptime => uptime(rpc_service.node).await,
         _ => todo!(),
     };
 

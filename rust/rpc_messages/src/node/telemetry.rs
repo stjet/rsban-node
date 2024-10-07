@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 use crate::RpcCommand;
-use rsnano_core::{BlockHash, PublicKey, Signature};
+use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -44,7 +44,7 @@ pub struct TelemetryDto {
     pub pre_release_version: u8,
     pub maker: u8, 
     pub timestamp: u64,
-    pub active_difficulty: u64,
+    pub active_difficulty: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<Signature>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -76,7 +76,7 @@ impl From<TelemetryData> for TelemetryDto {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            active_difficulty: data.active_difficulty,
+            active_difficulty: to_hex_string(data.active_difficulty),
             signature: Some(data.signature),
             node_id: Some(data.node_id),
             address: None,
@@ -128,7 +128,7 @@ impl<'de> Deserialize<'de> for TelemetryDtos {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockHash, PublicKey, Signature};
+    use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
     use rsnano_messages::TelemetryData;
     use std::time::UNIX_EPOCH;
 
@@ -238,7 +238,7 @@ mod tests {
         assert_eq!(dto.pre_release_version, data.pre_release_version);
         assert_eq!(dto.maker, data.maker);
         assert_eq!(dto.timestamp, 1623456789);
-        assert_eq!(dto.active_difficulty, data.active_difficulty);
+        assert_eq!(dto.active_difficulty, to_hex_string(data.active_difficulty),);
         assert_eq!(dto.signature, Some(data.signature));
         assert_eq!(dto.node_id, Some(data.node_id));
         assert_eq!(dto.address, None);

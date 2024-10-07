@@ -4,7 +4,7 @@ use serde::{
     ser::SerializeMap,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 #[macro_export]
 macro_rules! create_rpc_message {
@@ -76,11 +76,14 @@ create_rpc_message!(AccountRpcMessage, Account);
 create_rpc_message!(AmountDto, Amount);
 create_rpc_message!(BlockHashRpcMessage, BlockHash);
 create_rpc_message!(U64RpcMessage, u64);
+create_rpc_message!(AccountsWithAmountsDto, HashMap<Account, Amount>);
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::{from_str, to_string_pretty};
+    use crate::AccountsWithAmountsDto;
+    use std::collections::HashMap;
 
     #[test]
     fn serialize_bool_dto() {

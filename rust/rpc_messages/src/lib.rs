@@ -63,4 +63,5 @@ pub enum RpcCommand {
     KeyExpand(KeyExpandArgs),
     Peers(PeersArgs),
     PopulateBacklog,
+    Representatives(RepresentativesArgs),
 }

@@ -79,6 +79,8 @@ use super::key_expand;
 
 use super::populate_backlog;
 
+use super::representatives;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -286,6 +288,7 @@ async fn handle_rpc(
         RpcCommand::KeyExpand(args) => key_expand(args.key).await,
         RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
         RpcCommand::PopulateBacklog => populate_backlog(rpc_service.node).await,
+        RpcCommand::Representatives(args) => representatives(rpc_service.node, args.count, args.sorting).await,
         _ => todo!(),
     };
 

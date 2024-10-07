@@ -21,3 +21,7 @@ pub use block_count::*;
 pub use frontier_count::*;
 pub use accounts_frontiers::*;
 pub use frontiers::*;
+
+mod representatives;
+
+pub use representatives::*;

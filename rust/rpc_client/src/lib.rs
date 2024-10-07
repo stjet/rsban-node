@@ -2,7 +2,7 @@ use crate::AccountBalanceDto;
 use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
-use rsnano_core::{Account, Amount, JsonBlock, PublicKey, RawKey, WalletId};
+use rsnano_core::{Account, Amount, BlockHash, JsonBlock, PublicKey, RawKey, WalletId};
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use serde_json::{from_str, from_value, Value};
@@ -147,6 +147,12 @@ impl NanoRpcClient {
 
     pub async fn available_supply(&self) -> Result<AmountDto> {
         let cmd = RpcCommand::AvailableSupply;
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn block_account(&self, hash: BlockHash) -> Result<AccountRpcMessage> {
+        let cmd = RpcCommand::block_account(hash);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

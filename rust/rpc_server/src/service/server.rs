@@ -36,6 +36,8 @@ use super::account_weight;
 
 use super::available_supply;
 
+use super::block_account;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,

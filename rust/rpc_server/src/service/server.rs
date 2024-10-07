@@ -96,6 +96,8 @@ use super::receive_minimum;
 
 use super::wallet_change_seed;
 
+use super::delegators;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -313,6 +315,7 @@ async fn handle_rpc(
         RpcCommand::SearchReceivableAll => search_receivable_all(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::ReceiveMinimum => receive_minimum(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::WalletChangeSeed(args) => wallet_change_seed(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::Delegators(args) => delegators(rpc_service.node, args).await,
         _ => todo!(),
     };
 

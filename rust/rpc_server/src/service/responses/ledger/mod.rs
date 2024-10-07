@@ -11,6 +11,7 @@ mod accounts_frontiers;
 mod frontiers;
 mod accounts_representatives;
 mod unopened;
+mod delegators;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -29,3 +30,4 @@ mod representatives;
 pub use representatives::*;
 pub use accounts_representatives::*;
 pub use unopened::*;
+pub use delegators::*;

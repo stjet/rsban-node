@@ -79,4 +79,6 @@ pub enum RpcCommand {
     BlockInfo(BlockHashRpcMessage),
     Blocks(BlocksHashesRpcMessage),
     BlocksInfo(BlocksHashesRpcMessage),
+    Chain(ChainArgs),
+    Successors(ChainArgs)
 }

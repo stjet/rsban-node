@@ -109,6 +109,8 @@ use super::block_info;
 
 use super::blocks;
 
+use super::chain;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -333,6 +335,8 @@ async fn handle_rpc(
         RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.value).await,
         RpcCommand::Blocks(args) => blocks(rpc_service.node, args.value).await,
         RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.value).await,
+        RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
+        RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
         _ => todo!(),
     };
 

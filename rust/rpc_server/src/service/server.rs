@@ -2,6 +2,7 @@ use crate::account_balance;
 
 use super::account_create;
 use super::accounts_create;
+use super::account_remove;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -70,6 +71,15 @@ async fn handle_rpc(
             account_balance(rpc_service.node, args.account, args.include_only_confirmed).await
         }
         RpcCommand::AccountsCreate(args) => accounts_create(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountRemove(args) => {
+            account_remove(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.account,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

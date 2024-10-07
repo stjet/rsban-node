@@ -133,6 +133,8 @@ use super::wallet_representative_set;
 
 use super::search_receivable;
 
+use super::wallet_republish;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -408,6 +410,7 @@ async fn handle_rpc(
         RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
         RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet_with_account.wallet, args.wallet_with_account.account, args.update_existing_accounts).await,
         RpcCommand::SearchReceivable(args) => search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await,
+        RpcCommand::WalletRepublish(args) => wallet_republish(rpc_service.node, rpc_service.enable_control, args.wallet, args.count).await,
         _ => todo!(),
     };
 

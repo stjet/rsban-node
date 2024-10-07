@@ -30,6 +30,8 @@ use super::account_block_count;
 
 use super::account_key;
 
+use super::account_representative;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -153,6 +155,9 @@ async fn handle_rpc(
         }
         RpcCommand::AccountKey(account_rpc_message) => account_key(account_rpc_message.value).await,
         RpcCommand::AccountGet(args) => account_get(args.key).await,
+        RpcCommand::AccountRepresentative(account_rpc_message) => {
+            account_representative(rpc_service.node, account_rpc_message.value).await
+        }
         _ => todo!(),
     };
 

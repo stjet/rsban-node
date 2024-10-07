@@ -35,4 +35,5 @@ pub enum RpcCommand {
     AccountBlockCount(AccountRpcMessage),
     AccountKey(AccountRpcMessage),
     AccountGet(KeyRpcMessage),
+    AccountRepresentative(AccountRpcMessage),
 }

@@ -68,6 +68,8 @@ use super::frontiers;
 
 use super::wallet_export;
 
+use super::password_change;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -258,6 +260,15 @@ async fn handle_rpc(
         RpcCommand::Frontiers(args) => frontiers(rpc_service.node, args.account, args.count).await,
         RpcCommand::WalletInfo(args) => wallet_info(rpc_service.node, args.wallet).await,
         RpcCommand::WalletExport(args) => wallet_export(args.wallet).await,
+        RpcCommand::PasswordChange(args) => {
+            password_change(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.password,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

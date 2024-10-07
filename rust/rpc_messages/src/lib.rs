@@ -56,4 +56,5 @@ pub enum RpcCommand {
     Frontiers(AccountWithCountArgs),
     WalletInfo(WalletRpcMessage),
     WalletExport(WalletRpcMessage),
+    PasswordChange(WalletWithPasswordArgs),
 }

@@ -33,6 +33,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 use super::peers;
 use super::accounts_representatives;
+use super::stats_clear;
 
 use super::wallet_add;
 
@@ -291,6 +292,7 @@ async fn handle_rpc(
         RpcCommand::PopulateBacklog => populate_backlog(rpc_service.node).await,
         RpcCommand::Representatives(args) => representatives(rpc_service.node, args.count, args.sorting).await,
         RpcCommand::AccountsRepresentatives(args) => accounts_representatives(rpc_service.node, args.accounts).await,
+        RpcCommand::StatsClear => stats_clear(rpc_service.node).await,
         _ => todo!(),
     };
 

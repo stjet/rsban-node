@@ -64,5 +64,6 @@ pub enum RpcCommand {
     Peers(PeersArgs),
     PopulateBacklog,
     Representatives(RepresentativesArgs),
-    AccountsRepresentatives(AccountsRpcMessage)
+    AccountsRepresentatives(AccountsRpcMessage),
+    StatsClear,
 }

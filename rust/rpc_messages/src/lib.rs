@@ -88,4 +88,5 @@ pub enum RpcCommand {
     Sign(SignArgs),
     Process(ProcessArgs),
     WorkCancel(BlockHashRpcMessage),
+    Bootstrap(BootstrapArgs),
 }

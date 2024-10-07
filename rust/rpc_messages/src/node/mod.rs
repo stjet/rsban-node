@@ -1,4 +1,5 @@
 mod address_with_port;
+mod bootstrap;
 mod keepalive;
 mod uptime;
 mod peers;
@@ -15,6 +16,7 @@ mod process;
 mod work_cancel;
 
 pub use address_with_port::*;
+pub use bootstrap::*;
 pub use keepalive::*;
 pub use uptime::*;
 pub use peers::*;

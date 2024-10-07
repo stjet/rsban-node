@@ -12,10 +12,12 @@ mod work_validate;
 mod sign;
 mod process;
 mod work_cancel;
+mod bootstrap;
 
 pub use stop::*;
 pub use uptime::*;
 pub use keepalive::*;
+pub use bootstrap::*;
 
 pub use peers::*;
 pub use populate_backlog::*;

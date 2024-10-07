@@ -32,6 +32,17 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn bootstrap(
+        &self,
+        address: Ipv6Addr,
+        port: u16,
+        id: Option<String>,
+    ) -> Result<SuccessDto> {
+        let cmd = RpcCommand::bootstrap(address, port, id);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn work_cancel(&self, hash: BlockHash) -> Result<SuccessDto> {
         let cmd = RpcCommand::work_cancel(hash);
         let result = self.rpc_request(&cmd).await?;

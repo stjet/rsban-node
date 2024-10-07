@@ -62,4 +62,5 @@ pub enum RpcCommand {
     DeterministicKey(DeterministicKeyArgs),
     KeyExpand(KeyExpandArgs),
     Peers(PeersArgs),
+    PopulateBacklog,
 }

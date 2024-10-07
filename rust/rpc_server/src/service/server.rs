@@ -77,6 +77,8 @@ use super::deterministic_key;
 
 use super::key_expand;
 
+use super::populate_backlog;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -283,6 +285,7 @@ async fn handle_rpc(
         RpcCommand::DeterministicKey(args) => deterministic_key(args.seed, args.index).await,
         RpcCommand::KeyExpand(args) => key_expand(args.key).await,
         RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
+        RpcCommand::PopulateBacklog => populate_backlog(rpc_service.node).await,
         _ => todo!(),
     };
 

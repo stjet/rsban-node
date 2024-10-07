@@ -106,6 +106,8 @@ use super::accounts_balances;
 
 use super::block_info;
 
+use super::blocks;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -328,6 +330,7 @@ async fn handle_rpc(
         RpcCommand::BlockHash(args) => block_hash(args.block).await,
         RpcCommand::AccountsBalances(args) => accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await, 
         RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.value).await,
+        RpcCommand::Blocks(args) => blocks(rpc_service.node, args.value).await,
         _ => todo!(),
     };
 

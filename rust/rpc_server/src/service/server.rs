@@ -87,6 +87,8 @@ use super::unchecked_clear;
 
 use super::unopened;
 
+use super::node_id;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -299,6 +301,7 @@ async fn handle_rpc(
         RpcCommand::StatsClear => stats_clear(rpc_service.node).await,
         RpcCommand::UncheckedClear => unchecked_clear(rpc_service.node).await,
         RpcCommand::Unopened(args) => unopened(rpc_service.node, rpc_service.enable_control, args.account, args.count, args.threshold).await,
+        RpcCommand::NodeId => node_id(rpc_service.node, rpc_service.enable_control).await,
         _ => todo!(),
     };
 

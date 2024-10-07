@@ -68,4 +68,5 @@ pub enum RpcCommand {
     StatsClear,
     UncheckedClear,
     Unopened(UnopenedArgs),
+    NodeId,
 }

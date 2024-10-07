@@ -8,11 +8,12 @@ impl RpcCommand {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct NodeIdDto {
     pub private: RawKey,
     pub public: PublicKey,
     pub as_account: Account,
+    #[serde(serialize_with = "serialize_node_id", deserialize_with = "deserialize_node_id")]
     pub node_id: Account,
 }
 
@@ -22,44 +23,20 @@ impl NodeIdDto {
     }
 }
 
-impl Serialize for NodeIdDto {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("NodeIdDto", 4)?;
-        state.serialize_field("private", &self.private)?;
-        state.serialize_field("public", &self.public)?;
-        state.serialize_field("as_account", &self.as_account)?;
-        state.serialize_field("node_id", &self.node_id.to_node_id())?;
-        state.end()
-    }
+fn serialize_node_id<S>(account: &Account, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&account.to_node_id())
 }
 
-impl<'de> Deserialize<'de> for NodeIdDto {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct NodeIdDtoHelper {
-            private: RawKey,
-            public: PublicKey,
-            as_account: Account,
-            node_id: String,
-        }
-
-        let helper = NodeIdDtoHelper::deserialize(deserializer)?;
-        let account_str = helper.node_id.replacen("node", "nano", 1);
-
-        Ok(NodeIdDto {
-            private: helper.private,
-            public: helper.public,
-            as_account: helper.as_account,
-            node_id: Account::decode_account(&account_str).map_err(serde::de::Error::custom)?,
-        })
-    }
+fn deserialize_node_id<'de, D>(deserializer: D) -> Result<Account, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let node_id_str = String::deserialize(deserializer)?;
+    let account_str = node_id_str.replacen("node", "nano", 1);
+    Account::decode_account(&account_str).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]

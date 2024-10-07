@@ -32,6 +32,8 @@ use super::account_key;
 
 use super::account_representative;
 
+use super::account_weight;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -157,6 +159,9 @@ async fn handle_rpc(
         RpcCommand::AccountGet(args) => account_get(args.key).await,
         RpcCommand::AccountRepresentative(account_rpc_message) => {
             account_representative(rpc_service.node, account_rpc_message.value).await
+        }
+        RpcCommand::AccountWeight(account_rpc_message) => {
+            account_weight(rpc_service.node, account_rpc_message.value).await
         }
         _ => todo!(),
     };

@@ -139,6 +139,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn account_weight(&self, account: Account) -> Result<AmountDto> {
+        let cmd = RpcCommand::account_weight(account);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

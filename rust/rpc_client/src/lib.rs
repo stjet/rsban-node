@@ -31,6 +31,13 @@ impl NanoRpcClient {
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
+
+    pub async fn work_cancel(&self, hash: BlockHash) -> Result<SuccessDto> {
+        let cmd = RpcCommand::work_cancel(hash);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn process(
         &self,
         subtype: Option<BlockSubType>,

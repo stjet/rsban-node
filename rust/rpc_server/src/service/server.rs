@@ -122,6 +122,8 @@ use super::work_validate;
 
 use super::process;
 
+use super::work_cancel;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -382,6 +384,7 @@ async fn handle_rpc(
         RpcCommand::AccountHistory(args) => account_history(rpc_service.node, args).await,
         RpcCommand::Sign(args) => sign(rpc_service.node, args).await,
         RpcCommand::Process(args) => process(rpc_service.node, args).await,
+        RpcCommand::WorkCancel(args) => work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await,
         _ => todo!(),
     };
 

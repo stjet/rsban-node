@@ -86,5 +86,6 @@ pub enum RpcCommand {
     WorkValidate(WorkValidateArgs),
     AccountHistory(AccountHistoryArgs),
     Sign(SignArgs),
-    Process(ProcessArgs)
+    Process(ProcessArgs),
+    WorkCancel(BlockHashRpcMessage),
 }

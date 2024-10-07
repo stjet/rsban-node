@@ -43,4 +43,5 @@ pub enum RpcCommand {
     BlockCount,
     Uptime,
     FrontierCount,
+    ValidateAccountNumber(AccountRpcMessage),
 }

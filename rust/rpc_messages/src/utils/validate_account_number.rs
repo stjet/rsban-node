@@ -10,20 +10,16 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
+    use rsnano_core::Account;
     use serde_json::to_string_pretty;
-    use std::{net::Ipv6Addr, str::FromStr};
 
     #[test]
     fn serialize_validate_account_number_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::Keepalive(AddressWithPortArg::new(
-                Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap(),
-                1024
-            )))
-            .unwrap(),
+            to_string_pretty(&RpcCommand::validate_account_number(Account::zero())).unwrap(),
             r#"{
   "action": "validate_account_number",
-  "account": "::ffff:192.169.0.1"
+  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }
@@ -31,13 +27,11 @@ mod tests {
     #[test]
     fn deserialize_validate_account_number_command() {
         let json_str = r#"{
-"action": "keepalive",
-"address": "::ffff:192.169.0.1",
-"port": 1024
+"action": "validate_account_number",
+"account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command =
-            RpcCommand::keepalive(Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap(), 1024);
+        let expected_command = RpcCommand::validate_account_number(Account::zero());
         assert_eq!(deserialized, expected_command);
     }
 }

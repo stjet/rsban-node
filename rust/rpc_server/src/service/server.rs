@@ -1,15 +1,17 @@
+use super::account_get;
+use super::block_confirm;
+use super::keepalive;
+use super::stop;
 use super::wallet_contains;
+use super::wallet_destroy;
+use super::wallet_lock;
+use super::wallet_locked;
 use super::{
     account_create, account_list, account_move, account_remove, accounts_create, key_create,
     wallet_create,
 };
 use crate::account_balance;
-use super::wallet_destroy;
-use super::wallet_lock;
-use super::wallet_locked;
-use super::stop;
-use super::block_confirm;
-use super::keepalive;
+use crate::uptime;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -19,13 +21,12 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
+use rsnano_rpc_messages::AccountRpcMessage;
 use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use super::account_get;
-use crate::uptime;
 
 use super::wallet_add;
 
@@ -44,6 +45,8 @@ use super::block_account;
 use super::block_count;
 
 use super::frontier_count;
+
+use super::validate_account_number;
 
 #[derive(Clone)]
 struct RpcService {
@@ -190,6 +193,7 @@ async fn handle_rpc(
             .await
         }
         RpcCommand::FrontierCount => frontier_count(rpc_service.node).await,
+        RpcCommand::ValidateAccountNumber(_) => validate_account_number().await,
         _ => todo!(),
     };
 

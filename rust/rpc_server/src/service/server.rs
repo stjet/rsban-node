@@ -85,6 +85,8 @@ use super::representatives;
 
 use super::unchecked_clear;
 
+use super::unopened;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -296,6 +298,7 @@ async fn handle_rpc(
         RpcCommand::AccountsRepresentatives(args) => accounts_representatives(rpc_service.node, args.accounts).await,
         RpcCommand::StatsClear => stats_clear(rpc_service.node).await,
         RpcCommand::UncheckedClear => unchecked_clear(rpc_service.node).await,
+        RpcCommand::Unopened(args) => unopened(rpc_service.node, rpc_service.enable_control, args.account, args.count, args.threshold).await,
         _ => todo!(),
     };
 

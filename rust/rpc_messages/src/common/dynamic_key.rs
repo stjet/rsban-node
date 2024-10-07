@@ -187,4 +187,36 @@ mod tests {
         let deserialized: U64RpcMessage = from_str(&serialized).unwrap();
         assert_eq!(block_hash_message, deserialized);
     }
+
+    #[test]
+    fn serialize_accounts_with_amounts_dto() {
+        let mut accounts = HashMap::new();
+        accounts.insert(Account::zero(), Amount::from(1000));
+        
+        let message = AccountsWithAmountsDto::new("accounts".to_string(), accounts);
+        
+        let serialized = serde_json::to_string_pretty(&message).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{
+  "accounts": {
+    "nano_1111111111111111111111111111111111111111111111111111hifc8npp": "1000"
+  }
+}"#
+        );
+    }
+
+    #[test]
+    fn deserialize_accounts_with_amounts_dto() {
+        let json = r#"{
+  "accounts": {
+    "nano_1111111111111111111111111111111111111111111111111111hifc8npp": "1000"
+  }
+}"#;
+
+        let deserialized: AccountsWithAmountsDto = serde_json::from_str(json).unwrap();
+        
+        assert_eq!(deserialized.key, "accounts");
+        assert_eq!(deserialized.value.get(&Account::zero()), Some(&Amount::from(1000)));
+    }
 }

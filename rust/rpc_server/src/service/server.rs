@@ -40,6 +40,7 @@ use tracing::info;
 use super::account_history;
 use super::sign;
 use super::bootstrap_any;
+use super::bootstrap_lazy;
 
 use super::wallet_add;
 
@@ -398,6 +399,7 @@ async fn handle_rpc(
             .await
         }
         RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
+        RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
         _ => todo!(),
     };
 

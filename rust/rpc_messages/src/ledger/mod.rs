@@ -16,6 +16,7 @@ mod unopened;
 mod delegators;
 mod delegators_count;
 mod accounts_balances;
+mod block_info;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -35,3 +36,4 @@ pub use unopened::*;
 pub use delegators::*;
 pub use delegators_count::*;
 pub use accounts_balances::*;
+pub use block_info::*;

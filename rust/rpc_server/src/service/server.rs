@@ -15,6 +15,7 @@ use crate::account_balance;
 use crate::uptime;
 use super::work_get;
 use super::wallet_frontiers;
+use super::wallet_info;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -253,6 +254,7 @@ async fn handle_rpc(
         }
         RpcCommand::WalletFrontiers(args) => wallet_frontiers(rpc_service.node, args.wallet).await,
         RpcCommand::Frontiers(args) => frontiers(rpc_service.node, args.account, args.count).await,
+        RpcCommand::WalletInfo(args) => wallet_info(rpc_service.node, args.wallet).await,
         _ => todo!(),
     };
 

@@ -12,6 +12,7 @@ rsnano_ledger = { path = "../ledger" }
 rsnano_rpc_client = { path = "../rpc_client" }
 rsnano_nullable_clock = { path = "../nullables/clock" }
 rsnano_rpc_messages = { path = "../rpc_messages" }
+rsnano_store_lmdb = { path = "../store_lmdb" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["net"] }

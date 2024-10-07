@@ -25,6 +25,7 @@ mod search_receivable_all;
 mod receive_minimum;
 mod wallet_change_seed;
 mod wallet_receivable;
+mod wallet_representative_set;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -54,3 +55,4 @@ pub use send::*;
 pub use search_receivable_all::*;
 pub use receive_minimum::*;
 pub use wallet_change_seed::*;
+pub use wallet_representative_set::*;

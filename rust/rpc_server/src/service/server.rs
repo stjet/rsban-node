@@ -129,6 +129,8 @@ use super::work_cancel;
 
 use super::bootstrap;
 
+use super::wallet_representative_set;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -402,6 +404,7 @@ async fn handle_rpc(
         RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
         RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
         RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
+        RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet_with_account.wallet, args.wallet_with_account.account, args.update_existing_accounts).await,
         _ => todo!(),
     };
 

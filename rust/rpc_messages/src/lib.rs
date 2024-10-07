@@ -92,4 +92,5 @@ pub enum RpcCommand {
     BootstrapAny(BootstrapAnyArgs),
     BoostrapLazy(BootsrapLazyArgs),
     WalletReceivable(WalletReceivableArgs),
+    WalletRepresentativeSet(WalletRepresentativeSetArgs)
 }

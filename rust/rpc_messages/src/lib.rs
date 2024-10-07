@@ -71,4 +71,5 @@ pub enum RpcCommand {
     NodeId,
     SearchReceivableAll,
     ReceiveMinimum,
+    WalletChangeSeed(WalletChangeSeedArgs)
 }

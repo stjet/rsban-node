@@ -9,6 +9,7 @@ mod block_count;
 mod frontier_count;
 mod accounts_frontiers;
 mod frontiers;
+mod accounts_representatives;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -25,3 +26,4 @@ pub use frontiers::*;
 mod representatives;
 
 pub use representatives::*;
+pub use accounts_representatives::*;

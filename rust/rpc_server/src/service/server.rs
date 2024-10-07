@@ -32,6 +32,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 use super::peers;
+use super::accounts_representatives;
 
 use super::wallet_add;
 
@@ -289,6 +290,7 @@ async fn handle_rpc(
         RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
         RpcCommand::PopulateBacklog => populate_backlog(rpc_service.node).await,
         RpcCommand::Representatives(args) => representatives(rpc_service.node, args.count, args.sorting).await,
+        RpcCommand::AccountsRepresentatives(args) => accounts_representatives(rpc_service.node, args.accounts).await,
         _ => todo!(),
     };
 

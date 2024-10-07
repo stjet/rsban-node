@@ -53,6 +53,8 @@ use super::raw_to_nano;
 
 use super::wallet_add_watch;
 
+use super::wallet_representative;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -210,6 +212,9 @@ async fn handle_rpc(
                 args.accounts,
             )
             .await
+        }
+        RpcCommand::WalletRepresentative(args) => {
+            wallet_representative(rpc_service.node, args.wallet).await
         }
         _ => todo!(),
     };

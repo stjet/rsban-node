@@ -10,6 +10,7 @@ mod wallet_destroy;
 mod wallet_lock;
 mod wallet_locked;
 mod wallet_add_watch;
+mod wallet_representative;
 
 pub use account_create::*;
 pub use accounts_create::*;
@@ -23,3 +24,4 @@ pub use wallet_destroy::*;
 pub use wallet_lock::*;
 pub use wallet_locked::*;
 pub use wallet_add_watch::*;
+pub use wallet_representative::*;

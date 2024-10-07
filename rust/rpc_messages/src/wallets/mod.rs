@@ -15,6 +15,7 @@ mod wallet_lock;
 mod wallet_locked;
 mod wallet_with_account;
 mod wallet_with_count;
+mod wallet_representative;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -33,3 +34,4 @@ pub use wallet_lock::*;
 pub use wallet_locked::*;
 pub use wallet_with_account::*;
 pub use wallet_with_count::*;
+pub use wallet_representative::*;

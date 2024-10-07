@@ -47,4 +47,5 @@ pub enum RpcCommand {
     NanoToRaw(AmountDto),
     RawToNano(AmountDto),
     WalletAddWatch(WalletAddWatchArgs),
+    WalletRepresentative(WalletRpcMessage),
 }

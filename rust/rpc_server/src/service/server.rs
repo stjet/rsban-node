@@ -39,6 +39,8 @@ use super::available_supply;
 
 use super::block_account;
 
+use super::block_count;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -172,6 +174,7 @@ async fn handle_rpc(
         RpcCommand::BlockConfirm(block_hash_rpc_message) => {
             block_confirm(rpc_service.node, block_hash_rpc_message.value).await
         }
+        RpcCommand::BlockCount => block_count(rpc_service.node).await,
         _ => todo!(),
     };
 

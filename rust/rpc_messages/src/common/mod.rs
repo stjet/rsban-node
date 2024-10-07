@@ -8,6 +8,7 @@ mod error;
 mod frontiers;
 mod key_pair;
 mod public_key;
+mod receivable;
 mod success;
 
 pub use account_balance::*;
@@ -21,3 +22,5 @@ pub use frontiers::*;
 pub use key_pair::*;
 pub use public_key::*;
 pub use success::*;
+
+pub use receivable::*;

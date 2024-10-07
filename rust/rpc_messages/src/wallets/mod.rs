@@ -29,6 +29,7 @@ mod work_set;
 mod search_receivable_all;
 mod receive_minimum;
 mod wallet_change_seed;
+mod wallet_receivable;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -58,6 +59,7 @@ pub use wallet_with_password::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
+pub use wallet_receivable::*;
 
 pub use search_receivable_all::*;
 pub use receive_minimum::*;

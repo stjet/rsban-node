@@ -90,5 +90,6 @@ pub enum RpcCommand {
     WorkCancel(BlockHashRpcMessage),
     Bootstrap(BootstrapArgs),
     BootstrapAny(BootstrapAnyArgs),
-    BoostrapLazy(BootsrapLazyArgs)
+    BoostrapLazy(BootsrapLazyArgs),
+    WalletReceivable(WalletReceivableArgs),
 }

@@ -23,6 +23,7 @@ use super::{
 };
 use crate::account_balance;
 use crate::uptime;
+use super::wallet_receivable;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -400,6 +401,7 @@ async fn handle_rpc(
         }
         RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
         RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
+        RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
         _ => todo!(),
     };
 

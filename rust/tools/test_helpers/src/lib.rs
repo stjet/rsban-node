@@ -500,22 +500,41 @@ pub fn setup_rpc_client_and_server(
 }
 
 pub fn send_block(node: Arc<Node>) -> BlockHash {
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = send_block_to(node, *DEV_GENESIS_ACCOUNT, Amount::raw(1));
+    send1.hash()
+}
+
+pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+
+    let previous = node
+        .ledger
+        .any()
+        .account_head(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(*DEV_GENESIS_HASH);
+
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(Amount::MAX);
+
+    let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
+        previous,
         *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        DEV_GENESIS_KEY.account().into(),
+        balance - amount,
+        account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(previous.into()),
     ));
 
-    node.process_active(send1.clone());
+    node.process_active(send.clone());
     assert_timely_msg(
         Duration::from_secs(5),
-        || node.active.active(&send1),
-        "not active on node 1",
+        || node.active.active(&send),
+        "not active on node",
     );
 
-    send1.hash()
+    send
 }

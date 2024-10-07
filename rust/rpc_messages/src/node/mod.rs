@@ -11,6 +11,7 @@ mod confirmation_active;
 mod confirmation_quorum;
 mod work_validate;
 mod sign;
+mod process;
 
 pub use address_with_port::*;
 pub use keepalive::*;
@@ -25,3 +26,4 @@ pub use confirmation_active::*;
 pub use confirmation_quorum::*;
 pub use work_validate::*;
 pub use sign::*;
+pub use process::*;

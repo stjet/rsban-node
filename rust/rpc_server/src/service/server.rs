@@ -120,6 +120,8 @@ use super::confirmation_quorum;
 
 use super::work_validate;
 
+use super::process;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -379,6 +381,7 @@ async fn handle_rpc(
         RpcCommand::AccountInfo(args) => account_info(rpc_service.node, args).await,
         RpcCommand::AccountHistory(args) => account_history(rpc_service.node, args).await,
         RpcCommand::Sign(args) => sign(rpc_service.node, args).await,
+        RpcCommand::Process(args) => process(rpc_service.node, args).await,
         _ => todo!(),
     };
 

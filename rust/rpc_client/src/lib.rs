@@ -32,6 +32,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn search_receivable(&self, wallet: WalletId) -> Result<BoolDto> {
+        let cmd = RpcCommand::search_receivable(wallet);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn wallet_representative_set(
         &self,
         wallet: WalletId,

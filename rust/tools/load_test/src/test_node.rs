@@ -126,7 +126,7 @@ impl TestNode {
     ) -> Result<Vec<KeyPairDto>> {
         let mut destination_accounts = Vec::with_capacity(destination_count);
         for _ in 0..destination_count {
-            let acc = self.node_client.key_create_rpc().await?;
+            let acc = self.node_client.key_create().await?;
             destination_accounts.push(acc);
         }
         Ok(destination_accounts)

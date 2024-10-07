@@ -55,6 +55,8 @@ use super::wallet_add_watch;
 
 use super::wallet_representative;
 
+use super::work_set;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -215,6 +217,16 @@ async fn handle_rpc(
         }
         RpcCommand::WalletRepresentative(args) => {
             wallet_representative(rpc_service.node, args.wallet).await
+        }
+        RpcCommand::WorkSet(args) => {
+            work_set(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.account,
+                args.work,
+            )
+            .await
         }
         _ => todo!(),
     };

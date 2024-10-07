@@ -19,6 +19,7 @@ mod blocks;
 mod blocks_info;
 mod chain;
 mod successors;
+mod account_info;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -31,6 +32,7 @@ pub use block_count::*;
 pub use frontier_count::*;
 pub use accounts_frontiers::*;
 pub use frontiers::*;
+pub use account_info::*;
 
 mod representatives;
 

@@ -1,8 +1,14 @@
 use super::account_get;
+use super::account_info;
+use super::accounts_representatives;
 use super::block_confirm;
+use super::blocks_info;
 use super::keepalive;
 use super::nano_to_raw;
 use super::password_enter;
+use super::peers;
+use super::search_receivable_all;
+use super::stats_clear;
 use super::stop;
 use super::wallet_contains;
 use super::wallet_destroy;
@@ -31,11 +37,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use super::peers;
-use super::accounts_representatives;
-use super::stats_clear;
-use super::search_receivable_all;
-use super::blocks_info;
 
 use super::wallet_add;
 
@@ -324,28 +325,56 @@ async fn handle_rpc(
         RpcCommand::KeyExpand(args) => key_expand(args.key).await,
         RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
         RpcCommand::PopulateBacklog => populate_backlog(rpc_service.node).await,
-        RpcCommand::Representatives(args) => representatives(rpc_service.node, args.count, args.sorting).await,
-        RpcCommand::AccountsRepresentatives(args) => accounts_representatives(rpc_service.node, args.accounts).await,
+        RpcCommand::Representatives(args) => {
+            representatives(rpc_service.node, args.count, args.sorting).await
+        }
+        RpcCommand::AccountsRepresentatives(args) => {
+            accounts_representatives(rpc_service.node, args.accounts).await
+        }
         RpcCommand::StatsClear => stats_clear(rpc_service.node).await,
         RpcCommand::UncheckedClear => unchecked_clear(rpc_service.node).await,
-        RpcCommand::Unopened(args) => unopened(rpc_service.node, rpc_service.enable_control, args.account, args.count, args.threshold).await,
+        RpcCommand::Unopened(args) => {
+            unopened(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.account,
+                args.count,
+                args.threshold,
+            )
+            .await
+        }
         RpcCommand::NodeId => node_id(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::Send(args) => send(rpc_service.node, rpc_service.enable_control, args).await,
-        RpcCommand::SearchReceivableAll => search_receivable_all(rpc_service.node, rpc_service.enable_control).await,
-        RpcCommand::ReceiveMinimum => receive_minimum(rpc_service.node, rpc_service.enable_control).await,
-        RpcCommand::WalletChangeSeed(args) => wallet_change_seed(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::SearchReceivableAll => {
+            search_receivable_all(rpc_service.node, rpc_service.enable_control).await
+        }
+        RpcCommand::ReceiveMinimum => {
+            receive_minimum(rpc_service.node, rpc_service.enable_control).await
+        }
+        RpcCommand::WalletChangeSeed(args) => {
+            wallet_change_seed(rpc_service.node, rpc_service.enable_control, args).await
+        }
         RpcCommand::Delegators(args) => delegators(rpc_service.node, args).await,
         RpcCommand::DelegatorsCount(args) => delegators_count(rpc_service.node, args.value).await,
         RpcCommand::BlockHash(args) => block_hash(args.block).await,
-        RpcCommand::AccountsBalances(args) => accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await, 
+        RpcCommand::AccountsBalances(args) => {
+            accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await
+        }
         RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.value).await,
         RpcCommand::Blocks(args) => blocks(rpc_service.node, args.value).await,
         RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.value).await,
         RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
         RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
-        RpcCommand::ConfirmationActive(args) => confirmation_active(rpc_service.node, args.announcements).await,
-        RpcCommand::ConfirmationQuorum(args) => confirmation_quorum(rpc_service.node, args.peer_details).await,
-        RpcCommand::WorkValidate(args) => work_validate(rpc_service.node, args.work, args.hash).await,
+        RpcCommand::ConfirmationActive(args) => {
+            confirmation_active(rpc_service.node, args.announcements).await
+        }
+        RpcCommand::ConfirmationQuorum(args) => {
+            confirmation_quorum(rpc_service.node, args.peer_details).await
+        }
+        RpcCommand::WorkValidate(args) => {
+            work_validate(rpc_service.node, args.work, args.hash).await
+        }
+        RpcCommand::AccountInfo(args) => account_info(rpc_service.node, args).await,
         _ => todo!(),
     };
 

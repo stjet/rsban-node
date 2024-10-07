@@ -457,13 +457,19 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn confirmation_active(&self, announcements: Option<u64>) -> Result<ConfirmationActiveDto> {
+    pub async fn confirmation_active(
+        &self,
+        announcements: Option<u64>,
+    ) -> Result<ConfirmationActiveDto> {
         let cmd = RpcCommand::confirmation_active(announcements);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn confirmation_quorum(&self, peer_details: Option<bool>) -> Result<ConfirmationQuorumDto> {
+    pub async fn confirmation_quorum(
+        &self,
+        peer_details: Option<bool>,
+    ) -> Result<ConfirmationQuorumDto> {
         let cmd = RpcCommand::confirmation_quorum(peer_details);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -475,8 +481,23 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
-        let cmd = RpcCommand::account_info(account);
+    pub async fn account_info(
+        &self,
+        account: Account,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        pending: Option<bool>,
+        receivable: Option<bool>,
+        include_confirmed: Option<bool>,
+    ) -> Result<AccountInfoDto> {
+        let cmd = RpcCommand::account_info(
+            account,
+            representative,
+            weight,
+            pending,
+            receivable,
+            include_confirmed,
+        );
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)
     }

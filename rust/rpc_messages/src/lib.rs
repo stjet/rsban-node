@@ -46,4 +46,5 @@ pub enum RpcCommand {
     ValidateAccountNumber(AccountRpcMessage),
     NanoToRaw(AmountDto),
     RawToNano(AmountDto),
+    WalletAddWatch(WalletAddWatchArgs),
 }

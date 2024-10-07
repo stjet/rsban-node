@@ -1,3 +1,4 @@
+use super::wallet_contains;
 use super::{
     account_create, account_list, account_move, account_remove, accounts_create, key_create,
     wallet_create,
@@ -114,6 +115,9 @@ async fn handle_rpc(
                 work,
             )
             .await
+        }
+        RpcCommand::WalletContains(args) => {
+            wallet_contains(rpc_service.node, args.wallet, args.account).await
         }
         _ => todo!(),
     };

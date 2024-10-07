@@ -28,6 +28,7 @@ pub enum RpcCommand {
     AccountMove(AccountMoveArgs),
     AccountList(WalletRpcMessage),
     WalletCreate(WalletCreateArgs),
+    WalletContains(WalletWithAccountArgs),
 }
 
 #[cfg(test)]

@@ -39,4 +39,5 @@ pub enum RpcCommand {
     AccountWeight(AccountRpcMessage),
     AvailableSupply,
     BlockAccount(BlockHashRpcMessage),
+    BlockConfirm(BlockHashRpcMessage),
 }

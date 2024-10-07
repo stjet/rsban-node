@@ -8,6 +8,7 @@ use super::wallet_destroy;
 use super::wallet_lock;
 use super::wallet_locked;
 use super::stop;
+use super::block_confirm;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -168,6 +169,9 @@ async fn handle_rpc(
             account_weight(rpc_service.node, account_rpc_message.value).await
         }
         RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
+        RpcCommand::BlockConfirm(block_hash_rpc_message) => {
+            block_confirm(rpc_service.node, block_hash_rpc_message.value).await
+        }
         _ => todo!(),
     };
 

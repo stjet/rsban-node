@@ -60,6 +60,8 @@ use super::work_set;
 
 use super::wallet_work_get;
 
+use super::accounts_frontiers;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -242,6 +244,9 @@ async fn handle_rpc(
         }
         RpcCommand::WalletWorkGet(args) => {
             wallet_work_get(rpc_service.node, rpc_service.enable_control, args.wallet).await
+        }
+        RpcCommand::AccountsFrontiers(args) => {
+            accounts_frontiers(rpc_service.node, args.accounts).await
         }
         _ => todo!(),
     };

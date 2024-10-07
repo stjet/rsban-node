@@ -89,4 +89,5 @@ pub enum RpcCommand {
     Process(ProcessArgs),
     WorkCancel(BlockHashRpcMessage),
     Bootstrap(BootstrapArgs),
+    BootstrapAny(BootstrapAnyArgs),
 }

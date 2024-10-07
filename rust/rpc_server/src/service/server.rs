@@ -39,6 +39,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 use super::account_history;
 use super::sign;
+use super::bootstrap_any;
 
 use super::wallet_add;
 
@@ -396,6 +397,7 @@ async fn handle_rpc(
             )
             .await
         }
+        RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
         _ => todo!(),
     };
 

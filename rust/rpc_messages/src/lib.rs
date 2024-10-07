@@ -44,4 +44,5 @@ pub enum RpcCommand {
     Uptime,
     FrontierCount,
     ValidateAccountNumber(AccountRpcMessage),
+    NanoToRaw(AmountRpcMessage),
 }

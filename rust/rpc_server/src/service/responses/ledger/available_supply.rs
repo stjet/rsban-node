@@ -1,6 +1,6 @@
 use rsnano_core::Account;
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::AmountDto;
+use rsnano_rpc_messages::AmountRpcMessage;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -30,7 +30,7 @@ pub async fn available_supply(node: Arc<Node>) -> String {
 
     let available = genesis_balance - landing_balance - faucet_balance - burned_balance;
 
-    let available_supply = AmountDto::new("available".to_string(), available);
+    let available_supply = AmountRpcMessage::new("available".to_string(), available);
 
     to_string_pretty(&available_supply).unwrap()
 }

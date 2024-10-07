@@ -1,6 +1,7 @@
 use super::account_get;
 use super::block_confirm;
 use super::keepalive;
+use super::nano_to_raw;
 use super::stop;
 use super::wallet_contains;
 use super::wallet_destroy;
@@ -182,6 +183,7 @@ async fn handle_rpc(
             block_confirm(rpc_service.node, block_hash_rpc_message.value).await
         }
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
+        RpcCommand::BlockAccount(msg) => block_account(rpc_service.node, msg.value).await,
         RpcCommand::Uptime => uptime(rpc_service.node).await,
         RpcCommand::Keepalive(arg) => {
             keepalive(
@@ -194,6 +196,7 @@ async fn handle_rpc(
         }
         RpcCommand::FrontierCount => frontier_count(rpc_service.node).await,
         RpcCommand::ValidateAccountNumber(_) => validate_account_number().await,
+        RpcCommand::NanoToRaw(amount_rpc_message) => nano_to_raw(amount_rpc_message.value).await,
         _ => todo!(),
     };
 

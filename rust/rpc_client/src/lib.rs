@@ -139,13 +139,13 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_weight(&self, account: Account) -> Result<AmountDto> {
+    pub async fn account_weight(&self, account: Account) -> Result<AmountRpcMessage> {
         let cmd = RpcCommand::account_weight(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn available_supply(&self) -> Result<AmountDto> {
+    pub async fn available_supply(&self) -> Result<AmountRpcMessage> {
         let cmd = RpcCommand::AvailableSupply;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -183,6 +183,12 @@ impl NanoRpcClient {
 
     pub async fn validate_account_number(&self, account: Account) -> Result<SuccessDto> {
         let cmd = RpcCommand::validate_account_number(account);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn nano_to_raw(&self, amount: Amount) -> Result<AmountRpcMessage> {
+        let cmd = RpcCommand::nano_to_raw(amount);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

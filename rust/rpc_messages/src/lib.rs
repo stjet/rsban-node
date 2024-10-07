@@ -75,4 +75,5 @@ pub enum RpcCommand {
     Delegators(DelegatorsArgs),
     DelegatorsCount(AccountRpcMessage),
     BlockHash(BlockHashArgs),
+    AccountsBalances(AccountsBalancesArgs)
 }

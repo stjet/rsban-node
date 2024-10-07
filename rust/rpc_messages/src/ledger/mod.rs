@@ -7,6 +7,7 @@ mod available_supply;
 mod block_account;
 mod block_confirm;
 mod block_count;
+mod frontier_count;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -16,3 +17,4 @@ pub use account_weight::*;
 pub use block_account::*;
 pub use block_confirm::*;
 pub use block_count::*;
+pub use frontier_count::*;

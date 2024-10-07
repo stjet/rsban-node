@@ -43,6 +43,8 @@ use super::block_account;
 
 use super::block_count;
 
+use super::frontier_count;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -187,6 +189,7 @@ async fn handle_rpc(
             )
             .await
         }
+        RpcCommand::FrontierCount => frontier_count(rpc_service.node).await,
         _ => todo!(),
     };
 

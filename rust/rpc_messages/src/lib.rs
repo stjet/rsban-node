@@ -42,4 +42,5 @@ pub enum RpcCommand {
     BlockConfirm(BlockHashRpcMessage),
     BlockCount,
     Uptime,
+    FrontierCount,
 }

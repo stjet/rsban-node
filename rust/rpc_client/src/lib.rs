@@ -469,6 +469,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn work_validate(&self, work: WorkNonce, hash: BlockHash) -> Result<WorkValidateDto> {
+        let cmd = RpcCommand::work_validate(work, hash);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

@@ -83,4 +83,5 @@ pub enum RpcCommand {
     Successors(ChainArgs),
     ConfirmationActive(ConfirmationActiveArgs),
     ConfirmationQuorum(ConfirmationQuorumArgs),
+    WorkValidate(WorkValidateArgs),
 }

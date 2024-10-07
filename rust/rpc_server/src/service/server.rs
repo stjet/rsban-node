@@ -115,6 +115,8 @@ use super::confirmation_active;
 
 use super::confirmation_quorum;
 
+use super::work_validate;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -343,6 +345,7 @@ async fn handle_rpc(
         RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
         RpcCommand::ConfirmationActive(args) => confirmation_active(rpc_service.node, args.announcements).await,
         RpcCommand::ConfirmationQuorum(args) => confirmation_quorum(rpc_service.node, args.peer_details).await,
+        RpcCommand::WorkValidate(args) => work_validate(rpc_service.node, args.work, args.hash).await,
         _ => todo!(),
     };
 

@@ -8,6 +8,7 @@ mod wallet_add;
 mod wallet_contains;
 mod wallet_destroy;
 mod wallet_lock;
+mod wallet_locked;
 
 pub use account_create::*;
 pub use accounts_create::*;
@@ -19,3 +20,4 @@ pub use wallet_add::*;
 pub use wallet_contains::*;
 pub use wallet_destroy::*;
 pub use wallet_lock::*;
+pub use wallet_locked::*;

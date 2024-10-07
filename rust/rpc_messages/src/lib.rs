@@ -31,6 +31,7 @@ pub enum RpcCommand {
     WalletContains(WalletWithAccountArgs),
     WalletDestroy(WalletRpcMessage),
     WalletLock(WalletRpcMessage),
+    WalletLocked(WalletRpcMessage),
 }
 
 #[cfg(test)]

@@ -6,6 +6,7 @@ use super::{
 use crate::account_balance;
 use super::wallet_destroy;
 use super::wallet_lock;
+use super::wallet_locked;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -136,6 +137,9 @@ async fn handle_rpc(
                 wallet_rpc_message.wallet,
             )
             .await
+        }
+        RpcCommand::WalletLocked(wallet_message_rpc) => {
+            wallet_locked(rpc_service.node, wallet_message_rpc.wallet).await
         }
         _ => todo!(),
     };

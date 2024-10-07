@@ -73,6 +73,8 @@ use super::password_change;
 
 use super::password_valid;
 
+use super::deterministic_key;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -276,6 +278,7 @@ async fn handle_rpc(
             password_enter(rpc_service.node, args.wallet, args.password).await
         }
         RpcCommand::PasswordValid(args) => password_valid(rpc_service.node, args.wallet).await,
+        RpcCommand::DeterministicKey(args) => deterministic_key(args.seed, args.index).await,
         _ => todo!(),
     };
 

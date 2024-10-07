@@ -59,4 +59,5 @@ pub enum RpcCommand {
     PasswordChange(WalletWithPasswordArgs),
     PasswordEnter(WalletWithPasswordArgs),
     PasswordValid(WalletRpcMessage),
+    DeterministicKey(DeterministicKeyArgs),
 }

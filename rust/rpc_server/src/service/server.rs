@@ -83,6 +83,8 @@ use super::populate_backlog;
 
 use super::representatives;
 
+use super::unchecked_clear;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -293,6 +295,7 @@ async fn handle_rpc(
         RpcCommand::Representatives(args) => representatives(rpc_service.node, args.count, args.sorting).await,
         RpcCommand::AccountsRepresentatives(args) => accounts_representatives(rpc_service.node, args.accounts).await,
         RpcCommand::StatsClear => stats_clear(rpc_service.node).await,
+        RpcCommand::UncheckedClear => unchecked_clear(rpc_service.node).await,
         _ => todo!(),
     };
 

@@ -66,4 +66,5 @@ pub enum RpcCommand {
     Representatives(RepresentativesArgs),
     AccountsRepresentatives(AccountsRpcMessage),
     StatsClear,
+    UncheckedClear,
 }

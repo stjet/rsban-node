@@ -9,6 +9,7 @@ use super::wallet_lock;
 use super::wallet_locked;
 use super::stop;
 use super::block_confirm;
+use super::keepalive;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -177,6 +178,15 @@ async fn handle_rpc(
         }
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
         RpcCommand::Uptime => uptime(rpc_service.node).await,
+        RpcCommand::Keepalive(arg) => {
+            keepalive(
+                rpc_service.node,
+                rpc_service.enable_control,
+                arg.address,
+                arg.port,
+            )
+            .await
+        }
         _ => todo!(),
     };
 

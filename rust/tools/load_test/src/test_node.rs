@@ -10,11 +10,12 @@ use rsnano_node::{
     unique_path, NetworkParams, DEV_NETWORK_PARAMS,
 };
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto, SuccessDto};
 use rsnano_rpc_server::{RpcServerConfig, RpcServerToml};
 use std::{
     collections::HashMap,
     fs,
+    net::Ipv6Addr,
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::Arc,
@@ -77,8 +78,10 @@ impl TestNode {
         Ok(())
     }
 
-    pub async fn connect(&self, other: &TestNode) -> Result<()> {
-        self.node_client.keepalive(other.peering_port).await
+    pub async fn connect(&self, other: &TestNode) -> Result<SuccessDto> {
+        self.node_client
+            .keepalive(Ipv6Addr::LOCALHOST, other.peering_port)
+            .await
     }
 
     pub async fn create_send_and_receive_blocks(

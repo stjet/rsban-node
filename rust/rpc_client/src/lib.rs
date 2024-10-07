@@ -223,10 +223,10 @@ impl NanoRpcClient {
         self.receive_block(wallet, destination, block).await
     }
 
-    pub async fn keepalive(&self, port: u16) -> Result<()> {
-        let request = RpcCommand::keepalive(Ipv6Addr::LOCALHOST, port);
-        self.rpc_request(&request).await?;
-        Ok(())
+    pub async fn keepalive(&self, address: Ipv6Addr, port: u16) -> Result<SuccessDto> {
+        let cmd = RpcCommand::keepalive(address, port);
+        let json = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn key_create(&self) -> Result<KeyPairDto> {

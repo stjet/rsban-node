@@ -1,9 +1,9 @@
-use crate::{AddressWithPortArg, RpcCommand};
-use std::net::Ipv6Addr;
+use crate::{AccountRpcMessage, RpcCommand};
+use rsnano_core::Account;
 
 impl RpcCommand {
-    pub fn keepalive(address: Ipv6Addr, port: u16) -> Self {
-        Self::Keepalive(AddressWithPortArg::new(address, port))
+    pub fn validate_account_number(account: Account) -> Self {
+        Self::ValidateAccountNumber(AccountRpcMessage::new("account".to_string(), account))
     }
 }
 
@@ -14,23 +14,22 @@ mod tests {
     use std::{net::Ipv6Addr, str::FromStr};
 
     #[test]
-    fn serialize_keepalive_command() {
+    fn serialize_validate_account_number_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::keepalive(
+            to_string_pretty(&RpcCommand::Keepalive(AddressWithPortArg::new(
                 Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap(),
                 1024
-            ))
+            )))
             .unwrap(),
             r#"{
-  "action": "keepalive",
-  "address": "::ffff:192.169.0.1",
-  "port": 1024
+  "action": "validate_account_number",
+  "account": "::ffff:192.169.0.1"
 }"#
         )
     }
 
     #[test]
-    fn deserialize_keepalive_command() {
+    fn deserialize_validate_account_number_command() {
         let json_str = r#"{
 "action": "keepalive",
 "address": "::ffff:192.169.0.1",

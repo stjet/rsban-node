@@ -15,7 +15,7 @@ pub use wallets::*;
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
     AccountInfo(AccountInfoArgs),
-    Keepalive(KeepaliveArgs),
+    Keepalive(AddressWithPortArg),
     Stop,
     KeyCreate,
     Receive(ReceiveArgs),

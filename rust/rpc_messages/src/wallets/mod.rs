@@ -17,6 +17,7 @@ mod wallet_with_account;
 mod wallet_with_count;
 mod wallet_representative;
 mod work_set;
+mod work_get;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -37,3 +38,4 @@ pub use wallet_with_account::*;
 pub use wallet_with_count::*;
 pub use wallet_representative::*;
 pub use work_set::*;
+pub use work_get::*;

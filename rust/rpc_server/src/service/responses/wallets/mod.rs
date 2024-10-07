@@ -12,6 +12,7 @@ mod wallet_locked;
 mod wallet_add_watch;
 mod wallet_representative;
 mod work_set;
+mod work_get;
 
 pub use account_create::*;
 pub use accounts_create::*;
@@ -27,3 +28,4 @@ pub use wallet_locked::*;
 pub use wallet_add_watch::*;
 pub use wallet_representative::*;
 pub use work_set::*;
+pub use work_get::*;

@@ -13,6 +13,7 @@ use super::{
 };
 use crate::account_balance;
 use crate::uptime;
+use super::work_get;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -225,6 +226,15 @@ async fn handle_rpc(
                 args.wallet,
                 args.account,
                 args.work,
+            )
+            .await
+        }
+        RpcCommand::WorkGet(args) => {
+            work_get(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.account,
             )
             .await
         }

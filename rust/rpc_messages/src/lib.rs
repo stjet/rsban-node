@@ -49,4 +49,5 @@ pub enum RpcCommand {
     WalletAddWatch(WalletAddWatchArgs),
     WalletRepresentative(WalletRpcMessage),
     WorkSet(WorkSetArgs),
+    WorkGet(WalletWithAccountArgs),
 }

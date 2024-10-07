@@ -24,6 +24,7 @@ pub enum RpcCommand {
     WalletCreate,
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
+    AccountsCreate(AccountsCreateArgs),
 }
 
 #[cfg(test)]

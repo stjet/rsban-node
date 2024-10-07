@@ -45,6 +45,17 @@ impl NanoRpcClient {
         Ok(from_value(result)?)
     }
 
+    pub async fn accounts_create(
+        &self,
+        wallet: WalletId,
+        count: u32,
+        work: Option<bool>
+    ) -> Result<AccountsRpcMessage> {
+        let cmd = RpcCommand::accounts_create(wallet, count, work);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account);
         let result = self.rpc_request(&cmd).await?;

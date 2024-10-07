@@ -4,6 +4,7 @@ use super::{
     wallet_create,
 };
 use crate::account_balance;
+use super::wallet_destroy;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -118,6 +119,14 @@ async fn handle_rpc(
         }
         RpcCommand::WalletContains(args) => {
             wallet_contains(rpc_service.node, args.wallet, args.account).await
+        }
+        RpcCommand::WalletDestroy(wallet_rpc_message) => {
+            wallet_destroy(
+                rpc_service.node,
+                rpc_service.enable_control,
+                wallet_rpc_message.wallet,
+            )
+            .await
         }
         _ => todo!(),
     };

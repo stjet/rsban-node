@@ -6,6 +6,7 @@ mod account_list;
 mod wallet_create;
 mod wallet_add;
 mod wallet_contains;
+mod wallet_destroy;
 
 pub use account_create::*;
 pub use accounts_create::*;
@@ -15,3 +16,4 @@ pub use account_list::*;
 pub use wallet_create::*;
 pub use wallet_add::*;
 pub use wallet_contains::*;
+pub use wallet_destroy::*;

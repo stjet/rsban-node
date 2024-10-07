@@ -29,6 +29,7 @@ pub enum RpcCommand {
     AccountList(WalletRpcMessage),
     WalletCreate(WalletCreateArgs),
     WalletContains(WalletWithAccountArgs),
+    WalletDestroy(WalletRpcMessage),
 }
 
 #[cfg(test)]

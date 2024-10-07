@@ -16,6 +16,7 @@ mod wallet_representative;
 mod wallet_work_get;
 mod work_get;
 mod work_set;
+mod wallet_export;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -35,3 +36,4 @@ pub use wallet_representative::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
+pub use wallet_export::*;

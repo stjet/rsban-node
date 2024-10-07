@@ -55,4 +55,5 @@ pub enum RpcCommand {
     WalletFrontiers(WalletRpcMessage),
     Frontiers(AccountWithCountArgs),
     WalletInfo(WalletRpcMessage),
+    WalletExport(WalletRpcMessage),
 }

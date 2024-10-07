@@ -92,6 +92,8 @@ use super::node_id;
 
 use super::send;
 
+use super::receive_minimum;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -307,6 +309,7 @@ async fn handle_rpc(
         RpcCommand::NodeId => node_id(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::Send(args) => send(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::SearchReceivableAll => search_receivable_all(rpc_service.node, rpc_service.enable_control).await,
+        RpcCommand::ReceiveMinimum => receive_minimum(rpc_service.node, rpc_service.enable_control).await,
         _ => todo!(),
     };
 

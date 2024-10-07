@@ -69,5 +69,6 @@ pub enum RpcCommand {
     UncheckedClear,
     Unopened(UnopenedArgs),
     NodeId,
-    SearchReceivableAll
+    SearchReceivableAll,
+    ReceiveMinimum,
 }

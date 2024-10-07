@@ -49,6 +49,8 @@ use super::frontier_count;
 
 use super::validate_account_number;
 
+use super::raw_to_nano;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -197,6 +199,7 @@ async fn handle_rpc(
         RpcCommand::FrontierCount => frontier_count(rpc_service.node).await,
         RpcCommand::ValidateAccountNumber(_) => validate_account_number().await,
         RpcCommand::NanoToRaw(amount_rpc_message) => nano_to_raw(amount_rpc_message.value).await,
+        RpcCommand::RawToNano(amount_rpc_message) => raw_to_nano(amount_rpc_message.value).await,
         _ => todo!(),
     };
 

@@ -1,3 +1,4 @@
+mod account_with_count;
 mod accounts;
 mod blocks;
 mod dynamic_key;
@@ -7,6 +8,7 @@ mod public_key;
 mod success;
 mod account_balance;
 
+pub use account_with_count::*;
 pub use accounts::*;
 pub use blocks::*;
 pub use dynamic_key::*;

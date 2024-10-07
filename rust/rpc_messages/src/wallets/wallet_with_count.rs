@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct WalletWithCountArgs {
     pub wallet: WalletId,
-    pub count: u32,
+    pub count: u64,
 }
 
 impl WalletWithCountArgs {
-    pub fn new(wallet: WalletId, count: u32) -> Self {
+    pub fn new(wallet: WalletId, count: u64) -> Self {
         Self { wallet, count }
     }
 }

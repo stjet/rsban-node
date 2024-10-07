@@ -6,6 +6,7 @@ mod key_expand;
 mod nano_to_raw;
 mod raw_to_nano;
 mod validate_account_number;
+mod block_hash;
 
 pub use account_key::*;
 pub use deterministic_key::*;
@@ -16,3 +17,5 @@ pub use raw_to_nano::*;
 pub use validate_account_number::*;
 
 pub use account_get::*;
+
+pub use block_hash::*;

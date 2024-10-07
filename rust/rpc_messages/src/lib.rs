@@ -73,5 +73,6 @@ pub enum RpcCommand {
     ReceiveMinimum,
     WalletChangeSeed(WalletChangeSeedArgs),
     Delegators(DelegatorsArgs),
-    DelegatorsCount(AccountRpcMessage)
+    DelegatorsCount(AccountRpcMessage),
+    BlockHash(BlockHashArgs),
 }

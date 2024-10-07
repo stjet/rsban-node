@@ -100,6 +100,8 @@ use super::delegators;
 
 use super::delegators_count;
 
+use super::block_hash;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -319,6 +321,7 @@ async fn handle_rpc(
         RpcCommand::WalletChangeSeed(args) => wallet_change_seed(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::Delegators(args) => delegators(rpc_service.node, args).await,
         RpcCommand::DelegatorsCount(args) => delegators_count(rpc_service.node, args.value).await,
+        RpcCommand::BlockHash(args) => block_hash(args.block).await,
         _ => todo!(),
     };
 

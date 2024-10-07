@@ -2,21 +2,21 @@ use super::account_get;
 use super::block_confirm;
 use super::keepalive;
 use super::nano_to_raw;
+use super::password_enter;
 use super::stop;
 use super::wallet_contains;
 use super::wallet_destroy;
+use super::wallet_frontiers;
+use super::wallet_info;
 use super::wallet_lock;
 use super::wallet_locked;
+use super::work_get;
 use super::{
     account_create, account_list, account_move, account_remove, accounts_create, key_create,
     wallet_create,
 };
 use crate::account_balance;
 use crate::uptime;
-use super::work_get;
-use super::wallet_frontiers;
-use super::wallet_info;
-use super::password_enter;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -26,7 +26,6 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
-use rsnano_rpc_messages::AccountRpcMessage;
 use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -74,6 +73,8 @@ use super::password_change;
 use super::password_valid;
 
 use super::deterministic_key;
+
+use super::key_expand;
 
 #[derive(Clone)]
 struct RpcService {
@@ -279,6 +280,7 @@ async fn handle_rpc(
         }
         RpcCommand::PasswordValid(args) => password_valid(rpc_service.node, args.wallet).await,
         RpcCommand::DeterministicKey(args) => deterministic_key(args.seed, args.index).await,
+        RpcCommand::KeyExpand(args) => key_expand(args.key).await,
         _ => todo!(),
     };
 

@@ -2,12 +2,11 @@ use rsnano_core::{Account, PublicKey, RawKey};
 use rsnano_rpc_messages::KeyPairDto;
 use serde_json::to_string_pretty;
 
-pub async fn deterministic_key(seed: RawKey, index: u32) -> String {
-    let private = rsnano_core::deterministic_key(&seed, index);
-    let public: PublicKey = (&private).try_into().unwrap();
+pub async fn key_expand(key: RawKey) -> String {
+    let public: PublicKey = (&key).try_into().unwrap();
     let account = Account::from(public);
 
-    to_string_pretty(&KeyPairDto::new(private, public, account)).unwrap()
+    to_string_pretty(&KeyPairDto::new(key, public, account)).unwrap()
 }
 
 #[cfg(test)]
@@ -16,7 +15,7 @@ mod tests {
     use test_helpers::{setup_rpc_client_and_server, System};
 
     #[test]
-    fn deterministic_key() {
+    fn key_expand() {
         let mut system = System::new();
         let node = system.make_node();
 
@@ -24,21 +23,26 @@ mod tests {
 
         let result = node.tokio.block_on(async {
             rpc_client
-                .deterministic_key(RawKey::zero(), 0)
+                .key_expand(
+                    RawKey::decode_hex(
+                        "781186FB9EF17DB6E3D1056550D9FAE5D5BBADA6A6BC370E4CBB938B1DC71DA3",
+                    )
+                    .unwrap(),
+                )
                 .await
                 .unwrap()
         });
 
         assert_eq!(
             result.private,
-            RawKey::decode_hex("9F0E444C69F77A49BD0BE89DB92C38FE713E0963165CCA12FAF5712D7657120F")
+            RawKey::decode_hex("781186FB9EF17DB6E3D1056550D9FAE5D5BBADA6A6BC370E4CBB938B1DC71DA3")
                 .unwrap()
         );
 
         assert_eq!(
             result.public,
             PublicKey::decode_hex(
-                "C008B814A7D269A1FA3C6528B19201A24D797912DB9996FF02A1FF356E45552B"
+                "3068BB1CA04525BB0E416C485FE6A67FD52540227D267CC8B6E8DA958A7FA039"
             )
             .unwrap()
         );
@@ -46,7 +50,7 @@ mod tests {
         assert_eq!(
             result.account,
             Account::decode_account(
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                "nano_1e5aqegc1jb7qe964u4adzmcezyo6o146zb8hm6dft8tkp79za3sxwjym5rx"
             )
             .unwrap()
         );

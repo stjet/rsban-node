@@ -4,6 +4,7 @@ use super::account_create;
 use super::accounts_create;
 use super::account_remove;
 use super::account_move;
+use super::account_list;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -94,6 +95,9 @@ async fn handle_rpc(
                 accounts,
             )
             .await
+        }
+        RpcCommand::AccountList(wallet_rpc_message) => {
+            account_list(rpc_service.node, wallet_rpc_message.wallet).await
         }
         _ => todo!(),
     };

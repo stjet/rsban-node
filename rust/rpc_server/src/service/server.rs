@@ -34,6 +34,7 @@ use tracing::info;
 use super::peers;
 use super::accounts_representatives;
 use super::stats_clear;
+use super::search_receivable_all;
 
 use super::wallet_add;
 
@@ -305,6 +306,7 @@ async fn handle_rpc(
         RpcCommand::Unopened(args) => unopened(rpc_service.node, rpc_service.enable_control, args.account, args.count, args.threshold).await,
         RpcCommand::NodeId => node_id(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::Send(args) => send(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::SearchReceivableAll => search_receivable_all(rpc_service.node, rpc_service.enable_control).await,
         _ => todo!(),
     };
 

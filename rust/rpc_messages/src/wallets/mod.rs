@@ -26,6 +26,7 @@ mod wallet_with_password;
 mod wallet_work_get;
 mod work_get;
 mod work_set;
+mod search_receivable_all;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -55,3 +56,5 @@ pub use wallet_with_password::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
+
+pub use search_receivable_all::*;

@@ -61,4 +61,5 @@ pub enum RpcCommand {
     PasswordValid(WalletRpcMessage),
     DeterministicKey(DeterministicKeyArgs),
     KeyExpand(KeyExpandArgs),
+    Peers(PeersArgs),
 }

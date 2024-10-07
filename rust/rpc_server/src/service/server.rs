@@ -31,6 +31,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::peers;
 
 use super::wallet_add;
 
@@ -281,6 +282,7 @@ async fn handle_rpc(
         RpcCommand::PasswordValid(args) => password_valid(rpc_service.node, args.wallet).await,
         RpcCommand::DeterministicKey(args) => deterministic_key(args.seed, args.index).await,
         RpcCommand::KeyExpand(args) => key_expand(args.key).await,
+        RpcCommand::Peers(args) => peers(rpc_service.node, args.peer_details).await,
         _ => todo!(),
     };
 

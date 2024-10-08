@@ -24,6 +24,7 @@ mod unchecked_get;
 mod unchecked_keys;
 mod confirmation_info;
 mod work_generate;
+mod republish;
 
 pub use address_with_port::*;
 pub use bootstrap::*;
@@ -51,3 +52,4 @@ pub use unchecked_get::*;
 pub use unchecked_keys::*;
 pub use confirmation_info::*;
 pub use work_generate::*;
+pub use republish::*;

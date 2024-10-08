@@ -33,6 +33,18 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn republish(
+        &self,
+        hash: BlockHash,
+        sources: Option<u64>,
+        destinations: Option<u64>,
+        count: Option<u64>,
+    ) -> Result<BlockHashesDto> {
+        let cmd = RpcCommand::republish(hash, sources, destinations, count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn work_generate(
         &self,
         hash: BlockHash,

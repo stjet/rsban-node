@@ -108,4 +108,5 @@ pub enum RpcCommand {
     ConfirmationInfo(ConfirmationInfoArgs),
     Ledger(LedgerArgs),
     WorkGenerate(WorkGenerateArgs),
+    Republish(RepublishArgs)
 }

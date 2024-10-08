@@ -479,6 +479,8 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
     blocks
 }
 
+use tokio::net::TcpListener as TokioTcpListener;
+
 pub fn setup_rpc_client_and_server(
     node: Arc<Node>,
     enable_control: bool,
@@ -489,9 +491,14 @@ pub fn setup_rpc_client_and_server(
     let port = get_available_port();
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
 
+    // Bind to the TCP listener here
+    let listener = node.tokio.block_on(async {
+        TokioTcpListener::bind(socket_addr).await.expect("Failed to bind to address")
+    });
+
     let server = node
         .tokio
-        .spawn(run_rpc_server(node.clone(), socket_addr, enable_control));
+        .spawn(run_rpc_server(node.clone(), listener, enable_control));
 
     let rpc_url = format!("http://[::1]:{}/", port);
     let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));

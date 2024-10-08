@@ -69,6 +69,7 @@ impl eframe::App for InsightApp {
                 ui.label(self.model.messages_published().to_string());
             });
         });
+        ctx.request_repaint();
     }
 }
 

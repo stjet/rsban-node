@@ -156,6 +156,8 @@ use super::unchecked_keys;
 
 use super::confirmation_info;
 
+use super::ledger;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -472,6 +474,7 @@ async fn handle_rpc(
         RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
         RpcCommand::UncheckedKeys(args) => unchecked_keys(rpc_service.node, args.key, args.count).await,
         RpcCommand::ConfirmationInfo(args) => confirmation_info(rpc_service.node, args.root, args.contents, args.representatives).await,
+        RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
         _ => todo!(),
     };
 

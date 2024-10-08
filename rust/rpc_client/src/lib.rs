@@ -567,7 +567,7 @@ impl NanoRpcClient {
         count: u64,
         offset: Option<u64>,
         reverse: Option<bool>,
-    ) -> Result<BlocksDto> {
+    ) -> Result<BlockHashesDto> {
         let cmd = RpcCommand::successors(block, count, offset, reverse);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

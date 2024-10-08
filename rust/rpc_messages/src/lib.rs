@@ -97,5 +97,6 @@ pub enum RpcCommand {
     WalletRepublish(WalletWithCountArgs),
     WalletBalances(WalletBalancesArgs),
     WalletHistory(WalletHistoryArgs),
-    WalletLedger(WalletLedgerArgs)
+    WalletLedger(WalletLedgerArgs),
+    AccountsReceivable(AccountsReceivableArgs),
 }

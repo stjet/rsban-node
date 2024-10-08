@@ -21,6 +21,7 @@ mod chain;
 mod successors;
 mod account_info;
 mod account_history;
+mod accounts_receivable;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -49,3 +50,4 @@ pub use blocks_info::*;
 pub use chain::*;
 pub use successors::*;
 pub use account_history::*;
+pub use accounts_receivable::*;

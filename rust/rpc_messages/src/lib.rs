@@ -94,5 +94,6 @@ pub enum RpcCommand {
     WalletReceivable(WalletReceivableArgs),
     WalletRepresentativeSet(WalletRepresentativeSetArgs),
     SearchReceivable(WalletRpcMessage),
-    WalletRepublish(WalletWithCountArgs)
+    WalletRepublish(WalletWithCountArgs),
+    WalletBalances(WalletBalancesArgs),
 }

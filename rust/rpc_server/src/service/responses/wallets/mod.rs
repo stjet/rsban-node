@@ -28,6 +28,7 @@ mod wallet_receivable;
 mod wallet_representative_set;
 mod search_receivable;
 mod wallet_republish;
+mod wallet_balances;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -52,6 +53,7 @@ pub use work_get::*;
 pub use work_set::*;
 pub use password_valid::*;
 pub use wallet_receivable::*;
+pub use wallet_balances::*;
 
 pub use send::*;
 pub use search_receivable_all::*;

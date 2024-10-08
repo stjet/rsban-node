@@ -1,13 +1,17 @@
 use super::account_get;
+use super::account_history;
 use super::account_info;
 use super::accounts_representatives;
 use super::block_confirm;
 use super::blocks_info;
+use super::bootstrap_any;
+use super::bootstrap_lazy;
 use super::keepalive;
 use super::nano_to_raw;
 use super::password_enter;
 use super::peers;
 use super::search_receivable_all;
+use super::sign;
 use super::stats_clear;
 use super::stop;
 use super::wallet_contains;
@@ -16,6 +20,7 @@ use super::wallet_frontiers;
 use super::wallet_info;
 use super::wallet_lock;
 use super::wallet_locked;
+use super::wallet_receivable;
 use super::work_get;
 use super::{
     account_create, account_list, account_move, account_remove, accounts_create, key_create,
@@ -23,7 +28,6 @@ use super::{
 };
 use crate::account_balance;
 use crate::uptime;
-use super::wallet_receivable;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -33,15 +37,12 @@ use axum::{
     Router,
 };
 use rsnano_node::node::Node;
+use rsnano_rpc_messages::WalletBalancesArgs;
 use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use super::account_history;
-use super::sign;
-use super::bootstrap_any;
-use super::bootstrap_lazy;
 
 use super::wallet_add;
 
@@ -110,6 +111,7 @@ use super::delegators_count;
 use super::block_hash;
 
 use super::accounts_balances;
+use super::wallet_balances;
 
 use super::block_info;
 
@@ -395,7 +397,9 @@ async fn handle_rpc(
         RpcCommand::AccountHistory(args) => account_history(rpc_service.node, args).await,
         RpcCommand::Sign(args) => sign(rpc_service.node, args).await,
         RpcCommand::Process(args) => process(rpc_service.node, args).await,
-        RpcCommand::WorkCancel(args) => work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await,
+        RpcCommand::WorkCancel(args) => {
+            work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await
+        }
         RpcCommand::Bootstrap(bootstrap_args) => {
             bootstrap(
                 rpc_service.node,
@@ -405,12 +409,40 @@ async fn handle_rpc(
             )
             .await
         }
-        RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
-        RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
-        RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
-        RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet_with_account.wallet, args.wallet_with_account.account, args.update_existing_accounts).await,
-        RpcCommand::SearchReceivable(args) => search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await,
-        RpcCommand::WalletRepublish(args) => wallet_republish(rpc_service.node, rpc_service.enable_control, args.wallet, args.count).await,
+        RpcCommand::BootstrapAny(args) => {
+            bootstrap_any(rpc_service.node, args.force, args.id, args.account).await
+        }
+        RpcCommand::BoostrapLazy(args) => {
+            bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await
+        }
+        RpcCommand::WalletReceivable(args) => {
+            wallet_receivable(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::WalletRepresentativeSet(args) => {
+            wallet_representative_set(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet_with_account.wallet,
+                args.wallet_with_account.account,
+                args.update_existing_accounts,
+            )
+            .await
+        }
+        RpcCommand::SearchReceivable(args) => {
+            search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await
+        }
+        RpcCommand::WalletRepublish(args) => {
+            wallet_republish(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.count,
+            )
+            .await
+        }
+        RpcCommand::WalletBalances(WalletBalancesArgs { wallet, threshold }) => {
+            wallet_balances(rpc_service.node, wallet, threshold).await
+        }
         _ => todo!(),
     };
 

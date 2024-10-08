@@ -543,6 +543,16 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn wallet_balances(
+        &self,
+        wallet: WalletId,
+        threshold: Option<Amount>,
+    ) -> Result<AccountsBalancesDto> {
+        let cmd = RpcCommand::wallet_balances(wallet, threshold);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn block_info(&self, hash: BlockHash) -> Result<BlockInfoDto> {
         let cmd = RpcCommand::block_info(hash);
         let result = self.rpc_request(&cmd).await?;

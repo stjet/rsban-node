@@ -11,6 +11,7 @@ use rsnano_node::{
     NetworkParams,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
+use tokio::net::TcpListener;
 use std::{
     fs::read_to_string,
     net::{IpAddr, SocketAddr},
@@ -171,25 +172,28 @@ impl RunDaemonArgs {
 
         node.start();
 
-        /*let rpc_server = if daemon_config.rpc_enable {
+        let rpc_server = if daemon_config.rpc_enable {
             let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
             let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
-            Some(tokio::spawn(run_rpc_server(
+            Some(tokio::spawn({
+                let listener = TcpListener::bind(socket_addr).await?;
+
+                run_rpc_server(
                 node.clone(),
-                socket_addr,
+                listener,
                 rpc_server_config.enable_control,
-            )))
+            )}))
         } else {
             None
-        };*/
+        };
 
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let finished_clone = finished.clone();
 
         ctrlc::set_handler(move || {
-            /*if let Some(server) = rpc_server.as_ref() {
+            if let Some(server) = rpc_server.as_ref() {
                 server.abort();
-            }*/
+            }
             node.stop();
             *finished_clone.0.lock().unwrap() = true;
             finished_clone.1.notify_all();

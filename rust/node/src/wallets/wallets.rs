@@ -1010,6 +1010,15 @@ pub trait WalletsExt {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
+    fn change_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        representative: PublicKey,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum>;
+
     fn receive_action2(
         &self,
         wallet_id: &WalletId,
@@ -1538,6 +1547,19 @@ impl WalletsExt for Arc<Wallets> {
             }
         }
         block
+    }
+
+    fn change_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        representative: PublicKey,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id).ok()?;
+        self.change_action(&wallet, source, representative, work, generate_work)
     }
 
     fn receive_action(

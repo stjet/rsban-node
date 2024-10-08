@@ -32,6 +32,16 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn representatives_online(
+        &self,
+        weight: Option<bool>,
+        accounts: Option<Vec<Account>>,
+    ) -> Result<AccountsWithAmountsDto> {
+        let cmd = RpcCommand::representatives_online(weight, accounts);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn receivable_exists(
         &self,
         hash: BlockHash,

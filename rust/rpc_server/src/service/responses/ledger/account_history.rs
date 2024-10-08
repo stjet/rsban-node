@@ -280,7 +280,6 @@ mod tests {
                 node.work_generate_dev((*DEV_GENESIS_HASH).into()),
                 false,
             )
-            .unwrap()
             .unwrap();
 
         let send = node
@@ -346,7 +345,6 @@ mod tests {
                 node.work_generate_dev(ureceive.hash().into()),
                 false,
             )
-            .unwrap()
             .unwrap();
 
         // Set up RPC client and server

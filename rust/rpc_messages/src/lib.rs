@@ -101,4 +101,5 @@ pub enum RpcCommand {
     AccountsReceivable(AccountsReceivableArgs),
     Receivable(ReceivableArgs),
     ReceivableExists(ReceivableExistsArgs),
+    RepresentativesOnline(RepresentativesOnlineArgs),
 }

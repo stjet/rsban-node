@@ -18,6 +18,7 @@ mod bootstrap_any;
 mod bootstrap_lazy;
 mod receivable;
 mod receivable_exists;
+mod representatives_online;
 
 pub use address_with_port::*;
 pub use bootstrap::*;
@@ -39,3 +40,4 @@ pub use bootstrap_any::*;
 pub use bootstrap_lazy::*;
 pub use receivable::*;
 pub use receivable_exists::*;
+pub use representatives_online::*;

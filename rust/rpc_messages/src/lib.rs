@@ -105,4 +105,5 @@ pub enum RpcCommand {
     Unchecked(UncheckedArgs),
     UncheckedGet(BlockHashRpcMessage),
     UncheckedKeys(UncheckedKeysArgs),
+    ConfirmationInfo(ConfirmationInfoArgs),
 }

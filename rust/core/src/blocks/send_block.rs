@@ -336,7 +336,7 @@ pub struct JsonSendBlock {
     pub signature: Signature,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct AmountHex(u128);
 
 impl AmountHex {

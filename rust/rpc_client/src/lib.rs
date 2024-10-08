@@ -3,7 +3,8 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockHash, BlockSubType, JsonBlock, PublicKey, RawKey, WalletId, WorkNonce,
+    Account, Amount, BlockHash, BlockSubType, HashOrAccount, JsonBlock, PublicKey, RawKey,
+    WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
 use serde::Serialize;
@@ -28,6 +29,12 @@ impl NanoRpcClient {
 
     pub async fn account_get(&self, key: PublicKey) -> Result<AccountRpcMessage> {
         let cmd = RpcCommand::account_get(key);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn unchecked_keys(&self, key: HashOrAccount, count: u64) -> Result<UncheckedKeysDto> {
+        let cmd = RpcCommand::unchecked_keys(key, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

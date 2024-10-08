@@ -21,6 +21,7 @@ mod receivable_exists;
 mod representatives_online;
 mod unchecked;
 mod unchecked_get;
+mod unchecked_keys;
 
 pub use address_with_port::*;
 pub use bootstrap::*;
@@ -45,3 +46,4 @@ pub use receivable_exists::*;
 pub use representatives_online::*;
 pub use unchecked::*;
 pub use unchecked_get::*;
+pub use unchecked_keys::*;

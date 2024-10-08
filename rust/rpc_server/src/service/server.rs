@@ -152,6 +152,8 @@ use super::representatives_online;
 
 use super::unchecked;
 
+use super::unchecked_keys;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -466,6 +468,7 @@ async fn handle_rpc(
         RpcCommand::RepresentativesOnline(args) => representatives_online(rpc_service.node, args.weight, args.accounts).await,
         RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
         RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
+        RpcCommand::UncheckedKeys(args) => unchecked_keys(rpc_service.node, args.key, args.count).await,
         _ => todo!(),
     };
 

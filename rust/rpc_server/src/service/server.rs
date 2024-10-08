@@ -158,6 +158,8 @@ use super::confirmation_info;
 
 use super::ledger;
 
+use super::work_generate;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -475,6 +477,7 @@ async fn handle_rpc(
         RpcCommand::UncheckedKeys(args) => unchecked_keys(rpc_service.node, args.key, args.count).await,
         RpcCommand::ConfirmationInfo(args) => confirmation_info(rpc_service.node, args.root, args.contents, args.representatives).await,
         RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::WorkGenerate(args) => work_generate(rpc_service.node, rpc_service.enable_control, args).await, 
         _ => todo!(),
     };
 

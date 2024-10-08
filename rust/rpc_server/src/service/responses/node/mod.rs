@@ -22,6 +22,7 @@ mod unchecked;
 mod unchecked_get;
 mod unchecked_keys;
 mod confirmation_info;
+mod work_generate;
 
 pub use stop::*;
 pub use uptime::*;
@@ -48,3 +49,4 @@ pub use unchecked::*;
 pub use unchecked_get::*;
 pub use unchecked_keys::*;
 pub use confirmation_info::*;
+pub use work_generate::*;

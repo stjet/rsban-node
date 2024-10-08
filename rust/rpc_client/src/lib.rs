@@ -33,6 +33,23 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn work_generate(
+        &self,
+        hash: BlockHash,
+        use_peers: Option<bool>,
+        difficulty: Option<u64>,
+        multiplier: Option<u64>,
+        account: Option<Account>,
+        version: Option<WorkVersionDto>,
+        block: Option<JsonBlock>,
+    ) -> Result<WorkGenerateDto> {
+        let cmd = RpcCommand::work_generate(
+            hash, use_peers, difficulty, multiplier, account, version, block,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn ledger(
         &self,
         account: Option<Account>,

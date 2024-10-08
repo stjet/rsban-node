@@ -106,5 +106,6 @@ pub enum RpcCommand {
     UncheckedGet(BlockHashRpcMessage),
     UncheckedKeys(UncheckedKeysArgs),
     ConfirmationInfo(ConfirmationInfoArgs),
-    Ledger(LedgerArgs)
+    Ledger(LedgerArgs),
+    WorkGenerate(WorkGenerateArgs),
 }

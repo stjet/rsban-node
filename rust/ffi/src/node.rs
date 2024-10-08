@@ -102,6 +102,7 @@ pub unsafe extern "C" fn rsn_node_create(
         election_ended_wrapper,
         account_balance_changed_wrapper,
         vote_processed,
+        None,
     )))))
 }
 

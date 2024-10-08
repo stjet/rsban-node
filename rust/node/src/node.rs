@@ -28,7 +28,7 @@ use crate::{
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
         LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NanoResponseServerSpawner,
-        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater,
+        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater, PublishedCallback,
         RealtimeMessageHandler, SynCookies,
     },
     utils::{
@@ -143,6 +143,7 @@ impl Node {
         election_end: ElectionEndCallback,
         account_balance_changed: AccountBalanceChangedCallback,
         on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
+        on_publish: Option<PublishedCallback>,
     ) -> Self {
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.
@@ -287,12 +288,16 @@ impl Node {
         ));
         dead_channel_cleanup.add_step(OnlineRepsCleanup::new(online_reps.clone()));
 
-        let message_publisher = MessagePublisher::new(
+        let mut message_publisher = MessagePublisher::new(
             online_reps.clone(),
             network.clone(),
             stats.clone(),
             network_params.network.protocol_info(),
         );
+
+        if let Some(callback) = &on_publish {
+            message_publisher.set_published_callback(callback.clone());
+        }
 
         let telemetry = Arc::new(Telemetry::new(
             telemetry_config,
@@ -479,6 +484,18 @@ impl Node {
             &vote_processor,
         );
 
+        let mut bootstrap_publisher = MessagePublisher::new_with_buffer_size(
+            online_reps.clone(),
+            network.clone(),
+            stats.clone(),
+            network_params.network.protocol_info(),
+            512,
+        );
+
+        if let Some(callback) = &on_publish {
+            bootstrap_publisher.set_published_callback(callback.clone());
+        }
+
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(
             global_config.into(),
             flags.clone(),
@@ -492,13 +509,7 @@ impl Node {
             block_processor.clone(),
             websocket.clone(),
             ledger.clone(),
-            MessagePublisher::new_with_buffer_size(
-                online_reps.clone(),
-                network.clone(),
-                stats.clone(),
-                network_params.network.protocol_info(),
-                512,
-            ),
+            bootstrap_publisher,
             steady_clock.clone(),
         ));
         bootstrap_initiator.initialize();
@@ -1662,6 +1673,7 @@ mod tests {
                 Box::new(|_, _, _, _, _, _| {}),
                 Box::new(|_, _| {}),
                 Box::new(|_, _, _, _| {}),
+                None,
             ));
 
             Self { node, app_path }

@@ -56,6 +56,7 @@ impl InitializeArgs {
             Box::new(|_, _, _, _, _, _| {}),
             Box::new(|_, _| {}),
             Box::new(|_, _, _, _| {}),
+            None,
         ));
 
         node.start();

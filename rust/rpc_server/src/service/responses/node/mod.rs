@@ -15,6 +15,7 @@ mod work_cancel;
 mod bootstrap;
 mod bootstrap_any;
 mod bootstrap_lazy;
+mod receivable;
 
 pub use stop::*;
 pub use uptime::*;
@@ -34,3 +35,4 @@ pub use process::*;
 pub use work_cancel::*;
 pub use bootstrap_any::*;
 pub use bootstrap_lazy::*;
+pub use receivable::*;

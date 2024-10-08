@@ -143,6 +143,8 @@ use super::wallet_ledger;
 
 use super::accounts_receivable;
 
+use super::receivable;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -452,6 +454,7 @@ async fn handle_rpc(
         RpcCommand::WalletHistory(args) => wallet_history(rpc_service.node, args.wallet, args.modified_since).await, 
         RpcCommand::WalletLedger(args) => wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::AccountsReceivable(args) => accounts_receivable(rpc_service.node, args).await,
+        RpcCommand::Receivable(args) => receivable(rpc_service.node, args).await,
         _ => todo!(),
     };
 

@@ -34,6 +34,7 @@ mod wallet_representative_set;
 mod search_receivable;
 mod wallet_republish;
 mod wallet_balances;
+mod wallet_history;
 
 pub use account_create::*;
 pub use account_list::*;
@@ -72,3 +73,4 @@ pub use wallet_representative_set::*;
 pub use search_receivable::*;
 pub use wallet_republish::*;
 pub use wallet_balances::*;
+pub use wallet_history::*;

@@ -32,6 +32,16 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn wallet_history(
+        &self,
+        wallet: WalletId,
+        modified_since: Option<u64>,
+    ) -> Result<WalletHistoryDto> {
+        let cmd = RpcCommand::wallet_history(wallet, modified_since);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn wallet_republish(&self, wallet: WalletId, count: u64) -> Result<BlockHashesDto> {
         let cmd = RpcCommand::wallet_republish(wallet, count);
         let result = self.rpc_request(&cmd).await?;

@@ -137,6 +137,8 @@ use super::search_receivable;
 
 use super::wallet_republish;
 
+use super::wallet_history;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -443,6 +445,7 @@ async fn handle_rpc(
         RpcCommand::WalletBalances(WalletBalancesArgs { wallet, threshold }) => {
             wallet_balances(rpc_service.node, wallet, threshold).await
         }
+        RpcCommand::WalletHistory(args) => wallet_history(rpc_service.node, args.wallet, args.modified_since).await, 
         _ => todo!(),
     };
 

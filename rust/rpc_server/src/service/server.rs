@@ -162,6 +162,8 @@ use super::work_generate;
 
 use super::republish;
 
+use super::block_create;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -481,6 +483,7 @@ async fn handle_rpc(
         RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::WorkGenerate(args) => work_generate(rpc_service.node, rpc_service.enable_control, args).await, 
         RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations, args.count).await,
+        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await, 
         _ => todo!(),
     };
 

@@ -24,6 +24,7 @@ mod unchecked_keys;
 mod confirmation_info;
 mod work_generate;
 mod republish;
+mod block_create;
 
 pub use stop::*;
 pub use uptime::*;
@@ -52,3 +53,4 @@ pub use unchecked_keys::*;
 pub use confirmation_info::*;
 pub use work_generate::*;
 pub use republish::*;
+pub use block_create::*;

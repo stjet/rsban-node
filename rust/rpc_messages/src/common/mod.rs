@@ -24,7 +24,7 @@ pub use key_pair::*;
 pub use ledger::*;
 pub use public_key::*;
 pub use receivable::*;
-use rsnano_core::WorkVersion;
+use rsnano_core::{BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};
 pub use success::*;
 
@@ -47,6 +47,41 @@ impl From<WorkVersionDto> for WorkVersion {
     fn from(value: WorkVersionDto) -> Self {
         match value {
             WorkVersionDto::Work1 => WorkVersion::Work1,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockTypeDto {
+    Send,
+    Receive,
+    Open,
+    Change,
+    State,
+}
+
+impl From<BlockType> for BlockTypeDto {
+    fn from(value: BlockType) -> Self {
+        match value {
+            BlockType::LegacySend => BlockTypeDto::Send,
+            BlockType::LegacyReceive => BlockTypeDto::Receive,
+            BlockType::LegacyOpen => BlockTypeDto::Open,
+            BlockType::LegacyChange => BlockTypeDto::Change,
+            BlockType::State => BlockTypeDto::State,
+            BlockType::Invalid | BlockType::NotABlock => unimplemented!(),
+        }
+    }
+}
+
+impl From<BlockTypeDto> for BlockType {
+    fn from(value: BlockTypeDto) -> Self {
+        match value {
+            BlockTypeDto::Send => BlockType::LegacySend,
+            BlockTypeDto::Receive => BlockType::LegacyReceive,
+            BlockTypeDto::Open => BlockType::LegacyOpen,
+            BlockTypeDto::Change => BlockType::LegacyChange,
+            BlockTypeDto::State => BlockType::State,
         }
     }
 }

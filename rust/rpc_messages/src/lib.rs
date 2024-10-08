@@ -102,4 +102,5 @@ pub enum RpcCommand {
     Receivable(ReceivableArgs),
     ReceivableExists(ReceivableExistsArgs),
     RepresentativesOnline(RepresentativesOnlineArgs),
+    Unchecked(UncheckedArgs),
 }

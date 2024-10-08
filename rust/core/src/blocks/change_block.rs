@@ -246,7 +246,7 @@ impl Block for ChangeBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonChangeBlock {
     pub previous: BlockHash,
     pub representative: Account,

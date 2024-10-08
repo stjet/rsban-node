@@ -32,6 +32,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn unchecked(&self, count: u64) -> Result<UncheckedDto> {
+        let cmd = RpcCommand::unchecked(count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn representatives_online(
         &self,
         weight: Option<bool>,

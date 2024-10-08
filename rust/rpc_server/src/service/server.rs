@@ -149,6 +149,8 @@ use super::receivable_exists;
 
 use super::representatives_online;
 
+use super::unchecked;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -461,6 +463,7 @@ async fn handle_rpc(
         RpcCommand::Receivable(args) => receivable(rpc_service.node, args).await,
         RpcCommand::ReceivableExists(args) => receivable_exists(rpc_service.node, args.hash, args.include_active, args.include_only_confirmed).await,
         RpcCommand::RepresentativesOnline(args) => representatives_online(rpc_service.node, args.weight, args.accounts).await,
+        RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
         _ => todo!(),
     };
 

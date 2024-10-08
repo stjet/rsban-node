@@ -103,4 +103,5 @@ pub enum RpcCommand {
     ReceivableExists(ReceivableExistsArgs),
     RepresentativesOnline(RepresentativesOnlineArgs),
     Unchecked(UncheckedArgs),
+    UncheckedGet(BlockHashRpcMessage)
 }

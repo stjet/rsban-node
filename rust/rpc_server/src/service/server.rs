@@ -43,6 +43,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use super::unchecked_get;
 
 use super::wallet_add;
 
@@ -464,6 +465,7 @@ async fn handle_rpc(
         RpcCommand::ReceivableExists(args) => receivable_exists(rpc_service.node, args.hash, args.include_active, args.include_only_confirmed).await,
         RpcCommand::RepresentativesOnline(args) => representatives_online(rpc_service.node, args.weight, args.accounts).await,
         RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
+        RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
         _ => todo!(),
     };
 

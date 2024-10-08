@@ -32,6 +32,17 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn receivable_exists(
+        &self,
+        hash: BlockHash,
+        include_active: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<BoolDto> {
+        let cmd = RpcCommand::receivable_exists(hash, include_active, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn receivable(
         &self,
         account: Account,

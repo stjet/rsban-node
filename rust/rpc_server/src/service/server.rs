@@ -145,6 +145,8 @@ use super::accounts_receivable;
 
 use super::receivable;
 
+use super::receivable_exists;
+
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -455,6 +457,7 @@ async fn handle_rpc(
         RpcCommand::WalletLedger(args) => wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::AccountsReceivable(args) => accounts_receivable(rpc_service.node, args).await,
         RpcCommand::Receivable(args) => receivable(rpc_service.node, args).await,
+        RpcCommand::ReceivableExists(args) => receivable_exists(rpc_service.node, args.hash, args.include_active, args.include_only_confirmed).await,
         _ => todo!(),
     };
 

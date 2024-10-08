@@ -491,7 +491,6 @@ pub fn setup_rpc_client_and_server(
     let port = get_available_port();
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
 
-    // Bind to the TCP listener here
     let listener = node.tokio.block_on(async {
         TokioTcpListener::bind(socket_addr).await.expect("Failed to bind to address")
     });
@@ -572,12 +571,6 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
     ));
 
     node.process_local(send.clone()).unwrap();
-
-    /*assert_timely_msg(
-        Duration::from_secs(5),
-        || !node.unchecked.is_empty(),
-        "not active on node",
-    );*/
 
     send
 }

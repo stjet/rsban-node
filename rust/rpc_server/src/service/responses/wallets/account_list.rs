@@ -1,5 +1,5 @@
 use rsnano_core::WalletId;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountsRpcMessage, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -38,7 +38,7 @@ mod tests {
             .into();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_list(wallet).await.unwrap() });
 
         assert_eq!(vec![account], result.accounts);
@@ -53,10 +53,8 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let wallet_id = WalletId::random();
-
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_list(WalletId::zero()).await });
 
         assert_eq!(

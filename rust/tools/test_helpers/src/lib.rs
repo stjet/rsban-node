@@ -7,11 +7,10 @@ use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
-    node::{Node, NodeExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
-    NetworkParams,
+    NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_rpc_client::{NanoRpcClient, Url};
@@ -58,8 +57,8 @@ impl System {
         config
     }
 
-    pub fn build_node<'a>(&'a mut self) -> NodeBuilder<'a> {
-        NodeBuilder {
+    pub fn build_node<'a>(&'a mut self) -> TestNodeBuilder<'a> {
+        TestNodeBuilder {
             system: self,
             config: None,
             flags: None,
@@ -122,25 +121,21 @@ impl System {
 
     fn new_node(&self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
         let path = unique_path().expect("Could not get a unique path");
-
-        Arc::new(Node::new(
-            self.runtime.tokio.handle().clone(),
-            path,
-            config,
-            self.network_params.clone(),
-            flags,
-            self.work.clone(),
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-        ))
+        let node = NodeBuilder::new(self.network_params.network.current_network)
+            .runtime(self.runtime.tokio.handle().clone())
+            .data_path(path)
+            .config(config)
+            .network_params(self.network_params.clone())
+            .flags(flags)
+            .work(self.work.clone())
+            .finish();
+        Arc::new(node)
     }
 
     fn stop(&mut self) {
         for node in &self.nodes {
             node.stop();
-            std::fs::remove_dir_all(&node.application_path)
-                .expect("Could not delete node data dir");
+            std::fs::remove_dir_all(&node.data_path).expect("Could not delete node data dir");
         }
         self.work.stop();
     }
@@ -152,14 +147,14 @@ impl Drop for System {
     }
 }
 
-pub struct NodeBuilder<'a> {
+pub struct TestNodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
     flags: Option<NodeFlags>,
     disconnected: bool,
 }
 
-impl<'a> NodeBuilder<'a> {
+impl<'a> TestNodeBuilder<'a> {
     pub fn config(mut self, cfg: NodeConfig) -> Self {
         self.config = Some(cfg);
         self
@@ -496,7 +491,7 @@ pub fn setup_rpc_client_and_server(
     });
 
     let server = node
-        .tokio
+        .runtime
         .spawn(run_rpc_server(node.clone(), listener, enable_control));
 
     let rpc_url = format!("http://[::1]:{}/", port);

@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_node::{node::Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{AccountsCreateArgs, AccountsRpcMessage, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -46,7 +46,7 @@ mod tests {
 
         node.wallets.create(wallet);
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .accounts_create(wallet, 8, Some(true))
                 .await
@@ -72,7 +72,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_create(wallet_id, 1, Some(true))
                 .await
@@ -104,7 +104,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_create(wallet_id, 1, Some(false))
                 .await
@@ -139,7 +139,7 @@ mod tests {
         node.wallets.lock(&wallet_id).unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.accounts_create(wallet_id, 1, None).await });
 
         assert_eq!(
@@ -160,7 +160,7 @@ mod tests {
         let wallet_id = WalletId::random();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.accounts_create(wallet_id, 1, None).await });
 
         assert_eq!(
@@ -183,7 +183,7 @@ mod tests {
         node.wallets.create(wallet);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.accounts_create(wallet, 8, None).await });
 
         assert!(result.is_err());

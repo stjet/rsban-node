@@ -1,4 +1,4 @@
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto};
 use std::{collections::HashMap, sync::Arc};
 
@@ -47,7 +47,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
         let result = node1
-            .tokio
+            .runtime
             .block_on(async { rpc_client.peers(None).await.unwrap() });
 
         match result.peers {
@@ -69,7 +69,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
         let result = node1
-            .tokio
+            .runtime
             .block_on(async { rpc_client.peers(Some(true)).await.unwrap() });
 
         println!("{:?}", result);

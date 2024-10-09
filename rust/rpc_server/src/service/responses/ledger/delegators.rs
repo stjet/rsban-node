@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountsWithAmountsDto, DelegatorsArgs};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -46,7 +46,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .delegators(*DEV_GENESIS_ACCOUNT, None, None, None)
                 .await

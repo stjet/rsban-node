@@ -572,7 +572,8 @@ impl Wallets {
         }
         let mut tx = self.env.tx_begin_write();
         target
-            .store.move_keys(&mut tx, &source.store, accounts)
+            .store
+            .move_keys(&mut tx, &source.store, accounts)
             .map_err(|_| WalletsError::AccountNotFound)
     }
 
@@ -1009,6 +1010,15 @@ pub trait WalletsExt {
         generate_work: bool,
     ) -> Option<BlockEnum>;
 
+    fn change_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        representative: PublicKey,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum>;
+
     fn receive_action2(
         &self,
         wallet_id: &WalletId,
@@ -1016,15 +1026,6 @@ pub trait WalletsExt {
         representative: PublicKey,
         amount: Amount,
         account: Account,
-        work: u64,
-        generate_work: bool,
-    ) -> Result<Option<BlockEnum>, WalletsError>;
-
-    fn change_action2(
-        &self,
-        wallet_id: &WalletId,
-        source: Account,
-        representative: PublicKey,
         work: u64,
         generate_work: bool,
     ) -> Result<Option<BlockEnum>, WalletsError>;
@@ -1186,31 +1187,17 @@ impl WalletsExt for Arc<Wallets> {
             return Err(WalletsError::AccountNotFound);
         }
 
-        Ok(self.receive_action(wallet, send_hash, representative, amount, account, work, generate_work))
+        Ok(self.receive_action(
+            wallet,
+            send_hash,
+            representative,
+            amount,
+            account,
+            work,
+            generate_work,
+        ))
     }
 
-    fn change_action2(
-        &self,
-        wallet_id: &WalletId,
-        source: Account,
-        representative: PublicKey,
-        work: u64,
-        generate_work: bool,
-    ) -> Result<Option<BlockEnum>, WalletsError> {
-        let guard = self.mutex.lock().unwrap();
-        let wallet = Wallets::get_wallet(&guard, wallet_id)?;
-        let tx = self.env.tx_begin_read();
-        if !wallet.store.valid_password(&tx) {
-            return Err(WalletsError::WalletLocked);
-        }
-
-        if wallet.store.find(&tx, &source.into()).is_end() {
-            return Err(WalletsError::AccountNotFound);
-        }
-
-        Ok(self.change_action(wallet, source, representative, work, generate_work))
-    }
-    
     fn deterministic_insert(
         &self,
         wallet: &Arc<Wallet>,
@@ -1560,6 +1547,19 @@ impl WalletsExt for Arc<Wallets> {
             }
         }
         block
+    }
+
+    fn change_action2(
+        &self,
+        wallet_id: &WalletId,
+        source: Account,
+        representative: PublicKey,
+        work: u64,
+        generate_work: bool,
+    ) -> Option<BlockEnum> {
+        let guard = self.mutex.lock().unwrap();
+        let wallet = Wallets::get_wallet(&guard, &wallet_id).ok()?;
+        self.change_action(&wallet, source, representative, work, generate_work)
     }
 
     fn receive_action(

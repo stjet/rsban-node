@@ -1,5 +1,5 @@
 use rsnano_core::WalletId;
-use rsnano_node::{node::Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{AccountRpcMessage, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -50,7 +50,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_create(wallet_id, None, None)
                 .await
@@ -73,7 +73,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_create(wallet_id, Some(u32::MAX), None)
                 .await
@@ -96,7 +96,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_create(wallet_id, None, Some(true))
                 .await
@@ -128,7 +128,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_create(wallet_id, None, Some(false))
                 .await
@@ -161,7 +161,7 @@ mod tests {
         node.wallets.create(wallet_id);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
 
         assert_eq!(
@@ -186,7 +186,7 @@ mod tests {
         node.wallets.lock(&wallet_id).unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
 
         assert_eq!(
@@ -207,7 +207,7 @@ mod tests {
         let wallet_id = WalletId::random();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_create(wallet_id, None, None).await });
 
         assert_eq!(

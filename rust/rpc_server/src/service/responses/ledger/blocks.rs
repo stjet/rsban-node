@@ -1,5 +1,5 @@
 use rsnano_core::{BlockHash, JsonBlock};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::BlocksDto;
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -27,7 +27,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.blocks(vec![*DEV_GENESIS_HASH]).await.unwrap() });
 
         assert_eq!(

@@ -1,6 +1,6 @@
 use rsnano_messages::{Keepalive, Message};
 use rsnano_network::{DropPolicy, TrafficType};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
 use serde_json::to_string_pretty;
 use std::{
@@ -104,7 +104,7 @@ mod tests {
             "clock did not advance",
         );
 
-        node0.tokio.block_on(async {
+        node0.runtime.block_on(async {
             rpc_client
                 .keepalive(Ipv6Addr::LOCALHOST, node1.config.peering_port.unwrap())
                 .await
@@ -144,7 +144,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .keepalive(Ipv6Addr::LOCALHOST, get_available_port())
                 .await
@@ -165,7 +165,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .keepalive(Ipv6Addr::LOCALHOST, get_available_port())
                 .await

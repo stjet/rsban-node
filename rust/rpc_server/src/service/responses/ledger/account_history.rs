@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -280,7 +280,6 @@ mod tests {
                 node.work_generate_dev((*DEV_GENESIS_HASH).into()),
                 false,
             )
-            .unwrap()
             .unwrap();
 
         let send = node
@@ -346,13 +345,12 @@ mod tests {
                 node.work_generate_dev(ureceive.hash().into()),
                 false,
             )
-            .unwrap()
             .unwrap();
 
         // Set up RPC client and server
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let account_history = node.tokio.block_on(async {
+        let account_history = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     *DEV_GENESIS_ACCOUNT,
@@ -408,7 +406,7 @@ mod tests {
         assert!(history[4].confirmed);
 
         // Test count and reverse
-        let account_history_reverse = node.tokio.block_on(async {
+        let account_history_reverse = node.runtime.block_on(async {
             rpc_client
                 .account_history(*DEV_GENESIS_ACCOUNT, 1, None, None, None, Some(true), None)
                 .await
@@ -438,8 +436,7 @@ mod tests {
             )
             .unwrap();
 
-        let receive2 = node
-            .wallets
+        node.wallets
             .receive_action2(
                 &wallet_id,
                 send2.hash(),
@@ -453,7 +450,7 @@ mod tests {
             .unwrap();
 
         // Test filter for send state blocks
-        let account_history_filtered_send = node.tokio.block_on(async {
+        let account_history_filtered_send = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     *DEV_GENESIS_ACCOUNT,
@@ -476,7 +473,7 @@ mod tests {
         assert_eq!(account_history_filtered_send.history[0].account, account2);
 
         // Test filter for receive state blocks
-        let account_history_filtered_receive = node.tokio.block_on(async {
+        let account_history_filtered_receive = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     account2.into(),

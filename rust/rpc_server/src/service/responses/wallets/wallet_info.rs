@@ -1,5 +1,5 @@
 use rsnano_core::{Amount, WalletId};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, WalletInfoDto};
 use rsnano_store_lmdb::KeyType;
 use serde_json::to_string_pretty;
@@ -88,7 +88,7 @@ mod tests {
         send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_info(wallet).await.unwrap() });
 
         assert_eq!(result.balance, Amount::MAX - Amount::raw(1));
@@ -112,7 +112,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_info(WalletId::zero()).await });
 
         assert_eq!(

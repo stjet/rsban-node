@@ -28,7 +28,7 @@ use rsnano_core::{
 use rsnano_network::ChannelId;
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
-    node::{Node, NodeExt},
+    NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use std::{
     collections::VecDeque,
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn rsn_node_create(
     );
 
     let ctx = Arc::clone(&ctx_wrapper);
-    let account_balance_changed_wrapper: AccountBalanceChangedCallback =
+    let balance_changed_wrapper: AccountBalanceChangedCallback =
         Box::new(move |account, is_pending| {
             balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
         });
@@ -92,17 +92,21 @@ pub unsafe extern "C" fn rsn_node_create(
         },
     );
 
-    Box::into_raw(Box::new(NodeHandle(Arc::new(Node::new(
-        async_rt.tokio.handle().clone(),
-        path,
-        config.try_into().unwrap(),
-        params.try_into().unwrap(),
-        flags.lock().unwrap().clone(),
-        Arc::clone(work),
-        election_ended_wrapper,
-        account_balance_changed_wrapper,
-        vote_processed,
-    )))))
+    let network_params: NetworkParams = params.try_into().unwrap();
+
+    let node = NodeBuilder::new(network_params.network.current_network)
+        .runtime(async_rt.tokio.handle().clone())
+        .data_path(path)
+        .config(config.try_into().unwrap())
+        .network_params(network_params)
+        .flags(flags.lock().unwrap().clone())
+        .work((*work).clone())
+        .on_election_end(election_ended_wrapper)
+        .on_balance_changed(balance_changed_wrapper)
+        .on_vote(vote_processed)
+        .finish();
+
+    Box::into_raw(Box::new(NodeHandle(Arc::new(node))))
 }
 
 #[no_mangle]

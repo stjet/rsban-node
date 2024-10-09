@@ -1,5 +1,5 @@
 use rsnano_core::BlockHash;
-use rsnano_node::{bootstrap::BootstrapInitiatorExt, node::Node};
+use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
 use rsnano_rpc_messages::{BootstrapLazyDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.bootstrap_lazy(hash, None, None).await.unwrap() });
 
         assert_eq!(result.started, true);
@@ -63,7 +63,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .bootstrap_lazy(BlockHash::zero(), None, None)
                 .await

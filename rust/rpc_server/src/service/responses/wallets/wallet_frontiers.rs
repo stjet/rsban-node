@@ -1,5 +1,5 @@
 use rsnano_core::WalletId;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, FrontiersDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -45,7 +45,7 @@ mod tests {
         let hash = send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_frontiers(wallet).await.unwrap() });
 
         assert_eq!(result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(), &hash);

@@ -1,4 +1,4 @@
-use rsnano_node::{node::Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{ErrorDto, WalletChangeSeedArgs, WalletChangeSeedDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -42,7 +42,7 @@ mod tests {
             RawKey::decode_hex("74F2B37AAD20F4A260F0A5B3CB3D7FB51673212263E58A380BC10474BB039CEE")
                 .unwrap();
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .wallet_change_seed(wallet_id, new_seed, None)
                 .await
@@ -61,7 +61,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_change_seed(WalletId::zero(), RawKey::zero(), None)
                 .await

@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::AccountBalanceDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -35,9 +35,9 @@ pub async fn account_balance(
 
 #[cfg(test)]
 mod tests {
-    use test_helpers::{send_block, setup_rpc_client_and_server};
     use rsnano_core::{Amount, DEV_GENESIS_KEY};
     use test_helpers::System;
+    use test_helpers::{send_block, setup_rpc_client_and_server};
 
     #[test]
     fn account_balance_only_confirmed_none() {
@@ -48,7 +48,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_balance(DEV_GENESIS_KEY.public_key().as_account(), None)
                 .await
@@ -76,7 +76,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_balance(DEV_GENESIS_KEY.public_key().as_account(), Some(true))
                 .await
@@ -104,7 +104,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_balance(DEV_GENESIS_KEY.public_key().as_account(), Some(false))
                 .await

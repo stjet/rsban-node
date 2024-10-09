@@ -1,5 +1,5 @@
 use rsnano_core::{Account, PublicKey, WalletId};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{BoolDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -55,7 +55,7 @@ mod tests {
         assert!(!wallet_accounts.contains(&account));
         assert!(source_accounts.contains(&account));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![account])
                 .await
@@ -99,7 +99,7 @@ mod tests {
         assert!(source_accounts.contains(&account));
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_move(wallet, source, vec![account]).await });
 
         assert!(result.is_err());
@@ -119,7 +119,7 @@ mod tests {
 
         node.wallets.create(wallet);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![Account::zero()])
                 .await
@@ -145,7 +145,7 @@ mod tests {
 
         node.wallets.create(source);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![Account::zero()])
                 .await
@@ -174,7 +174,7 @@ mod tests {
 
         node.wallets.lock(&source).unwrap();
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![Account::zero()])
                 .await
@@ -203,7 +203,7 @@ mod tests {
 
         node.wallets.lock(&wallet).unwrap();
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![Account::zero()])
                 .await
@@ -230,7 +230,7 @@ mod tests {
         node.wallets.create(wallet);
         node.wallets.create(source);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_move(wallet, source, vec![Account::zero()])
                 .await

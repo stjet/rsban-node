@@ -1,21 +1,27 @@
 use super::account_get;
+use super::account_history;
 use super::account_info;
 use super::accounts_representatives;
 use super::block_confirm;
 use super::blocks_info;
+use super::bootstrap_any;
+use super::bootstrap_lazy;
 use super::keepalive;
 use super::nano_to_raw;
 use super::password_enter;
 use super::peers;
 use super::search_receivable_all;
+use super::sign;
 use super::stats_clear;
 use super::stop;
+use super::unchecked_get;
 use super::wallet_contains;
 use super::wallet_destroy;
 use super::wallet_frontiers;
 use super::wallet_info;
 use super::wallet_lock;
 use super::wallet_locked;
+use super::wallet_receivable;
 use super::work_get;
 use super::{
     account_create, account_list, account_move, account_remove, accounts_create, key_create,
@@ -23,7 +29,6 @@ use super::{
 };
 use crate::account_balance;
 use crate::uptime;
-use super::wallet_receivable;
 use anyhow::{Context, Result};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json};
@@ -32,16 +37,13 @@ use axum::{
     middleware::map_request,
     Router,
 };
-use rsnano_node::node::Node;
+use rsnano_node::Node;
+use rsnano_rpc_messages::WalletBalancesArgs;
 use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use super::account_history;
-use super::sign;
-use super::bootstrap_any;
-use super::bootstrap_lazy;
 
 use super::wallet_add;
 
@@ -110,6 +112,7 @@ use super::delegators_count;
 use super::block_hash;
 
 use super::accounts_balances;
+use super::wallet_balances;
 
 use super::block_info;
 
@@ -134,6 +137,32 @@ use super::wallet_representative_set;
 use super::search_receivable;
 
 use super::wallet_republish;
+
+use super::wallet_history;
+
+use super::wallet_ledger;
+
+use super::accounts_receivable;
+
+use super::receivable;
+
+use super::receivable_exists;
+
+use super::representatives_online;
+
+use super::unchecked;
+
+use super::unchecked_keys;
+
+use super::confirmation_info;
+
+use super::ledger;
+
+use super::work_generate;
+
+use super::republish;
+
+use super::block_create;
 
 #[derive(Clone)]
 struct RpcService {
@@ -391,7 +420,9 @@ async fn handle_rpc(
         RpcCommand::AccountHistory(args) => account_history(rpc_service.node, args).await,
         RpcCommand::Sign(args) => sign(rpc_service.node, args).await,
         RpcCommand::Process(args) => process(rpc_service.node, args).await,
-        RpcCommand::WorkCancel(args) => work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await,
+        RpcCommand::WorkCancel(args) => {
+            work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await
+        }
         RpcCommand::Bootstrap(bootstrap_args) => {
             bootstrap(
                 rpc_service.node,
@@ -401,12 +432,93 @@ async fn handle_rpc(
             )
             .await
         }
-        RpcCommand::BootstrapAny(args) => bootstrap_any(rpc_service.node, args.force, args.id, args.account).await,
-        RpcCommand::BoostrapLazy(args) => bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await,
-        RpcCommand::WalletReceivable(args) => wallet_receivable(rpc_service.node, rpc_service.enable_control,args).await,
-        RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet_with_account.wallet, args.wallet_with_account.account, args.update_existing_accounts).await,
-        RpcCommand::SearchReceivable(args) => search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await,
-        RpcCommand::WalletRepublish(args) => wallet_republish(rpc_service.node, rpc_service.enable_control, args.wallet, args.count).await,
+        RpcCommand::BootstrapAny(args) => {
+            bootstrap_any(rpc_service.node, args.force, args.id, args.account).await
+        }
+        RpcCommand::BoostrapLazy(args) => {
+            bootstrap_lazy(rpc_service.node, args.hash, args.force, args.id).await
+        }
+        RpcCommand::WalletReceivable(args) => {
+            wallet_receivable(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::WalletRepresentativeSet(args) => {
+            wallet_representative_set(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet_with_account.wallet,
+                args.wallet_with_account.account,
+                args.update_existing_accounts,
+            )
+            .await
+        }
+        RpcCommand::SearchReceivable(args) => {
+            search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await
+        }
+        RpcCommand::WalletRepublish(args) => {
+            wallet_republish(
+                rpc_service.node,
+                rpc_service.enable_control,
+                args.wallet,
+                args.count,
+            )
+            .await
+        }
+        RpcCommand::WalletBalances(WalletBalancesArgs { wallet, threshold }) => {
+            wallet_balances(rpc_service.node, wallet, threshold).await
+        }
+        RpcCommand::WalletHistory(args) => {
+            wallet_history(rpc_service.node, args.wallet, args.modified_since).await
+        }
+        RpcCommand::WalletLedger(args) => {
+            wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::AccountsReceivable(args) => accounts_receivable(rpc_service.node, args).await,
+        RpcCommand::Receivable(args) => receivable(rpc_service.node, args).await,
+        RpcCommand::ReceivableExists(args) => {
+            receivable_exists(
+                rpc_service.node,
+                args.hash,
+                args.include_active,
+                args.include_only_confirmed,
+            )
+            .await
+        }
+        RpcCommand::RepresentativesOnline(args) => {
+            representatives_online(rpc_service.node, args.weight, args.accounts).await
+        }
+        RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
+        RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
+        RpcCommand::UncheckedKeys(args) => {
+            unchecked_keys(rpc_service.node, args.key, args.count).await
+        }
+        RpcCommand::ConfirmationInfo(args) => {
+            confirmation_info(
+                rpc_service.node,
+                args.root,
+                args.contents,
+                args.representatives,
+            )
+            .await
+        }
+        RpcCommand::Ledger(args) => {
+            ledger(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::WorkGenerate(args) => {
+            work_generate(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::Republish(args) => {
+            republish(
+                rpc_service.node,
+                args.hash,
+                args.sources,
+                args.destinations,
+                args.count,
+            )
+            .await
+        }
+        RpcCommand::BlockCreate(args) => {
+            block_create(rpc_service.node, rpc_service.enable_control, args).await
+        }
         _ => todo!(),
     };
 

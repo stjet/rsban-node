@@ -1,4 +1,4 @@
-use rsnano_node::node::{Node, NodeExt};
+use rsnano_node::{Node, NodeExt};
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ mod tests {
 
         assert_eq!(node.process_local(send).unwrap(), BlockStatus::Progress);
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client.search_receivable_all().await.unwrap();
         });
 
@@ -66,7 +66,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.search_receivable_all().await });
 
         assert_eq!(

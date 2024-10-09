@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountRpcMessage, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -31,7 +31,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_representative(*DEV_GENESIS_ACCOUNT)
                 .await
@@ -51,7 +51,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_representative(Account::zero()).await });
 
         assert_eq!(

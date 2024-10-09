@@ -1,6 +1,6 @@
+use crate::{AccountRpcMessage, RpcCommand};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
-use crate::{AccountRpcMessage, RpcCommand};
 
 impl RpcCommand {
     pub fn delegators_count(account: Account) -> Self {
@@ -18,7 +18,6 @@ impl CountDto {
         Self { count }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

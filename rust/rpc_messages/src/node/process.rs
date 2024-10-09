@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{BlockSubType, JsonBlock};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn process(
@@ -10,7 +10,9 @@ impl RpcCommand {
         watch_work: Option<bool>,
         is_async: Option<bool>,
     ) -> Self {
-        Self::Process(ProcessArgs::new(subtype, block, force, watch_work, is_async))
+        Self::Process(ProcessArgs::new(
+            subtype, block, force, watch_work, is_async,
+        ))
     }
 }
 

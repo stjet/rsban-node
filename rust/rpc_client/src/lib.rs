@@ -3,7 +3,8 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockHash, BlockSubType, JsonBlock, PublicKey, RawKey, WalletId, WorkNonce,
+    Account, Amount, BlockHash, BlockSubType, HashOrAccount, JsonBlock, Link, PublicKey,
+    QualifiedRoot, RawKey, WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
 use serde::Serialize;
@@ -28,6 +29,213 @@ impl NanoRpcClient {
 
     pub async fn account_get(&self, key: PublicKey) -> Result<AccountRpcMessage> {
         let cmd = RpcCommand::account_get(key);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn block_create(
+        &self,
+        block_type: BlockTypeDto,
+        balance: Option<Amount>,
+        key: Option<RawKey>,
+        wallet: Option<WalletId>,
+        account: Option<Account>,
+        source: Option<BlockHash>,
+        destination: Option<Account>,
+        representative: Option<Account>,
+        link: Option<Link>,
+        previous: Option<BlockHash>,
+        work: Option<WorkNonce>,
+        version: Option<WorkVersionDto>,
+        difficulty: Option<u64>,
+    ) -> Result<BlockCreateDto> {
+        let cmd = RpcCommand::block_create(
+            block_type,
+            balance,
+            key,
+            wallet,
+            account,
+            source,
+            destination,
+            representative,
+            link,
+            previous,
+            work,
+            version,
+            difficulty,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn republish(
+        &self,
+        hash: BlockHash,
+        sources: Option<u64>,
+        destinations: Option<u64>,
+        count: Option<u64>,
+    ) -> Result<BlockHashesDto> {
+        let cmd = RpcCommand::republish(hash, sources, destinations, count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn work_generate(
+        &self,
+        hash: BlockHash,
+        use_peers: Option<bool>,
+        difficulty: Option<u64>,
+        multiplier: Option<u64>,
+        account: Option<Account>,
+        version: Option<WorkVersionDto>,
+        block: Option<JsonBlock>,
+    ) -> Result<WorkGenerateDto> {
+        let cmd = RpcCommand::work_generate(
+            hash, use_peers, difficulty, multiplier, account, version, block,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn ledger(
+        &self,
+        account: Option<Account>,
+        count: Option<u64>,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        receivable: Option<bool>,
+        modified_since: Option<u64>,
+        sorting: Option<bool>,
+        threshold: Option<Amount>,
+    ) -> Result<LedgerDto> {
+        let cmd = RpcCommand::ledger(
+            account,
+            count,
+            representative,
+            weight,
+            receivable,
+            modified_since,
+            sorting,
+            threshold,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn confirmation_info(
+        &self,
+        root: QualifiedRoot,
+        contents: Option<bool>,
+        representatives: Option<bool>,
+    ) -> Result<ConfirmationInfoDto> {
+        let cmd = RpcCommand::confirmation_info(root, contents, representatives);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn unchecked_keys(&self, key: HashOrAccount, count: u64) -> Result<UncheckedKeysDto> {
+        let cmd = RpcCommand::unchecked_keys(key, count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn unchecked_get(&self, hash: BlockHash) -> Result<UncheckedGetDto> {
+        let cmd = RpcCommand::unchecked_get(hash);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn unchecked(&self, count: u64) -> Result<UncheckedDto> {
+        let cmd = RpcCommand::unchecked(count);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn representatives_online(
+        &self,
+        weight: Option<bool>,
+        accounts: Option<Vec<Account>>,
+    ) -> Result<AccountsWithAmountsDto> {
+        let cmd = RpcCommand::representatives_online(weight, accounts);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn receivable_exists(
+        &self,
+        hash: BlockHash,
+        include_active: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<BoolDto> {
+        let cmd = RpcCommand::receivable_exists(hash, include_active, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn receivable(
+        &self,
+        account: Account,
+        count: u64,
+        threshold: Option<Amount>,
+        source: Option<bool>,
+        min_version: Option<bool>,
+        sorting: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<ReceivableDto> {
+        let cmd = RpcCommand::receivable(
+            account,
+            count,
+            threshold,
+            source,
+            min_version,
+            sorting,
+            include_only_confirmed,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn accounts_receivable(
+        &self,
+        accounts: Vec<Account>,
+        count: u64,
+        threshold: Option<Amount>,
+        source: Option<bool>,
+        sorting: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Result<ReceivableDto> {
+        let cmd = RpcCommand::accounts_receivable(
+            accounts,
+            count,
+            threshold,
+            source,
+            sorting,
+            include_only_confirmed,
+        );
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn wallet_ledger(
+        &self,
+        wallet: WalletId,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        receivable: Option<bool>,
+        modified_since: Option<u64>,
+    ) -> Result<WalletLedgerDto> {
+        let cmd =
+            RpcCommand::wallet_ledger(wallet, representative, weight, receivable, modified_since);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn wallet_history(
+        &self,
+        wallet: WalletId,
+        modified_since: Option<u64>,
+    ) -> Result<WalletHistoryDto> {
+        let cmd = RpcCommand::wallet_history(wallet, modified_since);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -539,6 +747,16 @@ impl NanoRpcClient {
         include_only_confirmed: Option<bool>,
     ) -> Result<AccountsBalancesDto> {
         let cmd = RpcCommand::accounts_balances(accounts, include_only_confirmed);
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
+    pub async fn wallet_balances(
+        &self,
+        wallet: WalletId,
+        threshold: Option<Amount>,
+    ) -> Result<AccountsBalancesDto> {
+        let cmd = RpcCommand::wallet_balances(wallet, threshold);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

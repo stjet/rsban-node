@@ -175,7 +175,10 @@ mod tests {
         );
 
         let serialized = to_string_pretty(&account_info).unwrap();
-        println!("Serialized AccountInfoDto with None values:\n{}", serialized);
+        println!(
+            "Serialized AccountInfoDto with None values:\n{}",
+            serialized
+        );
 
         let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
         assert_eq!(account_info, deserialized);
@@ -217,7 +220,10 @@ mod tests {
     fn serialize_account_info_dto_with_some_values() {
         let account_info = create_account_info_dto_with_some_values();
         let serialized = to_string_pretty(&account_info).unwrap();
-        println!("Serialized AccountInfoDto with Some values:\n{}", serialized);
+        println!(
+            "Serialized AccountInfoDto with Some values:\n{}",
+            serialized
+        );
 
         // Check that all fields are present in the serialized output
         assert!(serialized.contains("frontier"));

@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::AmountDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -48,7 +48,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.available_supply().await.unwrap() });
 
         assert_eq!(result.value, Amount::MAX);

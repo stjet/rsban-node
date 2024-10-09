@@ -1,4 +1,4 @@
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::ConfirmationActiveDto;
 use serde_json::to_string_pretty;
 use std::{sync::Arc, usize};
@@ -44,7 +44,7 @@ mod tests {
         send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_active(None).await.unwrap() });
 
         assert!(!result.confirmations.is_empty());

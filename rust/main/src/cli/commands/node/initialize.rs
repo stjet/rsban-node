@@ -4,8 +4,7 @@ use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    node::{Node, NodeExt},
-    NetworkParams,
+    NetworkParams, NodeBuilder, NodeExt,
 };
 use std::{
     sync::{Arc, Condvar, Mutex},
@@ -46,18 +45,15 @@ impl InitializeArgs {
             Duration::from_nanos(config.pow_sleep_interval_ns as u64),
         ));
 
-        let node = Arc::new(Node::new(
-            tokio::runtime::Handle::current(),
-            path,
-            config,
-            network_params,
-            flags,
-            work,
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-        ));
+        let node = NodeBuilder::new(network_params.network.current_network)
+            .data_path(path)
+            .config(config)
+            .network_params(network_params)
+            .flags(flags)
+            .work(work)
+            .finish();
 
+        let node = Arc::new(node);
         node.start();
 
         let finished = Arc::new((Mutex::new(false), Condvar::new()));

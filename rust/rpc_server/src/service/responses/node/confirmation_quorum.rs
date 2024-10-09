@@ -1,5 +1,5 @@
 use rsnano_core::utils::NULL_ENDPOINT;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ConfirmationQuorumDto, PeerDetailsDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -46,9 +46,8 @@ pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) ->
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
-    use rsnano_node::{config::NodeFlags, wallets::WalletsExt};
-    use rsnano_rpc_messages::{ConfirmationQuorumDto, PeerDetailsDto};
+    use rsnano_core::{WalletId, DEV_GENESIS_KEY};
+    use rsnano_node::wallets::WalletsExt;
     use test_helpers::{establish_tcp, send_block, setup_rpc_client_and_server, System};
 
     #[test]
@@ -59,7 +58,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_quorum(None).await.unwrap() });
 
         let reps = node.online_reps.lock().unwrap();
@@ -89,7 +88,7 @@ mod tests {
             .disconnected()
             .finish();
 
-        let channel1 = establish_tcp(&node1, &node0);
+        establish_tcp(&node1, &node0);
 
         let wallet_id = WalletId::zero();
         node1.wallets.create(wallet_id);
@@ -107,7 +106,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
         let result = node0
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_quorum(Some(true)).await.unwrap() });
 
         let reps = node0.online_reps.lock().unwrap();

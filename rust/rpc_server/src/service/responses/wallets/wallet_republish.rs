@@ -1,5 +1,5 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, WalletId};
-use rsnano_node::node::{Node, NodeExt};
+use rsnano_node::{Node, NodeExt};
 use rsnano_rpc_messages::{BlockHashesDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::collections::VecDeque;
@@ -66,7 +66,7 @@ fn collect_blocks_to_republish(
 mod tests {
     use rsnano_core::{Amount, BlockEnum, StateBlock, WalletId, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{node::Node, wallets::WalletsExt};
+    use rsnano_node::{wallets::WalletsExt, Node};
     use std::{sync::Arc, time::Duration};
     use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -109,7 +109,7 @@ mod tests {
             .unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(wallet, 1).await.unwrap() });
 
         assert!(
@@ -130,7 +130,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
 
         assert_eq!(
@@ -149,7 +149,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
 
         assert_eq!(

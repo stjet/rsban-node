@@ -1,5 +1,5 @@
 use rsnano_core::BlockHash;
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockHashesDto, ChainArgs};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -75,7 +75,7 @@ mod tests {
 
         let block = send_block(node.clone());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .chain(block.hash(), u64::MAX, None, None)
                 .await

@@ -24,7 +24,7 @@ mod tests {
         node.wallets.create(wallet_id);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_get(PublicKey::zero()).await.unwrap() });
 
         assert_eq!(result.value, PublicKey::zero().into());

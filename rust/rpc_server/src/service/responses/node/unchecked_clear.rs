@@ -1,4 +1,4 @@
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::SuccessDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ mod tests {
 
         assert!(!node.unchecked.is_empty());
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.unchecked_clear().await.unwrap() });
 
         assert!(node.unchecked.is_empty());

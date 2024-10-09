@@ -1,4 +1,4 @@
-use rsnano_node::{node::Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{BlockHashRpcMessage, ErrorDto, SendArgs};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ mod tests {
         .unwrap();
         let amount = Amount::raw(1000000);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .send(
                     wallet,
@@ -93,7 +93,7 @@ mod tests {
         .unwrap();
         let amount = Amount::raw(1000000);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .send(
                     wallet,

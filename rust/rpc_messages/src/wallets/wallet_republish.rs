@@ -1,6 +1,6 @@
-use rsnano_core::WalletId;
-use crate::RpcCommand;
 use super::WalletWithCountArgs;
+use crate::RpcCommand;
+use rsnano_core::WalletId;
 use serde_json::json;
 
 impl RpcCommand {
@@ -15,7 +15,10 @@ mod tests {
 
     #[test]
     fn serialize_wallet_republish() {
-        let wallet = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let command = RpcCommand::wallet_republish(wallet, 2);
 
         let json = serde_json::to_value(command).unwrap();
@@ -40,11 +43,16 @@ mod tests {
         let command: RpcCommand = serde_json::from_value(json).unwrap();
         match command {
             RpcCommand::WalletRepublish(args) => {
-                assert_eq!(args.wallet, WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
+                assert_eq!(
+                    args.wallet,
+                    WalletId::decode_hex(
+                        "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+                    )
+                    .unwrap()
+                );
                 assert_eq!(args.count, 2);
             }
             _ => panic!("Unexpected RpcCommand variant"),
         }
     }
 }
-

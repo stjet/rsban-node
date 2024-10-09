@@ -1,4 +1,4 @@
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::SuccessDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.stats_clear().await.unwrap() });
 
         assert_eq!(

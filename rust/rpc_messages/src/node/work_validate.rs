@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{BlockHash, Difficulty, WorkNonce};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn work_validate(work: WorkNonce, hash: BlockHash) -> Self {

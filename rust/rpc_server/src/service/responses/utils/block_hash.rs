@@ -26,7 +26,7 @@ mod tests {
         let block = BlockEnum::State(StateBlock::new_test_instance()).json_representation();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.block_hash(block).await.unwrap() });
 
         assert_eq!(

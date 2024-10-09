@@ -391,7 +391,7 @@ impl From<JsonStateBlock> for StateBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonStateBlock {
     pub account: Account,
     pub previous: BlockHash,

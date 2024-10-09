@@ -172,7 +172,7 @@ struct RpcService {
 
 pub async fn run_rpc_server(
     node: Arc<Node>,
-    server_addr: SocketAddr,
+    listener: TcpListener,
     enable_control: bool,
 ) -> Result<()> {
     let rpc_service = RpcService {
@@ -185,15 +185,11 @@ pub async fn run_rpc_server(
         .layer(map_request(set_header))
         .with_state(rpc_service);
 
-    let listener = TcpListener::bind(server_addr)
-        .await
-        .context("Failed to bind to address")?;
+    info!("RPC listening address: {}", listener.local_addr()?);
 
     axum::serve(listener, app)
         .await
         .context("Failed to run the server")?;
-
-    info!("RPC listening address: {}", server_addr);
 
     Ok(())
 }

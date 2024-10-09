@@ -84,6 +84,30 @@ mod tests {
 
         let blocks = result.blocks;
 
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0], block.hash());
+
+        server.abort();
+    }
+
+    #[test]
+    fn successors() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+        let block = send_block(node.clone());
+
+        let result = node.tokio.block_on(async {
+            rpc_client
+                .successors(block.hash(), u64::MAX, None, None)
+                .await
+                .unwrap()
+        });
+
+        let blocks = result.blocks;
+
         assert_eq!(blocks.len(), 2);
         assert_eq!(blocks[0], block.hash());
         assert_eq!(blocks[1], *DEV_GENESIS_HASH);

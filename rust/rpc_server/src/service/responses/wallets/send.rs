@@ -43,14 +43,14 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .send(
+                .send(SendArgs::new(
                     wallet,
                     *DEV_GENESIS_ACCOUNT,
                     destination,
                     amount,
                     None,
                     None,
-                )
+                ))
                 .await
                 .unwrap()
         });
@@ -95,14 +95,14 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .send(
+                .send(SendArgs::new(
                     wallet,
                     *DEV_GENESIS_ACCOUNT,
                     destination,
                     amount,
                     None,
                     None,
-                )
+                ))
                 .await
         });
 

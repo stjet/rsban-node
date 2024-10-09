@@ -4,22 +4,8 @@ use rsnano_core::{Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn account_info(
-        account: Account,
-        representative: Option<bool>,
-        weight: Option<bool>,
-        pending: Option<bool>,
-        receivable: Option<bool>,
-        include_confirmed: Option<bool>,
-    ) -> Self {
-        Self::AccountInfo(AccountInfoArgs {
-            account,
-            representative,
-            weight,
-            pending,
-            receivable,
-            include_confirmed,
-        })
+    pub fn account_info(account_info_args: AccountInfoArgs) -> Self {
+        Self::AccountInfo(account_info_args)
     }
 }
 
@@ -108,14 +94,14 @@ mod tests {
     #[test]
     fn serialize_account_info_command() {
         assert_eq!(
-            serde_json::to_string_pretty(&RpcCommand::account_info(
-                Account::from(123),
-                None,
-                None,
-                None,
-                None,
-                None
-            ))
+            serde_json::to_string_pretty(&RpcCommand::account_info(AccountInfoArgs {
+                account: Account::from(123),
+                representative: None,
+                weight: None,
+                pending: None,
+                receivable: None,
+                include_confirmed: None,
+            }))
             .unwrap(),
             r#"{
   "action": "account_info",
@@ -127,7 +113,14 @@ mod tests {
     #[test]
     fn derialize_account_info_command() {
         let account = Account::from(123);
-        let cmd = RpcCommand::account_info(account, None, None, None, None, None);
+        let cmd = RpcCommand::account_info(AccountInfoArgs {
+            account,
+            representative: None,
+            weight: None,
+            pending: None,
+            receivable: None,
+            include_confirmed: None,
+        });
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
@@ -275,14 +268,14 @@ mod tests {
 
     #[test]
     fn serialize_account_info_command_with_some_args() {
-        let command = RpcCommand::account_info(
-            Account::zero(),
-            Some(true),
-            Some(false),
-            None,
-            Some(true),
-            None,
-        );
+        let command = RpcCommand::account_info(AccountInfoArgs {
+            account: Account::zero(),
+            representative: Some(true),
+            weight: Some(false),
+            pending: None,
+            receivable: Some(true),
+            include_confirmed: None,
+        });
 
         let serialized = to_string_pretty(&command).unwrap();
         println!("Serialized AccountInfo command:\n{}", serialized);
@@ -298,5 +291,6 @@ mod tests {
         assert!(!serialized.contains("include_confirmed"));
 
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
+        assert_eq!(command, deserialized);
     }
 }

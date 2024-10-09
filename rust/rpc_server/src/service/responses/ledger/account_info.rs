@@ -100,6 +100,7 @@ pub async fn account_info(node: Arc<Node>, args: AccountInfoArgs) -> String {
 mod tests {
     use rsnano_core::{Account, Amount};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+    use rsnano_rpc_messages::AccountInfoArgs;
     use test_helpers::{setup_rpc_client_and_server, System};
 
     #[test]
@@ -111,17 +112,17 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .account_info(
-                    Account::decode_account(
+                .account_info(AccountInfoArgs {
+                    account: Account::decode_account(
                         "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
                     )
                     .unwrap(),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                )
+                    representative: None,
+                    weight: None,
+                    pending: None,
+                    receivable: None,
+                    include_confirmed: None,
+                })
                 .await
         });
 
@@ -132,14 +133,14 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .account_info(
-                    *DEV_GENESIS_ACCOUNT,
-                    Some(true),
-                    Some(true),
-                    Some(true),
-                    Some(true),
-                    Some(true),
-                )
+                .account_info(AccountInfoArgs {
+                    account: *DEV_GENESIS_ACCOUNT,
+                    representative: Some(true),
+                    weight: Some(true),
+                    pending: Some(true),
+                    receivable: Some(true),
+                    include_confirmed: Some(true),
+                })
                 .await
                 .unwrap()
         });

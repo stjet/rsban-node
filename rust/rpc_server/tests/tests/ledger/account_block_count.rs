@@ -1,4 +1,3 @@
-
 use rsnano_core::Account;
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use test_helpers::{setup_rpc_client_and_server, System};

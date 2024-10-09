@@ -1,4 +1,3 @@
-
 use rsnano_core::Amount;
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use std::collections::HashMap;

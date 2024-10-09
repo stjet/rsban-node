@@ -1,8 +1,7 @@
+use super::WalletWithCountArgs;
 use crate::RpcCommand;
 use rsnano_core::{Amount, WalletId};
 use serde::{Deserialize, Serialize};
-
-use super::{wallet_with_count, WalletWithCountArgs};
 
 impl RpcCommand {
     pub fn wallet_receivable(

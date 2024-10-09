@@ -80,7 +80,6 @@ impl SendBlock {
         destination: &Account,
         balance: &Amount,
         private_key: &RawKey,
-        public_key: &PublicKey,
         work: u64,
     ) -> Self {
         let hashables = SendHashables {
@@ -108,7 +107,6 @@ impl SendBlock {
             &Account::from(2),
             &Amount::raw(3),
             &key.private_key(),
-            &key.public_key(),
             424269420,
         )
     }
@@ -417,7 +415,6 @@ mod tests {
             &Account::from(1),
             &Amount::raw(13),
             &key.private_key(),
-            &key.public_key(),
             2,
         );
 
@@ -439,7 +436,6 @@ mod tests {
             &Account::from(1),
             &Amount::raw(2),
             &key.private_key(),
-            &key.public_key(),
             5,
         );
         let mut stream = MemoryStream::new();

@@ -1,5 +1,4 @@
 use crate::RpcCommand;
-use serde_json;
 
 impl RpcCommand {
     pub fn populate_backlog() -> Self {

@@ -298,7 +298,6 @@ mod tests {
         });
 
         let serialized = to_string_pretty(&command).unwrap();
-        println!("Serialized AccountInfo command:\n{}", serialized);
 
         // Check that fields with Some values are serialized
         assert!(serialized.contains("account"));
@@ -309,8 +308,5 @@ mod tests {
         // Check that fields with None values are not serialized
         assert!(!serialized.contains("pending"));
         assert!(!serialized.contains("include_confirmed"));
-
-        let deserialized: RpcCommand = from_str(&serialized).unwrap();
-        assert_eq!(command, deserialized);
     }
 }

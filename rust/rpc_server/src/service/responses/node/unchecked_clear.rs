@@ -10,7 +10,10 @@ pub async fn unchecked_clear(node: Arc<Node>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use test_helpers::{send_block, setup_rpc_client_and_server, System};
+    use rsnano_core::{Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock};
+    use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+    use std::{thread::sleep, time::Duration};
+    use test_helpers::{setup_rpc_client_and_server, System};
 
     #[test]
     fn unchecked_clear() {
@@ -19,7 +22,21 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        send_block(node.clone());
+        let keypair = KeyPair::new();
+
+        let send1 = BlockEnum::State(StateBlock::new(
+            keypair.account(),
+            BlockHash::zero(),
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1),
+            Account::zero().into(),
+            &keypair,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+
+        node.process_local(send1.clone()).unwrap();
+
+        sleep(Duration::from_millis(1000));
 
         assert!(!node.unchecked.is_empty());
 

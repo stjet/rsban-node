@@ -38,6 +38,6 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
         let expected = RpcCommand::search_receivable(WalletId::zero());
 
-        assert!(matches!(deserialized, expected));
+        assert_eq!(deserialized, expected);
     }
 }

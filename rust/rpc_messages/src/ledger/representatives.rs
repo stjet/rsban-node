@@ -39,7 +39,7 @@ mod tests {
         let json = r#"{"action": "representatives"}"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         let expected = RpcCommand::representatives(None, None);
-        assert!(matches!(deserialized, expected));
+        assert_eq!(deserialized, expected);
     }
 
     #[test]

@@ -128,7 +128,8 @@ impl System {
             .network_params(self.network_params.clone())
             .flags(flags)
             .work(self.work.clone())
-            .finish();
+            .finish()
+            .unwrap();
         Arc::new(node)
     }
 
@@ -474,6 +475,8 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
     blocks
 }
 
+use tokio::net::TcpListener as TokioTcpListener;
+
 pub fn setup_rpc_client_and_server(
     node: Arc<Node>,
     enable_control: bool,
@@ -484,9 +487,15 @@ pub fn setup_rpc_client_and_server(
     let port = get_available_port();
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
 
+    let listener = node.runtime.block_on(async {
+        TokioTcpListener::bind(socket_addr)
+            .await
+            .expect("Failed to bind to address")
+    });
+
     let server = node
         .runtime
-        .spawn(run_rpc_server(node.clone(), socket_addr, enable_control));
+        .spawn(run_rpc_server(node.clone(), listener, enable_control));
 
     let rpc_url = format!("http://[::1]:{}/", port);
     let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
@@ -530,6 +539,36 @@ pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block
         || node.active.active(&send),
         "not active on node",
     );
+
+    send
+}
+
+pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+
+    let previous = node
+        .ledger
+        .any()
+        .account_head(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(*DEV_GENESIS_HASH);
+
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(Amount::MAX);
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        previous,
+        *DEV_GENESIS_PUB_KEY,
+        balance - amount,
+        account.into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(previous.into()),
+    ));
+
+    node.process_local(send.clone()).unwrap();
 
     send
 }

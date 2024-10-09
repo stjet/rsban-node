@@ -13,6 +13,8 @@ pub struct LedgerArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pending: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub receivable: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified_since: Option<u64>,
@@ -28,6 +30,7 @@ impl LedgerArgs {
         count: Option<u64>,
         representative: Option<bool>,
         weight: Option<bool>,
+        pending: Option<bool>,
         receivable: Option<bool>,
         modified_since: Option<u64>,
         sorting: Option<bool>,
@@ -38,6 +41,7 @@ impl LedgerArgs {
             count,
             representative,
             weight,
+            pending,
             receivable,
             modified_since,
             sorting,

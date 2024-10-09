@@ -24,6 +24,26 @@ pub struct AccountInfoArgs {
     pub include_confirmed: Option<bool>,
 }
 
+impl AccountInfoArgs {
+    pub fn new(
+        account: Account,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        pending: Option<bool>,
+        receivable: Option<bool>,
+        include_confirmed: Option<bool>,
+    ) -> Self {
+        Self {
+            account,
+            representative,
+            weight,
+            pending,
+            receivable,
+            include_confirmed,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountInfoDto {
     pub frontier: BlockHash,

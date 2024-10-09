@@ -11,11 +11,11 @@ use crate::{
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
         election_schedulers::ElectionSchedulers, get_bootstrap_weights, log_bootstrap_weights,
-        AccountBalanceChangedCallback, ActiveElections, ActiveElectionsExt, ElectionEndCallback,
+        ActiveElections, ActiveElectionsExt, BalanceChangedCallback, ElectionEndCallback,
         ElectionStatusType, LocalVoteHistory, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
         RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorCleanup, VoteApplier,
-        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessor,
-        VoteProcessorExt, VoteProcessorQueue, VoteProcessorQueueCleanup, VoteRouter,
+        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessedCallback2,
+        VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteProcessorQueueCleanup, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -43,7 +43,7 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, Vote, VoteCode,
+    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, VoteCode,
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -140,8 +140,8 @@ pub(crate) struct NodeArgs {
     pub flags: NodeFlags,
     pub work: Arc<WorkPoolImpl>,
     pub on_election_end: ElectionEndCallback,
-    pub on_balance_changed: AccountBalanceChangedCallback,
-    pub on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
+    pub on_balance_changed: BalanceChangedCallback,
+    pub on_vote: VoteProcessedCallback2,
     pub on_publish: Option<PublishedCallback>,
 }
 

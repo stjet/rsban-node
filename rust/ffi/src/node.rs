@@ -27,7 +27,7 @@ use rsnano_core::{
 };
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
+    consensus::{BalanceChangedCallback, ElectionEndCallback},
     NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use std::{
@@ -79,10 +79,9 @@ pub unsafe extern "C" fn rsn_node_create(
     );
 
     let ctx = Arc::clone(&ctx_wrapper);
-    let balance_changed_wrapper: AccountBalanceChangedCallback =
-        Box::new(move |account, is_pending| {
-            balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
-        });
+    let balance_changed_wrapper: BalanceChangedCallback = Box::new(move |account, is_pending| {
+        balance_changed(ctx.get_context(), account.as_bytes().as_ptr(), is_pending);
+    });
 
     let ctx = Arc::clone(&ctx_wrapper);
     let vote_processed = Box::new(

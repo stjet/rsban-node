@@ -1,6 +1,6 @@
 use crate::{
     config::{NodeConfig, NodeFlags},
-    consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
+    consensus::{BalanceChangedCallback, ElectionEndCallback, VoteProcessedCallback2},
     transport::PublishedCallback,
     working_path_for, NetworkParams, Node, NodeArgs,
 };
@@ -17,8 +17,8 @@ pub struct NodeBuilder {
     flags: Option<NodeFlags>,
     work: Option<Arc<WorkPoolImpl>>,
     on_election_end: Option<ElectionEndCallback>,
-    on_balance_changed: Option<AccountBalanceChangedCallback>,
-    on_vote: Option<Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>>,
+    on_balance_changed: Option<BalanceChangedCallback>,
+    on_vote: Option<VoteProcessedCallback2>,
     on_publish: Option<PublishedCallback>,
 }
 
@@ -74,7 +74,7 @@ impl NodeBuilder {
         self
     }
 
-    pub fn on_balance_changed(mut self, callback: AccountBalanceChangedCallback) -> Self {
+    pub fn on_balance_changed(mut self, callback: BalanceChangedCallback) -> Self {
         self.on_balance_changed = Some(callback);
         self
     }

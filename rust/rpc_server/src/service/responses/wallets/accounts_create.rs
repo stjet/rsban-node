@@ -33,7 +33,7 @@ mod tests {
     use rsnano_core::WalletId;
     use rsnano_node::wallets::WalletsExt;
     use std::{thread::sleep, time::Duration};
-    use test_helpers::{setup_rpc_client_and_server, System};
+    use test_helpers::{setup_rpc_client_and_server, System, assert_timely};
 
     #[test]
     fn accounts_create() {
@@ -81,14 +81,11 @@ mod tests {
 
         assert!(node.wallets.exists(&result.accounts[0].into()));
 
-        sleep(Duration::from_millis(10000));
-
-        assert_ne!(
+        assert_timely(Duration::from_secs(5), || {
             node.wallets
                 .work_get2(&wallet_id, &result.accounts[0].into())
-                .unwrap(),
-            0
-        );
+                .unwrap() != 0
+        });
 
         server.abort();
     }
@@ -113,14 +110,11 @@ mod tests {
 
         assert!(node.wallets.exists(&result.accounts[0].into()));
 
-        sleep(Duration::from_millis(10000));
-
-        assert_eq!(
+        assert_timely(Duration::from_secs(5), || {
             node.wallets
                 .work_get2(&wallet_id, &result.accounts[0].into())
-                .unwrap(),
-            0
-        );
+                .unwrap() == 0
+        });
 
         server.abort();
     }

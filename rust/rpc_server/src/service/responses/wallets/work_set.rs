@@ -26,7 +26,7 @@ mod tests {
     use rsnano_core::{Account, WalletId};
     use rsnano_node::wallets::WalletsExt;
     use std::{thread::sleep, time::Duration};
-    use test_helpers::{setup_rpc_client_and_server, System};
+    use test_helpers::{setup_rpc_client_and_server, System, assert_timely};
 
     #[test]
     fn work_set() {
@@ -45,14 +45,11 @@ mod tests {
                 .unwrap()
         });
 
-        sleep(Duration::from_millis(1000));
-
-        assert_ne!(
+        assert_timely(Duration::from_secs(5), || {
             node.wallets
                 .work_get2(&wallet_id, &Account::zero().into())
-                .unwrap(),
-            0
-        );
+                .unwrap() != 0
+        });
 
         server.abort();
     }

@@ -61,7 +61,14 @@ mod tests {
         .unwrap();
         let amount = Amount::raw(1000000);
 
-        let send_command = RpcCommand::send(SendArgs::new(wallet, source, destination, amount, None, None));
+        let send_command = RpcCommand::send(SendArgs::new(
+            wallet,
+            source,
+            destination,
+            amount,
+            None,
+            None,
+        ));
 
         let serialized = serde_json::to_value(&send_command).unwrap();
         let expected = json!({
@@ -103,7 +110,14 @@ mod tests {
 
         assert_eq!(
             deserialized,
-            RpcCommand::send(SendArgs::new(wallet, source, destination, amount, None, None))
+            RpcCommand::send(SendArgs::new(
+                wallet,
+                source,
+                destination,
+                amount,
+                None,
+                None
+            ))
         );
     }
 

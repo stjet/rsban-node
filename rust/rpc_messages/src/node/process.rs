@@ -102,7 +102,10 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_value(json).unwrap();
         if let RpcCommand::Process(args) = deserialized {
             assert_eq!(args.subtype, Some(BlockSubType::Receive));
-            assert_eq!(args.block, BlockEnum::new_test_instance().json_representation());
+            assert_eq!(
+                args.block,
+                BlockEnum::new_test_instance().json_representation()
+            );
             assert_eq!(args.force, Some(false));
             assert_eq!(args.watch_work, Some(true));
             assert_eq!(args.is_async, Some(false));

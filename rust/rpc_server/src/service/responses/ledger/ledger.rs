@@ -31,7 +31,8 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
         for (current_account, info) in account_iter {
             if info.modified >= modified_since {
                 let account_receivable = if receivable {
-                    node.ledger.account_receivable(&block_transaction, &current_account, false)
+                    node.ledger
+                        .account_receivable(&block_transaction, &current_account, false)
                 } else {
                     Amount::zero()
                 };
@@ -43,7 +44,7 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
                         &info,
                         representative,
                         weight,
-                        receivable,            
+                        receivable,
                         &mut accounts_json,
                         account_receivable,
                     );
@@ -79,7 +80,8 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
         for (_, account) in ledger_l {
             if let Some(info) = node.store.account.get(&block_transaction, &account) {
                 let account_receivable = if receivable {
-                    node.ledger.account_receivable(&block_transaction, &account, false)
+                    node.ledger
+                        .account_receivable(&block_transaction, &account, false)
                 } else {
                     Amount::zero()
                 };
@@ -91,7 +93,7 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
                         &info,
                         representative,
                         weight,
-                        receivable,            
+                        receivable,
                         &mut accounts_json,
                         account_receivable,
                     );
@@ -144,8 +146,8 @@ fn process_account(
         info.block_count,
         representative_opt.map(|inner| inner.into()),
         weight_opt,
-        pending_opt,     // Pending field
-        pending_opt,     // Receivable field
+        pending_opt, // Pending field
+        pending_opt, // Receivable field
     );
     accounts_json.insert(account, entry);
 }
@@ -206,18 +208,17 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .ledger(
-                    LedgerArgs::new(
-                    None,       
-                    Some(1),    
-                    None,  
-                    None,     
-                    None,       
-                    None,       
-                    None,       
-                    Some(true), 
-                    None,      
-                    ))
+                .ledger(LedgerArgs::new(
+                    None,
+                    Some(1),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(true),
+                    None,
+                ))
                 .await
                 .unwrap()
         });
@@ -252,18 +253,17 @@ mod tests {
         let genesis_balance = Amount::MAX;
         let result = node.runtime.block_on(async {
             rpc_client
-                .ledger(
-                    LedgerArgs::new(
-                    None,                                
-                    Some(2),                                
-                    None,  
-                    None,                             
-                    None,                            
-                    None,                                 
-                    None,                                   
-                    Some(true),                     
-                    Some(genesis_balance - Amount::raw(100)), 
-                    ))
+                .ledger(LedgerArgs::new(
+                    None,
+                    Some(2),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(true),
+                    Some(genesis_balance - Amount::raw(100)),
+                ))
                 .await
                 .unwrap()
         });
@@ -297,23 +297,24 @@ mod tests {
             node.work_generate_dev(send_block.hash().into()),
         );
 
-        let status = node.process_local(BlockEnum::State(send2_block.clone())).unwrap();
+        let status = node
+            .process_local(BlockEnum::State(send2_block.clone()))
+            .unwrap();
         assert_eq!(status, BlockStatus::Progress);
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .ledger(
-                    LedgerArgs::new(
-                    None,                              
-                    Some(2),                          
-                    None,                              
-                    None,                          
-                    Some(true),                    
-                    None,                          
-                    None,                          
-                    None,                              
-                    Some(send_amount + send2_amount), 
-                    ))
+                .ledger(LedgerArgs::new(
+                    None,
+                    Some(2),
+                    None,
+                    None,
+                    Some(true),
+                    None,
+                    None,
+                    None,
+                    Some(send_amount + send2_amount),
+                ))
                 .await
                 .unwrap()
         });

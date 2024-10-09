@@ -106,15 +106,20 @@ impl LedgerAccountInfo {
 
 #[cfg(test)]
 mod tests {
+    use crate::{LedgerAccountInfo, LedgerArgs, LedgerDto, RpcCommand};
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::{json, Value};
     use std::collections::HashMap;
-    use crate::{LedgerArgs, LedgerAccountInfo, LedgerDto, RpcCommand};
 
     #[test]
     fn test_ledger_rpc_command_serialization() {
         let ledger_args = LedgerArgs::new(
-            Some(Account::decode_account("nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est").unwrap()),
+            Some(
+                Account::decode_account(
+                    "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+                )
+                .unwrap(),
+            ),
             Some(1000),
             Some(true),
             Some(true),
@@ -128,7 +133,7 @@ mod tests {
         let rpc_command = RpcCommand::Ledger(ledger_args);
 
         let serialized = serde_json::to_value(&rpc_command).unwrap();
-        
+
         let expected = json!({
             "action": "ledger",
             "account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
@@ -164,7 +169,15 @@ mod tests {
 
         match deserialized {
             RpcCommand::Ledger(args) => {
-                assert_eq!(args.account, Some(Account::decode_account("nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est").unwrap()));
+                assert_eq!(
+                    args.account,
+                    Some(
+                        Account::decode_account(
+                            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
+                        )
+                        .unwrap()
+                    )
+                );
                 assert_eq!(args.count, Some(1000));
                 assert_eq!(args.representative, Some(true));
                 assert_eq!(args.weight, Some(true));
@@ -172,8 +185,11 @@ mod tests {
                 assert_eq!(args.receivable, Some(true));
                 assert_eq!(args.modified_since, Some(1234567890));
                 assert_eq!(args.sorting, Some(true));
-                assert_eq!(args.threshold, Some(Amount::raw(1000000000000000000000000000000u128)));
-            },
+                assert_eq!(
+                    args.threshold,
+                    Some(Amount::raw(1000000000000000000000000000000u128))
+                );
+            }
             _ => panic!("Deserialized to wrong variant"),
         }
     }
@@ -182,15 +198,32 @@ mod tests {
     fn test_ledger_dto_serialization() {
         let mut accounts = HashMap::new();
         accounts.insert(
-            Account::decode_account("nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est").unwrap(),
+            Account::decode_account(
+                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            )
+            .unwrap(),
             LedgerAccountInfo::new(
-                BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap(),
-                BlockHash::decode_hex("991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED").unwrap(),
-                BlockHash::decode_hex("991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED").unwrap(),
+                BlockHash::decode_hex(
+                    "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+                )
+                .unwrap(),
+                BlockHash::decode_hex(
+                    "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
+                )
+                .unwrap(),
+                BlockHash::decode_hex(
+                    "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
+                )
+                .unwrap(),
                 Amount::raw(10000000000000000000000000000000u128),
                 1553174994,
                 50,
-                Some(Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap()),
+                Some(
+                    Account::decode_account(
+                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                    )
+                    .unwrap(),
+                ),
                 Some(Amount::raw(10000000000000000000000000000000u128)),
                 Some(Amount::raw(10000000000000000000000000000u128)),
                 Some(Amount::raw(10000000000000000000000000000u128)),
@@ -200,7 +233,7 @@ mod tests {
         let ledger_dto = LedgerDto { accounts };
 
         let serialized = serde_json::to_value(&ledger_dto).unwrap();
-        
+
         let expected = json!({
             "accounts": {
                 "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est": {
@@ -244,18 +277,59 @@ mod tests {
 
         assert_eq!(deserialized.accounts.len(), 1);
 
-        let account = Account::decode_account("nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est").unwrap();
+        let account = Account::decode_account(
+            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+        )
+        .unwrap();
         let account_info = deserialized.accounts.get(&account).unwrap();
 
-        assert_eq!(account_info.frontier, BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
-        assert_eq!(account_info.open_block, BlockHash::decode_hex("991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED").unwrap());
-        assert_eq!(account_info.representative_block, BlockHash::decode_hex("991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED").unwrap());
-        assert_eq!(account_info.balance, Amount::raw(10000000000000000000000000000000u128));
+        assert_eq!(
+            account_info.frontier,
+            BlockHash::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            account_info.open_block,
+            BlockHash::decode_hex(
+                "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            account_info.representative_block,
+            BlockHash::decode_hex(
+                "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            account_info.balance,
+            Amount::raw(10000000000000000000000000000000u128)
+        );
         assert_eq!(account_info.modified_timestamp, 1553174994);
         assert_eq!(account_info.block_count, 50);
-        assert_eq!(account_info.representative, Some(Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap()));
-        assert_eq!(account_info.weight, Some(Amount::raw(10000000000000000000000000000000u128)));
-        assert_eq!(account_info.pending, Some(Amount::raw(10000000000000000000000000000u128)));
-        assert_eq!(account_info.receivable, Some(Amount::raw(10000000000000000000000000000u128)));
+        assert_eq!(
+            account_info.representative,
+            Some(
+                Account::decode_account(
+                    "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                )
+                .unwrap()
+            )
+        );
+        assert_eq!(
+            account_info.weight,
+            Some(Amount::raw(10000000000000000000000000000000u128))
+        );
+        assert_eq!(
+            account_info.pending,
+            Some(Amount::raw(10000000000000000000000000000u128))
+        );
+        assert_eq!(
+            account_info.receivable,
+            Some(Amount::raw(10000000000000000000000000000u128))
+        );
     }
 }

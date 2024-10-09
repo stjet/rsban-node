@@ -13,7 +13,7 @@ mod tests {
     use rsnano_core::{Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock};
     use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use std::{thread::sleep, time::Duration};
-    use test_helpers::{setup_rpc_client_and_server, System, assert_timely};
+    use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 
     #[test]
     fn unchecked_clear() {
@@ -36,9 +36,7 @@ mod tests {
 
         node.process_local(send1.clone()).unwrap();
 
-        assert_timely(Duration::from_secs(5), || {
-            !node.unchecked.is_empty()
-        });
+        assert_timely(Duration::from_secs(5), || !node.unchecked.is_empty());
 
         node.runtime
             .block_on(async { rpc_client.unchecked_clear().await.unwrap() });

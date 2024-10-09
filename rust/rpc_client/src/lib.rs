@@ -33,37 +33,8 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn block_create(
-        &self,
-        block_type: BlockTypeDto,
-        balance: Option<Amount>,
-        key: Option<RawKey>,
-        wallet: Option<WalletId>,
-        account: Option<Account>,
-        source: Option<BlockHash>,
-        destination: Option<Account>,
-        representative: Option<Account>,
-        link: Option<Link>,
-        previous: Option<BlockHash>,
-        work: Option<WorkNonce>,
-        version: Option<WorkVersionDto>,
-        difficulty: Option<u64>,
-    ) -> Result<BlockCreateDto> {
-        let cmd = RpcCommand::block_create(
-            block_type,
-            balance,
-            key,
-            wallet,
-            account,
-            source,
-            destination,
-            representative,
-            link,
-            previous,
-            work,
-            version,
-            difficulty,
-        );
+    pub async fn block_create(&self, block_create_args: BlockCreateArgs) -> Result<BlockCreateDto> {
+        let cmd = RpcCommand::block_create(block_create_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -82,25 +53,14 @@ impl NanoRpcClient {
 
     pub async fn work_generate(
         &self,
-        hash: BlockHash,
-        use_peers: Option<bool>,
-        difficulty: Option<u64>,
-        multiplier: Option<u64>,
-        account: Option<Account>,
-        version: Option<WorkVersionDto>,
-        block: Option<JsonBlock>,
+        work_generate_args: WorkGenerateArgs,
     ) -> Result<WorkGenerateDto> {
-        let cmd = RpcCommand::work_generate(
-            hash, use_peers, difficulty, multiplier, account, version, block,
-        );
+        let cmd = RpcCommand::work_generate(work_generate_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn ledger(
-        &self,
-        ledger_args: LedgerArgs
-    ) -> Result<LedgerDto> {
+    pub async fn ledger(&self, ledger_args: LedgerArgs) -> Result<LedgerDto> {
         let cmd = RpcCommand::ledger(ledger_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -309,10 +269,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn process(
-        &self,
-        process_args: ProcessArgs
-    ) -> Result<BlockHashRpcMessage> {
+    pub async fn process(&self, process_args: ProcessArgs) -> Result<BlockHashRpcMessage> {
         let cmd = RpcCommand::process(process_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -334,7 +291,7 @@ impl NanoRpcClient {
         &self,
         account_history_args: AccountHistoryArgs,
     ) -> Result<AccountHistoryDto> {
-        let cmd =RpcCommand::account_history(account_history_args);
+        let cmd = RpcCommand::account_history(account_history_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -800,10 +757,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_info(
-        &self,
-        account_info_args: AccountInfoArgs
-    ) -> Result<AccountInfoDto> {
+    pub async fn account_info(&self, account_info_args: AccountInfoArgs) -> Result<AccountInfoDto> {
         let cmd = RpcCommand::account_info(account_info_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)

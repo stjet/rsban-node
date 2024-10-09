@@ -1,4 +1,3 @@
-
 use rsnano_core::{Amount, DEV_GENESIS_KEY};
 use rsnano_node::NodeExt;
 use test_helpers::{

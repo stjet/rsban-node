@@ -104,7 +104,8 @@ pub unsafe extern "C" fn rsn_node_create(
         .on_election_end(election_ended_wrapper)
         .on_balance_changed(balance_changed_wrapper)
         .on_vote(vote_processed)
-        .finish();
+        .finish()
+        .unwrap();
 
     Box::into_raw(Box::new(NodeHandle(Arc::new(node))))
 }

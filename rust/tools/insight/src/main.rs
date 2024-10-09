@@ -1,14 +1,9 @@
 use eframe::egui::{self, global_theme_preference_buttons};
-use rsnano_core::{work::WorkPoolImpl, Networks};
-use rsnano_node::{
-    config::NodeConfig, working_path_for, NetworkParams, Node, NodeBuilder, NodeExt,
-};
-use std::{
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
-    },
-    time::Duration,
+use rsnano_core::Networks;
+use rsnano_node::{Node, NodeBuilder, NodeExt};
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc,
 };
 use tokio::runtime::Runtime;
 
@@ -99,28 +94,14 @@ impl AppModel {
     }
 
     pub(crate) fn start_beta_node(&mut self) {
-        let network = Networks::NanoBetaNetwork;
-        let network_params = NetworkParams::new(network);
-        let node_config = NodeConfig::new(None, &network_params, 2);
-        let work = Arc::new(WorkPoolImpl::new(
-            network_params.work.clone(),
-            node_config.work_threads as usize,
-            Duration::from_nanos(node_config.pow_sleep_interval_ns as u64),
-        ));
-
-        let node_path = working_path_for(network).unwrap();
-
         let published = self.published.clone();
         let node = NodeBuilder::new(Networks::NanoBetaNetwork)
             .runtime(self.runtime.clone())
-            .data_path(node_path)
-            .config(node_config)
-            .network_params(network_params)
-            .work(work)
             .on_publish(Arc::new(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);
             }))
-            .finish();
+            .finish()
+            .unwrap();
         let node = Arc::new(node);
         let node_l = node.clone();
         let started = self.started.clone();

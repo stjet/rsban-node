@@ -1,7 +1,7 @@
 use crate::cli::{get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
+use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{
     config::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
@@ -15,7 +15,6 @@ use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
-    time::Duration,
 };
 use tokio::net::TcpListener;
 use toml::from_str;
@@ -151,19 +150,13 @@ impl RunDaemonArgs {
         let mut flags = NodeFlags::new();
         self.set_flags(&mut flags);
 
-        let work = Arc::new(WorkPoolImpl::new(
-            network_params.work.clone(),
-            node_config.work_threads as usize,
-            Duration::from_nanos(node_config.pow_sleep_interval_ns as u64),
-        ));
-
         let node = NodeBuilder::new(network_params.network.current_network)
             .data_path(path)
             .config(node_config)
             .network_params(network_params)
             .flags(flags)
-            .work(work)
-            .finish();
+            .finish()
+            .unwrap();
 
         let node = Arc::new(node);
         node.start();

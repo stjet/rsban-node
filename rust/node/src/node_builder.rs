@@ -2,11 +2,11 @@ use crate::{
     config::{NodeConfig, NodeFlags},
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
     transport::PublishedCallback,
-    NetworkParams, Node, NodeArgs,
+    working_path_for, NetworkParams, Node, NodeArgs,
 };
-use rsnano_core::{work::WorkPoolImpl, Networks, Vote, VoteCode, VoteSource};
+use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks, Vote, VoteCode, VoteSource};
 use rsnano_network::ChannelId;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub struct NodeBuilder {
     network: Networks,
@@ -92,16 +92,38 @@ impl NodeBuilder {
         self
     }
 
-    pub fn finish(self) -> Node {
+    pub fn finish(self) -> anyhow::Result<Node> {
         let runtime = self
             .runtime
             .unwrap_or_else(|| tokio::runtime::Handle::current());
 
-        let data_path = self.data_path.unwrap_or_else(|| unimplemented!());
-        let config = self.config.unwrap_or_else(|| unimplemented!());
-        let network_params = self.network_params.unwrap_or_else(|| unimplemented!());
+        let data_path = match self.data_path {
+            Some(path) => path,
+            None => {
+                working_path_for(self.network).ok_or_else(|| anyhow!("working path not found"))?
+            }
+        };
+
+        let network_params = self
+            .network_params
+            .unwrap_or_else(|| NetworkParams::new(self.network));
+
+        let config = match self.config {
+            Some(c) => c,
+            None => {
+                let cpu_count = get_cpu_count();
+                NodeConfig::new(None, &network_params, cpu_count)
+            }
+        };
+
         let flags = self.flags.unwrap_or_default();
-        let work = self.work.unwrap_or_else(|| unimplemented!());
+        let work = self.work.unwrap_or_else(|| {
+            Arc::new(WorkPoolImpl::new(
+                network_params.work.clone(),
+                config.work_threads as usize,
+                Duration::from_nanos(config.pow_sleep_interval_ns as u64),
+            ))
+        });
 
         let on_election_end = self
             .on_election_end
@@ -125,6 +147,6 @@ impl NodeBuilder {
             on_vote,
             on_publish: self.on_publish,
         };
-        Node::new(args)
+        Ok(Node::new(args))
     }
 }

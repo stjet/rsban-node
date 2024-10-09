@@ -1674,7 +1674,8 @@ mod tests {
                 .config(config)
                 .network_params(network_params)
                 .work(work)
-                .finish();
+                .finish()
+                .unwrap();
 
             let node = Arc::new(node);
 

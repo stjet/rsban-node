@@ -128,7 +128,8 @@ impl System {
             .network_params(self.network_params.clone())
             .flags(flags)
             .work(self.work.clone())
-            .finish();
+            .finish()
+            .unwrap();
         Arc::new(node)
     }
 

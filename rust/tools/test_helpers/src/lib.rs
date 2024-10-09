@@ -486,8 +486,10 @@ pub fn setup_rpc_client_and_server(
     let port = get_available_port();
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
 
-    let listener = node.tokio.block_on(async {
-        TokioTcpListener::bind(socket_addr).await.expect("Failed to bind to address")
+    let listener = node.runtime.block_on(async {
+        TokioTcpListener::bind(socket_addr)
+            .await
+            .expect("Failed to bind to address")
     });
 
     let server = node

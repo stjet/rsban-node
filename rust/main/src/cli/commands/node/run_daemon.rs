@@ -10,7 +10,6 @@ use rsnano_node::{
     NetworkParams, NodeBuilder, NodeExt,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
-use tokio::net::TcpListener;
 use std::{
     fs::read_to_string,
     net::{IpAddr, SocketAddr},
@@ -18,6 +17,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
+use tokio::net::TcpListener;
 use toml::from_str;
 use tracing_subscriber::EnvFilter;
 
@@ -174,11 +174,8 @@ impl RunDaemonArgs {
             Some(tokio::spawn({
                 let listener = TcpListener::bind(socket_addr).await?;
 
-                run_rpc_server(
-                node.clone(),
-                listener,
-                rpc_server_config.enable_control,
-            )}))
+                run_rpc_server(node.clone(), listener, rpc_server_config.enable_control)
+            }))
         } else {
             None
         };

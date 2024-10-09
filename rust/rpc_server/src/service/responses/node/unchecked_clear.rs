@@ -25,19 +25,19 @@ mod tests {
 
         let keypair = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
-        keypair.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        Account::zero().into(),
-        &keypair,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
+        let send1 = BlockEnum::State(StateBlock::new(
+            keypair.account(),
+            BlockHash::zero(),
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1),
+            Account::zero().into(),
+            &keypair,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
 
-    node.process_local(send1.clone()).unwrap();
+        node.process_local(send1.clone()).unwrap();
 
-    sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
 
         assert!(!node.unchecked.is_empty());
 

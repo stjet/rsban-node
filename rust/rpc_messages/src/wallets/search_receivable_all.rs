@@ -33,6 +33,6 @@ mod tests {
 
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
 
-        assert!(matches!(deserialized, RpcCommand::SearchReceivableAll));
+        assert_eq!(deserialized, RpcCommand::SearchReceivableAll);
     }
 }

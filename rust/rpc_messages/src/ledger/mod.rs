@@ -20,10 +20,10 @@ mod delegators;
 mod delegators_count;
 mod frontier_count;
 mod frontiers;
-mod ledger;
 mod representatives;
 mod successors;
 mod unopened;
+mod ledger;
 
 pub use account_balance::*;
 pub use account_history::*;
@@ -40,3 +40,4 @@ pub use delegators::*;
 pub use delegators_count::*;
 pub use representatives::*;
 pub use unopened::*;
+pub use ledger::*;

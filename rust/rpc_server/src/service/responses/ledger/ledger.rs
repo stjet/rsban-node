@@ -207,6 +207,7 @@ mod tests {
         let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
+                    LedgerArgs::new(
                     None,       
                     Some(1),    
                     None,  
@@ -216,7 +217,7 @@ mod tests {
                     None,       
                     Some(true), 
                     None,      
-                )
+                    ))
                 .await
                 .unwrap()
         });
@@ -252,6 +253,7 @@ mod tests {
         let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
+                    LedgerArgs::new(
                     None,                                
                     Some(2),                                
                     None,  
@@ -261,7 +263,7 @@ mod tests {
                     None,                                   
                     Some(true),                     
                     Some(genesis_balance - Amount::raw(100)), 
-                )
+                    ))
                 .await
                 .unwrap()
         });
@@ -301,6 +303,7 @@ mod tests {
         let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
+                    LedgerArgs::new(
                     None,                              
                     Some(2),                          
                     None,                              
@@ -310,7 +313,7 @@ mod tests {
                     None,                          
                     None,                              
                     Some(send_amount + send2_amount), 
-                )
+                    ))
                 .await
                 .unwrap()
         });

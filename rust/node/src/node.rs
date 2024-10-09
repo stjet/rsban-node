@@ -132,19 +132,26 @@ pub struct Node {
                                                          // to keep the weak pointer alive
 }
 
+pub struct NodeArgs {
+    pub runtime: tokio::runtime::Handle,
+    pub application_path: PathBuf,
+    pub config: NodeConfig,
+    pub network_params: NetworkParams,
+    pub flags: NodeFlags,
+    pub work: Arc<WorkPoolImpl>,
+    pub election_end: ElectionEndCallback,
+    pub account_balance_changed: AccountBalanceChangedCallback,
+    pub on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
+    pub on_publish: Option<PublishedCallback>,
+}
+
 impl Node {
-    pub fn new(
-        tokio_handle: tokio::runtime::Handle,
-        application_path: impl Into<PathBuf>,
-        config: NodeConfig,
-        network_params: NetworkParams,
-        flags: NodeFlags,
-        work: Arc<WorkPoolImpl>,
-        election_end: ElectionEndCallback,
-        account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
-        on_publish: Option<PublishedCallback>,
-    ) -> Self {
+    pub fn new(args: NodeArgs) -> Self {
+        let network_params = args.network_params;
+        let config = args.config;
+        let flags = args.flags;
+        let tokio_handle = args.runtime;
+        let work = args.work;
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.
         let steady_clock = Arc::new(SteadyClock::default());
@@ -156,7 +163,7 @@ impl Node {
             network_params: network_params.clone(),
         };
         let global_config = &global_config;
-        let application_path = application_path.into();
+        let application_path = args.application_path;
         let node_id = NodeIdKeyFile::default()
             .initialize(&application_path)
             .unwrap();
@@ -295,7 +302,7 @@ impl Node {
             network_params.network.protocol_info(),
         );
 
-        if let Some(callback) = &on_publish {
+        if let Some(callback) = &args.on_publish {
             message_publisher.set_published_callback(callback.clone());
         }
 
@@ -440,7 +447,7 @@ impl Node {
             vote_processor_queue.clone(),
             vote_router.clone(),
             stats.clone(),
-            on_vote,
+            args.on_vote,
         ));
 
         let vote_cache_processor = Arc::new(VoteCacheProcessor::new(
@@ -462,8 +469,8 @@ impl Node {
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
-            election_end,
-            account_balance_changed,
+            args.election_end,
+            args.account_balance_changed,
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,
@@ -492,7 +499,7 @@ impl Node {
             512,
         );
 
-        if let Some(callback) = &on_publish {
+        if let Some(callback) = &args.on_publish {
             bootstrap_publisher.set_published_callback(callback.clone());
         }
 
@@ -1663,18 +1670,20 @@ mod tests {
                 Duration::ZERO,
             ));
 
-            let node = Arc::new(Node::new(
-                tokio::runtime::Handle::current(),
-                &app_path,
+            let node_args = NodeArgs {
+                runtime: tokio::runtime::Handle::current(),
+                application_path: app_path.clone(),
                 config,
                 network_params,
                 flags,
                 work,
-                Box::new(|_, _, _, _, _, _| {}),
-                Box::new(|_, _| {}),
-                Box::new(|_, _, _, _| {}),
-                None,
-            ));
+                election_end: Box::new(|_, _, _, _, _, _| {}),
+                account_balance_changed: Box::new(|_, _| {}),
+                on_vote: Box::new(|_, _, _, _| {}),
+                on_publish: None,
+            };
+
+            let node = Arc::new(Node::new(node_args));
 
             Self { node, app_path }
         }

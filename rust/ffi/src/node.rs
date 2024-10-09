@@ -28,7 +28,7 @@ use rsnano_core::{
 use rsnano_network::ChannelId;
 use rsnano_node::{
     consensus::{AccountBalanceChangedCallback, ElectionEndCallback},
-    node::{Node, NodeExt},
+    node::{Node, NodeArgs, NodeExt},
 };
 use std::{
     collections::VecDeque,
@@ -92,18 +92,19 @@ pub unsafe extern "C" fn rsn_node_create(
         },
     );
 
-    Box::into_raw(Box::new(NodeHandle(Arc::new(Node::new(
-        async_rt.tokio.handle().clone(),
-        path,
-        config.try_into().unwrap(),
-        params.try_into().unwrap(),
-        flags.lock().unwrap().clone(),
-        Arc::clone(work),
-        election_ended_wrapper,
-        account_balance_changed_wrapper,
-        vote_processed,
-        None,
-    )))))
+    let node_args = NodeArgs {
+        runtime: async_rt.tokio.handle().clone(),
+        application_path: path.into(),
+        config: config.try_into().unwrap(),
+        network_params: params.try_into().unwrap(),
+        flags: flags.lock().unwrap().clone(),
+        work: (*work).clone(),
+        election_end: election_ended_wrapper,
+        account_balance_changed: account_balance_changed_wrapper,
+        on_vote: vote_processed,
+        on_publish: None,
+    };
+    Box::into_raw(Box::new(NodeHandle(Arc::new(Node::new(node_args)))))
 }
 
 #[no_mangle]

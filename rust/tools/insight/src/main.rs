@@ -2,7 +2,7 @@ use eframe::egui::{self, global_theme_preference_buttons};
 use rsnano_core::{work::WorkPoolImpl, Networks};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
-    node::{Node, NodeExt},
+    node::{Node, NodeArgs, NodeExt},
     working_path_for, NetworkParams,
 };
 use std::{
@@ -114,20 +114,21 @@ impl AppModel {
         let flags = NodeFlags::default();
 
         let published = self.published.clone();
-        let node = Arc::new(Node::new(
-            self.runtime.clone(),
-            node_path,
-            node_config,
+        let node_args = NodeArgs {
+            runtime: self.runtime.clone(),
+            application_path: node_path,
+            config: node_config,
             network_params,
             flags,
             work,
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-            Some(Arc::new(move |_channel_id, _message| {
+            election_end: Box::new(|_, _, _, _, _, _| {}),
+            account_balance_changed: Box::new(|_, _| {}),
+            on_vote: Box::new(|_, _, _, _| {}),
+            on_publish: Some(Arc::new(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);
             })),
-        ));
+        };
+        let node = Arc::new(Node::new(node_args));
 
         let node_l = node.clone();
         let started = self.started.clone();

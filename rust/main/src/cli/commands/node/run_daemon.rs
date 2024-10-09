@@ -7,7 +7,7 @@ use rsnano_node::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
         NetworkConstants, NodeFlags,
     },
-    node::{Node, NodeExt},
+    node::{Node, NodeArgs, NodeExt},
     NetworkParams,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
@@ -157,18 +157,20 @@ impl RunDaemonArgs {
             Duration::from_nanos(node_config.pow_sleep_interval_ns as u64),
         ));
 
-        let node = Arc::new(Node::new(
-            tokio::runtime::Handle::current(),
-            path,
-            node_config,
+        let node_args = NodeArgs {
+            runtime: tokio::runtime::Handle::current(),
+            application_path: path,
+            config: node_config,
             network_params,
             flags,
             work,
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-            None,
-        ));
+            election_end: Box::new(|_, _, _, _, _, _| {}),
+            account_balance_changed: Box::new(|_, _| {}),
+            on_vote: Box::new(|_, _, _, _| {}),
+            on_publish: None,
+        };
+
+        let node = Arc::new(Node::new(node_args));
 
         node.start();
 

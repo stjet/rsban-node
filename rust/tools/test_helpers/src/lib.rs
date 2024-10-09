@@ -7,7 +7,7 @@ use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
-    node::{Node, NodeExt},
+    node::{Node, NodeArgs, NodeExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -122,19 +122,19 @@ impl System {
 
     fn new_node(&self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
         let path = unique_path().expect("Could not get a unique path");
-
-        Arc::new(Node::new(
-            self.runtime.tokio.handle().clone(),
-            path,
+        let node_args = NodeArgs {
+            runtime: self.runtime.tokio.handle().clone(),
+            application_path: path,
             config,
-            self.network_params.clone(),
+            network_params: self.network_params.clone(),
             flags,
-            self.work.clone(),
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-            None,
-        ))
+            work: self.work.clone(),
+            election_end: Box::new(|_, _, _, _, _, _| {}),
+            account_balance_changed: Box::new(|_, _| {}),
+            on_vote: Box::new(|_, _, _, _| {}),
+            on_publish: None,
+        };
+        Arc::new(Node::new(node_args))
     }
 
     fn stop(&mut self) {

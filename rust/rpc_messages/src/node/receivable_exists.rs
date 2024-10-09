@@ -1,10 +1,18 @@
+use crate::RpcCommand;
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
-    pub fn receivable_exists(hash: BlockHash, include_active: Option<bool>, include_only_confirmed: Option<bool>) -> Self {
-        Self::ReceivableExists(ReceivableExistsArgs::new(hash, include_active, include_only_confirmed))
+    pub fn receivable_exists(
+        hash: BlockHash,
+        include_active: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Self {
+        Self::ReceivableExists(ReceivableExistsArgs::new(
+            hash,
+            include_active,
+            include_only_confirmed,
+        ))
     }
 }
 
@@ -18,8 +26,16 @@ pub struct ReceivableExistsArgs {
 }
 
 impl ReceivableExistsArgs {
-    fn new(hash: BlockHash, include_active: Option<bool>, include_only_confirmed: Option<bool>) -> Self {
-        Self { hash, include_active, include_only_confirmed }
+    fn new(
+        hash: BlockHash,
+        include_active: Option<bool>,
+        include_only_confirmed: Option<bool>,
+    ) -> Self {
+        Self {
+            hash,
+            include_active,
+            include_only_confirmed,
+        }
     }
 }
 
@@ -45,7 +61,12 @@ mod tests {
     fn serialize_receivable_exists_command_with_options() {
         let hash = BlockHash::zero();
         assert_eq!(
-            to_string_pretty(&RpcCommand::receivable_exists(hash, Some(true), Some(false))).unwrap(),
+            to_string_pretty(&RpcCommand::receivable_exists(
+                hash,
+                Some(true),
+                Some(false)
+            ))
+            .unwrap(),
             r#"{
   "action": "receivable_exists",
   "hash": "0000000000000000000000000000000000000000000000000000000000000000",

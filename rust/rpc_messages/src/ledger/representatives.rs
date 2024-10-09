@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::RpcCommand;
+use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct RepresentativesArgs {
@@ -66,4 +66,3 @@ mod tests {
         }
     }
 }
-

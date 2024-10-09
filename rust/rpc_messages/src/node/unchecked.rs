@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use crate::RpcCommand;
 use rsnano_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn unchecked(count: u64) -> Self {
@@ -24,7 +24,7 @@ impl UncheckedArgs {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct UncheckedDto {
-    pub blocks: HashMap<BlockHash, JsonBlock>
+    pub blocks: HashMap<BlockHash, JsonBlock>,
 }
 
 impl UncheckedDto {

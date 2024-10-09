@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn receivable(
@@ -10,7 +10,7 @@ impl RpcCommand {
         source: Option<bool>,
         min_version: Option<bool>,
         sorting: Option<bool>,
-        include_only_confirmed: Option<bool>
+        include_only_confirmed: Option<bool>,
     ) -> Self {
         Self::Receivable(ReceivableArgs {
             account,
@@ -19,7 +19,7 @@ impl RpcCommand {
             source,
             min_version,
             sorting,
-            include_only_confirmed
+            include_only_confirmed,
         })
     }
 }
@@ -37,7 +37,7 @@ pub struct ReceivableArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sorting: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>
+    pub include_only_confirmed: Option<bool>,
 }
 
 impl ReceivableArgs {
@@ -48,7 +48,7 @@ impl ReceivableArgs {
         source: Option<bool>,
         min_version: Option<bool>,
         sorting: Option<bool>,
-        include_only_confirmed: Option<bool>
+        include_only_confirmed: Option<bool>,
     ) -> Self {
         Self {
             account,
@@ -57,7 +57,7 @@ impl ReceivableArgs {
             source,
             min_version,
             sorting,
-            include_only_confirmed
+            include_only_confirmed,
         }
     }
 }
@@ -71,7 +71,16 @@ mod tests {
     #[test]
     fn serialize_receivable_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::receivable(Account::zero(), 1, None, None, None, None, None)).unwrap(),
+            to_string_pretty(&RpcCommand::receivable(
+                Account::zero(),
+                1,
+                None,
+                None,
+                None,
+                None,
+                None
+            ))
+            .unwrap(),
             r#"{
   "action": "receivable",
   "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",

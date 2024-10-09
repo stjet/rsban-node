@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount, BlockHash};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LedgerArgs {
@@ -23,7 +23,16 @@ pub struct LedgerArgs {
 }
 
 impl LedgerArgs {
-    pub fn new(account: Option<Account>, count: Option<u64>, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>, sorting: Option<bool>, threshold: Option<Amount>) -> Self {
+    pub fn new(
+        account: Option<Account>,
+        count: Option<u64>,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        receivable: Option<bool>,
+        modified_since: Option<u64>,
+        sorting: Option<bool>,
+        threshold: Option<Amount>,
+    ) -> Self {
         Self {
             account,
             count,
@@ -32,7 +41,7 @@ impl LedgerArgs {
             receivable,
             modified_since,
             sorting,
-            threshold
+            threshold,
         }
     }
 }

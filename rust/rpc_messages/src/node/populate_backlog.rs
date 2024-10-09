@@ -25,4 +25,3 @@ mod tests {
         assert!(matches!(deserialized, RpcCommand::PopulateBacklog));
     }
 }
-

@@ -1,6 +1,6 @@
+use crate::{BlockHashRpcMessage, RpcCommand};
 use rsnano_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
-use crate::{BlockHashRpcMessage, RpcCommand};
 
 impl RpcCommand {
     pub fn unchecked_get(hash: BlockHash) -> Self {

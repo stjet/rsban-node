@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn accounts_receivable(
@@ -9,7 +9,7 @@ impl RpcCommand {
         threshold: Option<Amount>,
         source: Option<bool>,
         sorting: Option<bool>,
-        include_only_confirmed: Option<bool>
+        include_only_confirmed: Option<bool>,
     ) -> Self {
         Self::AccountsReceivable(AccountsReceivableArgs {
             accounts,
@@ -17,7 +17,7 @@ impl RpcCommand {
             threshold,
             source,
             sorting,
-            include_only_confirmed
+            include_only_confirmed,
         })
     }
 }
@@ -33,7 +33,7 @@ pub struct AccountsReceivableArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sorting: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>
+    pub include_only_confirmed: Option<bool>,
 }
 
 #[cfg(test)]
@@ -44,7 +44,10 @@ mod tests {
     #[test]
     fn serialize_accounts_receivable_args_options_some() {
         let args = AccountsReceivableArgs {
-            accounts: vec![Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap()],
+            accounts: vec![Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap()],
             count: 10,
             threshold: Some(Amount::raw(1000)),
             source: Some(true),
@@ -53,8 +56,10 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&args).unwrap();
-        
-        assert!(serialized.contains("\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"));
+
+        assert!(serialized.contains(
+            "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
+        ));
         assert!(serialized.contains("\"count\":10"));
         assert!(serialized.contains("\"threshold\":\"1000\""));
         assert!(serialized.contains("\"source\":true"));
@@ -76,7 +81,13 @@ mod tests {
         let deserialized: AccountsReceivableArgs = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.accounts.len(), 1);
-        assert_eq!(deserialized.accounts[0], Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap());
+        assert_eq!(
+            deserialized.accounts[0],
+            Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+            )
+            .unwrap()
+        );
         assert_eq!(deserialized.count, 5);
         assert_eq!(deserialized.threshold, Some(Amount::raw(1000)));
         assert_eq!(deserialized.source, Some(true));
@@ -87,7 +98,10 @@ mod tests {
     #[test]
     fn serialize_accounts_receivable_args_options_none() {
         let args = AccountsReceivableArgs {
-            accounts: vec![Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap()],
+            accounts: vec![Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap()],
             count: 10,
             threshold: None,
             source: None,
@@ -96,8 +110,10 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&args).unwrap();
-        
-        assert!(serialized.contains("\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"));
+
+        assert!(serialized.contains(
+            "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
+        ));
         assert!(serialized.contains("\"count\":10"));
         assert!(!serialized.contains("\"threshold\""));
         assert!(!serialized.contains("\"source\""));
@@ -115,7 +131,13 @@ mod tests {
         let deserialized: AccountsReceivableArgs = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.accounts.len(), 1);
-        assert_eq!(deserialized.accounts[0], Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap());
+        assert_eq!(
+            deserialized.accounts[0],
+            Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+            )
+            .unwrap()
+        );
         assert_eq!(deserialized.count, 5);
         assert_eq!(deserialized.threshold, None);
         assert_eq!(deserialized.source, None);

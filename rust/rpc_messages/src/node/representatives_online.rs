@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use crate::RpcCommand;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn representatives_online(weight: Option<bool>, accounts: Option<Vec<Account>>) -> Self {
@@ -51,7 +51,10 @@ mod tests {
 
     #[test]
     fn serialize_representatives_online_command_options_some() {
-        let accounts = vec![Account::decode_account("nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j").unwrap()];
+        let accounts = vec![Account::decode_account(
+            "nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
+        )
+        .unwrap()];
         let command = RpcCommand::representatives_online(Some(true), Some(accounts.clone()));
         let serialized = serde_json::to_value(command).unwrap();
         let expected = json!({
@@ -72,7 +75,13 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         if let RpcCommand::RepresentativesOnline(args) = deserialized {
             assert_eq!(args.weight, Some(true));
-            assert_eq!(args.accounts, Some(vec![Account::decode_account("nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j").unwrap()]));
+            assert_eq!(
+                args.accounts,
+                Some(vec![Account::decode_account(
+                    "nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j"
+                )
+                .unwrap()])
+            );
         } else {
             panic!("Deserialized to wrong variant");
         }
@@ -82,7 +91,10 @@ mod tests {
     fn serialize_representatives_online_dto_with_weight() {
         let mut representatives = HashMap::new();
         representatives.insert(
-            Account::decode_account("nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi").unwrap(),
+            Account::decode_account(
+                "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
+            )
+            .unwrap(),
             Some(Amount::raw(150462654614686936429917024683496890)),
         );
         let dto = RepresentativesOnlineDto { representatives };
@@ -95,7 +107,10 @@ mod tests {
     fn serialize_representatives_online_dto_without_weight() {
         let mut representatives = HashMap::new();
         representatives.insert(
-            Account::decode_account("nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi").unwrap(),
+            Account::decode_account(
+                "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
+            )
+            .unwrap(),
             None,
         );
         let dto = RepresentativesOnlineDto { representatives };
@@ -108,19 +123,28 @@ mod tests {
     fn deserialize_representatives_online_dto() {
         let json = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":"150462654614686936429917024683496890"}}"#;
         let deserialized: RepresentativesOnlineDto = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(deserialized.representatives.len(), 1);
-        let account = Account::decode_account("nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi").unwrap();
-        assert_eq!(deserialized.representatives[&account], Some(Amount::raw(150462654614686936429917024683496890)));
+        let account = Account::decode_account(
+            "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
+        )
+        .unwrap();
+        assert_eq!(
+            deserialized.representatives[&account],
+            Some(Amount::raw(150462654614686936429917024683496890))
+        );
     }
 
     #[test]
     fn deserialize_representatives_online_dto_without_weight() {
         let json = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":null}}"#;
         let deserialized: RepresentativesOnlineDto = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(deserialized.representatives.len(), 1);
-        let account = Account::decode_account("nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi").unwrap();
+        let account = Account::decode_account(
+            "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
+        )
+        .unwrap();
         assert_eq!(deserialized.representatives[&account], None);
     }
 }

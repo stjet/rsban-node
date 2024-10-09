@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{Account, Amount, BlockHash, BlockSubType, Signature, WorkNonce};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn account_history(
@@ -81,6 +81,5 @@ pub struct HistoryEntry {
     pub hash: BlockHash,
     pub confirmed: bool,
     pub work: Option<WorkNonce>,
-    pub signature: Option<Signature>
+    pub signature: Option<Signature>,
 }
-

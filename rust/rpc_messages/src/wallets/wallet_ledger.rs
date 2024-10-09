@@ -1,11 +1,23 @@
-use rsnano_core::{Account, Amount, WalletId, BlockHash};
 use crate::RpcCommand;
+use rsnano_core::{Account, Amount, BlockHash, WalletId};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 impl RpcCommand {
-    pub fn wallet_ledger(wallet: WalletId, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>) -> Self {
-        Self::WalletLedger(WalletLedgerArgs::new(wallet, representative, weight, receivable, modified_since))
+    pub fn wallet_ledger(
+        wallet: WalletId,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        receivable: Option<bool>,
+        modified_since: Option<u64>,
+    ) -> Self {
+        Self::WalletLedger(WalletLedgerArgs::new(
+            wallet,
+            representative,
+            weight,
+            receivable,
+            modified_since,
+        ))
     }
 }
 
@@ -24,13 +36,19 @@ pub struct WalletLedgerArgs {
 }
 
 impl WalletLedgerArgs {
-    pub fn new(wallet: WalletId, representative: Option<bool>, weight: Option<bool>, receivable: Option<bool>, modified_since: Option<u64>) -> Self {
+    pub fn new(
+        wallet: WalletId,
+        representative: Option<bool>,
+        weight: Option<bool>,
+        receivable: Option<bool>,
+        modified_since: Option<u64>,
+    ) -> Self {
         Self {
             wallet,
             representative,
             weight,
             receivable,
-            modified_since
+            modified_since,
         }
     }
 }

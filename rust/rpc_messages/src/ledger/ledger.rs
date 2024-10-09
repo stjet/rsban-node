@@ -10,8 +10,17 @@ impl RpcCommand {
         receivable: Option<bool>,
         modified_since: Option<u64>,
         sorting: Option<bool>,
-        threshold: Option<Amount>
+        threshold: Option<Amount>,
     ) -> Self {
-        Self::Ledger(LedgerArgs::new(account, count, representative, weight, receivable, modified_since, sorting, threshold))
+        Self::Ledger(LedgerArgs::new(
+            account,
+            count,
+            representative,
+            weight,
+            receivable,
+            modified_since,
+            sorting,
+            threshold,
+        ))
     }
 }

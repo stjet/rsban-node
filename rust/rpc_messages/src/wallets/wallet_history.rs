@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_core::{Account, Amount, BlockHash, BlockSubType, WalletId};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn wallet_history(wallet: WalletId, modified_since: Option<u64>) -> Self {
@@ -30,7 +30,7 @@ pub struct WalletHistoryDto {
 }
 
 impl WalletHistoryDto {
-    pub fn new(history: Vec<HistoryEntryDto>,) -> Self {
+    pub fn new(history: Vec<HistoryEntryDto>) -> Self {
         Self { history }
     }
 }
@@ -73,7 +73,10 @@ mod tests {
 
     #[test]
     fn serialize_wallet_history() {
-        let wallet_id = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet_id = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let command = RpcCommand::wallet_history(wallet_id, None);
 
         let expected_json = r#"{
@@ -87,7 +90,10 @@ mod tests {
 
     #[test]
     fn serialize_wallet_history_with_modified_since() {
-        let wallet_id = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet_id = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let command = RpcCommand::wallet_history(wallet_id, Some(1625097600));
 
         let expected_json = r#"{
@@ -107,7 +113,10 @@ mod tests {
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
         }"#;
 
-        let expected_wallet_id = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let expected_wallet_id = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let expected_command = RpcCommand::wallet_history(expected_wallet_id, None);
 
         let deserialized: RpcCommand = serde_json::from_str(json_data).unwrap();
@@ -122,7 +131,10 @@ mod tests {
             "modified_since": 1625097600
         }"#;
 
-        let expected_wallet_id = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let expected_wallet_id = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let expected_command = RpcCommand::wallet_history(expected_wallet_id, Some(1625097600));
 
         let deserialized: RpcCommand = serde_json::from_str(json_data).unwrap();
@@ -133,10 +145,19 @@ mod tests {
     fn serialize_wallet_history_dto() {
         let history_entry = HistoryEntryDto {
             entry_type: BlockSubType::Send,
-            account: Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap(),
+            account: Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
             amount: Amount::raw(1000000000000000000000000000000),
-            block_account: Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap(),
-            hash: BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap(),
+            block_account: Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
+            hash: BlockHash::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+            )
+            .unwrap(),
             local_timestamp: 1625097600,
         };
 
@@ -178,10 +199,19 @@ mod tests {
 
         let expected_history_entry = HistoryEntryDto {
             entry_type: BlockSubType::Send,
-            account: Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap(),
+            account: Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
             amount: Amount::raw(1000000000000000000000000000000),
-            block_account: Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap(),
-            hash: BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap(),
+            block_account: Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
+            hash: BlockHash::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+            )
+            .unwrap(),
             local_timestamp: 1625097600,
         };
 
@@ -193,4 +223,3 @@ mod tests {
         assert_eq!(deserialized, expected_wallet_history_dto);
     }
 }
-

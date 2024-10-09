@@ -10,11 +10,10 @@ pub async fn unchecked_clear(node: Arc<Node>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::{thread::sleep, time::Duration};
-
     use rsnano_core::{Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock};
     use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use test_helpers::{process_block_local, setup_rpc_client_and_server, System};
+    use std::{thread::sleep, time::Duration};
+    use test_helpers::{setup_rpc_client_and_server, System};
 
     #[test]
     fn unchecked_clear() {

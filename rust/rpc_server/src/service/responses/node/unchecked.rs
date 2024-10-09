@@ -11,7 +11,7 @@ pub async fn unchecked(node: Arc<Node>, count: u64) -> String {
     node.unchecked.for_each(
         {
             let blocks = Arc::clone(&blocks);
-            Box::new(move |key: &UncheckedKey, info: &UncheckedInfo| {
+            Box::new(move |_key: &UncheckedKey, info: &UncheckedInfo| {
                 let mut blocks_guard = blocks.lock().unwrap();
                 if blocks_guard.len() < count as usize {
                     if let Some(block) = info.block.as_ref() {

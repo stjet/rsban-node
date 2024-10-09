@@ -126,7 +126,7 @@ fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
     }
 
     // Send check
-    if let Some(prev_block) = &block_previous {
+    if let Some(_prev_block) = &block_previous {
         let is_send =
             node.ledger.any().block_balance(&transaction, &previous) > block.balance_field();
         details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);

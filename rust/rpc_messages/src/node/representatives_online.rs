@@ -46,7 +46,7 @@ mod tests {
         let json = r#"{"action": "representatives_online"}"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         let command = RpcCommand::representatives_online(None, None);
-        assert!(matches!(deserialized, command));
+        assert_eq!(deserialized, command);
     }
 
     #[test]

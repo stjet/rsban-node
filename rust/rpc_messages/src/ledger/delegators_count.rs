@@ -37,7 +37,7 @@ mod tests {
         let json = r#"{"action": "delegators_count","account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         let expected = RpcCommand::delegators_count(Account::zero());
-        assert!(matches!(deserialized, expected));
+        assert_eq!(deserialized, expected);
     }
 
     #[test]

@@ -1,7 +1,6 @@
 use super::WalletWithCountArgs;
 use crate::RpcCommand;
 use rsnano_core::WalletId;
-use serde_json::json;
 
 impl RpcCommand {
     pub fn wallet_republish(wallet: WalletId, count: u64) -> Self {
@@ -12,6 +11,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn serialize_wallet_republish() {

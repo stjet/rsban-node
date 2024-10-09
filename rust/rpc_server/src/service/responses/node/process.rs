@@ -72,7 +72,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> String {
         }
     } else {
         if let BlockEnum::State(_) = block {
-            node.process(block);
+            node.process(block).unwrap(); // TODO add error handling!
             to_string_pretty(&serde_json::json!({"started": "1"})).unwrap_or_default()
         } else {
             to_string_pretty(&ErrorDto::new("Is not state block".to_string())).unwrap()

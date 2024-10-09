@@ -1,6 +1,6 @@
 use rsnano_messages::{Keepalive, Message};
 use rsnano_network::{DropPolicy, TrafficType};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
 use serde_json::to_string_pretty;
 use std::{

@@ -1,5 +1,5 @@
 use rsnano_core::{Amount, BlockHash};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ReceivableDto, SourceInfo, WalletReceivableArgs};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};

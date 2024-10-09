@@ -8,17 +8,12 @@ use rsnano_network::{
     bandwidth_limiter::OutboundBandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
 };
 use rsnano_node::{
-    bootstrap::BulkPullServer,
-    config::NodeConfig,
-    node::Node,
+    bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy, BulkPullServer},
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType},
     transport::{LatestKeepalives, ResponseServer},
-};
-use rsnano_node::{
-    bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy},
-    config::{FrontiersConfirmationMode, NodeFlags},
-    node::NodeExt,
     wallets::WalletsExt,
+    Node, NodeExt,
 };
 use rsnano_nullable_tcp::TcpStream;
 use std::sync::{atomic::Ordering, Arc, Mutex};

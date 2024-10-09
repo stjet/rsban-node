@@ -4,8 +4,7 @@ use clap::{ArgGroup, Parser};
 use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig, NodeFlags},
-    node::{NodeBuilder, NodeExt},
-    NetworkParams,
+    NetworkParams, NodeBuilder, NodeExt,
 };
 use std::{
     sync::{Arc, Condvar, Mutex},

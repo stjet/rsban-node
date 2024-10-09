@@ -1,4 +1,4 @@
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto};
 use std::{collections::HashMap, sync::Arc};
 

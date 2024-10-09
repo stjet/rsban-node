@@ -1,5 +1,5 @@
 use rsnano_core::{BlockHash, PendingKey};
-use rsnano_node::node::{Node, NodeExt};
+use rsnano_node::{Node, NodeExt};
 use rsnano_rpc_messages::{BlockHashesDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -136,7 +136,7 @@ pub async fn republish(
 mod tests {
     use rsnano_core::{Amount, BlockBuilder, BlockHash, DEV_GENESIS_KEY};
     use rsnano_ledger::DEV_GENESIS_HASH;
-    use rsnano_node::node::Node;
+    use rsnano_node::Node;
     use std::{sync::Arc, time::Duration};
     use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 

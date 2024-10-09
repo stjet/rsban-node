@@ -7,11 +7,10 @@ use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
-    node::{Node, NodeBuilder, NodeExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
-    NetworkParams,
+    NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_rpc_client::{NanoRpcClient, Url};

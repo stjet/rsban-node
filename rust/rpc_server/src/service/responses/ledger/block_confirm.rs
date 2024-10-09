@@ -1,7 +1,7 @@
 use rsnano_core::BlockHash;
 use rsnano_node::{
     consensus::{ElectionStatus, ElectionStatusType},
-    node::Node,
+    Node,
 };
 use rsnano_rpc_messages::{BoolDto, ErrorDto};
 use serde_json::to_string_pretty;

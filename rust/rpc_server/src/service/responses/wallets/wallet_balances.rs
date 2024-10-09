@@ -1,5 +1,5 @@
 use rsnano_core::{Amount, WalletId};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -35,7 +35,7 @@ mod tests {
         Account, Amount, BlockEnum, PublicKey, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY,
     };
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{node::Node, wallets::WalletsExt};
+    use rsnano_node::{wallets::WalletsExt, Node};
     use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto};
     use std::{collections::HashMap, sync::Arc, time::Duration};
     use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};

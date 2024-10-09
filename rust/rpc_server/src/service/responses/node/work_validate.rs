@@ -1,7 +1,5 @@
-use rsnano_core::{
-    work::WorkThresholds, BlockDetails, BlockHash, Difficulty, DifficultyV1, WorkNonce, WorkVersion,
-};
-use rsnano_node::node::Node;
+use rsnano_core::{BlockDetails, BlockHash, DifficultyV1, WorkNonce, WorkVersion};
+use rsnano_node::Node;
 use rsnano_rpc_messages::WorkValidateDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -38,7 +36,6 @@ pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) ->
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::BlockHash;
     use rsnano_ledger::DEV_GENESIS_HASH;
     use test_helpers::{setup_rpc_client_and_server, System};
 

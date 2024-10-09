@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountsWithAmountsDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -62,7 +62,7 @@ pub async fn unopened(
 mod tests {
     use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::node::Node;
+    use rsnano_node::Node;
     use std::sync::Arc;
     use std::time::Duration;
     use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};

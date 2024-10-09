@@ -1,5 +1,5 @@
-use rsnano_core::{Account, Amount};
-use rsnano_node::node::Node;
+use rsnano_core::Amount;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -98,9 +98,8 @@ pub async fn account_info(node: Arc<Node>, args: AccountInfoArgs) -> String {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Account, Amount, BlockHash, Epoch};
+    use rsnano_core::{Account, Amount};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-    use rsnano_rpc_messages::AccountInfoArgs;
     use test_helpers::{setup_rpc_client_and_server, System};
 
     #[test]

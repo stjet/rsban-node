@@ -1,9 +1,7 @@
 use eframe::egui::{self, global_theme_preference_buttons};
 use rsnano_core::{work::WorkPoolImpl, Networks};
 use rsnano_node::{
-    config::NodeConfig,
-    node::{Node, NodeBuilder, NodeExt},
-    working_path_for, NetworkParams,
+    config::NodeConfig, working_path_for, NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use std::{
     sync::{

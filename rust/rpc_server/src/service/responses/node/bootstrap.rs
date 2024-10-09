@@ -1,4 +1,4 @@
-use rsnano_node::{bootstrap::BootstrapInitiatorExt, node::Node};
+use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
 use rsnano_rpc_messages::SuccessDto;
 use serde_json::to_string_pretty;
 use std::{
@@ -130,7 +130,7 @@ mod tests {
         let address = *node2.tcp_listener.local_address().ip();
         let port = node2.tcp_listener.local_address().port();
 
-        let result = node1.runtime.spawn(async move {
+        node1.runtime.spawn(async move {
             rpc_client.bootstrap(address, port, None).await.unwrap();
         });
 

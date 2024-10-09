@@ -1,7 +1,5 @@
-use rsnano_core::{
-    BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey, WorkVersion,
-};
-use rsnano_node::node::Node;
+use rsnano_core::{BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey};
+use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;

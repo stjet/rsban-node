@@ -1,5 +1,5 @@
 use rsnano_core::Account;
-use rsnano_node::{bootstrap::BootstrapInitiatorExt, node::Node};
+use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;

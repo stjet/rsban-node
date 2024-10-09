@@ -2,7 +2,7 @@ use rsnano_core::{
     Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, PendingKey,
     PublicKey, RawKey,
 };
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{
     BlockCreateArgs, BlockCreateDto, BlockTypeDto, ErrorDto, WorkVersionDto,
 };

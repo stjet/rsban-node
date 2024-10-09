@@ -14,6 +14,7 @@ use super::search_receivable_all;
 use super::sign;
 use super::stats_clear;
 use super::stop;
+use super::unchecked_get;
 use super::wallet_contains;
 use super::wallet_destroy;
 use super::wallet_frontiers;
@@ -36,14 +37,13 @@ use axum::{
     middleware::map_request,
     Router,
 };
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::WalletBalancesArgs;
 use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use super::unchecked_get;
 
 use super::wallet_add;
 
@@ -470,20 +470,59 @@ async fn handle_rpc(
         RpcCommand::WalletBalances(WalletBalancesArgs { wallet, threshold }) => {
             wallet_balances(rpc_service.node, wallet, threshold).await
         }
-        RpcCommand::WalletHistory(args) => wallet_history(rpc_service.node, args.wallet, args.modified_since).await, 
-        RpcCommand::WalletLedger(args) => wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::WalletHistory(args) => {
+            wallet_history(rpc_service.node, args.wallet, args.modified_since).await
+        }
+        RpcCommand::WalletLedger(args) => {
+            wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await
+        }
         RpcCommand::AccountsReceivable(args) => accounts_receivable(rpc_service.node, args).await,
         RpcCommand::Receivable(args) => receivable(rpc_service.node, args).await,
-        RpcCommand::ReceivableExists(args) => receivable_exists(rpc_service.node, args.hash, args.include_active, args.include_only_confirmed).await,
-        RpcCommand::RepresentativesOnline(args) => representatives_online(rpc_service.node, args.weight, args.accounts).await,
+        RpcCommand::ReceivableExists(args) => {
+            receivable_exists(
+                rpc_service.node,
+                args.hash,
+                args.include_active,
+                args.include_only_confirmed,
+            )
+            .await
+        }
+        RpcCommand::RepresentativesOnline(args) => {
+            representatives_online(rpc_service.node, args.weight, args.accounts).await
+        }
         RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
         RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
-        RpcCommand::UncheckedKeys(args) => unchecked_keys(rpc_service.node, args.key, args.count).await,
-        RpcCommand::ConfirmationInfo(args) => confirmation_info(rpc_service.node, args.root, args.contents, args.representatives).await,
-        RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
-        RpcCommand::WorkGenerate(args) => work_generate(rpc_service.node, rpc_service.enable_control, args).await, 
-        RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations, args.count).await,
-        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await, 
+        RpcCommand::UncheckedKeys(args) => {
+            unchecked_keys(rpc_service.node, args.key, args.count).await
+        }
+        RpcCommand::ConfirmationInfo(args) => {
+            confirmation_info(
+                rpc_service.node,
+                args.root,
+                args.contents,
+                args.representatives,
+            )
+            .await
+        }
+        RpcCommand::Ledger(args) => {
+            ledger(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::WorkGenerate(args) => {
+            work_generate(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::Republish(args) => {
+            republish(
+                rpc_service.node,
+                args.hash,
+                args.sources,
+                args.destinations,
+                args.count,
+            )
+            .await
+        }
+        RpcCommand::BlockCreate(args) => {
+            block_create(rpc_service.node, rpc_service.enable_control, args).await
+        }
         _ => todo!(),
     };
 

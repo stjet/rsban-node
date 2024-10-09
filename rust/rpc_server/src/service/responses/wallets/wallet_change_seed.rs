@@ -1,4 +1,4 @@
-use rsnano_node::{node::Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{ErrorDto, WalletChangeSeedArgs, WalletChangeSeedDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;

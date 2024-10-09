@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountsWithAmountsDto, DelegatorsArgs};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};

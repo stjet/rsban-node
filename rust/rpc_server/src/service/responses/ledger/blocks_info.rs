@@ -1,5 +1,5 @@
-use rsnano_core::{BlockDetails, BlockHash, BlockSubType, BlockType, JsonBlock};
-use rsnano_node::node::Node;
+use rsnano_core::{BlockDetails, BlockHash, BlockSubType, BlockType};
+use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockInfoDto, BlocksInfoDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
@@ -66,7 +66,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.runtime.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .blocks_info(vec![*DEV_GENESIS_HASH])
                 .await

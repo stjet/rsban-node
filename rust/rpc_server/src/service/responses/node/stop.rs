@@ -1,4 +1,4 @@
-use rsnano_node::node::{Node, NodeExt};
+use rsnano_node::{Node, NodeExt};
 use rsnano_rpc_messages::{ErrorDto, SuccessDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;

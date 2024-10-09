@@ -1,5 +1,5 @@
-use rsnano_core::{BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
-use rsnano_node::node::Node;
+use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
+use rsnano_node::Node;
 use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysDto};
 use serde_json::to_string_pretty;
 use std::sync::{Arc, Mutex};

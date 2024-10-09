@@ -7,8 +7,7 @@ use rsnano_node::{
         get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
         NetworkConstants, NodeFlags,
     },
-    node::{NodeBuilder, NodeExt},
-    NetworkParams,
+    NetworkParams, NodeBuilder, NodeExt,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
 use std::{

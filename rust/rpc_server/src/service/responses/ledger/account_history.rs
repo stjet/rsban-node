@@ -1,5 +1,5 @@
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
-use rsnano_node::node::Node;
+use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
@@ -436,8 +436,7 @@ mod tests {
             )
             .unwrap();
 
-        let receive2 = node
-            .wallets
+        node.wallets
             .receive_action2(
                 &wallet_id,
                 send2.hash(),

@@ -1,4 +1,4 @@
-use super::{
+/*use super::{
     account_block_count, account_create, account_get, account_history, account_info, account_key,
     account_list, account_move, account_remove, account_representative, account_weight,
     accounts_balances, accounts_create, accounts_frontiers, accounts_receivable,
@@ -14,9 +14,9 @@ use super::{
     wallet_change_seed, wallet_contains, wallet_create, wallet_destroy, wallet_export,
     wallet_frontiers, wallet_history, wallet_info, wallet_ledger, wallet_lock, wallet_locked,
     wallet_receivable, wallet_representative, wallet_representative_set, wallet_republish,
-    wallet_work_get, work_cancel, work_generate, work_get, work_set, work_validate,
-};
-use crate::{account_balance, uptime};
+    wallet_work_get, work_cancel, work_generate, work_get, work_set, work_validate, uptime, account_balance
+};*/
+use super::account_balance;
 use anyhow::{Context, Result};
 use axum::{
     extract::State,
@@ -67,7 +67,7 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountCreate(args) => {
+        /*RpcCommand::AccountCreate(args) => {
             account_create(
                 rpc_service.node,
                 rpc_service.enable_control,
@@ -76,11 +76,11 @@ async fn handle_rpc(
                 args.work,
             )
             .await
-        }
+        }*/
         RpcCommand::AccountBalance(args) => {
             account_balance(rpc_service.node, args.account, args.include_only_confirmed).await
         }
-        RpcCommand::AccountsCreate(args) => {
+        /*RpcCommand::AccountsCreate(args) => {
             accounts_create(rpc_service.node, rpc_service.enable_control, args).await
         }
         RpcCommand::AccountRemove(args) => {
@@ -386,7 +386,7 @@ async fn handle_rpc(
         }
         RpcCommand::BlockCreate(args) => {
             block_create(rpc_service.node, rpc_service.enable_control, args).await
-        }
+        }*/
         _ => todo!(),
     };
 

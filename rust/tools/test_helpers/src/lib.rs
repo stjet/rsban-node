@@ -15,14 +15,12 @@ use rsnano_node::{
 use rsnano_nullable_tcp::TcpStream;
 use rsnano_rpc_client::{NanoRpcClient, Url};
 use rsnano_rpc_server::run_rpc_server;
+use uuid::Uuid;
 use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener},
-    sync::{
+    net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener}, ops::Deref, path::PathBuf, sync::{
         atomic::{AtomicU16, Ordering},
         Arc, OnceLock,
-    },
-    thread::sleep,
-    time::{Duration, Instant},
+    }, thread::sleep, time::{Duration, Instant}
 };
 use tracing_subscriber::EnvFilter;
 pub struct System {
@@ -477,6 +475,31 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
 
 use tokio::net::TcpListener as TokioTcpListener;
 
+pub fn setup_rpc_client(port: u16) -> Arc<NanoRpcClient> {
+    let rpc_url = format!("http://[::1]:{}/", port);
+    let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
+
+    rpc_client
+}
+
+pub async fn setup_rpc_server(
+    port: u16,
+    node: Arc<Node>,
+    enable_control: bool,
+) {
+    let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
+
+    let listener = TokioTcpListener::bind(socket_addr)
+        .await
+        .expect("Failed to bind to address");
+
+    tokio::spawn(async move {
+        run_rpc_server(node, listener, enable_control)
+            .await
+            .unwrap();
+    });
+}
+
 pub fn setup_rpc_client_and_server(
     node: Arc<Node>,
     enable_control: bool,
@@ -571,4 +594,51 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
     node.process_local(send.clone()).unwrap();
 
     send
+}
+
+
+pub struct TestNode {
+    app_path: PathBuf,
+    node: Arc<Node>,
+}
+
+impl TestNode {
+    pub async fn new() -> Self {
+        let mut app_path = std::env::temp_dir();
+        app_path.push(format!("rsnano-test-{}", Uuid::new_v4().simple()));
+        let config = NodeConfig::new_test_instance();
+        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+        let work = Arc::new(WorkPoolImpl::new(
+            network_params.work.clone(),
+            1,
+            Duration::ZERO,
+        ));
+
+        let node = NodeBuilder::new(Networks::NanoDevNetwork)
+            .data_path(app_path.clone())
+            .config(config)
+            .network_params(network_params)
+            .work(work)
+            .finish()
+            .unwrap();
+
+        let node = Arc::new(node);
+
+        Self { node, app_path }
+    }
+}
+
+impl Drop for TestNode {
+    fn drop(&mut self) {
+        self.node.stop();
+        std::fs::remove_dir_all(&self.app_path).unwrap();
+    }
+}
+
+impl Deref for TestNode {
+    type Target = Arc<Node>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.node
+    }
 }

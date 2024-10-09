@@ -49,7 +49,7 @@ impl TcpListener {
             network,
             network_observer,
             data: Mutex::new(TcpListenerData {
-                stopped: false,
+                stopped: true,
                 local_addr: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
             }),
             tokio,

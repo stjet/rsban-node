@@ -10,6 +10,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub struct NodeBuilder {
     network: Networks,
+    is_nulled: bool,
     runtime: Option<tokio::runtime::Handle>,
     data_path: Option<PathBuf>,
     config: Option<NodeConfig>,
@@ -24,8 +25,17 @@ pub struct NodeBuilder {
 
 impl NodeBuilder {
     pub fn new(network: Networks) -> Self {
+        Self::with_nulled(network, false)
+    }
+
+    pub fn new_null(network: Networks) -> Self {
+        Self::with_nulled(network, true)
+    }
+
+    pub fn with_nulled(network: Networks, is_nulled: bool) -> Self {
         Self {
             network,
+            is_nulled,
             runtime: None,
             data_path: None,
             config: None,
@@ -147,6 +157,11 @@ impl NodeBuilder {
             on_vote,
             on_publish: self.on_publish,
         };
-        Ok(Node::new(args))
+        let node = if self.is_nulled {
+            Node::new_null(args)
+        } else {
+            Node::new(args)
+        };
+        Ok(node)
     }
 }

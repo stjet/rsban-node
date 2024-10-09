@@ -3637,6 +3637,7 @@ name = "rsnano-insight"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "num-format",
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_messages",

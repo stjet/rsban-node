@@ -71,6 +71,7 @@ use std::{
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
+    is_nulled: bool,
     pub runtime: tokio::runtime::Handle,
     pub data_path: PathBuf,
     pub steady_clock: Arc<SteadyClock>,
@@ -146,7 +147,15 @@ pub(crate) struct NodeArgs {
 }
 
 impl Node {
+    pub(crate) fn new_null(args: NodeArgs) -> Self {
+        Self::with_null(args, true)
+    }
+
     pub(crate) fn new(args: NodeArgs) -> Self {
+        Self::with_null(args, false)
+    }
+
+    fn with_null(args: NodeArgs, is_nulled: bool) -> Self {
         let network_params = args.network_params;
         let config = args.config;
         let flags = args.flags;
@@ -1030,6 +1039,7 @@ impl Node {
         );
 
         Self {
+            is_nulled,
             steady_clock,
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
@@ -1314,6 +1324,9 @@ pub trait NodeExt {
 
 impl NodeExt for Arc<Node> {
     fn start(&self) {
+        if self.is_nulled {
+            return; // TODO better nullability implementation
+        }
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
         self.message_processor.lock().unwrap().start();
@@ -1405,6 +1418,10 @@ impl NodeExt for Arc<Node> {
     }
 
     fn stop(&self) {
+        if self.is_nulled {
+            return; // TODO better nullability implementation
+        }
+
         // Ensure stop can only be called once
         if self.stopped.swap(true, Ordering::SeqCst) {
             return;

@@ -71,8 +71,8 @@ use std::{
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
-    pub tokio: tokio::runtime::Handle,
-    pub application_path: PathBuf,
+    pub runtime: tokio::runtime::Handle,
+    pub data_path: PathBuf,
     pub steady_clock: Arc<SteadyClock>,
     pub node_id: KeyPair,
     pub config: NodeConfig,
@@ -134,13 +134,13 @@ pub struct Node {
 
 pub struct NodeArgs {
     pub runtime: tokio::runtime::Handle,
-    pub application_path: PathBuf,
+    pub data_path: PathBuf,
     pub config: NodeConfig,
     pub network_params: NetworkParams,
     pub flags: NodeFlags,
     pub work: Arc<WorkPoolImpl>,
-    pub election_end: ElectionEndCallback,
-    pub account_balance_changed: AccountBalanceChangedCallback,
+    pub on_election_end: ElectionEndCallback,
+    pub on_balance_changed: AccountBalanceChangedCallback,
     pub on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
     pub on_publish: Option<PublishedCallback>,
 }
@@ -163,7 +163,7 @@ impl Node {
             network_params: network_params.clone(),
         };
         let global_config = &global_config;
-        let application_path = args.application_path;
+        let application_path = args.data_path;
         let node_id = NodeIdKeyFile::default()
             .initialize(&application_path)
             .unwrap();
@@ -469,8 +469,8 @@ impl Node {
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
-            args.election_end,
-            args.account_balance_changed,
+            args.on_election_end,
+            args.on_balance_changed,
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,
@@ -1052,12 +1052,12 @@ impl Node {
             ledger,
             store,
             stats,
-            application_path,
+            data_path: application_path,
             network_params,
             config,
             flags,
             work,
-            tokio: tokio_handle,
+            runtime: tokio_handle,
             bootstrap_server,
             online_weight_sampler,
             online_reps,
@@ -1475,7 +1475,7 @@ impl NodeExt for Arc<Node> {
     }
 
     fn backup_wallet(&self) {
-        let mut backup_path = self.application_path.clone();
+        let mut backup_path = self.data_path.clone();
         backup_path.push("backup");
         if let Err(e) = self.wallets.backup(&backup_path) {
             error!(error = ?e, "Could not create backup of wallets");
@@ -1672,13 +1672,13 @@ mod tests {
 
             let node_args = NodeArgs {
                 runtime: tokio::runtime::Handle::current(),
-                application_path: app_path.clone(),
+                data_path: app_path.clone(),
                 config,
                 network_params,
                 flags,
                 work,
-                election_end: Box::new(|_, _, _, _, _, _| {}),
-                account_balance_changed: Box::new(|_, _| {}),
+                on_election_end: Box::new(|_, _, _, _, _, _| {}),
+                on_balance_changed: Box::new(|_, _| {}),
                 on_vote: Box::new(|_, _, _, _| {}),
                 on_publish: None,
             };

@@ -996,7 +996,7 @@ mod bulk_pull {
             response_server,
             node.ledger.clone(),
             node.workers.clone(),
-            node.tokio.clone(),
+            node.runtime.clone(),
         )
     }
 }
@@ -1272,7 +1272,7 @@ mod frontier_req {
             request,
             node.workers.clone(),
             node.ledger.clone(),
-            node.tokio.clone(),
+            node.runtime.clone(),
         )
     }
 }
@@ -1350,7 +1350,7 @@ mod bulk_pull_account {
                 payload,
                 node.workers.clone(),
                 node.ledger.clone(),
-                node.tokio.clone(),
+                node.runtime.clone(),
             );
 
             assert_eq!(pull_server.invalid_request(), false);
@@ -1377,7 +1377,7 @@ mod bulk_pull_account {
                 payload,
                 node.workers.clone(),
                 node.ledger.clone(),
-                node.tokio.clone(),
+                node.runtime.clone(),
             );
 
             assert_eq!(pull_server.pending_address_only(), true);
@@ -1620,7 +1620,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         Arc::new(OutboundBandwidthLimiter::default()),
         node.steady_clock.clone(),
         Arc::new(NullNetworkObserver::new()),
-        &node.tokio,
+        &node.runtime,
     );
 
     Arc::new(ResponseServer::new(
@@ -1633,7 +1633,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         true,
         node.syn_cookies.clone(),
         node.node_id.clone(),
-        node.tokio.clone(),
+        node.runtime.clone(),
         node.ledger.clone(),
         node.workers.clone(),
         node.block_processor.clone(),

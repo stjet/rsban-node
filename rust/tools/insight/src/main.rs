@@ -116,13 +116,13 @@ impl AppModel {
         let published = self.published.clone();
         let node_args = NodeArgs {
             runtime: self.runtime.clone(),
-            application_path: node_path,
+            data_path: node_path,
             config: node_config,
             network_params,
             flags,
             work,
-            election_end: Box::new(|_, _, _, _, _, _| {}),
-            account_balance_changed: Box::new(|_, _| {}),
+            on_election_end: Box::new(|_, _, _, _, _, _| {}),
+            on_balance_changed: Box::new(|_, _| {}),
             on_vote: Box::new(|_, _, _, _| {}),
             on_publish: Some(Arc::new(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);

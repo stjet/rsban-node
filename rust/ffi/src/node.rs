@@ -94,13 +94,13 @@ pub unsafe extern "C" fn rsn_node_create(
 
     let node_args = NodeArgs {
         runtime: async_rt.tokio.handle().clone(),
-        application_path: path.into(),
+        data_path: path.into(),
         config: config.try_into().unwrap(),
         network_params: params.try_into().unwrap(),
         flags: flags.lock().unwrap().clone(),
         work: (*work).clone(),
-        election_end: election_ended_wrapper,
-        account_balance_changed: account_balance_changed_wrapper,
+        on_election_end: election_ended_wrapper,
+        on_balance_changed: account_balance_changed_wrapper,
         on_vote: vote_processed,
         on_publish: None,
     };

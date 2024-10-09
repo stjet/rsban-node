@@ -124,13 +124,13 @@ impl System {
         let path = unique_path().expect("Could not get a unique path");
         let node_args = NodeArgs {
             runtime: self.runtime.tokio.handle().clone(),
-            application_path: path,
+            data_path: path,
             config,
             network_params: self.network_params.clone(),
             flags,
             work: self.work.clone(),
-            election_end: Box::new(|_, _, _, _, _, _| {}),
-            account_balance_changed: Box::new(|_, _| {}),
+            on_election_end: Box::new(|_, _, _, _, _, _| {}),
+            on_balance_changed: Box::new(|_, _| {}),
             on_vote: Box::new(|_, _, _, _| {}),
             on_publish: None,
         };
@@ -140,8 +140,7 @@ impl System {
     fn stop(&mut self) {
         for node in &self.nodes {
             node.stop();
-            std::fs::remove_dir_all(&node.application_path)
-                .expect("Could not delete node data dir");
+            std::fs::remove_dir_all(&node.data_path).expect("Could not delete node data dir");
         }
         self.work.stop();
     }
@@ -491,7 +490,7 @@ pub fn setup_rpc_client_and_server(
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
 
     let server = node
-        .tokio
+        .runtime
         .spawn(run_rpc_server(node.clone(), socket_addr, enable_control));
 
     let rpc_url = format!("http://[::1]:{}/", port);

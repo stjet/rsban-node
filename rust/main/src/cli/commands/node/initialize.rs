@@ -48,13 +48,13 @@ impl InitializeArgs {
 
         let node_args = NodeArgs {
             runtime: tokio::runtime::Handle::current(),
-            application_path: path,
+            data_path: path,
             config,
             network_params,
             flags,
             work,
-            election_end: Box::new(|_, _, _, _, _, _| {}),
-            account_balance_changed: Box::new(|_, _| {}),
+            on_election_end: Box::new(|_, _, _, _, _, _| {}),
+            on_balance_changed: Box::new(|_, _| {}),
             on_vote: Box::new(|_, _, _, _| {}),
             on_publish: None,
         };

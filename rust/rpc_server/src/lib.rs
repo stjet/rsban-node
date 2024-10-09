@@ -30,7 +30,7 @@ mod test_helpers {
         let socket_addr = SocketAddr::new(ip_addr, port);
 
         let server = node
-            .tokio
+            .runtime
             .spawn(run_rpc_server(node.clone(), socket_addr, true));
 
         let rpc_url = format!("http://[::1]:{}/", port);

@@ -23,7 +23,7 @@ mod tests {
 
         assert!(!node.unchecked.is_empty());
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.unchecked_clear().await.unwrap() });
 
         assert!(node.unchecked.is_empty());

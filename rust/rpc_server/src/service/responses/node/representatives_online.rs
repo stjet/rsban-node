@@ -172,7 +172,7 @@ mod tests {
         );
 
         // Test filtering by accounts using node2
-        let filtered_result = node2.tokio.block_on(async {
+        let filtered_result = node2.runtime.block_on(async {
             rpc_client
                 .representatives_online(Some(true), Some(vec![new_rep.into()]))
                 .await

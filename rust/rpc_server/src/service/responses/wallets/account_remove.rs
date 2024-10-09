@@ -41,7 +41,7 @@ mod tests {
 
         assert!(node.wallets.exists(&account));
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .account_remove(wallet, account.into())
                 .await
@@ -69,7 +69,7 @@ mod tests {
         assert!(node.wallets.exists(&account));
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_remove(wallet, account.into()).await });
 
         assert_eq!(
@@ -94,7 +94,7 @@ mod tests {
         node.wallets.lock(&wallet_id).unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_remove(wallet_id, Account::zero()).await });
 
         assert_eq!(
@@ -112,7 +112,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_remove(WalletId::zero(), Account::zero())
                 .await

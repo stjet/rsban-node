@@ -1,6 +1,4 @@
-use rsnano_core::{
-    Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, PublicKey, WalletId,
-};
+use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, WalletId};
 use rsnano_node::node::Node;
 use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, WalletHistoryDto};
 use rsnano_store_lmdb::Transaction;
@@ -173,7 +171,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let wallet_history = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_history(wallet_id, None).await.unwrap() });
 
         assert_eq!(wallet_history.history.len(), 1);
@@ -206,7 +204,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_history(WalletId::zero(), None).await });
 
         assert_eq!(

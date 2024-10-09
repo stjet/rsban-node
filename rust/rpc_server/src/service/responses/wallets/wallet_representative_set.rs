@@ -41,7 +41,7 @@ mod tests {
         let wallet = WalletId::zero();
         node.wallets.create(wallet);
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .wallet_representative_set(wallet, Account::zero(), None)
                 .await
@@ -63,7 +63,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_representative_set(WalletId::zero(), Account::zero(), None)
                 .await

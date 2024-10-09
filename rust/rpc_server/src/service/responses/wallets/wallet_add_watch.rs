@@ -38,7 +38,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .wallet_add_watch(wallet_id, vec![*DEV_GENESIS_ACCOUNT])
                 .await
@@ -61,7 +61,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_add_watch(wallet_id, vec![Account::zero()])
                 .await

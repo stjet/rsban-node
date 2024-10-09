@@ -74,7 +74,7 @@ mod tests {
         );
 
         let unchecked_dto = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.unchecked(2).await.unwrap() });
 
         assert_eq!(unchecked_dto.blocks.len(), 2);

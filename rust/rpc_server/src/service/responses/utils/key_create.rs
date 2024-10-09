@@ -22,7 +22,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.key_create().await.unwrap() });
 
         server.abort();

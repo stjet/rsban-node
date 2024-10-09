@@ -27,7 +27,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.blocks(vec![*DEV_GENESIS_HASH]).await.unwrap() });
 
         assert_eq!(

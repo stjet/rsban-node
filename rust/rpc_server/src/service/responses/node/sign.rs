@@ -65,7 +65,7 @@ mod tests {
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .sign(
                     None,
@@ -109,7 +109,7 @@ mod tests {
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .sign(None, None, None, send.json_representation())
                 .await

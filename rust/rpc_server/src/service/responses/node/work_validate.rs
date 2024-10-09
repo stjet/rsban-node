@@ -51,7 +51,7 @@ mod tests {
 
         let work = node.work_generate_dev((*DEV_GENESIS_HASH).into());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .work_validate(1.into(), *DEV_GENESIS_HASH)
                 .await
@@ -61,7 +61,7 @@ mod tests {
         assert_eq!(result.valid_all, false);
         assert_eq!(result.valid_receive, false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .work_validate(work.into(), *DEV_GENESIS_HASH)
                 .await

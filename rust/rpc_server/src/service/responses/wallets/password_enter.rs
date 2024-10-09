@@ -33,7 +33,7 @@ mod tests {
             .deterministic_insert2(&wallet_id, false)
             .is_err());
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .password_enter(wallet_id, "".to_string())
                 .await
@@ -59,7 +59,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .password_enter(wallet_id, "password".to_string())
                 .await
@@ -80,7 +80,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .password_enter(WalletId::zero(), "password".to_string())
                 .await

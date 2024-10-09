@@ -96,7 +96,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.unopened(Account::zero(), 1, None).await.unwrap() });
 
         assert_eq!(result.value.get(&Account::zero()).unwrap(), &Amount::raw(1));
@@ -112,7 +112,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.unopened(Account::zero(), 1, None).await });
 
         assert_eq!(

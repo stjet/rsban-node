@@ -45,7 +45,7 @@ mod tests {
 
         let block = send_block(node.clone());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .chain(block.hash(), u64::MAX, None, None)
                 .await

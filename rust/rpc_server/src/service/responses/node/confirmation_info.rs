@@ -100,7 +100,7 @@ mod tests {
 
         let root = send.qualified_root();
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .confirmation_info(root, Some(true), Some(true))
                 .await

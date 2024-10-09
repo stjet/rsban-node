@@ -195,7 +195,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result1 = node.tokio.block_on(async {
+        let result1 = node.runtime.block_on(async {
             rpc_client
                 .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
                 .await
@@ -208,7 +208,7 @@ mod tests {
             panic!("Expected ReceivableDto::Blocks variant");
         }
 
-        let result2 = node.tokio.block_on(async {
+        let result2 = node.runtime.block_on(async {
             rpc_client
                 .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(false))
                 .await
@@ -242,7 +242,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
                 .await
@@ -278,7 +278,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_receivable(
                     vec![public_key.into()],
@@ -325,7 +325,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_receivable(
                     vec![public_key.into()],

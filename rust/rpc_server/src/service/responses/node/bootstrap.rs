@@ -130,7 +130,7 @@ mod tests {
         let address = *node2.tcp_listener.local_address().ip();
         let port = node2.tcp_listener.local_address().port();
 
-        let result = node1.tokio.spawn(async move {
+        let result = node1.runtime.spawn(async move {
             rpc_client.bootstrap(address, port, None).await.unwrap();
         });
 

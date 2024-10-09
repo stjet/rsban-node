@@ -88,7 +88,7 @@ mod tests {
         send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_info(wallet).await.unwrap() });
 
         assert_eq!(result.balance, Amount::MAX - Amount::raw(1));
@@ -112,7 +112,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_info(WalletId::zero()).await });
 
         assert_eq!(

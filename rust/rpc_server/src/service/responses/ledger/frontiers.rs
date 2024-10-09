@@ -38,7 +38,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.frontiers(*DEV_GENESIS_ACCOUNT, 1).await.unwrap() });
 
         assert_eq!(

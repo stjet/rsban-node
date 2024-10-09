@@ -37,7 +37,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .password_change(wallet_id, "password".to_string())
                 .await
@@ -64,7 +64,7 @@ mod tests {
 
         node.wallets.create(wallet_id);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .password_change(wallet_id, "password".to_string())
                 .await
@@ -85,7 +85,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .password_change(WalletId::zero(), "password".to_string())
                 .await

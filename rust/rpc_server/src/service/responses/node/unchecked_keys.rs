@@ -92,7 +92,7 @@ mod tests {
             "Expected 2 unchecked blocks after 30 seconds",
         );
 
-        let unchecked_dto = node.tokio.block_on(async {
+        let unchecked_dto = node.runtime.block_on(async {
             rpc_client
                 .unchecked_keys(key.account().into(), 2)
                 .await

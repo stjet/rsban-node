@@ -45,7 +45,7 @@ mod tests {
         let hash = send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_frontiers(wallet).await.unwrap() });
 
         assert_eq!(result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(), &hash);

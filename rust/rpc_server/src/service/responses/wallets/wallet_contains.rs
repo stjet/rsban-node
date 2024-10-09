@@ -42,7 +42,7 @@ mod tests {
 
         assert!(node.wallets.exists(&account));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_contains(wallet, account.into())
                 .await
@@ -65,7 +65,7 @@ mod tests {
 
         node.wallets.create(1.into());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_contains(wallet, Account::zero())
                 .await
@@ -84,7 +84,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_contains(WalletId::zero(), Account::zero())
                 .await

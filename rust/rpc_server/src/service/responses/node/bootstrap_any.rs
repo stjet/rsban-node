@@ -39,7 +39,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.bootstrap_any(None, None, None).await.unwrap() });
 
         server.abort();
@@ -57,7 +57,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.bootstrap_any(None, None, None).await });
 
         assert_eq!(

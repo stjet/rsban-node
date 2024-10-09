@@ -148,7 +148,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_ledger(wallet, representative, weight, receivable, modified_since)
                 .await
@@ -171,7 +171,7 @@ mod tests {
         assert_eq!(info.receivable, Some(Amount::zero()));
         assert_eq!(info.representative, Some(keys.account()));
 
-        let result_without_optional = node.tokio.block_on(async {
+        let result_without_optional = node.runtime.block_on(async {
             rpc_client
                 .wallet_ledger(wallet, None, None, None, None)
                 .await
@@ -195,7 +195,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_ledger(WalletId::zero(), None, None, None, None)
                 .await
@@ -216,7 +216,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_ledger(WalletId::zero(), None, None, None, None)
                 .await

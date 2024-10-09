@@ -34,7 +34,7 @@ mod tests {
 
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), true);
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.wallet_lock(wallet_id).await.unwrap() });
 
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), false);
@@ -56,7 +56,7 @@ mod tests {
         assert_eq!(node.wallets.valid_password(&wallet_id).unwrap(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_lock(wallet_id).await });
 
         assert_eq!(
@@ -77,7 +77,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_lock(WalletId::zero()).await });
 
         assert_eq!(

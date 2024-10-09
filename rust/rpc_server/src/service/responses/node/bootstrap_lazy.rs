@@ -45,7 +45,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.bootstrap_lazy(hash, None, None).await.unwrap() });
 
         assert_eq!(result.started, true);
@@ -63,7 +63,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .bootstrap_lazy(BlockHash::zero(), None, None)
                 .await

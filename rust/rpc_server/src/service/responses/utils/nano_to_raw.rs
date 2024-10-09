@@ -23,7 +23,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.nano_to_raw(Amount::nano(1)).await.unwrap() });
 
         assert_eq!(result.value, Amount::raw(1000000000000000000000000000000));

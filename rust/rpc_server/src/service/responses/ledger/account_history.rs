@@ -350,7 +350,7 @@ mod tests {
         // Set up RPC client and server
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let account_history = node.tokio.block_on(async {
+        let account_history = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     *DEV_GENESIS_ACCOUNT,
@@ -406,7 +406,7 @@ mod tests {
         assert!(history[4].confirmed);
 
         // Test count and reverse
-        let account_history_reverse = node.tokio.block_on(async {
+        let account_history_reverse = node.runtime.block_on(async {
             rpc_client
                 .account_history(*DEV_GENESIS_ACCOUNT, 1, None, None, None, Some(true), None)
                 .await
@@ -451,7 +451,7 @@ mod tests {
             .unwrap();
 
         // Test filter for send state blocks
-        let account_history_filtered_send = node.tokio.block_on(async {
+        let account_history_filtered_send = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     *DEV_GENESIS_ACCOUNT,
@@ -474,7 +474,7 @@ mod tests {
         assert_eq!(account_history_filtered_send.history[0].account, account2);
 
         // Test filter for receive state blocks
-        let account_history_filtered_receive = node.tokio.block_on(async {
+        let account_history_filtered_receive = node.runtime.block_on(async {
             rpc_client
                 .account_history(
                     account2.into(),

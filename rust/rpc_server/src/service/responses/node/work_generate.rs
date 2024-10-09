@@ -185,7 +185,7 @@ mod tests {
 
         let hash = BlockHash::from_bytes([1; 32]);
 
-        let work_generate_dto = node.tokio.block_on(async {
+        let work_generate_dto = node.runtime.block_on(async {
             rpc_client
                 .work_generate(
                     hash, None, // difficulty

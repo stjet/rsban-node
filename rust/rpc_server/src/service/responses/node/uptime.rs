@@ -24,7 +24,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.uptime().await.unwrap() });
 
         assert!(result.value > 0);

@@ -33,7 +33,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .delegators_count(*DEV_GENESIS_ACCOUNT)
                 .await

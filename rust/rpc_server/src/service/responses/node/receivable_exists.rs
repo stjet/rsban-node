@@ -100,7 +100,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .receivable_exists(send.hash(), None, Some(true))
                 .await
@@ -121,7 +121,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .receivable_exists(send.hash(), Some(true), Some(false))
                 .await
@@ -141,7 +141,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let non_existent_hash = BlockHash::zero();
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .receivable_exists(non_existent_hash, None, None)
                 .await

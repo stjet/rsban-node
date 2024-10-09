@@ -38,7 +38,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_frontiers(vec![*DEV_GENESIS_ACCOUNT])
                 .await
@@ -60,7 +60,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_frontiers(vec![Account::zero()])
                 .await
@@ -82,7 +82,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_frontiers(vec![*DEV_GENESIS_ACCOUNT, Account::zero()])
                 .await

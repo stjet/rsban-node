@@ -30,7 +30,7 @@ mod tests {
 
         let hash = BlockHash::random();
 
-        let work_handle = node.clone().tokio.spawn(async move {
+        let work_handle = node.clone().runtime.spawn(async move {
             node_clone2
                 .distributed_work
                 .make(hash.into(), node_clone2.network_params.work.base, None)
@@ -39,23 +39,23 @@ mod tests {
 
         assert_timely(std::time::Duration::from_millis(100), || {
             node_clone
-                .tokio
+                .runtime
                 .block_on(async { !work_handle.is_finished() })
         });
 
         // Ensure work generation was actually cancelled
         assert_timely(std::time::Duration::from_secs(10), || {
             node_clone
-                .tokio
+                .runtime
                 .block_on(async { work_handle.is_finished() })
         });
 
         let work_result = node_clone
-            .tokio
+            .runtime
             .block_on(async { work_handle.await.unwrap() });
         assert!(work_result.is_some());
 
-        let work_handle = node.clone().tokio.spawn(async move {
+        let work_handle = node.clone().runtime.spawn(async move {
             node.distributed_work
                 .make(hash.into(), node.network_params.work.base, None)
                 .await
@@ -63,12 +63,12 @@ mod tests {
 
         assert_timely(std::time::Duration::from_millis(100), || {
             node_clone
-                .tokio
+                .runtime
                 .block_on(async { !work_handle.is_finished() })
         });
 
         let result = node_clone
-            .tokio
+            .runtime
             .block_on(async { rpc_client.work_cancel(hash).await.unwrap() });
 
         // Check the result
@@ -77,12 +77,12 @@ mod tests {
         // Ensure work generation was actually cancelled
         assert_timely(std::time::Duration::from_secs(10), || {
             node_clone
-                .tokio
+                .runtime
                 .block_on(async { work_handle.is_finished() })
         });
 
         let work_result = node_clone
-            .tokio
+            .runtime
             .block_on(async { work_handle.await.unwrap() });
         assert!(work_result.is_none());
 
@@ -98,7 +98,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node_clone
-            .tokio
+            .runtime
             .block_on(async { rpc_client.work_cancel(BlockHash::zero()).await });
 
         assert_eq!(

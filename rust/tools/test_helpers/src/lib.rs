@@ -7,7 +7,7 @@ use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
-    node::{Node, NodeArgs, NodeExt},
+    node::{Node, NodeBuilder, NodeExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
@@ -58,8 +58,8 @@ impl System {
         config
     }
 
-    pub fn build_node<'a>(&'a mut self) -> NodeBuilder<'a> {
-        NodeBuilder {
+    pub fn build_node<'a>(&'a mut self) -> TestNodeBuilder<'a> {
+        TestNodeBuilder {
             system: self,
             config: None,
             flags: None,
@@ -122,19 +122,15 @@ impl System {
 
     fn new_node(&self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
         let path = unique_path().expect("Could not get a unique path");
-        let node_args = NodeArgs {
-            runtime: self.runtime.tokio.handle().clone(),
-            data_path: path,
-            config,
-            network_params: self.network_params.clone(),
-            flags,
-            work: self.work.clone(),
-            on_election_end: Box::new(|_, _, _, _, _, _| {}),
-            on_balance_changed: Box::new(|_, _| {}),
-            on_vote: Box::new(|_, _, _, _| {}),
-            on_publish: None,
-        };
-        Arc::new(Node::new(node_args))
+        let node = NodeBuilder::new(self.network_params.network.current_network)
+            .runtime(self.runtime.tokio.handle().clone())
+            .data_path(path)
+            .config(config)
+            .network_params(self.network_params.clone())
+            .flags(flags)
+            .work(self.work.clone())
+            .finish();
+        Arc::new(node)
     }
 
     fn stop(&mut self) {
@@ -152,14 +148,14 @@ impl Drop for System {
     }
 }
 
-pub struct NodeBuilder<'a> {
+pub struct TestNodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
     flags: Option<NodeFlags>,
     disconnected: bool,
 }
 
-impl<'a> NodeBuilder<'a> {
+impl<'a> TestNodeBuilder<'a> {
     pub fn config(mut self, cfg: NodeConfig) -> Self {
         self.config = Some(cfg);
         self

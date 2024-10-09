@@ -24,7 +24,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.receive_minimum().await.unwrap() });
 
         assert_eq!(result.value, node.config.receive_minimum);
@@ -40,7 +40,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.receive_minimum().await });
 
         assert_eq!(

@@ -233,7 +233,7 @@ mod tests {
             .as_secs();
 
         // Basic ledger test
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
                     None,       // account
@@ -294,7 +294,7 @@ mod tests {
         let (keys, _, _) = setup_test_environment(node.clone());
 
         let genesis_balance = Amount::MAX;
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
                     None,                                   // account
@@ -339,7 +339,7 @@ mod tests {
 
         node.process_active(BlockEnum::State(send2_block.clone()));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .ledger(
                     None,                             // account

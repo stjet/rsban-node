@@ -116,7 +116,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_receivable(wallet, 1, None, None, None, Some(false))
                 .await
@@ -154,7 +154,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_receivable(wallet, 1, None, None, None, None)
                 .await
@@ -190,7 +190,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_receivable(wallet, 2, Some(Amount::raw(1)), None, None, Some(false))
                 .await
@@ -216,7 +216,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_receivable(WalletId::zero(), 1, None, None, None, None)
                 .await

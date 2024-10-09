@@ -109,7 +109,7 @@ mod tests {
             .unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(wallet, 1).await.unwrap() });
 
         assert!(
@@ -130,7 +130,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
 
         assert_eq!(
@@ -149,7 +149,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
 
         assert_eq!(

@@ -41,7 +41,7 @@ mod tests {
         node.wallets.work_set(&wallet, &account.into(), 1).unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.work_get(wallet, account).await.unwrap() });
 
         assert_eq!(result.work, WorkNonce::from(1));
@@ -57,7 +57,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.work_get(WalletId::zero(), Account::zero()).await });
 
         assert_eq!(
@@ -76,7 +76,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.work_get(WalletId::zero(), Account::zero()).await });
 
         assert_eq!(

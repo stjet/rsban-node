@@ -38,7 +38,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_create(None).await.unwrap() });
 
         let wallets = node.wallets.wallet_ids();
@@ -58,7 +58,7 @@ mod tests {
         let seed = RawKey::from_slice(&[1u8; 32]).unwrap();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_create(Some(seed)).await.unwrap() });
 
         let wallets = node.wallets.wallet_ids();
@@ -79,7 +79,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_create(None).await });
 
         assert_eq!(

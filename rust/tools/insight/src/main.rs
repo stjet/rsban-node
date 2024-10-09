@@ -1,8 +1,8 @@
 use eframe::egui::{self, global_theme_preference_buttons};
 use rsnano_core::{work::WorkPoolImpl, Networks};
 use rsnano_node::{
-    config::{NodeConfig, NodeFlags},
-    node::{Node, NodeArgs, NodeExt},
+    config::NodeConfig,
+    node::{Node, NodeBuilder, NodeExt},
     working_path_for, NetworkParams,
 };
 use std::{
@@ -111,25 +111,19 @@ impl AppModel {
         ));
 
         let node_path = working_path_for(network).unwrap();
-        let flags = NodeFlags::default();
 
         let published = self.published.clone();
-        let node_args = NodeArgs {
-            runtime: self.runtime.clone(),
-            data_path: node_path,
-            config: node_config,
-            network_params,
-            flags,
-            work,
-            on_election_end: Box::new(|_, _, _, _, _, _| {}),
-            on_balance_changed: Box::new(|_, _| {}),
-            on_vote: Box::new(|_, _, _, _| {}),
-            on_publish: Some(Arc::new(move |_channel_id, _message| {
+        let node = NodeBuilder::new(Networks::NanoBetaNetwork)
+            .runtime(self.runtime.clone())
+            .data_path(node_path)
+            .config(node_config)
+            .network_params(network_params)
+            .work(work)
+            .on_publish(Arc::new(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);
-            })),
-        };
-        let node = Arc::new(Node::new(node_args));
-
+            }))
+            .finish();
+        let node = Arc::new(node);
         let node_l = node.clone();
         let started = self.started.clone();
         let stopped = self.stopped.clone();

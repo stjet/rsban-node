@@ -59,7 +59,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_quorum(None).await.unwrap() });
 
         let reps = node.online_reps.lock().unwrap();
@@ -107,7 +107,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
 
         let result = node0
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_quorum(Some(true)).await.unwrap() });
 
         let reps = node0.online_reps.lock().unwrap();

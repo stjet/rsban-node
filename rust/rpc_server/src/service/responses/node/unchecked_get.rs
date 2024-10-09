@@ -64,7 +64,7 @@ mod tests {
         );
 
         let unchecked_dto = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.unchecked_get(open.hash()).await.unwrap() });
 
         let current_timestamp = std::time::SystemTime::now()

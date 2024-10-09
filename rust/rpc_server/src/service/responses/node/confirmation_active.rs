@@ -44,7 +44,7 @@ mod tests {
         send_block(node.clone());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.confirmation_active(None).await.unwrap() });
 
         assert!(!result.confirmations.is_empty());

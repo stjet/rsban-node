@@ -43,7 +43,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.representatives(None, None).await.unwrap() });
 
         let mut representatives = HashMap::new();

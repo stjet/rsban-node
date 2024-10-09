@@ -54,12 +54,12 @@ mod tests {
         node.process_active(block);
 
         // Call search_receivable
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client.search_receivable(wallet_id).await.unwrap();
         });
 
         // Check that the balance has been updated
-        let final_balance = node.tokio.block_on(async {
+        let final_balance = node.runtime.block_on(async {
             let timeout = std::time::Duration::from_secs(10);
             let start = std::time::Instant::now();
             loop {
@@ -84,7 +84,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.search_receivable(WalletId::zero()).await });
 
         assert_eq!(
@@ -103,7 +103,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.search_receivable(WalletId::zero()).await });
 
         assert_eq!(

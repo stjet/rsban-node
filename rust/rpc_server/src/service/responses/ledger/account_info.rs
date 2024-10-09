@@ -110,7 +110,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_info(
                     Account::decode_account(
@@ -131,7 +131,7 @@ mod tests {
             Some("node returned error: \"Account not found\"".to_string())
         );
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_info(
                     *DEV_GENESIS_ACCOUNT,

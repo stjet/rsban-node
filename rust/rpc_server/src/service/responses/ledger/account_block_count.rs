@@ -29,7 +29,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .account_block_count(DEV_GENESIS_ACCOUNT.to_owned())
                 .await
@@ -49,7 +49,7 @@ mod tests {
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_block_count(Account::zero()).await });
 
         assert_eq!(

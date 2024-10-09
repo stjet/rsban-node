@@ -24,7 +24,7 @@ mod tests {
         node.wallets.create(wallet);
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_export(wallet).await.unwrap() });
 
         assert_eq!(result.json, serde_json::to_string(&wallet).unwrap());

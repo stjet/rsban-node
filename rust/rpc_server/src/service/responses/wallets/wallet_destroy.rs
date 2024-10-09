@@ -32,7 +32,7 @@ mod tests {
 
         assert!(node.wallets.mutex.lock().unwrap().get(&wallet_id).is_some());
 
-        node.tokio
+        node.runtime
             .block_on(async { rpc_client.wallet_destroy(wallet_id).await.unwrap() });
 
         assert!(node.wallets.mutex.lock().unwrap().get(&wallet_id).is_none());
@@ -54,7 +54,7 @@ mod tests {
         assert!(node.wallets.mutex.lock().unwrap().get(&wallet_id).is_some());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_destroy(wallet_id).await });
 
         assert!(result.is_err());

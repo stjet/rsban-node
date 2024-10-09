@@ -75,7 +75,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_balances(vec![DEV_GENESIS_KEY.public_key().as_account()], None)
                 .await
@@ -105,7 +105,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_balances(vec![DEV_GENESIS_KEY.public_key().as_account()], Some(true))
                 .await
@@ -135,7 +135,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .accounts_balances(vec![DEV_GENESIS_KEY.public_key().as_account()], Some(false))
                 .await

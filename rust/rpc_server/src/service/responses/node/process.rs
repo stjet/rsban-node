@@ -103,7 +103,7 @@ mod tests {
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .process(
                     Some(BlockSubType::Send),
@@ -140,7 +140,7 @@ mod tests {
             1,
         ));
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .process(
                     Some(BlockSubType::Send),

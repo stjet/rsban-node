@@ -69,7 +69,7 @@ mod tests {
         node.wallets.create(1.into());
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_balances(1.into(), None).await.unwrap() });
 
         let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
@@ -101,7 +101,7 @@ mod tests {
 
         send_block(node.clone(), public_key.into());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_balances(wallet, Some(Amount::zero()))
                 .await
@@ -138,7 +138,7 @@ mod tests {
 
         send_block(node.clone(), public_key.into());
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_balances(1.into(), Some(Amount::raw(2)))
                 .await

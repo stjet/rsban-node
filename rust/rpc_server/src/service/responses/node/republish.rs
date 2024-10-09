@@ -202,7 +202,7 @@ mod tests {
             .unwrap();
 
         // Test: Republish send block
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .republish(send.hash(), None, None, None)
                 .await
@@ -240,7 +240,7 @@ mod tests {
         setup_test_environment(node.clone());
 
         // Test: Republish genesis block with count 1
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .republish(*DEV_GENESIS_HASH, None, None, Some(1))
                 .await
@@ -272,7 +272,7 @@ mod tests {
         //let open = node.ledger.any().get_block(&node.store.tx_begin_read(), &send_successor).unwrap();
 
         // Test: Republish open block with sources 2
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .republish(block_hash, Some(2), None, None)
                 .await

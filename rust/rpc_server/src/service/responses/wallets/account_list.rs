@@ -38,7 +38,7 @@ mod tests {
             .into();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_list(wallet).await.unwrap() });
 
         assert_eq!(vec![account], result.accounts);
@@ -56,7 +56,7 @@ mod tests {
         let wallet_id = WalletId::random();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.account_list(WalletId::zero()).await });
 
         assert_eq!(

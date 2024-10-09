@@ -47,7 +47,7 @@ mod tests {
         let private_key = RawKey::random();
         let public_key: PublicKey = (&private_key).try_into().unwrap();
 
-        node.tokio.block_on(async {
+        node.runtime.block_on(async {
             rpc_client
                 .wallet_add(wallet_id, private_key, None)
                 .await
@@ -77,7 +77,7 @@ mod tests {
         let private_key = RawKey::random();
 
         let result = node
-            .tokio
+            .runtime
             .block_on(async { rpc_client.wallet_add(wallet_id, private_key, None).await });
 
         assert_eq!(
@@ -95,7 +95,7 @@ mod tests {
 
         let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_add(WalletId::zero(), RawKey::zero(), None)
                 .await
@@ -122,7 +122,7 @@ mod tests {
 
         let private_key = RawKey::random();
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_add(wallet_id, private_key, Some(true))
                 .await
@@ -154,7 +154,7 @@ mod tests {
 
         let private_key = RawKey::random();
 
-        let result = node.tokio.block_on(async {
+        let result = node.runtime.block_on(async {
             rpc_client
                 .wallet_add(wallet_id, private_key, Some(false))
                 .await

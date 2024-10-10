@@ -24,6 +24,7 @@ pub(crate) struct AppModel {
     published: Arc<AtomicUsize>,
     inbound: Arc<AtomicUsize>,
     messages: Arc<RwLock<Vec<RecordedMessage>>>,
+    selected: Option<MessageDetailsModel>,
 }
 
 impl AppModel {
@@ -40,6 +41,7 @@ impl AppModel {
             published: Arc::new(AtomicUsize::new(0)),
             inbound: Arc::new(AtomicUsize::new(0)),
             messages: Arc::new(RwLock::new(Vec::new())),
+            selected: None,
         }
     }
 
@@ -167,6 +169,38 @@ impl AppModel {
 
     pub(crate) fn message_count(&self) -> usize {
         self.messages.read().unwrap().len()
+    }
+
+    pub(crate) fn selected_message(&self) -> Option<MessageDetailsModel> {
+        self.selected.clone()
+    }
+
+    pub(crate) fn select_message(&mut self, index: usize) {
+        let msgs = self.messages.read().unwrap();
+        self.selected = Some((&msgs[index]).into());
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MessageDetailsModel {
+    pub channel_id: String,
+    pub direction: String,
+    pub message_type: String,
+    pub message: String,
+}
+
+impl From<&RecordedMessage> for MessageDetailsModel {
+    fn from(value: &RecordedMessage) -> Self {
+        Self {
+            channel_id: value.channel_id.to_string(),
+            direction: if value.direction == ChannelDirection::Inbound {
+                "in".into()
+            } else {
+                "out".into()
+            },
+            message_type: format!("{:?}", value.message.message_type()),
+            message: format!("{:#?}", value.message),
+        }
     }
 }
 

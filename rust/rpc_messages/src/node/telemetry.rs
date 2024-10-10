@@ -1,8 +1,8 @@
-use std::net::Ipv6Addr;
 use crate::RpcCommand;
 use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use std::net::Ipv6Addr;
 
 impl RpcCommand {
     pub fn telemetry(raw: Option<bool>, address: Option<Ipv6Addr>, port: Option<u16>) -> Self {
@@ -14,16 +14,12 @@ impl RpcCommand {
 pub struct TelemetryArgs {
     pub raw: Option<bool>,
     pub address: Option<Ipv6Addr>,
-    pub port: Option<u16>
+    pub port: Option<u16>,
 }
 
 impl TelemetryArgs {
     pub fn new(raw: Option<bool>, address: Option<Ipv6Addr>, port: Option<u16>) -> Self {
-        Self {
-            raw,
-            address,
-            port,
-        }
+        Self { raw, address, port }
     }
 }
 
@@ -42,7 +38,7 @@ pub struct TelemetryDto {
     pub minor_version: u8,
     pub patch_version: u8,
     pub pre_release_version: u8,
-    pub maker: u8, 
+    pub maker: u8,
     pub timestamp: u64,
     pub active_difficulty: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,7 +68,8 @@ impl From<TelemetryData> for TelemetryDto {
             patch_version: data.patch_version,
             pre_release_version: data.pre_release_version,
             maker: data.maker,
-            timestamp: data.timestamp
+            timestamp: data
+                .timestamp
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
@@ -87,7 +84,7 @@ impl From<TelemetryData> for TelemetryDto {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct TelemetryDtos {
-    pub metrics: Vec<TelemetryDto>
+    pub metrics: Vec<TelemetryDto>,
 }
 
 impl Serialize for TelemetryDtos {
@@ -119,7 +116,9 @@ impl<'de> Deserialize<'de> for TelemetryDtos {
 
         let helper = TelemetryDtoHelper::deserialize(deserializer)?;
         match helper {
-            TelemetryDtoHelper::Single(data) => Ok(TelemetryDtos { metrics: vec![data] }),
+            TelemetryDtoHelper::Single(data) => Ok(TelemetryDtos {
+                metrics: vec![data],
+            }),
             TelemetryDtoHelper::Multiple { metrics } => Ok(TelemetryDtos { metrics }),
         }
     }
@@ -160,11 +159,13 @@ mod tests {
     fn test_telemetry_dto_serialize_single() {
         let data = create_test_telemetry_data();
         let dto = TelemetryDto::from(data);
-        let dtos = TelemetryDtos { metrics: vec![dto.clone()] };
-        
+        let dtos = TelemetryDtos {
+            metrics: vec![dto.clone()],
+        };
+
         let serialized = serde_json::to_string(&dtos).unwrap();
         let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(dtos.metrics, deserialized.metrics);
     }
 
@@ -173,14 +174,16 @@ mod tests {
         let data1 = create_test_telemetry_data();
         let mut data2 = data1.clone();
         data2.block_count = 2000;
-        
+
         let dto1 = TelemetryDto::from(data1);
         let dto2 = TelemetryDto::from(data2);
-        let dtos = TelemetryDtos { metrics: vec![dto1.clone(), dto2.clone()] };
-        
+        let dtos = TelemetryDtos {
+            metrics: vec![dto1.clone(), dto2.clone()],
+        };
+
         let serialized = serde_json::to_string(&dtos).unwrap();
         let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(dtos.metrics, deserialized.metrics);
     }
 
@@ -189,9 +192,9 @@ mod tests {
         let data = create_test_telemetry_data();
         let dto = TelemetryDto::from(data);
         let json = serde_json::to_string(&dto).unwrap();
-        
+
         let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.metrics.len(), 1);
         assert_eq!(dto, deserialized.metrics[0]);
     }
@@ -201,18 +204,18 @@ mod tests {
         let data1 = create_test_telemetry_data();
         let mut data2 = data1.clone();
         data2.block_count = 2000;
-        
+
         let dto1 = TelemetryDto::from(data1);
         let dto2 = TelemetryDto::from(data2);
-        
+
         let json = format!(
             r#"{{"metrics":[{},{}]}}"#,
             serde_json::to_string(&dto1).unwrap(),
             serde_json::to_string(&dto2).unwrap()
         );
-        
+
         let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(deserialized.metrics.len(), 2);
         assert_eq!(dto1, deserialized.metrics[0]);
         assert_eq!(dto2, deserialized.metrics[1]);

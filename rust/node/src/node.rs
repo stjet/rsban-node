@@ -10,10 +10,8 @@ use crate::{
     cementation::ConfirmingSet,
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
-        get_bootstrap_weights, log_bootstrap_weights, AccountBalanceChangedCallback,
-        ActiveElections, ActiveElectionsExt, ElectionEndCallback, ElectionStatusType,
-        HintedScheduler, HintedSchedulerExt, LocalVoteHistory, ManualScheduler, ManualSchedulerExt,
-        OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
+        election_schedulers::ElectionSchedulers, get_bootstrap_weights, log_bootstrap_weights,
+        ActiveElections, ActiveElectionsExt, ElectionStatusType, LocalVoteHistory,
         ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
         RequestAggregator, RequestAggregatorCleanup, VoteApplier, VoteBroadcaster, VoteCache,
         VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
@@ -39,13 +37,13 @@ use crate::{
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
     work::DistributedWorkFactory,
-    NetworkParams, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry, BUILD_INFO,
-    VERSION_STRING,
+    NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
+    BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, Vote, VoteCode,
+    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -56,6 +54,7 @@ use rsnano_network::{
 };
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
+use rsnano_output_tracker::OutputListenerMt;
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -73,8 +72,9 @@ use std::{
 use tracing::{debug, error, info, warn};
 
 pub struct Node {
-    pub tokio: tokio::runtime::Handle,
-    pub application_path: PathBuf,
+    is_nulled: bool,
+    pub runtime: tokio::runtime::Handle,
+    pub data_path: PathBuf,
     pub steady_clock: Arc<SteadyClock>,
     pub node_id: KeyPair,
     pub config: NodeConfig,
@@ -113,10 +113,7 @@ pub struct Node {
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
     pub rep_crawler: Arc<RepCrawler>,
     pub tcp_listener: Arc<TcpListener>,
-    hinted_scheduler: Arc<HintedScheduler>,
-    pub manual_scheduler: Arc<ManualScheduler>,
-    optimistic_scheduler: Arc<OptimisticScheduler>,
-    pub priority_scheduler: Arc<PriorityScheduler>,
+    pub election_schedulers: Arc<ElectionSchedulers>,
     pub request_aggregator: Arc<RequestAggregator>,
     pub backlog_population: Arc<BacklogPopulation>,
     ascendboot: Arc<BootstrapAscending>,
@@ -134,21 +131,55 @@ pub struct Node {
     stopped: AtomicBool,
     pub publish_filter: Arc<NetworkFilter>,
     pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
-                                                         // to keep the weak pointer alive
+    // to keep the weak pointer alive
+    start_stop_listener: OutputListenerMt<&'static str>,
+}
+
+pub(crate) struct NodeArgs {
+    pub runtime: tokio::runtime::Handle,
+    pub data_path: PathBuf,
+    pub config: NodeConfig,
+    pub network_params: NetworkParams,
+    pub flags: NodeFlags,
+    pub work: Arc<WorkPoolImpl>,
+    pub callbacks: NodeCallbacks,
+}
+
+impl NodeArgs {
+    pub fn create_test_instance() -> Self {
+        let network_params = NetworkParams::new(Networks::NanoTestNetwork);
+        let config = NodeConfig::new(None, &network_params, 2);
+        Self {
+            runtime: tokio::runtime::Handle::current(),
+            data_path: "/home/nulled-node".into(),
+            network_params,
+            config,
+            flags: Default::default(),
+            callbacks: Default::default(),
+            work: Arc::new(WorkPoolImpl::new_null(123)),
+        }
+    }
 }
 
 impl Node {
-    pub fn new(
-        tokio_handle: tokio::runtime::Handle,
-        application_path: impl Into<PathBuf>,
-        config: NodeConfig,
-        network_params: NetworkParams,
-        flags: NodeFlags,
-        work: Arc<WorkPoolImpl>,
-        election_end: ElectionEndCallback,
-        account_balance_changed: AccountBalanceChangedCallback,
-        on_vote: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
-    ) -> Self {
+    pub fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
+        let args = NodeArgs {
+            callbacks,
+            ..NodeArgs::create_test_instance()
+        };
+        Self::new(args, true, NodeIdKeyFile::new_null())
+    }
+
+    pub(crate) fn new_with_args(args: NodeArgs) -> Self {
+        Self::new(args, false, NodeIdKeyFile::default())
+    }
+
+    fn new(args: NodeArgs, is_nulled: bool, mut node_id_key_file: NodeIdKeyFile) -> Self {
+        let network_params = args.network_params;
+        let config = args.config;
+        let flags = args.flags;
+        let runtime = args.runtime;
+        let work = args.work;
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.
         let steady_clock = Arc::new(SteadyClock::default());
@@ -160,22 +191,24 @@ impl Node {
             network_params: network_params.clone(),
         };
         let global_config = &global_config;
-        let application_path = application_path.into();
-        let node_id = NodeIdKeyFile::default()
-            .initialize(&application_path)
-            .unwrap();
+        let application_path = args.data_path;
+        let node_id = node_id_key_file.initialize(&application_path).unwrap();
 
         let stats = Arc::new(Stats::new(config.stat_config.clone()));
 
-        let store = make_store(
-            &application_path,
-            true,
-            &config.diagnostics_config.txn_tracking,
-            Duration::from_millis(config.block_processor_batch_max_time_ms as u64),
-            config.lmdb_config.clone(),
-            config.backup_before_upgrade,
-        )
-        .expect("Could not create LMDB store");
+        let store = if is_nulled {
+            Arc::new(LmdbStore::new_null())
+        } else {
+            make_store(
+                &application_path,
+                true,
+                &config.diagnostics_config.txn_tracking,
+                Duration::from_millis(config.block_processor_batch_max_time_ms as u64),
+                config.lmdb_config.clone(),
+                config.backup_before_upgrade,
+            )
+            .expect("Could not create LMDB store")
+        };
 
         info!("Version: {}", VERSION_STRING);
         info!("Build information: {}", BUILD_INFO);
@@ -251,17 +284,23 @@ impl Node {
             global_config.into(),
             network_info.clone(),
             steady_clock.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
         );
         network.set_observer(network_observer.clone());
         let network = Arc::new(network);
 
         dead_channel_cleanup.add_step(NetworkCleanup::new(network.clone()));
 
-        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
-            config.message_processor.max_queue,
-            stats.clone(),
-        ));
+        let mut inbound_message_queue =
+            InboundMessageQueue::new(config.message_processor.max_queue, stats.clone());
+        if let Some(cb) = args.callbacks.on_inbound {
+            inbound_message_queue.set_inbound_callback(cb);
+        }
+        if let Some(cb) = args.callbacks.on_inbound_dropped {
+            inbound_message_queue.set_inbound_dropped_callback(cb);
+        }
+        let inbound_message_queue = Arc::new(inbound_message_queue);
+
         dead_channel_cleanup.add_step(InboundMessageQueueCleanup::new(
             inbound_message_queue.clone(),
         ));
@@ -292,12 +331,16 @@ impl Node {
         ));
         dead_channel_cleanup.add_step(OnlineRepsCleanup::new(online_reps.clone()));
 
-        let message_publisher = MessagePublisher::new(
+        let mut message_publisher = MessagePublisher::new(
             online_reps.clone(),
             network.clone(),
             stats.clone(),
             network_params.network.protocol_info(),
         );
+
+        if let Some(callback) = &args.callbacks.on_publish {
+            message_publisher.set_published_callback(callback.clone());
+        }
 
         let telemetry = Arc::new(Telemetry::new(
             telemetry_config,
@@ -363,10 +406,7 @@ impl Node {
             block_processor.processor_loop.clone(),
         ));
 
-        let distributed_work = Arc::new(DistributedWorkFactory::new(
-            work.clone(),
-            tokio_handle.clone(),
-        ));
+        let distributed_work = Arc::new(DistributedWorkFactory::new(work.clone(), runtime.clone()));
 
         let mut wallets_path = application_path.clone();
         wallets_path.push("wallets.ldb");
@@ -378,27 +418,33 @@ impl Node {
             config: wallets_lmdb_config,
             use_no_mem_init: false,
         };
-        let wallets_env =
-            Arc::new(LmdbEnv::new_with_options(wallets_path, &wallets_options).unwrap());
+        let wallets_env = if is_nulled {
+            Arc::new(LmdbEnv::new_null())
+        } else {
+            Arc::new(LmdbEnv::new_with_options(wallets_path, &wallets_options).unwrap())
+        };
 
-        let wallets = Arc::new(
-            Wallets::new(
-                wallets_env,
-                ledger.clone(),
-                &config,
-                network_params.kdf_work,
-                network_params.work.clone(),
-                distributed_work.clone(),
-                network_params.clone(),
-                workers.clone(),
-                block_processor.clone(),
-                online_reps.clone(),
-                confirming_set.clone(),
-                message_publisher.clone(),
-            )
-            .expect("Could not create wallet"),
+        let mut wallets = Wallets::new(
+            wallets_env,
+            ledger.clone(),
+            &config,
+            network_params.kdf_work,
+            network_params.work.clone(),
+            distributed_work.clone(),
+            network_params.clone(),
+            workers.clone(),
+            block_processor.clone(),
+            online_reps.clone(),
+            confirming_set.clone(),
+            message_publisher.clone(),
         );
-        wallets.initialize2();
+        if !is_nulled {
+            wallets.initialize().expect("Could not create wallet");
+        }
+        let wallets = Arc::new(wallets);
+        if !is_nulled {
+            wallets.initialize2();
+        }
 
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
             vote_processor_queue.clone(),
@@ -436,6 +482,11 @@ impl Node {
             vote_applier.clone(),
         ));
 
+        let on_vote = args
+            .callbacks
+            .on_vote
+            .unwrap_or_else(|| Box::new(|_, _, _, _| {}));
+
         let vote_processor = Arc::new(VoteProcessor::new(
             vote_processor_queue.clone(),
             vote_router.clone(),
@@ -450,6 +501,16 @@ impl Node {
             config.vote_processor.clone(),
         ));
 
+        let on_election_end = args
+            .callbacks
+            .on_election_end
+            .unwrap_or_else(|| Box::new(|_, _, _, _, _, _| {}));
+
+        let on_balance_changed = args
+            .callbacks
+            .on_balance_changed
+            .unwrap_or_else(|| Box::new(|_, _| {}));
+
         let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
             wallets.clone(),
@@ -462,12 +523,12 @@ impl Node {
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
-            election_end,
-            account_balance_changed,
+            on_election_end,
+            on_balance_changed,
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,
-            vote_applier,
+            vote_applier.clone(),
             vote_router.clone(),
             vote_cache_processor.clone(),
             steady_clock.clone(),
@@ -478,11 +539,23 @@ impl Node {
         let websocket = create_websocket_server(
             config.websocket_config.clone(),
             wallets.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             &active_elections,
             &telemetry,
             &vote_processor,
         );
+
+        let mut bootstrap_publisher = MessagePublisher::new_with_buffer_size(
+            online_reps.clone(),
+            network.clone(),
+            stats.clone(),
+            network_params.network.protocol_info(),
+            512,
+        );
+
+        if let Some(callback) = &args.callbacks.on_publish {
+            bootstrap_publisher.set_published_callback(callback.clone());
+        }
 
         let bootstrap_initiator = Arc::new(BootstrapInitiator::new(
             global_config.into(),
@@ -490,20 +563,14 @@ impl Node {
             network.clone(),
             network_info.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
             stats.clone(),
             block_processor.clone(),
             websocket.clone(),
             ledger.clone(),
-            MessagePublisher::new_with_buffer_size(
-                online_reps.clone(),
-                network.clone(),
-                stats.clone(),
-                network_params.network.protocol_info(),
-                512,
-            ),
+            bootstrap_publisher,
             steady_clock.clone(),
         ));
         bootstrap_initiator.initialize();
@@ -513,7 +580,7 @@ impl Node {
         dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));
 
         let response_server_spawner = Arc::new(NanoResponseServerSpawner {
-            tokio: tokio_handle.clone(),
+            tokio: runtime.clone(),
             stats: stats.clone(),
             node_id: node_id.clone(),
             ledger: ledger.clone(),
@@ -533,7 +600,7 @@ impl Node {
             config.tcp.connect_timeout,
             network.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             response_server_spawner.clone(),
             steady_clock.clone(),
         ));
@@ -545,7 +612,7 @@ impl Node {
             config.clone(),
             network_params.clone(),
             network_info.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             ledger.clone(),
             active_elections.clone(),
             peer_connector.clone(),
@@ -564,12 +631,13 @@ impl Node {
             network_info.read().unwrap().listening_port(),
             network.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             response_server_spawner.clone(),
         ));
 
-        let hinted_scheduler = Arc::new(HintedScheduler::new(
-            config.hinted_scheduler.clone(),
+        let election_schedulers = Arc::new(ElectionSchedulers::new(
+            &config,
+            network_params.network.clone(),
             active_elections.clone(),
             ledger.clone(),
             stats.clone(),
@@ -578,33 +646,8 @@ impl Node {
             online_reps.clone(),
         ));
 
-        let manual_scheduler = Arc::new(ManualScheduler::new(
-            stats.clone(),
-            active_elections.clone(),
-        ));
-
-        let optimistic_scheduler = Arc::new(OptimisticScheduler::new(
-            config.optimistic_scheduler.clone(),
-            stats.clone(),
-            active_elections.clone(),
-            network_params.network.clone(),
-            ledger.clone(),
-            confirming_set.clone(),
-        ));
-
-        let priority_scheduler = Arc::new(PriorityScheduler::new(
-            config.priority_bucket.clone(),
-            ledger.clone(),
-            stats.clone(),
-            active_elections.clone(),
-        ));
-
-        let priority_clone = Arc::downgrade(&priority_scheduler);
-        active_elections.set_activate_successors_callback(Box::new(move |tx, block| {
-            if let Some(priority) = priority_clone.upgrade() {
-                priority.activate_successors(tx, block);
-            }
-        }));
+        active_elections.set_election_schedulers(&election_schedulers);
+        vote_applier.set_election_schedulers(&election_schedulers);
 
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.request_aggregator.clone(),
@@ -621,8 +664,7 @@ impl Node {
             global_config.into(),
             ledger.clone(),
             stats.clone(),
-            optimistic_scheduler.clone(),
-            priority_scheduler.clone(),
+            election_schedulers.clone(),
         ));
 
         let ascendboot = Arc::new(BootstrapAscending::new(
@@ -648,7 +690,7 @@ impl Node {
 
         let process_live_dispatcher = Arc::new(ProcessLiveDispatcher::new(
             ledger.clone(),
-            priority_scheduler.clone(),
+            election_schedulers.clone(),
             websocket.clone(),
         ));
 
@@ -658,14 +700,12 @@ impl Node {
             publish_filter.clone(),
             block_processor.clone(),
             config.clone(),
-            flags.clone(),
             wallets.clone(),
             request_aggregator.clone(),
             vote_processor_queue.clone(),
             telemetry.clone(),
             bootstrap_server.clone(),
             ascendboot.clone(),
-            message_publisher.clone(),
         ));
 
         let keepalive_factory = Arc::new(KeepaliveFactory {
@@ -706,10 +746,10 @@ impl Node {
 
         debug!("Constructing node...");
 
-        let manual_weak = Arc::downgrade(&manual_scheduler);
+        let schedulers_weak = Arc::downgrade(&election_schedulers);
         wallets.set_start_election_callback(Box::new(move |block| {
-            if let Some(manual) = manual_weak.upgrade() {
-                manual.push(block, None);
+            if let Some(schedulers) = schedulers_weak.upgrade() {
+                schedulers.add_manual(block);
             }
         }));
 
@@ -800,26 +840,6 @@ impl Node {
             }
         }));
 
-        let priority_w = Arc::downgrade(&priority_scheduler);
-        let hinted_w = Arc::downgrade(&hinted_scheduler);
-        let optimistic_w = Arc::downgrade(&optimistic_scheduler);
-        // Notify election schedulers when AEC frees election slot
-        *active_elections.vacancy_update.lock().unwrap() = Box::new(move || {
-            let Some(priority) = priority_w.upgrade() else {
-                return;
-            };
-            let Some(hinted) = hinted_w.upgrade() else {
-                return;
-            };
-            let Some(optimistic) = optimistic_w.upgrade() else {
-                return;
-            };
-
-            priority.notify();
-            hinted.notify();
-            optimistic.notify();
-        });
-
         let keepalive_factory_w = Arc::downgrade(&keepalive_factory);
         let message_publisher_l = Arc::new(Mutex::new(message_publisher.clone()));
         let message_publisher_w = Arc::downgrade(&message_publisher_l);
@@ -879,19 +899,6 @@ impl Node {
             config.bandwidth_limit, config.bandwidth_limit_burst_ratio
         );
 
-        if !ledger
-            .any()
-            .block_exists_or_pruned(&ledger.read_txn(), &network_params.ledger.genesis.hash())
-        {
-            error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
-
-            if network_params.network.is_beta_network() {
-                error!("Beta network may have reset, try clearing database files");
-            }
-
-            panic!("Genesis block not found!");
-        }
-
         if config.enable_voting {
             info!(
                 "Voting is enabled, more system resources will be used, local representatives: {}",
@@ -942,7 +949,7 @@ impl Node {
         }));
 
         if !config.callback_address.is_empty() {
-            let tokio = tokio_handle.clone();
+            let tokio = runtime.clone();
             let stats = stats.clone();
             let url: Url = format!(
                 "http://{}:{}{}",
@@ -1064,6 +1071,7 @@ impl Node {
         );
 
         Self {
+            is_nulled,
             steady_clock,
             peer_cache_updater: TimerThread::new("Peer history", peer_cache_updater),
             peer_cache_connector: TimerThread::new_run_immedately(
@@ -1086,12 +1094,12 @@ impl Node {
             ledger,
             store,
             stats,
-            application_path,
+            data_path: application_path,
             network_params,
             config,
             flags,
             work,
-            tokio: tokio_handle,
+            runtime,
             bootstrap_server,
             online_weight_sampler,
             online_reps,
@@ -1111,10 +1119,7 @@ impl Node {
             bootstrap_initiator,
             rep_crawler,
             tcp_listener,
-            hinted_scheduler,
-            manual_scheduler,
-            optimistic_scheduler,
-            priority_scheduler,
+            election_schedulers,
             request_aggregator,
             backlog_population,
             ascendboot,
@@ -1128,10 +1133,29 @@ impl Node {
             message_publisher: message_publisher_l,
             publish_filter,
             stopped: AtomicBool::new(false),
+            start_stop_listener: OutputListenerMt::new(),
         }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+        let network = self
+            .network_info
+            .read()
+            .unwrap()
+            .collect_container_info("tcp_channels");
+
+        let online_reps = self
+            .online_reps
+            .lock()
+            .unwrap()
+            .collect_container_info("online_reps");
+
+        let vote_cache = self
+            .vote_cache
+            .lock()
+            .unwrap()
+            .collect_container_info("vote_cache");
+
         ContainerInfoComponent::Composite(
             name.into(),
             vec![
@@ -1143,10 +1167,7 @@ impl Node {
                 ContainerInfoComponent::Composite(
                     "network".to_string(),
                     vec![
-                        self.network_info
-                            .read()
-                            .unwrap()
-                            .collect_container_info("tcp_channels"),
+                        network,
                         self.syn_cookies.collect_container_info("syn_cookies"),
                     ],
                 ),
@@ -1159,28 +1180,14 @@ impl Node {
                 self.rep_crawler.collect_container_info("rep_crawler"),
                 self.block_processor
                     .collect_container_info("block_processor"),
-                self.online_reps
-                    .lock()
-                    .unwrap()
-                    .collect_container_info("online_reps"),
+                online_reps,
                 self.history.collect_container_info("history"),
                 self.confirming_set.collect_container_info("confirming_set"),
                 self.request_aggregator
                     .collect_container_info("request_aggregator"),
-                ContainerInfoComponent::Composite(
-                    "election_scheduler".to_string(),
-                    vec![
-                        self.hinted_scheduler.collect_container_info("hinted"),
-                        self.manual_scheduler.collect_container_info("manual"),
-                        self.optimistic_scheduler
-                            .collect_container_info("optimistic"),
-                        self.priority_scheduler.collect_container_info("priority"),
-                    ],
-                ),
-                self.vote_cache
-                    .lock()
-                    .unwrap()
-                    .collect_container_info("vote_cache"),
+                self.election_schedulers
+                    .collect_container_info("election_scheduler"),
+                vote_cache,
                 self.vote_router.collect_container_info("vote_router"),
                 self.vote_generators
                     .collect_container_info("vote_generators"),
@@ -1350,6 +1357,24 @@ pub trait NodeExt {
 
 impl NodeExt for Arc<Node> {
     fn start(&self) {
+        self.start_stop_listener.emit("start");
+        if self.is_nulled {
+            return; // TODO better nullability implementation
+        }
+
+        if !self.ledger.any().block_exists_or_pruned(
+            &self.ledger.read_txn(),
+            &self.network_params.ledger.genesis.hash(),
+        ) {
+            error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
+
+            if self.network_params.network.is_beta_network() {
+                error!("Beta network may have reset, try clearing database files");
+            }
+
+            panic!("Genesis block not found!");
+        }
+
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
         self.message_processor.lock().unwrap().start();
@@ -1406,12 +1431,8 @@ impl NodeExt for Arc<Node> {
         self.vote_generators.start();
         self.request_aggregator.start();
         self.confirming_set.start();
-        self.hinted_scheduler.start();
-        self.manual_scheduler.start();
-        self.optimistic_scheduler.start();
-        if self.config.priority_scheduler_enabled {
-            self.priority_scheduler.start();
-        }
+        self.election_schedulers
+            .start(self.config.priority_scheduler_enabled);
         self.backlog_population.start();
         self.bootstrap_server.start();
         if !self.flags.disable_ascending_bootstrap {
@@ -1445,6 +1466,11 @@ impl NodeExt for Arc<Node> {
     }
 
     fn stop(&self) {
+        self.start_stop_listener.emit("stop");
+        if self.is_nulled {
+            return; // TODO better nullability implementation
+        }
+
         // Ensure stop can only be called once
         if self.stopped.swap(true, Ordering::SeqCst) {
             return;
@@ -1474,10 +1500,7 @@ impl NodeExt for Arc<Node> {
         self.vote_cache_processor.stop();
         self.vote_processor.stop();
         self.rep_tiers.stop();
-        self.hinted_scheduler.stop();
-        self.manual_scheduler.stop();
-        self.optimistic_scheduler.stop();
-        self.priority_scheduler.stop();
+        self.election_schedulers.stop();
         self.active.stop();
         self.vote_generators.stop();
         self.confirming_set.stop();
@@ -1518,7 +1541,7 @@ impl NodeExt for Arc<Node> {
     }
 
     fn backup_wallet(&self) {
-        let mut backup_path = self.application_path.clone();
+        let mut backup_path = self.data_path.clone();
         backup_path.push("backup");
         if let Err(e) = self.wallets.backup(&backup_path) {
             error!(error = ?e, "Could not create backup of wallets");
@@ -1637,7 +1660,7 @@ struct RpcCallbackMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::TimerStartEvent;
+    use crate::{utils::TimerStartEvent, NodeBuilder};
     use rsnano_core::Networks;
     use std::ops::Deref;
     use uuid::Uuid;
@@ -1706,24 +1729,21 @@ mod tests {
             app_path.push(format!("rsnano-test-{}", Uuid::new_v4().simple()));
             let config = NodeConfig::new_test_instance();
             let network_params = NetworkParams::new(Networks::NanoDevNetwork);
-            let flags = NodeFlags::default();
             let work = Arc::new(WorkPoolImpl::new(
                 network_params.work.clone(),
                 1,
                 Duration::ZERO,
             ));
 
-            let node = Arc::new(Node::new(
-                tokio::runtime::Handle::current(),
-                &app_path,
-                config,
-                network_params,
-                flags,
-                work,
-                Box::new(|_, _, _, _, _, _| {}),
-                Box::new(|_, _| {}),
-                Box::new(|_, _, _, _| {}),
-            ));
+            let node = NodeBuilder::new(Networks::NanoDevNetwork)
+                .data_path(app_path.clone())
+                .config(config)
+                .network_params(network_params)
+                .work(work)
+                .finish()
+                .unwrap();
+
+            let node = Arc::new(node);
 
             Self { node, app_path }
         }

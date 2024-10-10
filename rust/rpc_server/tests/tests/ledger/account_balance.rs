@@ -1,5 +1,4 @@
 use rsnano_core::{Amount, DEV_GENESIS_KEY};
-use rsnano_node::NodeExt;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]

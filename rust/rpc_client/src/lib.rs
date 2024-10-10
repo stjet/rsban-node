@@ -3,13 +3,13 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockHash, BlockSubType, HashOrAccount, JsonBlock, Link, PublicKey,
+    Account, Amount, BlockHash, HashOrAccount, JsonBlock, PublicKey,
     QualifiedRoot, RawKey, WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use serde_json::{from_str, from_value, Value};
-use std::{net::Ipv6Addr, os::unix::process, time::Duration};
+use std::{net::Ipv6Addr, time::Duration};
 
 pub struct NanoRpcClient {
     url: Url,

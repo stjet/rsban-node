@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, BlockEnum, BlockType, KeyPair, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::BlockTypeDto;
+use rsnano_rpc_messages::{BlockCreateArgs, BlockTypeDto};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -22,7 +22,7 @@ fn block_create_state() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .block_create(
+            .block_create(BlockCreateArgs::new(
                 BlockTypeDto::State,
                 Some(Amount::MAX - Amount::raw(100)),
                 Some(DEV_GENESIS_KEY.private_key()),
@@ -36,7 +36,7 @@ fn block_create_state() {
                 None,
                 None,
                 None,
-            )
+            ))
             .await
             .unwrap()
     });

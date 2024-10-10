@@ -1,5 +1,6 @@
 use rsnano_core::{Amount, BlockEnum, BlockSubType, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_rpc_messages::ProcessArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -21,13 +22,13 @@ fn process() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .process(
+            .process(ProcessArgs::new(
                 Some(BlockSubType::Send),
                 send1.json_representation(),
                 None,
                 None,
                 None,
-            )
+            ))
             .await
             .unwrap()
     });
@@ -58,13 +59,13 @@ fn process_fails_with_low_work() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .process(
+            .process(ProcessArgs::new(
                 Some(BlockSubType::Send),
                 send1.json_representation(),
                 None,
                 None,
                 None,
-            )
+            ))
             .await
     });
 

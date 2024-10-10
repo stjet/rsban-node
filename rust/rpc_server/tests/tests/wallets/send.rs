@@ -3,6 +3,7 @@ use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
+use rsnano_rpc_messages::SendArgs;
 
 #[test]
 fn send() {
@@ -25,14 +26,14 @@ fn send() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .send(
+            .send(SendArgs::new(
                 wallet,
                 *DEV_GENESIS_ACCOUNT,
                 destination,
                 amount,
                 None,
                 None,
-            )
+            ))
             .await
             .unwrap()
     });
@@ -77,14 +78,14 @@ fn send_fails_without_enable_control() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .send(
+            .send(SendArgs::new(
                 wallet,
                 *DEV_GENESIS_ACCOUNT,
                 destination,
                 amount,
                 None,
                 None,
-            )
+            ))
             .await
     });
 

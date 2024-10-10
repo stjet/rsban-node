@@ -1,6 +1,7 @@
 use rsnano_core::{Account, Amount, BlockSubType, PublicKey, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::wallets::WalletsExt;
+use rsnano_rpc_messages::AccountHistoryArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -96,7 +97,7 @@ fn account_history() {
 
     let account_history = node.runtime.block_on(async {
         rpc_client
-            .account_history(
+            .account_history(AccountHistoryArgs::new(
                 *DEV_GENESIS_ACCOUNT,
                 100,
                 Some(false),
@@ -104,7 +105,7 @@ fn account_history() {
                 None,
                 None,
                 None,
-            )
+            ))
             .await
             .unwrap()
     });
@@ -152,7 +153,15 @@ fn account_history() {
     // Test count and reverse
     let account_history_reverse = node.runtime.block_on(async {
         rpc_client
-            .account_history(*DEV_GENESIS_ACCOUNT, 1, None, None, None, Some(true), None)
+            .account_history(AccountHistoryArgs::new(
+                *DEV_GENESIS_ACCOUNT,
+                1,
+                None,
+                None,
+                None,
+                Some(true),
+                None,
+            ))
             .await
             .unwrap()
     });
@@ -196,7 +205,7 @@ fn account_history() {
     // Test filter for send state blocks
     let account_history_filtered_send = node.runtime.block_on(async {
         rpc_client
-            .account_history(
+            .account_history(AccountHistoryArgs::new(
                 *DEV_GENESIS_ACCOUNT,
                 100,
                 None,
@@ -204,7 +213,7 @@ fn account_history() {
                 None,
                 None,
                 Some(vec![account2]),
-            )
+            ))
             .await
             .unwrap()
     });
@@ -219,7 +228,7 @@ fn account_history() {
     // Test filter for receive state blocks
     let account_history_filtered_receive = node.runtime.block_on(async {
         rpc_client
-            .account_history(
+            .account_history(AccountHistoryArgs::new(
                 account2.into(),
                 100,
                 None,
@@ -227,7 +236,7 @@ fn account_history() {
                 None,
                 None,
                 Some(vec![*DEV_GENESIS_ACCOUNT]),
-            )
+            ))
             .await
             .unwrap()
     });

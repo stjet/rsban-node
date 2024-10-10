@@ -1,6 +1,6 @@
 mod app;
 mod app_model;
-mod node_builder_factory;
+mod node_factory;
 mod nullable_runtime;
 
 use app::InsightApp;

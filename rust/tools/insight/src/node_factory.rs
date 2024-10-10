@@ -1,12 +1,14 @@
-use rsnano_core::Networks;
-use rsnano_node::NodeBuilder;
+use std::sync::Arc;
 
-pub(crate) struct NodeBuilderFactory {
+use rsnano_core::Networks;
+use rsnano_node::{Node, NodeBuilder, NodeCallbacks};
+
+pub(crate) struct NodeFactory {
     runtime: tokio::runtime::Handle,
     is_nulled: bool,
 }
 
-impl NodeBuilderFactory {
+impl NodeFactory {
     pub(crate) fn new(runtime: tokio::runtime::Handle) -> Self {
         Self {
             runtime,
@@ -21,17 +23,21 @@ impl NodeBuilderFactory {
         }
     }
 
-    pub(crate) fn builder_for(&self, network: Networks) -> NodeBuilder {
-        let builder = if self.is_nulled {
-            NodeBuilder::new_null(network)
+    pub(crate) fn create_node(&self, network: Networks, callbacks: NodeCallbacks) -> Arc<Node> {
+        if self.is_nulled {
+            Arc::new(Node::new_null_with_callbacks(callbacks))
         } else {
             NodeBuilder::new(network)
-        };
-        builder.runtime(self.runtime.clone())
+                .runtime(self.runtime.clone())
+                .callbacks(callbacks)
+                .finish()
+                .unwrap()
+                .into()
+        }
     }
 }
 
-impl Default for NodeBuilderFactory {
+impl Default for NodeFactory {
     fn default() -> Self {
         Self::new(tokio::runtime::Handle::current())
     }

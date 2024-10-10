@@ -162,7 +162,7 @@ impl NodeArgs {
 }
 
 impl Node {
-    pub(crate) fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
+    pub fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
         let args = NodeArgs {
             callbacks,
             ..NodeArgs::create_test_instance()

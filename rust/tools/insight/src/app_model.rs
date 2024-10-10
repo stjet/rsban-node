@@ -1,4 +1,4 @@
-use crate::{node_builder_factory::NodeBuilderFactory, nullable_runtime::NullableRuntime};
+use crate::{node_factory::NodeFactory, nullable_runtime::NullableRuntime};
 use num_format::{Locale, ToFormattedString};
 use rsnano_core::Networks;
 use rsnano_messages::Message;
@@ -17,7 +17,7 @@ pub(crate) struct RecordedMessage {
 
 pub(crate) struct AppModel {
     runtime: Arc<NullableRuntime>,
-    node_builder_factory: NodeBuilderFactory,
+    node_factory: NodeFactory,
     node: Option<Arc<Node>>,
     started: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
@@ -28,12 +28,9 @@ pub(crate) struct AppModel {
 }
 
 impl AppModel {
-    pub(crate) fn new(
-        runtime: Arc<NullableRuntime>,
-        node_builder_factory: NodeBuilderFactory,
-    ) -> Self {
+    pub(crate) fn new(runtime: Arc<NullableRuntime>, node_builder_factory: NodeFactory) -> Self {
         Self {
-            node_builder_factory,
+            node_factory: node_builder_factory,
             runtime,
             node: None,
             started: Arc::new(AtomicBool::new(false)),
@@ -48,7 +45,7 @@ impl AppModel {
     pub(crate) fn with_runtime(runtime: tokio::runtime::Handle) -> Self {
         Self::new(
             Arc::new(NullableRuntime::new(runtime.clone())),
-            NodeBuilderFactory::new(runtime),
+            NodeFactory::new(runtime),
         )
     }
 
@@ -94,12 +91,8 @@ impl AppModel {
             })
             .finish();
         let node = self
-            .node_builder_factory
-            .builder_for(Networks::NanoBetaNetwork)
-            .callbacks(callbacks)
-            .finish()
-            .unwrap();
-        let node = Arc::new(node);
+            .node_factory
+            .create_node(Networks::NanoBetaNetwork, callbacks);
         let node_l = node.clone();
         let started = self.started.clone();
         let stopped = self.stopped.clone();
@@ -212,10 +205,7 @@ pub(crate) struct RowModel {
 
 impl Default for AppModel {
     fn default() -> Self {
-        Self::new(
-            Arc::new(NullableRuntime::default()),
-            NodeBuilderFactory::default(),
-        )
+        Self::new(Arc::new(NullableRuntime::default()), NodeFactory::default())
     }
 }
 
@@ -227,7 +217,7 @@ mod tests {
     async fn initial_status() {
         let model = AppModel::new(
             Arc::new(NullableRuntime::new_null()),
-            NodeBuilderFactory::new_null(),
+            NodeFactory::new_null(),
         );
         assert_eq!(model.can_start_node(), true);
         assert_eq!(model.can_stop_node(), false);
@@ -238,7 +228,7 @@ mod tests {
     #[tokio::test]
     async fn starting_node() {
         let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppModel::new(runtime.clone(), NodeBuilderFactory::new_null());
+        let mut model = AppModel::new(runtime.clone(), NodeFactory::new_null());
 
         model.start_beta_node();
 
@@ -251,7 +241,7 @@ mod tests {
     #[tokio::test]
     async fn starting_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppModel::new(runtime.clone(), NodeBuilderFactory::new_null());
+        let mut model = AppModel::new(runtime.clone(), NodeFactory::new_null());
         model.start_beta_node();
 
         runtime.run_nulled_blocking_task();
@@ -264,7 +254,7 @@ mod tests {
     #[tokio::test]
     async fn stopping_node() {
         let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppModel::new(runtime.clone(), NodeBuilderFactory::new_null());
+        let mut model = AppModel::new(runtime.clone(), NodeFactory::new_null());
         model.start_beta_node();
         runtime.run_nulled_blocking_task();
         model.stop_node();
@@ -277,7 +267,7 @@ mod tests {
     #[tokio::test]
     async fn stopping_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppModel::new(runtime.clone(), NodeBuilderFactory::new_null());
+        let mut model = AppModel::new(runtime.clone(), NodeFactory::new_null());
         model.start_beta_node();
         runtime.run_nulled_blocking_task();
         model.stop_node();

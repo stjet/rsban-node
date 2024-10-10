@@ -95,7 +95,6 @@ impl NodeCallbacksBuilder {
 
 pub struct NodeBuilder {
     network: Networks,
-    is_nulled: bool,
     runtime: Option<tokio::runtime::Handle>,
     data_path: Option<PathBuf>,
     config: Option<NodeConfig>,
@@ -107,17 +106,8 @@ pub struct NodeBuilder {
 
 impl NodeBuilder {
     pub fn new(network: Networks) -> Self {
-        Self::with_nulled(network, false)
-    }
-
-    pub fn new_null(network: Networks) -> Self {
-        Self::with_nulled(network, true)
-    }
-
-    pub fn with_nulled(network: Networks, is_nulled: bool) -> Self {
         Self {
             network,
-            is_nulled,
             runtime: None,
             data_path: None,
             config: None,
@@ -198,20 +188,16 @@ impl NodeBuilder {
 
         let callbacks = self.callbacks.unwrap_or_default();
 
-        let node = if self.is_nulled {
-            Node::new_null_with_callbacks(callbacks)
-        } else {
-            let args = NodeArgs {
-                runtime,
-                data_path,
-                config,
-                network_params,
-                flags,
-                work,
-                callbacks,
-            };
-            Node::new_with_args(args)
+        let args = NodeArgs {
+            runtime,
+            data_path,
+            config,
+            network_params,
+            flags,
+            work,
+            callbacks,
         };
-        Ok(node)
+
+        Ok(Node::new_with_args(args))
     }
 }

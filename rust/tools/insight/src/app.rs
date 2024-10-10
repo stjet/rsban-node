@@ -62,7 +62,8 @@ impl eframe::App for InsightApp {
             .show(ctx, |ui| {
                 TableBuilder::new(ui)
                     .striped(true)
-                    .resizable(false)
+                    .resizable(true)
+                    .auto_shrink(false)
                     .sense(Sense::click())
                     .column(Column::auto())
                     .column(Column::auto())

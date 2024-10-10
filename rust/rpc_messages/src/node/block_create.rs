@@ -93,7 +93,7 @@ impl BlockCreateDto {
 mod tests {
     use super::*;
     use rsnano_core::{
-        Account, Amount, Block, BlockEnum, KeyPair, RawKey, StateBlock, WorkNonce, WorkVersion,
+        Block, KeyPair, RawKey, StateBlock,
     };
     use serde_json::json;
 

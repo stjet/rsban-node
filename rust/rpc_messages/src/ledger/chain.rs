@@ -3,7 +3,7 @@ use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn successors(
+    pub fn chain(
         block: BlockHash,
         count: u64,
         offset: Option<u64>,

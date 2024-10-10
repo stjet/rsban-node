@@ -1,8 +1,8 @@
 use rsnano_messages::{Message, TelemetryAck};
 use rsnano_node::{
     config::NodeFlags,
-    node::NodeExt,
     stats::{DetailType, Direction, StatType},
+    NodeExt,
 };
 use std::{thread::sleep, time::Duration};
 use test_helpers::{assert_always_eq, assert_never, assert_timely, make_fake_channel, System};
@@ -18,7 +18,10 @@ fn invalid_signature() {
     let message = Message::TelemetryAck(TelemetryAck(Some(telemetry)));
 
     let channel = make_fake_channel(&node);
-    channel.set_node_id(node_id);
+    node.network_info
+        .read()
+        .unwrap()
+        .set_node_id(channel.channel_id(), node_id);
     node.inbound_message_queue
         .put(message, channel.info.clone());
 

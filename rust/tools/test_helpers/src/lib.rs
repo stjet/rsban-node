@@ -1,20 +1,22 @@
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
-    WalletId,
+    WalletId, DEV_GENESIS_KEY,
 };
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
-    node::{Node, NodeExt},
     unique_path,
     utils::AsyncRuntime,
     wallets::WalletsExt,
-    NetworkParams,
+    NetworkParams, Node, NodeBuilder, NodeExt,
 };
 use rsnano_nullable_tcp::TcpStream;
+use rsnano_rpc_client::{NanoRpcClient, Url};
+use rsnano_rpc_server::run_rpc_server;
 use std::{
-    net::TcpListener,
+    net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener},
     sync::{
         atomic::{AtomicU16, Ordering},
         Arc, OnceLock,
@@ -56,8 +58,8 @@ impl System {
         config
     }
 
-    pub fn build_node<'a>(&'a mut self) -> NodeBuilder<'a> {
-        NodeBuilder {
+    pub fn build_node<'a>(&'a mut self) -> TestNodeBuilder<'a> {
+        TestNodeBuilder {
             system: self,
             config: None,
             flags: None,
@@ -120,25 +122,22 @@ impl System {
 
     fn new_node(&self, config: NodeConfig, flags: NodeFlags) -> Arc<Node> {
         let path = unique_path().expect("Could not get a unique path");
-
-        Arc::new(Node::new(
-            self.runtime.tokio.handle().clone(),
-            path,
-            config,
-            self.network_params.clone(),
-            flags,
-            self.work.clone(),
-            Box::new(|_, _, _, _, _, _| {}),
-            Box::new(|_, _| {}),
-            Box::new(|_, _, _, _| {}),
-        ))
+        let node = NodeBuilder::new(self.network_params.network.current_network)
+            .runtime(self.runtime.tokio.handle().clone())
+            .data_path(path)
+            .config(config)
+            .network_params(self.network_params.clone())
+            .flags(flags)
+            .work(self.work.clone())
+            .finish()
+            .unwrap();
+        Arc::new(node)
     }
 
     fn stop(&mut self) {
         for node in &self.nodes {
             node.stop();
-            std::fs::remove_dir_all(&node.application_path)
-                .expect("Could not delete node data dir");
+            std::fs::remove_dir_all(&node.data_path).expect("Could not delete node data dir");
         }
         self.work.stop();
     }
@@ -150,14 +149,14 @@ impl Drop for System {
     }
 }
 
-pub struct NodeBuilder<'a> {
+pub struct TestNodeBuilder<'a> {
     system: &'a mut System,
     config: Option<NodeConfig>,
     flags: Option<NodeFlags>,
     disconnected: bool,
 }
 
-impl<'a> NodeBuilder<'a> {
+impl<'a> TestNodeBuilder<'a> {
     pub fn config(mut self, cfg: NodeConfig) -> Self {
         self.config = Some(cfg);
         self
@@ -312,7 +311,7 @@ pub fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     );
 
     let block = node.block(hash).unwrap();
-    node.manual_scheduler.push(Arc::new(block.clone()), None);
+    node.election_schedulers.add_manual(Arc::new(block.clone()));
     // wait for the election to appear
     assert_timely_msg(
         Duration::from_secs(5),
@@ -336,7 +335,7 @@ pub fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
 pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     for hash in hashes {
         let block = node.block(hash).unwrap();
-        node.manual_scheduler.push(Arc::new(block), None);
+        node.election_schedulers.add_manual(Arc::new(block));
     }
 }
 
@@ -427,4 +426,150 @@ pub fn setup_chains(
     }
 
     chains
+}
+
+pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<BlockEnum> {
+    let mut blocks = Vec::new();
+    let account: Account = source.public_key().into();
+    let mut latest = node.latest(&account);
+    let mut balance = node.balance(&account);
+
+    for _ in 0..count {
+        let key = KeyPair::new();
+
+        balance -= 1;
+
+        let send = BlockEnum::State(StateBlock::new(
+            account,
+            latest,
+            source.public_key(),
+            balance,
+            key.public_key().as_account().into(),
+            source,
+            node.work_generate_dev(latest.into()),
+        ));
+
+        latest = send.hash();
+
+        let open = BlockEnum::State(StateBlock::new(
+            key.public_key().into(),
+            BlockHash::zero(),
+            key.public_key(),
+            Amount::raw(1),
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(key.public_key().into()),
+        ));
+
+        node.process_multi(&[send.clone(), open.clone()]);
+        // Ensure blocks are in the ledger
+        assert_timely(Duration::from_secs(5), || {
+            node.block_hashes_exist([send.hash(), open.hash()])
+        });
+
+        blocks.push(open);
+    }
+
+    // Confirm whole genesis chain at once
+    node.confirm(latest);
+
+    blocks
+}
+
+use tokio::net::TcpListener as TokioTcpListener;
+
+pub fn setup_rpc_client_and_server(
+    node: Arc<Node>,
+    enable_control: bool,
+) -> (
+    Arc<NanoRpcClient>,
+    tokio::task::JoinHandle<Result<(), anyhow::Error>>,
+) {
+    let port = get_available_port();
+    let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
+
+    let listener = node.runtime.block_on(async {
+        TokioTcpListener::bind(socket_addr)
+            .await
+            .expect("Failed to bind to address")
+    });
+
+    let server = node
+        .runtime
+        .spawn(run_rpc_server(node.clone(), listener, enable_control));
+
+    let rpc_url = format!("http://[::1]:{}/", port);
+    let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
+
+    (rpc_client, server)
+}
+
+pub fn send_block(node: Arc<Node>) -> BlockHash {
+    let send1 = send_block_to(node, *DEV_GENESIS_ACCOUNT, Amount::raw(1));
+    send1.hash()
+}
+
+pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+
+    let previous = node
+        .ledger
+        .any()
+        .account_head(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(*DEV_GENESIS_HASH);
+
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(Amount::MAX);
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        previous,
+        *DEV_GENESIS_PUB_KEY,
+        balance - amount,
+        account.into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(previous.into()),
+    ));
+
+    node.process_active(send.clone());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.active(&send),
+        "not active on node",
+    );
+
+    send
+}
+
+pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+
+    let previous = node
+        .ledger
+        .any()
+        .account_head(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(*DEV_GENESIS_HASH);
+
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(Amount::MAX);
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        previous,
+        *DEV_GENESIS_PUB_KEY,
+        balance - amount,
+        account.into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(previous.into()),
+    ));
+
+    node.process_local(send.clone()).unwrap();
+
+    send
 }

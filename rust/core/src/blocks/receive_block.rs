@@ -38,16 +38,10 @@ pub struct ReceiveBlock {
 }
 
 impl ReceiveBlock {
-    pub fn new(
-        previous: BlockHash,
-        source: BlockHash,
-        priv_key: &RawKey,
-        pub_key: &PublicKey,
-        work: u64,
-    ) -> Self {
+    pub fn new(previous: BlockHash, source: BlockHash, priv_key: &RawKey, work: u64) -> Self {
         let hashables = ReceiveHashables { previous, source };
         let hash = LazyBlockHash::new();
-        let signature = sign_message(priv_key, pub_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(priv_key, hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -64,7 +58,6 @@ impl ReceiveBlock {
             BlockHash::from(123),
             BlockHash::from(456),
             &key.private_key(),
-            &key.public_key(),
             69420,
         )
     }
@@ -100,7 +93,7 @@ impl ReceiveBlock {
         let signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
-        let work = u64::from_be_bytes(work_bytes);
+        let work = u64::from_le_bytes(work_bytes);
         Ok(Self {
             work,
             signature,
@@ -180,7 +173,7 @@ impl Block for ReceiveBlock {
         self.hashables.previous.serialize(writer);
         self.hashables.source.serialize(writer);
         self.signature.serialize(writer);
-        writer.write_bytes_safe(&self.work.to_be_bytes());
+        writer.write_bytes_safe(&self.work.to_le_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
@@ -234,7 +227,7 @@ impl Block for ReceiveBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonReceiveBlock {
     pub previous: BlockHash,
     pub source: BlockHash,
@@ -272,13 +265,7 @@ mod tests {
     fn create_block() {
         let key = KeyPair::new();
         let previous = BlockHash::from(1);
-        let block = ReceiveBlock::new(
-            previous,
-            BlockHash::from(2),
-            &key.private_key(),
-            &key.public_key(),
-            4,
-        );
+        let block = ReceiveBlock::new(previous, BlockHash::from(2), &key.private_key(), 4);
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), previous.into());
     }
@@ -292,7 +279,6 @@ mod tests {
             BlockHash::from(0),
             BlockHash::from(1),
             &key1.private_key(),
-            &key1.public_key(),
             4,
         );
         let mut stream = MemoryStream::new();

@@ -71,7 +71,6 @@ impl StateBlock {
             balance,
             link,
             &keys.private_key(),
-            &keys.public_key(),
             work,
         )
     }
@@ -84,7 +83,6 @@ impl StateBlock {
         balance: Amount,
         link: Link,
         prv_key: &RawKey,
-        pub_key: &PublicKey,
         work: u64,
     ) -> Self {
         let hashables = StateHashables {
@@ -96,7 +94,7 @@ impl StateBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -391,7 +389,7 @@ impl From<JsonStateBlock> for StateBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonStateBlock {
     pub account: Account,
     pub previous: BlockHash,

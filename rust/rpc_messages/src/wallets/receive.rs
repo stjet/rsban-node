@@ -1,13 +1,17 @@
+use crate::RpcCommand;
 use rsnano_core::{Account, BlockHash, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
-    pub fn receive(wallet: WalletId, account: Account, block: BlockHash, work: Option<WorkNonce>) -> Self {
+    pub fn receive(
+        wallet: WalletId,
+        account: Account,
+        block: BlockHash,
+        work: Option<WorkNonce>,
+    ) -> Self {
         Self::Receive(ReceiveArgs::new(wallet, account, block, work))
     }
 }
-
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ReceiveArgs {
@@ -18,7 +22,12 @@ pub struct ReceiveArgs {
 }
 
 impl ReceiveArgs {
-    pub fn new(wallet: WalletId, account: Account, block: BlockHash, work: Option<WorkNonce>) -> Self {
+    pub fn new(
+        wallet: WalletId,
+        account: Account,
+        block: BlockHash,
+        work: Option<WorkNonce>,
+    ) -> Self {
         Self {
             wallet,
             account,
@@ -35,9 +44,18 @@ mod tests {
 
     #[test]
     fn serialize_receive_args() {
-        let wallet = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
-        let account = Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap();
-        let block = BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
+        let account = Account::decode_account(
+            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        )
+        .unwrap();
+        let block = BlockHash::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let work = Some(1.into());
 
         let receive_args = ReceiveArgs::new(wallet, account, block, work);
@@ -64,18 +82,45 @@ mod tests {
 
         let deserialized: ReceiveArgs = serde_json::from_str(json_str).unwrap();
 
-        assert_eq!(deserialized.wallet, WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
-        assert_eq!(deserialized.account, Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap());
-        assert_eq!(deserialized.block, BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
+        assert_eq!(
+            deserialized.wallet,
+            WalletId::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            deserialized.account,
+            Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            deserialized.block,
+            BlockHash::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+            )
+            .unwrap()
+        );
         assert_eq!(deserialized.work, Some(1.into()));
     }
 
     #[test]
     fn receive_args_roundtrip() {
         let original = ReceiveArgs {
-            wallet: WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap(),
-            account: Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap(),
-            block: BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap(),
+            wallet: WalletId::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+            )
+            .unwrap(),
+            account: Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
+            block: BlockHash::decode_hex(
+                "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+            )
+            .unwrap(),
             work: Some(1.into()),
         };
 
@@ -87,9 +132,18 @@ mod tests {
 
     #[test]
     fn serialize_receive_command() {
-        let wallet = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
-        let account = Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap();
-        let block = BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
+        let account = Account::decode_account(
+            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        )
+        .unwrap();
+        let block = BlockHash::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let work = Some(1.into());
 
         let receive_command = RpcCommand::receive(wallet, account, block, work);
@@ -108,7 +162,7 @@ mod tests {
 
     #[test]
     fn deserialize_receive_command() {
-    let json_str = r#"{
+        let json_str = r#"{
         "action": "receive",
         "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         "account": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
@@ -116,24 +170,51 @@ mod tests {
         "work": "0000000000000001"
     }"#;
 
-    let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
+        let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
 
-    match deserialized {
-        RpcCommand::Receive(args) => {
-            assert_eq!(args.wallet, WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
-            assert_eq!(args.account, Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap());
-            assert_eq!(args.block, BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap());
-            assert_eq!(args.work, Some(1.into()));
-        },
-        _ => panic!("Deserialized to wrong variant"),
-    }
+        match deserialized {
+            RpcCommand::Receive(args) => {
+                assert_eq!(
+                    args.wallet,
+                    WalletId::decode_hex(
+                        "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+                    )
+                    .unwrap()
+                );
+                assert_eq!(
+                    args.account,
+                    Account::decode_account(
+                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                    )
+                    .unwrap()
+                );
+                assert_eq!(
+                    args.block,
+                    BlockHash::decode_hex(
+                        "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F"
+                    )
+                    .unwrap()
+                );
+                assert_eq!(args.work, Some(1.into()));
+            }
+            _ => panic!("Deserialized to wrong variant"),
+        }
     }
 
     #[test]
     fn receive_command_roundtrip() {
-        let wallet = WalletId::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
-        let account = Account::decode_account("nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3").unwrap();
-        let block = BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F").unwrap();
+        let wallet = WalletId::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
+        let account = Account::decode_account(
+            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        )
+        .unwrap();
+        let block = BlockHash::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap();
         let work = Some(1.into());
 
         let original_command = RpcCommand::receive(wallet, account, block, work);

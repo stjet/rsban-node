@@ -162,7 +162,7 @@ impl NodeArgs {
 }
 
 impl Node {
-    pub(crate) fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
+    pub fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
         let args = NodeArgs {
             callbacks,
             ..NodeArgs::create_test_instance()
@@ -291,10 +291,16 @@ impl Node {
 
         dead_channel_cleanup.add_step(NetworkCleanup::new(network.clone()));
 
-        let inbound_message_queue = Arc::new(InboundMessageQueue::new(
-            config.message_processor.max_queue,
-            stats.clone(),
-        ));
+        let mut inbound_message_queue =
+            InboundMessageQueue::new(config.message_processor.max_queue, stats.clone());
+        if let Some(cb) = args.callbacks.on_inbound {
+            inbound_message_queue.set_inbound_callback(cb);
+        }
+        if let Some(cb) = args.callbacks.on_inbound_dropped {
+            inbound_message_queue.set_inbound_dropped_callback(cb);
+        }
+        let inbound_message_queue = Arc::new(inbound_message_queue);
+
         dead_channel_cleanup.add_step(InboundMessageQueueCleanup::new(
             inbound_message_queue.clone(),
         ));

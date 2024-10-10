@@ -1,7 +1,7 @@
 use crate::{node_builder_factory::NodeBuilderFactory, nullable_runtime::NullableRuntime};
 use num_format::{Locale, ToFormattedString};
 use rsnano_core::Networks;
-use rsnano_node::{Node, NodeExt};
+use rsnano_node::{Node, NodeCallbacks, NodeExt};
 use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc,
@@ -48,12 +48,15 @@ impl AppModel {
 
     pub(crate) fn start_beta_node(&mut self) {
         let published = self.published.clone();
-        let node = self
-            .node_builder_factory
-            .builder_for(Networks::NanoBetaNetwork)
+        let callbacks = NodeCallbacks::builder()
             .on_publish(Arc::new(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);
             }))
+            .finish();
+        let node = self
+            .node_builder_factory
+            .builder_for(Networks::NanoBetaNetwork)
+            .callbacks(callbacks)
             .finish()
             .unwrap();
         let node = Arc::new(node);

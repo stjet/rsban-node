@@ -11,11 +11,11 @@ use crate::{
     config::{GlobalConfig, NodeConfig, NodeFlags},
     consensus::{
         election_schedulers::ElectionSchedulers, get_bootstrap_weights, log_bootstrap_weights,
-        ActiveElections, ActiveElectionsExt, BalanceChangedCallback, ElectionEndCallback,
-        ElectionStatusType, LocalVoteHistory, ProcessLiveDispatcher, ProcessLiveDispatcherExt,
-        RecentlyConfirmedCache, RepTiers, RequestAggregator, RequestAggregatorCleanup, VoteApplier,
-        VoteBroadcaster, VoteCache, VoteCacheProcessor, VoteGenerators, VoteProcessedCallback2,
-        VoteProcessor, VoteProcessorExt, VoteProcessorQueue, VoteProcessorQueueCleanup, VoteRouter,
+        ActiveElections, ActiveElectionsExt, ElectionStatusType, LocalVoteHistory,
+        ProcessLiveDispatcher, ProcessLiveDispatcherExt, RecentlyConfirmedCache, RepTiers,
+        RequestAggregator, RequestAggregatorCleanup, VoteApplier, VoteBroadcaster, VoteCache,
+        VoteCacheProcessor, VoteGenerators, VoteProcessor, VoteProcessorExt, VoteProcessorQueue,
+        VoteProcessorQueueCleanup, VoteRouter,
     },
     monitor::Monitor,
     node_id_key_file::NodeIdKeyFile,
@@ -28,7 +28,7 @@ use crate::{
     transport::{
         InboundMessageQueue, InboundMessageQueueCleanup, KeepaliveFactory, LatestKeepalives,
         LatestKeepalivesCleanup, MessageProcessor, MessagePublisher, NanoResponseServerSpawner,
-        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater, PublishedCallback,
+        NetworkFilter, NetworkThreads, PeerCacheConnector, PeerCacheUpdater,
         RealtimeMessageHandler, SynCookies,
     },
     utils::{
@@ -37,13 +37,13 @@ use crate::{
     wallets::{Wallets, WalletsExt},
     websocket::{create_websocket_server, WebsocketListenerExt},
     work::DistributedWorkFactory,
-    NetworkParams, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry, BUILD_INFO,
-    VERSION_STRING,
+    NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
+    BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, PublicKey, Root, VoteCode,
+    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -54,6 +54,7 @@ use rsnano_network::{
 };
 use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
 use rsnano_nullable_http_client::{HttpClient, Url};
+use rsnano_output_tracker::OutputListenerMt;
 use rsnano_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
@@ -130,7 +131,8 @@ pub struct Node {
     stopped: AtomicBool,
     pub publish_filter: Arc<NetworkFilter>,
     pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
-                                                         // to keep the weak pointer alive
+    // to keep the weak pointer alive
+    start_stop_listener: OutputListenerMt<&'static str>,
 }
 
 pub(crate) struct NodeArgs {
@@ -140,26 +142,43 @@ pub(crate) struct NodeArgs {
     pub network_params: NetworkParams,
     pub flags: NodeFlags,
     pub work: Arc<WorkPoolImpl>,
-    pub on_election_end: ElectionEndCallback,
-    pub on_balance_changed: BalanceChangedCallback,
-    pub on_vote: VoteProcessedCallback2,
-    pub on_publish: Option<PublishedCallback>,
+    pub callbacks: NodeCallbacks,
+}
+
+impl NodeArgs {
+    pub fn create_test_instance() -> Self {
+        let network_params = NetworkParams::new(Networks::NanoTestNetwork);
+        let config = NodeConfig::new(None, &network_params, 2);
+        Self {
+            runtime: tokio::runtime::Handle::current(),
+            data_path: "/home/nulled-node".into(),
+            network_params,
+            config,
+            flags: Default::default(),
+            callbacks: Default::default(),
+            work: Arc::new(WorkPoolImpl::new_null(123)),
+        }
+    }
 }
 
 impl Node {
-    pub(crate) fn new_null(args: NodeArgs) -> Self {
-        Self::with_null(args, true)
+    pub(crate) fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
+        let args = NodeArgs {
+            callbacks,
+            ..NodeArgs::create_test_instance()
+        };
+        Self::new(args, true, NodeIdKeyFile::new_null())
     }
 
-    pub(crate) fn new(args: NodeArgs) -> Self {
-        Self::with_null(args, false)
+    pub(crate) fn new_with_args(args: NodeArgs) -> Self {
+        Self::new(args, false, NodeIdKeyFile::default())
     }
 
-    fn with_null(args: NodeArgs, is_nulled: bool) -> Self {
+    fn new(args: NodeArgs, is_nulled: bool, mut node_id_key_file: NodeIdKeyFile) -> Self {
         let network_params = args.network_params;
         let config = args.config;
         let flags = args.flags;
-        let tokio_handle = args.runtime;
+        let runtime = args.runtime;
         let work = args.work;
         // Time relative to the start of the node. This makes time exlicit and enables us to
         // write time relevant unit tests with ease.
@@ -173,21 +192,23 @@ impl Node {
         };
         let global_config = &global_config;
         let application_path = args.data_path;
-        let node_id = NodeIdKeyFile::default()
-            .initialize(&application_path)
-            .unwrap();
+        let node_id = node_id_key_file.initialize(&application_path).unwrap();
 
         let stats = Arc::new(Stats::new(config.stat_config.clone()));
 
-        let store = make_store(
-            &application_path,
-            true,
-            &config.diagnostics_config.txn_tracking,
-            Duration::from_millis(config.block_processor_batch_max_time_ms as u64),
-            config.lmdb_config.clone(),
-            config.backup_before_upgrade,
-        )
-        .expect("Could not create LMDB store");
+        let store = if is_nulled {
+            Arc::new(LmdbStore::new_null())
+        } else {
+            make_store(
+                &application_path,
+                true,
+                &config.diagnostics_config.txn_tracking,
+                Duration::from_millis(config.block_processor_batch_max_time_ms as u64),
+                config.lmdb_config.clone(),
+                config.backup_before_upgrade,
+            )
+            .expect("Could not create LMDB store")
+        };
 
         info!("Version: {}", VERSION_STRING);
         info!("Build information: {}", BUILD_INFO);
@@ -263,7 +284,7 @@ impl Node {
             global_config.into(),
             network_info.clone(),
             steady_clock.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
         );
         network.set_observer(network_observer.clone());
         let network = Arc::new(network);
@@ -311,7 +332,7 @@ impl Node {
             network_params.network.protocol_info(),
         );
 
-        if let Some(callback) = &args.on_publish {
+        if let Some(callback) = &args.callbacks.on_publish {
             message_publisher.set_published_callback(callback.clone());
         }
 
@@ -379,10 +400,7 @@ impl Node {
             block_processor.processor_loop.clone(),
         ));
 
-        let distributed_work = Arc::new(DistributedWorkFactory::new(
-            work.clone(),
-            tokio_handle.clone(),
-        ));
+        let distributed_work = Arc::new(DistributedWorkFactory::new(work.clone(), runtime.clone()));
 
         let mut wallets_path = application_path.clone();
         wallets_path.push("wallets.ldb");
@@ -394,27 +412,33 @@ impl Node {
             config: wallets_lmdb_config,
             use_no_mem_init: false,
         };
-        let wallets_env =
-            Arc::new(LmdbEnv::new_with_options(wallets_path, &wallets_options).unwrap());
+        let wallets_env = if is_nulled {
+            Arc::new(LmdbEnv::new_null())
+        } else {
+            Arc::new(LmdbEnv::new_with_options(wallets_path, &wallets_options).unwrap())
+        };
 
-        let wallets = Arc::new(
-            Wallets::new(
-                wallets_env,
-                ledger.clone(),
-                &config,
-                network_params.kdf_work,
-                network_params.work.clone(),
-                distributed_work.clone(),
-                network_params.clone(),
-                workers.clone(),
-                block_processor.clone(),
-                online_reps.clone(),
-                confirming_set.clone(),
-                message_publisher.clone(),
-            )
-            .expect("Could not create wallet"),
+        let mut wallets = Wallets::new(
+            wallets_env,
+            ledger.clone(),
+            &config,
+            network_params.kdf_work,
+            network_params.work.clone(),
+            distributed_work.clone(),
+            network_params.clone(),
+            workers.clone(),
+            block_processor.clone(),
+            online_reps.clone(),
+            confirming_set.clone(),
+            message_publisher.clone(),
         );
-        wallets.initialize2();
+        if !is_nulled {
+            wallets.initialize().expect("Could not create wallet");
+        }
+        let wallets = Arc::new(wallets);
+        if !is_nulled {
+            wallets.initialize2();
+        }
 
         let vote_broadcaster = Arc::new(VoteBroadcaster::new(
             vote_processor_queue.clone(),
@@ -452,11 +476,16 @@ impl Node {
             vote_applier.clone(),
         ));
 
+        let on_vote = args
+            .callbacks
+            .on_vote
+            .unwrap_or_else(|| Box::new(|_, _, _, _| {}));
+
         let vote_processor = Arc::new(VoteProcessor::new(
             vote_processor_queue.clone(),
             vote_router.clone(),
             stats.clone(),
-            args.on_vote,
+            on_vote,
         ));
 
         let vote_cache_processor = Arc::new(VoteCacheProcessor::new(
@@ -465,6 +494,16 @@ impl Node {
             vote_router.clone(),
             config.vote_processor.clone(),
         ));
+
+        let on_election_end = args
+            .callbacks
+            .on_election_end
+            .unwrap_or_else(|| Box::new(|_, _, _, _, _, _| {}));
+
+        let on_balance_changed = args
+            .callbacks
+            .on_balance_changed
+            .unwrap_or_else(|| Box::new(|_, _| {}));
 
         let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
@@ -478,8 +517,8 @@ impl Node {
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
-            args.on_election_end,
-            args.on_balance_changed,
+            on_election_end,
+            on_balance_changed,
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,
@@ -494,7 +533,7 @@ impl Node {
         let websocket = create_websocket_server(
             config.websocket_config.clone(),
             wallets.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             &active_elections,
             &telemetry,
             &vote_processor,
@@ -508,7 +547,7 @@ impl Node {
             512,
         );
 
-        if let Some(callback) = &args.on_publish {
+        if let Some(callback) = &args.callbacks.on_publish {
             bootstrap_publisher.set_published_callback(callback.clone());
         }
 
@@ -518,7 +557,7 @@ impl Node {
             network.clone(),
             network_info.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             bootstrap_workers.clone(),
             network_params.clone(),
             stats.clone(),
@@ -535,7 +574,7 @@ impl Node {
         dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));
 
         let response_server_spawner = Arc::new(NanoResponseServerSpawner {
-            tokio: tokio_handle.clone(),
+            tokio: runtime.clone(),
             stats: stats.clone(),
             node_id: node_id.clone(),
             ledger: ledger.clone(),
@@ -555,7 +594,7 @@ impl Node {
             config.tcp.connect_timeout,
             network.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             response_server_spawner.clone(),
             steady_clock.clone(),
         ));
@@ -567,7 +606,7 @@ impl Node {
             config.clone(),
             network_params.clone(),
             network_info.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             ledger.clone(),
             active_elections.clone(),
             peer_connector.clone(),
@@ -586,7 +625,7 @@ impl Node {
             network_info.read().unwrap().listening_port(),
             network.clone(),
             network_observer.clone(),
-            tokio_handle.clone(),
+            runtime.clone(),
             response_server_spawner.clone(),
         ));
 
@@ -854,19 +893,6 @@ impl Node {
             config.bandwidth_limit, config.bandwidth_limit_burst_ratio
         );
 
-        if !ledger
-            .any()
-            .block_exists_or_pruned(&ledger.read_txn(), &network_params.ledger.genesis.hash())
-        {
-            error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
-
-            if network_params.network.is_beta_network() {
-                error!("Beta network may have reset, try clearing database files");
-            }
-
-            panic!("Genesis block not found!");
-        }
-
         if config.enable_voting {
             info!(
                 "Voting is enabled, more system resources will be used, local representatives: {}",
@@ -917,7 +943,7 @@ impl Node {
         }));
 
         if !config.callback_address.is_empty() {
-            let tokio = tokio_handle.clone();
+            let tokio = runtime.clone();
             let stats = stats.clone();
             let url: Url = format!(
                 "http://{}:{}{}",
@@ -1067,7 +1093,7 @@ impl Node {
             config,
             flags,
             work,
-            runtime: tokio_handle,
+            runtime,
             bootstrap_server,
             online_weight_sampler,
             online_reps,
@@ -1101,6 +1127,7 @@ impl Node {
             message_publisher: message_publisher_l,
             publish_filter,
             stopped: AtomicBool::new(false),
+            start_stop_listener: OutputListenerMt::new(),
         }
     }
 
@@ -1324,9 +1351,24 @@ pub trait NodeExt {
 
 impl NodeExt for Arc<Node> {
     fn start(&self) {
+        self.start_stop_listener.emit("start");
         if self.is_nulled {
             return; // TODO better nullability implementation
         }
+
+        if !self.ledger.any().block_exists_or_pruned(
+            &self.ledger.read_txn(),
+            &self.network_params.ledger.genesis.hash(),
+        ) {
+            error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
+
+            if self.network_params.network.is_beta_network() {
+                error!("Beta network may have reset, try clearing database files");
+            }
+
+            panic!("Genesis block not found!");
+        }
+
         self.long_inactivity_cleanup();
         self.network_threads.lock().unwrap().start();
         self.message_processor.lock().unwrap().start();
@@ -1418,6 +1460,7 @@ impl NodeExt for Arc<Node> {
     }
 
     fn stop(&self) {
+        self.start_stop_listener.emit("stop");
         if self.is_nulled {
             return; // TODO better nullability implementation
         }

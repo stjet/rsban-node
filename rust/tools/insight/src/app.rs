@@ -13,6 +13,26 @@ impl InsightApp {
 
 impl eframe::App for InsightApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.add_space(1.0);
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(self.model.can_start_node(), Button::new("Start beta node"))
+                    .clicked()
+                {
+                    self.model.start_beta_node();
+                }
+
+                if ui
+                    .add_enabled(self.model.can_stop_node(), Button::new("Stop node"))
+                    .clicked()
+                {
+                    self.model.stop_node();
+                }
+                ui.label(self.model.status());
+            });
+            ui.add_space(1.0);
+        });
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 global_theme_preference_switch(ui);
@@ -32,26 +52,8 @@ impl eframe::App for InsightApp {
                 ui.label("cps");
             });
         });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(self.model.can_start_node(), Button::new("Start beta node"))
-                    .clicked()
-                {
-                    self.model.start_beta_node();
-                }
 
-                if ui
-                    .add_enabled(self.model.can_stop_node(), Button::new("Stop node"))
-                    .clicked()
-                {
-                    self.model.stop_node();
-                }
-                ui.label(self.model.status());
-            });
-
-            ui.separator();
-        });
+        egui::CentralPanel::default().show(ctx, |ui| ui.label("todo"));
         ctx.request_repaint();
     }
 }

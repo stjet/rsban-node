@@ -11,21 +11,16 @@ fn chain() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    // Create a wallet and insert the genesis key
-
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true);
 
-    // Get the genesis block hash
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    // Create and process a send block
     let key = KeyPair::new();
     let block = node.wallets.send_action2(&wallet_id, *DEV_GENESIS_ACCOUNT, key.account(), Amount::raw(1), 0, true, None).unwrap();
 
-    // Wait for the block to be processed
     assert_timely_msg(
         Duration::from_secs(5),
         || node.active.active(&block),
@@ -41,7 +36,6 @@ fn chain() {
 
     let blocks = result.blocks.clone();
 
-    // Check that we have 2 blocks: genesis and the send block
     assert_eq!(blocks.len(), 2);
     assert_eq!(blocks[0], block.hash());
     assert_eq!(blocks[1], genesis);
@@ -56,20 +50,16 @@ fn chain_limit() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    // Create a wallet and insert the genesis key
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true);
 
-    // Get the genesis block hash
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    // Create and process a send block
     let key = KeyPair::new();
     let block = node.wallets.send_action2(&wallet_id, *DEV_GENESIS_ACCOUNT, key.account(), Amount::raw(1), 0, true, None).unwrap();
 
-    // Wait for the block to be processed
     assert_timely_msg(
         Duration::from_secs(5),
         || node.active.active(&block),
@@ -85,7 +75,6 @@ fn chain_limit() {
 
     let blocks = result.blocks.clone();
 
-    // Check that we have only 1 block due to the limit
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0], block.hash());
 
@@ -99,20 +88,16 @@ fn chain_offset() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    // Create a wallet and insert the genesis key
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true);
 
-    // Get the genesis block hash
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    // Create and process a send block
     let key = KeyPair::new();
     let block = node.wallets.send_action2(&wallet_id, *DEV_GENESIS_ACCOUNT, key.account(), Amount::raw(1), 0, true, None).unwrap();
 
-    // Wait for the block to be processed
     assert_timely_msg(
         Duration::from_secs(5),
         || node.active.active(&block),
@@ -128,7 +113,6 @@ fn chain_offset() {
 
     let blocks = result.blocks.clone();
 
-    // Check that we have only 1 block due to the offset
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0], genesis);
 

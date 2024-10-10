@@ -19,7 +19,7 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let successors_command = RpcCommand::successors(block_hash, 1, Some(1), Some(false));
+        let successors_command = RpcCommand::successors(block_hash, 1, Some(false), Some(1));
 
         let serialized = serde_json::to_value(successors_command).unwrap();
         let expected = json!({
@@ -48,7 +48,7 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let expected = RpcCommand::successors(expected_block_hash, 1, Some(1), Some(false));
+        let expected = RpcCommand::successors(expected_block_hash, 1, Some(false), Some(1));
 
         assert_eq!(deserialized, expected);
     }

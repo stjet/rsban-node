@@ -11,8 +11,6 @@ fn successors() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    // Create a wallet and insert the genesis key
-
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true);
@@ -49,12 +47,12 @@ fn successors() {
     // Test the "reverse" option (equivalent to "chain" action in C++)
     let reverse_result = node.runtime.block_on(async {
         rpc_client
-            .successors(genesis, u64::MAX, Some(true), None)
+            .chain(genesis, u64::MAX, Some(true), None)
             .await
             .unwrap()
     });
 
-    //assert_eq!(result, reverse_result);
+    assert_eq!(result, reverse_result);
 
     server.abort();
 }

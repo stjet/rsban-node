@@ -725,8 +725,8 @@ impl NanoRpcClient {
         &self,
         block: BlockHash,
         count: u64,
-        offset: Option<u64>,
         reverse: Option<bool>,
+        offset: Option<u64>,
     ) -> Result<BlockHashesDto> {
         let cmd = RpcCommand::chain(block, count, offset, reverse);
         let result = self.rpc_request(&cmd).await?;

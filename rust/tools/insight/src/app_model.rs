@@ -49,9 +49,9 @@ impl AppModel {
     pub(crate) fn start_beta_node(&mut self) {
         let published = self.published.clone();
         let callbacks = NodeCallbacks::builder()
-            .on_publish(Arc::new(move |_channel_id, _message| {
+            .on_publish(move |_channel_id, _message| {
                 published.fetch_add(1, Ordering::SeqCst);
-            }))
+            })
             .finish();
         let node = self
             .node_builder_factory

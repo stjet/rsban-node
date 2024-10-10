@@ -1,10 +1,16 @@
 use crate::{
     config::{NodeConfig, NodeFlags},
-    consensus::{BalanceChangedCallback, ElectionEndCallback, VoteProcessedCallback2},
+    consensus::{
+        BalanceChangedCallback, ElectionEndCallback, ElectionStatus, VoteProcessedCallback2,
+    },
     transport::PublishedCallback,
     working_path_for, NetworkParams, Node, NodeArgs,
 };
-use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks, Vote, VoteCode, VoteSource};
+use rsnano_core::{
+    utils::get_cpu_count, work::WorkPoolImpl, Account, Amount, Networks, Vote, VoteCode,
+    VoteSource, VoteWithWeightInfo,
+};
+use rsnano_messages::Message;
 use rsnano_network::ChannelId;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
@@ -29,26 +35,38 @@ impl NodeCallbacksBuilder {
         Self(NodeCallbacks::default())
     }
 
-    pub fn on_election_end(mut self, callback: ElectionEndCallback) -> Self {
-        self.0.on_election_end = Some(callback);
+    pub fn on_election_end(
+        mut self,
+        callback: impl Fn(&ElectionStatus, &Vec<VoteWithWeightInfo>, Account, Amount, bool, bool)
+            + Send
+            + Sync
+            + 'static,
+    ) -> Self {
+        self.0.on_election_end = Some(Box::new(callback));
         self
     }
 
-    pub fn on_balance_changed(mut self, callback: BalanceChangedCallback) -> Self {
-        self.0.on_balance_changed = Some(callback);
+    pub fn on_balance_changed(
+        mut self,
+        callback: impl Fn(&Account, bool) + Send + Sync + 'static,
+    ) -> Self {
+        self.0.on_balance_changed = Some(Box::new(callback));
         self
     }
 
     pub fn on_vote(
         mut self,
-        callback: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
+        callback: impl Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync + 'static,
     ) -> Self {
-        self.0.on_vote = Some(callback);
+        self.0.on_vote = Some(Box::new(callback));
         self
     }
 
-    pub fn on_publish(mut self, callback: PublishedCallback) -> Self {
-        self.0.on_publish = Some(callback);
+    pub fn on_publish(
+        mut self,
+        callback: impl Fn(ChannelId, &Message) + Send + Sync + 'static,
+    ) -> Self {
+        self.0.on_publish = Some(Arc::new(callback));
         self
     }
 

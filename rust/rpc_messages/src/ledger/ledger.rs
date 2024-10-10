@@ -108,7 +108,7 @@ impl LedgerAccountInfo {
 mod tests {
     use crate::{LedgerAccountInfo, LedgerArgs, LedgerDto, RpcCommand};
     use rsnano_core::{Account, Amount, BlockHash};
-    use serde_json::{json, Value};
+    use serde_json::json;
     use std::collections::HashMap;
 
     #[test]

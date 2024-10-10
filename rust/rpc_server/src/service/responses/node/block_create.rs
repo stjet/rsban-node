@@ -176,7 +176,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
     let difficulty = block.work();
     let json_block = block.json_representation();
 
-    to_string_pretty(&BlockCreateDto::new(hash, difficulty, json_block)).unwrap()
+    to_string_pretty(&BlockCreateDto::new(hash, difficulty.into(), json_block)).unwrap()
 }
 
 pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
@@ -261,7 +261,7 @@ mod tests {
 
         let result = node.runtime.block_on(async {
             rpc_client
-                .block_create(
+                .block_create(BlockCreateArgs::new(
                     BlockTypeDto::State,
                     Some(Amount::MAX - Amount::raw(100)),
                     Some(DEV_GENESIS_KEY.private_key()),
@@ -275,7 +275,7 @@ mod tests {
                     None,
                     None,
                     None,
-                )
+                ))
                 .await
                 .unwrap()
         });

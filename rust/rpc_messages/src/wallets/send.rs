@@ -3,15 +3,8 @@ use rsnano_core::{Account, Amount, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn send(
-        wallet: WalletId,
-        source: Account,
-        destination: Account,
-        amount: Amount,
-        work: Option<bool>,
-        id: Option<String>,
-    ) -> Self {
-        Self::Send(SendArgs::new(wallet, source, destination, amount, work, id))
+    pub fn send(args: SendArgs) -> Self {
+        Self::Send(args)
     }
 }
 
@@ -68,7 +61,14 @@ mod tests {
         .unwrap();
         let amount = Amount::raw(1000000);
 
-        let send_command = RpcCommand::send(wallet, source, destination, amount, None, None);
+        let send_command = RpcCommand::send(SendArgs::new(
+            wallet,
+            source,
+            destination,
+            amount,
+            None,
+            None,
+        ));
 
         let serialized = serde_json::to_value(&send_command).unwrap();
         let expected = json!({
@@ -110,7 +110,14 @@ mod tests {
 
         assert_eq!(
             deserialized,
-            RpcCommand::send(wallet, source, destination, amount, None, None)
+            RpcCommand::send(SendArgs::new(
+                wallet,
+                source,
+                destination,
+                amount,
+                None,
+                None
+            ))
         );
     }
 

@@ -185,14 +185,9 @@ mod tests {
 
         let work_generate_dto = node.runtime.block_on(async {
             rpc_client
-                .work_generate(
-                    hash, None, // difficulty
-                    None, // multiplier
-                    None, // version
-                    None, // account
-                    None, // block
-                    None, // use_peers
-                )
+                .work_generate(WorkGenerateArgs::new(
+                    hash, None, None, None, None, None, None,
+                ))
                 .await
                 .unwrap()
         });

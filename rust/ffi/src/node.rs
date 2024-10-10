@@ -28,7 +28,7 @@ use rsnano_core::{
 use rsnano_network::ChannelId;
 use rsnano_node::{
     consensus::{BalanceChangedCallback, ElectionEndCallback},
-    NetworkParams, Node, NodeBuilder, NodeExt,
+    NetworkParams, Node, NodeBuilder, NodeCallbacks, NodeExt,
 };
 use std::{
     collections::VecDeque,
@@ -93,6 +93,12 @@ pub unsafe extern "C" fn rsn_node_create(
 
     let network_params: NetworkParams = params.try_into().unwrap();
 
+    let callbacks = NodeCallbacks::builder()
+        .on_election_end(election_ended_wrapper)
+        .on_balance_changed(balance_changed_wrapper)
+        .on_vote(vote_processed)
+        .finish();
+
     let node = NodeBuilder::new(network_params.network.current_network)
         .runtime(async_rt.tokio.handle().clone())
         .data_path(path)
@@ -100,9 +106,7 @@ pub unsafe extern "C" fn rsn_node_create(
         .network_params(network_params)
         .flags(flags.lock().unwrap().clone())
         .work((*work).clone())
-        .on_election_end(election_ended_wrapper)
-        .on_balance_changed(balance_changed_wrapper)
-        .on_vote(vote_processed)
+        .callbacks(callbacks)
         .finish()
         .unwrap();
 

@@ -91,10 +91,7 @@ pub struct Wallets {
 }
 
 impl Wallets {
-    pub fn new_null_with_env(
-        env: Arc<LmdbEnv>,
-        tokio_handle: tokio::runtime::Handle,
-    ) -> anyhow::Result<Self> {
+    pub fn new_null_with_env(env: Arc<LmdbEnv>, tokio_handle: tokio::runtime::Handle) -> Self {
         Wallets::new(
             env,
             Arc::new(Ledger::new_null()),
@@ -135,9 +132,9 @@ impl Wallets {
         online_reps: Arc<Mutex<OnlineReps>>,
         confirming_set: Arc<ConfirmingSet>,
         message_publisher: MessagePublisher,
-    ) -> anyhow::Result<Self> {
+    ) -> Self {
         let kdf = KeyDerivationFunction::new(kdf_work);
-        let mut wallets = Self {
+        Self {
             db: None,
             send_action_ids_handle: None,
             mutex: Mutex::new(HashMap::new()),
@@ -161,46 +158,7 @@ impl Wallets {
             start_election: Mutex::new(None),
             confirming_set,
             message_publisher: Mutex::new(message_publisher),
-        };
-        let mut txn = wallets.env.tx_begin_write();
-        wallets.initialize(&mut txn)?;
-        {
-            let mut guard = wallets.mutex.lock().unwrap();
-            let wallet_ids = wallets.get_wallet_ids(&txn);
-            for id in wallet_ids {
-                assert!(!guard.contains_key(&id));
-                let representative = node_config.random_representative();
-                let text = PathBuf::from(id.encode_hex());
-                let wallet = Wallet::new(
-                    Arc::clone(&ledger),
-                    work.clone(),
-                    &mut txn,
-                    node_config.password_fanout as usize,
-                    kdf.clone(),
-                    representative,
-                    &text,
-                )?;
-
-                guard.insert(id, Arc::new(wallet));
-            }
-
-            // Backup before upgrade wallets
-            let mut backup_required = false;
-            if node_config.backup_before_upgrade {
-                let txn = wallets.env.tx_begin_read();
-                for wallet in guard.values() {
-                    if wallet.store.version(&txn) != LmdbWalletStore::VERSION_CURRENT {
-                        backup_required = true;
-                        break;
-                    }
-                }
-            }
-            if backup_required {
-                create_backup_file(&wallets.env)?;
-            }
         }
-
-        Ok(wallets)
     }
 
     pub fn start(&self) {
@@ -215,12 +173,48 @@ impl Wallets {
         *self.start_election.lock().unwrap() = Some(callback);
     }
 
-    pub fn initialize(&mut self, txn: &mut LmdbWriteTransaction) -> anyhow::Result<()> {
+    pub fn initialize(&mut self) -> anyhow::Result<()> {
+        let mut txn = self.env.tx_begin_write();
         self.db = Some(unsafe { txn.rw_txn_mut().create_db(None, DatabaseFlags::empty())? });
         self.send_action_ids_handle = Some(unsafe {
             txn.rw_txn_mut()
                 .create_db(Some("send_action_ids"), DatabaseFlags::empty())?
         });
+        {
+            let mut guard = self.mutex.lock().unwrap();
+            let wallet_ids = self.get_wallet_ids(&txn);
+            for id in wallet_ids {
+                assert!(!guard.contains_key(&id));
+                let representative = self.node_config.random_representative();
+                let text = PathBuf::from(id.encode_hex());
+                let wallet = Wallet::new(
+                    self.ledger.clone(),
+                    self.work_thresholds.clone(),
+                    &mut txn,
+                    self.node_config.password_fanout as usize,
+                    self.kdf.clone(),
+                    representative,
+                    &text,
+                )?;
+
+                guard.insert(id, Arc::new(wallet));
+            }
+
+            // Backup before upgrade wallets
+            let mut backup_required = false;
+            if self.node_config.backup_before_upgrade {
+                let txn = self.env.tx_begin_read();
+                for wallet in guard.values() {
+                    if wallet.store.version(&txn) != LmdbWalletStore::VERSION_CURRENT {
+                        backup_required = true;
+                        break;
+                    }
+                }
+            }
+            if backup_required {
+                create_backup_file(&self.env)?;
+            }
+        }
         Ok(())
     }
 

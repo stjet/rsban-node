@@ -8,6 +8,55 @@ use rsnano_core::{utils::get_cpu_count, work::WorkPoolImpl, Networks, Vote, Vote
 use rsnano_network::ChannelId;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
+#[derive(Default)]
+pub struct NodeCallbacks {
+    pub on_election_end: Option<ElectionEndCallback>,
+    pub on_balance_changed: Option<BalanceChangedCallback>,
+    pub on_vote: Option<VoteProcessedCallback2>,
+    pub on_publish: Option<PublishedCallback>,
+}
+
+impl NodeCallbacks {
+    pub fn builder() -> NodeCallbacksBuilder {
+        NodeCallbacksBuilder::new()
+    }
+}
+
+pub struct NodeCallbacksBuilder(NodeCallbacks);
+
+impl NodeCallbacksBuilder {
+    fn new() -> Self {
+        Self(NodeCallbacks::default())
+    }
+
+    pub fn on_election_end(mut self, callback: ElectionEndCallback) -> Self {
+        self.0.on_election_end = Some(callback);
+        self
+    }
+
+    pub fn on_balance_changed(mut self, callback: BalanceChangedCallback) -> Self {
+        self.0.on_balance_changed = Some(callback);
+        self
+    }
+
+    pub fn on_vote(
+        mut self,
+        callback: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
+    ) -> Self {
+        self.0.on_vote = Some(callback);
+        self
+    }
+
+    pub fn on_publish(mut self, callback: PublishedCallback) -> Self {
+        self.0.on_publish = Some(callback);
+        self
+    }
+
+    pub fn finish(self) -> NodeCallbacks {
+        self.0
+    }
+}
+
 pub struct NodeBuilder {
     network: Networks,
     is_nulled: bool,
@@ -17,10 +66,7 @@ pub struct NodeBuilder {
     network_params: Option<NetworkParams>,
     flags: Option<NodeFlags>,
     work: Option<Arc<WorkPoolImpl>>,
-    on_election_end: Option<ElectionEndCallback>,
-    on_balance_changed: Option<BalanceChangedCallback>,
-    on_vote: Option<VoteProcessedCallback2>,
-    on_publish: Option<PublishedCallback>,
+    callbacks: Option<NodeCallbacks>,
 }
 
 impl NodeBuilder {
@@ -42,10 +88,7 @@ impl NodeBuilder {
             network_params: None,
             flags: None,
             work: None,
-            on_vote: None,
-            on_publish: None,
-            on_election_end: None,
-            on_balance_changed: None,
+            callbacks: None,
         }
     }
 
@@ -79,26 +122,8 @@ impl NodeBuilder {
         self
     }
 
-    pub fn on_election_end(mut self, callback: ElectionEndCallback) -> Self {
-        self.on_election_end = Some(callback);
-        self
-    }
-
-    pub fn on_balance_changed(mut self, callback: BalanceChangedCallback) -> Self {
-        self.on_balance_changed = Some(callback);
-        self
-    }
-
-    pub fn on_vote(
-        mut self,
-        callback: Box<dyn Fn(&Arc<Vote>, ChannelId, VoteSource, VoteCode) + Send + Sync>,
-    ) -> Self {
-        self.on_vote = Some(callback);
-        self
-    }
-
-    pub fn on_publish(mut self, callback: PublishedCallback) -> Self {
-        self.on_publish = Some(callback);
+    pub fn callbacks(mut self, callbacks: NodeCallbacks) -> Self {
+        self.callbacks = Some(callbacks);
         self
     }
 
@@ -135,32 +160,21 @@ impl NodeBuilder {
             ))
         });
 
-        let on_election_end = self
-            .on_election_end
-            .unwrap_or_else(|| Box::new(|_, _, _, _, _, _| {}));
+        let callbacks = self.callbacks.unwrap_or_default();
 
-        let on_balance_changed = self
-            .on_balance_changed
-            .unwrap_or_else(|| Box::new(|_, _| {}));
-
-        let on_vote = self.on_vote.unwrap_or_else(|| Box::new(|_, _, _, _| {}));
-
-        let args = NodeArgs {
-            runtime,
-            data_path,
-            config,
-            network_params,
-            flags,
-            work,
-            on_election_end,
-            on_balance_changed,
-            on_vote,
-            on_publish: self.on_publish,
-        };
         let node = if self.is_nulled {
-            Node::new_null(args)
+            Node::new_null_with_callbacks(callbacks)
         } else {
-            Node::new(args)
+            let args = NodeArgs {
+                runtime,
+                data_path,
+                config,
+                network_params,
+                flags,
+                work,
+                callbacks,
+            };
+            Node::new_with_args(args)
         };
         Ok(node)
     }

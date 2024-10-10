@@ -28,22 +28,17 @@ impl AccountInfoArgs {
     pub fn builder(account: Account) -> AccountInfoArgsBuilder {
         AccountInfoArgsBuilder::new(account)
     }
+}
 
-    pub fn new(
-        account: Account,
-        representative: Option<bool>,
-        weight: Option<bool>,
-        pending: Option<bool>,
-        receivable: Option<bool>,
-        include_confirmed: Option<bool>,
-    ) -> Self {
+impl From<Account> for AccountInfoArgs {
+    fn from(account: Account) -> Self {
         Self {
             account,
-            representative,
-            weight,
-            pending,
-            receivable,
-            include_confirmed,
+            representative: None,
+            weight: None,
+            pending: None,
+            receivable: None,
+            include_confirmed: None,
         }
     }
 }

@@ -298,10 +298,10 @@ impl NanoRpcClient {
 
     pub async fn account_balance(
         &self,
-        account: Account,
-        include_only_confirmed: Option<bool>,
+        args: impl Into<AccountBalanceArgs>,
     ) -> Result<AccountBalanceDto> {
-        let cmd = RpcCommand::account_balance(account, include_only_confirmed);
+        let account_balance_args = args.into();
+        let cmd = RpcCommand::account_balance(account_balance_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -713,10 +713,10 @@ impl NanoRpcClient {
         &self,
         block: BlockHash,
         count: u64,
-        offset: Option<u64>,
         reverse: Option<bool>,
+        offset: Option<u64>,
     ) -> Result<BlockHashesDto> {
-        let cmd = RpcCommand::successors(block, count, offset, reverse);
+        let cmd = RpcCommand::successors(block, count, reverse, offset);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -757,7 +757,8 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_info(&self, account_info_args: AccountInfoArgs) -> Result<AccountInfoDto> {
+    pub async fn account_info(&self, args: impl Into<AccountInfoArgs>) -> Result<AccountInfoDto> {
+        let account_info_args = args.into();
         let cmd = RpcCommand::account_info(account_info_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)

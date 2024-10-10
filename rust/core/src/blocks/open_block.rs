@@ -46,7 +46,6 @@ impl OpenBlock {
         representative: PublicKey,
         account: Account,
         prv_key: &RawKey,
-        pub_key: &PublicKey,
         work: u64,
     ) -> Self {
         let hashables = OpenHashables {
@@ -56,7 +55,7 @@ impl OpenBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, pub_key, hash.hash(&hashables).as_bytes());
+        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -78,7 +77,6 @@ impl OpenBlock {
             PublicKey::from(456),
             Account::from(789),
             &key.private_key(),
-            &key.public_key(),
             69420,
         )
     }
@@ -100,7 +98,7 @@ impl OpenBlock {
         let signature = Signature::deserialize(stream)?;
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
-        let work = u64::from_be_bytes(work_bytes);
+        let work = u64::from_le_bytes(work_bytes);
         Ok(OpenBlock {
             work,
             signature,
@@ -190,7 +188,7 @@ impl Block for OpenBlock {
         self.hashables.representative.serialize(writer);
         self.hashables.account.serialize(writer);
         self.signature.serialize(writer);
-        writer.write_bytes_safe(&self.work.to_be_bytes());
+        writer.write_bytes_safe(&self.work.to_le_bytes());
     }
 
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
@@ -257,7 +255,7 @@ impl Block for OpenBlock {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonOpenBlock {
     pub account: Account,
     pub source: BlockHash,
@@ -298,14 +296,7 @@ mod tests {
         let source = BlockHash::from(1);
         let representative = PublicKey::from(2);
         let account = Account::from(3);
-        let block = OpenBlock::new(
-            source,
-            representative,
-            account,
-            &key.private_key(),
-            &key.public_key(),
-            0,
-        );
+        let block = OpenBlock::new(source, representative, account, &key.private_key(), 0);
 
         assert_eq!(block.account_field(), Some(account));
         assert_eq!(block.root(), account.into());
@@ -320,7 +311,6 @@ mod tests {
             PublicKey::from(1),
             Account::from(0),
             &key1.private_key(),
-            &key1.public_key(),
             0,
         );
         let mut ptree = TestPropertyTree::new();

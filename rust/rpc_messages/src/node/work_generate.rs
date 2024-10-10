@@ -4,18 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::{RpcCommand, WorkVersionDto};
 
 impl RpcCommand {
-    pub fn work_generate(
-        hash: BlockHash,
-        use_peers: Option<bool>,
-        difficulty: Option<u64>,
-        multiplier: Option<u64>,
-        account: Option<Account>,
-        version: Option<WorkVersionDto>,
-        block: Option<JsonBlock>,
-    ) -> Self {
-        Self::WorkGenerate(WorkGenerateArgs::new(
-            hash, use_peers, difficulty, multiplier, account, version, block,
-        ))
+    pub fn work_generate(work_generate_args: WorkGenerateArgs) -> Self {
+        Self::WorkGenerate(work_generate_args)
     }
 }
 

@@ -38,5 +38,6 @@ pub use blocks_info::*;
 pub use chain::*;
 pub use delegators::*;
 pub use delegators_count::*;
+pub use ledger::*;
 pub use representatives::*;
 pub use unopened::*;

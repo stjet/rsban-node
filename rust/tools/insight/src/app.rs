@@ -1,5 +1,6 @@
 use crate::AppModel;
-use eframe::egui::{self, global_theme_preference_switch, Button};
+use eframe::egui::{self, global_theme_preference_switch, Button, Sense};
+use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct InsightApp {
     model: AppModel,
@@ -38,10 +39,10 @@ impl eframe::App for InsightApp {
                 global_theme_preference_switch(ui);
                 ui.separator();
                 ui.label("Messages:");
-                ui.label(self.model.messages_published());
+                ui.label(self.model.messages_sent());
                 ui.label("sent");
                 ui.add_space(10.0);
-                ui.label("0");
+                ui.label(self.model.messages_received());
                 ui.label("received");
                 ui.separator();
                 ui.label("Blocks:");
@@ -53,7 +54,39 @@ impl eframe::App for InsightApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| ui.label("todo"));
+        egui::CentralPanel::default().show(ctx, |ui| {
+            TableBuilder::new(ui)
+                .striped(true)
+                .sense(Sense::click())
+                .column(Column::auto())
+                .column(Column::auto())
+                .column(Column::remainder())
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.strong("Channel");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Direction");
+                    });
+                    header.col(|ui| {
+                        ui.strong("Message");
+                    });
+                })
+                .body(|body| {
+                    body.rows(20.0, self.model.message_count(), |mut row| {
+                        let row_model = self.model.get_row(row.index());
+                        row.col(|ui| {
+                            ui.label(row_model.channel_id);
+                        });
+                        row.col(|ui| {
+                            ui.label(row_model.direction);
+                        });
+                        row.col(|ui| {
+                            ui.label(row_model.message);
+                        });
+                    })
+                });
+        });
         ctx.request_repaint();
     }
 }

@@ -1,11 +1,19 @@
 use crate::{node_builder_factory::NodeBuilderFactory, nullable_runtime::NullableRuntime};
 use num_format::{Locale, ToFormattedString};
 use rsnano_core::Networks;
+use rsnano_messages::Message;
+use rsnano_network::{ChannelDirection, ChannelId};
 use rsnano_node::{Node, NodeCallbacks, NodeExt};
 use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
-    Arc,
+    Arc, RwLock,
 };
+
+pub(crate) struct RecordedMessage {
+    pub channel_id: ChannelId,
+    pub message: Message,
+    pub direction: ChannelDirection,
+}
 
 pub(crate) struct AppModel {
     runtime: Arc<NullableRuntime>,
@@ -14,6 +22,8 @@ pub(crate) struct AppModel {
     started: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
     published: Arc<AtomicUsize>,
+    inbound: Arc<AtomicUsize>,
+    messages: Arc<RwLock<Vec<RecordedMessage>>>,
 }
 
 impl AppModel {
@@ -28,6 +38,8 @@ impl AppModel {
             started: Arc::new(AtomicBool::new(false)),
             stopped: Arc::new(AtomicBool::new(true)),
             published: Arc::new(AtomicUsize::new(0)),
+            inbound: Arc::new(AtomicUsize::new(0)),
+            messages: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -48,9 +60,35 @@ impl AppModel {
 
     pub(crate) fn start_beta_node(&mut self) {
         let published = self.published.clone();
+        let inbound1 = self.inbound.clone();
+        let inbound2 = self.inbound.clone();
+        let messages1 = self.messages.clone();
+        let messages2 = self.messages.clone();
+        let messages3 = self.messages.clone();
         let callbacks = NodeCallbacks::builder()
-            .on_publish(move |_channel_id, _message| {
+            .on_publish(move |channel_id, message| {
+                messages1.write().unwrap().push(RecordedMessage {
+                    channel_id,
+                    message: message.clone(),
+                    direction: ChannelDirection::Outbound,
+                });
                 published.fetch_add(1, Ordering::SeqCst);
+            })
+            .on_inbound(move |channel_id, message| {
+                messages2.write().unwrap().push(RecordedMessage {
+                    channel_id,
+                    message: message.clone(),
+                    direction: ChannelDirection::Inbound,
+                });
+                inbound1.fetch_add(1, Ordering::SeqCst);
+            })
+            .on_inbound_dropped(move |channel_id, message| {
+                messages3.write().unwrap().push(RecordedMessage {
+                    channel_id,
+                    message: message.clone(),
+                    direction: ChannelDirection::Inbound,
+                });
+                inbound2.fetch_add(1, Ordering::SeqCst);
             })
             .finish();
         let node = self
@@ -101,11 +139,41 @@ impl AppModel {
         }
     }
 
-    pub(crate) fn messages_published(&self) -> String {
+    pub(crate) fn messages_sent(&self) -> String {
         self.published
             .load(Ordering::SeqCst)
             .to_formatted_string(&Locale::en)
     }
+
+    pub(crate) fn messages_received(&self) -> String {
+        self.inbound
+            .load(Ordering::SeqCst)
+            .to_formatted_string(&Locale::en)
+    }
+
+    pub(crate) fn get_row(&self, index: usize) -> RowModel {
+        let guard = self.messages.read().unwrap();
+        let message = guard.get(index).unwrap();
+        RowModel {
+            channel_id: message.channel_id.to_string(),
+            direction: if message.direction == ChannelDirection::Inbound {
+                "in".into()
+            } else {
+                "out".into()
+            },
+            message: format!("{:?}", message.message.message_type()),
+        }
+    }
+
+    pub(crate) fn message_count(&self) -> usize {
+        self.messages.read().unwrap().len()
+    }
+}
+
+pub(crate) struct RowModel {
+    pub channel_id: String,
+    pub direction: String,
+    pub message: String,
 }
 
 impl Default for AppModel {
@@ -130,7 +198,7 @@ mod tests {
         assert_eq!(model.can_start_node(), true);
         assert_eq!(model.can_stop_node(), false);
         assert_eq!(model.status(), "not running");
-        assert_eq!(model.messages_published(), "0");
+        assert_eq!(model.messages_sent(), "0");
     }
 
     #[tokio::test]

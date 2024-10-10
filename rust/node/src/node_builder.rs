@@ -3,7 +3,7 @@ use crate::{
     consensus::{
         BalanceChangedCallback, ElectionEndCallback, ElectionStatus, VoteProcessedCallback2,
     },
-    transport::PublishedCallback,
+    transport::MessageCallback,
     working_path_for, NetworkParams, Node, NodeArgs,
 };
 use rsnano_core::{
@@ -19,7 +19,9 @@ pub struct NodeCallbacks {
     pub on_election_end: Option<ElectionEndCallback>,
     pub on_balance_changed: Option<BalanceChangedCallback>,
     pub on_vote: Option<VoteProcessedCallback2>,
-    pub on_publish: Option<PublishedCallback>,
+    pub on_publish: Option<MessageCallback>,
+    pub on_inbound: Option<MessageCallback>,
+    pub on_inbound_dropped: Option<MessageCallback>,
 }
 
 impl NodeCallbacks {
@@ -67,6 +69,22 @@ impl NodeCallbacksBuilder {
         callback: impl Fn(ChannelId, &Message) + Send + Sync + 'static,
     ) -> Self {
         self.0.on_publish = Some(Arc::new(callback));
+        self
+    }
+
+    pub fn on_inbound(
+        mut self,
+        callback: impl Fn(ChannelId, &Message) + Send + Sync + 'static,
+    ) -> Self {
+        self.0.on_inbound = Some(Arc::new(callback));
+        self
+    }
+
+    pub fn on_inbound_dropped(
+        mut self,
+        callback: impl Fn(ChannelId, &Message) + Send + Sync + 'static,
+    ) -> Self {
+        self.0.on_inbound_dropped = Some(Arc::new(callback));
         self
     }
 

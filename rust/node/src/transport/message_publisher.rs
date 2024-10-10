@@ -7,7 +7,7 @@ use rsnano_network::{ChannelId, ChannelInfo, DropPolicy, Network, TrafficType};
 use std::sync::{Arc, Mutex};
 use tracing::trace;
 
-pub type PublishedCallback = Arc<dyn Fn(ChannelId, &Message) + Send + Sync>;
+pub type MessageCallback = Arc<dyn Fn(ChannelId, &Message) + Send + Sync>;
 
 /// Publishes messages to peered nodes
 #[derive(Clone)]
@@ -16,7 +16,7 @@ pub struct MessagePublisher {
     network: Arc<Network>,
     stats: Arc<Stats>,
     message_serializer: MessageSerializer,
-    published_callback: Option<PublishedCallback>,
+    published_callback: Option<MessageCallback>,
 }
 
 impl MessagePublisher {
@@ -51,7 +51,7 @@ impl MessagePublisher {
         }
     }
 
-    pub fn set_published_callback(&mut self, callback: PublishedCallback) {
+    pub fn set_published_callback(&mut self, callback: MessageCallback) {
         self.published_callback = Some(callback);
     }
 

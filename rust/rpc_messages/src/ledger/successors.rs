@@ -3,7 +3,12 @@ use crate::RpcCommand;
 use rsnano_core::BlockHash;
 
 impl RpcCommand {
-    pub fn successors(block: BlockHash, count: u64, reverse: Option<bool>, offset: Option<u64>) -> Self {
+    pub fn successors(
+        block: BlockHash,
+        count: u64,
+        reverse: Option<bool>,
+        offset: Option<u64>,
+    ) -> Self {
         Self::Successors(ChainArgs::new(block, count, offset, reverse))
     }
 }

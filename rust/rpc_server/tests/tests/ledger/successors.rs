@@ -1,7 +1,7 @@
-use rsnano_core::{KeyPair, Amount, BlockEnum, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_node::{Node, wallets::WalletsExt};
-use std::{sync::Arc, time::Duration};
+use rsnano_core::{Amount, KeyPair, WalletId, DEV_GENESIS_KEY};
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
+use rsnano_node::wallets::WalletsExt;
+use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 #[test]
@@ -13,13 +13,25 @@ fn successors() {
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true);
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
 
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
     let key = KeyPair::new();
-    let block = node.wallets.send_action2(&wallet_id, *DEV_GENESIS_ACCOUNT, key.account(), Amount::raw(1), 0, true, None).unwrap();
+    let block = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(1),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(5),

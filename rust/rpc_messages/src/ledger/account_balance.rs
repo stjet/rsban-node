@@ -76,11 +76,13 @@ mod tests {
         let args = AccountBalanceArgs::builder(account)
             .include_only_confirmed()
             .finish();
-        
+
         let serialized = to_string_pretty(&RpcCommand::account_balance(args)).unwrap();
-        
+
         assert!(serialized.contains(r#""action": "account_balance""#));
-        assert!(serialized.contains(r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#));
+        assert!(serialized.contains(
+            r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#
+        ));
         assert!(serialized.contains(r#""include_only_confirmed": true"#));
     }
 
@@ -116,7 +118,9 @@ mod tests {
 
     #[test]
     fn serialize_account_balance_command_include_only_confirmed_some() {
-        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero()).include_only_confirmed().finish();
+        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero())
+            .include_only_confirmed()
+            .finish();
         assert_eq!(
             to_string_pretty(&RpcCommand::account_balance(account_balance_args)).unwrap(),
             r#"{

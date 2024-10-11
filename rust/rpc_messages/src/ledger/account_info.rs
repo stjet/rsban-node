@@ -184,11 +184,13 @@ mod tests {
             .include_receivable()
             .include_confirmed()
             .finish();
-        
+
         let serialized = to_string_pretty(&RpcCommand::account_info(args)).unwrap();
-        
+
         assert!(serialized.contains(r#""action": "account_info""#));
-        assert!(serialized.contains(r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#));
+        assert!(serialized.contains(
+            r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#
+        ));
         assert!(serialized.contains(r#""representative": true"#));
         assert!(serialized.contains(r#""weight": true"#));
         assert!(serialized.contains(r#""pending": true"#));
@@ -226,7 +228,7 @@ mod tests {
     fn serialize_account_info_command_without_optionals() {
         let account = Account::from(123);
         let args = AccountInfoArgs::builder(account).finish();
-        
+
         assert_eq!(
             serde_json::to_string_pretty(&RpcCommand::account_info(args)).unwrap(),
             r#"{
@@ -243,7 +245,7 @@ mod tests {
         let cmd = RpcCommand::account_info(args);
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
-        
+
         assert_eq!(cmd, deserialized)
     }
 
@@ -289,7 +291,7 @@ mod tests {
 
         let serialized = to_string_pretty(&account_info).unwrap();
         let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
-        
+
         assert_eq!(account_info, deserialized);
         assert!(!serialized.contains("weight"));
         assert!(!serialized.contains("pending"));
@@ -343,7 +345,7 @@ mod tests {
         let account_info = create_account_info_dto_with_some_values();
         let serialized = to_string_pretty(&account_info).unwrap();
         let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
-        
+
         assert_eq!(account_info, deserialized);
     }
 

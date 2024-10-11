@@ -139,9 +139,7 @@ impl TestNode {
     }
 
     pub async fn account_info(&self, account: Account) -> Result<AccountInfoDto> {
-        self.node_client
-            .account_info(account)
-            .await
+        self.node_client.account_info(account).await
     }
 }
 

@@ -115,12 +115,7 @@ async fn get_account_info(
     let mut account_info = HashMap::new();
     for account in accounts {
         let account = account.account;
-        account_info.insert(
-            account,
-            node_client
-                .account_info(account)
-                .await?,
-        );
+        account_info.insert(account, node_client.account_info(account).await?);
     }
     Ok(account_info)
 }

@@ -12,7 +12,7 @@ impl RpcCommand {
 pub struct AccountBalanceArgs {
     pub account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_unconfirmed_blocks: Option<bool>,
+    pub include_only_confirmed: Option<bool>,
 }
 
 impl AccountBalanceArgs {
@@ -25,7 +25,7 @@ impl From<Account> for AccountBalanceArgs {
     fn from(account: Account) -> Self {
         Self {
             account,
-            include_unconfirmed_blocks: Some(false),
+            include_only_confirmed: Some(false),
         }
     }
 }
@@ -39,13 +39,13 @@ impl AccountBalanceArgsBuilder {
         Self {
             args: AccountBalanceArgs {
                 account,
-                include_unconfirmed_blocks: None,
+                include_only_confirmed: None,
             },
         }
     }
 
     pub fn include_unconfirmed_blocks(mut self) -> Self {
-        self.args.include_unconfirmed_blocks = Some(true);
+        self.args.include_only_confirmed = Some(true);
         self
     }
 
@@ -69,7 +69,7 @@ mod tests {
             r#"{
   "action": "account_balance",
   "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-  "include_unconfirmed_blocks": true
+  "include_only_confirmed": true
 }"#
         )
     }
@@ -79,14 +79,14 @@ mod tests {
         let json = r#"{
             "action": "account_balance",
             "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
-            "include_unconfirmed_blocks": true
+            "include_only_confirmed": true
         }"#;
 
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
 
         if let RpcCommand::AccountBalance(args) = deserialized {
             assert_eq!(args.account, Account::from(123));
-            assert_eq!(args.include_unconfirmed_blocks, Some(true));
+            assert_eq!(args.include_only_confirmed, Some(true));
         } else {
             panic!("Deserialized to wrong RpcCommand variant");
         }
@@ -119,6 +119,6 @@ mod tests {
         let args: AccountBalanceArgs = account.into();
 
         assert_eq!(args.account, account);
-        assert_eq!(args.include_unconfirmed_blocks, Some(false));
+        assert_eq!(args.include_only_confirmed, Some(false));
     }
 }

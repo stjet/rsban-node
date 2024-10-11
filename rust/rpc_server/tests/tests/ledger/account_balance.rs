@@ -3,7 +3,7 @@ use rsnano_rpc_messages::AccountBalanceArgs;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]
-fn account_balance_default() {
+fn account_balance_default_include_only_confirmed_blocks() {
     let mut system = System::new();
     let node = system.make_node();
 
@@ -31,7 +31,7 @@ fn account_balance_default() {
 }
 
 #[test]
-fn account_balance_exclude_only_confirmed() {
+fn account_balance_include_unconfirmed_blocks() {
     let mut system = System::new();
     let node = system.make_node();
 
@@ -39,7 +39,7 @@ fn account_balance_exclude_only_confirmed() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountBalanceArgs::builder(DEV_GENESIS_KEY.public_key().as_account()).exclude_confirmed().finish();
+    let args = AccountBalanceArgs::builder(DEV_GENESIS_KEY.public_key().as_account()).include_unconfirmed_blocks().finish();
 
     let result = node.runtime.block_on(async {
         rpc_client

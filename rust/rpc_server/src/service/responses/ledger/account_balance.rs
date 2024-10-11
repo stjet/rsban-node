@@ -7,12 +7,12 @@ use std::sync::Arc;
 pub async fn account_balance(
     node: Arc<Node>,
     account: Account,
-    only_confirmed: Option<bool>,
+    include_unconfirmed_blocks: Option<bool>,
 ) -> String {
     let tx = node.ledger.read_txn();
-    let only_confirmed = only_confirmed.unwrap_or(true);
+    let include_unconfirmed_blocks = include_unconfirmed_blocks.unwrap_or(false);
 
-    let balance = if only_confirmed {
+    let balance = if !include_unconfirmed_blocks {
         node.ledger
             .confirmed()
             .account_balance(&tx, &account)
@@ -26,7 +26,7 @@ pub async fn account_balance(
 
     let pending = node
         .ledger
-        .account_receivable(&tx, &account, only_confirmed);
+        .account_receivable(&tx, &account, !include_unconfirmed_blocks);
 
     let account_balance = AccountBalanceDto::new(balance, pending, pending);
 

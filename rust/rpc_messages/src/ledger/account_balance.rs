@@ -12,7 +12,7 @@ impl RpcCommand {
 pub struct AccountBalanceArgs {
     pub account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>,
+    pub include_unconfirmed_blocks: Option<bool>,
 }
 
 impl AccountBalanceArgs {
@@ -25,7 +25,7 @@ impl From<Account> for AccountBalanceArgs {
     fn from(account: Account) -> Self {
         Self {
             account,
-            include_only_confirmed: Some(true),
+            include_unconfirmed_blocks: Some(false),
         }
     }
 }
@@ -39,13 +39,13 @@ impl AccountBalanceArgsBuilder {
         Self {
             args: AccountBalanceArgs {
                 account,
-                include_only_confirmed: None,
+                include_unconfirmed_blocks: None,
             },
         }
     }
 
-    pub fn exclude_confirmed(mut self) -> Self {
-        self.args.include_only_confirmed = Some(false);
+    pub fn include_unconfirmed_blocks(mut self) -> Self {
+        self.args.include_unconfirmed_blocks = Some(true);
         self
     }
 
@@ -60,33 +60,33 @@ mod tests {
     use serde_json::to_string_pretty;
 
     #[test]
-    fn serialize_account_balance_command_exclude_only_confirmed() {
+    fn serialize_account_balance_command_include_unconfirmed_blocks() {
         let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero())
-            .exclude_confirmed()
+            .include_unconfirmed_blocks()
             .finish();
         assert_eq!(
             to_string_pretty(&RpcCommand::account_balance(account_balance_args)).unwrap(),
             r#"{
   "action": "account_balance",
   "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-  "include_only_confirmed": false
+  "include_unconfirmed_blocks": true
 }"#
         )
     }
 
     #[test]
-    fn deserialize_account_balance_command_exclude_only_confirmed() {
+    fn deserialize_account_balance_command_include_unconfirmed_blocks() {
         let json = r#"{
             "action": "account_balance",
             "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
-            "include_only_confirmed": false
+            "include_unconfirmed_blocks": true
         }"#;
 
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
 
         if let RpcCommand::AccountBalance(args) = deserialized {
             assert_eq!(args.account, Account::from(123));
-            assert_eq!(args.include_only_confirmed, Some(false));
+            assert_eq!(args.include_unconfirmed_blocks, Some(true));
         } else {
             panic!("Deserialized to wrong RpcCommand variant");
         }
@@ -114,11 +114,11 @@ mod tests {
     }
 
     #[test]
-    fn test_from_account_for_account_balance_args() {
+    fn account_balance_args_from_account() {
         let account = Account::from(123);
         let args: AccountBalanceArgs = account.into();
 
         assert_eq!(args.account, account);
-        assert_eq!(args.include_only_confirmed, Some(true));
+        assert_eq!(args.include_unconfirmed_blocks, Some(false));
     }
 }

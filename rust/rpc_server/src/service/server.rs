@@ -77,7 +77,7 @@ async fn handle_rpc(
             .await
         }
         RpcCommand::AccountBalance(args) => {
-            account_balance(rpc_service.node, args.account, args.include_only_confirmed).await
+            account_balance(rpc_service.node, args.account, args.include_unconfirmed_blocks).await
         }
         RpcCommand::AccountsCreate(args) => {
             accounts_create(rpc_service.node, rpc_service.enable_control, args).await

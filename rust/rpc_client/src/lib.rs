@@ -670,10 +670,9 @@ impl NanoRpcClient {
 
     pub async fn wallet_balances(
         &self,
-        wallet: WalletId,
-        threshold: Option<Amount>,
+        args: impl Into<WalletBalancesArgs>
     ) -> Result<AccountsBalancesDto> {
-        let cmd = RpcCommand::wallet_balances(wallet, threshold);
+        let cmd = RpcCommand::wallet_balances(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

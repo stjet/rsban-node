@@ -640,12 +640,9 @@ impl NanoRpcClient {
 
     pub async fn delegators(
         &self,
-        account: Account,
-        threshold: Option<Amount>,
-        count: Option<u64>,
-        start: Option<Account>,
+        args: impl Into<DelegatorsArgs>
     ) -> Result<AccountsWithAmountsDto> {
-        let cmd = RpcCommand::delegators(account, threshold, count, start);
+        let cmd = RpcCommand::delegators(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -664,10 +661,9 @@ impl NanoRpcClient {
 
     pub async fn accounts_balances(
         &self,
-        accounts: Vec<Account>,
-        include_only_confirmed: Option<bool>,
+        args: impl Into<AccountsBalancesArgs>
     ) -> Result<AccountsBalancesDto> {
-        let cmd = RpcCommand::accounts_balances(accounts, include_only_confirmed);
+        let cmd = RpcCommand::accounts_balances(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

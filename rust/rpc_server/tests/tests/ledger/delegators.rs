@@ -12,7 +12,7 @@ fn delegators_rpc_response() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .delegators(*DEV_GENESIS_ACCOUNT, None, None, None)
+            .delegators(*DEV_GENESIS_ACCOUNT)
             .await
             .unwrap()
     });

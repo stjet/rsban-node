@@ -3,9 +3,7 @@ use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn delegators(
-        args: DelegatorsArgs
-    ) -> Self {
+    pub fn delegators(args: DelegatorsArgs) -> Self {
         Self::Delegators(args)
     }
 }
@@ -153,9 +151,7 @@ mod tests {
 
     #[test]
     fn test_delegators_args_builder_partial() {
-        let args = DelegatorsArgs::builder(Account::zero())
-            .count(30)
-            .build();
+        let args = DelegatorsArgs::builder(Account::zero()).count(30).build();
 
         assert_eq!(args.account, Account::zero());
         assert_eq!(args.threshold, None);

@@ -127,7 +127,7 @@ mod tests {
             .reverse()
             .account_filter(vec![Account::from(123)])
             .build();
-        
+
         assert_eq!(
             to_string_pretty(&RpcCommand::account_history(account_history_args)).unwrap(),
             r#"{

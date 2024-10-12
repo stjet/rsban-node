@@ -73,7 +73,9 @@ mod tests {
 
     #[test]
     fn serialize_wallet_balances_command_threshold_some() {
-        let args = WalletBalancesArgs::builder(1.into()).with_minimum_balance(Amount::zero()).build();
+        let args = WalletBalancesArgs::builder(1.into())
+            .with_minimum_balance(Amount::zero())
+            .build();
         assert_eq!(
             to_string_pretty(&RpcCommand::wallet_balances(args)).unwrap(),
             r#"{
@@ -94,7 +96,9 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_balances_command_threshold_some() {
-        let args = WalletBalancesArgs::builder(1.into()).with_minimum_balance(Amount::zero()).build();
+        let args = WalletBalancesArgs::builder(1.into())
+            .with_minimum_balance(Amount::zero())
+            .build();
         let cmd = RpcCommand::wallet_balances(args);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();

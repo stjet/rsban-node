@@ -26,14 +26,7 @@ fn send() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .send(SendArgs::new(
-                wallet,
-                *DEV_GENESIS_ACCOUNT,
-                destination,
-                amount,
-                None,
-                None,
-            ))
+            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
             .await
             .unwrap()
     });
@@ -78,14 +71,7 @@ fn send_fails_without_enable_control() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .send(SendArgs::new(
-                wallet,
-                *DEV_GENESIS_ACCOUNT,
-                destination,
-                amount,
-                None,
-                None,
-            ))
+            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
             .await
     });
 

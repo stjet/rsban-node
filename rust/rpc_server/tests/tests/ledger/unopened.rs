@@ -34,9 +34,12 @@ fn unopened() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.unopened(AccountWithCountArgs::new(Account::zero(), 1)).await.unwrap() });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .unopened(AccountWithCountArgs::new(Account::zero(), 1))
+            .await
+            .unwrap()
+    });
 
     assert_eq!(result.value.get(&Account::zero()).unwrap(), &Amount::raw(1));
 
@@ -52,7 +55,9 @@ fn unopened_with_threshold() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = UnopenedArgs::builder(Account::zero(), 1).with_minimum_balance(Amount::nano(1)).build();
+    let args = UnopenedArgs::builder(Account::zero(), 1)
+        .with_minimum_balance(Amount::nano(1))
+        .build();
 
     let result = node
         .runtime
@@ -70,9 +75,11 @@ fn unopened_fails_without_enable_control() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.unopened(AccountWithCountArgs::new(Account::zero(), 1)).await });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .unopened(AccountWithCountArgs::new(Account::zero(), 1))
+            .await
+    });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),

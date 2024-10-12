@@ -77,7 +77,9 @@ mod tests {
         let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"]}"#;
         assert_eq!(serialized, expected);
 
-        let args = AccountsBalancesArgsBuilder::new(accounts).include_unconfirmed_blocks().build();
+        let args = AccountsBalancesArgsBuilder::new(accounts)
+            .include_unconfirmed_blocks()
+            .build();
         let command = RpcCommand::accounts_balances(args);
         let serialized = serde_json::to_string(&command).unwrap();
         let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"],"include_only_confirmed":false}"#;

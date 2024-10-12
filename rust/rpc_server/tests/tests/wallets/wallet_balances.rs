@@ -70,11 +70,10 @@ fn wallet_balances_threshold_some() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet).with_minimum_balance(Amount::zero()).build();
-        rpc_client
-            .wallet_balances(args)
-            .await
-            .unwrap()
+        let args = WalletBalancesArgs::builder(wallet)
+            .with_minimum_balance(Amount::zero())
+            .build();
+        rpc_client.wallet_balances(args).await.unwrap()
     });
 
     let mut expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
@@ -109,12 +108,11 @@ fn wallet_balances_threshold_some_fails() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet).with_minimum_balance(Amount::nano(1)).build();
+        let args = WalletBalancesArgs::builder(wallet)
+            .with_minimum_balance(Amount::nano(1))
+            .build();
 
-        rpc_client
-            .wallet_balances(args)
-            .await
-            .unwrap()
+        rpc_client.wallet_balances(args).await.unwrap()
     });
 
     let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();

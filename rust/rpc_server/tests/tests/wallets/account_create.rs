@@ -15,12 +15,9 @@ fn account_create_default() {
 
     node.wallets.create(wallet_id);
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .account_create(wallet_id)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.account_create(wallet_id).await.unwrap() });
 
     assert!(node.wallets.exists(&result.value.into()));
 
@@ -38,14 +35,13 @@ fn account_create_index_max() {
 
     node.wallets.create(wallet_id);
 
-    let args = AccountCreateArgs::builder(wallet_id).with_index(u32::MAX).build();
+    let args = AccountCreateArgs::builder(wallet_id)
+        .with_index(u32::MAX)
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .account_create(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.account_create(args).await.unwrap() });
 
     assert!(node.wallets.exists(&result.value.into()));
 
@@ -63,14 +59,13 @@ fn account_create_work_without_precomputed_work() {
 
     node.wallets.create(wallet_id);
 
-    let args = AccountCreateArgs::builder(wallet_id).without_precomputed_work().build();
+    let args = AccountCreateArgs::builder(wallet_id)
+        .without_precomputed_work()
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .account_create(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.account_create(args).await.unwrap() });
 
     assert!(node.wallets.exists(&result.value.into()));
 

@@ -71,14 +71,13 @@ fn accounts_create_without_precomputed_work() {
 
     node.wallets.create(wallet_id);
 
-    let args = AccountsCreateArgs::builder(wallet_id, 1).without_precomputed_work().build();
+    let args = AccountsCreateArgs::builder(wallet_id, 1)
+        .without_precomputed_work()
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .accounts_create(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.accounts_create(args).await.unwrap() });
 
     assert!(node.wallets.exists(&result.accounts[0].into()));
 
@@ -105,9 +104,11 @@ fn accounts_create_fails_wallet_locked() {
 
     node.wallets.lock(&wallet_id).unwrap();
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.accounts_create(WalletWithCountArgs::new(wallet_id, 1)).await });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .accounts_create(WalletWithCountArgs::new(wallet_id, 1))
+            .await
+    });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
@@ -126,9 +127,11 @@ fn accounts_create_fails_wallet_not_found() {
 
     let wallet_id = WalletId::random();
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.accounts_create(WalletWithCountArgs::new(wallet_id, 1)).await });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .accounts_create(WalletWithCountArgs::new(wallet_id, 1))
+            .await
+    });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
@@ -149,9 +152,11 @@ fn accounts_create_fails_without_enable_control() {
 
     node.wallets.create(wallet);
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.accounts_create(WalletWithCountArgs::new(wallet, 8)).await });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .accounts_create(WalletWithCountArgs::new(wallet, 8))
+            .await
+    });
 
     assert!(result.is_err());
 

@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 pub async fn chain(node: Arc<Node>, args: ChainArgs, successors: bool) -> String {
     let successors = successors != args.reverse.unwrap_or(false);
-    let mut hash = args.block_with_count.block;
-    let count = args.block_with_count.count;
+    let mut hash = args.block;
+    let count = args.count;
     let mut offset = args.offset.unwrap_or(0);
     let mut blocks = Vec::new();
 

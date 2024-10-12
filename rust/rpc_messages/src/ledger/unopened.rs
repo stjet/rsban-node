@@ -58,8 +58,8 @@ impl From<AccountWithCountArgs> for UnopenedArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{from_value, json, to_value};
     use rsnano_core::Account;
+    use serde_json::{from_value, json, to_value};
 
     #[test]
     fn serialize_unopened_args_threshold_none() {
@@ -156,13 +156,16 @@ mod tests {
 
         let args: UnopenedArgs = from_value(json).unwrap();
 
-        assert_eq!(args, UnopenedArgs {
-            account_with_count: AccountWithCountArgs {
-                account: Account::zero(),
-                count: 1,
-            },
-            threshold: None,
-        });
+        assert_eq!(
+            args,
+            UnopenedArgs {
+                account_with_count: AccountWithCountArgs {
+                    account: Account::zero(),
+                    count: 1,
+                },
+                threshold: None,
+            }
+        );
     }
 
     #[test]
@@ -197,13 +200,16 @@ mod tests {
 
         let command: RpcCommand = from_value(json).unwrap();
 
-        assert_eq!(command, RpcCommand::Unopened(UnopenedArgs {
-            account_with_count: AccountWithCountArgs {
-                account: Account::zero(),
-                count: 1,
-            },
-            threshold: None,
-        }));
+        assert_eq!(
+            command,
+            RpcCommand::Unopened(UnopenedArgs {
+                account_with_count: AccountWithCountArgs {
+                    account: Account::zero(),
+                    count: 1,
+                },
+                threshold: None,
+            })
+        );
     }
 
     #[test]
@@ -231,12 +237,9 @@ mod tests {
 
     #[test]
     fn unopened_args_builder() {
-        let args = UnopenedArgs::builder(
-            Account::zero(),
-            5,
-        )
-        .with_minimum_balance(Amount::from(100))
-        .build();
+        let args = UnopenedArgs::builder(Account::zero(), 5)
+            .with_minimum_balance(Amount::from(100))
+            .build();
 
         assert_eq!(args.account_with_count.account, Account::zero());
         assert_eq!(args.account_with_count.count, 5);
@@ -245,10 +248,7 @@ mod tests {
 
     #[test]
     fn unopened_command_with_builder() {
-        let command = RpcCommand::unopened(UnopenedArgs::builder(
-            Account::zero(),
-            3,
-        ).build());
+        let command = RpcCommand::unopened(UnopenedArgs::builder(Account::zero(), 3).build());
 
         if let RpcCommand::Unopened(args) = command {
             assert_eq!(args.account_with_count.account, Account::zero());

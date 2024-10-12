@@ -96,7 +96,9 @@ mod tests {
         let seed = RawKey::zero();
         let count = 10;
 
-        let args = WalletChangeSeedArgsBuilder::new(wallet, seed).count(count).build();
+        let args = WalletChangeSeedArgsBuilder::new(wallet, seed)
+            .count(count)
+            .build();
 
         let command = RpcCommand::wallet_change_seed(args);
         let serialized = serde_json::to_string(&command).unwrap();

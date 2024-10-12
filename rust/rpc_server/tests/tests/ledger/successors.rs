@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, KeyPair, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{BlockWithCountArgs, ChainArgs};
+use rsnano_rpc_messages::ChainArgs;
 use std::{time::Duration, u64};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -15,7 +15,8 @@ fn successors() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
@@ -42,7 +43,7 @@ fn successors() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .successors(BlockWithCountArgs::new(genesis, u64::MAX))
+            .successors(ChainArgs::builder(genesis, u64::MAX).build())
             .await
             .unwrap()
     });
@@ -53,14 +54,13 @@ fn successors() {
     assert_eq!(blocks[0], genesis);
     assert_eq!(blocks[1], block.hash());
 
-    let args = ChainArgs::builder(BlockWithCountArgs::new(genesis, u64::MAX)).reverse().build();
+    let args = ChainArgs::builder(genesis, u64::MAX)
+        .reverse()
+        .build();
 
-    let reverse_result = node.runtime.block_on(async {
-        rpc_client
-            .chain(args)
-            .await
-            .unwrap()
-    });
+    let reverse_result = node
+        .runtime
+        .block_on(async { rpc_client.chain(args).await.unwrap() });
 
     assert_eq!(result, reverse_result);
 

@@ -49,7 +49,7 @@ impl AccountBalanceArgsBuilder {
         self
     }
 
-    pub fn finish(self) -> AccountBalanceArgs {
+    pub fn build(self) -> AccountBalanceArgs {
         self.args
     }
 }
@@ -63,7 +63,7 @@ mod tests {
     fn serialize_account_balance_command_include_unconfirmed_blocks() {
         let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero())
             .include_unconfirmed_blocks()
-            .finish();
+            .build();
         assert_eq!(
             to_string_pretty(&RpcCommand::account_balance(account_balance_args)).unwrap(),
             r#"{
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn serialize_account_balance_command_default() {
-        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero()).finish();
+        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero()).build();
         assert_eq!(
             to_string_pretty(&RpcCommand::account_balance(account_balance_args)).unwrap(),
             r#"{
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn deserialize_account_balance_command_default() {
-        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero()).finish();
+        let account_balance_args = AccountBalanceArgsBuilder::new(Account::zero()).build();
         let cmd = RpcCommand::account_balance(account_balance_args);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();

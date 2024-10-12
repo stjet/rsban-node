@@ -86,7 +86,7 @@ impl AccountHistoryArgsBuilder {
         self
     }
 
-    pub fn finish(self) -> AccountHistoryArgs {
+    pub fn build(self) -> AccountHistoryArgs {
         self.args
     }
 }
@@ -126,7 +126,7 @@ mod tests {
             .offset(5)
             .reverse()
             .account_filter(vec![Account::from(123)])
-            .finish();
+            .build();
         
         assert_eq!(
             to_string_pretty(&RpcCommand::account_history(account_history_args)).unwrap(),

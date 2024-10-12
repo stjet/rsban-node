@@ -86,7 +86,7 @@ impl AccountInfoArgsBuilder {
         self
     }
 
-    pub fn finish(self) -> AccountInfoArgs {
+    pub fn build(self) -> AccountInfoArgs {
         self.args
     }
 }
@@ -164,7 +164,7 @@ mod tests {
             .include_weight()
             .include_pending()
             .include_confirmed()
-            .finish();
+            .build();
 
         assert_eq!(args.account, account);
         assert_eq!(args.representative, None);
@@ -183,7 +183,7 @@ mod tests {
             .include_pending()
             .include_receivable()
             .include_confirmed()
-            .finish();
+            .build();
 
         let serialized = to_string_pretty(&RpcCommand::account_info(args)).unwrap();
 
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn serialize_account_info_command_without_optionals() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account).finish();
+        let args = AccountInfoArgs::builder(account).build();
 
         assert_eq!(
             serde_json::to_string_pretty(&RpcCommand::account_info(args)).unwrap(),
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn derialize_account_info_command_without_optionals() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account).finish();
+        let args = AccountInfoArgs::builder(account).build();
         let cmd = RpcCommand::account_info(args);
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
@@ -355,7 +355,7 @@ mod tests {
             .include_representative()
             .include_weight()
             .include_receivable()
-            .finish();
+            .build();
 
         let serialized = to_string_pretty(&args).unwrap();
         let deserialized: AccountInfoArgs = from_str(&serialized).unwrap();
@@ -375,7 +375,7 @@ mod tests {
             .include_representative()
             .include_weight()
             .include_receivable()
-            .finish();
+            .build();
 
         let command = RpcCommand::account_info(args);
         let serialized = to_string_pretty(&command).unwrap();

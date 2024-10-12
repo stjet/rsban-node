@@ -39,7 +39,7 @@ fn account_balance_include_unconfirmed_blocks() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountBalanceArgs::builder(DEV_GENESIS_KEY.public_key().as_account()).include_unconfirmed_blocks().finish();
+    let args = AccountBalanceArgs::builder(DEV_GENESIS_KEY.public_key().as_account()).include_unconfirmed_blocks().build();
 
     let result = node.runtime.block_on(async {
         rpc_client

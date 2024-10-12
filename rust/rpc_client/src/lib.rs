@@ -291,8 +291,7 @@ impl NanoRpcClient {
         &self,
         args: impl Into<AccountHistoryArgs>,
     ) -> Result<AccountHistoryDto> {
-        let account_history_args = args.into();
-        let cmd = RpcCommand::account_history(account_history_args);
+        let cmd = RpcCommand::account_history(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -301,8 +300,7 @@ impl NanoRpcClient {
         &self,
         args: impl Into<AccountBalanceArgs>,
     ) -> Result<AccountBalanceDto> {
-        let account_balance_args = args.into();
-        let cmd = RpcCommand::account_balance(account_balance_args);
+        let cmd = RpcCommand::account_balance(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -311,19 +309,16 @@ impl NanoRpcClient {
         &self,
         args: impl Into<AccountCreateArgs>
     ) -> Result<AccountRpcMessage> {
-        let account_create_args = args.into();
-        let cmd = RpcCommand::account_create(account_create_args);
+        let cmd = RpcCommand::account_create(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)
     }
 
     pub async fn accounts_create(
         &self,
-        wallet: WalletId,
-        count: u64,
-        work: Option<bool>,
+        args: impl Into<AccountsCreateArgs>
     ) -> Result<AccountsRpcMessage> {
-        let cmd = RpcCommand::accounts_create(wallet, count, work);
+        let cmd = RpcCommand::accounts_create(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

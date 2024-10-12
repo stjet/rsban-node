@@ -5,7 +5,7 @@ use std::{time::Duration, u32};
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 
 #[test]
-fn account_create_options_none() {
+fn account_create_default() {
     let mut system = System::new();
     let node = system.make_node();
 
@@ -53,7 +53,7 @@ fn account_create_index_max() {
 }
 
 #[test]
-fn account_create_work_false() {
+fn account_create_work_without_precomputed_work() {
     let mut system = System::new();
     let node = system.make_node();
 

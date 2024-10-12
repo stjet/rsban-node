@@ -146,7 +146,7 @@ fn account_history() {
     assert!(history[4].confirmed);
 
     let args = AccountHistoryArgs::builder(*DEV_GENESIS_ACCOUNT,
-        1).reverse().finish();
+        1).reverse().build();
 
     // Test count and reverse
     let account_history_reverse = node.runtime.block_on(async {
@@ -193,7 +193,7 @@ fn account_history() {
         .unwrap();
 
     let args = AccountHistoryArgs::builder(*DEV_GENESIS_ACCOUNT,
-        100).account_filter(vec![account2]).finish();
+        100).account_filter(vec![account2]).build();
 
     // Test filter for send state blocks
     let account_history_filtered_send = node.runtime.block_on(async {
@@ -211,7 +211,7 @@ fn account_history() {
     assert_eq!(account_history_filtered_send.history[0].account, account2);
 
     let args = AccountHistoryArgs::builder(account2.into(),
-        100).account_filter(vec![*DEV_GENESIS_ACCOUNT]).finish();
+        100).account_filter(vec![*DEV_GENESIS_ACCOUNT]).build();
 
     // Test filter for receive state blocks
     let account_history_filtered_receive = node.runtime.block_on(async {

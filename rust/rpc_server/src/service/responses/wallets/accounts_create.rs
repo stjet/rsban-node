@@ -13,7 +13,7 @@ pub async fn accounts_create(
         return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
     }
 
-    let work = args.work.unwrap_or(false);
+    let work = args.work.unwrap_or(true);
     let count = args.wallet_with_count.count as usize;
     let wallet = &args.wallet_with_count.wallet;
 

@@ -1,7 +1,8 @@
 use rsnano_core::{Amount, KeyPair, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
-use std::time::Duration;
+use rsnano_rpc_messages::{BlockWithCountArgs, ChainArgs};
+use std::{time::Duration, u64};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 #[test]
@@ -41,7 +42,7 @@ fn chain() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .chain(block.hash(), u64::MAX, None, None)
+            .chain(BlockWithCountArgs::new(block.hash(), u64::MAX))
             .await
             .unwrap()
     });
@@ -92,7 +93,7 @@ fn chain_limit() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .chain(block.hash(), 1, None, None) // Set count to 1
+            .chain(BlockWithCountArgs::new(block.hash(), 1)) 
             .await
             .unwrap()
     });
@@ -140,9 +141,11 @@ fn chain_offset() {
         "block not active on node",
     );
 
+    let args = ChainArgs::builder(BlockWithCountArgs::new(block.hash(), u64::MAX)).offset(1).build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .chain(block.hash(), u64::MAX, None, Some(1)) // Set offset to 1
+            .chain(args)  
             .await
             .unwrap()
     });

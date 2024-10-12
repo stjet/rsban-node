@@ -631,11 +631,9 @@ impl NanoRpcClient {
 
     pub async fn wallet_change_seed(
         &self,
-        wallet: WalletId,
-        seed: RawKey,
-        count: Option<u32>,
+        args: impl Into<WalletChangeSeedArgs>
     ) -> Result<WalletChangeSeedDto> {
-        let cmd = RpcCommand::wallet_change_seed(wallet, seed, count);
+        let cmd = RpcCommand::wallet_change_seed(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

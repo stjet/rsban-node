@@ -289,8 +289,9 @@ impl NanoRpcClient {
 
     pub async fn account_history(
         &self,
-        account_history_args: AccountHistoryArgs,
+        args: impl Into<AccountHistoryArgs>,
     ) -> Result<AccountHistoryDto> {
+        let account_history_args = args.into();
         let cmd = RpcCommand::account_history(account_history_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

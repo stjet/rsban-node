@@ -11,18 +11,18 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
     let mut hash = if reverse {
         node.ledger
             .any()
-            .get_account(&transaction, &args.account)
+            .get_account(&transaction, &args.account_with_count.account)
             .unwrap_or_default()
             .open_block
     } else {
         args.head.unwrap_or_else(|| {
             node.ledger
                 .any()
-                .account_head(&transaction, &args.account)
+                .account_head(&transaction, &args.account_with_count.account)
                 .unwrap_or_default()
         })
     };
-    let mut count = args.count;
+    let mut count = args.account_with_count.count;
     let mut offset = args.offset.unwrap_or(0);
     let raw = args.raw.unwrap_or(false);
     let account_filter = args.account_filter.clone();
@@ -74,7 +74,7 @@ pub async fn account_history(node: Arc<Node>, args: AccountHistoryArgs) -> Strin
     };
 
     let account_history = AccountHistoryDto {
-        account: args.account,
+        account: args.account_with_count.account,
         history,
         previous,
         next,

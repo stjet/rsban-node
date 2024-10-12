@@ -604,11 +604,9 @@ impl NanoRpcClient {
 
     pub async fn unopened(
         &self,
-        account: Account,
-        count: u64,
-        threshold: Option<Amount>,
+        args: impl Into<UnopenedArgs>
     ) -> Result<AccountsWithAmountsDto> {
-        let cmd = RpcCommand::unopened(account, count, threshold);
+        let cmd = RpcCommand::unopened(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

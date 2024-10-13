@@ -1,6 +1,7 @@
 use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
+use rsnano_rpc_messages::WalletLedgerArgs;
 use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
@@ -46,17 +47,13 @@ fn wallet_ledger() {
         .insert_adhoc2(&wallet_id, &keys.private_key(), true)
         .unwrap();
 
-    let wallet = wallet_id;
-    let representative = Some(true);
-    let weight = Some(true);
-    let receivable = Some(true);
-    let modified_since = None;
-
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+
+    let args = WalletLedgerArgs::builder(wallet_id).receivable().representative().weight().build();
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_ledger(wallet, representative, weight, receivable, modified_since)
+            .wallet_ledger(args)
             .await
             .unwrap()
     });
@@ -79,7 +76,7 @@ fn wallet_ledger() {
 
     let result_without_optional = node.runtime.block_on(async {
         rpc_client
-            .wallet_ledger(wallet, None, None, None, None)
+            .wallet_ledger(wallet_id)
             .await
             .unwrap()
     });
@@ -103,7 +100,7 @@ fn account_create_fails_without_enable_control() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_ledger(WalletId::zero(), None, None, None, None)
+            .wallet_ledger(WalletId::zero())
             .await
     });
 
@@ -124,7 +121,7 @@ fn account_create_fails_with_wallet_not_found() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_ledger(WalletId::zero(), None, None, None, None)
+            .wallet_ledger(WalletId::zero())
             .await
     });
 

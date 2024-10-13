@@ -1,4 +1,5 @@
 use rsnano_node::config::NodeFlags;
+use rsnano_rpc_messages::BootstrapAnyArgs;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]
@@ -11,7 +12,7 @@ fn bootstrap_any() {
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
     node.runtime
-        .block_on(async { rpc_client.bootstrap_any(None, None, None).await.unwrap() });
+        .block_on(async { rpc_client.bootstrap_any(BootstrapAnyArgs::default()).await.unwrap() });
 
     server.abort();
 }
@@ -29,7 +30,7 @@ fn bootstrap_any_fails_with_legacy_bootstrap_disabled() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.bootstrap_any(None, None, None).await });
+        .block_on(async { rpc_client.bootstrap_any(BootstrapAnyArgs::default()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),

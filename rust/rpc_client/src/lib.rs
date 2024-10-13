@@ -92,10 +92,9 @@ impl NanoRpcClient {
 
     pub async fn representatives_online(
         &self,
-        weight: Option<bool>,
-        accounts: Option<Vec<Account>>,
+        args: RepresentativesOnlineArgs,
     ) -> Result<AccountsWithAmountsDto> {
-        let cmd = RpcCommand::representatives_online(weight, accounts);
+        let cmd = RpcCommand::representatives_online(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

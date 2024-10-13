@@ -1,6 +1,7 @@
 use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
+use rsnano_rpc_messages::RepresentativesOnlineArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -128,10 +129,12 @@ fn representatives_online() {
         "two representatives not online on both nodes",
     );
 
+    let args = RepresentativesOnlineArgs::builder().weight().accounts(vec![new_rep.into()]).build();
+
     // Test filtering by accounts using node2
     let filtered_result = node2.runtime.block_on(async {
         rpc_client
-            .representatives_online(Some(true), Some(vec![new_rep.into()]))
+            .representatives_online(args)
             .await
             .unwrap()
     });

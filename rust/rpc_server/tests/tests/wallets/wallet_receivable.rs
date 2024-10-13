@@ -20,9 +20,11 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
+    let args = WalletReceivableArgs::builder(wallet, 1).include_unconfirmed_blocks().build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_receivable(WalletReceivableArgs::new(wallet, 1))
+            .wallet_receivable(args)
             .await
             .unwrap()
     });

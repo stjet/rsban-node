@@ -13,7 +13,7 @@ fn bootstrap_any() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.bootstrap_lazy(hash, None, None).await.unwrap() });
+        .block_on(async { rpc_client.bootstrap_lazy(hash).await.unwrap() });
 
     assert_eq!(result.started, true);
     assert_eq!(result.key_inserted, true);
@@ -32,7 +32,7 @@ fn bootstrap_any_fails_with_legacy_bootstrap_disabled() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .bootstrap_lazy(BlockHash::zero(), None, None)
+            .bootstrap_lazy(BlockHash::zero())
             .await
     });
 

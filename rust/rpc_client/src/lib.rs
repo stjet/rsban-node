@@ -168,11 +168,9 @@ impl NanoRpcClient {
 
     pub async fn bootstrap_lazy(
         &self,
-        hash: BlockHash,
-        force: Option<bool>,
-        id: Option<String>,
+        args: impl Into<BootsrapLazyArgs>
     ) -> Result<BootstrapLazyDto> {
-        let cmd = RpcCommand::bootstrap_lazy(hash, force, id);
+        let cmd = RpcCommand::bootstrap_lazy(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

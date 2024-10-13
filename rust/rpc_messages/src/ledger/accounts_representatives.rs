@@ -1,11 +1,22 @@
-use crate::{AccountsRpcMessage, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn accounts_representatives(accounts: Vec<Account>) -> Self {
-        Self::AccountsRepresentatives(AccountsRpcMessage::new(accounts))
+        Self::AccountsRepresentatives(AccountsRepresentativesArgs::new(accounts))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountsRepresentativesArgs {
+    pub accounts: Vec<Account>
+}
+
+impl AccountsRepresentativesArgs {
+    pub fn new(accounts: Vec<Account>) -> Self {
+        Self { accounts }
     }
 }
 

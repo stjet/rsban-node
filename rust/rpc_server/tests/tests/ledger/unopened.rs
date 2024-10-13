@@ -1,7 +1,7 @@
 use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountWithCountArgs, UnopenedArgs};
+use rsnano_rpc_messages::UnopenedArgs;
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
@@ -36,7 +36,7 @@ fn unopened() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .unopened(AccountWithCountArgs::new(Account::zero(), 1))
+            .unopened(UnopenedArgs::new(Account::zero(), 1))
             .await
             .unwrap()
     });
@@ -77,7 +77,7 @@ fn unopened_fails_without_enable_control() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .unopened(AccountWithCountArgs::new(Account::zero(), 1))
+            .unopened(UnopenedArgs::new(Account::zero(), 1))
             .await
     });
 

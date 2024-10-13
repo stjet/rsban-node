@@ -1,6 +1,6 @@
 use rsnano_core::Account;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountsCreateArgs, AccountsRpcMessage, ErrorDto};
+use rsnano_rpc_messages::{AccountsCreateArgs, AccountsDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -23,7 +23,7 @@ pub async fn accounts_create(
         .collect();
 
     match accounts {
-        Ok(accounts) => to_string_pretty(&AccountsRpcMessage::new(accounts)).unwrap(),
+        Ok(accounts) => to_string_pretty(&AccountsDto::new(accounts)).unwrap(),
         Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
     }
 }

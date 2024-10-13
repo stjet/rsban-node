@@ -2,11 +2,11 @@ use rsnano_core::PublicKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KeyRpcMessage {
+pub struct KeyDto {
     pub key: PublicKey,
 }
 
-impl KeyRpcMessage {
+impl KeyDto {
     pub fn new(key: PublicKey) -> Self {
         Self { key }
     }
@@ -19,7 +19,7 @@ mod tests {
 
     #[test]
     fn serialize_key_rpc_message() {
-        let dto = KeyRpcMessage {
+        let dto = KeyDto {
             key: PublicKey::zero(),
         };
 
@@ -35,10 +35,10 @@ mod tests {
     fn deserialize_key_rpc_message() {
         let json_str =
             r#"{"key": "0000000000000000000000000000000000000000000000000000000000000000"}"#;
-        let deserialized: KeyRpcMessage = from_str(json_str).unwrap();
+        let deserialized: KeyDto = from_str(json_str).unwrap();
         assert_eq!(
             deserialized,
-            KeyRpcMessage {
+            KeyDto {
                 key: PublicKey::zero(),
             }
         );

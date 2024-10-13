@@ -246,8 +246,8 @@ async fn handle_rpc(
             unopened(
                 rpc_service.node,
                 rpc_service.enable_control,
-                args.account_with_count.account,
-                args.account_with_count.count,
+                args.account,
+                args.count,
                 args.threshold,
             )
             .await

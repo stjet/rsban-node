@@ -1,9 +1,21 @@
-use crate::{AccountRpcMessage, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::Account;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn account_key(account: Account) -> Self {
-        Self::AccountKey(AccountRpcMessage::new("account".to_string(), account))
+        Self::AccountKey(AccountKeyArgs::new(account))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountKeyArgs {
+    pub account: Account
+}
+
+impl AccountKeyArgs {
+    pub fn new(account: Account) -> Self {
+        Self { account }
     }
 }
 

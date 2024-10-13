@@ -239,7 +239,7 @@ impl NanoRpcClient {
     pub async fn accounts_create(
         &self,
         args: impl Into<AccountsCreateArgs>,
-    ) -> Result<AccountsRpcMessage> {
+    ) -> Result<AccountsDto> {
         let cmd = RpcCommand::accounts_create(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -262,7 +262,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_list(&self, wallet: WalletId) -> Result<AccountsRpcMessage> {
+    pub async fn account_list(&self, wallet: WalletId) -> Result<AccountsDto> {
         let cmd = RpcCommand::account_list(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -310,7 +310,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_key(&self, account: Account) -> Result<KeyRpcMessage> {
+    pub async fn account_key(&self, account: Account) -> Result<KeyDto> {
         let cmd = RpcCommand::account_key(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

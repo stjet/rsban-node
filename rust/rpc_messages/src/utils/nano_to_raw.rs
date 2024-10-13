@@ -1,9 +1,21 @@
-use crate::{AmountDto, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::Amount;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn nano_to_raw(amount: Amount) -> Self {
-        Self::NanoToRaw(AmountDto::new("amount".to_string(), amount))
+        Self::NanoToRaw(NanoToRawArgs::new(amount))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct NanoToRawArgs {
+    pub amount: Amount
+}
+
+impl NanoToRawArgs {
+    pub fn new(amount: Amount) -> Self {
+        Self { amount }
     }
 }
 

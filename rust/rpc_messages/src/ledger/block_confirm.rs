@@ -1,9 +1,21 @@
-use crate::{BlockHashRpcMessage, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::BlockHash;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn block_confirm(hash: BlockHash) -> Self {
-        Self::BlockConfirm(BlockHashRpcMessage::new("hash".to_string(), hash))
+        Self::BlockConfirm(BlockConfirmArgs::new(hash))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct BlockConfirmArgs {
+    pub hash: BlockHash
+}
+
+impl BlockConfirmArgs {
+    pub fn new(hash: BlockHash) -> Self {
+        Self { hash }
     }
 }
 

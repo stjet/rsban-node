@@ -1,9 +1,21 @@
-use crate::{AccountRpcMessage, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::Account;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn validate_account_number(account: Account) -> Self {
-        Self::ValidateAccountNumber(AccountRpcMessage::new("account".to_string(), account))
+        Self::ValidateAccountNumber(ValidateAccountNumberArgs::new(account))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct ValidateAccountNumberArgs {
+    pub account: Account
+}
+
+impl ValidateAccountNumberArgs {
+    pub fn new(account: Account) -> Self {
+        Self { account }
     }
 }
 

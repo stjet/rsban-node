@@ -312,8 +312,8 @@ async fn handle_rpc(
             wallet_representative_set(
                 rpc_service.node,
                 rpc_service.enable_control,
-                args.wallet_with_account.wallet,
-                args.wallet_with_account.account,
+                args.wallet,
+                args.account,
                 args.update_existing_accounts,
             )
             .await

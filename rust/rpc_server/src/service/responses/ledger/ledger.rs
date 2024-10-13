@@ -2,7 +2,7 @@ use rsnano_core::{Account, AccountInfo, Amount};
 use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, LedgerAccountInfo, LedgerArgs, LedgerDto};
 use serde_json::to_string_pretty;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, u64};
 
 pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> String {
     if !enable_control {
@@ -10,7 +10,7 @@ pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> 
     }
 
     let account = args.account;
-    let count = args.count.unwrap_or(std::u64::MAX);
+    let count = args.count.unwrap_or(u64::MAX);
     let representative = args.representative.unwrap_or(false);
     let weight = args.weight.unwrap_or(false);
     let pending = args.pending.unwrap_or(false);

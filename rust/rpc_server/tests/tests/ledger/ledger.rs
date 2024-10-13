@@ -51,19 +51,11 @@ fn test_ledger() {
         .unwrap()
         .as_secs();
 
+    let args = LedgerArgs::builder().count(1).sorted().build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .ledger(LedgerArgs::new(
-                None,
-                Some(1),
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(true),
-                None,
-            ))
+            .ledger(args)
             .await
             .unwrap()
     });
@@ -95,20 +87,11 @@ fn test_ledger_threshold() {
 
     let (keys, _, _) = setup_test_environment(node.clone());
 
-    let genesis_balance = Amount::MAX;
+    let args = LedgerArgs::builder().count(2).sorted().with_minimum_balance(Amount::MAX - Amount::raw(100)).build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .ledger(LedgerArgs::new(
-                None,
-                Some(2),
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(true),
-                Some(genesis_balance - Amount::raw(100)),
-            ))
+            .ledger(args)
             .await
             .unwrap()
     });
@@ -147,19 +130,11 @@ fn test_ledger_pending() {
         .unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
+    let args = LedgerArgs::builder().count(2).include_receivables().with_minimum_balance(Amount::MAX - Amount::raw(100)).build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .ledger(LedgerArgs::new(
-                None,
-                Some(2),
-                None,
-                None,
-                Some(true),
-                None,
-                None,
-                None,
-                Some(send_amount + send2_amount),
-            ))
+            .ledger(args)
             .await
             .unwrap()
     });

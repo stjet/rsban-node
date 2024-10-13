@@ -4,6 +4,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::wallets::WalletsExt;
+use rsnano_rpc_messages::SignArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -31,13 +32,12 @@ fn sign() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
+    let args: SignArgs = SignArgs::builder(send.json_representation()).wallet(wallet_id).account(key.public_key().into()).build();
+
     let result = node.runtime.block_on(async {
         rpc_client
             .sign(
-                None,
-                Some(wallet_id),
-                Some(key.public_key().into()),
-                send.json_representation(),
+                args
             )
             .await
             .unwrap()
@@ -77,7 +77,7 @@ fn sign_without_key() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .sign(None, None, None, send.json_representation())
+            .sign(send.json_representation())
             .await
     });
 

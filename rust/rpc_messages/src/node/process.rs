@@ -8,6 +8,12 @@ impl RpcCommand {
     }
 }
 
+impl From<JsonBlock> for ProcessArgs {
+    fn from(value: JsonBlock) -> Self {
+        Self::builder(value).build()
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ProcessArgs {
     pub block: JsonBlock,

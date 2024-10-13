@@ -37,7 +37,10 @@ fn wallet_representative_set_fails_without_enable_control() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_representative_set(WalletRepresentativeSetArgs::new(WalletId::zero(), Account::zero()))
+            .wallet_representative_set(WalletRepresentativeSetArgs::new(
+                WalletId::zero(),
+                Account::zero(),
+            ))
             .await
     });
 

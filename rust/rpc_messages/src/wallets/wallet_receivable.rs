@@ -3,9 +3,7 @@ use rsnano_core::{Amount, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn wallet_receivable(
-        args: WalletReceivableArgs
-    ) -> Self {
+    pub fn wallet_receivable(args: WalletReceivableArgs) -> Self {
         Self::WalletReceivable(args)
     }
 }
@@ -25,12 +23,9 @@ pub struct WalletReceivableArgs {
 }
 
 impl WalletReceivableArgs {
-    pub fn new(
-        wallet: WalletId,
-        count: u64,
-    ) -> Self {
+    pub fn new(wallet: WalletId, count: u64) -> Self {
         Self {
-            wallet, 
+            wallet,
             count,
             threshold: None,
             source: None,
@@ -39,18 +34,15 @@ impl WalletReceivableArgs {
         }
     }
 
-    pub fn builder(
-        wallet: WalletId,
-        count: u64,
-    ) -> WalletReceivableArgsBuilder {
+    pub fn builder(wallet: WalletId, count: u64) -> WalletReceivableArgsBuilder {
         WalletReceivableArgsBuilder {
-            args: WalletReceivableArgs::new(wallet, count)
+            args: WalletReceivableArgs::new(wallet, count),
         }
     }
 }
 
 pub struct WalletReceivableArgsBuilder {
-    args: WalletReceivableArgs
+    args: WalletReceivableArgs,
 }
 
 impl WalletReceivableArgsBuilder {
@@ -89,9 +81,10 @@ mod tests {
     #[test]
     fn serialize_wallet_receivable_command_options_none() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_receivable(
-                WalletReceivableArgs::new(WalletId::zero(), 1)
-            ))
+            to_string_pretty(&RpcCommand::wallet_receivable(WalletReceivableArgs::new(
+                WalletId::zero(),
+                1
+            )))
             .unwrap(),
             r#"{
   "action": "wallet_receivable",
@@ -103,9 +96,7 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_command_options_none() {
-        let cmd = RpcCommand::wallet_receivable(
-            WalletReceivableArgs::new(WalletId::zero(), 1)
-        );
+        let cmd = RpcCommand::wallet_receivable(WalletReceivableArgs::new(WalletId::zero(), 1));
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
@@ -113,12 +104,14 @@ mod tests {
 
     #[test]
     fn serialize_wallet_receivable_command_options_some() {
-        let args: WalletReceivableArgs = WalletReceivableArgs::builder(WalletId::zero(), 5).threshold(Amount::raw(1000)).include_unconfirmed_blocks().min_version().source().build();
+        let args: WalletReceivableArgs = WalletReceivableArgs::builder(WalletId::zero(), 5)
+            .threshold(Amount::raw(1000))
+            .include_unconfirmed_blocks()
+            .min_version()
+            .source()
+            .build();
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_receivable(
-                args
-            ))
-            .unwrap(),
+            to_string_pretty(&RpcCommand::wallet_receivable(args)).unwrap(),
             r#"{
   "action": "wallet_receivable",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -133,10 +126,13 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_command_options_some() {
-        let args: WalletReceivableArgs = WalletReceivableArgs::builder(WalletId::zero(), 5).threshold(Amount::raw(1000)).include_unconfirmed_blocks().min_version().source().build();
-        let cmd = RpcCommand::wallet_receivable(
-            args
-        );
+        let args: WalletReceivableArgs = WalletReceivableArgs::builder(WalletId::zero(), 5)
+            .threshold(Amount::raw(1000))
+            .include_unconfirmed_blocks()
+            .min_version()
+            .source()
+            .build();
+        let cmd = RpcCommand::wallet_receivable(args);
         let serialized = serde_json::to_string(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)

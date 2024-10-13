@@ -13,10 +13,7 @@ pub async fn wallet_receivable(
         return json!({"error": "RPC control is disabled"}).to_string();
     }
 
-    let accounts = match node
-        .wallets
-        .get_accounts_of_wallet(&args.wallet)
-    {
+    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
         Err(e) => return json!({"error": e.to_string()}).to_string(),
     };

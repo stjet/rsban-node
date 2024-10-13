@@ -20,14 +20,13 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = WalletReceivableArgs::builder(wallet, 1).include_unconfirmed_blocks().build();
+    let args = WalletReceivableArgs::builder(wallet, 1)
+        .include_unconfirmed_blocks()
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_receivable(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
 
     if let ReceivableDto::Blocks { blocks } = result {
         assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
@@ -96,14 +95,13 @@ fn wallet_receivable_threshold_some() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = WalletReceivableArgs::builder(wallet, 2).threshold(Amount::raw(1)).build();
+    let args = WalletReceivableArgs::builder(wallet, 2)
+        .threshold(Amount::raw(1))
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_receivable(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
 
     if let ReceivableDto::Threshold { blocks } = result {
         let account_blocks = blocks.get(&public_key.into()).unwrap();

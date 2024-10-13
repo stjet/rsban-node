@@ -30,11 +30,9 @@ fn bootstrap_any_fails_with_legacy_bootstrap_disabled() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .bootstrap_lazy(BlockHash::zero())
-            .await
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.bootstrap_lazy(BlockHash::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),

@@ -155,30 +155,22 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_receivable(
-        &self,
-        args: WalletReceivableArgs
-    ) -> Result<ReceivableDto> {
-        let cmd = RpcCommand::wallet_receivable(
-            args
-        );
+    pub async fn wallet_receivable(&self, args: WalletReceivableArgs) -> Result<ReceivableDto> {
+        let cmd = RpcCommand::wallet_receivable(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
     pub async fn bootstrap_lazy(
         &self,
-        args: impl Into<BootsrapLazyArgs>
+        args: impl Into<BootsrapLazyArgs>,
     ) -> Result<BootstrapLazyDto> {
         let cmd = RpcCommand::bootstrap_lazy(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn bootstrap_any(
-        &self,
-        args: BootstrapAnyArgs
-    ) -> Result<SuccessDto> {
+    pub async fn bootstrap_any(&self, args: BootstrapAnyArgs) -> Result<SuccessDto> {
         let cmd = RpcCommand::bootstrap_any(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -201,8 +193,11 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn process(&self, process_args: ProcessArgs) -> Result<BlockHashRpcMessage> {
-        let cmd = RpcCommand::process(process_args);
+    pub async fn process(
+        &self,
+        process_args: impl Into<ProcessArgs>,
+    ) -> Result<BlockHashRpcMessage> {
+        let cmd = RpcCommand::process(process_args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

@@ -3,9 +3,7 @@ use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn bootstrap_any(
-        args: BootstrapAnyArgs
-    ) -> Self {
+    pub fn bootstrap_any(args: BootstrapAnyArgs) -> Self {
         Self::BootstrapAny(args)
     }
 }
@@ -19,12 +17,14 @@ pub struct BootstrapAnyArgs {
 
 impl BootstrapAnyArgs {
     pub fn builder() -> BootstrapAnyArgsBuilder {
-        BootstrapAnyArgsBuilder { args: BootstrapAnyArgs::default() }
+        BootstrapAnyArgsBuilder {
+            args: BootstrapAnyArgs::default(),
+        }
     }
 }
 
 pub struct BootstrapAnyArgsBuilder {
-    args: BootstrapAnyArgs
+    args: BootstrapAnyArgs,
 }
 
 impl BootstrapAnyArgsBuilder {

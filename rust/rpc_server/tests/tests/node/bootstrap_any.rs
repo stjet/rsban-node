@@ -11,8 +11,12 @@ fn bootstrap_any() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    node.runtime
-        .block_on(async { rpc_client.bootstrap_any(BootstrapAnyArgs::default()).await.unwrap() });
+    node.runtime.block_on(async {
+        rpc_client
+            .bootstrap_any(BootstrapAnyArgs::default())
+            .await
+            .unwrap()
+    });
 
     server.abort();
 }

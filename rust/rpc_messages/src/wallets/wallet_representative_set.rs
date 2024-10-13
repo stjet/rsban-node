@@ -17,10 +17,7 @@ pub struct WalletRepresentativeSetArgs {
 }
 
 impl WalletRepresentativeSetArgs {
-    pub fn new(
-        wallet: WalletId,
-        account: Account,
-    ) -> Self {
+    pub fn new(wallet: WalletId, account: Account) -> Self {
         Self {
             wallet,
             account,
@@ -28,12 +25,9 @@ impl WalletRepresentativeSetArgs {
         }
     }
 
-    pub fn builder(
-        wallet: WalletId,
-        account: Account,
-    ) -> WalletRepresentativeSetArgsBuilder {
+    pub fn builder(wallet: WalletId, account: Account) -> WalletRepresentativeSetArgsBuilder {
         WalletRepresentativeSetArgsBuilder {
-            args: WalletRepresentativeSetArgs::new(wallet, account)
+            args: WalletRepresentativeSetArgs::new(wallet, account),
         }
     }
 }
@@ -77,7 +71,10 @@ mod tests {
 
     #[test]
     fn serialize_wallet_representative_set_args_update_existing_accounts_some() {
-        let wallet_representative_set_args = WalletRepresentativeSetArgs::builder(WalletId::zero(), Account::zero()).update_existing_accounts().build();
+        let wallet_representative_set_args =
+            WalletRepresentativeSetArgs::builder(WalletId::zero(), Account::zero())
+                .update_existing_accounts()
+                .build();
 
         let serialized = to_string(&wallet_representative_set_args).unwrap();
 
@@ -115,7 +112,9 @@ mod tests {
 
         let deserialized: WalletRepresentativeSetArgs = from_str(json_str).unwrap();
 
-        let expected = WalletRepresentativeSetArgs::builder(WalletId::zero(), Account::zero()).update_existing_accounts().build();
+        let expected = WalletRepresentativeSetArgs::builder(WalletId::zero(), Account::zero())
+            .update_existing_accounts()
+            .build();
 
         assert_eq!(deserialized, expected);
     }

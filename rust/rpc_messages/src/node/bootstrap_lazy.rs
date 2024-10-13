@@ -24,13 +24,17 @@ pub struct BootsrapLazyArgs {
 impl BootsrapLazyArgs {
     pub fn builder(hash: BlockHash) -> BootsrapLazyArgsBuilder {
         BootsrapLazyArgsBuilder {
-            args: BootsrapLazyArgs { hash, force: None, id: None }
+            args: BootsrapLazyArgs {
+                hash,
+                force: None,
+                id: None,
+            },
         }
     }
 }
 
 pub struct BootsrapLazyArgsBuilder {
-    args: BootsrapLazyArgs
+    args: BootsrapLazyArgs,
 }
 
 impl BootsrapLazyArgsBuilder {

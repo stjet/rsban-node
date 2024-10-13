@@ -54,9 +54,7 @@ fn successors() {
     assert_eq!(blocks[0], genesis);
     assert_eq!(blocks[1], block.hash());
 
-    let args = ChainArgs::builder(genesis, u64::MAX)
-        .reverse()
-        .build();
+    let args = ChainArgs::builder(genesis, u64::MAX).reverse().build();
 
     let reverse_result = node
         .runtime

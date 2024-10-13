@@ -19,12 +19,14 @@ pub struct RepresentativesOnlineArgs {
 
 impl RepresentativesOnlineArgs {
     pub fn builder() -> RepresentativesOnlineArgsBuilder {
-        RepresentativesOnlineArgsBuilder { args: RepresentativesOnlineArgs::default() }
+        RepresentativesOnlineArgsBuilder {
+            args: RepresentativesOnlineArgs::default(),
+        }
     }
 }
 
 pub struct RepresentativesOnlineArgsBuilder {
-    args: RepresentativesOnlineArgs
+    args: RepresentativesOnlineArgs,
 }
 
 impl RepresentativesOnlineArgsBuilder {
@@ -75,7 +77,10 @@ mod tests {
             "nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
         )
         .unwrap()];
-        let args = RepresentativesOnlineArgs::builder().weight().accounts(accounts.clone()).build();
+        let args = RepresentativesOnlineArgs::builder()
+            .weight()
+            .accounts(accounts.clone())
+            .build();
         let command = RpcCommand::representatives_online(args);
         let serialized = serde_json::to_value(command).unwrap();
         let expected = json!({

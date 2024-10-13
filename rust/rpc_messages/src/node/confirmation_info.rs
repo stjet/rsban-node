@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
-    pub fn confirmation_info(
-        args: ConfirmationInfoArgs
-    ) -> Self {
+    pub fn confirmation_info(args: ConfirmationInfoArgs) -> Self {
         Self::ConfirmationInfo(args)
     }
 }
@@ -28,14 +26,16 @@ impl ConfirmationInfoArgs {
     pub fn builder(root: QualifiedRoot) -> ConfirmationInfoArgsBuilder {
         ConfirmationInfoArgsBuilder {
             args: ConfirmationInfoArgs {
-                root, contents: None, representatives: None
-            }
+                root,
+                contents: None,
+                representatives: None,
+            },
         }
     }
 }
 
 pub struct ConfirmationInfoArgsBuilder {
-    args: ConfirmationInfoArgs
+    args: ConfirmationInfoArgs,
 }
 
 impl ConfirmationInfoArgsBuilder {

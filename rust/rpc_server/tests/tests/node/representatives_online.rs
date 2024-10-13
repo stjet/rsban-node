@@ -129,15 +129,15 @@ fn representatives_online() {
         "two representatives not online on both nodes",
     );
 
-    let args = RepresentativesOnlineArgs::builder().weight().accounts(vec![new_rep.into()]).build();
+    let args = RepresentativesOnlineArgs::builder()
+        .weight()
+        .accounts(vec![new_rep.into()])
+        .build();
 
     // Test filtering by accounts using node2
-    let filtered_result = node2.runtime.block_on(async {
-        rpc_client
-            .representatives_online(args)
-            .await
-            .unwrap()
-    });
+    let filtered_result = node2
+        .runtime
+        .block_on(async { rpc_client.representatives_online(args).await.unwrap() });
 
     assert_eq!(filtered_result.value.len(), 1);
     assert!(filtered_result.value.contains_key(&new_rep.into()));

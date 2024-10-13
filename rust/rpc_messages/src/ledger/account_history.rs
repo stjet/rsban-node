@@ -11,7 +11,7 @@ impl RpcCommand {
 impl Into<AccountHistoryArgs> for AccountWithCountArgs {
     fn into(self) -> AccountHistoryArgs {
         AccountHistoryArgs {
-            account: self.account, 
+            account: self.account,
             count: self.count,
             raw: None,
             head: None,
@@ -40,7 +40,15 @@ pub struct AccountHistoryArgs {
 
 impl AccountHistoryArgs {
     pub fn new(account: Account, count: u64) -> AccountHistoryArgs {
-        AccountHistoryArgs { account, count, raw: None, head: None, offset: None, reverse: None, account_filter: None }
+        AccountHistoryArgs {
+            account,
+            count,
+            raw: None,
+            head: None,
+            offset: None,
+            reverse: None,
+            account_filter: None,
+        }
     }
 
     pub fn builder(account: Account, count: u64) -> AccountHistoryArgsBuilder {
@@ -56,7 +64,7 @@ impl AccountHistoryArgsBuilder {
     fn new(account: Account, count: u64) -> Self {
         Self {
             args: AccountHistoryArgs {
-                account, 
+                account,
                 count,
                 raw: None,
                 head: None,

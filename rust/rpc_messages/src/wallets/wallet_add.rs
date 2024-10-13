@@ -18,7 +18,11 @@ pub struct WalletAddArgs {
 
 impl WalletAddArgs {
     pub fn new(wallet: WalletId, key: RawKey) -> WalletAddArgs {
-        WalletAddArgs { wallet, key, work: None }
+        WalletAddArgs {
+            wallet,
+            key,
+            work: None,
+        }
     }
 
     pub fn builder(wallet: WalletId, key: RawKey) -> WalletAddArgsBuilder {
@@ -27,12 +31,18 @@ impl WalletAddArgs {
 }
 
 pub struct WalletAddArgsBuilder {
-    args: WalletAddArgs
+    args: WalletAddArgs,
 }
 
 impl WalletAddArgsBuilder {
     pub fn new(wallet: WalletId, key: RawKey) -> Self {
-        Self { args: WalletAddArgs { wallet, key, work: None } }
+        Self {
+            args: WalletAddArgs {
+                wallet,
+                key,
+                work: None,
+            },
+        }
     }
 
     pub fn without_precomputed_work(mut self) -> Self {
@@ -53,7 +63,11 @@ mod tests {
     #[test]
     fn serialize_wallet_add_command_work_none() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_add(WalletAddArgs::new(1.into(), 2.into()))).unwrap(),
+            to_string_pretty(&RpcCommand::wallet_add(WalletAddArgs::new(
+                1.into(),
+                2.into()
+            )))
+            .unwrap(),
             r#"{
   "action": "wallet_add",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -65,7 +79,12 @@ mod tests {
     #[test]
     fn serialize_wallet_add_command_work_some() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::wallet_add(WalletAddArgs::builder(1.into(), 2.into()).without_precomputed_work().build())).unwrap(),
+            to_string_pretty(&RpcCommand::wallet_add(
+                WalletAddArgs::builder(1.into(), 2.into())
+                    .without_precomputed_work()
+                    .build()
+            ))
+            .unwrap(),
             r#"{
   "action": "wallet_add",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",

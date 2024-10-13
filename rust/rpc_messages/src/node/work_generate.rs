@@ -39,21 +39,21 @@ impl WorkGenerateArgs {
 }
 
 pub struct WorkGenerateArgsBuilder {
-    args: WorkGenerateArgs
+    args: WorkGenerateArgs,
 }
 
 impl WorkGenerateArgsBuilder {
     pub fn new(hash: BlockHash) -> Self {
         WorkGenerateArgsBuilder {
             args: WorkGenerateArgs {
-                hash, 
+                hash,
                 use_peers: None,
                 difficulty: None,
-                multiplier: None, 
+                multiplier: None,
                 account: None,
                 version: None,
-                block: None
-            }
+                block: None,
+            },
         }
     }
 

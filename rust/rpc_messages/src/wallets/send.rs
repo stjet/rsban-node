@@ -27,7 +27,14 @@ impl SendArgs {
         destination: Account,
         amount: Amount,
     ) -> SendArgs {
-        SendArgs { wallet, source, destination, amount, work: None, id: None }
+        SendArgs {
+            wallet,
+            source,
+            destination,
+            amount,
+            work: None,
+            id: None,
+        }
     }
 
     pub fn builder(

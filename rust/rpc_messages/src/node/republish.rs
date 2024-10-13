@@ -3,9 +3,7 @@ use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn republish(
-        args: RepublishArgs
-    ) -> Self {
+    pub fn republish(args: RepublishArgs) -> Self {
         Self::Republish(args)
     }
 }

@@ -53,12 +53,9 @@ fn test_ledger() {
 
     let args = LedgerArgs::builder().count(1).sorted().build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .ledger(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);
@@ -87,14 +84,15 @@ fn test_ledger_threshold() {
 
     let (keys, _, _) = setup_test_environment(node.clone());
 
-    let args = LedgerArgs::builder().count(2).sorted().with_minimum_balance(Amount::MAX - Amount::raw(100)).build();
+    let args = LedgerArgs::builder()
+        .count(2)
+        .sorted()
+        .with_minimum_balance(Amount::MAX - Amount::raw(100))
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .ledger(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);
@@ -130,14 +128,15 @@ fn test_ledger_pending() {
         .unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
-    let args = LedgerArgs::builder().count(2).include_receivables().with_minimum_balance(Amount::MAX - Amount::raw(100)).build();
+    let args = LedgerArgs::builder()
+        .count(2)
+        .include_receivables()
+        .with_minimum_balance(Amount::MAX - Amount::raw(100))
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .ledger(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);

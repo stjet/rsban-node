@@ -3,9 +3,7 @@ use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn receivable_exists(
-        args: ReceivableExistsArgs
-    ) -> Self {
+    pub fn receivable_exists(args: ReceivableExistsArgs) -> Self {
         Self::ReceivableExists(args)
     }
 }
@@ -26,21 +24,19 @@ pub struct ReceivableExistsArgs {
 }
 
 impl ReceivableExistsArgs {
-    pub fn builder(
-        hash: BlockHash,
-    ) -> ReceivableExistsArgsBuilder {
+    pub fn builder(hash: BlockHash) -> ReceivableExistsArgsBuilder {
         ReceivableExistsArgsBuilder {
             args: ReceivableExistsArgs {
                 hash,
                 include_active: None,
                 include_only_confirmed: None,
-            }
+            },
         }
     }
 }
 
 pub struct ReceivableExistsArgsBuilder {
-    args: ReceivableExistsArgs
+    args: ReceivableExistsArgs,
 }
 
 impl ReceivableExistsArgsBuilder {
@@ -80,10 +76,12 @@ mod tests {
     #[test]
     fn serialize_receivable_exists_command_with_options() {
         let hash = BlockHash::zero();
-        let args = ReceivableExistsArgs::builder(hash).include_active().include_unconfirmed_blocks().build();
+        let args = ReceivableExistsArgs::builder(hash)
+            .include_active()
+            .include_unconfirmed_blocks()
+            .build();
         assert_eq!(
-            to_string_pretty(&RpcCommand::receivable_exists(args))
-            .unwrap(),
+            to_string_pretty(&RpcCommand::receivable_exists(args)).unwrap(),
             r#"{
   "action": "receivable_exists",
   "hash": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -105,7 +103,10 @@ mod tests {
     #[test]
     fn deserialize_receivable_exists_command_with_options() {
         let hash = BlockHash::zero();
-        let args = ReceivableExistsArgs::builder(hash).include_active().include_unconfirmed_blocks().build();
+        let args = ReceivableExistsArgs::builder(hash)
+            .include_active()
+            .include_unconfirmed_blocks()
+            .build();
         let cmd = RpcCommand::receivable_exists(args);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();

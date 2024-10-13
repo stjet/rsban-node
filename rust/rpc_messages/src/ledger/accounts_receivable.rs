@@ -3,27 +3,32 @@ use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn accounts_receivable(
-        args: AccountsReceivableArgs
-    ) -> Self {
+    pub fn accounts_receivable(args: AccountsReceivableArgs) -> Self {
         Self::AccountsReceivable(args)
     }
 }
 
 impl AccountsReceivableArgs {
     pub fn new(accounts: Vec<Account>, count: u64) -> AccountsReceivableArgs {
-        Self { accounts, count, threshold: None, source: None, sorting: None, include_only_confirmed: None }
+        Self {
+            accounts,
+            count,
+            threshold: None,
+            source: None,
+            sorting: None,
+            include_only_confirmed: None,
+        }
     }
 
     pub fn builder(accounts: Vec<Account>, count: u64) -> AccountsReceivableArgsBuilder {
         AccountsReceivableArgsBuilder {
-            args: AccountsReceivableArgs::new(accounts, count)
+            args: AccountsReceivableArgs::new(accounts, count),
         }
     }
 }
 
 pub struct AccountsReceivableArgsBuilder {
-    args: AccountsReceivableArgs
+    args: AccountsReceivableArgs,
 }
 
 impl AccountsReceivableArgsBuilder {

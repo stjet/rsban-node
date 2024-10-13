@@ -17,7 +17,10 @@ pub struct AccountBalanceArgs {
 
 impl AccountBalanceArgs {
     pub fn new(account: Account) -> AccountBalanceArgs {
-        AccountBalanceArgs { account, include_only_confirmed: None }
+        AccountBalanceArgs {
+            account,
+            include_only_confirmed: None,
+        }
     }
 
     pub fn builder(account: Account) -> AccountBalanceArgsBuilder {

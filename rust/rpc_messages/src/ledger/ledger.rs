@@ -34,13 +34,13 @@ pub struct LedgerArgs {
 impl LedgerArgs {
     pub fn builder() -> LedgerArgsBuilder {
         LedgerArgsBuilder {
-            args: LedgerArgs::default()
+            args: LedgerArgs::default(),
         }
     }
 }
 
 pub struct LedgerArgsBuilder {
-    args: LedgerArgs
+    args: LedgerArgs,
 }
 
 impl LedgerArgsBuilder {
@@ -200,10 +200,12 @@ mod tests {
             RpcCommand::Ledger(args) => {
                 assert_eq!(
                     args.account,
-                    Some(Account::decode_account(
-                        "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
+                    Some(
+                        Account::decode_account(
+                            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
+                        )
+                        .unwrap()
                     )
-                    .unwrap())
                 );
                 assert_eq!(args.count, Some(1000));
                 assert_eq!(args.representative, Some(true));

@@ -3,8 +3,7 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockHash, HashOrAccount, JsonBlock, PublicKey, RawKey,
-    WalletId, WorkNonce,
+    Account, Amount, BlockHash, HashOrAccount, JsonBlock, PublicKey, RawKey, WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
 use serde::Serialize;
@@ -39,10 +38,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn republish(
-        &self,
-        args: impl Into<RepublishArgs>
-    ) -> Result<BlockHashesDto> {
+    pub async fn republish(&self, args: impl Into<RepublishArgs>) -> Result<BlockHashesDto> {
         let cmd = RpcCommand::republish(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -65,7 +61,7 @@ impl NanoRpcClient {
 
     pub async fn confirmation_info(
         &self,
-        args: impl Into<ConfirmationInfoArgs>
+        args: impl Into<ConfirmationInfoArgs>,
     ) -> Result<ConfirmationInfoDto> {
         let cmd = RpcCommand::confirmation_info(args.into());
         let result = self.rpc_request(&cmd).await?;
@@ -101,43 +97,21 @@ impl NanoRpcClient {
 
     pub async fn receivable_exists(
         &self,
-        args: impl Into<ReceivableExistsArgs>
+        args: impl Into<ReceivableExistsArgs>,
     ) -> Result<BoolDto> {
         let cmd = RpcCommand::receivable_exists(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn receivable(
-        &self,
-        account: Account,
-        count: u64,
-        threshold: Option<Amount>,
-        source: Option<bool>,
-        min_version: Option<bool>,
-        sorting: Option<bool>,
-        include_only_confirmed: Option<bool>,
-    ) -> Result<ReceivableDto> {
-        let cmd = RpcCommand::receivable(
-            account,
-            count,
-            threshold,
-            source,
-            min_version,
-            sorting,
-            include_only_confirmed,
-        );
+    pub async fn receivable(&self, args: ReceivableArgs) -> Result<ReceivableDto> {
+        let cmd = RpcCommand::receivable(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn accounts_receivable(
-        &self,
-        args: AccountsReceivableArgs,
-    ) -> Result<ReceivableDto> {
-        let cmd = RpcCommand::accounts_receivable(
-            args
-        );
+    pub async fn accounts_receivable(&self, args: AccountsReceivableArgs) -> Result<ReceivableDto> {
+        let cmd = RpcCommand::accounts_receivable(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -779,10 +753,7 @@ impl NanoRpcClient {
         Ok(from_value(json)?)
     }
 
-    pub async fn wallet_add(
-        &self,
-        args: WalletAddArgs
-    ) -> Result<AccountRpcMessage> {
+    pub async fn wallet_add(&self, args: WalletAddArgs) -> Result<AccountRpcMessage> {
         let cmd = RpcCommand::wallet_add(args);
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

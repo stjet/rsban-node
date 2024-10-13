@@ -144,9 +144,7 @@ fn chain_offset() {
         "block not active on node",
     );
 
-    let args = ChainArgs::builder(block.hash(), u64::MAX)
-        .offset(1)
-        .build();
+    let args = ChainArgs::builder(block.hash(), u64::MAX).offset(1).build();
 
     let result = node
         .runtime

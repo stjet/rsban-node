@@ -47,9 +47,11 @@ fn account_create_fails_without_enable_control() {
 
     let private_key = RawKey::random();
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.wallet_add(WalletAddArgs::new(wallet_id, private_key)).await });
+    let result = node.runtime.block_on(async {
+        rpc_client
+            .wallet_add(WalletAddArgs::new(wallet_id, private_key))
+            .await
+    });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
@@ -123,14 +125,13 @@ fn wallet_add_work_false() {
 
     let private_key = RawKey::random();
 
-    let args = WalletAddArgs::builder(wallet_id, private_key).without_precomputed_work().build();
+    let args = WalletAddArgs::builder(wallet_id, private_key)
+        .without_precomputed_work()
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_add(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_add(args).await.unwrap() });
 
     assert_timely(Duration::from_secs(5), || {
         node.wallets

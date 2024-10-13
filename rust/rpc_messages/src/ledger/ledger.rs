@@ -32,23 +32,9 @@ pub struct LedgerArgs {
 }
 
 impl LedgerArgs {
-    pub fn new() -> Self {
-        Self {
-            account: None,
-            count: None,
-            representative: None,
-            weight: None,
-            pending: None,
-            receivable: None,
-            modified_since: None,
-            sorting: None,
-            threshold: None,
-        }
-    }
-
     pub fn builder() -> LedgerArgsBuilder {
         LedgerArgsBuilder {
-            args: LedgerArgs::new()
+            args: LedgerArgs::default()
         }
     }
 }

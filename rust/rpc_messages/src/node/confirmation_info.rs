@@ -5,11 +5,15 @@ use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn confirmation_info(
-        root: QualifiedRoot,
-        contents: Option<bool>,
-        representatives: Option<bool>,
+        args: ConfirmationInfoArgs
     ) -> Self {
-        Self::ConfirmationInfo(ConfirmationInfoArgs::new(root, contents, representatives))
+        Self::ConfirmationInfo(args)
+    }
+}
+
+impl From<QualifiedRoot> for ConfirmationInfoArgs {
+    fn from(value: QualifiedRoot) -> Self {
+        Self::builder(value).build()
     }
 }
 
@@ -21,12 +25,32 @@ pub struct ConfirmationInfoArgs {
 }
 
 impl ConfirmationInfoArgs {
-    pub fn new(root: QualifiedRoot, contents: Option<bool>, representatives: Option<bool>) -> Self {
-        Self {
-            root,
-            contents,
-            representatives,
+    pub fn builder(root: QualifiedRoot) -> ConfirmationInfoArgsBuilder {
+        ConfirmationInfoArgsBuilder {
+            args: ConfirmationInfoArgs {
+                root, contents: None, representatives: None
+            }
         }
+    }
+}
+
+pub struct ConfirmationInfoArgsBuilder {
+    args: ConfirmationInfoArgs
+}
+
+impl ConfirmationInfoArgsBuilder {
+    pub fn without_contents(mut self) -> Self {
+        self.args.contents = Some(false);
+        self
+    }
+
+    pub fn include_representatives(mut self) -> Self {
+        self.args.representatives = Some(true);
+        self
+    }
+
+    pub fn build(self) -> ConfirmationInfoArgs {
+        self.args
     }
 }
 

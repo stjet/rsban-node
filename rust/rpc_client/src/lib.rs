@@ -3,7 +3,7 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockHash, HashOrAccount, JsonBlock, PublicKey, QualifiedRoot, RawKey,
+    Account, Amount, BlockHash, HashOrAccount, JsonBlock, PublicKey, RawKey,
     WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
@@ -101,11 +101,9 @@ impl NanoRpcClient {
 
     pub async fn receivable_exists(
         &self,
-        hash: BlockHash,
-        include_active: Option<bool>,
-        include_only_confirmed: Option<bool>,
+        args: impl Into<ReceivableExistsArgs>
     ) -> Result<BoolDto> {
-        let cmd = RpcCommand::receivable_exists(hash, include_active, include_only_confirmed);
+        let cmd = RpcCommand::receivable_exists(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

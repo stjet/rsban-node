@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
-    pub fn wallet_ledger(
-        args: WalletLedgerArgs
-    ) -> Self {
+    pub fn wallet_ledger(args: WalletLedgerArgs) -> Self {
         Self::WalletLedger(args)
     }
 }
@@ -31,9 +29,7 @@ pub struct WalletLedgerArgs {
 }
 
 impl WalletLedgerArgs {
-    pub fn builder(
-        wallet: WalletId,
-    ) -> WalletLedgerArgsBuilder {
+    pub fn builder(wallet: WalletId) -> WalletLedgerArgsBuilder {
         WalletLedgerArgsBuilder {
             args: WalletLedgerArgs {
                 wallet,
@@ -41,13 +37,13 @@ impl WalletLedgerArgs {
                 weight: None,
                 receivable: None,
                 modified_since: None,
-            }
-        } 
+            },
+        }
     }
 }
 
 pub struct WalletLedgerArgsBuilder {
-    args: WalletLedgerArgs
+    args: WalletLedgerArgs,
 }
 
 impl WalletLedgerArgsBuilder {

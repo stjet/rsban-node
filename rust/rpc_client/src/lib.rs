@@ -118,20 +118,18 @@ impl NanoRpcClient {
 
     pub async fn wallet_ledger(
         &self,
-        args: impl Into<WalletLedgerArgs>
+        args: impl Into<WalletLedgerArgs>,
     ) -> Result<WalletLedgerDto> {
-        let cmd =
-            RpcCommand::wallet_ledger(args.into());
+        let cmd = RpcCommand::wallet_ledger(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
     pub async fn wallet_history(
         &self,
-        wallet: WalletId,
-        modified_since: Option<u64>,
+        args: impl Into<WalletHistoryArgs>,
     ) -> Result<WalletHistoryDto> {
-        let cmd = RpcCommand::wallet_history(wallet, modified_since);
+        let cmd = RpcCommand::wallet_history(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -150,14 +148,9 @@ impl NanoRpcClient {
 
     pub async fn wallet_representative_set(
         &self,
-        wallet: WalletId,
-        representative: Account,
-        update_existing_accounts: Option<bool>,
+        args: WalletRepresentativeSetArgs,
     ) -> Result<BoolDto> {
-        let cmd = RpcCommand::wallet_representative_set(
-            WalletWithAccountArgs::new(wallet, representative),
-            update_existing_accounts,
-        );
+        let cmd = RpcCommand::wallet_representative_set(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

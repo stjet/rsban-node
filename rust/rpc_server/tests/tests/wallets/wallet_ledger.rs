@@ -49,14 +49,15 @@ fn wallet_ledger() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = WalletLedgerArgs::builder(wallet_id).receivable().representative().weight().build();
+    let args = WalletLedgerArgs::builder(wallet_id)
+        .receivable()
+        .representative()
+        .weight()
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_ledger(args)
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
 
@@ -74,12 +75,9 @@ fn wallet_ledger() {
     assert_eq!(info.receivable, Some(Amount::zero()));
     assert_eq!(info.representative, Some(keys.account()));
 
-    let result_without_optional = node.runtime.block_on(async {
-        rpc_client
-            .wallet_ledger(wallet_id)
-            .await
-            .unwrap()
-    });
+    let result_without_optional = node
+        .runtime
+        .block_on(async { rpc_client.wallet_ledger(wallet_id).await.unwrap() });
 
     let accounts_without_optional = result_without_optional.accounts;
     let (_, info_without_optional) = accounts_without_optional.iter().next().unwrap();
@@ -98,11 +96,9 @@ fn account_create_fails_without_enable_control() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_ledger(WalletId::zero())
-            .await
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_ledger(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
@@ -119,11 +115,9 @@ fn account_create_fails_with_wallet_not_found() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .wallet_ledger(WalletId::zero())
-            .await
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.wallet_ledger(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),

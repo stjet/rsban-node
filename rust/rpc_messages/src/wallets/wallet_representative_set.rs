@@ -3,14 +3,8 @@ use crate::RpcCommand;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn wallet_representative_set(
-        wallet_with_account: WalletWithAccountArgs,
-        update_existing_accounts: Option<bool>,
-    ) -> Self {
-        Self::WalletRepresentativeSet(WalletRepresentativeSetArgs::new(
-            wallet_with_account,
-            update_existing_accounts,
-        ))
+    pub fn wallet_representative_set(args: WalletRepresentativeSetArgs) -> Self {
+        Self::WalletRepresentativeSet(args)
     }
 }
 

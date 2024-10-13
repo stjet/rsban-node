@@ -50,9 +50,9 @@ impl NanoRpcClient {
 
     pub async fn work_generate(
         &self,
-        work_generate_args: WorkGenerateArgs,
+        args: impl Into<WorkGenerateArgs>,
     ) -> Result<WorkGenerateDto> {
-        let cmd = RpcCommand::work_generate(work_generate_args);
+        let cmd = RpcCommand::work_generate(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

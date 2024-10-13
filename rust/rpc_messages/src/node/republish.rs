@@ -12,7 +12,7 @@ impl RpcCommand {
 
 impl From<BlockHash> for RepublishArgs {
     fn from(value: BlockHash) -> Self {
-        Self::new(value)
+        Self::builder(value).build()
     }
 }
 
@@ -25,17 +25,6 @@ pub struct RepublishArgs {
 }
 
 impl RepublishArgs {
-    pub fn new(
-        hash: BlockHash,
-    ) -> Self {
-        Self {
-            hash,
-            sources: None,
-            destinations: None,
-            count: None,
-        }
-    }
-
     pub fn builder(hash: BlockHash) -> RepublishArgsBuilder {
         RepublishArgsBuilder::new(hash)
     }

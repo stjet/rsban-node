@@ -141,20 +141,10 @@ impl NanoRpcClient {
 
     pub async fn accounts_receivable(
         &self,
-        accounts: Vec<Account>,
-        count: u64,
-        threshold: Option<Amount>,
-        source: Option<bool>,
-        sorting: Option<bool>,
-        include_only_confirmed: Option<bool>,
+        args: AccountsReceivableArgs,
     ) -> Result<ReceivableDto> {
         let cmd = RpcCommand::accounts_receivable(
-            accounts,
-            count,
-            threshold,
-            source,
-            sorting,
-            include_only_confirmed,
+            args
         );
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

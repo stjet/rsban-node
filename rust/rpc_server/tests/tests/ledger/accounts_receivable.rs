@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::ReceivableDto;
+use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto};
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
@@ -58,9 +58,11 @@ fn accounts_receivable_include_only_confirmed() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
+    let args = AccountsReceivableArgs::builder(vec![public_key.into()], 1).include_only_confirmed_blocks().build();
+
     let result1 = node.runtime.block_on(async {
         rpc_client
-            .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
+            .accounts_receivable(args)
             .await
             .unwrap()
     });
@@ -71,9 +73,11 @@ fn accounts_receivable_include_only_confirmed() {
         panic!("Expected ReceivableDto::Blocks variant");
     }
 
+    let args = AccountsReceivableArgs::new(vec![public_key.into()], 1);
+
     let result2 = node.runtime.block_on(async {
         rpc_client
-            .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(false))
+            .accounts_receivable(args)
             .await
             .unwrap()
     });
@@ -105,9 +109,11 @@ fn accounts_receivable_options_none() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
+    let args = AccountsReceivableArgs::builder(vec![public_key.into()], 1).include_only_confirmed_blocks().build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .accounts_receivable(vec![public_key.into()], 1, None, None, None, Some(true))
+            .accounts_receivable(args)
             .await
             .unwrap()
     });
@@ -141,15 +147,12 @@ fn accounts_receivable_threshold_some() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
+    let args = AccountsReceivableArgs::builder(vec![public_key.into()], 1).with_minimum_balance(Amount::raw(1)).build();
+
     let result = node.runtime.block_on(async {
         rpc_client
             .accounts_receivable(
-                vec![public_key.into()],
-                2,
-                Some(Amount::raw(1)),
-                None,
-                None,
-                None,
+                args
             )
             .await
             .unwrap()
@@ -172,7 +175,7 @@ fn accounts_receivable_threshold_some() {
 }
 
 #[test]
-fn accounts_receivable_sorting() {
+fn accounts_receivable_sorted() {
     let mut system = System::new();
     let node = system.make_node();
 
@@ -188,15 +191,12 @@ fn accounts_receivable_sorting() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
+    let args = AccountsReceivableArgs::builder(vec![public_key.into()], 1).sorted().build();
+
     let result = node.runtime.block_on(async {
         rpc_client
             .accounts_receivable(
-                vec![public_key.into()],
-                1,
-                None,
-                None,
-                Some(true),
-                Some(false),
+                args
             )
             .await
             .unwrap()

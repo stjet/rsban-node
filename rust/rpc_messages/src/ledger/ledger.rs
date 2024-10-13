@@ -11,10 +11,8 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LedgerArgs {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub account: Option<Account>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<u64>,
+    pub account: Account,
+    pub count: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub representative: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -33,8 +31,8 @@ pub struct LedgerArgs {
 
 impl LedgerArgs {
     pub fn new(
-        account: Option<Account>,
-        count: Option<u64>,
+        account: Account,
+        count: u64,
         representative: Option<bool>,
         weight: Option<bool>,
         pending: Option<bool>,

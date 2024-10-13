@@ -11,7 +11,8 @@ impl RpcCommand {
 impl Into<AccountHistoryArgs> for AccountWithCountArgs {
     fn into(self) -> AccountHistoryArgs {
         AccountHistoryArgs {
-            account_with_count: AccountWithCountArgs::new(self.account, self.count),
+            account: self.account, 
+            count: self.count,
             raw: None,
             head: None,
             offset: None,
@@ -23,8 +24,8 @@ impl Into<AccountHistoryArgs> for AccountWithCountArgs {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountHistoryArgs {
-    #[serde(flatten)]
-    pub account_with_count: AccountWithCountArgs,
+    pub account: Account,
+    pub count: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -39,7 +40,7 @@ pub struct AccountHistoryArgs {
 
 impl AccountHistoryArgs {
     pub fn new(account: Account, count: u64) -> AccountHistoryArgs {
-        AccountHistoryArgs { account_with_count: AccountWithCountArgs::new(account, count), raw: None, head: None, offset: None, reverse: None, account_filter: None }
+        AccountHistoryArgs { account, count, raw: None, head: None, offset: None, reverse: None, account_filter: None }
     }
 
     pub fn builder(account: Account, count: u64) -> AccountHistoryArgsBuilder {
@@ -55,7 +56,8 @@ impl AccountHistoryArgsBuilder {
     fn new(account: Account, count: u64) -> Self {
         Self {
             args: AccountHistoryArgs {
-                account_with_count: AccountWithCountArgs::new(account, count),
+                account, 
+                count,
                 raw: None,
                 head: None,
                 offset: None,
@@ -165,8 +167,8 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
 
         if let RpcCommand::AccountHistory(args) = deserialized {
-            assert_eq!(args.account_with_count.account, Account::from(123));
-            assert_eq!(args.account_with_count.count, 5);
+            assert_eq!(args.account, Account::from(123));
+            assert_eq!(args.count, 5);
             assert_eq!(args.raw, Some(true));
             assert_eq!(args.head, Some(BlockHash::zero()));
             assert_eq!(args.offset, Some(10));

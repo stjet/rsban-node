@@ -10,7 +10,7 @@ pub async fn accounts_receivable(node: Arc<Node>, args: AccountsReceivableArgs) 
     let count = args.count;
     let threshold = args.threshold.unwrap_or(Amount::zero());
     let source = args.source.unwrap_or(false);
-    let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
+    let include_only_confirmed = args.include_only_confirmed.unwrap_or(false);
     let sorting = args.sorting.unwrap_or(false);
     let simple = threshold.is_zero() && !source && !sorting;
 

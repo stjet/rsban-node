@@ -94,7 +94,7 @@ fn account_balance_only_confirmed_false() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountsBalancesArgs::builder(vec![DEV_GENESIS_KEY.public_key().as_account()])
+    let args = AccountsBalancesArgs::new(vec![DEV_GENESIS_KEY.public_key().as_account()])
         .include_unconfirmed_blocks()
         .build();
 

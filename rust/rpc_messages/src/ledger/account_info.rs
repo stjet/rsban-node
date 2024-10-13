@@ -25,6 +25,10 @@ pub struct AccountInfoArgs {
 }
 
 impl AccountInfoArgs {
+    pub fn new(account: Account) -> AccountInfoArgs {
+        AccountInfoArgs { account, representative: None, weight: None, pending: None, receivable: None, include_confirmed: None }
+    }
+
     pub fn builder(account: Account) -> AccountInfoArgsBuilder {
         AccountInfoArgsBuilder::new(account)
     }

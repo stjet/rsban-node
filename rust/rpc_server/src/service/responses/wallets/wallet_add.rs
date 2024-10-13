@@ -12,7 +12,7 @@ pub async fn wallet_add(
     work: Option<bool>,
 ) -> String {
     if enable_control {
-        let generate_work = work.unwrap_or(false);
+        let generate_work = work.unwrap_or(true);
         match node.wallets.insert_adhoc2(&wallet, &raw_key, generate_work) {
             Ok(account) => to_string_pretty(&AccountRpcMessage::new(
                 "account".to_string(),

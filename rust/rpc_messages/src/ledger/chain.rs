@@ -19,6 +19,10 @@ pub struct ChainArgs {
 }
 
 impl ChainArgs {
+    pub fn new(block: BlockHash, count: u64) -> ChainArgs {
+        ChainArgs { block, count, offset: None, reverse: None }
+    }
+
     pub fn builder(block: BlockHash, count: u64) -> ChainArgsBuilder {
         ChainArgsBuilder::new(block, count)
     }
@@ -61,8 +65,10 @@ mod tests {
     use serde_json::{from_value, json, to_value};
 
     fn create_test_block_hash() -> BlockHash {
-        BlockHash::decode_hex("000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F")
-            .unwrap()
+        BlockHash::decode_hex(
+            "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
+        )
+        .unwrap()
     }
 
     #[test]
@@ -94,10 +100,7 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let expected = ChainArgs::builder(expected_block_hash, 1)
-            .offset(1)
-            .reverse()
-            .build();
+        let expected = ChainArgs::builder(expected_block_hash, 1).offset(1).reverse().build();
 
         assert_eq!(deserialized, expected);
     }
@@ -148,7 +151,7 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-
+        
         let chain_args = ChainArgs::builder(block_hash, 1)
             .offset(1)
             .reverse()
@@ -178,7 +181,7 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-
+        
         let chain_args = ChainArgs::builder(block_hash, 1).build();
 
         let serialized = to_value(chain_args).unwrap();

@@ -17,6 +17,10 @@ pub struct WalletChangeSeedArgs {
 }
 
 impl WalletChangeSeedArgs {
+    pub fn new(wallet: WalletId, seed: RawKey) -> WalletChangeSeedArgs {
+        WalletChangeSeedArgs { wallet, seed, count: None }
+    }
+
     pub fn builder(wallet: WalletId, seed: RawKey) -> WalletChangeSeedArgsBuilder {
         WalletChangeSeedArgsBuilder::new(wallet, seed)
     }

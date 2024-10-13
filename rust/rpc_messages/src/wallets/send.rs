@@ -21,6 +21,15 @@ pub struct SendArgs {
 }
 
 impl SendArgs {
+    pub fn new(
+        wallet: WalletId,
+        source: Account,
+        destination: Account,
+        amount: Amount,
+    ) -> SendArgs {
+        SendArgs { wallet, source, destination, amount, work: None, id: None }
+    }
+
     pub fn builder(
         wallet: WalletId,
         source: Account,
@@ -49,8 +58,8 @@ impl SendArgsBuilder {
         }
     }
 
-    pub fn work(mut self, work: bool) -> Self {
-        self.args.work = Some(work);
+    pub fn without_precomputed_work(mut self) -> Self {
+        self.args.work = Some(false);
         self
     }
 
@@ -213,7 +222,7 @@ mod tests {
         let amount = Amount::raw(1000000);
 
         let send_args = SendArgs::builder(wallet, source, destination, amount)
-            .work(true)
+            .without_precomputed_work()
             .id("test_id".to_string())
             .build();
 
@@ -221,7 +230,7 @@ mod tests {
         assert_eq!(send_args.source, source);
         assert_eq!(send_args.destination, destination);
         assert_eq!(send_args.amount, amount);
-        assert_eq!(send_args.work, Some(true));
+        assert_eq!(send_args.work, Some(false));
         assert_eq!(send_args.id, Some("test_id".to_string()));
 
         let serialized = serde_json::to_value(&send_args).unwrap();
@@ -230,7 +239,7 @@ mod tests {
             "source": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             "destination": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             "amount": "1000000",
-            "work": true,
+            "work": false,
             "id": "test_id"
         });
 

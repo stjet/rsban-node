@@ -38,6 +38,10 @@ pub struct AccountHistoryArgs {
 }
 
 impl AccountHistoryArgs {
+    pub fn new(account: Account, count: u64) -> AccountHistoryArgs {
+        AccountHistoryArgs { account_with_count: AccountWithCountArgs::new(account, count), raw: None, head: None, offset: None, reverse: None, account_filter: None }
+    }
+
     pub fn builder(account: Account, count: u64) -> AccountHistoryArgsBuilder {
         AccountHistoryArgsBuilder::new(account, count)
     }

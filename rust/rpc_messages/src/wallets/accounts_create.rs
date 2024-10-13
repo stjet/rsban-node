@@ -17,6 +17,13 @@ pub struct AccountsCreateArgs {
 }
 
 impl AccountsCreateArgs {
+    pub fn new(wallet: WalletId, count: u64) -> AccountsCreateArgs {
+        AccountsCreateArgs {
+            wallet_with_count: WalletWithCountArgs::new(wallet, count),
+            work: None,
+        }
+    }
+
     pub fn builder(wallet: WalletId, count: u64) -> AccountsCreateArgsBuilder {
         AccountsCreateArgsBuilder {
             wallet,

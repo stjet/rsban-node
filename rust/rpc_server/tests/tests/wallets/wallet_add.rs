@@ -1,5 +1,6 @@
 use rsnano_core::{PublicKey, RawKey, WalletId};
 use rsnano_node::wallets::WalletsExt;
+use rsnano_rpc_messages::WalletAddArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 
@@ -19,7 +20,7 @@ fn account_create_index_none() {
 
     node.runtime.block_on(async {
         rpc_client
-            .wallet_add(wallet_id, private_key, None)
+            .wallet_add(WalletAddArgs::new(wallet_id, private_key))
             .await
             .unwrap()
     });
@@ -48,7 +49,7 @@ fn account_create_fails_without_enable_control() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_add(wallet_id, private_key, None).await });
+        .block_on(async { rpc_client.wallet_add(WalletAddArgs::new(wallet_id, private_key)).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
@@ -67,7 +68,7 @@ fn wallet_add_fails_with_wallet_not_found() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_add(WalletId::zero(), RawKey::zero(), None)
+            .wallet_add(WalletAddArgs::new(WalletId::zero(), RawKey::zero()))
             .await
     });
 
@@ -94,7 +95,7 @@ fn wallet_add_work_true() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_add(wallet_id, private_key, Some(true))
+            .wallet_add(WalletAddArgs::new(wallet_id, private_key))
             .await
             .unwrap()
     });
@@ -122,9 +123,11 @@ fn wallet_add_work_false() {
 
     let private_key = RawKey::random();
 
+    let args = WalletAddArgs::builder(wallet_id, private_key).without_precomputed_work().build();
+
     let result = node.runtime.block_on(async {
         rpc_client
-            .wallet_add(wallet_id, private_key, Some(false))
+            .wallet_add(args)
             .await
             .unwrap()
     });

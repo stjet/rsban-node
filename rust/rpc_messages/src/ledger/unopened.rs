@@ -17,6 +17,10 @@ pub struct UnopenedArgs {
 }
 
 impl UnopenedArgs {
+    pub fn new(account: Account, count: u64) -> UnopenedArgs {
+        UnopenedArgs { account_with_count: AccountWithCountArgs::new(account, count), threshold: None }
+    }
+
     pub fn builder(account: Account, count: u64) -> UnopenedArgsBuilder {
         UnopenedArgsBuilder::new(account, count)
     }

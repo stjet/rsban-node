@@ -18,6 +18,14 @@ pub struct AccountCreateArgs {
 }
 
 impl AccountCreateArgs {
+    pub fn new(wallet: WalletId) -> AccountCreateArgs {
+        AccountCreateArgs {
+            wallet,
+            index: None,
+            work: None,
+        }
+    }
+
     pub fn builder(wallet: WalletId) -> AccountCreateArgsBuilder {
         AccountCreateArgsBuilder {
             wallet,

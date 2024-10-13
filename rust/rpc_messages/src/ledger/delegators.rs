@@ -20,6 +20,10 @@ pub struct DelegatorsArgs {
 }
 
 impl DelegatorsArgs {
+    pub fn new(account: Account) -> DelegatorsArgs {
+        DelegatorsArgs { account, threshold: None, count: None, start: None }
+    }
+
     pub fn builder(account: Account) -> DelegatorsArgsBuilder {
         DelegatorsArgsBuilder::new(account)
     }

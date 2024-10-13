@@ -16,7 +16,7 @@ pub struct AccountsBalancesArgs {
 }
 
 impl AccountsBalancesArgs {
-    pub fn builder(accounts: Vec<Account>) -> AccountsBalancesArgsBuilder {
+    pub fn new(accounts: Vec<Account>) -> AccountsBalancesArgsBuilder {
         AccountsBalancesArgsBuilder::new(accounts)
     }
 }
@@ -155,14 +155,14 @@ mod tests {
             .unwrap(),
         ];
 
-        let args = AccountsBalancesArgs::builder(accounts.clone())
+        let args = AccountsBalancesArgs::new(accounts.clone())
             .include_unconfirmed_blocks()
             .build();
 
         assert_eq!(args.accounts, accounts);
         assert_eq!(args.include_only_confirmed, Some(false));
 
-        let args_default = AccountsBalancesArgs::builder(accounts.clone()).build();
+        let args_default = AccountsBalancesArgs::new(accounts.clone()).build();
 
         assert_eq!(args_default.accounts, accounts);
         assert_eq!(args_default.include_only_confirmed, None);

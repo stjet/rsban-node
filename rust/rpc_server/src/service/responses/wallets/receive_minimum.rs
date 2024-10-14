@@ -6,7 +6,7 @@ use std::sync::Arc;
 pub async fn receive_minimum(node: Arc<Node>, enable_control: bool) -> String {
     if enable_control {
         let amount = node.config.receive_minimum;
-        to_string_pretty(&AmountDto::new("amount".to_string(), amount)).unwrap()
+        to_string_pretty(&AmountDto::new(amount)).unwrap()
     } else {
         to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
     }

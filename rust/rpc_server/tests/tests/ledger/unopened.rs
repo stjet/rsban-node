@@ -41,7 +41,7 @@ fn unopened() {
             .unwrap()
     });
 
-    assert_eq!(result.value.get(&Account::zero()).unwrap(), &Amount::raw(1));
+    assert_eq!(result.accounts.get(&Account::zero()).unwrap(), &Amount::raw(1));
 
     server.abort();
 }
@@ -63,7 +63,7 @@ fn unopened_with_threshold() {
         .runtime
         .block_on(async { rpc_client.unopened(args).await.unwrap() });
 
-    assert!(result.value.is_empty());
+    assert!(result.accounts.is_empty());
 
     server.abort();
 }

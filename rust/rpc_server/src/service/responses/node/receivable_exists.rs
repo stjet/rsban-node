@@ -1,6 +1,6 @@
 use rsnano_core::BlockHash;
 use rsnano_node::Node;
-use rsnano_rpc_messages::BoolDto;
+use rsnano_rpc_messages::ExistsDto;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ pub async fn receivable_exists(
         false
     };
 
-    to_string_pretty(&BoolDto::new("exists".to_string(), exists)).unwrap()
+    to_string_pretty(&ExistsDto::new(exists)).unwrap()
 }
 
 fn block_confirmed(

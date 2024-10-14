@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountsWithAmountsDto, DelegatorsArgs};
+use rsnano_rpc_messages::{DelegatorsArgs, DelegatorsDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -25,8 +25,7 @@ pub async fn delegators(node: Arc<Node>, args: DelegatorsArgs) -> String {
 
         iter.next();
     }
-    to_string_pretty(&AccountsWithAmountsDto::new(
-        "delegators".to_string(),
+    to_string_pretty(&DelegatorsDto::new(
         delegators,
     ))
     .unwrap()

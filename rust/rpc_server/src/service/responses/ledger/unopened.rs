@@ -53,7 +53,7 @@ pub async fn unopened(
         accounts.insert(current_account, current_account_sum);
     }
 
-    let response = AccountsWithAmountsDto::new("accounts".to_string(), accounts);
+    let response = AccountsWithAmountsDto::new(accounts);
 
     to_string_pretty(&response).unwrap()
 }

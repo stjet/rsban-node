@@ -146,22 +146,22 @@ async fn handle_rpc(
         }
         RpcCommand::Stop => stop(rpc_service.node, rpc_service.enable_control).await,
         RpcCommand::AccountBlockCount(account_rpc_message) => {
-            account_block_count(rpc_service.node, account_rpc_message.value).await
+            account_block_count(rpc_service.node, account_rpc_message.account).await
         }
-        RpcCommand::AccountKey(account_rpc_message) => account_key(account_rpc_message.value).await,
+        RpcCommand::AccountKey(account_rpc_message) => account_key(account_rpc_message.account).await,
         RpcCommand::AccountGet(args) => account_get(args.key).await,
         RpcCommand::AccountRepresentative(account_rpc_message) => {
-            account_representative(rpc_service.node, account_rpc_message.value).await
+            account_representative(rpc_service.node, account_rpc_message.account).await
         }
         RpcCommand::AccountWeight(account_rpc_message) => {
-            account_weight(rpc_service.node, account_rpc_message.value).await
+            account_weight(rpc_service.node, account_rpc_message.account).await
         }
         RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
         RpcCommand::BlockConfirm(block_hash_rpc_message) => {
-            block_confirm(rpc_service.node, block_hash_rpc_message.value).await
+            block_confirm(rpc_service.node, block_hash_rpc_message.hash).await
         }
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
-        RpcCommand::BlockAccount(msg) => block_account(rpc_service.node, msg.value).await,
+        RpcCommand::BlockAccount(msg) => block_account(rpc_service.node, msg.hash).await,
         RpcCommand::Uptime => uptime(rpc_service.node).await,
         RpcCommand::Keepalive(arg) => {
             keepalive(
@@ -174,8 +174,8 @@ async fn handle_rpc(
         }
         RpcCommand::FrontierCount => frontier_count(rpc_service.node).await,
         RpcCommand::ValidateAccountNumber(_) => validate_account_number().await,
-        RpcCommand::NanoToRaw(amount_rpc_message) => nano_to_raw(amount_rpc_message.value).await,
-        RpcCommand::RawToNano(amount_rpc_message) => raw_to_nano(amount_rpc_message.value).await,
+        RpcCommand::NanoToRaw(amount_rpc_message) => nano_to_raw(amount_rpc_message.amount).await,
+        RpcCommand::RawToNano(amount_rpc_message) => raw_to_nano(amount_rpc_message.amount).await,
         RpcCommand::WalletAddWatch(args) => {
             wallet_add_watch(
                 rpc_service.node,
@@ -264,14 +264,14 @@ async fn handle_rpc(
             wallet_change_seed(rpc_service.node, rpc_service.enable_control, args).await
         }
         RpcCommand::Delegators(args) => delegators(rpc_service.node, args).await,
-        RpcCommand::DelegatorsCount(args) => delegators_count(rpc_service.node, args.value).await,
+        RpcCommand::DelegatorsCount(args) => delegators_count(rpc_service.node, args.account).await,
         RpcCommand::BlockHash(args) => block_hash(args.block).await,
         RpcCommand::AccountsBalances(args) => {
             accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await
         }
-        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.value).await,
-        RpcCommand::Blocks(args) => blocks(rpc_service.node, args.value).await,
-        RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.value).await,
+        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.hash).await,
+        RpcCommand::Blocks(args) => blocks(rpc_service.node, args.hashes).await,
+        RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.hashes).await,
         RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
         RpcCommand::Successors(args) => chain(rpc_service.node, args, true).await,
         RpcCommand::ConfirmationActive(args) => {
@@ -288,7 +288,7 @@ async fn handle_rpc(
         RpcCommand::Sign(args) => sign(rpc_service.node, args).await,
         RpcCommand::Process(args) => process(rpc_service.node, args).await,
         RpcCommand::WorkCancel(args) => {
-            work_cancel(rpc_service.node, rpc_service.enable_control, args.value).await
+            work_cancel(rpc_service.node, rpc_service.enable_control, args.hash).await
         }
         RpcCommand::Bootstrap(bootstrap_args) => {
             bootstrap(
@@ -354,7 +354,7 @@ async fn handle_rpc(
             representatives_online(rpc_service.node, args.weight, args.accounts).await
         }
         RpcCommand::Unchecked(args) => unchecked(rpc_service.node, args.count).await,
-        RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.value).await,
+        RpcCommand::UncheckedGet(args) => unchecked_get(rpc_service.node, args.hash).await,
         RpcCommand::UncheckedKeys(args) => {
             unchecked_keys(rpc_service.node, args.key, args.count).await
         }

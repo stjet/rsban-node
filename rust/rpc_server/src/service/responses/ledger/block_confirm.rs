@@ -3,7 +3,7 @@ use rsnano_node::{
     consensus::{ElectionStatus, ElectionStatusType},
     Node,
 };
-use rsnano_rpc_messages::{BoolDto, ErrorDto};
+use rsnano_rpc_messages::{ErrorDto, StartedDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -25,7 +25,7 @@ pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> String {
                 status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;
                 node.active.insert_recently_cemented(status);
             }
-            let block_confirm = BoolDto::new("started".to_string(), true);
+            let block_confirm = StartedDto::new(true);
             to_string_pretty(&block_confirm).unwrap()
         }
         None => to_string_pretty(&ErrorDto::new("Block not found".to_string())).unwrap(),

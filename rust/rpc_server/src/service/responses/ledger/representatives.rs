@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::AccountsWithAmountsDto;
+use rsnano_rpc_messages::RepresentativesDto;
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -21,8 +21,7 @@ pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Optio
     let limited_representatives: HashMap<Account, Amount> =
         representatives.into_iter().take(count as usize).collect();
 
-    to_string_pretty(&AccountsWithAmountsDto::new(
-        "representatives".to_string(),
+    to_string_pretty(&RepresentativesDto::new(
         limited_representatives,
     ))
     .unwrap()

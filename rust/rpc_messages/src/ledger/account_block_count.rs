@@ -19,6 +19,19 @@ impl AccountBlockCountArgs {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountBlockCountDto {
+    pub count: u64,
+}
+
+impl AccountBlockCountDto {
+    pub fn new(count: u64) -> Self {
+        Self {
+            count,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;

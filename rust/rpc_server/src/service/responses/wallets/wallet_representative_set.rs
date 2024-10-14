@@ -1,6 +1,6 @@
 use rsnano_core::{Account, WalletId};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{BoolDto, ErrorDto};
+use rsnano_rpc_messages::{SetDto, ErrorDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -17,7 +17,7 @@ pub async fn wallet_representative_set(
             .wallets
             .set_representative(wallet_id, representative.into(), update_existing)
         {
-            Ok(_) => to_string_pretty(&BoolDto::new("set".to_string(), true)).unwrap(),
+            Ok(_) => to_string_pretty(&SetDto::new(true)).unwrap(),
             Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {

@@ -11,15 +11,13 @@ pub async fn wallet_create(node: Arc<Node>, enable_control: bool, seed: Option<R
 
     let wallet = WalletId::random();
     node.wallets.create(wallet);
-    let mut wallet_create_dto = WalletCreateDto::new(wallet);
+    let wallet_create_dto = WalletCreateDto::new(wallet);
 
     if let Some(seed) = seed {
-        let (restored_count, first_account) = node
+        node
             .wallets
             .change_seed(wallet, &seed, 0)
             .expect("This should not fail since the wallet was just created");
-        wallet_create_dto.last_restored_account = Some(first_account);
-        wallet_create_dto.restored_count = Some(restored_count);
     }
 
     to_string_pretty(&wallet_create_dto).unwrap()

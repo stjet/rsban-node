@@ -89,7 +89,7 @@ impl NanoRpcClient {
     pub async fn representatives_online(
         &self,
         args: RepresentativesOnlineArgs,
-    ) -> Result<AccountsWithAmountsDto> {
+    ) -> Result<RepresentativesOnlineDto> {
         let cmd = RpcCommand::representatives_online(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -316,7 +316,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_representative(&self, account: Account) -> Result<AccountDto> {
+    pub async fn account_representative(&self, account: Account) -> Result<AccountRepresentativeDto> {
         let cmd = RpcCommand::account_representative(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

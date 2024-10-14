@@ -269,7 +269,7 @@ async fn handle_rpc(
         RpcCommand::AccountsBalances(args) => {
             accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await
         }
-        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.hash).await,
+        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.block).await,
         RpcCommand::Blocks(args) => blocks(rpc_service.node, args.hashes).await,
         RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.hashes).await,
         RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,

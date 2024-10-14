@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountsWithAmountsDto, ErrorDto};
+use rsnano_rpc_messages::{ErrorDto, UnopenedDto};
 use serde_json::to_string_pretty;
 use std::{collections::HashMap, sync::Arc};
 
@@ -53,7 +53,7 @@ pub async fn unopened(
         accounts.insert(current_account, current_account_sum);
     }
 
-    let response = AccountsWithAmountsDto::new(accounts);
+    let response = UnopenedDto::new(accounts);
 
     to_string_pretty(&response).unwrap()
 }

@@ -41,7 +41,10 @@ fn unopened() {
             .unwrap()
     });
 
-    assert_eq!(result.accounts.get(&Account::zero()).unwrap(), &Amount::raw(1));
+    assert_eq!(
+        result.accounts.get(&Account::zero()).unwrap(),
+        &Amount::raw(1)
+    );
 
     server.abort();
 }

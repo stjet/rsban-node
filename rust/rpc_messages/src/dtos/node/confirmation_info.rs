@@ -5,10 +5,10 @@ use std::collections::HashMap;
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ConfirmationInfoDto {
     pub announcements: u32,
-    pub voters: usize, 
+    pub voters: usize,
     pub last_winner: BlockHash,
     pub total_tally: Amount,
-    pub final_tally: Amount, 
+    pub final_tally: Amount,
     pub blocks: HashMap<BlockHash, ConfirmationBlockInfoDto>,
 }
 
@@ -30,10 +30,10 @@ impl ConfirmationInfoDto {
     ) -> Self {
         Self {
             announcements,
-            voters, 
+            voters,
             last_winner,
             total_tally,
-            final_tally, 
+            final_tally,
             blocks,
         }
     }

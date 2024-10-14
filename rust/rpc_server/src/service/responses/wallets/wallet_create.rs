@@ -14,8 +14,7 @@ pub async fn wallet_create(node: Arc<Node>, enable_control: bool, seed: Option<R
     let wallet_create_dto = WalletCreateDto::new(wallet);
 
     if let Some(seed) = seed {
-        node
-            .wallets
+        node.wallets
             .change_seed(wallet, &seed, 0)
             .expect("This should not fail since the wallet was just created");
     }

@@ -11,4 +11,3 @@ impl AccountDto {
         Self { account }
     }
 }
-

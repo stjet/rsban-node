@@ -70,4 +70,3 @@ impl WalletLedgerArgsBuilder {
         self.args
     }
 }
-

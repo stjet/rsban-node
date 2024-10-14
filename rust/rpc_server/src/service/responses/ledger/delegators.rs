@@ -25,8 +25,5 @@ pub async fn delegators(node: Arc<Node>, args: DelegatorsArgs) -> String {
 
         iter.next();
     }
-    to_string_pretty(&DelegatorsDto::new(
-        delegators,
-    ))
-    .unwrap()
+    to_string_pretty(&DelegatorsDto::new(delegators)).unwrap()
 }

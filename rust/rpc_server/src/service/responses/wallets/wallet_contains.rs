@@ -1,6 +1,6 @@
 use rsnano_core::{Account, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ExistsDto, ErrorDto};
+use rsnano_rpc_messages::{ErrorDto, ExistsDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 

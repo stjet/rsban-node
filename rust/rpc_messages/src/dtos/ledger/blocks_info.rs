@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use super::BlockInfoDto;
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
-use super::BlockInfoDto;
+use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlocksInfoDto {

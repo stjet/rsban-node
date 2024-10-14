@@ -39,6 +39,7 @@ mod work_set;
 
 pub use account_create::*;
 pub use account_move::*;
+pub use account_remove::*;
 pub use accounts_create::*;
 pub use receive::*;
 pub use send::*;

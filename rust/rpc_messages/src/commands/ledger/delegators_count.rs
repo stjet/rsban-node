@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DelegatorsCountArgs {
-    pub account: Account
+    pub account: Account,
 }
 
 impl DelegatorsCountArgs {

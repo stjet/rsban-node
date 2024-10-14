@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct UnopenedDto {

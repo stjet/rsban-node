@@ -176,10 +176,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn bootstrap(
-        &self,
-        args: BootstrapArgs
-    ) -> Result<SuccessDto> {
+    pub async fn bootstrap(&self, args: BootstrapArgs) -> Result<SuccessDto> {
         let cmd = RpcCommand::bootstrap(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -191,19 +188,13 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn process(
-        &self,
-        process_args: impl Into<ProcessArgs>,
-    ) -> Result<HashDto> {
+    pub async fn process(&self, process_args: impl Into<ProcessArgs>) -> Result<HashDto> {
         let cmd = RpcCommand::process(process_args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn sign(
-        &self,
-        args: impl Into<SignArgs>
-    ) -> Result<SignDto> {
+    pub async fn sign(&self, args: impl Into<SignArgs>) -> Result<SignDto> {
         let cmd = RpcCommand::sign(args.into());
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)
@@ -227,10 +218,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_create(
-        &self,
-        args: impl Into<AccountCreateArgs>,
-    ) -> Result<AccountDto> {
+    pub async fn account_create(&self, args: impl Into<AccountCreateArgs>) -> Result<AccountDto> {
         let cmd = RpcCommand::account_create(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)
@@ -316,7 +304,10 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_representative(&self, account: Account) -> Result<AccountRepresentativeDto> {
+    pub async fn account_representative(
+        &self,
+        account: Account,
+    ) -> Result<AccountRepresentativeDto> {
         let cmd = RpcCommand::account_representative(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -557,10 +548,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn delegators(
-        &self,
-        args: impl Into<DelegatorsArgs>,
-    ) -> Result<DelegatorsDto> {
+    pub async fn delegators(&self, args: impl Into<DelegatorsArgs>) -> Result<DelegatorsDto> {
         let cmd = RpcCommand::delegators(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

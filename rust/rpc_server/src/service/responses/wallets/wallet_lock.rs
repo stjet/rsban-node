@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{LockedDto, ErrorDto};
+use rsnano_rpc_messages::{ErrorDto, LockedDto};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 

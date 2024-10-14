@@ -17,7 +17,7 @@ impl ErrorDto {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorDto2 {
     WalletsError(WalletsError),
-    RPCControlDisabled
+    RPCControlDisabled,
 }
 
 impl fmt::Display for ErrorDto2 {

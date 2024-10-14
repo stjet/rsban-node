@@ -107,7 +107,10 @@ fn bootstrap_id_none() {
     let port = node2.tcp_listener.local_address().port();
 
     node1.runtime.spawn(async move {
-        rpc_client.bootstrap(BootstrapArgs::new(address, port)).await.unwrap();
+        rpc_client
+            .bootstrap(BootstrapArgs::new(address, port))
+            .await
+            .unwrap();
     });
 
     // TODO: this fails because bootstrap2 also call block_on

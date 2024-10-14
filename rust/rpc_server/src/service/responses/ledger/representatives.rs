@@ -21,8 +21,5 @@ pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Optio
     let limited_representatives: HashMap<Account, Amount> =
         representatives.into_iter().take(count as usize).collect();
 
-    to_string_pretty(&RepresentativesDto::new(
-        limited_representatives,
-    ))
-    .unwrap()
+    to_string_pretty(&RepresentativesDto::new(limited_representatives)).unwrap()
 }

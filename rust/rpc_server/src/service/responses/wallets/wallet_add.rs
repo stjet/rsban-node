@@ -14,10 +14,7 @@ pub async fn wallet_add(
     if enable_control {
         let generate_work = work.unwrap_or(true);
         match node.wallets.insert_adhoc2(&wallet, &raw_key, generate_work) {
-            Ok(account) => to_string_pretty(&AccountDto::new(
-                account.as_account(),
-            ))
-            .unwrap(),
+            Ok(account) => to_string_pretty(&AccountDto::new(account.as_account())).unwrap(),
             Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
         }
     } else {

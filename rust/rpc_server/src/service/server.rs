@@ -26,12 +26,14 @@ use axum::{
     Json, Router,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountMoveArgs, ErrorDto2, RpcCommand, WalletAddArgs, WalletBalancesArgs};
+use rsnano_rpc_messages::{
+    AccountMoveArgs, ErrorDto2, RpcCommand, WalletAddArgs, WalletBalancesArgs,
+};
+use serde::Serialize;
+use serde_json::to_string_pretty;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-use serde::Serialize;
-use serde_json::to_string_pretty;
 
 #[derive(Clone)]
 struct RpcService {
@@ -69,27 +71,22 @@ async fn handle_rpc(
 ) -> Response {
     let response = match rpc_command {
         RpcCommand::AccountCreate(args) => {
-            account_create(
-                rpc_service.node,
-                rpc_service.enable_control,
-                args
-            )
-            .await.to_json_string()
+            account_create(rpc_service.node, rpc_service.enable_control, args)
+                .await
+                .to_json_string()
         }
-        RpcCommand::AccountBalance(args) => {
-            account_balance(rpc_service.node, args.account, args.include_only_confirmed).await.to_json_string()
-        }
+        RpcCommand::AccountBalance(args) => account_balance(rpc_service.node, args)
+            .await
+            .to_json_string(),
         RpcCommand::AccountsCreate(args) => {
-            accounts_create(rpc_service.node, rpc_service.enable_control, args).await.to_json_string()
+            accounts_create(rpc_service.node, rpc_service.enable_control, args)
+                .await
+                .to_json_string()
         }
         RpcCommand::AccountRemove(args) => {
-            account_remove(
-                rpc_service.node,
-                rpc_service.enable_control,
-                args.wallet,
-                args.account,
-            )
-            .await
+            account_remove(rpc_service.node, rpc_service.enable_control, args)
+                .await
+                .to_json_string()
         }
         RpcCommand::AccountMove(AccountMoveArgs {
             wallet,
@@ -148,7 +145,9 @@ async fn handle_rpc(
         RpcCommand::AccountBlockCount(account_rpc_message) => {
             account_block_count(rpc_service.node, account_rpc_message.account).await
         }
-        RpcCommand::AccountKey(account_rpc_message) => account_key(account_rpc_message.account).await,
+        RpcCommand::AccountKey(account_rpc_message) => {
+            account_key(account_rpc_message.account).await
+        }
         RpcCommand::AccountGet(args) => account_get(args.key).await,
         RpcCommand::AccountRepresentative(account_rpc_message) => {
             account_representative(rpc_service.node, account_rpc_message.account).await

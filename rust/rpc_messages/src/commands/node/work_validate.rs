@@ -20,4 +20,3 @@ impl WorkValidateArgs {
         Self { work, hash }
     }
 }
-

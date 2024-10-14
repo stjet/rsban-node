@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct NanoToRawArgs {
-    pub amount: Amount
+    pub amount: Amount,
 }
 
 impl NanoToRawArgs {

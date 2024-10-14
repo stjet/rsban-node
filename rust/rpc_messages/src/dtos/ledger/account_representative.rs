@@ -3,13 +3,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountRepresentativeDto {
-    pub representative: Account
+    pub representative: Account,
 }
 
 impl AccountRepresentativeDto {
     pub fn new(representative: Account) -> Self {
-        Self {
-            representative
-        }
+        Self { representative }
     }
 }

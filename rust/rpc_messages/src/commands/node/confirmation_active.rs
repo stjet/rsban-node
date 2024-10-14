@@ -18,4 +18,3 @@ impl ConfirmationActiveArgs {
         Self { announcements }
     }
 }
-

@@ -27,7 +27,7 @@ impl UnopenedArgs {
 
     pub fn builder(account: Account, count: u64) -> UnopenedArgsBuilder {
         UnopenedArgsBuilder {
-            args: UnopenedArgs::new(account, count)
+            args: UnopenedArgs::new(account, count),
         }
     }
 }
@@ -69,7 +69,9 @@ mod tests {
 
     #[test]
     fn serialize_unopened_args_threshold_some() {
-        let args = UnopenedArgs::builder(Account::zero(), 1).with_minimum_balance(Amount::zero()).build();
+        let args = UnopenedArgs::builder(Account::zero(), 1)
+            .with_minimum_balance(Amount::zero())
+            .build();
         let json = to_value(args).unwrap();
 
         assert_eq!(
@@ -100,7 +102,9 @@ mod tests {
 
     #[test]
     fn serialize_unopened_command_threshold_some() {
-        let args = UnopenedArgs::builder(Account::zero(), 1).with_minimum_balance(Amount::zero()).build();
+        let args = UnopenedArgs::builder(Account::zero(), 1)
+            .with_minimum_balance(Amount::zero())
+            .build();
         let command = RpcCommand::unopened(args);
         let json = to_value(command).unwrap();
 
@@ -124,10 +128,7 @@ mod tests {
 
         let args: UnopenedArgs = from_value(json).unwrap();
 
-        assert_eq!(
-            args,
-            UnopenedArgs::new(Account::zero(), 1)
-        );
+        assert_eq!(args, UnopenedArgs::new(Account::zero(), 1));
     }
 
     #[test]
@@ -142,7 +143,9 @@ mod tests {
 
         assert_eq!(
             args,
-            UnopenedArgs::builder(Account::zero(), 1).with_minimum_balance(Amount::zero()).build()
+            UnopenedArgs::builder(Account::zero(), 1)
+                .with_minimum_balance(Amount::zero())
+                .build()
         );
     }
 
@@ -175,7 +178,11 @@ mod tests {
 
         assert_eq!(
             command,
-            RpcCommand::Unopened(UnopenedArgs::builder(Account::zero(), 1).with_minimum_balance(Amount::zero()).build())
+            RpcCommand::Unopened(
+                UnopenedArgs::builder(Account::zero(), 1)
+                    .with_minimum_balance(Amount::zero())
+                    .build()
+            )
         );
     }
 

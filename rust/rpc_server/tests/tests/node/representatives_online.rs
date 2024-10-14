@@ -140,8 +140,12 @@ fn representatives_online() {
         .block_on(async { rpc_client.representatives_online(args).await.unwrap() });
 
     assert_eq!(filtered_result.representatives.len(), 1);
-    assert!(filtered_result.representatives.contains_key(&new_rep.into()));
-    assert!(!filtered_result.representatives.contains_key(&(*DEV_GENESIS_ACCOUNT)));
+    assert!(filtered_result
+        .representatives
+        .contains_key(&new_rep.into()));
+    assert!(!filtered_result
+        .representatives
+        .contains_key(&(*DEV_GENESIS_ACCOUNT)));
 
     // Ensure node2 has the same view of online representatives
     let node2_online_reps = node2.online_reps.lock().unwrap().online_reps().count();

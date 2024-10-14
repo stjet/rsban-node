@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlocksInfoArgs {
-    pub hashes: Vec<BlockHash>
+    pub hashes: Vec<BlockHash>,
 }
 
 impl BlocksInfoArgs {

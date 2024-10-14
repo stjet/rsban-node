@@ -32,16 +32,14 @@ fn sign() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let args: SignArgs = SignArgs::builder(send.json_representation()).wallet(wallet_id).account(key.public_key().into()).build();
+    let args: SignArgs = SignArgs::builder(send.json_representation())
+        .wallet(wallet_id)
+        .account(key.public_key().into())
+        .build();
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .sign(
-                args
-            )
-            .await
-            .unwrap()
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.sign(args).await.unwrap() });
 
     let signed_block: BlockEnum = result.block.into();
 
@@ -75,11 +73,9 @@ fn sign_without_key() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .sign(send.json_representation())
-            .await
-    });
+    let result = node
+        .runtime
+        .block_on(async { rpc_client.sign(send.json_representation()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),

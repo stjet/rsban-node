@@ -1,8 +1,8 @@
+use crate::RpcResult;
 use rsnano_core::Account;
 use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{AccountsCreateArgs, AccountsDto, ErrorDto2};
 use std::sync::Arc;
-use crate::RpcResult;
 
 pub async fn accounts_create(
     node: Arc<Node>,
@@ -24,6 +24,6 @@ pub async fn accounts_create(
 
     match accounts {
         Ok(accounts) => RpcResult::Ok(AccountsDto::new(accounts)),
-        Err(e) => RpcResult::Err(ErrorDto2::WalletsError(e))
+        Err(e) => RpcResult::Err(ErrorDto2::WalletsError(e)),
     }
 }

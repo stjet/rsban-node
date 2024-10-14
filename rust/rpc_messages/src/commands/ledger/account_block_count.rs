@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountBlockCountArgs {
-    pub account: Account
+    pub account: Account,
 }
 
 impl AccountBlockCountArgs {
@@ -26,9 +26,7 @@ pub struct AccountBlockCountDto {
 
 impl AccountBlockCountDto {
     pub fn new(count: u64) -> Self {
-        Self {
-            count,
-        }
+        Self { count }
     }
 }
 

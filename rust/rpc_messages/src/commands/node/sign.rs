@@ -62,4 +62,3 @@ impl SignArgsBuilder {
         self.args
     }
 }
-

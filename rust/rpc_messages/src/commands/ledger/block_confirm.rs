@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlockConfirmArgs {
-    pub hash: BlockHash
+    pub hash: BlockHash,
 }
 
 impl BlockConfirmArgs {

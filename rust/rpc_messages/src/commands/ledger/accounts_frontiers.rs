@@ -10,7 +10,7 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsFrontiersArgs {
-    pub accounts: Vec<Account>
+    pub accounts: Vec<Account>,
 }
 
 impl AccountsFrontiersArgs {

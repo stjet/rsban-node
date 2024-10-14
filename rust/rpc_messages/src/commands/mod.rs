@@ -23,7 +23,7 @@ pub enum RpcCommand {
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
     AccountsCreate(AccountsCreateArgs),
-    AccountRemove(WalletWithAccountArgs),
+    AccountRemove(AccountRemoveArgs),
     AccountMove(AccountMoveArgs),
     AccountList(WalletRpcMessage),
     WalletCreate(WalletCreateArgs),

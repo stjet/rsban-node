@@ -16,9 +16,7 @@ pub struct FrontiersArgs {
 
 impl FrontiersArgs {
     pub fn new(account: Account, count: u64) -> Self {
-        Self {
-            account, count
-        }
+        Self { account, count }
     }
 }
 

@@ -18,4 +18,3 @@ impl UncheckedArgs {
         Self { count }
     }
 }
-

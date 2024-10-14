@@ -54,8 +54,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> String {
                         node.active.erase(&block.qualified_root());
                         node.block_processor.force(Arc::new(block.clone()));
                         let hash = block.hash();
-                        to_string_pretty(&HashDto::new(hash))
-                            .unwrap()
+                        to_string_pretty(&HashDto::new(hash)).unwrap()
                     } else {
                         to_string_pretty(&ErrorDto::new("Fork".to_string())).unwrap()
                     }

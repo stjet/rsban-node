@@ -1,13 +1,12 @@
-use crate::RpcResult;
 use rsnano_core::Amount;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto};
+use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_balance(
     node: Arc<Node>,
     args: AccountBalanceArgs,
-) -> RpcResult<AccountBalanceDto> {
+) -> RpcDto {
     let tx = node.ledger.read_txn();
     let include_unconfirmed_blocks = args.include_only_confirmed.unwrap_or(false);
 
@@ -29,5 +28,5 @@ pub async fn account_balance(
 
     let account_balance_dto = AccountBalanceDto::new(balance, pending, pending);
 
-    RpcResult::Ok(account_balance_dto)
+    RpcDto::AccountBalance(account_balance_dto)
 }

@@ -15,6 +15,7 @@ impl ErrorDto {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "error")]
 pub enum ErrorDto2 {
     WalletsError(WalletsError),
     RPCControlDisabled,

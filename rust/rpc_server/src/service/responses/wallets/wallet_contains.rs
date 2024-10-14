@@ -1,18 +1,16 @@
-use rsnano_core::{Account, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, ExistsDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, ExistsDto, RpcDto, WalletContainsArgs};
 use std::sync::Arc;
 
-pub async fn wallet_contains(node: Arc<Node>, wallet: WalletId, account: Account) -> String {
-    let wallet_accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
+pub async fn wallet_contains(node: Arc<Node>, args: WalletContainsArgs) -> RpcDto {
+    let wallet_accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
     };
 
-    if wallet_accounts.contains(&account) {
-        to_string_pretty(&ExistsDto::new(true)).unwrap()
+    if wallet_accounts.contains(&args.account) {
+        RpcDto::Exists(ExistsDto::new(true))
     } else {
-        to_string_pretty(&ExistsDto::new(false)).unwrap()
+        RpcDto::Exists(ExistsDto::new(false))
     }
 }

@@ -27,7 +27,7 @@ pub enum RpcCommand {
     AccountMove(AccountMoveArgs),
     AccountList(AccountListArgs),
     WalletCreate(WalletCreateArgs),
-    WalletContains(WalletWithAccountArgs),
+    WalletContains(WalletContainsArgs),
     WalletDestroy(WalletRpcMessage),
     WalletLock(WalletRpcMessage),
     WalletLocked(WalletRpcMessage),

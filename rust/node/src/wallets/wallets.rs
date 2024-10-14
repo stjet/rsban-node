@@ -26,7 +26,8 @@ use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbEnv, LmdbIteratorImpl, LmdbWalletStore,
     LmdbWriteTransaction, Transaction,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
+use thiserror::Error;
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -40,18 +41,26 @@ use std::{
 };
 use tracing::{info, warn};
 
-#[derive(FromPrimitive, Debug, Serialize, Deserialize)]
+#[derive(Error, FromPrimitive, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum WalletsError {
+    #[error("No error")]
     None,
+    #[error("Unknown error")]
     Generic,
+    #[error("Wallet not found")]
     WalletNotFound,
+    #[error("Wallet is locked")]
     WalletLocked,
+    #[error("Account not found")]
     AccountNotFound,
+    #[error("Invalid password")]
     InvalidPassword,
+    #[error("Bad public key")]
     BadPublicKey,
 }
 
-impl fmt::Display for WalletsError {
+/*impl fmt::Display for WalletsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error_message = match self {
             WalletsError::None => "No error",
@@ -64,7 +73,7 @@ impl fmt::Display for WalletsError {
         };
         write!(f, "{}", error_message)
     }
-}
+}*/
 
 pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 

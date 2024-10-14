@@ -27,7 +27,7 @@ use axum::{
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{
-    AccountMoveArgs, ErrorDto2, RpcCommand, WalletAddArgs, WalletBalancesArgs,
+    ErrorDto2, RpcCommand, RpcDto, WalletBalancesArgs
 };
 use serde::Serialize;
 use serde_json::to_string_pretty;
@@ -70,53 +70,17 @@ async fn handle_rpc(
     Json(rpc_command): Json<RpcCommand>,
 ) -> Response {
     let response = match rpc_command {
-        RpcCommand::AccountCreate(args) => {
-            account_create(rpc_service.node, rpc_service.enable_control, args)
-                .await
-                .to_json_string()
-        }
-        RpcCommand::AccountBalance(args) => account_balance(rpc_service.node, args)
-            .await
-            .to_json_string(),
-        RpcCommand::AccountsCreate(args) => {
-            accounts_create(rpc_service.node, rpc_service.enable_control, args)
-                .await
-                .to_json_string()
-        }
-        RpcCommand::AccountRemove(args) => {
-            account_remove(rpc_service.node, rpc_service.enable_control, args)
-                .await
-                .to_json_string()
-        }
-        RpcCommand::AccountMove(args) => {
-            account_move(
-                rpc_service.node,
-                rpc_service.enable_control,
-                args
-            )
-            .await.to_json_string()
-        }
-        RpcCommand::AccountList(args) => {
-            account_list(rpc_service.node, args).await.to_json_string()
-        }
-        RpcCommand::WalletCreate(args) => {
-            wallet_create(rpc_service.node, rpc_service.enable_control, args.seed).await
-        }
+        RpcCommand::AccountCreate(args) => account_create(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountBalance(args) => account_balance(rpc_service.node, args).await,
+        RpcCommand::AccountsCreate(args) => accounts_create(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountRemove(args) => account_remove(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountMove(args) => account_move(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::AccountList(args) => account_list(rpc_service.node, args).await,
+        RpcCommand::WalletCreate(args) => wallet_create(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::KeyCreate => key_create().await,
-        RpcCommand::WalletAdd(WalletAddArgs { wallet, key, work }) => {
-            wallet_add(
-                rpc_service.node,
-                rpc_service.enable_control,
-                wallet,
-                key,
-                work,
-            )
-            .await
-        }
-        RpcCommand::WalletContains(args) => {
-            wallet_contains(rpc_service.node, args.wallet, args.account).await
-        }
-        RpcCommand::WalletDestroy(wallet_rpc_message) => {
+        RpcCommand::WalletAdd(args) => wallet_add(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::WalletContains(args) => wallet_contains(rpc_service.node, args).await,
+        /*RpcCommand::WalletDestroy(wallet_rpc_message) => {
             wallet_destroy(
                 rpc_service.node,
                 rpc_service.enable_control,
@@ -378,11 +342,11 @@ async fn handle_rpc(
         }
         RpcCommand::BlockCreate(args) => {
             block_create(rpc_service.node, rpc_service.enable_control, args).await
-        }
+        }*/
         _ => todo!(),
     };
 
-    (StatusCode::OK, response).into_response()
+    (StatusCode::OK, to_string_pretty(&response).unwrap()).into_response()
 }
 
 async fn set_header<B>(mut request: Request<B>) -> Request<B> {
@@ -392,17 +356,17 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
     request
 }
 
-#[derive(Serialize)]
-pub enum RpcResult<T> {
-    Ok(T),
+/*#[derive(Serialize)]
+pub enum RpcResult {
+    Ok(RpcDto),
     Err(ErrorDto2),
 }
 
-impl<T: Serialize> RpcResult<T> {
+impl RpcResult {
     pub fn to_json_string(&self) -> String {
         match self {
             RpcResult::Ok(value) => to_string_pretty(value).unwrap(),
             RpcResult::Err(error) => format!("{{ \n  \"error\": \"{}\" \n}}", error),
         }
     }
-}
+}*/

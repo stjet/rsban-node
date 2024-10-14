@@ -3836,6 +3836,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "test_helpers",
+ "thiserror",
  "threadpool",
  "timer",
  "tokio",

@@ -1,13 +1,38 @@
+use std::fmt;
+
+use rsnano_node::wallets::WalletsError;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ErrorDto {
-    error: String,
+    pub error: String,
 }
 
 impl ErrorDto {
     pub fn new(error: String) -> Self {
         Self { error }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ErrorDto2 {
+    WalletsError(WalletsError),
+    RPCControlDisabled
+}
+
+impl fmt::Display for ErrorDto2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let error_message = match self {
+            Self::WalletsError(e) => e.to_string(),
+            Self::RPCControlDisabled => "RPC control is disabled".to_string(),
+        };
+        write!(f, "{}", error_message)
+    }
+}
+
+impl From<WalletsError> for ErrorDto {
+    fn from(error: WalletsError) -> Self {
+        ErrorDto::new(error.to_string())
     }
 }
 

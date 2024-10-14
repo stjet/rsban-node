@@ -1,14 +1,14 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
 use rsnano_rpc_messages::AccountBalanceDto;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
+use crate::RpcResult;
 
 pub async fn account_balance(
     node: Arc<Node>,
     account: Account,
     include_unconfirmed_blocks: Option<bool>,
-) -> String {
+) -> RpcResult<AccountBalanceDto> {
     let tx = node.ledger.read_txn();
     let include_unconfirmed_blocks = include_unconfirmed_blocks.unwrap_or(false);
 
@@ -28,7 +28,7 @@ pub async fn account_balance(
         .ledger
         .account_receivable(&tx, &account, !include_unconfirmed_blocks);
 
-    let account_balance = AccountBalanceDto::new(balance, pending, pending);
-
-    to_string_pretty(&account_balance).unwrap()
+    let account_balance_dto = AccountBalanceDto::new(balance, pending, pending);
+    
+    RpcResult::Ok(account_balance_dto)
 }

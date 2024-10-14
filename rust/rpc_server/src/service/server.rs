@@ -26,10 +26,27 @@ use axum::{
     Json, Router,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountMoveArgs, RpcCommand, WalletAddArgs, WalletBalancesArgs};
+use rsnano_rpc_messages::{AccountMoveArgs, ErrorDto2, RpcCommand, WalletAddArgs, WalletBalancesArgs};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
+use serde::Serialize;
+use serde_json::to_string_pretty;
+
+#[derive(Serialize)]
+pub enum RpcResult<T> {
+    Ok(T),
+    Err(ErrorDto2),
+}
+
+impl<T: Serialize> RpcResult<T> {
+    pub fn to_json_string(&self) -> String {
+        match self {
+            RpcResult::Ok(value) => to_string_pretty(value).unwrap(),
+            RpcResult::Err(error) => format!("{{ \n  \"error\": \"{}\" \n}}", error),
+        }
+    }
+}
 
 #[derive(Clone)]
 struct RpcService {
@@ -74,10 +91,10 @@ async fn handle_rpc(
                 args.index,
                 args.work,
             )
-            .await
+            .await.to_json_string()
         }
         RpcCommand::AccountBalance(args) => {
-            account_balance(rpc_service.node, args.account, args.include_only_confirmed).await
+            account_balance(rpc_service.node, args.account, args.include_only_confirmed).await.to_json_string()
         }
         RpcCommand::AccountsCreate(args) => {
             accounts_create(rpc_service.node, rpc_service.enable_control, args).await

@@ -88,22 +88,16 @@ async fn handle_rpc(
                 .await
                 .to_json_string()
         }
-        RpcCommand::AccountMove(AccountMoveArgs {
-            wallet,
-            source,
-            accounts,
-        }) => {
+        RpcCommand::AccountMove(args) => {
             account_move(
                 rpc_service.node,
                 rpc_service.enable_control,
-                wallet,
-                source,
-                accounts,
+                args
             )
-            .await
+            .await.to_json_string()
         }
-        RpcCommand::AccountList(wallet_rpc_message) => {
-            account_list(rpc_service.node, wallet_rpc_message.wallet).await
+        RpcCommand::AccountList(args) => {
+            account_list(rpc_service.node, args).await.to_json_string()
         }
         RpcCommand::WalletCreate(args) => {
             wallet_create(rpc_service.node, rpc_service.enable_control, args.seed).await

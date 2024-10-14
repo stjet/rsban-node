@@ -1,9 +1,21 @@
-use crate::{RpcCommand, WalletRpcMessage};
+use crate::RpcCommand;
 use rsnano_core::WalletId;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn account_list(wallet: WalletId) -> Self {
-        Self::AccountList(WalletRpcMessage { wallet })
+        Self::AccountList(AccountListArgs { wallet })
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountListArgs {
+    pub wallet: WalletId,
+}
+
+impl AccountListArgs {
+    pub fn new(wallet: WalletId) -> Self {
+        Self { wallet }
     }
 }
 

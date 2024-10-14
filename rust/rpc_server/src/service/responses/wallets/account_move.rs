@@ -1,25 +1,24 @@
-use rsnano_core::{Account, PublicKey, WalletId};
+use rsnano_core::PublicKey;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, MovedDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountMoveArgs, ErrorDto2, MovedDto};
 use std::sync::Arc;
+
+use crate::RpcResult;
 
 pub async fn account_move(
     node: Arc<Node>,
     enable_control: bool,
-    target: WalletId,
-    source: WalletId,
-    accounts: Vec<Account>,
-) -> String {
+    args: AccountMoveArgs
+) -> RpcResult<MovedDto> {
     if enable_control {
-        let public_keys: Vec<PublicKey> = accounts.iter().map(|account| account.into()).collect();
-        let result = node.wallets.move_accounts(&source, &target, &public_keys);
+        let public_keys: Vec<PublicKey> = args.accounts.iter().map(|account| account.into()).collect();
+        let result = node.wallets.move_accounts(&args.source, &args.wallet, &public_keys);
 
         match result {
-            Ok(()) => to_string_pretty(&MovedDto::new(true)).unwrap(),
-            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+            Ok(()) => RpcResult::Ok(MovedDto::new(true)),
+            Err(e) => RpcResult::Err(ErrorDto2::WalletsError(e)),
         }
     } else {
-        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
+        RpcResult::Err(ErrorDto2::RPCControlDisabled)
     }
 }

@@ -56,13 +56,13 @@ impl eframe::App for InsightApp {
         });
 
         egui::SidePanel::left("overview_panel")
-            .default_width(400.0)
+            .default_width(300.0)
             .min_width(300.0)
             .resizable(true)
             .show(ctx, |ui| {
                 TableBuilder::new(ui)
                     .striped(true)
-                    .resizable(true)
+                    .resizable(false)
                     .auto_shrink(false)
                     .sense(Sense::click())
                     .column(Column::auto())
@@ -82,6 +82,9 @@ impl eframe::App for InsightApp {
                     .body(|body| {
                         body.rows(20.0, self.model.message_count(), |mut row| {
                             let row_model = self.model.get_row(row.index());
+                            if row_model.is_selected {
+                                row.set_selected(true);
+                            }
                             row.col(|ui| {
                                 ui.add(Label::new(row_model.channel_id).selectable(false));
                             });

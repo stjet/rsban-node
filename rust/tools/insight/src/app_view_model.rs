@@ -1,7 +1,7 @@
 use crate::{
-    app_model::{AppModel, NodeState, RecordedMessage},
+    message_recorder::{make_node_callbacks, MessageRecorder, RecordedMessage},
     node_factory::NodeFactory,
-    node_runner::NodeRunner,
+    node_runner::{NodeRunner, NodeState},
     nullable_runtime::NullableRuntime,
 };
 use num_format::{Locale, ToFormattedString};
@@ -10,16 +10,18 @@ use std::sync::{atomic::Ordering, Arc};
 
 pub(crate) struct AppViewModel {
     node_runner: NodeRunner,
-    model: Arc<AppModel>,
+    recorder: Arc<MessageRecorder>,
     selected: Option<MessageDetailsModel>,
+    selected_index: Option<usize>,
 }
 
 impl AppViewModel {
     pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
         Self {
             node_runner: NodeRunner::new(runtime, node_factory),
-            model: Arc::new(AppModel::new()),
+            recorder: Arc::new(MessageRecorder::new()),
             selected: None,
+            selected_index: None,
         }
     }
 
@@ -31,23 +33,24 @@ impl AppViewModel {
     }
 
     pub(crate) fn can_start_node(&self) -> bool {
-        self.model.node_state() == NodeState::Stopped
+        self.node_runner.state() == NodeState::Stopped
     }
 
     pub(crate) fn can_stop_node(&self) -> bool {
-        self.model.node_state() == NodeState::Started
+        self.node_runner.state() == NodeState::Started
     }
 
     pub(crate) fn start_beta_node(&mut self) {
-        self.node_runner.start_beta_node(self.model.clone());
+        let callbacks = make_node_callbacks(self.recorder.clone());
+        self.node_runner.start_beta_node(callbacks);
     }
 
     pub(crate) fn stop_node(&mut self) {
-        self.node_runner.stop_node(self.model.clone());
+        self.node_runner.stop();
     }
 
     pub(crate) fn status(&self) -> &'static str {
-        match self.model.node_state() {
+        match self.node_runner.state() {
             NodeState::Starting => "starting...",
             NodeState::Started => "running",
             NodeState::Stopping => "stopping...",
@@ -56,21 +59,21 @@ impl AppViewModel {
     }
 
     pub(crate) fn messages_sent(&self) -> String {
-        self.model
+        self.recorder
             .published
             .load(Ordering::SeqCst)
             .to_formatted_string(&Locale::en)
     }
 
     pub(crate) fn messages_received(&self) -> String {
-        self.model
+        self.recorder
             .inbound
             .load(Ordering::SeqCst)
             .to_formatted_string(&Locale::en)
     }
 
     pub(crate) fn get_row(&self, index: usize) -> RowModel {
-        let message = self.model.get_message(index).unwrap();
+        let message = self.recorder.get_message(index).unwrap();
         RowModel {
             channel_id: message.channel_id.to_string(),
             direction: if message.direction == ChannelDirection::Inbound {
@@ -79,11 +82,12 @@ impl AppViewModel {
                 "out".into()
             },
             message: format!("{:?}", message.message.message_type()),
+            is_selected: self.selected_index == Some(index),
         }
     }
 
     pub(crate) fn message_count(&self) -> usize {
-        self.model.message_count()
+        self.recorder.message_count()
     }
 
     pub(crate) fn selected_message(&self) -> Option<MessageDetailsModel> {
@@ -91,8 +95,9 @@ impl AppViewModel {
     }
 
     pub(crate) fn select_message(&mut self, index: usize) {
-        let message = self.model.get_message(index).unwrap();
+        let message = self.recorder.get_message(index).unwrap();
         self.selected = Some(message.into());
+        self.selected_index = Some(index);
     }
 }
 
@@ -123,6 +128,7 @@ pub(crate) struct RowModel {
     pub channel_id: String,
     pub direction: String,
     pub message: String,
+    pub is_selected: bool,
 }
 
 impl Default for AppViewModel {

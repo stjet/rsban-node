@@ -1,6 +1,6 @@
 mod app;
-mod app_model;
 mod app_view_model;
+mod message_recorder;
 mod node_factory;
 mod node_runner;
 mod nullable_runtime;
@@ -21,6 +21,9 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "RsNano Insight",
         options,
-        Box::new(|cc| Ok(Box::new(InsightApp::new(model)))),
+        Box::new(|cc| {
+            cc.egui_ctx.set_zoom_factor(1.25);
+            Ok(Box::new(InsightApp::new(model)))
+        }),
     )
 }

@@ -33,21 +33,6 @@ use tracing::info;
 use serde::Serialize;
 use serde_json::to_string_pretty;
 
-#[derive(Serialize)]
-pub enum RpcResult<T> {
-    Ok(T),
-    Err(ErrorDto2),
-}
-
-impl<T: Serialize> RpcResult<T> {
-    pub fn to_json_string(&self) -> String {
-        match self {
-            RpcResult::Ok(value) => to_string_pretty(value).unwrap(),
-            RpcResult::Err(error) => format!("{{ \n  \"error\": \"{}\" \n}}", error),
-        }
-    }
-}
-
 #[derive(Clone)]
 struct RpcService {
     node: Arc<Node>,
@@ -87,9 +72,7 @@ async fn handle_rpc(
             account_create(
                 rpc_service.node,
                 rpc_service.enable_control,
-                args.wallet,
-                args.index,
-                args.work,
+                args
             )
             .await.to_json_string()
         }
@@ -97,7 +80,7 @@ async fn handle_rpc(
             account_balance(rpc_service.node, args.account, args.include_only_confirmed).await.to_json_string()
         }
         RpcCommand::AccountsCreate(args) => {
-            accounts_create(rpc_service.node, rpc_service.enable_control, args).await
+            accounts_create(rpc_service.node, rpc_service.enable_control, args).await.to_json_string()
         }
         RpcCommand::AccountRemove(args) => {
             account_remove(
@@ -414,4 +397,19 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
         .headers_mut()
         .insert("Content-Type", "application/json".parse().unwrap());
     request
+}
+
+#[derive(Serialize)]
+pub enum RpcResult<T> {
+    Ok(T),
+    Err(ErrorDto2),
+}
+
+impl<T: Serialize> RpcResult<T> {
+    pub fn to_json_string(&self) -> String {
+        match self {
+            RpcResult::Ok(value) => to_string_pretty(value).unwrap(),
+            RpcResult::Err(error) => format!("{{ \n  \"error\": \"{}\" \n}}", error),
+        }
+    }
 }

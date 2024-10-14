@@ -1,16 +1,16 @@
 use rsnano_core::Account;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountsCreateArgs, AccountsDto, ErrorDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountsCreateArgs, AccountsDto, ErrorDto2};
 use std::sync::Arc;
+use crate::RpcResult;
 
 pub async fn accounts_create(
     node: Arc<Node>,
     enable_control: bool,
     args: AccountsCreateArgs,
-) -> String {
+) -> RpcResult<AccountsDto> {
     if !enable_control {
-        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+        return RpcResult::Err(ErrorDto2::RPCControlDisabled);
     }
 
     let work = args.work.unwrap_or(true);
@@ -23,7 +23,7 @@ pub async fn accounts_create(
         .collect();
 
     match accounts {
-        Ok(accounts) => to_string_pretty(&AccountsDto::new(accounts)).unwrap(),
-        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        Ok(accounts) => RpcResult::Ok(AccountsDto::new(accounts)),
+        Err(e) => RpcResult::Err(ErrorDto2::WalletsError(e))
     }
 }

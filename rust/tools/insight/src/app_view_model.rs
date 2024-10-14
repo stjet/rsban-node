@@ -10,18 +10,22 @@ use std::sync::{atomic::Ordering, Arc};
 
 pub(crate) struct AppViewModel {
     node_runner: NodeRunner,
-    recorder: Arc<MessageRecorder>,
+    pub msg_recorder: Arc<MessageRecorder>,
     selected: Option<MessageDetailsModel>,
     selected_index: Option<usize>,
+    total_blocks: u64,
+    cemented_blocks: u64,
 }
 
 impl AppViewModel {
     pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
         Self {
             node_runner: NodeRunner::new(runtime, node_factory),
-            recorder: Arc::new(MessageRecorder::new()),
+            msg_recorder: Arc::new(MessageRecorder::new()),
             selected: None,
             selected_index: None,
+            total_blocks: 0,
+            cemented_blocks: 0,
         }
     }
 
@@ -41,7 +45,7 @@ impl AppViewModel {
     }
 
     pub(crate) fn start_beta_node(&mut self) {
-        let callbacks = make_node_callbacks(self.recorder.clone());
+        let callbacks = make_node_callbacks(self.msg_recorder.clone());
         self.node_runner.start_beta_node(callbacks);
     }
 
@@ -59,22 +63,22 @@ impl AppViewModel {
     }
 
     pub(crate) fn messages_sent(&self) -> String {
-        self.recorder
+        self.msg_recorder
             .published
             .load(Ordering::SeqCst)
             .to_formatted_string(&Locale::en)
     }
 
     pub(crate) fn messages_received(&self) -> String {
-        self.recorder
+        self.msg_recorder
             .inbound
             .load(Ordering::SeqCst)
             .to_formatted_string(&Locale::en)
     }
 
-    pub(crate) fn get_row(&self, index: usize) -> RowModel {
-        let message = self.recorder.get_message(index).unwrap();
-        RowModel {
+    pub(crate) fn get_row(&self, index: usize) -> Option<RowModel> {
+        let message = self.msg_recorder.get_message(index)?;
+        Some(RowModel {
             channel_id: message.channel_id.to_string(),
             direction: if message.direction == ChannelDirection::Inbound {
                 "in".into()
@@ -83,11 +87,11 @@ impl AppViewModel {
             },
             message: format!("{:?}", message.message.message_type()),
             is_selected: self.selected_index == Some(index),
-        }
+        })
     }
 
     pub(crate) fn message_count(&self) -> usize {
-        self.recorder.message_count()
+        self.msg_recorder.message_count()
     }
 
     pub(crate) fn selected_message(&self) -> Option<MessageDetailsModel> {
@@ -95,9 +99,24 @@ impl AppViewModel {
     }
 
     pub(crate) fn select_message(&mut self, index: usize) {
-        let message = self.recorder.get_message(index).unwrap();
+        let message = self.msg_recorder.get_message(index).unwrap();
         self.selected = Some(message.into());
         self.selected_index = Some(index);
+    }
+
+    pub(crate) fn update(&mut self) {
+        if let Some(node) = self.node_runner.node() {
+            self.total_blocks = node.ledger.block_count();
+            self.cemented_blocks = node.ledger.cemented_count();
+        }
+    }
+
+    pub(crate) fn block_count(&self) -> String {
+        self.total_blocks.to_formatted_string(&Locale::en)
+    }
+
+    pub(crate) fn cemented_count(&self) -> String {
+        self.cemented_blocks.to_formatted_string(&Locale::en)
     }
 }
 

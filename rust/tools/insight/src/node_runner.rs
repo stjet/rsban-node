@@ -19,7 +19,7 @@ pub enum NodeState {
 pub(crate) struct NodeRunner {
     node_factory: NodeFactory,
     runtime: Arc<NullableRuntime>,
-    pub node: Option<Arc<Node>>,
+    node: Option<Arc<Node>>,
     state: Arc<AtomicU8>,
 }
 
@@ -67,5 +67,9 @@ impl NodeRunner {
 
     pub(crate) fn state(&self) -> NodeState {
         FromPrimitive::from_u8(self.state.load(Ordering::SeqCst)).unwrap()
+    }
+
+    pub(crate) fn node(&self) -> Option<&Node> {
+        self.node.as_ref().map(|n| &**n)
     }
 }

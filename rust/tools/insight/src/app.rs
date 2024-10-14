@@ -14,6 +14,7 @@ impl InsightApp {
 
 impl eframe::App for InsightApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.model.update();
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(1.0);
             ui.horizontal(|ui| {
@@ -31,6 +32,18 @@ impl eframe::App for InsightApp {
                     self.model.stop_node();
                 }
                 ui.label(self.model.status());
+
+                let mut checked = self.model.msg_recorder.is_recording();
+                ui.checkbox(&mut checked, "capture");
+                if checked {
+                    self.model.msg_recorder.start_recording()
+                } else {
+                    self.model.msg_recorder.stop_recording()
+                }
+
+                if ui.button("clear").clicked() {
+                    self.model.msg_recorder.clear();
+                }
             });
             ui.add_space(1.0);
         });
@@ -47,11 +60,17 @@ impl eframe::App for InsightApp {
                 ui.label("received");
                 ui.separator();
                 ui.label("Blocks:");
-                ui.label("0");
+                ui.label("?");
                 ui.label("bps");
                 ui.add_space(10.0);
-                ui.label("0");
+                ui.label("?");
                 ui.label("cps");
+                ui.add_space(10.0);
+                ui.label(self.model.block_count());
+                ui.label("blocks");
+                ui.add_space(10.0);
+                ui.label(self.model.cemented_count());
+                ui.label("cemented");
             });
         });
 
@@ -81,7 +100,9 @@ impl eframe::App for InsightApp {
                     })
                     .body(|body| {
                         body.rows(20.0, self.model.message_count(), |mut row| {
-                            let row_model = self.model.get_row(row.index());
+                            let Some(row_model) = self.model.get_row(row.index()) else {
+                                return;
+                            };
                             if row_model.is_selected {
                                 row.set_selected(true);
                             }

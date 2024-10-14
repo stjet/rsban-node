@@ -1,9 +1,8 @@
-use num_derive::FromPrimitive;
 use rsnano_messages::Message;
 use rsnano_network::{ChannelDirection, ChannelId};
 use rsnano_node::NodeCallbacks;
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc, RwLock,
 };
 
@@ -17,7 +16,8 @@ pub(crate) struct RecordedMessage {
 pub(crate) struct MessageRecorder {
     pub published: AtomicUsize,
     pub inbound: AtomicUsize,
-    pub messages: RwLock<Vec<RecordedMessage>>,
+    messages: RwLock<Vec<RecordedMessage>>,
+    is_recording: AtomicBool,
 }
 
 impl MessageRecorder {
@@ -26,16 +26,36 @@ impl MessageRecorder {
             published: AtomicUsize::new(0),
             inbound: AtomicUsize::new(0),
             messages: RwLock::new(Vec::new()),
+            is_recording: AtomicBool::new(true),
         }
     }
 
+    pub fn is_recording(&self) -> bool {
+        self.is_recording.load(Ordering::SeqCst)
+    }
+
+    pub fn start_recording(&self) {
+        self.is_recording.store(true, Ordering::SeqCst);
+    }
+
+    pub fn stop_recording(&self) {
+        self.is_recording.store(false, Ordering::SeqCst);
+    }
+
+    pub fn clear(&self) {
+        self.messages.write().unwrap().clear();
+    }
+
     pub fn record(&self, msg: RecordedMessage) {
-        let direction = msg.direction;
-        self.messages.write().unwrap().push(msg);
-        match direction {
+        match msg.direction {
             ChannelDirection::Inbound => self.inbound.fetch_add(1, Ordering::SeqCst),
             ChannelDirection::Outbound => self.published.fetch_add(1, Ordering::SeqCst),
         };
+
+        if !self.is_recording() {
+            return;
+        }
+        self.messages.write().unwrap().push(msg);
     }
 
     pub fn get_message(&self, index: usize) -> Option<RecordedMessage> {

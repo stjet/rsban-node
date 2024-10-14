@@ -3,9 +3,7 @@ use rsnano_core::{Account, JsonBlock, RawKey, Signature, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn sign(
-        args: SignArgs
-    ) -> Self {
+    pub fn sign(args: SignArgs) -> Self {
         Self::Sign(args)
     }
 }
@@ -34,7 +32,7 @@ impl SignArgs {
                 block,
                 key: None,
                 wallet: None,
-                account: None  
+                account: None,
             },
         }
     }

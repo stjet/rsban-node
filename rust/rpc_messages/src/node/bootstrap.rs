@@ -18,16 +18,22 @@ pub struct BootstrapArgs {
 
 impl BootstrapArgs {
     pub fn new(address: Ipv6Addr, port: u16) -> BootstrapArgs {
-        BootstrapArgs { address, port, id: None }
+        BootstrapArgs {
+            address,
+            port,
+            id: None,
+        }
     }
-    
+
     pub fn builder(address: Ipv6Addr, port: u16) -> BootstrapArgsBuilder {
-        BootstrapArgsBuilder { args: BootstrapArgs::new(address, port) }
+        BootstrapArgsBuilder {
+            args: BootstrapArgs::new(address, port),
+        }
     }
 }
 
 pub struct BootstrapArgsBuilder {
-    args: BootstrapArgs
+    args: BootstrapArgs,
 }
 
 impl BootstrapArgsBuilder {
@@ -73,12 +79,11 @@ mod tests {
     #[test]
     fn serialize_bootstrap_command_id_some() {
         let address = Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap();
-        let args = BootstrapArgs::builder(address, 1024).id("id".to_string()).build();
+        let args = BootstrapArgs::builder(address, 1024)
+            .id("id".to_string())
+            .build();
         assert_eq!(
-            to_string_pretty(&RpcCommand::bootstrap(
-                args
-            ))
-            .unwrap(),
+            to_string_pretty(&RpcCommand::bootstrap(args)).unwrap(),
             r#"{
   "action": "bootstrap",
   "address": "::ffff:192.169.0.1",
@@ -91,7 +96,9 @@ mod tests {
     #[test]
     fn deserialize_bootstrap_command_id_some() {
         let address = Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap();
-        let args = BootstrapArgs::builder(address, 1024).id("id".to_string()).build();
+        let args = BootstrapArgs::builder(address, 1024)
+            .id("id".to_string())
+            .build();
         let cmd = RpcCommand::bootstrap(args);
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();

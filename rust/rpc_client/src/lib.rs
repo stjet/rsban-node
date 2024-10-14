@@ -176,10 +176,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn bootstrap(
-        &self,
-        args: BootstrapArgs
-    ) -> Result<SuccessDto> {
+    pub async fn bootstrap(&self, args: BootstrapArgs) -> Result<SuccessDto> {
         let cmd = RpcCommand::bootstrap(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -200,10 +197,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn sign(
-        &self,
-        args: impl Into<SignArgs>
-    ) -> Result<SignDto> {
+    pub async fn sign(&self, args: impl Into<SignArgs>) -> Result<SignDto> {
         let cmd = RpcCommand::sign(args.into());
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

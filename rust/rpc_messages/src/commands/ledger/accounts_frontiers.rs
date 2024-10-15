@@ -1,21 +1,9 @@
-use crate::RpcCommand;
+use crate::{AccountsRpcMessage, RpcCommand};
 use rsnano_core::Account;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn accounts_frontiers(accounts: Vec<Account>) -> Self {
-        Self::AccountsFrontiers(AccountsFrontiersArgs::new(accounts))
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsFrontiersArgs {
-    pub accounts: Vec<Account>,
-}
-
-impl AccountsFrontiersArgs {
-    pub fn new(accounts: Vec<Account>) -> Self {
-        Self { accounts }
+        Self::AccountsFrontiers(AccountsRpcMessage::new(accounts))
     }
 }
 

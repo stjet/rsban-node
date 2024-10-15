@@ -1,21 +1,9 @@
-use crate::RpcCommand;
+use crate::{AccountRpcMessage, RpcCommand};
 use rsnano_core::Account;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn delegators_count(account: Account) -> Self {
-        Self::DelegatorsCount(DelegatorsCountArgs::new(account))
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct DelegatorsCountArgs {
-    pub account: Account,
-}
-
-impl DelegatorsCountArgs {
-    pub fn new(account: Account) -> Self {
-        Self { account }
+        Self::DelegatorsCount(AccountRpcMessage::new(account))
     }
 }
 

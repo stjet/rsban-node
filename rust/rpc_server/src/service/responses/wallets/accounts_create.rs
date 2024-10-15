@@ -1,6 +1,6 @@
 use rsnano_core::Account;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountsCreateArgs, AccountsDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountsCreateArgs, AccountsRpcMessage, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
 pub async fn accounts_create(
@@ -22,7 +22,7 @@ pub async fn accounts_create(
         .collect();
 
     match accounts {
-        Ok(accounts) => RpcDto::Accounts(AccountsDto::new(accounts)),
+        Ok(accounts) => RpcDto::Accounts(AccountsRpcMessage::new(accounts)),
         Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
     }
 }

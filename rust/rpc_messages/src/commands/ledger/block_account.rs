@@ -1,21 +1,9 @@
-use crate::RpcCommand;
+use crate::{HashRpcMessage, RpcCommand};
 use rsnano_core::BlockHash;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn block_account(hash: BlockHash) -> Self {
-        Self::BlockAccount(BlockAccountArgs::new(hash))
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BlockAccountArgs {
-    pub hash: BlockHash,
-}
-
-impl BlockAccountArgs {
-    pub fn new(hash: BlockHash) -> Self {
-        Self { hash }
+        Self::BlockAccount(HashRpcMessage::new(hash))
     }
 }
 

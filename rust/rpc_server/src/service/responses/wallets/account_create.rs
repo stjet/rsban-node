@@ -1,5 +1,5 @@
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountCreateArgs, AccountDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountCreateArgs, AccountRpcMessage, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_create(
@@ -19,7 +19,7 @@ pub async fn account_create(
     };
 
     match result {
-        Ok(account) => RpcDto::Account(AccountDto::new(account.as_account())),
+        Ok(account) => RpcDto::Account(AccountRpcMessage::new(account.as_account())),
         Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
     }
 }

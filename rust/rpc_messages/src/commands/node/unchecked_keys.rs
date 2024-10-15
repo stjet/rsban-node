@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{BlockHash, HashOrAccount, JsonBlock};
+use rsnano_core::HashOrAccount;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {

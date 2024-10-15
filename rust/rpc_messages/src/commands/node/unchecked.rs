@@ -1,20 +1,8 @@
-use crate::RpcCommand;
-use serde::{Deserialize, Serialize};
+use crate::{CountRpcMessage, RpcCommand};
 
 impl RpcCommand {
     pub fn unchecked(count: u64) -> Self {
-        Self::Unchecked(UncheckedArgs::new(count))
+        Self::Unchecked(CountRpcMessage::new(count))
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-
-pub struct UncheckedArgs {
-    pub count: u64,
-}
-
-impl UncheckedArgs {
-    pub fn new(count: u64) -> Self {
-        Self { count }
-    }
-}

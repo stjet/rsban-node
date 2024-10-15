@@ -1,21 +1,9 @@
-use crate::RpcCommand;
+use crate::{AmountRpcMessage, RpcCommand};
 use rsnano_core::Amount;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn raw_to_nano(amount: Amount) -> Self {
-        Self::RawToNano(RawToNanoArgs::new(amount))
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct RawToNanoArgs {
-    pub amount: Amount,
-}
-
-impl RawToNanoArgs {
-    pub fn new(amount: Amount) -> Self {
-        Self { amount }
+        Self::RawToNano(AmountRpcMessage::new(amount))
     }
 }
 

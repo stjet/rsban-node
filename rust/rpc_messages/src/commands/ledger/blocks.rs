@@ -1,20 +1,21 @@
-use crate::RpcCommand;
-use rsnano_core::BlockHash;
+use std::collections::HashMap;
+use crate::{HashesArgs, RpcCommand};
+use rsnano_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn blocks(blocks: Vec<BlockHash>) -> Self {
-        Self::Blocks(BlocksArgs::new(blocks))
+    pub fn blocks(hashes: Vec<BlockHash>) -> Self {
+        Self::Blocks(HashesArgs::new(hashes))
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct BlocksArgs {
-    pub hashes: Vec<BlockHash>,
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct BlocksDto {
+    pub blocks: HashMap<BlockHash, JsonBlock>,
 }
 
-impl BlocksArgs {
-    pub fn new(hashes: Vec<BlockHash>) -> Self {
-        Self { hashes }
+impl BlocksDto {
+    pub fn new(blocks: HashMap<BlockHash, JsonBlock>) -> Self {
+        Self { blocks }
     }
 }

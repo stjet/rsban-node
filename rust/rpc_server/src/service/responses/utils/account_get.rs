@@ -1,5 +1,5 @@
-use rsnano_rpc_messages::{AccountDto, AccountGetArgs, RpcDto};
+use rsnano_rpc_messages::{AccountRpcMessage, AccountGetArgs, RpcDto};
 
 pub async fn account_get(args: AccountGetArgs) -> RpcDto {
-    RpcDto::AccountGet(AccountDto::new(args.key.into()))
+    RpcDto::AccountGet(AccountRpcMessage::new(args.key.into()))
 }

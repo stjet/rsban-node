@@ -1,7 +1,7 @@
 use rsnano_core::BlockEnum;
 use rsnano_ledger::BlockStatus;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, HashDto, ProcessArgs};
+use rsnano_rpc_messages::{ErrorDto, HashRpcMessage, ProcessArgs};
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> String {
             Some(result) => match result {
                 BlockStatus::Progress => {
                     let hash = block.hash();
-                    to_string_pretty(&HashDto::new(hash)).unwrap()
+                    to_string_pretty(&HashRpcMessage::new(hash)).unwrap()
                 }
                 BlockStatus::GapPrevious => {
                     to_string_pretty(&ErrorDto::new("gap previous".to_string())).unwrap()
@@ -54,7 +54,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> String {
                         node.active.erase(&block.qualified_root());
                         node.block_processor.force(Arc::new(block.clone()));
                         let hash = block.hash();
-                        to_string_pretty(&HashDto::new(hash)).unwrap()
+                        to_string_pretty(&HashRpcMessage::new(hash)).unwrap()
                     } else {
                         to_string_pretty(&ErrorDto::new("Fork".to_string())).unwrap()
                     }

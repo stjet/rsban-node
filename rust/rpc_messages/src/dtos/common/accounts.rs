@@ -2,11 +2,11 @@ use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsDto {
+pub struct AccountsRpcMessage {
     pub accounts: Vec<Account>,
 }
 
-impl AccountsDto {
+impl AccountsRpcMessage {
     pub fn new(accounts: Vec<Account>) -> Self {
         Self { accounts }
     }
@@ -19,7 +19,7 @@ mod tests {
 
     #[test]
     fn serialize_accounts_rpc_message() {
-        let dto = AccountsDto::new(vec![1.into()]);
+        let dto = AccountsRpcMessage::new(vec![1.into()]);
 
         let serialized = to_string(&dto).unwrap();
 
@@ -37,9 +37,9 @@ mod tests {
             "accounts": ["nano_1111111111111111111111111111111111111111111111111113b8661hfk"]
         }"#;
 
-        let deserialized: AccountsDto = from_str(json_str).unwrap();
+        let deserialized: AccountsRpcMessage = from_str(json_str).unwrap();
 
-        let expected = AccountsDto::new(vec![1.into()]);
+        let expected = AccountsRpcMessage::new(vec![1.into()]);
 
         assert_eq!(deserialized, expected);
     }

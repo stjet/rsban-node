@@ -1,21 +1,9 @@
-use crate::RpcCommand;
+use crate::{KeyRpcMessage, RpcCommand};
 use rsnano_core::PublicKey;
-use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn account_get(key: PublicKey) -> Self {
-        Self::AccountGet(AccountGetArgs::new(key))
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountGetArgs {
-    pub key: PublicKey,
-}
-
-impl AccountGetArgs {
-    pub fn new(key: PublicKey) -> Self {
-        Self { key }
+        Self::AccountGet(KeyRpcMessage::new(key))
     }
 }
 

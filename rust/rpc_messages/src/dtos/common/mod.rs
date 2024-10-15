@@ -10,6 +10,7 @@ mod exists;
 mod frontiers;
 mod hash;
 mod key_pair;
+mod hashes;
 //mod locked;
 mod moved;
 mod public_key;
@@ -27,6 +28,8 @@ mod amount;
 mod available;
 mod block;
 mod started;
+mod locked;
+mod count;
 
 pub use account::*;
 pub use account_balance::*;
@@ -57,6 +60,9 @@ pub use block::*;
 pub use set::*;
 pub use started::*;
 pub use valid::*;
+pub use hashes::*;
+pub use locked::*;
+pub use count::*;
 
 use rsnano_core::{BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};

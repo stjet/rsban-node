@@ -8,10 +8,10 @@ pub(crate) struct ChannelViewModel {
     pub is_selected: bool,
 }
 
-pub(crate) struct ChannelsViewModel<'a>(&'a Channels);
+pub(crate) struct ChannelsViewModel<'a>(&'a mut Channels);
 
 impl<'a> ChannelsViewModel<'a> {
-    pub(crate) fn new(channels: &'a Channels) -> Self {
+    pub(crate) fn new(channels: &'a mut Channels) -> Self {
         Self(channels)
     }
 
@@ -24,7 +24,7 @@ impl<'a> ChannelsViewModel<'a> {
                 ChannelDirection::Inbound => "in",
                 ChannelDirection::Outbound => "out",
             },
-            is_selected: false,
+            is_selected: self.0.selected_index() == Some(index),
         })
     }
 
@@ -32,7 +32,9 @@ impl<'a> ChannelsViewModel<'a> {
         self.0.len()
     }
 
-    pub(crate) fn select(&mut self, index: usize) {}
+    pub(crate) fn select(&mut self, index: usize) {
+        self.0.select_index(index);
+    }
 
     pub(crate) fn heading(&self) -> String {
         format!("Channels ({})", self.0.len())

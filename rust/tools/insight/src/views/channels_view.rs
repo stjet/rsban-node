@@ -51,7 +51,7 @@ impl<'a> ChannelsView<'a> {
                         ui.add(Label::new(row_model.remote_addr).selectable(false));
                     });
                     if row.response().clicked() {
-                        //self.model.select_message(row.index());
+                        self.model.select(row.index());
                     }
                 })
             });

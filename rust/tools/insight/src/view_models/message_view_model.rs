@@ -6,6 +6,7 @@ pub(crate) struct MessageViewModel {
     pub channel_id: String,
     pub direction: String,
     pub message_type: String,
+    pub date: String,
     pub message: String,
 }
 
@@ -18,6 +19,7 @@ impl From<RecordedMessage> for MessageViewModel {
             } else {
                 "out".into()
             },
+            date: value.date.to_string(),
             message_type: format!("{:?}", value.message.message_type()),
             message: format!("{:#?}", value.message),
         }

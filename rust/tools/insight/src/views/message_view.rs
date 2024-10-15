@@ -13,6 +13,10 @@ impl<'a> MessageView<'a> {
     pub(crate) fn view(&self, ui: &mut Ui) {
         ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
             Grid::new("details_grid").num_columns(2).show(ui, |ui| {
+                ui.label("Date:");
+                ui.label(self.model.date.clone());
+                ui.end_row();
+
                 ui.label("Channel:");
                 ui.label(self.model.channel_id.clone());
                 ui.end_row();

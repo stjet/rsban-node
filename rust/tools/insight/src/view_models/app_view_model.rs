@@ -67,8 +67,8 @@ impl AppViewModel {
         LedgerStatsViewModel::new(&self.ledger_stats)
     }
 
-    pub(crate) fn channels(&self) -> ChannelsViewModel {
-        ChannelsViewModel::new(&self.channels)
+    pub(crate) fn channels(&mut self) -> ChannelsViewModel {
+        ChannelsViewModel::new(&mut self.channels)
     }
 }
 

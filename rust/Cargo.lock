@@ -3680,6 +3680,7 @@ dependencies = [
 name = "rsnano-insight"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "eframe",
  "egui_extras",
  "num",

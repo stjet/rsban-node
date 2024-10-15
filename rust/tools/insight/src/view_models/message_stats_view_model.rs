@@ -2,23 +2,21 @@ use crate::message_recorder::MessageRecorder;
 use num_format::{Locale, ToFormattedString};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-pub(crate) struct MessageStatsViewModel<'a>(&'a MessageRecorder);
+pub(crate) struct MessageStatsViewModel<'a> {
+    msg_recorder: &'a MessageRecorder,
+}
 
 impl<'a> MessageStatsViewModel<'a> {
-    pub fn new(recorder: &'a MessageRecorder) -> Self {
-        Self(recorder)
+    pub fn new(msg_recorder: &'a MessageRecorder) -> Self {
+        Self { msg_recorder }
     }
 
     pub(crate) fn send_rate(&self) -> String {
-        Self::to_string(&self.0.send_rate)
+        Self::to_string(&self.msg_recorder.send_rate)
     }
 
     pub(crate) fn receive_rate(&self) -> String {
-        Self::to_string(&self.0.receive_rate)
-    }
-
-    pub(crate) fn captured(&self) -> String {
-        self.0.message_count().to_formatted_string(&Locale::en)
+        Self::to_string(&self.msg_recorder.receive_rate)
     }
 
     fn to_string(value: &AtomicU64) -> String {

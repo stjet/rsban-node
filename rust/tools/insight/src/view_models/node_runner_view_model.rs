@@ -32,6 +32,11 @@ impl NodeRunnerViewModel {
         self.node_runner.state() == NodeState::Started
     }
 
+    pub(crate) fn start_live_node(&mut self) {
+        let callbacks = make_node_callbacks(self.msg_recorder.clone(), self.clock.clone());
+        self.node_runner.start_live_node(callbacks);
+    }
+
     pub(crate) fn start_beta_node(&mut self) {
         let callbacks = make_node_callbacks(self.msg_recorder.clone(), self.clock.clone());
         self.node_runner.start_beta_node(callbacks);

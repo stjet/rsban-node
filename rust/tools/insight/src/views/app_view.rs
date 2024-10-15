@@ -3,10 +3,7 @@ use super::{
     MessageTableView, MessageView, NodeRunnerView,
 };
 use crate::view_models::AppViewModel;
-use eframe::{
-    egui::{self, global_theme_preference_switch, CentralPanel, SidePanel, TopBottomPanel},
-    Frame,
-};
+use eframe::egui::{self, global_theme_preference_switch, CentralPanel, SidePanel, TopBottomPanel};
 
 pub(crate) struct AppView {
     model: AppViewModel,

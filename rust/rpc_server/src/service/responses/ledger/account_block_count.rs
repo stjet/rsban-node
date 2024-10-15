@@ -1,5 +1,5 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountBlockCountArgs, AccountBlockCountDto, AccountRpcMessage, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountBlockCountDto, AccountRpcMessage, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_block_count(node: Arc<Node>, args: AccountRpcMessage) -> RpcDto {

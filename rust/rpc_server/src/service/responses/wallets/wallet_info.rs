@@ -1,15 +1,14 @@
 use rsnano_core::{Amount, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, WalletInfoDto};
+use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletInfoDto};
 use rsnano_store_lmdb::KeyType;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 
-pub async fn wallet_info(node: Arc<Node>, wallet: WalletId) -> String {
+pub async fn wallet_info(node: Arc<Node>, wallet: WalletId) -> RpcDto {
     let block_transaction = node.ledger.read_txn();
     let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
     };
 
     let mut balance = Amount::zero();
@@ -61,5 +60,5 @@ pub async fn wallet_info(node: Arc<Node>, wallet: WalletId) -> String {
         cemented_block_count,
     );
 
-    to_string_pretty(&account_balance).unwrap()
+    RpcDto::WalletInfo(account_balance)
 }

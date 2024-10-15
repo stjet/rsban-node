@@ -1,10 +1,9 @@
 use rsnano_core::{BlockDetails, BlockHash, DifficultyV1, WorkNonce, WorkVersion};
 use rsnano_node::Node;
-use rsnano_rpc_messages::WorkValidateDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{RpcDto, WorkValidateDto};
 use std::sync::Arc;
 
-pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) -> String {
+pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) -> RpcDto {
     let result_difficulty =
         node.network_params
             .work
@@ -31,5 +30,5 @@ pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) ->
         multiplier: result_multiplier,
     };
 
-    to_string_pretty(&work_validate_dto).unwrap()
+    RpcDto::WorkValidate(work_validate_dto)
 }

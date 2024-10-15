@@ -48,3 +48,4 @@ pub use frontiers::*;
 pub use ledger::*;
 pub use representatives::*;
 pub use unopened::*;
+pub use available_supply::*;

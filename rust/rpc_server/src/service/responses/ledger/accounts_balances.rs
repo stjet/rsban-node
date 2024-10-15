@@ -1,7 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, RpcDto};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -9,7 +8,7 @@ pub async fn accounts_balances(
     node: Arc<Node>,
     accounts: Vec<Account>,
     include_only_confirmed: Option<bool>,
-) -> String {
+) -> RpcDto {
     let tx = node.ledger.read_txn();
     let mut balances = HashMap::new();
     let only_confirmed = include_only_confirmed.unwrap_or(true);
@@ -35,5 +34,5 @@ pub async fn accounts_balances(
     }
 
     let accounts_balances = AccountsBalancesDto { balances };
-    to_string_pretty(&accounts_balances).unwrap()
+    RpcDto::AccountsBalances(accounts_balances)
 }

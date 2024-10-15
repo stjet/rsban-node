@@ -1,5 +1,3 @@
-use std::fmt;
-
 use rsnano_node::wallets::WalletsError;
 use serde::{ser::SerializeMap, Deserialize, Serialize};
 
@@ -18,7 +16,28 @@ impl ErrorDto {
 pub enum ErrorDto2 {
     WalletsError(WalletsError),
     RPCControlDisabled,
-    AccountNotFound
+    AccountNotFound,
+    BlockNotFound,
+    PeerNotFound,
+    BlockError,
+    MissingAccountInformation,
+    WorkLow,
+    // New variants
+    GapPrevious,
+    GapSource,
+    Old,
+    BadSignature,
+    NegativeSpend,
+    BalanceMismatch,
+    Unreceivable,
+    BlockPosition,
+    GapEpochOpenPending,
+    Fork,
+    InsufficientWork,
+    OpenedBurnAccount,
+    Other,
+    Stopped,
+    NotStateBlock,
 }
 
 impl Serialize for ErrorDto2 {
@@ -30,6 +49,27 @@ impl Serialize for ErrorDto2 {
             ErrorDto2::WalletsError(e) => e.to_string(),
             ErrorDto2::RPCControlDisabled => "RPC control is disabled".to_string(),
             ErrorDto2::AccountNotFound => "Account not found".to_string(),
+            ErrorDto2::BlockNotFound => "Block not found".to_string(),
+            ErrorDto2::PeerNotFound => "Peer not found".to_string(),
+            ErrorDto2::BlockError => "Block error".to_string(),
+            ErrorDto2::MissingAccountInformation => "Missing account information".to_string(),
+            ErrorDto2::WorkLow => "Work low".to_string(),
+            // New error messages
+            ErrorDto2::GapPrevious => "Gap previous".to_string(),
+            ErrorDto2::GapSource => "Gap source".to_string(),
+            ErrorDto2::Old => "Old".to_string(),
+            ErrorDto2::BadSignature => "Bad signature".to_string(),
+            ErrorDto2::NegativeSpend => "Negative spend".to_string(),
+            ErrorDto2::BalanceMismatch => "Balance mismatch".to_string(),
+            ErrorDto2::Unreceivable => "Unreceivable".to_string(),
+            ErrorDto2::BlockPosition => "Block position".to_string(),
+            ErrorDto2::GapEpochOpenPending => "Gap epoch open pending".to_string(),
+            ErrorDto2::Fork => "Fork".to_string(),
+            ErrorDto2::InsufficientWork => "Insufficient work".to_string(),
+            ErrorDto2::OpenedBurnAccount => "Opened burn account".to_string(),
+            ErrorDto2::Other => "Other".to_string(),
+            ErrorDto2::Stopped => "Stopped".to_string(),
+            ErrorDto2::NotStateBlock => "Is not state block".to_string(),
         };
 
         let mut map = serializer.serialize_map(Some(1))?;
@@ -38,12 +78,16 @@ impl Serialize for ErrorDto2 {
     }
 }
 
-impl fmt::Display for ErrorDto2 {
+/*impl fmt::Display for ErrorDto2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error_message = match self {
             Self::WalletsError(e) => e.to_string(),
             Self::RPCControlDisabled => "RPC control is disabled".to_string(),
             Self::AccountNotFound => "Account not found".to_string(),
+            Self::BlockNotFound => "Block not found".to_string(),
+            Self::PeerNotFound => "Peer not found".to_string(),
+            Self::BlockError => "Block error".to_string(),
+            Self::MissingAccountInformation => "Missing account information".to_string(),
         };
         write!(f, "{}", error_message)
     }
@@ -53,7 +97,7 @@ impl From<WalletsError> for ErrorDto {
     fn from(error: WalletsError) -> Self {
         ErrorDto::new(error.to_string())
     }
-}
+}*/
 
 #[cfg(test)]
 mod tests {

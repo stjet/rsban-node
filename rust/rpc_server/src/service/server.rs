@@ -86,7 +86,7 @@ async fn handle_rpc(
         RpcCommand::AccountGet(args) => account_get(args).await,
         RpcCommand::AccountRepresentative(args) => account_representative(rpc_service.node, args).await,
         RpcCommand::AccountWeight(args) => account_weight(rpc_service.node, args).await,
-        /*RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
+        RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
         RpcCommand::BlockConfirm(block_hash_rpc_message) => block_confirm(rpc_service.node, block_hash_rpc_message.hash).await,
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
         RpcCommand::BlockAccount(msg) => block_account(rpc_service.node, msg.hash).await,
@@ -127,7 +127,7 @@ async fn handle_rpc(
         RpcCommand::DelegatorsCount(args) => delegators_count(rpc_service.node, args.account).await,
         RpcCommand::BlockHash(args) => block_hash(args.block).await,
         RpcCommand::AccountsBalances(args) => accounts_balances(rpc_service.node, args.accounts, args.include_only_confirmed).await,
-        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args.block).await,
+        RpcCommand::BlockInfo(args) => block_info(rpc_service.node, args).await,
         RpcCommand::Blocks(args) => blocks(rpc_service.node, args.hashes).await,
         RpcCommand::BlocksInfo(args) => blocks_info(rpc_service.node, args.hashes).await,
         RpcCommand::Chain(args) => chain(rpc_service.node, args, false).await,
@@ -161,7 +161,7 @@ async fn handle_rpc(
         RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::WorkGenerate(args) => work_generate(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations, args.count).await,
-        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await,*/
+        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await,
         _ => todo!(),
     };
 

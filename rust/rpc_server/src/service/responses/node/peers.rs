@@ -1,8 +1,8 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto};
+use rsnano_rpc_messages::{PeerData, PeerInfo, PeersDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn peers(node: Arc<Node>, peer_details: Option<bool>) -> String {
+pub async fn peers(node: Arc<Node>, peer_details: Option<bool>) -> RpcDto {
     let peer_details = peer_details.unwrap_or(false);
     let mut peers: HashMap<String, PeerInfo> = HashMap::new();
 
@@ -30,5 +30,5 @@ pub async fn peers(node: Arc<Node>, peer_details: Option<bool>) -> String {
 
     let peer_dto = PeersDto::new(peer_data);
 
-    serde_json::to_string_pretty(&peer_dto).unwrap()
+    RpcDto::Peers(peer_dto)
 }

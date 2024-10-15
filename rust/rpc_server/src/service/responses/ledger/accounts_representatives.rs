@@ -1,10 +1,9 @@
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::AccountsRepresentativesDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountsRepresentativesDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn accounts_representatives(node: Arc<Node>, accounts: Vec<Account>) -> String {
+pub async fn accounts_representatives(node: Arc<Node>, accounts: Vec<Account>) -> RpcDto {
     let tx = node.ledger.read_txn();
     let mut representatives: HashMap<Account, Account> = HashMap::new();
     let mut errors: HashMap<Account, String> = HashMap::new();
@@ -25,5 +24,5 @@ pub async fn accounts_representatives(node: Arc<Node>, accounts: Vec<Account>) -
         dto.errors = Some(errors);
     }
 
-    to_string_pretty(&dto).unwrap()
+    RpcDto::AccountsRepresentatives(dto)
 }

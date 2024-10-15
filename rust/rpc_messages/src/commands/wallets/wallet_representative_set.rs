@@ -47,6 +47,17 @@ impl WalletRepresentativeSetArgsBuilder {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct WalletRepresentativeDto {
+    pub account: Account,
+}
+
+impl WalletRepresentativeDto {
+    pub fn new(account: Account) -> Self {
+        Self { account }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

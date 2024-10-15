@@ -1,8 +1,7 @@
 use rsnano_core::{BlockEnum, JsonBlock};
-use rsnano_rpc_messages::HashRpcMessage;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{HashRpcMessage, RpcDto};
 
-pub async fn block_hash(block: JsonBlock) -> String {
+pub async fn block_hash(block: JsonBlock) -> RpcDto {
     let block_enum: BlockEnum = block.into();
-    to_string_pretty(&HashRpcMessage::new(block_enum.hash())).unwrap()
+    RpcDto::BlockHash(HashRpcMessage::new(block_enum.hash()))
 }

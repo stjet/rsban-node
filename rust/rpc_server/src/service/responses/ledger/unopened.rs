@@ -1,7 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, UnopenedDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, RpcDto, UnopenedDto};
 use std::{collections::HashMap, sync::Arc};
 
 pub async fn unopened(
@@ -10,9 +9,9 @@ pub async fn unopened(
     account: Account,
     count: u64,
     threshold: Option<Amount>,
-) -> String {
+) -> RpcDto {
     if !enable_control {
-        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
     }
 
     let start = account;
@@ -55,5 +54,5 @@ pub async fn unopened(
 
     let response = UnopenedDto::new(accounts);
 
-    to_string_pretty(&response).unwrap()
+    RpcDto::Unopened(response)
 }

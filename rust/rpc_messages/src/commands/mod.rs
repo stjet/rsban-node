@@ -10,7 +10,7 @@ pub use wallets::*;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AccountRpcMessage, AccountsRpcMessage, AmountRpcMessage, CountRpcMessage, HashRpcMessage, HashesArgs, KeyRpcMessage};
+use crate::{AccountRpcMessage, AccountsRpcMessage, AmountRpcMessage, CountRpcMessage, HashRpcMessage, HashesArgs, KeyRpcMessage, SuccessDto};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -111,4 +111,5 @@ pub enum RpcCommand {
     WorkGenerate(WorkGenerateArgs),
     Republish(RepublishArgs),
     BlockCreate(BlockCreateArgs),
+    
 }

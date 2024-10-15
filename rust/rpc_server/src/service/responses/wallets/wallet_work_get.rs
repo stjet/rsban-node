@@ -1,17 +1,16 @@
 use rsnano_core::WalletId;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountsWithWorkDto, ErrorDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountsWithWorkDto, ErrorDto2, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn wallet_work_get(node: Arc<Node>, enable_control: bool, wallet: WalletId) -> String {
+pub async fn wallet_work_get(node: Arc<Node>, enable_control: bool, wallet: WalletId) -> RpcDto {
     if !enable_control {
-        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
     }
 
     let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
     };
 
     let mut works = HashMap::new();
@@ -21,9 +20,9 @@ pub async fn wallet_work_get(node: Arc<Node>, enable_control: bool, wallet: Wall
             Ok(work) => {
                 works.insert(account, work.into());
             }
-            Err(e) => return to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+            Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
         }
     }
 
-    to_string_pretty(&AccountsWithWorkDto::new(works)).unwrap()
+    RpcDto::WalletWorkGet(AccountsWithWorkDto::new(works))
 }

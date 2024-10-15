@@ -1,7 +1,6 @@
 use rsnano_core::Amount;
-use rsnano_rpc_messages::AmountRpcMessage;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AmountRpcMessage, RpcDto};
 
-pub async fn nano_to_raw(nano: Amount) -> String {
-    to_string_pretty(&AmountRpcMessage::new(Amount::raw(nano.number()))).unwrap()
+pub async fn nano_to_raw(nano: Amount) -> RpcDto {
+    RpcDto::NanoToRaw(AmountRpcMessage::new(Amount::raw(nano.number())))
 }

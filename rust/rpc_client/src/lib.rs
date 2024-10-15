@@ -319,7 +319,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn available_supply(&self) -> Result<AvailableDto> {
+    pub async fn available_supply(&self) -> Result<AvailableSupplyDto> {
         let cmd = RpcCommand::AvailableSupply;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

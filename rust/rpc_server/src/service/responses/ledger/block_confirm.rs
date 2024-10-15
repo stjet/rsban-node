@@ -3,11 +3,10 @@ use rsnano_node::{
     consensus::{ElectionStatus, ElectionStatusType},
     Node,
 };
-use rsnano_rpc_messages::{ErrorDto, StartedDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, RpcDto, StartedDto};
 use std::sync::Arc;
 
-pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> String {
+pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> RpcDto {
     let tx = node.ledger.read_txn();
     match &node.ledger.any().get_block(&tx, &hash) {
         Some(block) => {
@@ -25,9 +24,8 @@ pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> String {
                 status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;
                 node.active.insert_recently_cemented(status);
             }
-            let block_confirm = StartedDto::new(true);
-            to_string_pretty(&block_confirm).unwrap()
+            RpcDto::BlockConfirm(StartedDto::new(true))
         }
-        None => to_string_pretty(&ErrorDto::new("Block not found".to_string())).unwrap(),
+        None => RpcDto::Error(ErrorDto2::BlockNotFound)
     }
 }

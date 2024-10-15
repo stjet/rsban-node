@@ -1,10 +1,9 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::RepresentativesDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{RepresentativesDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Option<bool>) -> String {
+pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Option<bool>) -> RpcDto {
     let mut representatives: Vec<(Account, Amount)> = node
         .ledger
         .rep_weights
@@ -21,5 +20,5 @@ pub async fn representatives(node: Arc<Node>, count: Option<u64>, sorting: Optio
     let limited_representatives: HashMap<Account, Amount> =
         representatives.into_iter().take(count as usize).collect();
 
-    to_string_pretty(&RepresentativesDto::new(limited_representatives)).unwrap()
+    RpcDto::Representatives(RepresentativesDto::new(limited_representatives))
 }

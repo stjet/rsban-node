@@ -1,11 +1,14 @@
-mod app;
+mod app_view;
 mod app_view_model;
 mod message_recorder;
+mod message_recorder_controls_view;
 mod node_factory;
 mod node_runner;
+mod node_runner_view;
+mod node_runner_view_model;
 mod nullable_runtime;
 
-use app::InsightApp;
+use app_view::AppView;
 use app_view_model::AppViewModel;
 use eframe::egui;
 use tokio::runtime::Runtime;
@@ -22,8 +25,8 @@ fn main() -> eframe::Result {
         "RsNano Insight",
         options,
         Box::new(|cc| {
-            cc.egui_ctx.set_zoom_factor(1.25);
-            Ok(Box::new(InsightApp::new(model)))
+            cc.egui_ctx.set_zoom_factor(1.15);
+            Ok(Box::new(AppView::new(model)))
         }),
     )
 }

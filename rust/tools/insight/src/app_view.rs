@@ -1,37 +1,24 @@
-use crate::AppViewModel;
-use eframe::egui::{self, global_theme_preference_switch, Button, Grid, Label, ScrollArea, Sense};
+use crate::{node_runner_view::NodeRunnerView, AppViewModel};
+use eframe::egui::{self, global_theme_preference_switch, Grid, Label, ScrollArea, Sense};
 use egui_extras::{Column, TableBuilder};
 
-pub(crate) struct InsightApp {
+pub(crate) struct AppView {
     model: AppViewModel,
 }
 
-impl InsightApp {
+impl AppView {
     pub(crate) fn new(model: AppViewModel) -> Self {
         Self { model }
     }
 }
 
-impl eframe::App for InsightApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.model.update();
+impl AppView {
+    fn show_top_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(1.0);
             ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(self.model.can_start_node(), Button::new("Start beta node"))
-                    .clicked()
-                {
-                    self.model.start_beta_node();
-                }
-
-                if ui
-                    .add_enabled(self.model.can_stop_node(), Button::new("Stop node"))
-                    .clicked()
-                {
-                    self.model.stop_node();
-                }
-                ui.label(self.model.status());
+                NodeRunnerView::new(&mut self.model.node_runner).show(ui);
+                ui.separator();
 
                 let mut checked = self.model.msg_recorder.is_recording();
                 ui.checkbox(&mut checked, "capture");
@@ -47,7 +34,9 @@ impl eframe::App for InsightApp {
             });
             ui.add_space(1.0);
         });
+    }
 
+    fn show_bottom_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 global_theme_preference_switch(ui);
@@ -73,7 +62,9 @@ impl eframe::App for InsightApp {
                 ui.label("cemented");
             });
         });
+    }
 
+    fn show_message_overview_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("overview_panel")
             .default_width(300.0)
             .min_width(300.0)
@@ -121,7 +112,9 @@ impl eframe::App for InsightApp {
                         })
                     });
             });
+    }
 
+    fn show_message_details_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(details) = self.model.selected_message() {
                 ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
@@ -144,6 +137,17 @@ impl eframe::App for InsightApp {
                 });
             }
         });
+    }
+}
+
+impl eframe::App for AppView {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.model.update();
+        self.show_top_panel(ctx);
+        self.show_bottom_panel(ctx);
+        self.show_message_overview_panel(ctx);
+        self.show_message_details_panel(ctx);
+        self.show_message_details_panel(ctx);
         ctx.request_repaint();
     }
 }

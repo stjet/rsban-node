@@ -73,3 +73,11 @@ impl NodeRunner {
         self.node.as_ref().map(|n| &**n)
     }
 }
+
+impl Drop for NodeRunner {
+    fn drop(&mut self) {
+        if let Some(node) = self.node.take() {
+            node.stop();
+        }
+    }
+}

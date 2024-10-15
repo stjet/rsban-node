@@ -1,7 +1,8 @@
 use crate::{
-    message_recorder::{make_node_callbacks, MessageRecorder, RecordedMessage},
+    message_recorder::{MessageRecorder, RecordedMessage},
     node_factory::NodeFactory,
-    node_runner::{NodeRunner, NodeState},
+    node_runner::NodeRunner,
+    node_runner_view_model::NodeRunnerViewModel,
     nullable_runtime::NullableRuntime,
 };
 use num_format::{Locale, ToFormattedString};
@@ -9,8 +10,8 @@ use rsnano_network::ChannelDirection;
 use std::sync::{atomic::Ordering, Arc};
 
 pub(crate) struct AppViewModel {
-    node_runner: NodeRunner,
     pub msg_recorder: Arc<MessageRecorder>,
+    pub node_runner: NodeRunnerViewModel,
     selected: Option<MessageDetailsModel>,
     selected_index: Option<usize>,
     total_blocks: u64,
@@ -19,9 +20,11 @@ pub(crate) struct AppViewModel {
 
 impl AppViewModel {
     pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
+        let node_runner = NodeRunner::new(runtime, node_factory);
+        let msg_recorder = Arc::new(MessageRecorder::new());
         Self {
-            node_runner: NodeRunner::new(runtime, node_factory),
-            msg_recorder: Arc::new(MessageRecorder::new()),
+            node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone()),
+            msg_recorder,
             selected: None,
             selected_index: None,
             total_blocks: 0,
@@ -34,32 +37,6 @@ impl AppViewModel {
             Arc::new(NullableRuntime::new(runtime.clone())),
             NodeFactory::new(runtime),
         )
-    }
-
-    pub(crate) fn can_start_node(&self) -> bool {
-        self.node_runner.state() == NodeState::Stopped
-    }
-
-    pub(crate) fn can_stop_node(&self) -> bool {
-        self.node_runner.state() == NodeState::Started
-    }
-
-    pub(crate) fn start_beta_node(&mut self) {
-        let callbacks = make_node_callbacks(self.msg_recorder.clone());
-        self.node_runner.start_beta_node(callbacks);
-    }
-
-    pub(crate) fn stop_node(&mut self) {
-        self.node_runner.stop();
-    }
-
-    pub(crate) fn status(&self) -> &'static str {
-        match self.node_runner.state() {
-            NodeState::Starting => "starting...",
-            NodeState::Started => "running",
-            NodeState::Stopping => "stopping...",
-            NodeState::Stopped => "not running",
-        }
     }
 
     pub(crate) fn messages_sent(&self) -> String {
@@ -166,9 +143,9 @@ mod tests {
             Arc::new(NullableRuntime::new_null()),
             NodeFactory::new_null(),
         );
-        assert_eq!(model.can_start_node(), true);
-        assert_eq!(model.can_stop_node(), false);
-        assert_eq!(model.status(), "not running");
+        assert_eq!(model.node_runner.can_start_node(), true);
+        assert_eq!(model.node_runner.can_stop_node(), false);
+        assert_eq!(model.node_runner.status(), "not running");
         assert_eq!(model.messages_sent(), "0");
     }
 
@@ -177,11 +154,11 @@ mod tests {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
 
-        model.start_beta_node();
+        model.node_runner.start_beta_node();
 
-        assert_eq!(model.can_start_node(), false);
-        assert_eq!(model.can_stop_node(), false);
-        assert_eq!(model.status(), "starting...");
+        assert_eq!(model.node_runner.can_start_node(), false);
+        assert_eq!(model.node_runner.can_stop_node(), false);
+        assert_eq!(model.node_runner.status(), "starting...");
         assert_eq!(runtime.blocking_spawns(), 1);
     }
 
@@ -189,25 +166,25 @@ mod tests {
     async fn starting_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.start_beta_node();
+        model.node_runner.start_beta_node();
 
         runtime.run_nulled_blocking_task();
 
-        assert_eq!(model.status(), "running");
-        assert_eq!(model.can_start_node(), false);
-        assert_eq!(model.can_stop_node(), true);
+        assert_eq!(model.node_runner.status(), "running");
+        assert_eq!(model.node_runner.can_start_node(), false);
+        assert_eq!(model.node_runner.can_stop_node(), true);
     }
 
     #[tokio::test]
     async fn stopping_node() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.start_beta_node();
+        model.node_runner.start_beta_node();
         runtime.run_nulled_blocking_task();
-        model.stop_node();
-        assert_eq!(model.can_start_node(), false);
-        assert_eq!(model.can_stop_node(), false);
-        assert_eq!(model.status(), "stopping...");
+        model.node_runner.stop_node();
+        assert_eq!(model.node_runner.can_start_node(), false);
+        assert_eq!(model.node_runner.can_stop_node(), false);
+        assert_eq!(model.node_runner.status(), "stopping...");
         assert_eq!(runtime.blocking_spawns(), 2);
     }
 
@@ -215,12 +192,12 @@ mod tests {
     async fn stopping_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.start_beta_node();
+        model.node_runner.start_beta_node();
         runtime.run_nulled_blocking_task();
-        model.stop_node();
+        model.node_runner.stop_node();
         runtime.run_nulled_blocking_task();
-        assert_eq!(model.can_start_node(), true);
-        assert_eq!(model.can_stop_node(), false);
-        assert_eq!(model.status(), "not running");
+        assert_eq!(model.node_runner.can_start_node(), true);
+        assert_eq!(model.node_runner.can_stop_node(), false);
+        assert_eq!(model.node_runner.status(), "not running");
     }
 }

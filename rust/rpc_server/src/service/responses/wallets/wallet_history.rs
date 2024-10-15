@@ -1,15 +1,14 @@
-use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType, WalletId};
+use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, RpcDto, WalletHistoryDto};
+use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, RpcDto, WalletHistoryArgs, WalletHistoryDto};
 use rsnano_store_lmdb::Transaction;
 use std::sync::Arc;
 
 pub async fn wallet_history(
     node: Arc<Node>,
-    wallet: WalletId,
-    modified_since: Option<u64>,
+    args: WalletHistoryArgs,
 ) -> RpcDto {
-    let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
+    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
         Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
     };
@@ -29,7 +28,7 @@ pub async fn wallet_history(
                         .map(|sideband| sideband.timestamp)
                         .unwrap_or_default();
 
-                    if timestamp >= modified_since.unwrap_or(0) {
+                    if timestamp >= args.modified_since.unwrap_or(0) {
                         let entry = process_block(
                             &node,
                             &block_transaction,

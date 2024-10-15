@@ -1,9 +1,9 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ConfirmationActiveDto, RpcDto};
+use rsnano_rpc_messages::{ConfirmationActiveArgs, ConfirmationActiveDto, RpcDto};
 use std::{sync::Arc, usize};
 
-pub async fn confirmation_active(node: Arc<Node>, announcements: Option<u64>) -> RpcDto {
-    let announcements = announcements.unwrap_or(0);
+pub async fn confirmation_active(node: Arc<Node>, args: ConfirmationActiveArgs) -> RpcDto {
+    let announcements = args.announcements.unwrap_or(0);
     let mut confirmed = 0;
     let mut confirmations = Vec::new();
 

@@ -1,20 +1,19 @@
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{RepresentativesOnlineDto, RpcDto};
+use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
 pub async fn representatives_online(
     node: Arc<Node>,
-    weight: Option<bool>,
-    accounts: Option<Vec<Account>>,
+    args: RepresentativesOnlineArgs
 ) -> RpcDto {
     let lock = node.online_reps.lock().unwrap();
     let online_reps = lock.online_reps();
-    let weight = weight.unwrap_or(false);
+    let weight = args.weight.unwrap_or(false);
 
     let mut representatives = HashMap::new();
 
-    let accounts_to_filter = accounts.unwrap_or_default();
+    let accounts_to_filter = args.accounts.unwrap_or_default();
     let filtering = !accounts_to_filter.is_empty();
 
     for pk in online_reps {

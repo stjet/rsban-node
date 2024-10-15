@@ -1,9 +1,9 @@
 use rsnano_core::utils::NULL_ENDPOINT;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ConfirmationQuorumDto, PeerDetailsDto, RpcDto};
+use rsnano_rpc_messages::{ConfirmationQuorumArgs, ConfirmationQuorumDto, PeerDetailsDto, RpcDto};
 use std::sync::Arc;
 
-pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) -> RpcDto {
+pub async fn confirmation_quorum(node: Arc<Node>, args: ConfirmationQuorumArgs) -> RpcDto {
     let quorum = node.online_reps.lock().unwrap();
 
     let mut confirmation_quorum_dto = ConfirmationQuorumDto {
@@ -16,7 +16,7 @@ pub async fn confirmation_quorum(node: Arc<Node>, peer_details: Option<bool>) ->
         peers: None,
     };
 
-    if peer_details.unwrap_or(false) {
+    if args.peer_details.unwrap_or(false) {
         let peers = quorum
             .peered_reps()
             .iter()

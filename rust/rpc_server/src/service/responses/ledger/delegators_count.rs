@@ -1,10 +1,9 @@
-use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{CountRpcMessage, RpcDto};
+use rsnano_rpc_messages::{AccountRpcMessage, CountRpcMessage, RpcDto};
 use std::sync::Arc;
 
-pub async fn delegators_count(node: Arc<Node>, account: Account) -> RpcDto {
-    let representative = account;
+pub async fn delegators_count(node: Arc<Node>, args: AccountRpcMessage) -> RpcDto {
+    let representative = args.account;
     let mut count = 0;
 
     let tx = node.ledger.read_txn();

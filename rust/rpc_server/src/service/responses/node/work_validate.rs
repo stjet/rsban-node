@@ -1,13 +1,13 @@
-use rsnano_core::{BlockDetails, BlockHash, DifficultyV1, WorkNonce, WorkVersion};
+use rsnano_core::{BlockDetails, DifficultyV1, WorkVersion};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{RpcDto, WorkValidateDto};
+use rsnano_rpc_messages::{RpcDto, WorkValidateArgs, WorkValidateDto};
 use std::sync::Arc;
 
-pub async fn work_validate(node: Arc<Node>, work: WorkNonce, hash: BlockHash) -> RpcDto {
+pub async fn work_validate(node: Arc<Node>, args: WorkValidateArgs) -> RpcDto {
     let result_difficulty =
         node.network_params
             .work
-            .difficulty(WorkVersion::Work1, &hash.into(), work.into());
+            .difficulty(WorkVersion::Work1, &args.hash.into(), args.work.into());
 
     let default_difficulty = node.network_params.work.threshold_base(WorkVersion::Work1);
 

@@ -1,18 +1,16 @@
 use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
-use rsnano_rpc_messages::{RpcDto, SuccessDto};
+use rsnano_rpc_messages::{BootstrapArgs, RpcDto, SuccessDto};
 use std::{
-    net::{Ipv6Addr, SocketAddrV6},
+    net::SocketAddrV6,
     sync::Arc,
 };
 
 pub async fn bootstrap(
     node: Arc<Node>,
-    address: Ipv6Addr,
-    port: u16,
-    id: Option<String>,
+    args: BootstrapArgs
 ) -> RpcDto {
-    let id = id.unwrap_or(String::new());
-    let endpoint = SocketAddrV6::new(address, port, 0, 0);
+    let id = args.id.unwrap_or(String::new());
+    let endpoint = SocketAddrV6::new(args.address, args.port, 0, 0);
     node.bootstrap_initiator.bootstrap2(endpoint, id);
 
     RpcDto::Bootstrap(SuccessDto::new())

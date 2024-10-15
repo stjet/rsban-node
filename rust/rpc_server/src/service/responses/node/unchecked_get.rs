@@ -1,16 +1,16 @@
-use rsnano_core::{BlockHash, UncheckedInfo, UncheckedKey};
+use rsnano_core::{UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, RpcDto, UncheckedGetDto};
+use rsnano_rpc_messages::{ErrorDto, HashRpcMessage, RpcDto, UncheckedGetDto};
 use std::sync::{Arc, Mutex};
 
-pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> RpcDto {
+pub async fn unchecked_get(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
     let result = Arc::new(Mutex::new(None));
 
     node.unchecked.for_each(
         {
             let result = Arc::clone(&result);
             Box::new(move |key: &UncheckedKey, info: &UncheckedInfo| {
-                if key.hash == hash {
+                if key.hash == args.hash {
                     let modified_timestamp = info.modified;
                     if let Some(block) = info.block.as_ref() {
                         let contents = block.json_representation();

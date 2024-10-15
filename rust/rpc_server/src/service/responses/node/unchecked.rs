@@ -1,10 +1,10 @@
 use rsnano_core::{UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{RpcDto, UncheckedDto};
+use rsnano_rpc_messages::{CountRpcMessage, RpcDto, UncheckedDto};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub async fn unchecked(node: Arc<Node>, count: u64) -> RpcDto {
+pub async fn unchecked(node: Arc<Node>, args: CountRpcMessage) -> RpcDto {
     let blocks = Arc::new(Mutex::new(HashMap::new()));
 
     node.unchecked.for_each(
@@ -12,7 +12,7 @@ pub async fn unchecked(node: Arc<Node>, count: u64) -> RpcDto {
             let blocks = Arc::clone(&blocks);
             Box::new(move |_key: &UncheckedKey, info: &UncheckedInfo| {
                 let mut blocks_guard = blocks.lock().unwrap();
-                if blocks_guard.len() < count as usize {
+                if blocks_guard.len() < args.count as usize {
                     if let Some(block) = info.block.as_ref() {
                         let hash = block.hash();
                         let json_block = block.json_representation();

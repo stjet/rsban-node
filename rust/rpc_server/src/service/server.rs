@@ -26,7 +26,7 @@ use axum::{
     Json, Router,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{RpcCommand, WalletBalancesArgs};
+use rsnano_rpc_messages::RpcCommand;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -86,7 +86,7 @@ async fn handle_rpc(
         RpcCommand::AccountGet(args) => account_get(args).await,
         RpcCommand::AccountRepresentative(args) => account_representative(rpc_service.node, args).await,
         RpcCommand::AccountWeight(args) => account_weight(rpc_service.node, args).await,
-        RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
+        /*RpcCommand::AvailableSupply => available_supply(rpc_service.node).await,
         RpcCommand::BlockConfirm(block_hash_rpc_message) => block_confirm(rpc_service.node, block_hash_rpc_message.hash).await,
         RpcCommand::BlockCount => block_count(rpc_service.node).await,
         RpcCommand::BlockAccount(msg) => block_account(rpc_service.node, msg.hash).await,
@@ -161,7 +161,7 @@ async fn handle_rpc(
         RpcCommand::Ledger(args) => ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::WorkGenerate(args) => work_generate(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::Republish(args) => republish(rpc_service.node, args.hash, args.sources, args.destinations, args.count).await,
-        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await,
+        RpcCommand::BlockCreate(args) => block_create(rpc_service.node, rpc_service.enable_control, args).await,*/
         _ => todo!(),
     };
 
@@ -175,17 +175,3 @@ async fn set_header<B>(mut request: Request<B>) -> Request<B> {
     request
 }
 
-/*#[derive(Serialize)]
-pub enum RpcResult {
-    Ok(RpcDto),
-    Err(ErrorDto2),
-}
-
-impl RpcResult {
-    pub fn to_json_string(&self) -> String {
-        match self {
-            RpcResult::Ok(value) => to_string_pretty(value).unwrap(),
-            RpcResult::Err(error) => format!("{{ \n  \"error\": \"{}\" \n}}", error),
-        }
-    }
-}*/

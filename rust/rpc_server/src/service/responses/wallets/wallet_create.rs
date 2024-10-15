@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletCreateArgs, WalletCreateDto};
+use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletCreateArgs, WalletRpcMessage};
 use std::sync::Arc;
 
 pub async fn wallet_create(
@@ -14,7 +14,7 @@ pub async fn wallet_create(
 
     let wallet = WalletId::random();
     node.wallets.create(wallet);
-    let wallet_create_dto = WalletCreateDto::new(wallet);
+    let wallet_create_dto = WalletRpcMessage::new(wallet);
 
     if let Some(seed) = args.seed {
         node.wallets

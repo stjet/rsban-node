@@ -1,6 +1,8 @@
 use crate::RpcCommand;
 use rsnano_core::QualifiedRoot;
 use serde::{Deserialize, Serialize};
+use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn confirmation_info(args: ConfirmationInfoArgs) -> Self {
@@ -52,3 +54,41 @@ impl ConfirmationInfoArgsBuilder {
         self.args
     }
 }
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct ConfirmationInfoDto {
+    pub announcements: u32,
+    pub voters: usize,
+    pub last_winner: BlockHash,
+    pub total_tally: Amount,
+    pub final_tally: Amount,
+    pub blocks: HashMap<BlockHash, ConfirmationBlockInfoDto>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct ConfirmationBlockInfoDto {
+    pub tally: Amount,
+    pub contents: Option<JsonBlock>,
+    pub representatives: Option<HashMap<Account, Amount>>,
+}
+
+impl ConfirmationInfoDto {
+    pub fn new(
+        announcements: u32,
+        voters: usize, 
+        last_winner: BlockHash,
+        total_tally: Amount,
+        final_tally: Amount, 
+        blocks: HashMap<BlockHash, ConfirmationBlockInfoDto>,
+    ) -> Self {
+        Self {
+            announcements,
+            voters,
+            last_winner,
+            total_tally,
+            final_tally,
+            blocks,
+        }
+    }
+}
+

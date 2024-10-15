@@ -1,6 +1,6 @@
 use crate::RpcCommand;
-use rsnano_core::{Account, JsonBlock, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
+use rsnano_core::{Account, JsonBlock, RawKey, Signature, WalletId};
 
 impl RpcCommand {
     pub fn sign(args: SignArgs) -> Self {
@@ -60,5 +60,17 @@ impl SignArgsBuilder {
 
     pub fn build(self) -> SignArgs {
         self.args
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct SignDto {
+    pub signature: Signature,
+    pub block: JsonBlock,
+}
+
+impl SignDto {
+    pub fn new(signature: Signature, block: JsonBlock) -> Self {
+        Self { signature, block }
     }
 }

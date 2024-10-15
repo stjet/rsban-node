@@ -1,5 +1,5 @@
-use rsnano_rpc_messages::{AccountKeyArgs, KeyRpcMessage, RpcDto};
+use rsnano_rpc_messages::{AccountRpcMessage, KeyRpcMessage, RpcDto};
 
-pub async fn account_key(args: AccountKeyArgs) -> RpcDto {
+pub async fn account_key(args: AccountRpcMessage) -> RpcDto {
     RpcDto::AccountKey(KeyRpcMessage::new(args.account.into()))
 }

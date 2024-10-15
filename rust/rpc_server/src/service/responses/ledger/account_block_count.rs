@@ -1,8 +1,8 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountBlockCountArgs, AccountBlockCountDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountBlockCountArgs, AccountBlockCountDto, AccountRpcMessage, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
-pub async fn account_block_count(node: Arc<Node>, args: AccountBlockCountArgs) -> RpcDto {
+pub async fn account_block_count(node: Arc<Node>, args: AccountRpcMessage) -> RpcDto {
     let tx = node.ledger.read_txn();
     match node.ledger.store.account.get(&tx, &args.account) {
         Some(account_info) => {

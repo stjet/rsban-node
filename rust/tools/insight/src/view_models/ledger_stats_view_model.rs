@@ -15,4 +15,14 @@ impl<'a> LedgerStatsViewModel<'a> {
     pub(crate) fn cemented_count(&self) -> String {
         self.0.cemented_blocks.to_formatted_string(&Locale::en)
     }
+
+    pub(crate) fn blocks_per_second(&self) -> String {
+        self.0.blocks_per_second().to_formatted_string(&Locale::en)
+    }
+
+    pub(crate) fn confirmations_per_second(&self) -> String {
+        self.0
+            .confirmations_per_second()
+            .to_formatted_string(&Locale::en)
+    }
 }

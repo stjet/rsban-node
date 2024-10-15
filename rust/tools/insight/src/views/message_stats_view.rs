@@ -1,5 +1,6 @@
 use crate::view_models::MessageStatsViewModel;
 use eframe::egui::Ui;
+use egui_extras::{Size, StripBuilder};
 
 pub(crate) struct MessageStatsView<'a>(MessageStatsViewModel<'a>);
 
@@ -9,11 +10,28 @@ impl<'a> MessageStatsView<'a> {
     }
 
     pub fn view(&self, ui: &mut Ui) {
-        ui.label("Messages:");
-        ui.label(self.0.messages_sent());
-        ui.label("sent");
+        ui.label("Messages");
+        ui.label("out/s:");
+        StripBuilder::new(ui)
+            .size(Size::exact(35.0))
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    ui.label(self.0.send_rate());
+                })
+            });
+
+        ui.label("in/s:");
+        StripBuilder::new(ui)
+            .size(Size::exact(35.0))
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    ui.label(self.0.receive_rate());
+                })
+            });
+
         ui.add_space(10.0);
-        ui.label(self.0.messages_received());
-        ui.label("received");
+
+        ui.label(self.0.captured());
+        ui.label("captured");
     }
 }

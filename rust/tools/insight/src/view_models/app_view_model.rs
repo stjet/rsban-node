@@ -5,24 +5,30 @@ use crate::{
     ledger_stats::LedgerStats, message_recorder::MessageRecorder, node_factory::NodeFactory,
     node_runner::NodeRunner, nullable_runtime::NullableRuntime,
 };
-use std::sync::Arc;
+use rsnano_nullable_clock::{SteadyClock, Timestamp};
+use std::{sync::Arc, time::Duration};
 
 pub(crate) struct AppViewModel {
     pub msg_recorder: Arc<MessageRecorder>,
     pub node_runner: NodeRunnerViewModel,
     pub message_table: MessageTableViewModel,
     ledger_stats: LedgerStats,
+    clock: Arc<SteadyClock>,
+    last_update: Option<Timestamp>,
 }
 
 impl AppViewModel {
     pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
         let node_runner = NodeRunner::new(runtime, node_factory);
         let msg_recorder = Arc::new(MessageRecorder::new());
+        let clock = Arc::new(SteadyClock::default());
         Self {
-            node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone()),
+            node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
             message_table: MessageTableViewModel::new(msg_recorder.clone()),
             msg_recorder,
+            clock,
             ledger_stats: LedgerStats::new(),
+            last_update: None,
         }
     }
 
@@ -34,9 +40,18 @@ impl AppViewModel {
     }
 
     pub(crate) fn update(&mut self) {
-        if let Some(node) = self.node_runner.node() {
-            self.ledger_stats.update(node);
+        let now = self.clock.now();
+        if let Some(last_update) = self.last_update {
+            if now - last_update < Duration::from_millis(500) {
+                return;
+            }
         }
+
+        if let Some(node) = self.node_runner.node() {
+            self.ledger_stats.update(node, now);
+        }
+
+        self.last_update = Some(now);
     }
 
     pub(crate) fn message_stats(&self) -> MessageStatsViewModel {
@@ -67,7 +82,7 @@ mod tests {
         assert_eq!(model.node_runner.can_start_node(), true);
         assert_eq!(model.node_runner.can_stop_node(), false);
         assert_eq!(model.node_runner.status(), "not running");
-        assert_eq!(model.message_stats().messages_sent(), "0");
+        assert_eq!(model.message_stats().send_rate(), "0");
     }
 
     #[tokio::test]

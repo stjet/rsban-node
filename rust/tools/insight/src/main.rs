@@ -3,6 +3,7 @@ mod message_recorder;
 mod node_factory;
 mod node_runner;
 mod nullable_runtime;
+mod rate_calculator;
 mod view_models;
 mod views;
 

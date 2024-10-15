@@ -13,10 +13,7 @@ pub async fn wallet_receivable(
         return json!({"error": "RPC control is disabled"}).to_string();
     }
 
-    let accounts = match node
-        .wallets
-        .get_accounts_of_wallet(&args.wallet_with_count.wallet)
-    {
+    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
         Err(e) => return json!({"error": e.to_string()}).to_string(),
     };
@@ -34,7 +31,7 @@ pub async fn wallet_receivable(
             .ledger
             .any()
             .account_receivable_upper_bound(&tx, account, BlockHash::zero())
-            .take(args.wallet_with_count.count as usize)
+            .take(args.count as usize)
         {
             if args.include_only_confirmed.unwrap_or(true)
                 && !node

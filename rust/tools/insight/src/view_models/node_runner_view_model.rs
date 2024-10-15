@@ -1,9 +1,8 @@
-use rsnano_node::Node;
-
 use crate::{
     message_recorder::{make_node_callbacks, MessageRecorder},
     node_runner::{NodeRunner, NodeState},
 };
+use rsnano_node::Node;
 use std::sync::Arc;
 
 pub(crate) struct NodeRunnerViewModel {

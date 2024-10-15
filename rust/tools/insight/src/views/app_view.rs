@@ -1,8 +1,9 @@
-use crate::{
-    message_recorder_controls_view::MessageRecorderControlsView, node_runner_view::NodeRunnerView,
-    AppViewModel,
+use super::{MessageRecorderControlsView, NodeRunnerView};
+use crate::AppViewModel;
+use eframe::egui::{
+    self, global_theme_preference_switch, CentralPanel, Grid, Label, ScrollArea, Sense, SidePanel,
+    TopBottomPanel,
 };
-use eframe::egui::{self, global_theme_preference_switch, Grid, Label, ScrollArea, Sense};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct AppView {
@@ -17,7 +18,7 @@ impl AppView {
 
 impl AppView {
     fn show_top_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(1.0);
             ui.horizontal(|ui| {
                 NodeRunnerView::new(&mut self.model.node_runner).show(ui);
@@ -29,7 +30,7 @@ impl AppView {
     }
 
     fn show_bottom_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+        TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 global_theme_preference_switch(ui);
                 ui.separator();
@@ -57,7 +58,7 @@ impl AppView {
     }
 
     fn show_message_overview_panel(&mut self, ctx: &egui::Context) {
-        egui::SidePanel::left("overview_panel")
+        SidePanel::left("overview_panel")
             .default_width(300.0)
             .min_width(300.0)
             .resizable(true)
@@ -107,7 +108,7 @@ impl AppView {
     }
 
     fn show_message_details_panel(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             if let Some(details) = self.model.selected_message() {
                 ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
                     Grid::new("details_grid").num_columns(2).show(ui, |ui| {

@@ -2,12 +2,13 @@ use crate::{
     message_recorder::{MessageRecorder, RecordedMessage},
     node_factory::NodeFactory,
     node_runner::NodeRunner,
-    node_runner_view_model::NodeRunnerViewModel,
     nullable_runtime::NullableRuntime,
 };
 use num_format::{Locale, ToFormattedString};
 use rsnano_network::ChannelDirection;
 use std::sync::{atomic::Ordering, Arc};
+
+use super::NodeRunnerViewModel;
 
 pub(crate) struct AppViewModel {
     pub msg_recorder: Arc<MessageRecorder>,

@@ -1,17 +1,14 @@
-mod app_view;
-mod app_view_model;
 mod message_recorder;
-mod message_recorder_controls_view;
 mod node_factory;
 mod node_runner;
-mod node_runner_view;
-mod node_runner_view_model;
 mod nullable_runtime;
+mod view_models;
+mod views;
 
-use app_view::AppView;
-use app_view_model::AppViewModel;
 use eframe::egui;
 use tokio::runtime::Runtime;
+use view_models::AppViewModel;
+use views::AppView;
 
 fn main() -> eframe::Result {
     let runtime = Runtime::new().unwrap();

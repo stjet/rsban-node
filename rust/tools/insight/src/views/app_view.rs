@@ -1,10 +1,6 @@
-use super::{MessageRecorderControlsView, NodeRunnerView};
+use super::{MessageRecorderControlsView, MessageTableView, MessageView, NodeRunnerView};
 use crate::AppViewModel;
-use eframe::egui::{
-    self, global_theme_preference_switch, CentralPanel, Grid, Label, ScrollArea, Sense, SidePanel,
-    TopBottomPanel,
-};
-use egui_extras::{Column, TableBuilder};
+use eframe::egui::{self, global_theme_preference_switch, CentralPanel, SidePanel, TopBottomPanel};
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -33,14 +29,18 @@ impl AppView {
         TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 global_theme_preference_switch(ui);
+
                 ui.separator();
+
                 ui.label("Messages:");
                 ui.label(self.model.messages_sent());
                 ui.label("sent");
                 ui.add_space(10.0);
                 ui.label(self.model.messages_received());
                 ui.label("received");
+
                 ui.separator();
+
                 ui.label("Blocks:");
                 ui.label("?");
                 ui.label("bps");
@@ -63,71 +63,14 @@ impl AppView {
             .min_width(300.0)
             .resizable(true)
             .show(ctx, |ui| {
-                TableBuilder::new(ui)
-                    .striped(true)
-                    .resizable(false)
-                    .auto_shrink(false)
-                    .sense(Sense::click())
-                    .column(Column::auto())
-                    .column(Column::auto())
-                    .column(Column::remainder())
-                    .header(20.0, |mut header| {
-                        header.col(|ui| {
-                            ui.strong("Channel");
-                        });
-                        header.col(|ui| {
-                            ui.strong("Direction");
-                        });
-                        header.col(|ui| {
-                            ui.strong("Message");
-                        });
-                    })
-                    .body(|body| {
-                        body.rows(20.0, self.model.message_count(), |mut row| {
-                            let Some(row_model) = self.model.get_row(row.index()) else {
-                                return;
-                            };
-                            if row_model.is_selected {
-                                row.set_selected(true);
-                            }
-                            row.col(|ui| {
-                                ui.add(Label::new(row_model.channel_id).selectable(false));
-                            });
-                            row.col(|ui| {
-                                ui.add(Label::new(row_model.direction).selectable(false));
-                            });
-                            row.col(|ui| {
-                                ui.add(Label::new(row_model.message).selectable(false));
-                            });
-                            if row.response().clicked() {
-                                self.model.select_message(row.index());
-                            }
-                        })
-                    });
+                MessageTableView::new(&mut self.model.message_table).show(ui);
             });
     }
 
     fn show_message_details_panel(&mut self, ctx: &egui::Context) {
         CentralPanel::default().show(ctx, |ui| {
-            if let Some(details) = self.model.selected_message() {
-                ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-                    Grid::new("details_grid").num_columns(2).show(ui, |ui| {
-                        ui.label("Channel:");
-                        ui.label(details.channel_id);
-                        ui.end_row();
-
-                        ui.label("Direction:");
-                        ui.label(details.direction);
-                        ui.end_row();
-
-                        ui.label("Type:");
-                        ui.label(details.message_type);
-                        ui.end_row();
-                    });
-
-                    ui.add_space(20.0);
-                    ui.label(details.message);
-                });
+            if let Some(details) = self.model.message_table.selected_message() {
+                MessageView::new(&details).show(ui);
             }
         });
     }
@@ -140,7 +83,7 @@ impl eframe::App for AppView {
         self.show_bottom_panel(ctx);
         self.show_message_overview_panel(ctx);
         self.show_message_details_panel(ctx);
-        self.show_message_details_panel(ctx);
+        // Repaint to show the continuously increasing current block and message counters
         ctx.request_repaint();
     }
 }

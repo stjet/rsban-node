@@ -1,4 +1,4 @@
-use crate::node_runner_view_model::NodeRunnerViewModel;
+use crate::view_models::NodeRunnerViewModel;
 use eframe::egui::{Button, Ui};
 
 pub(crate) struct NodeRunnerView<'a> {

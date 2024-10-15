@@ -1,8 +1,7 @@
-use crate::RpcCommand;
+use crate::{common::WalletRpcMessage, RpcCommand};
 use rsnano_core::WalletId;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
-use super::WalletRpcMessage;
 
 impl RpcCommand {
     pub fn wallet_representative(wallet: WalletId) -> Self {

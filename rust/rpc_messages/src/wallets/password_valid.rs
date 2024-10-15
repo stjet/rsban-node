@@ -1,6 +1,5 @@
-use crate::RpcCommand;
+use crate::{common::WalletRpcMessage, RpcCommand};
 use rsnano_core::WalletId;
-use super::WalletRpcMessage;
 
 impl RpcCommand {
     pub fn password_valid(wallet: WalletId) -> Self {

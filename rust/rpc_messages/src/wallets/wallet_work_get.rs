@@ -1,17 +1,13 @@
-use crate::RpcCommand;
-use rsnano_core::WalletId;
+use crate::{common::WalletRpcMessage, RpcCommand};
+use rsnano_core::{Account, WorkNonce, WalletId};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn wallet_work_get(wallet: WalletId) -> Self {
         Self::WalletWorkGet(WalletRpcMessage::new(wallet))
     }
 }
-
-use rsnano_core::{Account, WorkNonce};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-use super::WalletRpcMessage;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsWithWorkDto {

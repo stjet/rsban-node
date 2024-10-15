@@ -1,4 +1,7 @@
-use crate::{node_runner_view::NodeRunnerView, AppViewModel};
+use crate::{
+    message_recorder_controls_view::MessageRecorderControlsView, node_runner_view::NodeRunnerView,
+    AppViewModel,
+};
 use eframe::egui::{self, global_theme_preference_switch, Grid, Label, ScrollArea, Sense};
 use egui_extras::{Column, TableBuilder};
 
@@ -19,18 +22,7 @@ impl AppView {
             ui.horizontal(|ui| {
                 NodeRunnerView::new(&mut self.model.node_runner).show(ui);
                 ui.separator();
-
-                let mut checked = self.model.msg_recorder.is_recording();
-                ui.checkbox(&mut checked, "capture");
-                if checked {
-                    self.model.msg_recorder.start_recording()
-                } else {
-                    self.model.msg_recorder.stop_recording()
-                }
-
-                if ui.button("clear").clicked() {
-                    self.model.msg_recorder.clear();
-                }
+                MessageRecorderControlsView::new(&self.model.msg_recorder).show(ui);
             });
             ui.add_space(1.0);
         });

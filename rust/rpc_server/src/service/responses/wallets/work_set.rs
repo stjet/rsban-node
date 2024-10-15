@@ -1,17 +1,14 @@
-use rsnano_core::{Account, WalletId, WorkNonce};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto, WorkSetArgs};
 use std::sync::Arc;
 
 pub async fn work_set(
     node: Arc<Node>,
     enable_control: bool,
-    wallet: WalletId,
-    account: Account,
-    work: WorkNonce,
+    args: WorkSetArgs
 ) -> RpcDto {
     if enable_control {
-        match node.wallets.work_set(&wallet, &account.into(), work.into()) {
+        match node.wallets.work_set(&args.wallet, &args.account.into(), args.work.into()) {
             Ok(_) => RpcDto::WorkSet(SuccessDto::new()),
             Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
         }

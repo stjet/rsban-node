@@ -163,7 +163,7 @@ impl NanoRpcClient {
 
     pub async fn bootstrap_lazy(
         &self,
-        args: impl Into<BootsrapLazyArgs>,
+        args: impl Into<BootstrapLazyArgs>,
     ) -> Result<BootstrapLazyDto> {
         let cmd = RpcCommand::bootstrap_lazy(args.into());
         let result = self.rpc_request(&cmd).await?;

@@ -1,14 +1,13 @@
-use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{FrontiersDto, RpcDto};
+use rsnano_rpc_messages::{AccountsRpcMessage, FrontiersDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn accounts_frontiers(node: Arc<Node>, accounts: Vec<Account>) -> RpcDto {
+pub async fn accounts_frontiers(node: Arc<Node>, args: AccountsRpcMessage) -> RpcDto {
     let tx = node.ledger.read_txn();
     let mut frontiers = HashMap::new();
     let mut errors = HashMap::new();
 
-    for account in accounts {
+    for account in args.accounts {
         if let Some(block_hash) = node.ledger.any().account_head(&tx, &account) {
             frontiers.insert(account, block_hash);
         } else {

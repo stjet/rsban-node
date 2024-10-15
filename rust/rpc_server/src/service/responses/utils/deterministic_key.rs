@@ -1,8 +1,8 @@
-use rsnano_core::{Account, PublicKey, RawKey};
-use rsnano_rpc_messages::{KeyPairDto, RpcDto};
+use rsnano_core::{Account, PublicKey};
+use rsnano_rpc_messages::{DeterministicKeyArgs, KeyPairDto, RpcDto};
 
-pub async fn deterministic_key(seed: RawKey, index: u32) -> RpcDto {
-    let private = rsnano_core::deterministic_key(&seed, index);
+pub async fn deterministic_key(args: DeterministicKeyArgs) -> RpcDto {
+    let private = rsnano_core::deterministic_key(&args.seed, args.index);
     let public: PublicKey = (&private).try_into().unwrap();
     let account = Account::from(public);
 

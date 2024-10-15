@@ -1,9 +1,10 @@
 use super::{
-    LedgerStatsViewModel, MessageStatsViewModel, MessageTableViewModel, NodeRunnerViewModel,
+    ChannelsViewModel, LedgerStatsViewModel, MessageStatsViewModel, MessageTableViewModel,
+    NodeRunnerViewModel,
 };
 use crate::{
-    ledger_stats::LedgerStats, message_recorder::MessageRecorder, node_factory::NodeFactory,
-    node_runner::NodeRunner, nullable_runtime::NullableRuntime,
+    channels::Channels, ledger_stats::LedgerStats, message_recorder::MessageRecorder,
+    node_factory::NodeFactory, node_runner::NodeRunner, nullable_runtime::NullableRuntime,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{sync::Arc, time::Duration};
@@ -13,6 +14,7 @@ pub(crate) struct AppViewModel {
     pub node_runner: NodeRunnerViewModel,
     pub message_table: MessageTableViewModel,
     ledger_stats: LedgerStats,
+    channels: Channels,
     clock: Arc<SteadyClock>,
     last_update: Option<Timestamp>,
 }
@@ -26,6 +28,7 @@ impl AppViewModel {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
             message_table: MessageTableViewModel::new(msg_recorder.clone()),
             msg_recorder,
+            channels: Channels::new(),
             clock,
             ledger_stats: LedgerStats::new(),
             last_update: None,
@@ -49,6 +52,8 @@ impl AppViewModel {
 
         if let Some(node) = self.node_runner.node() {
             self.ledger_stats.update(node, now);
+            let channels = node.network_info.read().unwrap().list_realtime_channels(0);
+            self.channels.update(channels);
         }
 
         self.last_update = Some(now);
@@ -60,6 +65,10 @@ impl AppViewModel {
 
     pub(crate) fn ledger_stats(&self) -> LedgerStatsViewModel {
         LedgerStatsViewModel::new(&self.ledger_stats)
+    }
+
+    pub(crate) fn channels(&self) -> ChannelsViewModel {
+        ChannelsViewModel::new(&self.channels)
     }
 }
 

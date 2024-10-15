@@ -10,7 +10,7 @@ impl<'a> MessageView<'a> {
         Self { model }
     }
 
-    pub(crate) fn show(&self, ui: &mut Ui) {
+    pub(crate) fn view(&self, ui: &mut Ui) {
         ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
             Grid::new("details_grid").num_columns(2).show(ui, |ui| {
                 ui.label("Channel:");

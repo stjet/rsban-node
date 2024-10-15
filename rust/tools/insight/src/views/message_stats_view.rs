@@ -28,10 +28,5 @@ impl<'a> MessageStatsView<'a> {
                     ui.label(self.0.receive_rate());
                 })
             });
-
-        ui.add_space(10.0);
-
-        ui.label(self.0.captured());
-        ui.label("captured");
     }
 }

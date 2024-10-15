@@ -1,13 +1,13 @@
-use crate::view_models::MessageTableViewModel;
+use crate::view_models::ChannelsViewModel;
 use eframe::egui::{Label, Sense, Ui};
 use egui_extras::{Column, TableBuilder};
 
-pub(crate) struct MessageTableView<'a> {
-    model: &'a mut MessageTableViewModel,
+pub(crate) struct ChannelsView<'a> {
+    model: ChannelsViewModel<'a>,
 }
 
-impl<'a> MessageTableView<'a> {
-    pub(crate) fn new(model: &'a mut MessageTableViewModel) -> Self {
+impl<'a> ChannelsView<'a> {
+    pub(crate) fn new(model: ChannelsViewModel<'a>) -> Self {
         Self { model }
     }
 
@@ -30,11 +30,11 @@ impl<'a> MessageTableView<'a> {
                     ui.strong("in/out");
                 });
                 header.col(|ui| {
-                    ui.strong("Type");
+                    ui.strong("Remote Addr");
                 });
             })
             .body(|body| {
-                body.rows(20.0, self.model.message_count(), |mut row| {
+                body.rows(20.0, self.model.channel_count(), |mut row| {
                     let Some(row_model) = self.model.get_row(row.index()) else {
                         return;
                     };
@@ -48,10 +48,10 @@ impl<'a> MessageTableView<'a> {
                         ui.add(Label::new(row_model.direction).selectable(false));
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(row_model.message).selectable(false));
+                        ui.add(Label::new(row_model.remote_addr).selectable(false));
                     });
                     if row.response().clicked() {
-                        self.model.select_message(row.index());
+                        //self.model.select_message(row.index());
                     }
                 })
             });

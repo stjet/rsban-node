@@ -25,6 +25,10 @@ impl MessageTableViewModel {
         }
     }
 
+    pub(crate) fn heading(&self) -> String {
+        format!("Messages ({})", self.msg_recorder.message_count())
+    }
+
     pub(crate) fn get_row(&self, index: usize) -> Option<RowViewModel> {
         let message = self.msg_recorder.get_message(index)?;
         Some(RowViewModel {

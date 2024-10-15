@@ -1,3 +1,4 @@
+mod channels;
 mod ledger_stats;
 mod message_recorder;
 mod node_factory;
@@ -9,12 +10,11 @@ mod views;
 
 use eframe::egui;
 use tokio::runtime::Runtime;
-use view_models::AppViewModel;
 use views::AppView;
 
 fn main() -> eframe::Result {
     let runtime = Runtime::new().unwrap();
-    let model = AppViewModel::with_runtime(runtime.handle().clone());
+    let runtime_handle = runtime.handle().clone();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
@@ -25,7 +25,7 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             cc.egui_ctx.set_zoom_factor(1.15);
-            Ok(Box::new(AppView::new(model)))
+            Ok(Box::new(AppView::new(runtime_handle)))
         }),
     )
 }

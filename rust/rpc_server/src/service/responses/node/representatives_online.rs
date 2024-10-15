@@ -1,14 +1,13 @@
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::RepresentativesOnlineDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{RepresentativesOnlineDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
 pub async fn representatives_online(
     node: Arc<Node>,
     weight: Option<bool>,
     accounts: Option<Vec<Account>>,
-) -> String {
+) -> RpcDto {
     let lock = node.online_reps.lock().unwrap();
     let online_reps = lock.online_reps();
     let weight = weight.unwrap_or(false);
@@ -36,5 +35,5 @@ pub async fn representatives_online(
 
     let dto = RepresentativesOnlineDto { representatives };
 
-    to_string_pretty(&dto).unwrap()
+    RpcDto::RepresentativesOnline(dto)
 }

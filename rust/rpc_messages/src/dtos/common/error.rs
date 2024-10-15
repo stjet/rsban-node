@@ -22,7 +22,6 @@ pub enum ErrorDto2 {
     BlockError,
     MissingAccountInformation,
     WorkLow,
-    // New variants
     GapPrevious,
     GapSource,
     Old,
@@ -38,6 +37,15 @@ pub enum ErrorDto2 {
     Other,
     Stopped,
     NotStateBlock,
+    LegacyBootstrapDisabled,
+    LazyBootstrapDisabled,
+    ConfirmationInfoNotFound,
+    InvalidRoot,
+    DifficultyOutOfRange,
+    BlockRootMismatch,
+    BlockWorkVersioMismatch,
+    AccountHeadNotFound,
+    InsufficientBalance
 }
 
 impl Serialize for ErrorDto2 {
@@ -54,7 +62,6 @@ impl Serialize for ErrorDto2 {
             ErrorDto2::BlockError => "Block error".to_string(),
             ErrorDto2::MissingAccountInformation => "Missing account information".to_string(),
             ErrorDto2::WorkLow => "Work low".to_string(),
-            // New error messages
             ErrorDto2::GapPrevious => "Gap previous".to_string(),
             ErrorDto2::GapSource => "Gap source".to_string(),
             ErrorDto2::Old => "Old".to_string(),
@@ -70,6 +77,15 @@ impl Serialize for ErrorDto2 {
             ErrorDto2::Other => "Other".to_string(),
             ErrorDto2::Stopped => "Stopped".to_string(),
             ErrorDto2::NotStateBlock => "Is not state block".to_string(),
+            ErrorDto2::LegacyBootstrapDisabled => "Legacy boostrap is disabled".to_string(),
+            ErrorDto2::LazyBootstrapDisabled => "Lazy boostrap is disabled".to_string(),
+            ErrorDto2::ConfirmationInfoNotFound => "Confirmation info not found".to_string(),
+            ErrorDto2::InvalidRoot => "Invalid root".to_string(),
+            ErrorDto2::DifficultyOutOfRange => "Difficulty out of valid range".to_string(),
+            ErrorDto2::BlockRootMismatch => "Block root mismatch".to_string(),
+            ErrorDto2::BlockWorkVersioMismatch => "Block work version mismatch".to_string(),
+            ErrorDto2::AccountHeadNotFound => "Account head not found".to_string(),
+            ErrorDto2::InsufficientBalance => "Insufficient balance".to_string(),
         };
 
         let mut map = serializer.serialize_map(Some(1))?;

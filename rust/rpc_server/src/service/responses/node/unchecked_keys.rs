@@ -1,10 +1,9 @@
 use rsnano_core::{HashOrAccount, UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{RpcDto, UncheckedKeyDto, UncheckedKeysDto};
 use std::sync::{Arc, Mutex};
 
-pub async fn unchecked_keys(node: Arc<Node>, key: HashOrAccount, count: u64) -> String {
+pub async fn unchecked_keys(node: Arc<Node>, key: HashOrAccount, count: u64) -> RpcDto {
     let unchecked_keys = Arc::new(Mutex::new(Vec::new()));
 
     node.unchecked.for_each_with_dependency(
@@ -33,5 +32,6 @@ pub async fn unchecked_keys(node: Arc<Node>, key: HashOrAccount, count: u64) -> 
         .unwrap()
         .into_inner()
         .unwrap();
-    to_string_pretty(&UncheckedKeysDto::new(unchecked_keys)).unwrap()
+
+    RpcDto::UncheckedKeys(UncheckedKeysDto::new(unchecked_keys))
 }

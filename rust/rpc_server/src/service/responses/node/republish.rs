@@ -1,7 +1,6 @@
 use rsnano_core::{BlockHash, PendingKey};
 use rsnano_node::{Node, NodeExt};
-use rsnano_rpc_messages::{BlockHashesDto, ErrorDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{BlockHashesDto, ErrorDto2, RpcDto};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,7 +10,7 @@ pub async fn republish(
     sources: Option<u64>,
     destinations: Option<u64>,
     count: Option<u64>,
-) -> String {
+) -> RpcDto {
     let mut blocks = Vec::new();
     let transaction = node.store.tx_begin_read();
     let count = count.unwrap_or(1024);
@@ -67,10 +66,7 @@ pub async fn republish(
                             match node.ledger.any().account_head(&transaction, &destination) {
                                 Some(block_hash) => block_hash,
                                 None => {
-                                    return to_string_pretty(&ErrorDto::new(
-                                        "Account head not found".to_string(),
-                                    ))
-                                    .unwrap()
+                                    return RpcDto::Error(ErrorDto2::AccountHeadNotFound)
                                 }
                             };
                         let mut dest_block = node.ledger.any().get_block(&transaction, &previous);
@@ -129,5 +125,5 @@ pub async fn republish(
         );
     }
 
-    to_string_pretty(&BlockHashesDto::new(blocks)).unwrap()
+    RpcDto::Republish(BlockHashesDto::new(blocks))
 }

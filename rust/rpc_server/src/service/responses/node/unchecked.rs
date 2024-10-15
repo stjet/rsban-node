@@ -1,11 +1,10 @@
 use rsnano_core::{UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::UncheckedDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{RpcDto, UncheckedDto};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub async fn unchecked(node: Arc<Node>, count: u64) -> String {
+pub async fn unchecked(node: Arc<Node>, count: u64) -> RpcDto {
     let blocks = Arc::new(Mutex::new(HashMap::new()));
 
     node.unchecked.for_each(
@@ -26,5 +25,5 @@ pub async fn unchecked(node: Arc<Node>, count: u64) -> String {
     );
 
     let blocks = Arc::try_unwrap(blocks).unwrap().into_inner().unwrap();
-    to_string_pretty(&UncheckedDto::new(blocks)).unwrap()
+    RpcDto::Unchecked(UncheckedDto::new(blocks))
 }

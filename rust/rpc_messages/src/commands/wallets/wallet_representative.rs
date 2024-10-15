@@ -7,6 +7,21 @@ impl RpcCommand {
     }
 }
 
+use rsnano_core::Account;
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct WalletRepresentativeDto {
+    pub representative: Account,
+}
+
+impl WalletRepresentativeDto {
+    pub fn new(representative: Account) -> Self {
+        Self { representative }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;

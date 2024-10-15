@@ -1,10 +1,9 @@
 use rsnano_core::{BlockHash, UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, UncheckedGetDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, RpcDto, UncheckedGetDto};
 use std::sync::{Arc, Mutex};
 
-pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> String {
+pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> RpcDto {
     let result = Arc::new(Mutex::new(None));
 
     node.unchecked.for_each(
@@ -26,7 +25,7 @@ pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> String {
 
     let result = result.lock().unwrap().take();
     result.map_or_else(
-        || to_string_pretty(&ErrorDto::new("Block not found".to_string())).unwrap(),
-        |dto| to_string_pretty(&dto).unwrap(),
+        || RpcDto::Error(ErrorDto2::BlockNotFound),
+        |dto| RpcDto::UncheckedGet(dto),
     )
 }

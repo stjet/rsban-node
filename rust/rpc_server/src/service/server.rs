@@ -147,7 +147,7 @@ async fn handle_rpc(
         RpcCommand::WalletRepresentativeSet(args) => wallet_representative_set(rpc_service.node, rpc_service.enable_control, args.wallet, args.account, args.update_existing_accounts).await,
         RpcCommand::SearchReceivable(args) => search_receivable(rpc_service.node, rpc_service.enable_control, args.wallet).await,
         RpcCommand::WalletRepublish(args) => wallet_republish(rpc_service.node, rpc_service.enable_control, args.wallet, args.count).await,
-        RpcCommand::WalletBalances(WalletBalancesArgs { wallet, threshold }) => wallet_balances(rpc_service.node, wallet, threshold).await,
+        RpcCommand::WalletBalances(args) => wallet_balances(rpc_service.node, args).await,
         RpcCommand::WalletHistory(args) => wallet_history(rpc_service.node, args.wallet, args.modified_since).await,
         RpcCommand::WalletLedger(args) => wallet_ledger(rpc_service.node, rpc_service.enable_control, args).await,
         RpcCommand::AccountsReceivable(args) => accounts_receivable(rpc_service.node, args).await,

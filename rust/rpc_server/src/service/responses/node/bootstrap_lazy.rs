@@ -1,7 +1,6 @@
 use rsnano_core::BlockHash;
 use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
-use rsnano_rpc_messages::{BootstrapLazyDto, ErrorDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{BootstrapLazyDto, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
 pub async fn bootstrap_lazy(
@@ -9,9 +8,9 @@ pub async fn bootstrap_lazy(
     hash: BlockHash,
     force: Option<bool>,
     id: Option<String>,
-) -> String {
+) -> RpcDto {
     if node.flags.disable_lazy_bootstrap {
-        return to_string_pretty(&ErrorDto::new("Lazy bootstrap is disabled".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto2::LazyBootstrapDisabled)
     }
 
     let force = force.unwrap_or(false);
@@ -26,5 +25,5 @@ pub async fn bootstrap_lazy(
 
     let started = !existed.is_some() && key_inserted;
 
-    to_string_pretty(&BootstrapLazyDto::new(started, key_inserted)).unwrap()
+    RpcDto::BootstrapLazy(BootstrapLazyDto::new(started, key_inserted))
 }

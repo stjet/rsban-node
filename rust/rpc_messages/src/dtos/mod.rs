@@ -12,7 +12,7 @@ pub use common::*;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AccountBlockCountDto, AccountHistoryDto, AccountInfoDto, AccountRepresentativeDto, AccountsRepresentativesDto, AccountsWithWorkDto, AvailableSupplyDto, BlockCountDto, BlockInfoDto, BlocksDto, BlocksInfoDto, ConfirmationActiveDto, ConfirmationQuorumDto, JsonDto, NodeIdDto, PeersDto, SignDto, UnopenedDto, WalletChangeSeedDto, WalletInfoDto, WalletRepresentativeDto, WalletRpcMessage, WorkDto, WorkValidateDto};
+use crate::{AccountBlockCountDto, AccountHistoryDto, AccountInfoDto, AccountRepresentativeDto, AccountsRepresentativesDto, AccountsWithWorkDto, AvailableSupplyDto, BlockCountDto, BlockCreateDto, BlockInfoDto, BlocksDto, BlocksInfoDto, BootstrapLazyDto, ConfirmationActiveDto, ConfirmationInfoDto, ConfirmationQuorumDto, JsonDto, LedgerDto, NodeIdDto, PeersDto, RepresentativesOnlineDto, SetDto, SignDto, UncheckedDto, UncheckedGetDto, UncheckedKeysDto, UnopenedDto, WalletChangeSeedDto, WalletHistoryDto, WalletInfoDto, WalletLedgerDto, WalletRepresentativeDto, WalletRpcMessage, WorkDto, WorkGenerateDto, WorkValidateDto};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -87,5 +87,27 @@ pub enum RpcDto {
     AccountHistory(AccountHistoryDto),
     Sign(SignDto),
     Process(HashRpcMessage),
-    
+    WalletBalances(AccountsBalancesDto),
+    WorkCancel(SuccessDto),
+    Bootstrap(SuccessDto),
+    BootstrapAny(SuccessDto),
+    BootstrapLazy(BootstrapLazyDto),
+    WalletReceivable(ReceivableDto),
+    WalletRepresentativeSet(SetDto),
+    SearchReceivable(ExistsDto),
+    WalletRepublish(BlockHashesDto),
+    WalletHistory(WalletHistoryDto),
+    WalletLedger(WalletLedgerDto),
+    AccountsReceivable(ReceivableDto),
+    Receivable(ReceivableDto),
+    ReceivableExists(ExistsDto),
+    RepresentativesOnline(RepresentativesOnlineDto),
+    Unchecked(UncheckedDto),
+    UncheckedGet(UncheckedGetDto),
+    UncheckedKeys(UncheckedKeysDto),
+    ConfirmationInfo(ConfirmationInfoDto),
+    Ledger(LedgerDto),
+    WorkGenerate(WorkGenerateDto),
+    Republish(BlockHashesDto),
+    BlockCreate(BlockCreateDto)
 }

@@ -1,7 +1,6 @@
 use rsnano_core::BlockHash;
 use rsnano_node::Node;
-use rsnano_rpc_messages::ExistsDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ExistsDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn receivable_exists(
@@ -9,7 +8,7 @@ pub async fn receivable_exists(
     hash: BlockHash,
     include_active: Option<bool>,
     include_only_confirmed: Option<bool>,
-) -> String {
+) -> RpcDto {
     let include_active = include_active.unwrap_or(false);
     let include_only_confirmed = include_only_confirmed.unwrap_or(true);
     let txn = node.ledger.read_txn();
@@ -31,7 +30,7 @@ pub async fn receivable_exists(
         false
     };
 
-    to_string_pretty(&ExistsDto::new(exists)).unwrap()
+    RpcDto::ReceivableExists(ExistsDto::new(exists))
 }
 
 fn block_confirmed(

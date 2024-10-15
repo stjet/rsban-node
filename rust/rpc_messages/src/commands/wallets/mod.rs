@@ -66,3 +66,5 @@ pub use work_set::*;
 pub use wallet_destroy::*;
 pub use wallet_lock::*;
 pub use wallet_locked::*;
+pub use wallet_representative_set::*;
+pub use wallet_representative::*;

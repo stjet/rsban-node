@@ -1,7 +1,6 @@
 use rsnano_core::{Amount, QualifiedRoot};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoDto, ErrorDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoDto, ErrorDto2, RpcDto};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -10,7 +9,7 @@ pub async fn confirmation_info(
     root: QualifiedRoot,
     contents: Option<bool>,
     representatives: Option<bool>,
-) -> String {
+) -> RpcDto {
     let election = node.active.election(&root);
 
     if let Some(election) = election {
@@ -59,11 +58,11 @@ pub async fn confirmation_info(
                 blocks,
             );
 
-            to_string_pretty(&confirmation_info_dto).unwrap()
+            RpcDto::ConfirmationInfo(confirmation_info_dto)
         } else {
-            to_string_pretty(&ErrorDto::new("Confirmation not found".to_string())).unwrap()
+            RpcDto::Error(ErrorDto2::ConfirmationInfoNotFound)
         }
     } else {
-        to_string_pretty(&ErrorDto::new("Invalid root".to_string())).unwrap()
+        RpcDto::Error(ErrorDto2::InvalidRoot)
     }
 }

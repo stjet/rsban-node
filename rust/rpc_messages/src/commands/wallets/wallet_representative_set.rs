@@ -48,13 +48,13 @@ impl WalletRepresentativeSetArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletRepresentativeDto {
-    pub account: Account,
+pub struct SetDto {
+    pub set: bool,
 }
 
-impl WalletRepresentativeDto {
-    pub fn new(account: Account) -> Self {
-        Self { account }
+impl SetDto {
+    pub fn new(set: bool) -> Self {
+        Self { set }
     }
 }
 

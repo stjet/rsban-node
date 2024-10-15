@@ -1,17 +1,11 @@
-use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, RepresentativeDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountRepresentativeArgs, AccountRepresentativeDto, ErrorDto2, RpcDto};
 use std::sync::Arc;
 
-pub async fn account_representative(node: Arc<Node>, account: Account) -> String {
+pub async fn account_representative(node: Arc<Node>, args: AccountRepresentativeArgs) -> RpcDto {
     let tx = node.ledger.read_txn();
-    match node.ledger.store.account.get(&tx, &account) {
-        Some(account_info) => {
-            let account_representative =
-                RepresentativeDto::new(account_info.representative.as_account());
-            to_string_pretty(&account_representative).unwrap()
-        }
-        None => to_string_pretty(&ErrorDto::new("Account not found".to_string())).unwrap(),
+    match node.ledger.store.account.get(&tx, &args.account) {
+        Some(account_info) => RpcDto::AccountRepresentative(AccountRepresentativeDto::new(account_info.representative.as_account())),
+        None => RpcDto::Error(ErrorDto2::AccountNotFound)
     }
 }

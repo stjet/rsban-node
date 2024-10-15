@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub async fn wallet_contains(node: Arc<Node>, args: WalletContainsArgs) -> RpcDto {
     let wallet_accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e)),
     };
 
     if wallet_accounts.contains(&args.account) {

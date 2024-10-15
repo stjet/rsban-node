@@ -59,3 +59,5 @@ pub use wallet_with_password::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
+pub use wallet_lock::*;
+pub use wallet_locked::*;

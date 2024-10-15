@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rsnano_node::wallets::WalletsError;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ErrorDto {
@@ -14,11 +14,28 @@ impl ErrorDto {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "error")]
+#[derive(Debug, Deserialize)]
 pub enum ErrorDto2 {
     WalletsError(WalletsError),
     RPCControlDisabled,
+    AccountNotFound
+}
+
+impl Serialize for ErrorDto2 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let error_message = match self {
+            ErrorDto2::WalletsError(e) => e.to_string(),
+            ErrorDto2::RPCControlDisabled => "RPC control is disabled".to_string(),
+            ErrorDto2::AccountNotFound => "Account not found".to_string(),
+        };
+
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry("error", &error_message)?;
+        map.end()
+    }
 }
 
 impl fmt::Display for ErrorDto2 {
@@ -26,6 +43,7 @@ impl fmt::Display for ErrorDto2 {
         let error_message = match self {
             Self::WalletsError(e) => e.to_string(),
             Self::RPCControlDisabled => "RPC control is disabled".to_string(),
+            Self::AccountNotFound => "Account not found".to_string(),
         };
         write!(f, "{}", error_message)
     }

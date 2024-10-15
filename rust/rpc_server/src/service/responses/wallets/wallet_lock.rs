@@ -1,16 +1,14 @@
-use rsnano_core::WalletId;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, LockedDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, LockDto, RpcDto, WalletLockArgs};
 use std::sync::Arc;
 
-pub async fn wallet_lock(node: Arc<Node>, enable_control: bool, wallet: WalletId) -> String {
+pub async fn wallet_lock(node: Arc<Node>, enable_control: bool, args: WalletLockArgs) -> RpcDto {
     if enable_control {
-        match node.wallets.lock(&wallet) {
-            Ok(()) => to_string_pretty(&LockedDto::new(true)).unwrap(),
-            Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+        match node.wallets.lock(&args.wallet) {
+            Ok(()) => RpcDto::Lock(LockDto::new(true)),
+            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e))
         }
     } else {
-        to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap()
+        RpcDto::Error(ErrorDto2::RPCControlDisabled)
     }
 }

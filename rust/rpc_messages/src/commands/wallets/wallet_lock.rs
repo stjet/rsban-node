@@ -1,9 +1,21 @@
-use crate::{RpcCommand, WalletRpcMessage};
+use crate::RpcCommand;
 use rsnano_core::WalletId;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn wallet_lock(wallet: WalletId) -> Self {
-        Self::WalletLock(WalletRpcMessage::new(wallet))
+        Self::WalletLock(WalletLockArgs::new(wallet))
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct WalletLockArgs {
+    pub wallet: WalletId,
+}
+
+impl WalletLockArgs {
+    pub fn new(wallet: WalletId) -> Self {
+        Self { wallet }
     }
 }
 

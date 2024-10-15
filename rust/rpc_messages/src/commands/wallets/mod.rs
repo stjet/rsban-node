@@ -38,6 +38,7 @@ mod work_get;
 mod work_set;
 
 pub use account_create::*;
+pub use account_list::*;
 pub use account_move::*;
 pub use account_remove::*;
 pub use accounts_create::*;
@@ -62,4 +63,6 @@ pub use wallet_with_password::*;
 pub use wallet_work_get::*;
 pub use work_get::*;
 pub use work_set::*;
-pub use account_list::*;
+pub use wallet_destroy::*;
+pub use wallet_lock::*;
+pub use wallet_locked::*;

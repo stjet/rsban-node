@@ -3,9 +3,13 @@ use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletCreateArgs, WalletCreateDto};
 use std::sync::Arc;
 
-pub async fn wallet_create(node: Arc<Node>, enable_control: bool, args: WalletCreateArgs) -> RpcDto {
+pub async fn wallet_create(
+    node: Arc<Node>,
+    enable_control: bool,
+    args: WalletCreateArgs,
+) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto2::RPCControlDisabled);
     }
 
     let wallet = WalletId::random();

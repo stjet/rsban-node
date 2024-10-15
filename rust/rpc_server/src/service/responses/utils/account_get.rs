@@ -1,7 +1,5 @@
-use rsnano_core::PublicKey;
-use rsnano_rpc_messages::AccountDto;
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{AccountDto, AccountGetArgs, RpcDto};
 
-pub async fn account_get(key: PublicKey) -> String {
-    to_string_pretty(&AccountDto::new(key.into())).unwrap()
+pub async fn account_get(args: AccountGetArgs) -> RpcDto {
+    RpcDto::AccountGet(AccountDto::new(args.key.into()))
 }

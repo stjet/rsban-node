@@ -3,10 +3,7 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto, RpcDto};
 use std::sync::Arc;
 
-pub async fn account_balance(
-    node: Arc<Node>,
-    args: AccountBalanceArgs,
-) -> RpcDto {
+pub async fn account_balance(node: Arc<Node>, args: AccountBalanceArgs) -> RpcDto {
     let tx = node.ledger.read_txn();
     let include_unconfirmed_blocks = args.include_only_confirmed.unwrap_or(false);
 

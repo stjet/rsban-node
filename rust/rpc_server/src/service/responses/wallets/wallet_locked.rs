@@ -1,12 +1,10 @@
-use rsnano_core::WalletId;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, LockedDto};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{ErrorDto2, LockedDto, RpcDto, WalletLockedArgs};
 use std::sync::Arc;
 
-pub async fn wallet_locked(node: Arc<Node>, wallet: WalletId) -> String {
-    match node.wallets.valid_password(&wallet) {
-        Ok(valid) => to_string_pretty(&LockedDto::new(!valid)).unwrap(),
-        Err(e) => to_string_pretty(&ErrorDto::new(e.to_string())).unwrap(),
+pub async fn wallet_locked(node: Arc<Node>, args: WalletLockedArgs) -> RpcDto {
+    match node.wallets.valid_password(&args.wallet) {
+        Ok(valid) => RpcDto::Locked(LockedDto::new(!valid)),
+        Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
     }
 }

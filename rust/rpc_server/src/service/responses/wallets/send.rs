@@ -1,5 +1,5 @@
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{BlockDto, ErrorDto2, RpcDto, SendArgs};
+use rsnano_rpc_messages::{BlockDto, ErrorDto, RpcDto, SendArgs};
 use std::sync::Arc;
 
 pub async fn send(node: Arc<Node>, enable_control: bool, args: SendArgs) -> RpcDto {
@@ -9,6 +9,6 @@ pub async fn send(node: Arc<Node>, enable_control: bool, args: SendArgs) -> RpcD
                 .send_sync(args.wallet, args.source, args.destination, args.amount);
         RpcDto::Send(BlockDto::new(block_hash))
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

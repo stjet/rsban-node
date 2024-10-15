@@ -3,7 +3,7 @@ use rsnano_node::{
     consensus::{ElectionStatus, ElectionStatusType},
     Node,
 };
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, StartedDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, StartedDto};
 use std::sync::Arc;
 
 pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> RpcDto {
@@ -26,6 +26,6 @@ pub async fn block_confirm(node: Arc<Node>, hash: BlockHash) -> RpcDto {
             }
             RpcDto::BlockConfirm(StartedDto::new(true))
         }
-        None => RpcDto::Error(ErrorDto2::BlockNotFound)
+        None => RpcDto::Error(ErrorDto::BlockNotFound)
     }
 }

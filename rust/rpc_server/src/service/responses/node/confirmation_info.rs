@@ -1,6 +1,6 @@
 use rsnano_core::{Amount, QualifiedRoot};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoDto, ErrorDto, RpcDto};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -60,9 +60,9 @@ pub async fn confirmation_info(
 
             RpcDto::ConfirmationInfo(confirmation_info_dto)
         } else {
-            RpcDto::Error(ErrorDto2::ConfirmationInfoNotFound)
+            RpcDto::Error(ErrorDto::ConfirmationInfoNotFound)
         }
     } else {
-        RpcDto::Error(ErrorDto2::InvalidRoot)
+        RpcDto::Error(ErrorDto::InvalidRoot)
     }
 }

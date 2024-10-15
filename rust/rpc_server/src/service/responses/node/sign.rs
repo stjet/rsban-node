@@ -1,6 +1,6 @@
 use rsnano_core::{sign_message, utils::MemoryStream, BlockEnum, RawKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SignArgs, SignDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SignArgs, SignDto};
 use std::sync::Arc;
 
 pub async fn sign(node: Arc<Node>, args: SignArgs) -> RpcDto {
@@ -11,10 +11,10 @@ pub async fn sign(node: Arc<Node>, args: SignArgs) -> RpcDto {
     } else if let (Some(wallet), Some(account)) = (args.wallet, args.account) {
         match node.wallets.fetch(&wallet, &account.into()) {
             Ok(key) => key,
-            Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e)),
+            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
         }
     } else {
-        return RpcDto::Error(ErrorDto2::MissingAccountInformation);
+        return RpcDto::Error(ErrorDto::MissingAccountInformation);
     };
 
     let signature = if prv != RawKey::zero() {
@@ -24,7 +24,7 @@ pub async fn sign(node: Arc<Node>, args: SignArgs) -> RpcDto {
         let signature = sign_message(&prv, &stream.to_vec());
         signature
     } else {
-        return RpcDto::Error(ErrorDto2::MissingAccountInformation);
+        return RpcDto::Error(ErrorDto::MissingAccountInformation);
     };
 
     let sign_dto = SignDto::new(signature, block.json_representation());

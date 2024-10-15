@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, UnopenedDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, UnopenedDto};
 use std::{collections::HashMap, sync::Arc};
 
 pub async fn unopened(
@@ -11,7 +11,7 @@ pub async fn unopened(
     threshold: Option<Amount>,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let start = account;

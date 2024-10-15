@@ -1,6 +1,6 @@
 use rsnano_core::BlockHash;
 use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
-use rsnano_rpc_messages::{BootstrapLazyDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{BootstrapLazyDto, ErrorDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn bootstrap_lazy(
@@ -10,7 +10,7 @@ pub async fn bootstrap_lazy(
     id: Option<String>,
 ) -> RpcDto {
     if node.flags.disable_lazy_bootstrap {
-        return RpcDto::Error(ErrorDto2::LazyBootstrapDisabled)
+        return RpcDto::Error(ErrorDto::LazyBootstrapDisabled)
     }
 
     let force = force.unwrap_or(false);

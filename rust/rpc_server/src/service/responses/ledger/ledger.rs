@@ -1,11 +1,11 @@
 use rsnano_core::{Account, AccountInfo, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, LedgerAccountInfo, LedgerArgs, LedgerDto, RpcDto};
+use rsnano_rpc_messages::{ErrorDto, LedgerAccountInfo, LedgerArgs, LedgerDto, RpcDto};
 use std::{collections::HashMap, sync::Arc, u64};
 
 pub async fn ledger(node: Arc<Node>, enable_control: bool, args: LedgerArgs) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let account = args.account;

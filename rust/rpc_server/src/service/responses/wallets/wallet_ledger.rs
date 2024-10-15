@@ -1,6 +1,6 @@
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountInfo, ErrorDto2, RpcDto, WalletLedgerArgs, WalletLedgerDto};
+use rsnano_rpc_messages::{AccountInfo, ErrorDto, RpcDto, WalletLedgerArgs, WalletLedgerDto};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ pub async fn wallet_ledger(
     args: WalletLedgerArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let WalletLedgerArgs {
@@ -40,7 +40,7 @@ pub async fn wallet_ledger(
                 accounts: accounts_json,
             })
         }
-        Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e))
+        Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
     }
 }
 

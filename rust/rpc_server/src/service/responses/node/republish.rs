@@ -1,6 +1,6 @@
 use rsnano_core::{BlockHash, PendingKey};
 use rsnano_node::{Node, NodeExt};
-use rsnano_rpc_messages::{BlockHashesDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{BlockHashesDto, ErrorDto, RpcDto};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -66,7 +66,7 @@ pub async fn republish(
                             match node.ledger.any().account_head(&transaction, &destination) {
                                 Some(block_hash) => block_hash,
                                 None => {
-                                    return RpcDto::Error(ErrorDto2::AccountHeadNotFound)
+                                    return RpcDto::Error(ErrorDto::AccountHeadNotFound)
                                 }
                             };
                         let mut dest_block = node.ledger.any().get_block(&transaction, &previous);

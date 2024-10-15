@@ -1,5 +1,5 @@
 use rsnano_node::{Node, NodeExt};
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
 use std::sync::Arc;
 
 pub async fn stop(node: Arc<Node>, enable_control: bool) -> RpcDto {
@@ -7,6 +7,6 @@ pub async fn stop(node: Arc<Node>, enable_control: bool) -> RpcDto {
         node.stop();
         RpcDto::Stop(SuccessDto::new())
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

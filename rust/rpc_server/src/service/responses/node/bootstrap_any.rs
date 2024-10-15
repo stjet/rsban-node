@@ -1,6 +1,6 @@
 use rsnano_core::Account;
 use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
 use std::sync::Arc;
 
 pub async fn bootstrap_any(
@@ -10,7 +10,7 @@ pub async fn bootstrap_any(
     account: Option<Account>,
 ) -> RpcDto {
     if node.flags.disable_legacy_bootstrap {
-        return RpcDto::Error(ErrorDto2::LegacyBootstrapDisabled)
+        return RpcDto::Error(ErrorDto::LegacyBootstrapDisabled)
     }
 
     let force = force.unwrap_or(false);

@@ -1,7 +1,7 @@
 use rsnano_messages::{Keepalive, Message};
 use rsnano_network::{DropPolicy, TrafficType};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, StartedDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, StartedDto};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::Arc,
@@ -14,7 +14,7 @@ pub async fn keepalive(
     port: u16,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let peering_addr = SocketAddrV6::new(address.into(), port, 0, 0);
@@ -38,6 +38,6 @@ pub async fn keepalive(
 
             RpcDto::Keepalive(StartedDto::new(true))
         }
-        None => RpcDto::Error(ErrorDto2::PeerNotFound)
+        None => RpcDto::Error(ErrorDto::PeerNotFound)
     }
 }

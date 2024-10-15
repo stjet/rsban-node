@@ -1,6 +1,6 @@
 use rsnano_core::{BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
 use std::sync::Arc;
 
 pub async fn work_generate(
@@ -9,7 +9,7 @@ pub async fn work_generate(
     args: WorkGenerateArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
@@ -27,17 +27,17 @@ pub async fn work_generate(
                 .work
                 .threshold_entry(BlockType::State, work_version)
     {
-        return RpcDto::Error(ErrorDto2::DifficultyOutOfRange)
+        return RpcDto::Error(ErrorDto::DifficultyOutOfRange)
     }
 
     // Handle block if provided
     if let Some(block) = args.block {
         let block_enum: BlockEnum = block.into();
         if args.hash != block_enum.hash() {
-            return RpcDto::Error(ErrorDto2::BlockRootMismatch)
+            return RpcDto::Error(ErrorDto::BlockRootMismatch)
         }
         if args.version.is_some() && work_version != block_enum.work_version() {
-            return RpcDto::Error(ErrorDto2::BlockWorkVersioMismatch)
+            return RpcDto::Error(ErrorDto::BlockWorkVersioMismatch)
         }
         // Recalculate difficulty if not provided
         if args.difficulty.is_none() && args.multiplier.is_none() {

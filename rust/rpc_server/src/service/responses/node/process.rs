@@ -1,7 +1,7 @@
 use rsnano_core::BlockEnum;
 use rsnano_ledger::BlockStatus;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, HashRpcMessage, ProcessArgs, RpcDto};
+use rsnano_rpc_messages::{ErrorDto, HashRpcMessage, ProcessArgs, RpcDto};
 use std::sync::Arc;
 
 pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
@@ -13,7 +13,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
         .work
         .validate_entry(block.work_version(), &block.root(), block.work())
     {
-        return RpcDto::Error(ErrorDto2::WorkLow)
+        return RpcDto::Error(ErrorDto::WorkLow)
     }
 
     if !is_async {
@@ -23,15 +23,15 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
                     let hash = block.hash();
                     RpcDto::Process(HashRpcMessage::new(hash))
                 }
-                BlockStatus::GapPrevious => RpcDto::Error(ErrorDto2::GapPrevious),
-                BlockStatus::GapSource => RpcDto::Error(ErrorDto2::GapSource),
-                BlockStatus::Old => RpcDto::Error(ErrorDto2::Old),
-                BlockStatus::BadSignature => RpcDto::Error(ErrorDto2::BadSignature),
-                BlockStatus::NegativeSpend => RpcDto::Error(ErrorDto2::NegativeSpend),
-                BlockStatus::BalanceMismatch => RpcDto::Error(ErrorDto2::BalanceMismatch),
-                BlockStatus::Unreceivable => RpcDto::Error(ErrorDto2::Unreceivable),
-                BlockStatus::BlockPosition => RpcDto::Error(ErrorDto2::BlockPosition),
-                BlockStatus::GapEpochOpenPending => RpcDto::Error(ErrorDto2::GapEpochOpenPending),
+                BlockStatus::GapPrevious => RpcDto::Error(ErrorDto::GapPrevious),
+                BlockStatus::GapSource => RpcDto::Error(ErrorDto::GapSource),
+                BlockStatus::Old => RpcDto::Error(ErrorDto::Old),
+                BlockStatus::BadSignature => RpcDto::Error(ErrorDto::BadSignature),
+                BlockStatus::NegativeSpend => RpcDto::Error(ErrorDto::NegativeSpend),
+                BlockStatus::BalanceMismatch => RpcDto::Error(ErrorDto::BalanceMismatch),
+                BlockStatus::Unreceivable => RpcDto::Error(ErrorDto::Unreceivable),
+                BlockStatus::BlockPosition => RpcDto::Error(ErrorDto::BlockPosition),
+                BlockStatus::GapEpochOpenPending => RpcDto::Error(ErrorDto::GapEpochOpenPending),
                 BlockStatus::Fork => {
                     if args.force.unwrap_or(false) {
                         node.active.erase(&block.qualified_root());
@@ -39,21 +39,21 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
                         let hash = block.hash();
                         RpcDto::Process(HashRpcMessage::new(hash))
                     } else {
-                        RpcDto::Error(ErrorDto2::Fork)
+                        RpcDto::Error(ErrorDto::Fork)
                     }
                 }
-                BlockStatus::InsufficientWork => RpcDto::Error(ErrorDto2::InsufficientWork),
-                BlockStatus::OpenedBurnAccount => RpcDto::Error(ErrorDto2::OpenedBurnAccount),
-                _ => RpcDto::Error(ErrorDto2::Other),
+                BlockStatus::InsufficientWork => RpcDto::Error(ErrorDto::InsufficientWork),
+                BlockStatus::OpenedBurnAccount => RpcDto::Error(ErrorDto::OpenedBurnAccount),
+                _ => RpcDto::Error(ErrorDto::Other),
             },
-            None => RpcDto::Error(ErrorDto2::Stopped),
+            None => RpcDto::Error(ErrorDto::Stopped),
         }
     } else {
         if let BlockEnum::State(_) = block {
             node.process(block.clone()).unwrap(); // TODO add error handling!
             RpcDto::Process(HashRpcMessage::new(block.hash()))
         } else {
-            RpcDto::Error(ErrorDto2::BlockError)
+            RpcDto::Error(ErrorDto::BlockError)
         }
     }
 }

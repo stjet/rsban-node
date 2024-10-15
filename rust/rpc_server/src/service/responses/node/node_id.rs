@@ -1,5 +1,5 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, NodeIdDto, RpcDto};
+use rsnano_rpc_messages::{ErrorDto, NodeIdDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn node_id(node: Arc<Node>, enable_control: bool) -> RpcDto {
@@ -10,6 +10,6 @@ pub async fn node_id(node: Arc<Node>, enable_control: bool) -> RpcDto {
 
         RpcDto::NodeId(NodeIdDto::new(private, public, as_account))
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

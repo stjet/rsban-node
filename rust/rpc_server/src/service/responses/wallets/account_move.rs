@@ -1,6 +1,6 @@
 use rsnano_core::PublicKey;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountMoveArgs, ErrorDto2, MovedDto, RpcDto};
+use rsnano_rpc_messages::{AccountMoveArgs, ErrorDto, MovedDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_move(node: Arc<Node>, enable_control: bool, args: AccountMoveArgs) -> RpcDto {
@@ -13,9 +13,9 @@ pub async fn account_move(node: Arc<Node>, enable_control: bool, args: AccountMo
 
         match result {
             Ok(()) => RpcDto::Moved(MovedDto::new(true)),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

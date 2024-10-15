@@ -1,6 +1,6 @@
 use rsnano_core::{BlockDetails, BlockSubType, BlockType};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{BlockInfoDto, ErrorDto2, HashRpcMessage, RpcDto};
+use rsnano_rpc_messages::{BlockInfoDto, ErrorDto, HashRpcMessage, RpcDto};
 use std::sync::Arc;
 
 pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
@@ -8,7 +8,7 @@ pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
     let block = if let Some(block) = node.ledger.get_block(&txn, &args.hash) {
         block
     } else {
-        return RpcDto::Error(ErrorDto2::BlockNotFound)
+        return RpcDto::Error(ErrorDto::BlockNotFound)
     };
 
     let account = block.account();
@@ -29,7 +29,7 @@ pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
         BlockType::LegacyOpen => BlockSubType::Open,
         BlockType::LegacySend => BlockSubType::Send,
         BlockType::LegacyReceive => BlockSubType::Receive,
-        _ => return RpcDto::Error(ErrorDto2::BlockError)
+        _ => return RpcDto::Error(ErrorDto::BlockError)
     };
 
     let block_info_dto = BlockInfoDto::new(

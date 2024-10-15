@@ -383,7 +383,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_representative(&self, wallet: WalletId) -> Result<AccountRpcMessage> {
+    pub async fn wallet_representative(&self, wallet: WalletId) -> Result<WalletRepresentativeDto> {
         let cmd = RpcCommand::wallet_representative(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -695,7 +695,7 @@ impl NanoRpcClient {
         self.receive_block(wallet, destination, block).await
     }
 
-    pub async fn keepalive(&self, address: Ipv6Addr, port: u16) -> Result<SuccessDto> {
+    pub async fn keepalive(&self, address: Ipv6Addr, port: u16) -> Result<StartedDto> {
         let cmd = RpcCommand::keepalive(address, port);
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

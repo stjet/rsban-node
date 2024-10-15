@@ -1,6 +1,6 @@
 use rsnano_core::{BlockHash, UncheckedInfo, UncheckedKey};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, UncheckedGetDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, UncheckedGetDto};
 use std::sync::{Arc, Mutex};
 
 pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> RpcDto {
@@ -25,7 +25,7 @@ pub async fn unchecked_get(node: Arc<Node>, hash: BlockHash) -> RpcDto {
 
     let result = result.lock().unwrap().take();
     result.map_or_else(
-        || RpcDto::Error(ErrorDto2::BlockNotFound),
+        || RpcDto::Error(ErrorDto::BlockNotFound),
         |dto| RpcDto::UncheckedGet(dto),
     )
 }

@@ -1,5 +1,5 @@
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountRpcMessage, ErrorDto2, RpcDto, WalletAddArgs};
+use rsnano_rpc_messages::{AccountRpcMessage, ErrorDto, RpcDto, WalletAddArgs};
 use std::sync::Arc;
 
 pub async fn wallet_add(node: Arc<Node>, enable_control: bool, args: WalletAddArgs) -> RpcDto {
@@ -10,9 +10,9 @@ pub async fn wallet_add(node: Arc<Node>, enable_control: bool, args: WalletAddAr
             .insert_adhoc2(&args.wallet, &args.key, generate_work)
         {
             Ok(account) => RpcDto::Account(AccountRpcMessage::new(account.as_account())),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletCreateArgs, WalletRpcMessage};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, WalletCreateArgs, WalletRpcMessage};
 use std::sync::Arc;
 
 pub async fn wallet_create(
@@ -9,7 +9,7 @@ pub async fn wallet_create(
     args: WalletCreateArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled);
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let wallet = WalletId::random();

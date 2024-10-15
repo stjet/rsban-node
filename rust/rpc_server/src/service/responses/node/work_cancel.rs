@@ -1,6 +1,6 @@
 use rsnano_core::BlockHash;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
 use std::sync::Arc;
 
 pub async fn work_cancel(node: Arc<Node>, enable_control: bool, hash: BlockHash) -> RpcDto {
@@ -8,6 +8,6 @@ pub async fn work_cancel(node: Arc<Node>, enable_control: bool, hash: BlockHash)
         node.distributed_work.cancel(hash.into());
         RpcDto::WorkCancel(SuccessDto::new())
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

@@ -1,5 +1,5 @@
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletChangeSeedArgs, WalletChangeSeedDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, WalletChangeSeedArgs, WalletChangeSeedDto};
 use std::sync::Arc;
 
 pub async fn wallet_change_seed(
@@ -17,6 +17,6 @@ pub async fn wallet_change_seed(
             restored_count,
         ))
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

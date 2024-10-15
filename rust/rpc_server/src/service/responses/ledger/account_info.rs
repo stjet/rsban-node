@@ -1,6 +1,6 @@
 use rsnano_core::Amount;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto, ErrorDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_info(node: Arc<Node>, args: AccountInfoArgs) -> RpcDto {
@@ -9,7 +9,7 @@ pub async fn account_info(node: Arc<Node>, args: AccountInfoArgs) -> RpcDto {
 
     let info = match node.ledger.any().get_account(&txn, &args.account) {
         Some(account_info) => account_info,
-        None => return RpcDto::Error(ErrorDto2::AccountNotFound)
+        None => return RpcDto::Error(ErrorDto::AccountNotFound)
     };
 
     let confirmation_height_info = node

@@ -25,7 +25,7 @@ pub enum RpcDto {
     WalletCreate(WalletRpcMessage),
     KeyPair(KeyPairDto),
     Exists(ExistsDto),
-    Error(ErrorDto2),
+    Error(ErrorDto),
     Destroyed(DestroyedDto),
     Locked(LockedDto),
     Lock(LockedDto),

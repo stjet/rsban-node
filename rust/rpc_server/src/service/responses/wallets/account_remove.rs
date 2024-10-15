@@ -1,5 +1,5 @@
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RemovedDto, RpcDto, WalletWithAccountArgs};
+use rsnano_rpc_messages::{ErrorDto, RemovedDto, RpcDto, WalletWithAccountArgs};
 use std::sync::Arc;
 
 pub async fn account_remove(
@@ -10,9 +10,9 @@ pub async fn account_remove(
     if enable_control {
         match node.wallets.remove_key(&args.wallet, &args.account.into()) {
             Ok(()) => RpcDto::Removed(RemovedDto::new(true)),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

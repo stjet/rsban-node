@@ -1,6 +1,6 @@
 use rsnano_core::{Account, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
 use std::sync::Arc;
 
 pub async fn wallet_add_watch(
@@ -12,9 +12,9 @@ pub async fn wallet_add_watch(
     if enable_control {
         match node.wallets.insert_watch(&wallet, &accounts) {
             Ok(_) => RpcDto::WalletAddWatch(SuccessDto::new()),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e))
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

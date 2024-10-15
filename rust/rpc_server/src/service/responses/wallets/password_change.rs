@@ -1,6 +1,6 @@
 use rsnano_core::WalletId;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, SuccessDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, SuccessDto};
 use std::sync::Arc;
 
 pub async fn password_change(
@@ -12,9 +12,9 @@ pub async fn password_change(
     if enable_control {
         match node.wallets.rekey(&wallet, password) {
             Ok(_) => RpcDto::PasswordChange(SuccessDto::new()),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e))
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

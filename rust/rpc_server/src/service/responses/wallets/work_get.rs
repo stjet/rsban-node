@@ -1,6 +1,6 @@
 use rsnano_core::{Account, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WorkDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, WorkDto};
 use std::sync::Arc;
 
 pub async fn work_get(
@@ -12,9 +12,9 @@ pub async fn work_get(
     if enable_control {
         match node.wallets.work_get2(&wallet, &account.into()) {
             Ok(work) => RpcDto::WorkGet(WorkDto::new(work.into())),
-            Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e))
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
         }
     } else {
-        RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

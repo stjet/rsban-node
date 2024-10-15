@@ -4,13 +4,13 @@ use rsnano_core::{
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{
-    BlockCreateArgs, BlockCreateDto, BlockTypeDto, ErrorDto2, RpcDto, WorkVersionDto
+    BlockCreateArgs, BlockCreateDto, BlockTypeDto, ErrorDto, RpcDto, WorkVersionDto
 };
 use std::sync::Arc;
 
 pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCreateArgs) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
@@ -37,7 +37,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
 
     if let (Some(wallet_id), Some(account)) = (wallet, account) {
         if let Err(e) = node.wallets.fetch(&wallet_id, &account.into()) {
-            return RpcDto::Error(ErrorDto2::WalletsError(e))
+            return RpcDto::Error(ErrorDto::WalletsError(e))
         }
         let tx = node.ledger.read_txn();
         previous = node.ledger.any().account_head(&tx, &account).unwrap();
@@ -78,7 +78,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
                     .sign(&key_pair)
                     .build()
             } else {
-                return RpcDto::Error(ErrorDto2::BlockError)
+                return RpcDto::Error(ErrorDto::BlockError)
             }
         }
         BlockTypeDto::Open => {
@@ -91,7 +91,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
                     .sign(&key_pair)
                     .build()
             } else {
-                return RpcDto::Error(ErrorDto2::BlockError)
+                return RpcDto::Error(ErrorDto::BlockError)
             }
         }
         BlockTypeDto::Receive => {
@@ -103,7 +103,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
                     .sign(&key_pair)
                     .build()
             } else {
-                return RpcDto::Error(ErrorDto2::BlockError)
+                return RpcDto::Error(ErrorDto::BlockError)
             }
         }
         BlockTypeDto::Change => {
@@ -115,7 +115,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
                     .sign(&key_pair)
                     .build()
             } else {
-                return RpcDto::Error(ErrorDto2::BlockError)
+                return RpcDto::Error(ErrorDto::BlockError)
             }
         }
         BlockTypeDto::Send => {
@@ -130,10 +130,10 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
                         .sign(key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto2::InsufficientBalance)
+                    return RpcDto::Error(ErrorDto::InsufficientBalance)
                 }
             } else {
-                return RpcDto::Error(ErrorDto2::BlockError)
+                return RpcDto::Error(ErrorDto::BlockError)
             }
         }
     };
@@ -158,7 +158,7 @@ pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCrea
         {
             Some(work) => work,
             None => {
-                return RpcDto::Error(ErrorDto2::InsufficientWork)
+                return RpcDto::Error(ErrorDto::InsufficientWork)
             }
         };
         block.set_work(work);

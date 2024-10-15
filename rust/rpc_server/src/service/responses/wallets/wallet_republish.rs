@@ -1,6 +1,6 @@
 use rsnano_core::{Account, BlockEnum, BlockHash, WalletId};
 use rsnano_node::{Node, NodeExt};
-use rsnano_rpc_messages::{BlockHashesDto, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{BlockHashesDto, ErrorDto, RpcDto};
 use std::collections::VecDeque;
 use std::{sync::Arc, time::Duration};
 
@@ -11,12 +11,12 @@ pub async fn wallet_republish(
     count: u64,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 
     let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
     };
 
     let (blocks, republish_bundle) = collect_blocks_to_republish(node.clone(), accounts, count);

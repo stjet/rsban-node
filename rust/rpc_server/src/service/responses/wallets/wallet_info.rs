@@ -1,6 +1,6 @@
 use rsnano_core::{Amount, WalletId};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto2, RpcDto, WalletInfoDto};
+use rsnano_rpc_messages::{ErrorDto, RpcDto, WalletInfoDto};
 use rsnano_store_lmdb::KeyType;
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ pub async fn wallet_info(node: Arc<Node>, wallet: WalletId) -> RpcDto {
     let block_transaction = node.ledger.read_txn();
     let accounts = match node.wallets.get_accounts_of_wallet(&wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto2::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
     };
 
     let mut balance = Amount::zero();

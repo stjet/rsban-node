@@ -1,5 +1,5 @@
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountCreateArgs, AccountRpcMessage, ErrorDto2, RpcDto};
+use rsnano_rpc_messages::{AccountCreateArgs, AccountRpcMessage, ErrorDto, RpcDto};
 use std::sync::Arc;
 
 pub async fn account_create(
@@ -8,7 +8,7 @@ pub async fn account_create(
     args: AccountCreateArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto2::RPCControlDisabled);
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let work = args.work.unwrap_or(true);
@@ -20,6 +20,6 @@ pub async fn account_create(
 
     match result {
         Ok(account) => RpcDto::Account(AccountRpcMessage::new(account.as_account())),
-        Err(e) => RpcDto::Error(ErrorDto2::WalletsError(e)),
+        Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
     }
 }

@@ -1,4 +1,7 @@
-use super::{MessageRecorderControlsView, MessageTableView, MessageView, NodeRunnerView};
+use super::{
+    LedgerStatsView, MessageRecorderControlsView, MessageStatsView, MessageTableView, MessageView,
+    NodeRunnerView,
+};
 use crate::AppViewModel;
 use eframe::egui::{self, global_theme_preference_switch, CentralPanel, SidePanel, TopBottomPanel};
 
@@ -29,30 +32,10 @@ impl AppView {
         TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 global_theme_preference_switch(ui);
-
                 ui.separator();
-
-                ui.label("Messages:");
-                ui.label(self.model.messages_sent());
-                ui.label("sent");
-                ui.add_space(10.0);
-                ui.label(self.model.messages_received());
-                ui.label("received");
-
+                MessageStatsView::new(self.model.message_stats()).view(ui);
                 ui.separator();
-
-                ui.label("Blocks:");
-                ui.label("?");
-                ui.label("bps");
-                ui.add_space(10.0);
-                ui.label("?");
-                ui.label("cps");
-                ui.add_space(10.0);
-                ui.label(self.model.block_count());
-                ui.label("blocks");
-                ui.add_space(10.0);
-                ui.label(self.model.cemented_count());
-                ui.label("cemented");
+                LedgerStatsView::new(self.model.ledger_stats()).view(ui);
             });
         });
     }

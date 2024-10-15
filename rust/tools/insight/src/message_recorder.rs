@@ -26,7 +26,7 @@ impl MessageRecorder {
             published: AtomicUsize::new(0),
             inbound: AtomicUsize::new(0),
             messages: RwLock::new(Vec::new()),
-            is_recording: AtomicBool::new(true),
+            is_recording: AtomicBool::new(false),
         }
     }
 

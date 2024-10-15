@@ -1,3 +1,4 @@
+mod ledger_stats;
 mod message_recorder;
 mod node_factory;
 mod node_runner;

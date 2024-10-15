@@ -1,17 +1,17 @@
-use super::{MessageTableViewModel, NodeRunnerViewModel};
-use crate::{
-    message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
-    nullable_runtime::NullableRuntime,
+use super::{
+    LedgerStatsViewModel, MessageStatsViewModel, MessageTableViewModel, NodeRunnerViewModel,
 };
-use num_format::{Locale, ToFormattedString};
-use std::sync::{atomic::Ordering, Arc};
+use crate::{
+    ledger_stats::LedgerStats, message_recorder::MessageRecorder, node_factory::NodeFactory,
+    node_runner::NodeRunner, nullable_runtime::NullableRuntime,
+};
+use std::sync::Arc;
 
 pub(crate) struct AppViewModel {
     pub msg_recorder: Arc<MessageRecorder>,
     pub node_runner: NodeRunnerViewModel,
     pub message_table: MessageTableViewModel,
-    total_blocks: u64,
-    cemented_blocks: u64,
+    ledger_stats: LedgerStats,
 }
 
 impl AppViewModel {
@@ -22,8 +22,7 @@ impl AppViewModel {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone()),
             message_table: MessageTableViewModel::new(msg_recorder.clone()),
             msg_recorder,
-            total_blocks: 0,
-            cemented_blocks: 0,
+            ledger_stats: LedgerStats::new(),
         }
     }
 
@@ -34,33 +33,18 @@ impl AppViewModel {
         )
     }
 
-    pub(crate) fn messages_sent(&self) -> String {
-        self.msg_recorder
-            .published
-            .load(Ordering::SeqCst)
-            .to_formatted_string(&Locale::en)
-    }
-
-    pub(crate) fn messages_received(&self) -> String {
-        self.msg_recorder
-            .inbound
-            .load(Ordering::SeqCst)
-            .to_formatted_string(&Locale::en)
-    }
-
     pub(crate) fn update(&mut self) {
         if let Some(node) = self.node_runner.node() {
-            self.total_blocks = node.ledger.block_count();
-            self.cemented_blocks = node.ledger.cemented_count();
+            self.ledger_stats.update(node);
         }
     }
 
-    pub(crate) fn block_count(&self) -> String {
-        self.total_blocks.to_formatted_string(&Locale::en)
+    pub(crate) fn message_stats(&self) -> MessageStatsViewModel {
+        MessageStatsViewModel::new(&self.msg_recorder)
     }
 
-    pub(crate) fn cemented_count(&self) -> String {
-        self.cemented_blocks.to_formatted_string(&Locale::en)
+    pub(crate) fn ledger_stats(&self) -> LedgerStatsViewModel {
+        LedgerStatsViewModel::new(&self.ledger_stats)
     }
 }
 
@@ -83,7 +67,7 @@ mod tests {
         assert_eq!(model.node_runner.can_start_node(), true);
         assert_eq!(model.node_runner.can_stop_node(), false);
         assert_eq!(model.node_runner.status(), "not running");
-        assert_eq!(model.messages_sent(), "0");
+        assert_eq!(model.message_stats().messages_sent(), "0");
     }
 
     #[tokio::test]

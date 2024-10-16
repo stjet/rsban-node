@@ -1,9 +1,8 @@
-use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_HASH;
+use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags},
-    stats::{DetailType, Direction, StatType},
+    config::{FrontiersConfirmationMode, NodeFlags}, consensus::RepTier, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
 };
 use std::{
     sync::Arc,
@@ -150,4 +149,68 @@ fn overflow() {
 
     // check that it did not timeout
     assert!(start_time.elapsed() < Duration::from_secs(10));
+}
+
+#[test]
+fn weights() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    // Create representatives of different weight levels
+    // FIXME: Using `online_weight_minimum` because calculation of trended and online weight is broken when running tests
+    let stake = node.config.online_weight_minimum;
+    let level0 = stake / 5000; // 0.02%
+    let level1 = stake / 500; // 0.2%
+    let level2 = stake / 50; // 2%
+
+    let key0 = KeyPair::new();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+
+    // Setup wallets and representatives
+    let node0 = system.make_node();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let node3 = system.make_node();
+    
+    let nodes = vec![node0, node1, node2, node3];
+    
+    let wallet0= WalletId::random(); 
+    nodes[0].wallets.create(wallet0);
+    nodes[0].wallets.insert_adhoc2(&wallet0, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+    
+    let wallet1= WalletId::random(); 
+    nodes[1].wallets.create(wallet1);
+    nodes[1].wallets.insert_adhoc2(&wallet1, &key0.private_key(), false).unwrap();
+    
+    let wallet2= WalletId::random(); 
+    nodes[2].wallets.create(wallet2);
+    nodes[2].wallets.insert_adhoc2(&wallet2, &key1.private_key(), false).unwrap();
+    
+    let wallet3= WalletId::random(); 
+    nodes[3].wallets.create(wallet3);
+    nodes[3].wallets.insert_adhoc2(&wallet3, &key2.private_key(), false).unwrap();
+    
+    nodes[1].wallets.set_representative(wallet1, key0.public_key(), false).unwrap();
+    nodes[2].wallets.set_representative(wallet2, key1.public_key(), false).unwrap();
+    nodes[3].wallets.set_representative(wallet3, key2.public_key(), false).unwrap();
+
+    // Send funds to set up different weight levels
+    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key0.account(), level0, 0, false, None).unwrap();
+    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key1.account(), level1, 0, false, None).unwrap();
+    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key2.account(), level2, 0, false, None).unwrap();
+
+    // Wait for representatives
+    assert_timely_eq(Duration::from_secs(10), || node.online_reps.lock().unwrap().online_reps_count(), 4);
+
+    // Wait for rep tiers to be updated
+    node.stats.clear();
+    assert_timely(Duration::from_secs(5), || {
+        node.stats.count(StatType::RepTiers, DetailType::Updated, Direction::In) >= 2
+    });
+
+    assert_eq!(node.rep_tiers.tier(&key0.public_key()), RepTier::None);
+    assert_eq!(node.rep_tiers.tier(&key1.public_key()), RepTier::Tier1);
+    assert_eq!(node.rep_tiers.tier(&key2.public_key()), RepTier::Tier2);
+    assert_eq!(node.rep_tiers.tier(&DEV_GENESIS_KEY.public_key()), RepTier::Tier3);
 }

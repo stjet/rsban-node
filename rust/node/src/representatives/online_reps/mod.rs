@@ -104,6 +104,10 @@ impl OnlineReps {
         result
     }
 
+    pub fn online_reps_count(&self) -> usize {
+        self.online_reps.len()
+    }
+
     /// Total number of peered representatives
     pub fn peered_reps_count(&self) -> usize {
         self.peered_reps.len()

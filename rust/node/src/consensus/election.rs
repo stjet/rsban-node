@@ -318,7 +318,7 @@ impl From<ElectionState> for DetailType {
     }
 }
 
-#[derive(FromPrimitive, Copy, Clone, Debug)]
+#[derive(FromPrimitive, Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ElectionBehavior {
     Manual,

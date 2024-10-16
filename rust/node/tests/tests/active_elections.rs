@@ -17,8 +17,7 @@ use std::{
     time::Duration,
 };
 use test_helpers::{
-    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
-    setup_independent_blocks, start_election, System,
+    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, process_block, send_block, send_block_to, setup_independent_blocks, start_election, start_elections, System
 };
 
 /// What this test is doing:
@@ -948,4 +947,40 @@ fn broadcast_block_on_activation() {
         node1.active.active_root(&send1.qualified_root())
     });
     assert_timely(Duration::from_secs(5), || node2.block_exists(&send1.hash()));
+}
+
+#[test]
+fn list_active() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let key = KeyPair::new();
+
+    let send = process_block(node.clone(), *DEV_GENESIS_ACCOUNT, Amount::raw(1));
+
+    let send2 = process_block(node.clone(), key.account(), Amount::raw(1));
+
+    let open = BlockEnum::State(StateBlock::new(
+        key.account(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::raw(1),
+        send2.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+
+    node.process(open.clone()).unwrap();
+
+    start_elections(&node, &[send.hash(), send2.hash(), open.hash()], false);
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 3);
+    
+    assert_eq!(node.active.list_active(1).len(), 1);
+    assert_eq!(node.active.list_active(2).len(), 2);
+    assert_eq!(node.active.list_active(3).len(), 3);
+    assert_eq!(node.active.list_active(4).len(), 3);
+    assert_eq!(node.active.list_active(99999).len(), 3);
+    //assert_eq!(node.active.list_active().len(), 3);
+
+    //let active = node.active.list_active();
 }

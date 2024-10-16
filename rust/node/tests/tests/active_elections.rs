@@ -17,7 +17,7 @@ use std::{
     time::Duration,
 };
 use test_helpers::{
-    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, process_block, send_block, send_block_to, setup_independent_blocks, start_election, start_elections, System
+    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port, process_open_block, process_send_block, setup_independent_blocks, start_election, start_elections, System
 };
 
 /// What this test is doing:
@@ -956,21 +956,11 @@ fn list_active() {
 
     let key = KeyPair::new();
 
-    let send = process_block(node.clone(), *DEV_GENESIS_ACCOUNT, Amount::raw(1));
+    let send = process_send_block(node.clone(), *DEV_GENESIS_ACCOUNT, Amount::raw(1));
 
-    let send2 = process_block(node.clone(), key.account(), Amount::raw(1));
+    let send2 = process_send_block(node.clone(), key.account(), Amount::raw(1));
 
-    let open = BlockEnum::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send2.hash().into(),
-        &key,
-        node.work_generate_dev(key.public_key().into()),
-    ));
-
-    node.process(open.clone()).unwrap();
+    let open = process_open_block(node.clone(), key);
 
     start_elections(&node, &[send.hash(), send2.hash(), open.hash()], false);
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 3);

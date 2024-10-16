@@ -573,7 +573,7 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
     send
 }
 
-pub fn process_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
     let transaction = node.ledger.read_txn();
 
     let previous = node
@@ -601,4 +601,30 @@ pub fn process_block(node: Arc<Node>, account: Account, amount: Amount) -> Block
     node.process(send.clone()).unwrap();
 
     send
+}
+
+pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+    let account = keys.account();
+
+    let (key, info) = node
+        .ledger
+        .any()
+        .account_receivable_upper_bound(&transaction, account, BlockHash::zero())
+        .next()
+        .unwrap();
+
+    let open = BlockEnum::State(StateBlock::new(
+        account,
+        BlockHash::zero(),
+        keys.public_key(),
+        info.amount,
+        key.send_block_hash.into(),
+        &keys,
+        node.work_generate_dev(account.into()),
+    ));
+
+    node.process(open.clone()).unwrap();
+
+    open
 }

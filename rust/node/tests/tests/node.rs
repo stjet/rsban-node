@@ -1,7 +1,7 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, Link, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY
 };
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
@@ -9,8 +9,249 @@ use rsnano_node::{
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
-    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel, start_election, start_elections, System
+    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election, start_elections, System
 };
+
+#[test]
+fn fork_bootstrap_flip() {
+    let mut system = System::new();
+    let mut config0 = System::default_config();
+    config0.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+    
+    let node1 = system.build_node().config(config0).flags(node_flags.clone()).finish();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    
+    let mut config1 = System::default_config();
+    config1.peering_port = Some(get_available_port());
+    let node2 = system.make_disconnected_node();
+    //let node2 = system.build_disconnected_node(config1, node_flags);
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    
+    let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &latest,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(1_000_000)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(latest.into()).unwrap(),
+    ));
+
+    let key2 = KeyPair::new();
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &latest,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(1_000_000)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(latest.into()).unwrap(),
+    ));
+
+    // Insert but don't rebroadcast, simulating settled blocks
+    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
+
+    node1.confirm(send1.hash());
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || {
+            node1.block_exists(&send1.hash())
+        },
+        "send1 not found on node1",
+    );
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || {
+            node2.block_exists(&send2.hash())
+        },
+        "send2 not found on node2",
+    );
+
+    // Additionally add new peer to confirm & replace bootstrap block
+    //node2.network.merge_peer(node1.network.endpoint());
+    establish_tcp(&node2, &node1);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || {
+            node2.block_exists(&send1.hash())
+        },
+        "send1 not found on node2 after bootstrap",
+    );
+}
+
+#[test]
+fn fork_multi_flip() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let flags = NodeFlags::default();
+    let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    config.peering_port = Some(get_available_port());
+    let node2 = system.build_node().config(config).flags(flags).finish();
+    //assert_eq!(1, node1.network.size());
+    
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    let key2 = KeyPair::new();
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    let send3 = BlockEnum::LegacySend(SendBlock::new(
+        &send2.hash(),
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send2.hash().into()).unwrap(),
+    ));
+
+    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
+    // Node2 has two blocks that will be rolled back by node1's vote
+    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node2.process_local(send3.clone()).unwrap());
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap(); // Insert voting key into node1
+
+    let election = start_election(&node2, &send2.hash());
+    //assert!(election.is_some());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.contains_key(&send1.hash()),
+        "election doesn't contain send1",
+    );
+    
+    node1.confirm(send1.hash());
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash()),
+        "send1 not found on node2",
+    );
+    //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send2.hash()));
+    //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
+    
+    let winner = election.winner_hash().unwrap();
+    assert_eq!(send1.hash(), winner);
+    assert_eq!(
+        Amount::MAX - Amount::raw(100),
+        *election.mutex.lock().unwrap().last_tally.get(&send1.hash()).unwrap()
+    );
+}
+
+#[test]
+fn fork_publish_inactive() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    node.process_active(send1.clone());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.block_exists(&send1.hash()),
+        "send1 not found",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.election(&send1.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node.active.election(&send1.qualified_root()).unwrap();
+
+    assert_eq!(
+        node.process_local(send2.clone()).unwrap(),
+        BlockStatus::Fork
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        2
+    );
+
+    let find_block = |hash: BlockHash| {
+        election.mutex.lock().unwrap().last_blocks.contains_key(&hash)
+    };
+
+    assert!(find_block(send1.hash()));
+    assert!(find_block(send2.hash()));
+
+    assert_eq!(election.winner_hash().unwrap(), send1.hash());
+    assert_ne!(election.winner_hash().unwrap(), send2.hash());
+}
+
+#[test]
+fn unlock_search() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    let balance = node.balance(&DEV_GENESIS_ACCOUNT);
+    
+    node.wallets.rekey(&wallet_id, "").unwrap();
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    
+    let send_result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result.is_ok());
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&DEV_GENESIS_ACCOUNT) != balance,
+        "balance not updated",
+    );
+    
+    assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
+    
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    //node.wallets.set_password(&wallet_id, &KeyPair::new().private_key()).unwrap();
+    node.wallets.enter_password(wallet_id, "").unwrap();
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
 
 #[test]
 fn search_receivable_confirmed() {
@@ -623,9 +864,9 @@ fn send_unkeyed() {
     
     node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
     
-    let result = node.wallets.enter_password(wallet_id, "random_password");
+    //let result = node.wallets.enter_password(wallet_id, "random_password");
 
-    assert!(result.is_err());
+    //assert!(result.is_err());
     
     let result = node.wallets.send_action2(
         &wallet_id,

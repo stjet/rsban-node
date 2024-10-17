@@ -1407,7 +1407,7 @@ fn activate_inactive() {
     // Wait so that blocks observer can increase the stats
     sleep(Duration::from_secs(1));
 
-    /*assert_timely_eq(
+    assert_timely_eq(
         Duration::from_secs(5),
         || {
             node.stats.count(
@@ -1417,7 +1417,8 @@ fn activate_inactive() {
             )
         },
         1,
-    );*/
+    );
+
     assert_timely_eq(
         Duration::from_secs(5),
         || {
@@ -1429,7 +1430,8 @@ fn activate_inactive() {
         },
         1,
     );
-    /*assert_never(
+    
+    assert_never(
         Duration::from_millis(50),
         || {
             node.stats.count(
@@ -1438,7 +1440,7 @@ fn activate_inactive() {
                 Direction::Out,
             ) != 0
         },
-    );*/
+    );
 
     // The first block was not active so no activation takes place
     /*assert!(

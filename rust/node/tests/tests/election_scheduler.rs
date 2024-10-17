@@ -126,13 +126,10 @@ mod bucket {
 
 mod election_scheduler {
     use std::time::Duration;
-
     use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{config::{FrontiersConfirmationMode, NodeConfig}, consensus::{ActiveElectionsConfig, ActiveElectionsExt, ElectionStatus}, wallets::WalletsExt};
     use test_helpers::{assert_timely, assert_timely_eq, System};
-
-    use crate::tests::active_elections;
 
     #[test]
     fn activate_one_timely() {

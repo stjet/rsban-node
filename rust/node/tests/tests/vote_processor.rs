@@ -1,8 +1,8 @@
-use rsnano_core::{Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockBuilder, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags}, consensus::RepTier, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
+    config::{FrontiersConfirmationMode, NodeFlags}, consensus::{ActiveElectionsExt, ElectionBehavior, RepTier}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
 };
 use std::{
     sync::Arc,
@@ -303,6 +303,73 @@ fn no_broadcast_local_with_a_principal_representative() {
     // Ensure the vote was not broadcast
     assert_eq!(
         0,
+        node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
+    );
+    assert_eq!(
+        1,
+        node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
+    );
+}
+
+#[test]
+fn local_broadcast_without_a_representative() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.representative_vote_weight_minimum = Amount::zero();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    config.hinted_scheduler.enabled = false;
+    config.optimistic_scheduler.enabled = false;
+    let node = system.build_node().config(config).finish();
+
+    // Reduce the weight of genesis to the minimum voting weight
+    let key = KeyPair::new();
+    let new_balance = node.config.vote_minimum;
+    let send_amount = Amount::MAX - new_balance;
+
+    // Build the send block
+    let send = BlockBuilder::state()
+        .account(DEV_GENESIS_KEY.public_key())
+        .previous(*DEV_GENESIS_HASH)
+        .representative(DEV_GENESIS_KEY.public_key())
+        .balance(new_balance)
+        .link(key.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    // Process the send block
+    assert_eq!(BlockStatus::Progress, node.process_local(send.clone()).unwrap());
+    //assert_timely(Duration::from_secs(10), || !node.active.is_empty());
+    assert_eq!(new_balance, node.ledger.weight(&DEV_GENESIS_KEY.public_key()));
+
+    // Start election for the send block
+    node.active.insert(&Arc::new(send.clone()), ElectionBehavior::Manual, None);
+
+    // Process a vote without a representative
+    let vote = Arc::new(Vote::new(
+        &DEV_GENESIS_KEY,
+        Vote::TIMESTAMP_MIN,
+        Vote::DURATION_MAX,
+        vec![send.hash()],
+    ));
+    
+    assert_eq!(
+        VoteCode::Vote,
+        node.vote_processor.vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
+    );
+
+    // Make sure the vote was processed
+    //let election = assert_timely(Duration::from_secs(5), || {
+        //node.active.election(&send.qualified_root()).is_some()
+    //});
+    let election = node.active.election(&send.qualified_root()).unwrap();
+    let votes = election.mutex.lock().unwrap().last_votes.clone();
+    assert!(votes.contains_key(&DEV_GENESIS_KEY.public_key()));
+    assert_eq!(vote.timestamp, votes[&DEV_GENESIS_KEY.public_key()].timestamp);
+
+    // Ensure the vote was broadcast
+    assert_eq!(
+        1,
         node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
     );
     assert_eq!(

@@ -1,16 +1,100 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY
+    utils::{milliseconds_since_epoch, TEST_ENDPOINT_1}, work::WorkPool, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY
 };
 use rsnano_ledger::{BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::{WalletsError, WalletsExt}
+    bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::{WalletsError, WalletsExt}
 };
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{net::SocketAddrV6, sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
     activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election, start_elections, System
 };
+
+#[test]
+fn bootstrap_fork_open() {
+    let mut system = System::new();
+    let mut node_config = System::default_config();
+    let node0 = system.build_node().config(node_config.clone()).finish();
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+    node_config.peering_port = Some(get_available_port());
+    let node1 = system.build_node().config(node_config).finish();
+    let key0 = KeyPair::new();
+
+    let send0 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key0.account(),
+        &(Amount::MAX - Amount::raw(500)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    let open0 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send0.hash(),
+        PublicKey::from_bytes([1; 32]),
+        key0.account(),
+        &key0.private_key(),
+        system.work.generate_dev2(key0.public_key().into()).unwrap(),
+    ));
+
+    let open1 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send0.hash(),
+        PublicKey::from_bytes([2; 32]),
+        key0.account(),
+        &key0.private_key(),
+        system.work.generate_dev2(key0.public_key().into()).unwrap(),
+    ));
+
+    // Both know about send0
+    assert_eq!(BlockStatus::Progress, node0.process_local(send0.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node1.process_local(send0.clone()).unwrap());
+
+    // Confirm send0 to allow starting and voting on the following blocks
+    for node in [&node0, &node1] {
+        start_election(&node, &node.latest(&*DEV_GENESIS_ACCOUNT));
+        assert_timely_msg(
+            Duration::from_secs(1),
+            || node.active.election(&send0.qualified_root()).is_some(),
+            "Election for send0 not found",
+        );
+        let election = node.active.election(&send0.qualified_root()).unwrap();
+        node.active.force_confirm(&election);
+        assert_timely_msg(
+            Duration::from_secs(2),
+            || node.active.len() == 0,
+            "Active elections not empty",
+        );
+    }
+
+    assert_timely_msg(
+        Duration::from_secs(3),
+        || node0.block_confirmed(&send0.hash()),
+        "send0 not confirmed on node0",
+    );
+
+    // They disagree about open0/open1
+    assert_eq!(BlockStatus::Progress, node0.process_local(open0.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node1.process_local(open1.clone()).unwrap());
+
+    node0.wallets.insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    assert!(!node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &open0.hash()));
+    assert!(!node1.bootstrap_initiator.in_progress());
+
+    node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || node1.active.len() == 0,
+        "Active elections not empty on node1",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.block_exists(&open1.hash()) && node1.block_exists(&open0.hash()),
+        "Incorrect blocks exist on node1",
+    );
+}
 
 #[test]
 fn rep_self_vote() {

@@ -5,13 +5,368 @@ use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_P
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    config::{self, FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::{WalletsError, WalletsExt}
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
-    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq,
-    assert_timely_msg, make_fake_channel, start_election, start_elections, System,
+    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel, start_election, start_elections, System
 };
+
+#[test]
+fn search_receivable_confirmed() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    let send1 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    ).unwrap();
+    assert_timely(Duration::from_secs(5), || node.blocks_confirmed(&[send1.clone()]));
+
+    let send2 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    ).unwrap();
+    assert_timely(Duration::from_secs(5), || node.blocks_confirmed(&[send2.clone()]));
+
+    node.wallets.remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY).unwrap();
+
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    //assert_eq!(WalletsError::None, node.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    assert_timely(Duration::from_secs(5), || !node.active.election(&send1.qualified_root()).is_some());
+    assert_timely(Duration::from_secs(5), || !node.active.election(&send2.qualified_root()).is_some());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.balance(&key2.account()),
+        node.config.receive_minimum * 2
+    );
+}
+
+#[test]
+fn search_receivable_pruned() {
+    let mut system = System::new();
+    let mut config1 = System::default_config();
+    config1.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node1 = system.build_node().config(config1).finish();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    
+    let mut config2 = System::default_config();
+    config2.enable_voting = false; // Remove after allowing pruned voting
+    let mut flags = NodeFlags::default();
+    flags.enable_pruning = true;
+    let node2 = system.build_node().config(config2).flags(flags).finish();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    
+    let key2 = KeyPair::new();
+    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    
+    let send1 = node1.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node2.config.receive_minimum,
+        0,
+        true,
+        None
+    ).unwrap();
+    
+    let send2 = node1.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node2.config.receive_minimum,
+        0,
+        true,
+        None
+    ).unwrap();
+
+    // Confirmation
+    assert_timely(Duration::from_secs(10), || node1.active.len() == 0 && node2.active.len() == 0);
+    assert_timely(Duration::from_secs(5), || node1.ledger.confirmed().block_exists(&node1.ledger.read_txn(), &send2.hash()));
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 3);
+    //assert_eq!(WalletsError::None, node1.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
+    node1.wallets.remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY).unwrap();
+
+    // Pruning
+    {
+        let mut transaction = node2.store.tx_begin_write();
+        assert_eq!(1, node2.ledger.pruning_action(&mut transaction, &send1.hash(), 1));
+    }
+    assert_eq!(1, node2.ledger.pruned_count());
+    assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())); // true for pruned
+
+    // Receive pruned block
+    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+    //assert_eq!(Ok(()), node2.wallets.search_receivable_wallet(wallet_id2));
+    node2.wallets.search_receivable_wallet(wallet_id2).unwrap();
+    assert_timely_eq(
+        Duration::from_secs(10),
+        || node2.balance(&key2.account()),
+        node2.config.receive_minimum * 2
+    );
+}
+
+#[test]
+fn search_receivable() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    let send_result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result.is_ok());
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn search_receivable_same() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    let send_result1 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result1.is_ok());
+    let send_result2 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result2.is_ok());
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()) == node.config.receive_minimum * 2,
+        "balance is not equal to twice the receive minimum",
+    );
+}
+
+#[test]
+fn search_receivable_multiple() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets.insert_adhoc2(&wallet_id, &key3.private_key(), true).unwrap();
+    let send_result1 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key3.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result1.is_ok());
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key3.account()).is_zero(),
+        "key3 balance is still zero",
+    );
+    let send_result2 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result2.is_ok());
+    let send_result3 = node.wallets.send_action2(
+        &wallet_id,
+        key3.account(),
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result3.is_ok());
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()) == node.config.receive_minimum * 2,
+        "key2 balance is not equal to twice the receive minimum",
+    );
+}
+
+#[test]
+fn auto_bootstrap_age() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+    node_flags.bootstrap_interval = 1;
+
+    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let node1 = system.make_node();
+    //node1.start().unwrap();
+
+    establish_tcp(&node1, &node0);
+
+    // Wait for at least 3 bootstrap attempts with frontiers age
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node0.stats.count(StatType::Bootstrap, DetailType::InitiateLegacyAge, Direction::Out) >= 3,
+        "not enough bootstrap attempts with frontiers age",
+    );
+
+    // Check that there are more attempts with frontiers age than without
+    assert!(
+        node0.stats.count(StatType::Bootstrap, DetailType::InitiateLegacyAge, Direction::Out) >=
+        node0.stats.count(StatType::Bootstrap, DetailType::Initiate, Direction::Out),
+        "unexpected ratio of bootstrap attempts"
+    );
+}
+
+#[test]
+fn auto_bootstrap_reverse() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+
+    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let wallet_id = node0.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+
+    node0.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node0.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+
+    let node1 = system.make_node();
+
+    let send_result = node0.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node0.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    assert!(send_result.is_ok());
+
+    establish_tcp(&node0, &node1);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not synced",
+    );
+}
+
+#[test]
+fn auto_bootstrap() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+
+    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let wallet_id = node0.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+
+    node0.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node0.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+
+    let send1 = node0.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node0.config.receive_minimum,
+        0,
+        true,
+        None
+    ).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node0.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not updated",
+    );
+
+    let node1 = system.make_node(); 
+
+    establish_tcp(&node1, &node0);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not synced",
+    );
+
+    assert!(node1.block_exists(&send1.hash()));
+
+    // Wait for block receive
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.ledger.block_count() == 3,
+        "block count not 3",
+    );
+
+    // Confirmation for all blocks
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.ledger.cemented_count() == 3,
+        "cemented count not 3",
+    );
+}
 
 #[test]
 fn node_receive_quorum() {

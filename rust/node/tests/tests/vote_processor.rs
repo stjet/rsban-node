@@ -377,3 +377,73 @@ fn local_broadcast_without_a_representative() {
         node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
     );
 }
+
+#[test]
+fn no_broadcast_local() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.representative_vote_weight_minimum = Amount::zero();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    config.hinted_scheduler.enabled = false;
+    config.optimistic_scheduler.enabled = false;
+    let node = system.build_node().config(config).finish();
+
+    // Reduce the weight of genesis to 2x default min voting weight
+    let key = KeyPair::new();
+    let new_balance = Amount::raw(node.config.vote_minimum.number() * 2);
+    let send_amount = Amount::MAX - new_balance;
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        DEV_GENESIS_KEY.public_key(),
+        new_balance,
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into())
+    ));
+
+    // Process the send block
+    assert_eq!(node.process_local(send.clone()).unwrap(), BlockStatus::Progress);
+    //assert_timely(Duration::from_secs(10), || !node.active.is_empty());
+    assert_eq!(new_balance, node.ledger.weight(&DEV_GENESIS_KEY.public_key()));
+
+    // Insert account in wallet
+    let wallet = WalletId::random();
+    node.wallets.create(wallet);
+    node.wallets.insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+
+    // Ensure that the node knows the genesis key in its wallet
+    node.wallets.compute_reps();
+    assert!(node.wallets.exists(&DEV_GENESIS_KEY.public_key()));
+    //assert!(!node.wallets.have_half_rep()); // Genesis balance after `send' is less than the half_rep threshold
+
+    // Process a vote with a key that is in the local wallet
+    let vote = Arc::new(Vote::new(
+        &DEV_GENESIS_KEY,
+        Vote::TIMESTAMP_MIN,
+        Vote::DURATION_MAX,
+        vec![send.hash()],
+    ));
+    
+    assert_eq!(
+        VoteCode::Vote,
+        node.vote_processor.vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
+    );
+
+    // Make sure the vote was processed
+    let election = node.active.election(&send.qualified_root()).unwrap();
+    let votes = election.mutex.lock().unwrap().last_votes.clone();
+    assert!(votes.contains_key(&DEV_GENESIS_KEY.public_key()));
+    assert_eq!(vote.timestamp, votes[&DEV_GENESIS_KEY.public_key()].timestamp);
+
+    // Ensure the vote was not broadcast
+    assert_eq!(
+        0,
+        node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
+    );
+    assert_eq!(
+        1,
+        node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
+    );
+}

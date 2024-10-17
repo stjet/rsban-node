@@ -619,7 +619,8 @@ mod bootstrap_processor {
             3,
         );
 
-        let node1 = system.build_node().config(config).flags(flags).disconnected().finish();
+        let node1 = system.make_disconnected_node();
+        //let node1 = system.build_node().config(config).flags(flags).disconnected().finish();
         assert_eq!(node0.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
         assert_ne!(node1.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
 

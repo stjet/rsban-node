@@ -29,7 +29,7 @@ pub struct System {
     runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
-    nodes: Vec<Arc<Node>>,
+    pub nodes: Vec<Arc<Node>>,
 }
 
 impl System {

@@ -1,22 +1,337 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockEnum, BlockHash, Epoch,
-    KeyPair, Link, PublicKey, SendBlock, Signature, StateBlock, Vote, VoteSource,
-    VoteWithWeightInfo, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, Link, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY
 };
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
-    consensus::{ActiveElectionsExt, VoteApplierExt},
-    stats::{DetailType, Direction, StatType},
-    wallets::WalletsExt,
+    config::{self, FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
     activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq,
     assert_timely_msg, make_fake_channel, start_election, start_elections, System,
 };
+
+#[test]
+fn node_receive_quorum() {
+    let mut system = System::new();
+    //let node1 = system.make_node();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+
+    node1.wallets.insert_adhoc2(&wallet_id, &key.private_key(), true).unwrap();
+
+    let send = BlockEnum::LegacySend(SendBlock::new(
+        &previous,
+        &key.account(),
+        &(Amount::MAX - Amount::raw(1_000_000)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(previous.into()).unwrap(),
+    ));
+
+    node1.process_active(send.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.block_exists(&send.hash()),
+        "send block not found",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.active.election(&send.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node1.active.election(&send.qualified_root()).unwrap();
+    assert!(!node1.active.confirmed(&election));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+
+    let mut system2 = System::new();
+    let node2 = system.make_disconnected_node();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    node2.wallets.insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    assert!(node1.balance(&key.account()).is_zero());
+
+    node2.peer_connector.connect_to(node1.tcp_listener.local_address());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn quick_confirm() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let genesis_start_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
+
+    node1.wallets.insert_adhoc2(&wallet_id, &key.private_key(), true).unwrap();
+    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    let send = BlockEnum::LegacySend(SendBlock::new(
+        &previous,
+        &key.account(),
+        &(node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(previous.into()).unwrap(),
+    ));
+
+    node1.process_active(send.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key.account()).is_zero(),
+        "balance is still zero",
+    );
+
+    assert_eq!(
+        node1.balance(&DEV_GENESIS_ACCOUNT),
+        node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)
+    );
+
+    assert_eq!(
+        node1.balance(&key.account()),
+        genesis_start_balance - (node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1))
+    );
+}
+
+#[test]
+fn send_out_of_order() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let key2 = KeyPair::new();
+
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+    ));
+
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &send1.hash(),
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum * 2),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send1.hash().into()).unwrap(),
+    ));
+
+    let send3 = BlockEnum::LegacySend(SendBlock::new(
+        &send2.hash(),
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum * 3),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send2.hash().into()).unwrap(),
+    ));
+
+    node1.process_active(send3.clone());
+    node1.process_active(send2.clone());
+    node1.process_active(send1.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || system.nodes.iter().all(|node| 
+            node.balance(&DEV_GENESIS_ACCOUNT) == Amount::MAX - node1.config.receive_minimum * 3
+        ),
+        "balance is incorrect on at least one node",
+    );
+}
+
+#[test]
+fn send_single_observing_peer() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let _node3 = system.make_node(); // Observing peer
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+    
+    let result = node1.wallets.send_action2(
+        &wallet_id1,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node1.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    
+    assert!(result.is_ok());
+    
+    assert_eq!(
+        Amount::MAX - node1.config.receive_minimum,
+        node1.balance(&DEV_GENESIS_ACCOUNT)
+    );
+    
+    assert!(node1.balance(&key2.account()).is_zero());
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || system.nodes.iter().all(|node| !node.balance(&key2.account()).is_zero()),
+        "balance is still zero on at least one node",
+    );
+}
+
+#[test]
+fn send_single() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+    
+    let result = node1.wallets.send_action2(
+        &wallet_id1,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node1.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    
+    assert!(result.is_ok());
+    
+    assert_eq!(
+        Amount::MAX - node1.config.receive_minimum,
+        node1.balance(&DEV_GENESIS_ACCOUNT)
+    );
+    
+    assert!(node1.balance(&key2.account()).is_zero());
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn send_self() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    
+    let result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    
+    assert!(result.is_ok());
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+    
+    assert_eq!(
+        Amount::MAX - node.config.receive_minimum,
+        node.balance(&DEV_GENESIS_ACCOUNT)
+    );
+}
+
+#[test]
+fn send_unkeyed() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+    let key2 = KeyPair::new();
+    
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    
+    let result = node.wallets.enter_password(wallet_id, "random_password");
+
+    assert!(result.is_err());
+    
+    let result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    
+    assert!(result.is_err());
+}
+
+#[test]
+fn balance() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+    
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+        
+    let balance = node.balance(&DEV_GENESIS_KEY.account());
+    
+    assert_eq!(Amount::MAX, balance);
+}
+
+#[test]
+fn work_generate() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let root = Root::from_bytes([1u8; 32]);
+    let version = WorkVersion::Work1;
+
+    // Test with higher difficulty
+    {
+        let difficulty = DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base(version));
+        let work = node.distributed_work.make_blocking(version, root, difficulty, None);
+        assert!(work.is_some());
+        let work = work.unwrap();
+        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+    }
+
+    // Test with lower difficulty
+    {
+        let difficulty = DifficultyV1::from_multiplier(0.5, node.network_params.work.threshold_base(WorkVersion::Work1));
+        let mut work;
+        loop {
+            work = node.distributed_work.make_blocking(version, root, difficulty, None);
+            if let Some(work_value) = work {
+                if node.network_params.work.difficulty(version, &root, work_value) < node.network_params.work.threshold_base(version) {
+                    break;
+                }
+            }
+        }
+        let work = work.unwrap();
+        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+        assert!(node.network_params.work.difficulty(version, &root, work) < node.network_params.work.threshold_base(version));
+    }
+}
 
 #[test]
 fn local_block_broadcast() {

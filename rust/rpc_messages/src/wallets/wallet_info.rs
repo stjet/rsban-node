@@ -1,6 +1,6 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
-use rsnano_core::WalletId;
 use rsnano_core::Amount;
+use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -72,7 +72,6 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
     }
-
 
     #[test]
     fn serialize_wallet_info_dto() {

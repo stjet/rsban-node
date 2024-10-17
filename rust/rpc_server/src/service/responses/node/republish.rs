@@ -4,10 +4,7 @@ use rsnano_rpc_messages::{BlockHashesDto, ErrorDto, RepublishArgs, RpcDto};
 use std::sync::Arc;
 use std::time::Duration;
 
-pub async fn republish(
-    node: Arc<Node>,
-    args: RepublishArgs
-) -> RpcDto {
+pub async fn republish(node: Arc<Node>, args: RepublishArgs) -> RpcDto {
     let mut blocks = Vec::new();
     let transaction = node.store.tx_begin_read();
     let count = args.count.unwrap_or(1024);
@@ -62,9 +59,7 @@ pub async fn republish(
                         let mut previous =
                             match node.ledger.any().account_head(&transaction, &destination) {
                                 Some(block_hash) => block_hash,
-                                None => {
-                                    return RpcDto::Error(ErrorDto::AccountHeadNotFound)
-                                }
+                                None => return RpcDto::Error(ErrorDto::AccountHeadNotFound),
                             };
                         let mut dest_block = node.ledger.any().get_block(&transaction, &previous);
                         let mut dest_hashes = Vec::new();

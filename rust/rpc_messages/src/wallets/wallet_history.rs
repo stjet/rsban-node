@@ -1,7 +1,7 @@
 use crate::RpcCommand;
 use rsnano_core::WalletId;
-use serde::{Deserialize, Serialize};
 use rsnano_core::{Account, Amount, BlockHash, BlockSubType};
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn wallet_history(args: WalletHistoryArgs) -> Self {
@@ -170,7 +170,6 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(json_data).unwrap();
         assert_eq!(deserialized, expected_command);
     }
-
 
     #[test]
     fn serialize_wallet_history_dto() {

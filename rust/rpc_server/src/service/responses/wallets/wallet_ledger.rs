@@ -10,7 +10,7 @@ pub async fn wallet_ledger(
     args: WalletLedgerArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let WalletLedgerArgs {
@@ -40,7 +40,7 @@ pub async fn wallet_ledger(
                 accounts: accounts_json,
             })
         }
-        Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
+        Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
     }
 }
 

@@ -3,10 +3,7 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::{ExistsDto, ReceivableExistsArgs, RpcDto};
 use std::sync::Arc;
 
-pub async fn receivable_exists(
-    node: Arc<Node>,
-    args: ReceivableExistsArgs
-) -> RpcDto {
+pub async fn receivable_exists(node: Arc<Node>, args: ReceivableExistsArgs) -> RpcDto {
     let include_active = args.include_active.unwrap_or(false);
     let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
     let txn = node.ledger.read_txn();
@@ -17,7 +14,12 @@ pub async fn receivable_exists(
             let pending_exists = node.ledger.any().get_pending(&txn, &pending_key).is_some();
 
             if pending_exists {
-                block_confirmed(node.clone(), &args.hash, include_active, include_only_confirmed)
+                block_confirmed(
+                    node.clone(),
+                    &args.hash,
+                    include_active,
+                    include_only_confirmed,
+                )
             } else {
                 false
             }

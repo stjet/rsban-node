@@ -1,6 +1,6 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
-use rsnano_core::WalletId;
 use rsnano_core::Account;
+use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -19,7 +19,6 @@ impl WalletRepresentativeDto {
         Self { representative }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

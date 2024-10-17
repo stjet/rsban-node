@@ -9,12 +9,12 @@ pub async fn wallet_receivable(
     args: WalletReceivableArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
     };
 
     let tx = node.ledger.read_txn();

@@ -70,7 +70,6 @@ mod tests {
         assert!(matches!(deserialized, RpcCommand::NodeId));
     }
 
-
     #[test]
     fn serialize_node_id_dto() {
         let node_id_dto = NodeIdDto {

@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use super::BlockInfoDto;
 use crate::{common::HashesArgs, RpcCommand};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
-use super::BlockInfoDto;
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn blocks_info(hashes: Vec<BlockHash>) -> Self {

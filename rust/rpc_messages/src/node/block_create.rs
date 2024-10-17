@@ -1,4 +1,7 @@
-use crate::{common::{BlockTypeDto, WorkVersionDto}, RpcCommand};
+use crate::{
+    common::{BlockTypeDto, WorkVersionDto},
+    RpcCommand,
+};
 use rsnano_core::{Account, Amount, BlockHash, JsonBlock, Link, RawKey, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 

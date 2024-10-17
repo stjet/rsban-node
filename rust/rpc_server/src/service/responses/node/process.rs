@@ -13,7 +13,7 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
         .work
         .validate_entry(block.work_version(), &block.root(), block.work())
     {
-        return RpcDto::Error(ErrorDto::WorkLow)
+        return RpcDto::Error(ErrorDto::WorkLow);
     }
 
     if !is_async {
@@ -57,4 +57,3 @@ pub async fn process(node: Arc<Node>, args: ProcessArgs) -> RpcDto {
         }
     }
 }
-

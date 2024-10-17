@@ -4,10 +4,7 @@ use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesArgs, AccountsBalan
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub async fn accounts_balances(
-    node: Arc<Node>,
-    args: AccountsBalancesArgs
-) -> RpcDto {
+pub async fn accounts_balances(node: Arc<Node>, args: AccountsBalancesArgs) -> RpcDto {
     let tx = node.ledger.read_txn();
     let mut balances = HashMap::new();
     let only_confirmed = args.include_only_confirmed.unwrap_or(true);

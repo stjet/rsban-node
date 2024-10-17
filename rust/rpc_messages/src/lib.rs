@@ -110,7 +110,7 @@ pub enum RpcCommand {
     Ledger(LedgerArgs),
     WorkGenerate(WorkGenerateArgs),
     Republish(RepublishArgs),
-    BlockCreate(BlockCreateArgs),   
+    BlockCreate(BlockCreateArgs),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -208,6 +208,5 @@ pub enum RpcDto {
     Ledger(LedgerDto),
     WorkGenerate(WorkGenerateDto),
     Republish(BlockHashesDto),
-    BlockCreate(BlockCreateDto)
+    BlockCreate(BlockCreateDto),
 }
-

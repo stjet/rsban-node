@@ -1,6 +1,6 @@
 use crate::RpcCommand;
-use serde::{Deserialize, Serialize};
 use rsnano_core::{Account, Amount};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
@@ -112,7 +112,6 @@ mod tests {
             panic!("Deserialized to wrong variant");
         }
     }
-
 
     #[test]
     fn serialize_representatives_online_dto_with_weight() {

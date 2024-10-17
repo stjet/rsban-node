@@ -1,4 +1,4 @@
-use crate::{RpcCommand, common::WalletWithAccountArgs};
+use crate::{common::WalletWithAccountArgs, RpcCommand};
 use rsnano_core::{Account, WalletId};
 
 impl RpcCommand {

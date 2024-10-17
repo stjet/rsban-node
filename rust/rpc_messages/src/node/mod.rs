@@ -44,6 +44,6 @@ pub use sign::*;
 pub use unchecked::*;
 pub use unchecked_get::*;
 pub use unchecked_keys::*;
+pub use uptime::*;
 pub use work_generate::*;
 pub use work_validate::*;
-pub use uptime::*;

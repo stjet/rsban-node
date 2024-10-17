@@ -4,13 +4,10 @@ use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, RpcDto, WalletHistoryArgs, 
 use rsnano_store_lmdb::Transaction;
 use std::sync::Arc;
 
-pub async fn wallet_history(
-    node: Arc<Node>,
-    args: WalletHistoryArgs,
-) -> RpcDto {
+pub async fn wallet_history(node: Arc<Node>, args: WalletHistoryArgs) -> RpcDto {
     let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
     };
 
     let mut entries: Vec<HistoryEntryDto> = Vec::new();

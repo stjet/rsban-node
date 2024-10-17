@@ -1,6 +1,6 @@
 use crate::RpcCommand;
-use serde::{Deserialize, Serialize};
 use rsnano_core::QualifiedRoot;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn confirmation_active(announcements: Option<u64>) -> Self {

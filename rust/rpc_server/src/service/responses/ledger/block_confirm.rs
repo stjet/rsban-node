@@ -9,7 +9,11 @@ pub async fn block_confirm(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
     let tx = node.ledger.read_txn();
     match &node.ledger.any().get_block(&tx, &args.hash) {
         Some(block) => {
-            if !node.ledger.confirmed().block_exists_or_pruned(&tx, &args.hash) {
+            if !node
+                .ledger
+                .confirmed()
+                .block_exists_or_pruned(&tx, &args.hash)
+            {
                 if !node.confirming_set.exists(&args.hash) {
                     node.election_schedulers
                         .manual
@@ -25,6 +29,6 @@ pub async fn block_confirm(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
             }
             RpcDto::BlockConfirm(StartedDto::new(true))
         }
-        None => RpcDto::Error(ErrorDto::BlockNotFound)
+        None => RpcDto::Error(ErrorDto::BlockNotFound),
     }
 }

@@ -6,7 +6,7 @@ pub async fn wallet_lock(node: Arc<Node>, enable_control: bool, args: WalletRpcM
     if enable_control {
         match node.wallets.lock(&args.wallet) {
             Ok(()) => RpcDto::Lock(LockedDto::new(true)),
-            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e))
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
         }
     } else {
         RpcDto::Error(ErrorDto::RPCControlDisabled)

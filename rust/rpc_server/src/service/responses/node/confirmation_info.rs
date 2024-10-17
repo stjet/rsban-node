@@ -1,13 +1,12 @@
 use rsnano_core::Amount;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoArgs, ConfirmationInfoDto, ErrorDto, RpcDto};
+use rsnano_rpc_messages::{
+    ConfirmationBlockInfoDto, ConfirmationInfoArgs, ConfirmationInfoDto, ErrorDto, RpcDto,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub async fn confirmation_info(
-    node: Arc<Node>,
-    args: ConfirmationInfoArgs
-) -> RpcDto {
+pub async fn confirmation_info(node: Arc<Node>, args: ConfirmationInfoArgs) -> RpcDto {
     let election = node.active.election(&args.root);
 
     if let Some(election) = election {

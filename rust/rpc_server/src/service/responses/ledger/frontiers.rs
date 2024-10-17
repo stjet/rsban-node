@@ -11,7 +11,7 @@ pub async fn frontiers(node: Arc<Node>, args: FrontiersArgs) -> RpcDto {
 
     let mut collected = 0;
 
-    while collected <args.count {
+    while collected < args.count {
         if let Some((account, account_info)) = iterator.current() {
             frontiers.insert(*account, account_info.head);
             collected += 1;

@@ -11,7 +11,7 @@ pub async fn blocks_info(node: Arc<Node>, args: HashesArgs) -> RpcDto {
         let block = if let Some(block) = node.ledger.get_block(&txn, &hash) {
             block
         } else {
-            return RpcDto::Error(ErrorDto::BlockNotFound)
+            return RpcDto::Error(ErrorDto::BlockNotFound);
         };
 
         let account = block.account();
@@ -32,7 +32,7 @@ pub async fn blocks_info(node: Arc<Node>, args: HashesArgs) -> RpcDto {
             BlockType::LegacyOpen => BlockSubType::Open,
             BlockType::LegacySend => BlockSubType::Send,
             BlockType::LegacyReceive => BlockSubType::Receive,
-            _ => return RpcDto::Error(ErrorDto::BlockError)
+            _ => return RpcDto::Error(ErrorDto::BlockError),
         };
 
         let block_info_dto = BlockInfoDto::new(

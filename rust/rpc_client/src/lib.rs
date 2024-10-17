@@ -218,7 +218,10 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_create(&self, args: impl Into<AccountCreateArgs>) -> Result<AccountRpcMessage> {
+    pub async fn account_create(
+        &self,
+        args: impl Into<AccountCreateArgs>,
+    ) -> Result<AccountRpcMessage> {
         let cmd = RpcCommand::account_create(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(from_value(result)?)

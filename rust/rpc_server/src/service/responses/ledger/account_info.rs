@@ -9,7 +9,7 @@ pub async fn account_info(node: Arc<Node>, args: AccountInfoArgs) -> RpcDto {
 
     let info = match node.ledger.any().get_account(&txn, &args.account) {
         Some(account_info) => account_info,
-        None => return RpcDto::Error(ErrorDto::AccountNotFound)
+        None => return RpcDto::Error(ErrorDto::AccountNotFound),
     };
 
     let confirmation_height_info = node

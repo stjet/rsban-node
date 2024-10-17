@@ -9,7 +9,7 @@ pub async fn work_generate(
     args: WorkGenerateArgs,
 ) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
@@ -27,17 +27,17 @@ pub async fn work_generate(
                 .work
                 .threshold_entry(BlockType::State, work_version)
     {
-        return RpcDto::Error(ErrorDto::DifficultyOutOfRange)
+        return RpcDto::Error(ErrorDto::DifficultyOutOfRange);
     }
 
     // Handle block if provided
     if let Some(block) = args.block {
         let block_enum: BlockEnum = block.into();
         if args.hash != block_enum.hash() {
-            return RpcDto::Error(ErrorDto::BlockRootMismatch)
+            return RpcDto::Error(ErrorDto::BlockRootMismatch);
         }
         if args.version.is_some() && work_version != block_enum.work_version() {
-            return RpcDto::Error(ErrorDto::BlockWorkVersioMismatch)
+            return RpcDto::Error(ErrorDto::BlockWorkVersioMismatch);
         }
         // Recalculate difficulty if not provided
         if args.difficulty.is_none() && args.multiplier.is_none() {
@@ -70,9 +70,9 @@ pub async fn work_generate(
 
     let work_result = if !use_peers {
         //if node.distributed_work.work_generation_enabled() {
-            node.distributed_work
-                .make(args.hash.into(), difficulty, account)
-                .await
+        node.distributed_work
+            .make(args.hash.into(), difficulty, account)
+            .await
         /*} else {
             return to_string_pretty(&ErrorDto::new(
                 "Local work generation is disabled".to_string(),
@@ -81,9 +81,9 @@ pub async fn work_generate(
         }*/
     } else {
         //if node.distributed_work.work_generation_enabled() {
-            node.distributed_work
-                .make(args.hash.into(), difficulty, account)
-                .await
+        node.distributed_work
+            .make(args.hash.into(), difficulty, account)
+            .await
         /*} else {
             return to_string_pretty(&ErrorDto::new("Work generation is disabled".to_string()))
                 .unwrap();

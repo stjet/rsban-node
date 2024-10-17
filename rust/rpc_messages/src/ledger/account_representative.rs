@@ -19,7 +19,6 @@ impl AccountRepresentativeArgs {
     }
 }
 
-
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountRepresentativeDto {
     pub representative: Account,

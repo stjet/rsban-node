@@ -1,6 +1,6 @@
 use crate::RpcCommand;
-use serde::{Deserialize, Serialize};
 use rsnano_core::{Account, JsonBlock, RawKey, Signature, WalletId};
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn sign(args: SignArgs) -> Self {

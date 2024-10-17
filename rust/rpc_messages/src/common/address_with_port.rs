@@ -15,9 +15,9 @@ impl AddressWithPortArgs {
 
 #[cfg(test)]
 mod tests {
+    use super::AddressWithPortArgs;
     use serde_json::to_string_pretty;
     use std::{net::Ipv6Addr, str::FromStr};
-    use super::AddressWithPortArgs;
 
     #[test]
     fn serialize_address_with_port_arg() {

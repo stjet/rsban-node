@@ -1,7 +1,7 @@
 use crate::RpcCommand;
 use rsnano_core::HashOrAccount;
-use serde::{Deserialize, Serialize};
 use rsnano_core::{BlockHash, JsonBlock};
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn unchecked_keys(key: HashOrAccount, count: u64) -> Self {

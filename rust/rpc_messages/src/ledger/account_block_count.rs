@@ -1,6 +1,6 @@
+use crate::{common::AccountRpcMessage, RpcCommand};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
-use crate::{common::AccountRpcMessage, RpcCommand};
 
 impl RpcCommand {
     pub fn account_block_count(account: Account) -> Self {

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::RpcCommand;
+use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn block_count() -> Self {

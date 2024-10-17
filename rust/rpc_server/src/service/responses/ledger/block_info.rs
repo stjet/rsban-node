@@ -8,7 +8,7 @@ pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
     let block = if let Some(block) = node.ledger.get_block(&txn, &args.hash) {
         block
     } else {
-        return RpcDto::Error(ErrorDto::BlockNotFound)
+        return RpcDto::Error(ErrorDto::BlockNotFound);
     };
 
     let account = block.account();
@@ -17,7 +17,10 @@ pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
     let height = block.sideband().unwrap().height;
     let local_timestamp = block.sideband().unwrap().timestamp;
     let successor = block.sideband().unwrap().successor;
-    let confirmed = node.ledger.confirmed().block_exists_or_pruned(&txn, &args.hash);
+    let confirmed = node
+        .ledger
+        .confirmed()
+        .block_exists_or_pruned(&txn, &args.hash);
     let contents = block.json_representation();
 
     let subtype = match block.block_type() {
@@ -29,7 +32,7 @@ pub async fn block_info(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
         BlockType::LegacyOpen => BlockSubType::Open,
         BlockType::LegacySend => BlockSubType::Send,
         BlockType::LegacyReceive => BlockSubType::Receive,
-        _ => return RpcDto::Error(ErrorDto::BlockError)
+        _ => return RpcDto::Error(ErrorDto::BlockError),
     };
 
     let block_info_dto = BlockInfoDto::new(

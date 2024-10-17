@@ -4,10 +4,11 @@ use rsnano_rpc_messages::{RpcDto, WorkValidateArgs, WorkValidateDto};
 use std::sync::Arc;
 
 pub async fn work_validate(node: Arc<Node>, args: WorkValidateArgs) -> RpcDto {
-    let result_difficulty =
-        node.network_params
-            .work
-            .difficulty(WorkVersion::Work1, &args.hash.into(), args.work.into());
+    let result_difficulty = node.network_params.work.difficulty(
+        WorkVersion::Work1,
+        &args.hash.into(),
+        args.work.into(),
+    );
 
     let default_difficulty = node.network_params.work.threshold_base(WorkVersion::Work1);
 

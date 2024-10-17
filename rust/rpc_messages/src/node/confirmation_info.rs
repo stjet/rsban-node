@@ -1,7 +1,7 @@
 use crate::RpcCommand;
 use rsnano_core::QualifiedRoot;
-use serde::{Deserialize, Serialize};
 use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
@@ -75,10 +75,10 @@ pub struct ConfirmationBlockInfoDto {
 impl ConfirmationInfoDto {
     pub fn new(
         announcements: u32,
-        voters: usize, 
+        voters: usize,
         last_winner: BlockHash,
         total_tally: Amount,
-        final_tally: Amount, 
+        final_tally: Amount,
         blocks: HashMap<BlockHash, ConfirmationBlockInfoDto>,
     ) -> Self {
         Self {
@@ -91,4 +91,3 @@ impl ConfirmationInfoDto {
         }
     }
 }
-

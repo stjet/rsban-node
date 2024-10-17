@@ -20,8 +20,8 @@ impl KeyPairDto {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Account, PublicKey, RawKey};
     use crate::common::KeyPairDto;
+    use rsnano_core::{Account, PublicKey, RawKey};
 
     #[test]
     fn serialize_keypair_dto() {

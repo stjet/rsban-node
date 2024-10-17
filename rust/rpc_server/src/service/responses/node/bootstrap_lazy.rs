@@ -2,12 +2,9 @@ use rsnano_node::{bootstrap::BootstrapInitiatorExt, Node};
 use rsnano_rpc_messages::{BootstrapLazyArgs, BootstrapLazyDto, ErrorDto, RpcDto};
 use std::sync::Arc;
 
-pub async fn bootstrap_lazy(
-    node: Arc<Node>,
-    args: BootstrapLazyArgs
-) -> RpcDto {
+pub async fn bootstrap_lazy(node: Arc<Node>, args: BootstrapLazyArgs) -> RpcDto {
     if node.flags.disable_lazy_bootstrap {
-        return RpcDto::Error(ErrorDto::LazyBootstrapDisabled)
+        return RpcDto::Error(ErrorDto::LazyBootstrapDisabled);
     }
 
     let force = args.force.unwrap_or(false);
@@ -16,9 +13,9 @@ pub async fn bootstrap_lazy(
 
     let bootstrap_id = args.id.unwrap_or_default();
 
-    let key_inserted = node
-        .bootstrap_initiator
-        .bootstrap_lazy(args.hash.into(), force, bootstrap_id);
+    let key_inserted =
+        node.bootstrap_initiator
+            .bootstrap_lazy(args.hash.into(), force, bootstrap_id);
 
     let started = !existed.is_some() && key_inserted;
 

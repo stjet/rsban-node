@@ -34,7 +34,7 @@ pub enum ErrorDto {
     BlockRootMismatch,
     BlockWorkVersioMismatch,
     AccountHeadNotFound,
-    InsufficientBalance
+    InsufficientBalance,
 }
 
 impl Serialize for ErrorDto {
@@ -82,4 +82,3 @@ impl Serialize for ErrorDto {
         map.end()
     }
 }
-

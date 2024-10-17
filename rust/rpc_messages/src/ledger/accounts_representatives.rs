@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::{common::AccountsRpcMessage, RpcCommand};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn accounts_representatives(accounts: Vec<Account>) -> Self {

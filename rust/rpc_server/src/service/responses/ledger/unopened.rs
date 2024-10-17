@@ -3,13 +3,9 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, RpcDto, UnopenedArgs, UnopenedDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn unopened(
-    node: Arc<Node>,
-    enable_control: bool,
-    args: UnopenedArgs
-) -> RpcDto {
+pub async fn unopened(node: Arc<Node>, enable_control: bool, args: UnopenedArgs) -> RpcDto {
     if !enable_control {
-        return RpcDto::Error(ErrorDto::RPCControlDisabled)
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let start = args.account;

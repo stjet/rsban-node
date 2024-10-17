@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::{common::HashesArgs, RpcCommand};
 use rsnano_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn blocks(hashes: Vec<BlockHash>) -> Self {

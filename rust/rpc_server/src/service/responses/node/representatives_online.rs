@@ -3,10 +3,7 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineDto, RpcDto};
 use std::{collections::HashMap, sync::Arc};
 
-pub async fn representatives_online(
-    node: Arc<Node>,
-    args: RepresentativesOnlineArgs
-) -> RpcDto {
+pub async fn representatives_online(node: Arc<Node>, args: RepresentativesOnlineArgs) -> RpcDto {
     let lock = node.online_reps.lock().unwrap();
     let online_reps = lock.online_reps();
     let weight = args.weight.unwrap_or(false);

@@ -8,7 +8,7 @@ pub async fn wallet_frontiers(node: Arc<Node>, args: WalletRpcMessage) -> RpcDto
 
     let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
         Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e))
+        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
     };
 
     for account in accounts {

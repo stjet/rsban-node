@@ -1,7 +1,7 @@
 use crate::common::WalletWithAccountArgs;
 use crate::RpcCommand;
-use rsnano_core::{Account, WalletId};
 use rsnano_core::WorkNonce;
+use rsnano_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -46,7 +46,6 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
     }
-
 
     #[test]
     fn serialize_work_get_dto() {

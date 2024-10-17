@@ -10,6 +10,6 @@ pub async fn block_account(node: Arc<Node>, args: HashRpcMessage) -> RpcDto {
             let block_account = AccountRpcMessage::new(account);
             RpcDto::BlockAccount(block_account)
         }
-        None => RpcDto::Error(ErrorDto::BlockNotFound)
+        None => RpcDto::Error(ErrorDto::BlockNotFound),
     }
 }

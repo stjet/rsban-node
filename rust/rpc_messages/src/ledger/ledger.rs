@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::RpcCommand;
 use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn ledger(ledger_args: LedgerArgs) -> Self {
@@ -140,7 +140,10 @@ impl LedgerAccountInfo {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{ledger::{LedgerAccountInfo, LedgerArgs, LedgerDto}, RpcCommand};
+    use crate::{
+        ledger::{LedgerAccountInfo, LedgerArgs, LedgerDto},
+        RpcCommand,
+    };
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::json;
 

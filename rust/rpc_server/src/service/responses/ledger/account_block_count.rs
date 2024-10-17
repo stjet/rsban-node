@@ -8,6 +8,6 @@ pub async fn account_block_count(node: Arc<Node>, args: AccountRpcMessage) -> Rp
         Some(account_info) => {
             RpcDto::AccountBlockCount(AccountBlockCountDto::new(account_info.block_count))
         }
-        None => RpcDto::Error(ErrorDto::AccountNotFound)
+        None => RpcDto::Error(ErrorDto::AccountNotFound),
     }
 }

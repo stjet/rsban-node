@@ -19,11 +19,11 @@ pub(crate) struct MessageRecorder {
 }
 
 impl MessageRecorder {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(messages: Arc<RwLock<MessageCollection>>) -> Self {
         Self {
             rates: Default::default(),
             rate_calc: RwLock::new(Default::default()),
-            messages: Arc::new(RwLock::new(MessageCollection::default())),
+            messages,
             is_recording: AtomicBool::new(false),
         }
     }

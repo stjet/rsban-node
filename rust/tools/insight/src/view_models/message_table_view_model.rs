@@ -1,7 +1,7 @@
 use super::MessageViewModel;
-use crate::message_recorder::MessageRecorder;
+use crate::message_collection::MessageCollection;
 use rsnano_network::ChannelDirection;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 pub(crate) struct RowViewModel {
     pub channel_id: String,
@@ -13,24 +13,24 @@ pub(crate) struct RowViewModel {
 pub(crate) struct MessageTableViewModel {
     selected: Option<MessageViewModel>,
     selected_index: Option<usize>,
-    msg_recorder: Arc<MessageRecorder>,
+    messages: Arc<RwLock<MessageCollection>>,
 }
 
 impl MessageTableViewModel {
-    pub(crate) fn new(msg_recorder: Arc<MessageRecorder>) -> Self {
+    pub(crate) fn new(messages: Arc<RwLock<MessageCollection>>) -> Self {
         Self {
-            msg_recorder,
+            messages,
             selected: None,
             selected_index: None,
         }
     }
 
     pub(crate) fn heading(&self) -> String {
-        format!("Messages ({})", self.msg_recorder.message_count())
+        format!("Messages ({})", self.messages.read().unwrap().len())
     }
 
     pub(crate) fn get_row(&self, index: usize) -> Option<RowViewModel> {
-        let message = self.msg_recorder.get_message(index)?;
+        let message = self.messages.read().unwrap().get(index)?;
         Some(RowViewModel {
             channel_id: message.channel_id.to_string(),
             direction: if message.direction == ChannelDirection::Inbound {
@@ -44,7 +44,7 @@ impl MessageTableViewModel {
     }
 
     pub(crate) fn message_count(&self) -> usize {
-        self.msg_recorder.message_count()
+        self.messages.read().unwrap().len()
     }
 
     pub(crate) fn selected_message(&self) -> Option<MessageViewModel> {
@@ -52,7 +52,7 @@ impl MessageTableViewModel {
     }
 
     pub(crate) fn select_message(&mut self, index: usize) {
-        let message = self.msg_recorder.get_message(index).unwrap();
+        let message = self.messages.read().unwrap().get(index).unwrap();
         self.selected = Some(message.into());
         self.selected_index = Some(index);
     }

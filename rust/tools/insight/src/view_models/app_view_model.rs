@@ -3,11 +3,15 @@ use super::{
     NodeRunnerViewModel,
 };
 use crate::{
-    channels::Channels, ledger_stats::LedgerStats, message_recorder::MessageRecorder,
-    node_factory::NodeFactory, node_runner::NodeRunner, nullable_runtime::NullableRuntime,
+    channels::Channels, ledger_stats::LedgerStats, message_collection::MessageCollection,
+    message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
+    nullable_runtime::NullableRuntime,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 pub(crate) struct AppViewModel {
     pub msg_recorder: Arc<MessageRecorder>,
@@ -22,11 +26,12 @@ pub(crate) struct AppViewModel {
 impl AppViewModel {
     pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
         let node_runner = NodeRunner::new(runtime, node_factory);
-        let msg_recorder = Arc::new(MessageRecorder::new());
+        let messages = Arc::new(RwLock::new(MessageCollection::default()));
+        let msg_recorder = Arc::new(MessageRecorder::new(messages.clone()));
         let clock = Arc::new(SteadyClock::default());
         Self {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
-            message_table: MessageTableViewModel::new(msg_recorder.clone()),
+            message_table: MessageTableViewModel::new(messages.clone()),
             msg_recorder,
             channels: Channels::new(),
             clock,

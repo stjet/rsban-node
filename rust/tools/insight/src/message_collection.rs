@@ -22,7 +22,7 @@ impl RecordedMessage {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Debug)]
 pub(crate) struct MessageFilter {
     channel_id: Option<ChannelId>,
 }
@@ -75,6 +75,10 @@ impl MessageCollection {
     pub fn clear(&mut self) {
         self.all_messages.clear();
         self.filtered.clear();
+    }
+
+    pub fn current_filter(&self) -> &MessageFilter {
+        &self.filter
     }
 
     pub fn set_filter(&mut self, filter: MessageFilter) {

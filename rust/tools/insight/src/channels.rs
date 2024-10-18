@@ -1,18 +1,21 @@
+use crate::message_collection::{MessageCollection, MessageFilter};
 use rsnano_network::{ChannelId, ChannelInfo};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 pub(crate) struct Channels {
     channels: Vec<Arc<ChannelInfo>>,
     selected: Option<ChannelId>,
     selected_index: Option<usize>,
+    messages: Arc<RwLock<MessageCollection>>,
 }
 
 impl Channels {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(messages: Arc<RwLock<MessageCollection>>) -> Self {
         Self {
             channels: Vec::new(),
             selected: None,
             selected_index: None,
+            messages,
         }
     }
 
@@ -53,9 +56,17 @@ impl Channels {
         if self.selected == Some(channel.channel_id()) {
             self.selected = None;
             self.selected_index = None;
+            self.messages
+                .write()
+                .unwrap()
+                .set_filter(MessageFilter::all())
         } else {
             self.selected = Some(channel.channel_id());
             self.selected_index = Some(index);
+            self.messages
+                .write()
+                .unwrap()
+                .set_filter(MessageFilter::channel(channel.channel_id()))
         }
     }
 
@@ -67,12 +78,30 @@ impl Channels {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message_collection::MessageCollection;
+    use crate::message_collection::{MessageCollection, MessageFilter};
     use std::sync::RwLock;
 
     #[test]
-    fn when_channel_selected_set_message_filter() {
-        let mut messages = RwLock::new(MessageCollection::default());
-        let mut channels = Channels::new();
+    fn when_channel_selected_should_set_message_filter() {
+        let messages = Arc::new(RwLock::new(MessageCollection::default()));
+        let mut channels = Channels::new(messages.clone());
+        channels.update(vec![Arc::new(ChannelInfo::new_test_instance())]);
+        channels.select_index(0);
+        let guard = messages.read().unwrap();
+        assert_eq!(
+            guard.current_filter(),
+            &MessageFilter::channel(channels.channels[0].channel_id())
+        );
+    }
+
+    #[test]
+    fn when_channel_deselected_should_clear_message_filter() {
+        let messages = Arc::new(RwLock::new(MessageCollection::default()));
+        let mut channels = Channels::new(messages.clone());
+        channels.update(vec![Arc::new(ChannelInfo::new_test_instance())]);
+        channels.select_index(0);
+        channels.select_index(0);
+        let guard = messages.read().unwrap();
+        assert_eq!(guard.current_filter(), &MessageFilter::all());
     }
 }

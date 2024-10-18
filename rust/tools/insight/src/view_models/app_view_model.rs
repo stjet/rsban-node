@@ -33,7 +33,7 @@ impl AppViewModel {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
             message_table: MessageTableViewModel::new(messages.clone()),
             msg_recorder,
-            channels: Channels::new(),
+            channels: Channels::new(messages),
             clock,
             ledger_stats: LedgerStats::new(),
             last_update: None,

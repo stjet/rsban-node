@@ -16,22 +16,18 @@ use crate::{
 };
 
 pub(crate) struct MessageRecorder {
-    pub sent: AtomicU64,
-    pub received: AtomicU64,
-    pub send_rate: AtomicU64,
-    pub receive_rate: AtomicU64,
-    data: RwLock<Data>,
+    pub rates: MessageRates,
+    rate_calc: RwLock<MessageRateCalculator>,
+    messages: Arc<RwLock<MessageCollection>>,
     is_recording: AtomicBool,
 }
 
 impl MessageRecorder {
     pub(crate) fn new() -> Self {
         Self {
-            sent: AtomicU64::new(0),
-            received: AtomicU64::new(0),
-            send_rate: AtomicU64::new(0),
-            receive_rate: AtomicU64::new(0),
-            data: RwLock::new(Default::default()),
+            rates: Default::default(),
+            rate_calc: RwLock::new(Default::default()),
+            messages: Arc::new(RwLock::new(MessageCollection::default())),
             is_recording: AtomicBool::new(false),
         }
     }
@@ -49,59 +45,76 @@ impl MessageRecorder {
     }
 
     pub fn clear(&self) {
-        self.data.write().unwrap().messages.clear();
+        self.messages.write().unwrap().clear();
     }
 
-    pub fn record(&self, msg: RecordedMessage, now: Timestamp) {
-        let mut guard = self.data.write().unwrap();
+    pub fn record(&self, message: RecordedMessage, now: Timestamp) {
+        {
+            let mut rates = self.rate_calc.write().unwrap();
+            rates.caluclate(&message, now, &self.rates);
+        }
 
-        let should_sample = if let Some(ts) = guard.last_rate_sample {
+        if self.is_recording() {
+            let mut messages = self.messages.write().unwrap();
+            messages.add(message);
+        }
+    }
+
+    pub fn get_message(&self, index: usize) -> Option<RecordedMessage> {
+        self.messages.read().unwrap().get(index)
+    }
+
+    pub(crate) fn message_count(&self) -> usize {
+        self.messages.read().unwrap().len()
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct MessageRates {
+    pub send_rate: AtomicU64,
+    pub receive_rate: AtomicU64,
+}
+
+#[derive(Default)]
+pub(crate) struct MessageRateCalculator {
+    sent: u64,
+    received: u64,
+    receive_rate: RateCalculator,
+    send_rate: RateCalculator,
+    last_rate_sample: Option<Timestamp>,
+}
+
+impl MessageRateCalculator {
+    pub fn caluclate(&mut self, message: &RecordedMessage, now: Timestamp, result: &MessageRates) {
+        let should_sample = if let Some(ts) = self.last_rate_sample {
             (now - ts) >= Duration::from_millis(500)
         } else {
             true
         };
 
-        match msg.direction {
+        match message.direction {
             ChannelDirection::Inbound => {
-                let received = self.received.fetch_add(1, Ordering::Relaxed) + 1;
+                self.received += 1;
                 if should_sample {
-                    guard.receive_rate.sample(received, now);
-                    self.receive_rate
-                        .store(guard.receive_rate.rate(), Ordering::Relaxed);
-                    guard.last_rate_sample = Some(now);
+                    self.receive_rate.sample(self.received, now);
+                    result
+                        .receive_rate
+                        .store(self.receive_rate.rate(), Ordering::Relaxed);
+                    self.last_rate_sample = Some(now);
                 }
             }
             ChannelDirection::Outbound => {
-                let sent = self.sent.fetch_add(1, Ordering::Relaxed) + 1;
+                self.sent += 1;
                 if should_sample {
-                    guard.send_rate.sample(sent, now);
-                    self.send_rate
-                        .store(guard.send_rate.rate(), Ordering::Relaxed);
-                    guard.last_rate_sample = Some(now);
+                    self.send_rate.sample(self.sent, now);
+                    result
+                        .send_rate
+                        .store(self.send_rate.rate(), Ordering::Relaxed);
+                    self.last_rate_sample = Some(now);
                 }
             }
         };
-
-        if self.is_recording() {
-            guard.messages.add(msg);
-        }
     }
-
-    pub fn get_message(&self, index: usize) -> Option<RecordedMessage> {
-        self.data.read().unwrap().messages.get(index)
-    }
-
-    pub(crate) fn message_count(&self) -> usize {
-        self.data.read().unwrap().messages.len()
-    }
-}
-
-#[derive(Default)]
-struct Data {
-    messages: MessageCollection,
-    receive_rate: RateCalculator,
-    send_rate: RateCalculator,
-    last_rate_sample: Option<Timestamp>,
 }
 
 pub(crate) fn make_node_callbacks(

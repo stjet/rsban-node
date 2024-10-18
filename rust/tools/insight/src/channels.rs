@@ -62,8 +62,17 @@ impl Channels {
     pub(crate) fn selected_index(&self) -> Option<usize> {
         self.selected_index
     }
+}
 
-    pub(crate) fn selected_channel_id(&self) -> Option<ChannelId> {
-        self.selected
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::message_collection::MessageCollection;
+    use std::sync::RwLock;
+
+    #[test]
+    fn when_channel_selected_set_message_filter() {
+        let mut messages = RwLock::new(MessageCollection::default());
+        let mut channels = Channels::new();
     }
 }

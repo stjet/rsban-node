@@ -1,13 +1,6 @@
 use crate::channels::Channels;
 use rsnano_network::ChannelDirection;
 
-pub(crate) struct ChannelViewModel {
-    pub channel_id: String,
-    pub remote_addr: String,
-    pub direction: &'static str,
-    pub is_selected: bool,
-}
-
 pub(crate) struct ChannelsViewModel<'a>(&'a mut Channels);
 
 impl<'a> ChannelsViewModel<'a> {
@@ -39,4 +32,11 @@ impl<'a> ChannelsViewModel<'a> {
     pub(crate) fn heading(&self) -> String {
         format!("Channels ({})", self.0.len())
     }
+}
+
+pub(crate) struct ChannelViewModel {
+    pub channel_id: String,
+    pub remote_addr: String,
+    pub direction: &'static str,
+    pub is_selected: bool,
 }

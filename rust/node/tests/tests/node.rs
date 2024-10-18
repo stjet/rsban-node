@@ -1,4 +1,3 @@
-use num::bigint::Sign;
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, FullHash, KeyPair, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, StateBlockBuilder, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
 };
@@ -8,10 +7,245 @@ use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
     block_processing::BlockSource, bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt, NodeCallbacks
 };
-use std::{sync::{atomic::{AtomicI32, AtomicUsize, Ordering}, Arc}, thread::sleep, time::Duration};
+use std::{collections::HashMap, sync::{atomic::{AtomicI32, AtomicUsize, Ordering}, Arc}, thread::sleep, time::Duration};
 use test_helpers::{
     activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election, start_elections, System
 };
+
+#[test]
+fn dependency_graph() {
+    let mut system = System::new();
+    let mut node_config = System::default_config();
+    node_config.peering_port = Some(get_available_port());
+    let node = system.build_node().config(node_config).finish();
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    let gen_send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .link(key1.account())
+        .balance(Amount::MAX - Amount::raw(1))
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    let key1_open = BlockBuilder::state()
+        .account(key1.public_key())
+        .previous(BlockHash::zero())
+        .representative(key1.public_key())
+        .link(gen_send1.hash())
+        .balance(Amount::raw(1))
+        .sign(&key1)
+        .work(node.work_generate_dev(key1.public_key().into()))
+        .build();
+
+    let key1_send1 = BlockBuilder::state()
+        .account(key1.public_key())
+        .previous(key1_open.hash())
+        .representative(key1.public_key())
+        .link(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::zero())
+        .sign(&key1)
+        .work(node.work_generate_dev(key1_open.hash().into()))
+        .build();
+
+        let gen_send1_state_block = match &gen_send1 {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let gen_receive = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .from(&gen_send1_state_block)
+        .previous(gen_send1.hash())
+        .link(key1_send1.hash())
+        .balance(Amount::MAX)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(gen_send1.hash().into()))
+        .build();
+
+        let gen_receive_state_block = match &gen_receive {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let gen_send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .from(&gen_receive_state_block)
+        .previous(gen_receive.hash())
+        .link(key2.account())
+        .balance(gen_receive.balance() - Amount::raw(2))
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(gen_receive.hash().into()))
+        .build();
+
+    let key2_open = BlockBuilder::state()
+        .account(key2.public_key())
+        .previous(BlockHash::zero())
+        .representative(key2.public_key())
+        .link(gen_send2.hash())
+        .balance(Amount::raw(2))
+        .sign(&key2)
+        .work(node.work_generate_dev(key2.public_key().into()))
+        .build();
+
+    let key2_send1 = BlockBuilder::state()
+        .account(key2.public_key())
+        .previous(key2_open.hash())
+        .representative(key2.public_key())
+        .link(key3.account())
+        .balance(Amount::raw(1))
+        .sign(&key2)
+        .work(node.work_generate_dev(key2_open.hash().into()))
+        .build();
+
+    let key3_open = BlockBuilder::state()
+        .account(key3.public_key())
+        .previous(BlockHash::zero())
+        .representative(key3.public_key())
+        .link(key2_send1.hash())
+        .balance(Amount::raw(1))
+        .sign(&key3)
+        .work(node.work_generate_dev(key3.public_key().into()))
+        .build();
+
+        let key1_send1_state_block = match &key2_send1 {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let key2_send2 = BlockBuilder::state()
+        .account(key2.account())
+        .from(&key1_send1_state_block)
+        .previous(key2_send1.hash())
+        .link(key1.account())
+        .balance(key2_send1.balance() - Amount::raw(1))
+        .sign(&key2)
+        .work(node.work_generate_dev(key2_send1.hash().into()))
+        .build();
+
+        let key1_send1_state_block = match &key1_send1 {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let key1_receive = BlockBuilder::state()
+        .account(key1.account())
+        .from(&key1_send1_state_block)
+        .previous(key1_send1.hash())
+        .link(key2_send2.hash())
+        .balance(key1_send1.balance() + Amount::raw(1))
+        .sign(&key1)
+        .work(node.work_generate_dev(key1_send1.hash().into()))
+        .build();
+
+        let key1_receive_state_block = match &key1_receive {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let key1_send2 = BlockBuilder::state()
+        .account(key1.account())
+        .from(&key1_receive_state_block)
+        .previous(key1_receive.hash())
+        .link(key3.account())
+        .balance(key1_receive.balance() - Amount::raw(1))
+        .sign(&key1)
+        .work(node.work_generate_dev(key1_receive.hash().into()))
+        .build();
+
+        let key3_open_state_block = match &key3_open {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let key3_receive = BlockBuilder::state()
+        .account(key3.account())
+        .from(&key3_open_state_block)
+        .previous(key3_open.hash())
+        .link(key1_send2.hash())
+        .balance(key3_open.balance() + Amount::raw(1))
+        .sign(&key3)
+        .work(node.work_generate_dev(key3_open.hash().into()))
+        .build();
+
+        let key3_receive_state_block = match &key3_receive {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+
+    let key3_epoch = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .from(&key3_receive_state_block)
+        .previous(key3_receive.hash())
+        .link(node.ledger.epoch_link(Epoch::Epoch1).unwrap())
+        .balance(key3_receive.balance())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(key3_receive.hash().into()))
+        .build();
+
+    assert_eq!(BlockStatus::Progress, node.process_local(gen_send1.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key1_open.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key1_send1.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(gen_receive.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(gen_send2.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key2_open.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key2_send1.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key3_open.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key2_send2.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key1_receive.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key1_send2.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key3_receive.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(key3_epoch.clone()).unwrap());
+
+    //assert!(node.active.len() == 0);
+
+    let dependency_graph: HashMap<BlockHash, Vec<BlockHash>> = [
+        (key1_open.hash(), vec![gen_send1.hash()]),
+        (key1_send1.hash(), vec![key1_open.hash()]),
+        (gen_receive.hash(), vec![gen_send1.hash(), key1_open.hash()]),
+        (gen_send2.hash(), vec![gen_receive.hash()]),
+        (key2_open.hash(), vec![gen_send2.hash()]),
+        (key2_send1.hash(), vec![key2_open.hash()]),
+        (key3_open.hash(), vec![key2_send1.hash()]),
+        (key2_send2.hash(), vec![key2_send1.hash()]),
+        (key1_receive.hash(), vec![key1_send1.hash(), key2_send2.hash()]),
+        (key1_send2.hash(), vec![key1_send1.hash()]),
+        (key3_receive.hash(), vec![key3_open.hash(), key1_send2.hash()]),
+        (key3_epoch.hash(), vec![key3_receive.hash()]),
+    ].into_iter().collect();
+
+    assert_eq!(node.ledger.block_count() - 2, dependency_graph.len() as u64);
+
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+    start_election(&&node, &gen_send1.hash());
+
+    /*assert!(system.poll_until_true(
+        std::time::Duration::from_secs(15),
+        || {
+            let active_blocks: Vec<BlockHash> = node.active.;
+            if active_blocks.len() >= 6 {
+                return false;
+            }
+
+            let has_unconfirmed_ancestor = dependency_graph.iter().any(|(block_hash, ancestors)| {
+                active_blocks.contains(block_hash) && ancestors.iter().any(|ancestor| {
+                    !node.block_confirmed(ancestor)
+                })
+            });
+
+            !has_unconfirmed_ancestor && node.ledger.cemented_count() == node.ledger.block_count()
+        }
+    ));*/
+    assert_eq!(node.ledger.cemented_count(), node.ledger.block_count());
+    assert_timely_eq(std::time::Duration::from_secs(5), || node.active.len() == 0, true);
+}
 
 #[test]
 fn rollback_gap_source() {

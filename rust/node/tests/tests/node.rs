@@ -1,16 +1,621 @@
+use num::bigint::Sign;
 use rsnano_core::{
-    utils::{milliseconds_since_epoch, TEST_ENDPOINT_1}, work::WorkPool, Account, Amount, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, FullHash, KeyPair, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, StateBlockBuilder, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
 };
 use rsnano_ledger::{BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::{WalletsError, WalletsExt}
+    block_processing::BlockSource, bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt, NodeCallbacks
 };
-use std::{net::SocketAddrV6, sync::Arc, thread::sleep, time::Duration};
+use std::{sync::{atomic::{AtomicI32, AtomicUsize, Ordering}, Arc}, thread::sleep, time::Duration};
 use test_helpers::{
     activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election, start_elections, System
 };
+
+#[test]
+fn block_processor_reject_state() {
+    let mut system = System::new();  
+    let node = system.make_node();  
+
+    let builder = BlockBuilder::state();
+
+    let mut send1 = builder
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    send1.set_block_signature(&Signature::new());
+
+    //let mut signature = send1.signature();
+    //signature.bytes[0] ^= 0x1;
+    //send1.set_signature(Signature::from_bytes(signature.bytes));
+
+    assert_eq!(node.block_confirmed(&send1.hash()), false);
+
+    assert_eq!(BlockStatus::BadSignature, node.process_local(send1.clone()).unwrap());
+
+    //node.process_active(send1.clone().into());
+    //assert_timely_eq(Duration::from_secs(5), || {
+        //node.stats_count_bad_signature()
+    //}, 1);
+
+    assert_eq!(node.block_confirmed(&send1.hash()), false);
+
+    let send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    node.process_active(send2.clone().into());
+
+    assert_eq!(BlockStatus::Progress, node.process_local(send2.clone()).unwrap());
+
+    node.confirm(send2.hash());
+
+    assert_timely_eq(Duration::from_secs(5), || {
+        node.block_confirmed(&send2.hash())
+    }, true);
+}
+
+#[test]
+fn block_processor_signatures() {
+    let mut system = System::new();  
+    let node = system.make_node();  
+
+    // Insert the genesis key into the wallet for signing operations
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    let latest = node.latest(&*DEV_GENESIS_ACCOUNT);  
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    // Create a valid send block
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(latest)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+        .link(key1.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(latest.into()))
+        .build();
+
+    // Process the first valid block
+    assert_eq!(BlockStatus::Progress, node.process_local(send1.clone()).unwrap());
+
+    // Create additional send blocks with proper signatures
+    let send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send1.hash())
+        .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
+        .link(key2.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send1.hash().into()))
+        .build();
+
+    let send3 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send2.hash())
+        .balance(Amount::raw(Amount::MAX.number() - 3 * *GXRB_RATIO))
+        .link(key3.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send2.hash().into()))
+        .build();
+
+    // Process valid blocks
+    assert_eq!(BlockStatus::Progress, node.process_local(send2.clone()).unwrap());
+    assert_eq!(BlockStatus::Progress, node.process_local(send3.clone()).unwrap());
+
+    // Create a block with an invalid signature (tampered signature bits)
+    let mut send4 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send3.hash())
+        .balance(Amount::raw(Amount::MAX.number() - 4 * *GXRB_RATIO))
+        .link(key3.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send3.hash().into()))
+        .build();
+
+    // Tamper with the signature
+    //let mut signature = send4.block_signature();
+    //signature.bytes[32] ^= 0x1;  // Invalidate the signature by flipping a bit
+    //send4.set_signature(Signature::from_bytes(signature.bytes));
+    send4.set_block_signature(&Signature::new());
+
+    // Ensure that the block with the invalid signature is rejected
+    assert_eq!(BlockStatus::BadSignature, node.process_local(send4.clone()).unwrap());
+
+    // Create a valid receive block
+    let receive1 = BlockBuilder::state()
+        .account(key1.account())
+        .previous(BlockHash::zero())  // No previous block for the account (open block)
+        .balance(Amount::raw(*GXRB_RATIO))
+        .link(send1.hash())
+        .sign(&key1)
+        .work(node.work_generate_dev(key1.account().into()))
+        .build();
+
+    // Process the valid receive block
+    node.process_local(receive1.clone()).unwrap();
+
+    node.confirm(receive1.hash());
+
+    // Ensure the valid blocks have been processed successfully
+    assert_timely_eq(Duration::from_secs(5), || {
+        node.block_confirmed(&receive1.hash())
+    }, true);
+
+    // Ensure that no invalid blocks were processed
+    assert_eq!(node.block_confirmed(&send4.hash()), false);
+}
+
+#[test]
+fn vote_by_hash_bundle() {
+    // Initialize the test system with one node
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    // Prepare a vector to hold the blocks
+    let mut blocks = Vec::new();
+
+    // Create the first block in the chain
+    let block = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::MAX - Amount::raw(1))
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    blocks.push(block.clone());
+    assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
+
+    // Create a chain of blocks
+    for i in 2..200 {
+        let prev_block = match blocks.last().unwrap() {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+        let hash: BlockHash = prev_block.hash();
+        let block = BlockBuilder::state()
+            .from(prev_block)
+            .previous(hash)
+            .balance(Amount::MAX - Amount::raw(i))
+            .sign(&DEV_GENESIS_KEY)
+            .work(node.work_generate_dev(hash.into()))
+            .build();
+        blocks.push(block.clone());
+        assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
+    }
+
+    // Confirm the last block to confirm the entire chain
+    node.ledger.confirm(&mut node.ledger.rw_txn(), blocks.last().unwrap().hash());
+
+    // Insert the genesis key and a new key into the wallet
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let key1 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+        .unwrap();
+
+    // Set up an observer to track the maximum number of hashes in a vote
+    let max_hashes = Arc::new(AtomicUsize::new(0));
+    let max_hashes_clone = Arc::clone(&max_hashes);
+
+    node.vote_router.add_vote_processed_observer(Box::new(move |vote: &Arc<Vote>, _vote_source, _vote_code| {
+        let hashes_size = vote.hashes.len();
+        let current_max = max_hashes_clone.load(Ordering::Relaxed);
+        if hashes_size > current_max {
+            max_hashes_clone.store(hashes_size, Ordering::Relaxed);
+        }
+    }));
+
+    // Enqueue vote requests for all the blocks
+    for block in &blocks {
+        node.vote_generators.generate_non_final_vote(&block.root(), &block.hash());
+    }
+
+    // Verify that bundling occurs
+    assert_timely(Duration::from_secs(20), || {
+        max_hashes.load(Ordering::Relaxed) >= 3
+    });
+}
+
+#[test]
+fn confirm_quorum() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    // Put greater than node.delta() in pending so quorum can't be reached
+    let new_balance = node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1);
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(new_balance)
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&*DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
+
+    node1.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_ACCOUNT,
+        new_balance,
+        0,
+        true,
+        None
+    ).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(2),
+        || node1.active.election(&send1.qualified_root()).is_some(),
+        "Election not found",
+    );
+
+    let election = node1.active.election(&send1.qualified_root()).unwrap();
+    assert!(!node1.active.confirmed(&election));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(Amount::zero(), node1.balance(&DEV_GENESIS_ACCOUNT));
+}
+
+#[test]
+fn block_confirm() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::MAX - Amount::raw(1))
+        .link(key.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev((*DEV_GENESIS_ACCOUNT).into()))
+        .build();
+
+    // A copy is necessary to avoid data races during ledger processing, which sets the sideband
+    let send1_copy = send1.clone();
+
+    let hash1 = send1.hash();
+    let hash2 = send1_copy.hash();
+
+    node1.block_processor.add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node2.block_processor.add(send1_copy.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+
+    assert_timely_eq(Duration::from_secs(5), 
+        || (node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &hash1) && node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &hash2)) as u64,
+        1
+    );
+
+    assert!(node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &hash1));
+    assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &hash2));
+
+    // Confirm send1 on node2 so it can vote for send2
+    start_election(&node2, &send1_copy.hash());
+
+    assert_timely_eq(Duration::from_secs(5), 
+        || node2.active.election(&send1_copy.qualified_root()).is_some() as u64,
+        1
+    );
+
+    // Make node2 genesis representative so it can vote
+    node2.wallets.insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    assert_timely_eq(Duration::from_secs(10), 
+        || node1.active.recently_cemented_list().len(),
+        1
+    );
+}
+
+#[test]
+fn bootstrap_connection_scaling() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    assert_eq!(34, node.bootstrap_initiator.connections.target_connections(5000, 1));
+    assert_eq!(4, node.bootstrap_initiator.connections.target_connections(0, 1));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 1));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 1));
+    assert_eq!(32, node.bootstrap_initiator.connections.target_connections(5000, 0));
+    assert_eq!(1, node.bootstrap_initiator.connections.target_connections(0, 0));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 0));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 0));
+    assert_eq!(36, node.bootstrap_initiator.connections.target_connections(5000, 2));
+    assert_eq!(8, node.bootstrap_initiator.connections.target_connections(0, 2));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 2));
+    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 2));
+}
+
+#[test]
+fn balance_observer() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let balances = Arc::new(AtomicI32::new(0));
+    let key = KeyPair::new();
+    let key_clone = key.clone();
+
+    let balances_clone = balances.clone();
+    NodeCallbacks::builder().on_balance_changed(move |account: &Account, is_pending: bool| {
+        if *account == key_clone.account() && is_pending {
+            balances_clone.fetch_add(1, Ordering::SeqCst);
+        } else if *account == *DEV_GENESIS_ACCOUNT && !is_pending {
+            balances_clone.fetch_add(1, Ordering::SeqCst);
+        }
+    });
+
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key.account(),
+        Amount::raw(1),
+        0,
+        true,
+        None
+    ).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || balances.load(Ordering::SeqCst) == 2,
+        "balances did not reach 2",
+    );
+}
+
+#[test]
+fn send_callback() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    
+    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    
+    //node.config.callback_address = "localhost".to_string();
+    //node.config.callback_port = 8010;
+    //node.config.callback_target = "/".to_string();
+    
+    let send_result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None
+    );
+    
+    assert!(send_result.is_ok());
+    
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()).is_zero(),
+        "balance is not zero",
+    );
+    
+    assert_eq!(
+        Amount::MAX - node.config.receive_minimum,
+        node.balance(&DEV_GENESIS_ACCOUNT)
+    );
+}
+
+#[test]
+fn no_voting() {
+    let mut system = System::new();
+    let node0 = system.make_node();
+    let mut config = System::default_config();
+    config.enable_voting = false;
+    let node1 = system.build_node().config(config).finish();
+
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    // Node1 has a rep
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    let key1 = KeyPair::new();
+    node1.wallets.insert_adhoc2(&wallet_id1, &key1.private_key(), true).unwrap();
+    // Broadcast a confirm so others should know this is a rep node
+    node1.wallets.send_action2(
+        &wallet_id1,
+        *DEV_GENESIS_ACCOUNT,
+        key1.account(),
+        Amount::raw(*MXRB_RATIO),
+        0,
+        true,
+        None
+    ).unwrap();
+
+    assert_timely_eq(Duration::from_secs(10), || node0.active.len(), 0);
+    assert_eq!(
+        node0.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::In),
+        0
+    );
+}
+
+#[test]
+fn unconfirmed_send() {
+    let mut system = System::new();
+
+    let node1 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+
+    let key2 = KeyPair::new();
+    let node2 = system.make_node();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+
+    // firstly, send two units from node1 to node2 and expect that both nodes see the block as confirmed
+    // (node1 will start an election for it, vote on it and node2 gets synced up)
+    let send1 = node1.wallets.send_action2(
+        &wallet_id1,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        Amount::raw(2 * *MXRB_RATIO),
+        0,
+        true,
+        None
+    ).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send1.hash()),
+        "send1 not confirmed on node1",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send1.hash()),
+        "send1 not confirmed on node2",
+    );
+
+    // wait until receive1 (auto-receive created by wallet) is cemented
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            let tx = node2.store.tx_begin_read();
+            node2.ledger.get_confirmation_height(&tx, &key2.account()).unwrap().height
+        },
+        1,
+    );
+
+    assert_eq!(node2.balance(&key2.account()), Amount::raw(2 * *MXRB_RATIO));
+    
+    let recv1 = {
+        let tx = node2.store.tx_begin_read();
+        node2.ledger.find_receive_block_by_send_hash(&tx, &key2.account(), &send1.hash()).unwrap()
+    };
+
+    // create send2 to send from node2 to node1 and save it to node2's ledger without triggering an election (node1 does not hear about it)
+    let send2 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        recv1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(*MXRB_RATIO),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key2,
+        system.work.generate_dev2(recv1.hash().into()).unwrap(),
+    ));
+    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
+
+    let send3 = node2.wallets.send_action2(
+        &wallet_id2,
+        key2.account(),
+        *DEV_GENESIS_ACCOUNT,
+        Amount::raw(*MXRB_RATIO),
+        0,
+        true,
+        None
+    ).unwrap();
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send2.hash()),
+        "send2 not confirmed on node2",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send2.hash()),
+        "send2 not confirmed on node1",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send3.hash()),
+        "send3 not confirmed on node2",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send3.hash()),
+        "send3 not confirmed on node1",
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node2.ledger.cemented_count(),
+        7,
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX,
+    );
+}
+
+#[test]
+fn bootstrap_confirm_frontiers() {
+    // create 2 separate systems, the 2 systems do not interact with each other automatically
+    let mut system0 = System::new();
+    let mut system1 = System::new();
+    let node0 = system0.make_node();
+    let node1 = system1.make_node();
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node0.wallets.insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    let key0 = KeyPair::new();
+
+    // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
+    let send0 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key0.account(),
+        &(Amount::MAX - Amount::raw(500)),
+        &DEV_GENESIS_KEY.private_key(),
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into())
+    ));
+
+    assert_eq!(BlockStatus::Progress, node0.process_local(send0.clone()).unwrap());
+
+    // each system only has one node, so there should be no bootstrapping going on
+    assert!(!node0.bootstrap_initiator.in_progress());
+    assert!(!node1.bootstrap_initiator.in_progress());
+    assert!(node1.active.len() == 0);
+
+    // create a bootstrap connection from node1 to node0
+    // this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
+    //node1.connect(node0.network.endpoint());
+    establish_tcp(&node1, &node0);
+    node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+
+    // Wait until the block is confirmed on node1
+    let start_time = std::time::Instant::now();
+    let timeout = Duration::from_secs(10);
+    loop {
+        {
+            let tx = node1.store.tx_begin_read();
+            if node1.ledger.confirmed().block_exists(&tx, &send0.hash()) {
+                break;
+            }
+        }
+        assert!(start_time.elapsed() < timeout, "Timeout waiting for block confirmation");
+        //system0.poll();
+        //system1.poll();
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
 
 #[test]
 fn bootstrap_fork_open() {
@@ -915,7 +1520,7 @@ fn node_receive_quorum() {
     assert!(!node1.active.confirmed(&election));
     assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
 
-    let mut system2 = System::new();
+    let system2 = System::new();
     let node2 = system.make_disconnected_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 

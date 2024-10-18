@@ -477,7 +477,7 @@ impl Node {
             election_workers.clone(),
         ));
 
-        let vote_router = Arc::new(VoteRouter::new(
+        let vote_router: Arc<VoteRouter> = Arc::new(VoteRouter::new(
             recently_confirmed.clone(),
             vote_applier.clone(),
         ));

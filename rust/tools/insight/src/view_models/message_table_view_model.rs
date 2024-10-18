@@ -1,5 +1,6 @@
 use super::MessageViewModel;
-use crate::message_collection::MessageCollection;
+use crate::{message_collection::MessageCollection, message_type_filter::MessageTypeFilter};
+use rsnano_messages::MessageType;
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
 
@@ -14,14 +15,28 @@ pub(crate) struct MessageTableViewModel {
     selected: Option<MessageViewModel>,
     selected_index: Option<usize>,
     messages: Arc<RwLock<MessageCollection>>,
+    pub message_types: Vec<MessageTypeOptionViewModel>,
+    type_filter: MessageTypeFilter,
 }
 
 impl MessageTableViewModel {
-    pub(crate) fn new(messages: Arc<RwLock<MessageCollection>>) -> Self {
+    pub(crate) fn new(
+        messages: Arc<RwLock<MessageCollection>>,
+        type_filter: MessageTypeFilter,
+    ) -> Self {
         Self {
             messages,
             selected: None,
             selected_index: None,
+            message_types: type_filter
+                .available_types()
+                .map(|t| MessageTypeOptionViewModel {
+                    value: *t,
+                    name: t.as_str(),
+                    selected: false,
+                })
+                .collect(),
+            type_filter,
         }
     }
 
@@ -56,4 +71,10 @@ impl MessageTableViewModel {
         self.selected = Some(message.into());
         self.selected_index = Some(index);
     }
+}
+
+pub(crate) struct MessageTypeOptionViewModel {
+    pub value: MessageType,
+    pub name: &'static str,
+    pub selected: bool,
 }

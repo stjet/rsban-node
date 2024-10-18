@@ -4,8 +4,8 @@ use super::{
 };
 use crate::{
     channels::Channels, ledger_stats::LedgerStats, message_collection::MessageCollection,
-    message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
-    nullable_runtime::NullableRuntime,
+    message_recorder::MessageRecorder, message_type_filter::MessageTypeFilter,
+    node_factory::NodeFactory, node_runner::NodeRunner, nullable_runtime::NullableRuntime,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
@@ -29,9 +29,10 @@ impl AppViewModel {
         let messages = Arc::new(RwLock::new(MessageCollection::default()));
         let msg_recorder = Arc::new(MessageRecorder::new(messages.clone()));
         let clock = Arc::new(SteadyClock::default());
+        let message_type_filter = MessageTypeFilter::new(messages.clone());
         Self {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
-            message_table: MessageTableViewModel::new(messages.clone()),
+            message_table: MessageTableViewModel::new(messages.clone(), message_type_filter),
             msg_recorder,
             channels: Channels::new(messages),
             clock,

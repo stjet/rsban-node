@@ -1,5 +1,5 @@
 use crate::view_models::MessageTableViewModel;
-use eframe::egui::{Label, Sense, Ui};
+use eframe::egui::{Label, Sense, TopBottomPanel, Ui};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct MessageTableView<'a> {
@@ -14,6 +14,20 @@ impl<'a> MessageTableView<'a> {
     pub(crate) fn view(&mut self, ui: &mut Ui) {
         ui.add_space(5.0);
         ui.heading(self.model.heading());
+
+        TopBottomPanel::bottom("message_filter_panel").show_inside(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                for type_filter in &mut self.model.message_types {
+                    if ui
+                        .selectable_label(type_filter.selected, type_filter.value.as_str())
+                        .clicked()
+                    {
+                        type_filter.selected = !type_filter.selected;
+                    }
+                }
+            });
+        });
+
         TableBuilder::new(ui)
             .striped(true)
             .resizable(false)

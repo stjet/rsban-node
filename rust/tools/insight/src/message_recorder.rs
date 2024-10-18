@@ -55,14 +55,6 @@ impl MessageRecorder {
             messages.add(message);
         }
     }
-
-    pub fn get_message(&self, index: usize) -> Option<RecordedMessage> {
-        self.messages.read().unwrap().get(index)
-    }
-
-    pub(crate) fn message_count(&self) -> usize {
-        self.messages.read().unwrap().len()
-    }
 }
 
 pub(crate) fn make_node_callbacks(

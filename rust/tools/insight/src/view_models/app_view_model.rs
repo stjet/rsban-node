@@ -61,10 +61,18 @@ impl AppViewModel {
             self.ledger_stats.update(node, now);
             let channels = node.network_info.read().unwrap().list_realtime_channels(0);
             let telemetries = node.telemetry.get_all_telemetries();
-            let peered_reps = node.online_reps.lock().unwrap().peered_reps();
+            let (peered_reps, min_rep_weight) = {
+                let guard = node.online_reps.lock().unwrap();
+                (guard.peered_reps(), guard.minimum_principal_weight())
+            };
             let rep_weights = node.ledger.rep_weights.clone();
-            self.channels
-                .update(channels, telemetries, peered_reps, &rep_weights);
+            self.channels.update(
+                channels,
+                telemetries,
+                peered_reps,
+                &rep_weights,
+                min_rep_weight,
+            );
         }
 
         self.last_update = Some(now);

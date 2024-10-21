@@ -1,4 +1,5 @@
 use crate::message_collection::MessageCollection;
+use rsnano_core::Amount;
 use rsnano_ledger::RepWeightCache;
 use rsnano_messages::TelemetryData;
 use rsnano_network::{ChannelDirection, ChannelId, ChannelInfo};
@@ -14,6 +15,15 @@ pub(crate) struct Channel {
     pub remote_addr: SocketAddrV6,
     pub direction: ChannelDirection,
     pub telemetry: Option<TelemetryData>,
+    pub rep_weight: Amount,
+    pub rep_state: RepState,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RepState {
+    PrincipalRep,
+    Rep,
+    NoRep,
 }
 
 pub(crate) struct Channels {
@@ -41,6 +51,7 @@ impl Channels {
         telemetries: HashMap<SocketAddrV6, TelemetryData>,
         reps: Vec<PeeredRep>,
         rep_weights: &RepWeightCache,
+        min_rep_weight: Amount,
     ) {
         let mut inserted = false;
         {
@@ -58,6 +69,8 @@ impl Channels {
                             remote_addr: info.peer_addr(),
                             direction: info.direction(),
                             telemetry: None,
+                            rep_weight: Amount::zero(),
+                            rep_state: RepState::NoRep,
                         },
                     );
                     inserted = true;
@@ -78,7 +91,19 @@ impl Channels {
             self.sorted_channels.sort_by_key(|c| c.1);
         }
 
-        for rep in reps {}
+        let weights = rep_weights.read();
+        for rep in reps {
+            if let Some(channel) = self.channel_map.get_mut(&rep.channel_id) {
+                channel.rep_weight = weights.get(&rep.account).cloned().unwrap_or_default();
+                channel.rep_state = if channel.rep_weight > min_rep_weight {
+                    RepState::PrincipalRep
+                } else if channel.rep_weight > Amount::zero() {
+                    RepState::Rep
+                } else {
+                    RepState::NoRep
+                };
+            }
+        }
 
         // Recalculate selected index
         if let Some(channel_id) = self.selected {
@@ -144,6 +169,7 @@ mod tests {
             HashMap::new(),
             Vec::new(),
             &RepWeightCache::new(),
+            Amount::zero(),
         );
         channels.select_index(0);
         let guard = messages.read().unwrap();
@@ -162,6 +188,7 @@ mod tests {
             HashMap::new(),
             Vec::new(),
             &RepWeightCache::new(),
+            Amount::zero(),
         );
         channels.select_index(0);
         channels.select_index(0);

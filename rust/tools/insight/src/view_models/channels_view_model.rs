@@ -1,4 +1,4 @@
-use crate::channels::Channels;
+use crate::channels::{Channels, RepState};
 use num_format::{Locale, ToFormattedString};
 use rsnano_network::ChannelDirection;
 
@@ -25,6 +25,8 @@ impl<'a> ChannelsViewModel<'a> {
             maker: "",
             version: String::new(),
             bandwidth_cap: String::new(),
+            rep_weight: channel.rep_weight.format_balance(0),
+            rep_state: channel.rep_state,
         };
 
         if let Some(telemetry) = &channel.telemetry {
@@ -70,4 +72,6 @@ pub(crate) struct ChannelViewModel {
     pub maker: &'static str,
     pub version: String,
     pub bandwidth_cap: String,
+    pub rep_weight: String,
+    pub rep_state: RepState,
 }

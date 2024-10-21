@@ -1,5 +1,5 @@
-use crate::view_models::ChannelsViewModel;
-use eframe::egui::{self, CentralPanel, Label, Sense, Ui};
+use crate::{channels::RepState, view_models::ChannelsViewModel};
+use eframe::egui::{self, CentralPanel, Color32, Label, RichText, Sense, Ui, WidgetText};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 
 pub(crate) fn show_peers(ctx: &egui::Context, model: ChannelsViewModel) {
@@ -32,15 +32,17 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
         .resizable(false)
         .auto_shrink(false)
         .sense(Sense::click())
-        .column(Column::auto())
-        .column(Column::auto())
-        .column(Column::exact(300.0))
-        .column(Column::exact(80.0))
+        .column(Column::auto()) // channel
+        .column(Column::auto()) // in/out
+        .column(Column::exact(300.0)) // addr
+        .column(Column::auto()) // rep state
+        .column(Column::exact(80.0)) //rep weight
         .column(Column::exact(80.0))
         .column(Column::exact(80.0))
         .column(Column::exact(70.0))
+        .column(Column::exact(70.0)) // maker
         .column(Column::auto())
-        .column(Column::auto())
+        .column(Column::exact(80.0))
         .header(20.0, |mut header| {
             header.col(|ui| {
                 ui.strong("Channel");
@@ -50,6 +52,12 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
             });
             header.col(|ui| {
                 ui.strong("Remote Addr");
+            });
+            header.col(|ui| {
+                ui.strong("Rep");
+            });
+            header.col(|ui| {
+                ui.strong("Rep Weight");
             });
             header.col(|ui| {
                 ui.strong("Blocks");
@@ -86,6 +94,32 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.remote_addr).selectable(false));
+                });
+                row.col(|ui| match row_model.rep_state {
+                    RepState::PrincipalRep => {
+                        ui.add(
+                            Label::new(
+                                RichText::new("PR")
+                                    .color(Color32::WHITE)
+                                    .background_color(Color32::DARK_RED),
+                            )
+                            .selectable(false),
+                        );
+                    }
+                    RepState::Rep => {
+                        ui.add(
+                            Label::new(
+                                RichText::new("R")
+                                    .color(Color32::WHITE)
+                                    .background_color(Color32::DARK_GRAY),
+                            )
+                            .selectable(false),
+                        );
+                    }
+                    RepState::NoRep => {}
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.rep_weight).selectable(false));
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.block_count).selectable(false));

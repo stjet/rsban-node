@@ -68,20 +68,20 @@ impl Channels {
                 self.channels.push(channel);
             }
             self.channels.sort_by_key(|c| c.remote_addr);
+        }
 
-            // Recalculate selected index
-            if let Some(channel_id) = self.selected {
-                match self
-                    .channels
-                    .iter()
-                    .enumerate()
-                    .find(|(_, channel)| channel.channel_id == channel_id)
-                {
-                    Some((i, _)) => self.selected_index = Some(i),
-                    None => {
-                        self.selected = None;
-                        self.selected_index = None;
-                    }
+        // Recalculate selected index
+        if let Some(channel_id) = self.selected {
+            match self
+                .channels
+                .iter()
+                .enumerate()
+                .find(|(_, channel)| channel.channel_id == channel_id)
+            {
+                Some((i, _)) => self.selected_index = Some(i),
+                None => {
+                    self.selected = None;
+                    self.selected_index = None;
                 }
             }
         }

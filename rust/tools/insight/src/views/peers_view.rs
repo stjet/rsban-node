@@ -40,6 +40,7 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
         .column(Column::exact(80.0))
         .column(Column::exact(70.0))
         .column(Column::auto())
+        .column(Column::auto())
         .header(20.0, |mut header| {
             header.col(|ui| {
                 ui.strong("Channel");
@@ -64,6 +65,9 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
             });
             header.col(|ui| {
                 ui.strong("Version");
+            });
+            header.col(|ui| {
+                ui.strong("Bandwidth");
             });
         })
         .body(|body| {
@@ -97,6 +101,9 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.version).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.bandwidth_cap).selectable(false));
                 });
                 if row.response().clicked() {
                     model.select(row.index());

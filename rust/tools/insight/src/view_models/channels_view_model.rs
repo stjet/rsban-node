@@ -24,6 +24,7 @@ impl<'a> ChannelsViewModel<'a> {
             unchecked_count: String::new(),
             maker: "",
             version: String::new(),
+            bandwidth_cap: String::new(),
         };
 
         if let Some(telemetry) = &channel.telemetry {
@@ -39,6 +40,7 @@ impl<'a> ChannelsViewModel<'a> {
                 "v{}.{}.{}",
                 telemetry.major_version, telemetry.minor_version, telemetry.patch_version
             );
+            result.bandwidth_cap = format!("{}mb/s", telemetry.bandwidth_cap / (1024 * 1024))
         }
 
         Some(result)
@@ -67,4 +69,5 @@ pub(crate) struct ChannelViewModel {
     pub unchecked_count: String,
     pub maker: &'static str,
     pub version: String,
+    pub bandwidth_cap: String,
 }

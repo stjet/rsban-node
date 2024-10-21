@@ -3,13 +3,8 @@ use rsnano_core::{Account, BlockHash, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
-    pub fn receive(
-        wallet: WalletId,
-        account: Account,
-        block: BlockHash,
-        work: Option<WorkNonce>,
-    ) -> Self {
-        Self::Receive(ReceiveArgs::new(wallet, account, block, work))
+    pub fn receive(args: ReceiveArgs) -> Self {
+        Self::Receive(args)
     }
 }
 
@@ -18,22 +13,35 @@ pub struct ReceiveArgs {
     pub wallet: WalletId,
     pub account: Account,
     pub block: BlockHash,
+    #[serde(rename = "work", skip_serializing_if = "Option::is_none")]
     pub work: Option<WorkNonce>,
 }
 
 impl ReceiveArgs {
-    pub fn new(
-        wallet: WalletId,
-        account: Account,
-        block: BlockHash,
-        work: Option<WorkNonce>,
-    ) -> Self {
-        Self {
-            wallet,
-            account,
-            block,
-            work,
+    pub fn builder(wallet: WalletId, account: Account, block: BlockHash) -> ReceiveArgsBuilder {
+        ReceiveArgsBuilder {
+            args: ReceiveArgs {
+                wallet,
+                account,
+                block,
+                work: None,
+            },
         }
+    }
+}
+
+pub struct ReceiveArgsBuilder {
+    args: ReceiveArgs,
+}
+
+impl ReceiveArgsBuilder {
+    pub fn set_work(mut self, work: WorkNonce) -> Self {
+        self.args.work = Some(work);
+        self
+    }
+
+    pub fn build(self) -> ReceiveArgs {
+        self.args
     }
 }
 
@@ -56,9 +64,10 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let work = Some(1.into());
 
-        let receive_args = ReceiveArgs::new(wallet, account, block, work);
+        let receive_args = ReceiveArgs::builder(wallet, account, block)
+            .set_work(1.into())
+            .build();
 
         let serialized = serde_json::to_value(&receive_args).unwrap();
         let expected = json!({
@@ -144,9 +153,12 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let work = Some(1.into());
 
-        let receive_command = RpcCommand::receive(wallet, account, block, work);
+        let receive_command = RpcCommand::receive(
+            ReceiveArgs::builder(wallet, account, block)
+                .set_work(1.into())
+                .build(),
+        );
 
         let serialized = serde_json::to_value(&receive_command).unwrap();
         let expected = json!({
@@ -215,9 +227,12 @@ mod tests {
             "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         )
         .unwrap();
-        let work = Some(1.into());
 
-        let original_command = RpcCommand::receive(wallet, account, block, work);
+        let original_command = RpcCommand::receive(
+            ReceiveArgs::builder(wallet, account, block)
+                .set_work(1.into())
+                .build(),
+        );
 
         let serialized = serde_json::to_string(&original_command).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();

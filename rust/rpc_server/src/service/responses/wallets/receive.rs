@@ -1,18 +1,17 @@
 use rsnano_core::PendingKey;
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{BlockHashRpcMessage, ErrorDto, ReceiveArgs};
-use serde_json::to_string_pretty;
+use rsnano_rpc_messages::{BlockDto, ErrorDto, ReceiveArgs, RpcDto};
 use std::sync::Arc;
 
-pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -> String {
+pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -> RpcDto {
     if !enable_control {
-        return to_string_pretty(&ErrorDto::new("RPC control is disabled".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto::RPCControlDisabled);
     }
 
     let txn = node.ledger.read_txn();
 
     if !node.ledger.any().block_exists(&txn, &args.block) {
-        return to_string_pretty(&ErrorDto::new("Block not found".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto::BlockNotFound);
     }
 
     let pending_info = node
@@ -20,7 +19,7 @@ pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -
         .any()
         .get_pending(&txn, &PendingKey::new(args.account, args.block));
     if pending_info.is_none() {
-        return to_string_pretty(&ErrorDto::new("Block is not receivable".to_string())).unwrap();
+        return RpcDto::Error(ErrorDto::BlockNotReceivable);
     }
 
     let representative = node
@@ -42,9 +41,7 @@ pub async fn receive(node: Arc<Node>, enable_control: bool, args: ReceiveArgs) -
             .receive_sync(wallet, &block, representative, node.config.receive_minimum);
 
     match receive {
-        Ok(_) => {
-            to_string_pretty(&BlockHashRpcMessage::new("block".to_string(), block.hash())).unwrap()
-        }
-        Err(_) => to_string_pretty(&ErrorDto::new("Receive error".to_string())).unwrap(),
+        Ok(_) => RpcDto::Receive(BlockDto::new(block.hash())),
+        Err(_) => RpcDto::Error(ErrorDto::ReceiveError),
     }
 }

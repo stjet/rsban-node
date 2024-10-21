@@ -1,9 +1,9 @@
 use anyhow::Result;
 use rand::Rng;
-use rsnano_core::{Account, WalletId};
+use rsnano_core::{Account, Amount, WalletId};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_rpc_client::NanoRpcClient;
-use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto, KeyPairDto};
+use rsnano_rpc_messages::{AccountInfoDto, KeyPairDto};
 use std::{
     collections::HashMap,
     io::Write,
@@ -101,6 +101,7 @@ impl BlockFactory {
                 self.wallet,
                 *DEV_GENESIS_ACCOUNT,
                 destination_account.account,
+                Amount::raw(1),
             )
             .await;
         self.send_calls_remaining.fetch_sub(1, Ordering::SeqCst);
@@ -115,12 +116,7 @@ async fn get_account_info(
     let mut account_info = HashMap::new();
     for account in accounts {
         let account = account.account;
-        account_info.insert(
-            account,
-            node_client
-                .account_info(AccountInfoArgs::new(account, None, None, None, None, None))
-                .await?,
-        );
+        account_info.insert(account, node_client.account_info(account).await?);
     }
     Ok(account_info)
 }

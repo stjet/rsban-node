@@ -1,6 +1,7 @@
 use rsnano_core::{Amount, BlockHash, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::wallets::WalletsExt;
+use rsnano_rpc_messages::ReceiveArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -71,15 +72,12 @@ fn receive() {
         )
         .unwrap();
 
+    let args = ReceiveArgs::builder(wallet, key1.public_key().into(), send2.hash()).build();
+
     let block_hash = node
         .runtime
-        .block_on(async {
-            rpc_client
-                .receive(wallet, key1.public_key().into(), send2.hash(), None)
-                .await
-                .unwrap()
-        })
-        .value;
+        .block_on(async { rpc_client.receive(args).await.unwrap() })
+        .block;
 
     let tx = node.ledger.read_txn();
     assert_timely_msg(
@@ -96,23 +94,22 @@ fn receive() {
         node.config.receive_minimum - Amount::raw(1)
     );
 
-    let error_result = node.runtime.block_on(async {
-        rpc_client
-            .receive(wallet, key1.public_key().into(), send2.hash(), None)
-            .await
-    });
+    let args = ReceiveArgs::builder(wallet, key1.public_key().into(), send2.hash()).build();
+
+    let error_result = node
+        .runtime
+        .block_on(async { rpc_client.receive(args).await });
 
     assert_eq!(
         error_result.err().map(|e| e.to_string()),
         Some("node returned error: \"Block is not receivable\"".to_string())
     );
 
-    let non_existing_hash = BlockHash::zero();
-    let error_result = node.runtime.block_on(async {
-        rpc_client
-            .receive(wallet, key1.public_key().into(), non_existing_hash, None)
-            .await
-    });
+    let args = ReceiveArgs::builder(wallet, key1.public_key().into(), BlockHash::zero()).build();
+
+    let error_result = node
+        .runtime
+        .block_on(async { rpc_client.receive(args).await });
 
     assert_eq!(
         error_result.err().map(|e| e.to_string()),

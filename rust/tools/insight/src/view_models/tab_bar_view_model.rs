@@ -13,7 +13,7 @@ impl Tab {
     }
 }
 
-pub static TAB_ORDER: [Tab; 2] = [Tab::Messages, Tab::Peers];
+pub static TAB_ORDER: [Tab; 2] = [Tab::Peers, Tab::Messages];
 
 pub(crate) struct TabBarViewModel {
     pub selected: Tab,

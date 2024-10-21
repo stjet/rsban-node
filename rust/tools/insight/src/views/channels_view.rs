@@ -20,14 +20,10 @@ impl<'a> ChannelsView<'a> {
             .auto_shrink(false)
             .sense(Sense::click())
             .column(Column::auto())
-            .column(Column::auto())
             .column(Column::remainder())
             .header(20.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Channel");
-                });
-                header.col(|ui| {
-                    ui.strong("in/out");
                 });
                 header.col(|ui| {
                     ui.strong("Remote Addr");
@@ -43,9 +39,6 @@ impl<'a> ChannelsView<'a> {
                     }
                     row.col(|ui| {
                         ui.add(Label::new(row_model.channel_id).selectable(false));
-                    });
-                    row.col(|ui| {
-                        ui.add(Label::new(row_model.direction).selectable(false));
                     });
                     row.col(|ui| {
                         ui.add(Label::new(row_model.remote_addr).selectable(false));

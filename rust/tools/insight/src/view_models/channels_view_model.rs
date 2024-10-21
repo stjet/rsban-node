@@ -11,9 +11,9 @@ impl<'a> ChannelsViewModel<'a> {
     pub(crate) fn get_row(&self, index: usize) -> Option<ChannelViewModel> {
         let channel = self.0.get(index)?;
         Some(ChannelViewModel {
-            channel_id: channel.channel_id().to_string(),
-            remote_addr: channel.peer_addr().to_string(),
-            direction: match channel.direction() {
+            channel_id: channel.channel_id.to_string(),
+            remote_addr: channel.remote_addr.to_string(),
+            direction: match channel.direction {
                 ChannelDirection::Inbound => "in",
                 ChannelDirection::Outbound => "out",
             },

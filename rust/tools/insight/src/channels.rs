@@ -1,9 +1,20 @@
-use crate::message_collection::{MessageCollection, MessageFilter};
-use rsnano_network::{ChannelId, ChannelInfo};
-use std::sync::{Arc, RwLock};
+use crate::message_collection::MessageCollection;
+use rsnano_messages::TelemetryData;
+use rsnano_network::{ChannelDirection, ChannelId, ChannelInfo};
+use std::{
+    collections::HashMap,
+    net::SocketAddrV6,
+    sync::{Arc, RwLock},
+};
+
+pub(crate) struct Channel {
+    pub channel_id: ChannelId,
+    pub remote_addr: SocketAddrV6,
+    pub direction: ChannelDirection,
+}
 
 pub(crate) struct Channels {
-    channels: Vec<Arc<ChannelInfo>>,
+    channels: Vec<Channel>,
     selected: Option<ChannelId>,
     selected_index: Option<usize>,
     messages: Arc<RwLock<MessageCollection>>,
@@ -19,30 +30,62 @@ impl Channels {
         }
     }
 
-    pub(crate) fn update(&mut self, channels: Vec<Arc<ChannelInfo>>) {
-        self.channels = channels;
-        if let Some(channel_id) = self.selected {
-            match self
+    pub(crate) fn update(
+        &mut self,
+        channels: Vec<Arc<ChannelInfo>>,
+        telemetries: HashMap<SocketAddrV6, TelemetryData>,
+    ) {
+        let mut insert = Vec::new();
+        {
+            let mut pending: HashMap<ChannelId, &mut Channel> = self
                 .channels
-                .iter()
-                .enumerate()
-                .find(|(_, channel)| channel.channel_id() == channel_id)
-            {
-                Some((i, _)) => self.selected_index = Some(i),
-                None => {
-                    self.selected = None;
-                    self.selected_index = None;
+                .iter_mut()
+                .map(|c| (c.channel_id, c))
+                .collect();
+
+            for info in channels {
+                if let Some(channel) = pending.remove(&info.channel_id()) {
+                    // todo update
+                } else {
+                    insert.push(Channel {
+                        channel_id: info.channel_id(),
+                        remote_addr: info.peer_addr(),
+                        direction: info.direction(),
+                    });
+                }
+            }
+        }
+
+        if insert.len() > 0 {
+            for channel in insert {
+                self.channels.push(channel);
+            }
+            self.channels.sort_by_key(|c| c.remote_addr);
+
+            // Recalculate selected index
+            if let Some(channel_id) = self.selected {
+                match self
+                    .channels
+                    .iter()
+                    .enumerate()
+                    .find(|(_, channel)| channel.channel_id == channel_id)
+                {
+                    Some((i, _)) => self.selected_index = Some(i),
+                    None => {
+                        self.selected = None;
+                        self.selected_index = None;
+                    }
                 }
             }
         }
     }
 
-    pub(crate) fn get(&self, index: usize) -> Option<&ChannelInfo> {
-        self.channels.get(index).map(|c| &**c)
+    pub(crate) fn get(&self, index: usize) -> Option<&Channel> {
+        self.channels.get(index)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &ChannelInfo> {
-        self.channels.iter().map(|c| &**c)
+    pub fn iter(&self) -> impl Iterator<Item = &Channel> {
+        self.channels.iter()
     }
 
     pub fn len(&self) -> usize {
@@ -53,17 +96,17 @@ impl Channels {
         let Some(channel) = self.channels.get(index) else {
             return;
         };
-        if self.selected == Some(channel.channel_id()) {
+        if self.selected == Some(channel.channel_id) {
             self.selected = None;
             self.selected_index = None;
             self.messages.write().unwrap().filter_channel(None)
         } else {
-            self.selected = Some(channel.channel_id());
+            self.selected = Some(channel.channel_id);
             self.selected_index = Some(index);
             self.messages
                 .write()
                 .unwrap()
-                .filter_channel(Some(channel.channel_id()))
+                .filter_channel(Some(channel.channel_id))
         }
     }
 
@@ -76,18 +119,21 @@ impl Channels {
 mod tests {
     use super::*;
     use crate::message_collection::{MessageCollection, MessageFilter};
-    use std::sync::RwLock;
+    use std::{collections::HashMap, sync::RwLock};
 
     #[test]
     fn when_channel_selected_should_set_message_filter() {
         let messages = Arc::new(RwLock::new(MessageCollection::default()));
         let mut channels = Channels::new(messages.clone());
-        channels.update(vec![Arc::new(ChannelInfo::new_test_instance())]);
+        channels.update(
+            vec![Arc::new(ChannelInfo::new_test_instance())],
+            HashMap::new(),
+        );
         channels.select_index(0);
         let guard = messages.read().unwrap();
         assert_eq!(
             guard.current_filter(),
-            &MessageFilter::channel(channels.channels[0].channel_id())
+            &MessageFilter::channel(channels.channels[0].channel_id)
         );
     }
 
@@ -95,7 +141,10 @@ mod tests {
     fn when_channel_deselected_should_clear_message_filter() {
         let messages = Arc::new(RwLock::new(MessageCollection::default()));
         let mut channels = Channels::new(messages.clone());
-        channels.update(vec![Arc::new(ChannelInfo::new_test_instance())]);
+        channels.update(
+            vec![Arc::new(ChannelInfo::new_test_instance())],
+            HashMap::new(),
+        );
         channels.select_index(0);
         channels.select_index(0);
         let guard = messages.read().unwrap();

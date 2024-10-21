@@ -1,9 +1,9 @@
 use super::{
-    LedgerStatsView, MessageRecorderControlsView, MessageStatsView, MessageTabView, NodeRunnerView,
-    TabBarView,
+    show_peers, LedgerStatsView, MessageRecorderControlsView, MessageStatsView, MessageTabView,
+    NodeRunnerView, TabBarView,
 };
 use crate::view_models::{AppViewModel, Tab};
-use eframe::egui::{self, global_theme_preference_switch, CentralPanel, TopBottomPanel};
+use eframe::egui::{self, global_theme_preference_switch, TopBottomPanel};
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -56,14 +56,8 @@ impl eframe::App for AppView {
         self.show_stats(ctx);
 
         match self.model.tabs.selected_tab() {
-            Tab::Messages => {
-                MessageTabView::new(&mut self.model).show(ctx);
-            }
-            Tab::Peers => {
-                CentralPanel::default().show(ctx, |ui| {
-                    ui.label("todo");
-                });
-            }
+            Tab::Peers => show_peers(ctx, self.model.channels()),
+            Tab::Messages => MessageTabView::new(&mut self.model).show(ctx),
         }
 
         // Repaint to show the continuously increasing current block and message counters

@@ -7,6 +7,7 @@ mod message_tab_view;
 mod message_table_view;
 mod message_view;
 mod node_runner_view;
+mod peers_view;
 mod tab_bar_view;
 
 pub(crate) use app_view::*;
@@ -17,4 +18,5 @@ pub(crate) use message_tab_view::*;
 pub(crate) use message_table_view::*;
 pub(crate) use message_view::*;
 pub(crate) use node_runner_view::*;
+pub(crate) use peers_view::*;
 pub(crate) use tab_bar_view::*;

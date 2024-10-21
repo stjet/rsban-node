@@ -60,7 +60,8 @@ impl AppViewModel {
         if let Some(node) = self.node_runner.node() {
             self.ledger_stats.update(node, now);
             let channels = node.network_info.read().unwrap().list_realtime_channels(0);
-            self.channels.update(channels);
+            let telemetries = node.telemetry.get_all_telemetries();
+            self.channels.update(channels, telemetries);
         }
 
         self.last_update = Some(now);

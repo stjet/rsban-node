@@ -1,4 +1,3 @@
-mod work_peers_clear;
 mod block_create;
 mod bootstrap;
 mod bootstrap_any;
@@ -25,9 +24,9 @@ mod unchecked_keys;
 mod uptime;
 mod work_cancel;
 mod work_generate;
+mod work_peers_clear;
 mod work_validate;
 
-pub use work_peers_clear::*;
 pub use block_create::*;
 pub use bootstrap::*;
 pub use bootstrap_any::*;
@@ -54,4 +53,5 @@ pub use unchecked_keys::*;
 pub use uptime::*;
 pub use work_cancel::*;
 pub use work_generate::*;
+pub use work_peers_clear::*;
 pub use work_validate::*;

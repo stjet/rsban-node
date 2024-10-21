@@ -1,12 +1,12 @@
-use crate::RpcCommand;
+use crate::{AddressWithPortArgs, RpcCommand};
 use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 use std::net::Ipv6Addr;
 
 impl RpcCommand {
-    pub fn telemetry(raw: Option<bool>, address: Option<Ipv6Addr>, port: Option<u16>) -> Self {
-        Self::Telemetry(TelemetryArgs::new(raw, address, port))
+    pub fn telemetry(args: TelemetryArgs) -> Self {
+        Self::Telemetry(args)
     }
 }
 
@@ -18,8 +18,37 @@ pub struct TelemetryArgs {
 }
 
 impl TelemetryArgs {
-    pub fn new(raw: Option<bool>, address: Option<Ipv6Addr>, port: Option<u16>) -> Self {
-        Self { raw, address, port }
+    pub fn new() -> TelemetryArgs {
+        TelemetryArgs {
+            raw: None, address: None, port: None 
+        }
+    }
+
+    pub fn builder() -> TelemetryArgsBuilder {
+        TelemetryArgsBuilder { 
+            args: TelemetryArgs::new()
+        }
+    }
+}
+
+pub struct TelemetryArgsBuilder {
+    args: TelemetryArgs
+}
+
+impl TelemetryArgsBuilder {
+    pub fn raw(mut self) -> Self {
+        self.args.raw = Some(true);
+        self
+    }
+
+    pub fn address_with_port(mut self, address_with_port: AddressWithPortArgs) -> Self {
+        self.args.address = Some(address_with_port.address);
+        self.args.port = Some(address_with_port.port);
+        self
+    }
+
+    pub fn build(self) -> TelemetryArgs {
+        self.args
     }
 }
 

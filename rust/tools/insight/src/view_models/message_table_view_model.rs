@@ -1,6 +1,6 @@
 use super::MessageViewModel;
-use crate::message_collection::MessageCollection;
-use rsnano_messages::MessageType;
+use crate::message_collection::{MessageCollection, RecordedMessage};
+use rsnano_messages::{Message, MessageType};
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
 
@@ -41,7 +41,7 @@ impl MessageTableViewModel {
             } else {
                 "out".into()
             },
-            message: format!("{:?}", message.message.message_type()),
+            message: message_summary_label(&message),
             is_selected: self.selected_index == Some(index),
         })
     }
@@ -109,4 +109,16 @@ pub(crate) struct MessageTypeOptionViewModel {
     pub value: MessageType,
     pub label: String,
     pub selected: bool,
+}
+
+fn message_summary_label(message: &RecordedMessage) -> String {
+    if let Message::ConfirmAck(ack) = &message.message {
+        format!(
+            "{:?} ({})",
+            message.message.message_type(),
+            ack.vote().hashes.len()
+        )
+    } else {
+        format!("{:?}", message.message.message_type())
+    }
 }

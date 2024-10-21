@@ -4,7 +4,7 @@ use rsnano_messages::TelemetryData;
 use rsnano_network::{ChannelDirection, ChannelId, ChannelInfo};
 use rsnano_node::representatives::PeeredRep;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     net::SocketAddrV6,
     sync::{Arc, RwLock},
 };
@@ -17,7 +17,8 @@ pub(crate) struct Channel {
 }
 
 pub(crate) struct Channels {
-    channels: Vec<Channel>,
+    channel_map: HashMap<ChannelId, Channel>,
+    sorted_channels: Vec<(ChannelId, SocketAddrV6)>,
     selected: Option<ChannelId>,
     selected_index: Option<usize>,
     messages: Arc<RwLock<MessageCollection>>,
@@ -26,7 +27,8 @@ pub(crate) struct Channels {
 impl Channels {
     pub(crate) fn new(messages: Arc<RwLock<MessageCollection>>) -> Self {
         Self {
-            channels: Vec::new(),
+            sorted_channels: Vec::new(),
+            channel_map: HashMap::new(),
             selected: None,
             selected_index: None,
             messages,
@@ -40,38 +42,40 @@ impl Channels {
         reps: Vec<PeeredRep>,
         rep_weights: &RepWeightCache,
     ) {
-        let mut insert = Vec::new();
+        let mut inserted = false;
         {
-            let mut pending: HashMap<ChannelId, &mut Channel> = self
-                .channels
-                .iter_mut()
-                .map(|c| (c.channel_id, c))
-                .collect();
+            let mut pending: HashSet<ChannelId> = self.channel_map.keys().cloned().collect();
 
             for info in channels {
-                if let Some(channel) = pending.remove(&info.channel_id()) {
+                if let Some(channel) = self.channel_map.get_mut(&info.channel_id()) {
                     channel.telemetry = telemetries.get(&channel.remote_addr).cloned();
+                    pending.remove(&info.channel_id());
                 } else {
-                    insert.push(Channel {
-                        channel_id: info.channel_id(),
-                        remote_addr: info.peer_addr(),
-                        direction: info.direction(),
-                        telemetry: None,
-                    });
+                    self.channel_map.insert(
+                        info.channel_id(),
+                        Channel {
+                            channel_id: info.channel_id(),
+                            remote_addr: info.peer_addr(),
+                            direction: info.direction(),
+                            telemetry: None,
+                        },
+                    );
+                    inserted = true;
                 }
             }
 
-            let to_remove: Vec<_> = pending.keys().cloned().collect();
-            for key in to_remove {
-                self.channels.retain(|c| c.channel_id != key);
+            for key in pending {
+                self.channel_map.remove(&key);
             }
         }
 
-        if insert.len() > 0 {
-            for channel in insert {
-                self.channels.push(channel);
-            }
-            self.channels.sort_by_key(|c| c.remote_addr);
+        if inserted {
+            self.sorted_channels = self
+                .channel_map
+                .values()
+                .map(|c| (c.channel_id, c.remote_addr))
+                .collect();
+            self.sorted_channels.sort_by_key(|c| c.1);
         }
 
         for rep in reps {}
@@ -79,10 +83,10 @@ impl Channels {
         // Recalculate selected index
         if let Some(channel_id) = self.selected {
             match self
-                .channels
+                .sorted_channels
                 .iter()
                 .enumerate()
-                .find(|(_, channel)| channel.channel_id == channel_id)
+                .find(|(_, (id, _))| *id == channel_id)
             {
                 Some((i, _)) => self.selected_index = Some(i),
                 None => {
@@ -94,28 +98,29 @@ impl Channels {
     }
 
     pub(crate) fn get(&self, index: usize) -> Option<&Channel> {
-        self.channels.get(index)
+        let (channel_id, _) = self.sorted_channels.get(index)?;
+        self.channel_map.get(channel_id)
     }
 
     pub fn len(&self) -> usize {
-        self.channels.len()
+        self.sorted_channels.len()
     }
 
     pub(crate) fn select_index(&mut self, index: usize) {
-        let Some(channel) = self.channels.get(index) else {
+        let Some((channel_id, _)) = self.sorted_channels.get(index) else {
             return;
         };
-        if self.selected == Some(channel.channel_id) {
+        if self.selected == Some(*channel_id) {
             self.selected = None;
             self.selected_index = None;
             self.messages.write().unwrap().filter_channel(None)
         } else {
-            self.selected = Some(channel.channel_id);
+            self.selected = Some(*channel_id);
             self.selected_index = Some(index);
             self.messages
                 .write()
                 .unwrap()
-                .filter_channel(Some(channel.channel_id))
+                .filter_channel(Some(*channel_id))
         }
     }
 
@@ -144,7 +149,7 @@ mod tests {
         let guard = messages.read().unwrap();
         assert_eq!(
             guard.current_filter(),
-            &MessageFilter::channel(channels.channels[0].channel_id)
+            &MessageFilter::channel(channels.sorted_channels[0].0)
         );
     }
 

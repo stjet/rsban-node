@@ -56,17 +56,14 @@ impl Channels {
         if self.selected == Some(channel.channel_id()) {
             self.selected = None;
             self.selected_index = None;
-            self.messages
-                .write()
-                .unwrap()
-                .set_filter(MessageFilter::all())
+            self.messages.write().unwrap().filter_channel(None)
         } else {
             self.selected = Some(channel.channel_id());
             self.selected_index = Some(index);
             self.messages
                 .write()
                 .unwrap()
-                .set_filter(MessageFilter::channel(channel.channel_id()))
+                .filter_channel(Some(channel.channel_id()))
         }
     }
 

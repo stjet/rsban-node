@@ -17,13 +17,18 @@ impl<'a> MessageTableView<'a> {
 
         TopBottomPanel::bottom("message_filter_panel").show_inside(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
+                let mut changed = false;
                 for type_filter in &mut self.model.message_types {
                     if ui
-                        .selectable_label(type_filter.selected, type_filter.value.as_str())
+                        .selectable_label(type_filter.selected, type_filter.name)
                         .clicked()
                     {
                         type_filter.selected = !type_filter.selected;
+                        changed = true;
                     }
+                }
+                if changed {
+                    self.model.update_filter();
                 }
             });
         });

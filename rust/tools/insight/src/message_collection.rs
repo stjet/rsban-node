@@ -1,5 +1,5 @@
 use chrono::{DateTime, TimeZone, Utc};
-use rsnano_messages::Message;
+use rsnano_messages::{Message, MessageType};
 use rsnano_network::{ChannelDirection, ChannelId};
 
 #[derive(Clone)]
@@ -25,6 +25,7 @@ impl RecordedMessage {
 #[derive(Default, PartialEq, Eq, Debug)]
 pub(crate) struct MessageFilter {
     channel_id: Option<ChannelId>,
+    types: Vec<MessageType>,
 }
 
 impl MessageFilter {
@@ -35,17 +36,47 @@ impl MessageFilter {
     pub fn channel(channel_id: ChannelId) -> Self {
         Self {
             channel_id: Some(channel_id),
+            types: Vec::new(),
         }
     }
 
     pub fn include(&self, message: &RecordedMessage) -> bool {
-        if let Some(channel_id) = self.channel_id {
-            if message.channel_id != channel_id {
-                return false;
+        self.include_channel(message) && self.include_message_type(message)
+    }
+
+    pub fn with_types(&self, types: Vec<MessageType>) -> Self {
+        Self {
+            channel_id: self.channel_id.clone(),
+            types,
+        }
+    }
+
+    pub fn with_channel(&self, channel_id: Option<ChannelId>) -> Self {
+        Self {
+            channel_id,
+            types: self.types.clone(),
+        }
+    }
+
+    fn include_channel(&self, message: &RecordedMessage) -> bool {
+        match self.channel_id {
+            Some(id) => message.channel_id == id,
+            None => true,
+        }
+    }
+
+    fn include_message_type(&self, message: &RecordedMessage) -> bool {
+        if self.types.is_empty() {
+            return true;
+        }
+
+        for msg_type in &self.types {
+            if message.message.message_type() == *msg_type {
+                return true;
             }
         }
 
-        true
+        false
     }
 }
 
@@ -81,7 +112,16 @@ impl MessageCollection {
         &self.filter
     }
 
-    pub fn set_filter(&mut self, filter: MessageFilter) {
+    pub fn filter_channel(&mut self, channel_id: Option<ChannelId>) {
+        self.set_filter(self.filter.with_channel(channel_id))
+    }
+
+    pub fn filter_message_types(&mut self, types: impl IntoIterator<Item = MessageType>) {
+        let types = types.into_iter().collect();
+        self.set_filter(self.filter.with_types(types));
+    }
+
+    fn set_filter(&mut self, filter: MessageFilter) {
         self.filter = filter;
         self.filtered = self
             .all_messages
@@ -91,6 +131,21 @@ impl MessageCollection {
             .collect();
     }
 }
+
+pub(crate) const AVALABLE_FILTER_TYPES: [MessageType; 12] = [
+    MessageType::Keepalive,
+    MessageType::Publish,
+    MessageType::ConfirmReq,
+    MessageType::ConfirmAck,
+    MessageType::BulkPull,
+    MessageType::BulkPush,
+    MessageType::FrontierReq,
+    MessageType::BulkPullAccount,
+    MessageType::TelemetryReq,
+    MessageType::TelemetryAck,
+    MessageType::AscPullReq,
+    MessageType::AscPullAck,
+];
 
 #[cfg(test)]
 mod tests {

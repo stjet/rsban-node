@@ -11,6 +11,7 @@ pub(crate) struct Channel {
     pub channel_id: ChannelId,
     pub remote_addr: SocketAddrV6,
     pub direction: ChannelDirection,
+    pub telemetry: Option<TelemetryData>,
 }
 
 pub(crate) struct Channels {
@@ -45,14 +46,20 @@ impl Channels {
 
             for info in channels {
                 if let Some(channel) = pending.remove(&info.channel_id()) {
-                    // todo update
+                    channel.telemetry = telemetries.get(&channel.remote_addr).cloned();
                 } else {
                     insert.push(Channel {
                         channel_id: info.channel_id(),
                         remote_addr: info.peer_addr(),
                         direction: info.direction(),
+                        telemetry: None,
                     });
                 }
+            }
+
+            let to_remove: Vec<_> = pending.keys().cloned().collect();
+            for key in to_remove {
+                self.channels.retain(|c| c.channel_id != key);
             }
         }
 

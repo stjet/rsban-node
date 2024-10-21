@@ -1,4 +1,5 @@
 use crate::channels::Channels;
+use num_format::{Locale, ToFormattedString};
 use rsnano_network::ChannelDirection;
 
 pub(crate) struct ChannelsViewModel<'a>(&'a mut Channels);
@@ -10,7 +11,7 @@ impl<'a> ChannelsViewModel<'a> {
 
     pub(crate) fn get_row(&self, index: usize) -> Option<ChannelViewModel> {
         let channel = self.0.get(index)?;
-        Some(ChannelViewModel {
+        let mut result = ChannelViewModel {
             channel_id: channel.channel_id.to_string(),
             remote_addr: channel.remote_addr.to_string(),
             direction: match channel.direction {
@@ -18,7 +19,29 @@ impl<'a> ChannelsViewModel<'a> {
                 ChannelDirection::Outbound => "out",
             },
             is_selected: self.0.selected_index() == Some(index),
-        })
+            block_count: String::new(),
+            cemented_count: String::new(),
+            unchecked_count: String::new(),
+            maker: "",
+            version: String::new(),
+        };
+
+        if let Some(telemetry) = &channel.telemetry {
+            result.block_count = telemetry.block_count.to_formatted_string(&Locale::en);
+            result.cemented_count = telemetry.cemented_count.to_formatted_string(&Locale::en);
+            result.unchecked_count = telemetry.unchecked_count.to_formatted_string(&Locale::en);
+            result.maker = match telemetry.maker {
+                0 | 1 => "NF",
+                3 => "RsNano",
+                _ => "unknown",
+            };
+            result.version = format!(
+                "v{}.{}.{}",
+                telemetry.major_version, telemetry.minor_version, telemetry.patch_version
+            );
+        }
+
+        Some(result)
     }
 
     pub(crate) fn channel_count(&self) -> usize {
@@ -39,4 +62,9 @@ pub(crate) struct ChannelViewModel {
     pub remote_addr: String,
     pub direction: &'static str,
     pub is_selected: bool,
+    pub block_count: String,
+    pub cemented_count: String,
+    pub unchecked_count: String,
+    pub maker: &'static str,
+    pub version: String,
 }

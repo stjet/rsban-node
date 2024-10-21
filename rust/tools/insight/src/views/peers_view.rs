@@ -34,7 +34,12 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
         .sense(Sense::click())
         .column(Column::auto())
         .column(Column::auto())
-        .column(Column::remainder())
+        .column(Column::exact(300.0))
+        .column(Column::exact(80.0))
+        .column(Column::exact(80.0))
+        .column(Column::exact(80.0))
+        .column(Column::exact(70.0))
+        .column(Column::auto())
         .header(20.0, |mut header| {
             header.col(|ui| {
                 ui.strong("Channel");
@@ -44,6 +49,21 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
             });
             header.col(|ui| {
                 ui.strong("Remote Addr");
+            });
+            header.col(|ui| {
+                ui.strong("Blocks");
+            });
+            header.col(|ui| {
+                ui.strong("Cemented");
+            });
+            header.col(|ui| {
+                ui.strong("Unchecked");
+            });
+            header.col(|ui| {
+                ui.strong("Maker");
+            });
+            header.col(|ui| {
+                ui.strong("Version");
             });
         })
         .body(|body| {
@@ -62,6 +82,21 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.remote_addr).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.block_count).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.cemented_count).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.unchecked_count).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.maker).selectable(false));
+                });
+                row.col(|ui| {
+                    ui.add(Label::new(row_model.version).selectable(false));
                 });
                 if row.response().clicked() {
                     model.select(row.index());

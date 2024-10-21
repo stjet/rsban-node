@@ -19,7 +19,7 @@ impl<'a> MessageTabView<'a> {
 
     fn show_channels(&mut self, ctx: &egui::Context) {
         SidePanel::left("channels_panel")
-            .min_width(300.0)
+            .min_width(350.0)
             .resizable(false)
             .show(ctx, |ui| {
                 ChannelsView::new(self.model.channels()).view(ui);

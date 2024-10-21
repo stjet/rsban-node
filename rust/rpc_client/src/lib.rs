@@ -3,7 +3,8 @@ use anyhow::{bail, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, HashOrAccount, JsonBlock, PublicKey, QualifiedRoot, RawKey, WalletId, WorkNonce
+    Account, Amount, BlockEnum, BlockHash, HashOrAccount, JsonBlock, PublicKey, QualifiedRoot,
+    RawKey, WalletId, WorkNonce,
 };
 use rsnano_rpc_messages::*;
 use serde::Serialize;
@@ -810,7 +811,8 @@ impl NanoRpcClient {
         destination: Account,
     ) -> Result<()> {
         let block = self.send_block(wallet, source, destination).await?;
-        self.receive_block(wallet, destination, BlockEnum::from(block).hash()).await
+        self.receive_block(wallet, destination, BlockEnum::from(block).hash())
+            .await
     }
 
     pub async fn receive(
@@ -818,13 +820,13 @@ impl NanoRpcClient {
         wallet: WalletId,
         destination: Account,
         block: BlockHash,
-        work: Option<WorkNonce>
+        work: Option<WorkNonce>,
     ) -> Result<BlockHashRpcMessage> {
         let cmd = RpcCommand::Receive(ReceiveArgs {
             wallet,
             account: destination,
             block,
-            work
+            work,
         });
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

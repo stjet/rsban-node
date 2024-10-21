@@ -2,7 +2,7 @@ use rsnano_core::{Amount, BlockHash, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::wallets::WalletsExt;
 use std::time::Duration;
-use test_helpers::{assert_timely_msg, System, setup_rpc_client_and_server};
+use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 #[test]
 fn receive() {

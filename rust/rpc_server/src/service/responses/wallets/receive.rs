@@ -1,5 +1,5 @@
 use rsnano_core::PendingKey;
-use rsnano_node::{Node, wallets::WalletsExt};
+use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::{BlockHashRpcMessage, ErrorDto, ReceiveArgs};
 use serde_json::to_string_pretty;
 use std::sync::Arc;

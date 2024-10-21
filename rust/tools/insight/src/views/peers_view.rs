@@ -1,5 +1,5 @@
 use crate::{channels::RepState, view_models::ChannelsViewModel};
-use eframe::egui::{self, CentralPanel, Color32, Label, RichText, Sense, Ui, WidgetText};
+use eframe::egui::{self, CentralPanel, Color32, Label, RichText, Sense, Ui};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
 
 pub(crate) fn show_peers(ctx: &egui::Context, model: ChannelsViewModel) {
@@ -33,9 +33,9 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
         .auto_shrink(false)
         .sense(Sense::click())
         .column(Column::auto()) // channel
+        .column(Column::auto()) // rep state
         .column(Column::auto()) // in/out
         .column(Column::exact(300.0)) // addr
-        .column(Column::auto()) // rep state
         .column(Column::exact(80.0)) //rep weight
         .column(Column::exact(80.0))
         .column(Column::exact(80.0))
@@ -48,13 +48,13 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 ui.strong("Channel");
             });
             header.col(|ui| {
+                ui.strong("Rep");
+            });
+            header.col(|ui| {
                 ui.strong("in/out");
             });
             header.col(|ui| {
                 ui.strong("Remote Addr");
-            });
-            header.col(|ui| {
-                ui.strong("Rep");
             });
             header.col(|ui| {
                 ui.strong("Rep Weight");
@@ -89,34 +89,12 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 row.col(|ui| {
                     ui.add(Label::new(row_model.channel_id).selectable(false));
                 });
+                row.col(|ui| show_rep_state(ui, row_model.rep_state));
                 row.col(|ui| {
                     ui.add(Label::new(row_model.direction).selectable(false));
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.remote_addr).selectable(false));
-                });
-                row.col(|ui| match row_model.rep_state {
-                    RepState::PrincipalRep => {
-                        ui.add(
-                            Label::new(
-                                RichText::new("PR")
-                                    .color(Color32::WHITE)
-                                    .background_color(Color32::DARK_RED),
-                            )
-                            .selectable(false),
-                        );
-                    }
-                    RepState::Rep => {
-                        ui.add(
-                            Label::new(
-                                RichText::new("R")
-                                    .color(Color32::WHITE)
-                                    .background_color(Color32::DARK_GRAY),
-                            )
-                            .selectable(false),
-                        );
-                    }
-                    RepState::NoRep => {}
                 });
                 row.col(|ui| {
                     ui.add(Label::new(row_model.rep_weight).selectable(false));
@@ -144,4 +122,30 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
                 }
             })
         });
+}
+
+pub(crate) fn show_rep_state(ui: &mut Ui, rep_state: RepState) {
+    match rep_state {
+        RepState::PrincipalRep => {
+            ui.add(
+                Label::new(
+                    RichText::new("PR")
+                        .color(Color32::WHITE)
+                        .background_color(Color32::DARK_RED),
+                )
+                .selectable(false),
+            );
+        }
+        RepState::Rep => {
+            ui.add(
+                Label::new(
+                    RichText::new("R")
+                        .color(Color32::WHITE)
+                        .background_color(Color32::DARK_GRAY),
+                )
+                .selectable(false),
+            );
+        }
+        RepState::NoRep => {}
+    }
 }

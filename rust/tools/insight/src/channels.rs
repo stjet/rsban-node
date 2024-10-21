@@ -1,6 +1,8 @@
 use crate::message_collection::MessageCollection;
+use rsnano_ledger::RepWeightCache;
 use rsnano_messages::TelemetryData;
 use rsnano_network::{ChannelDirection, ChannelId, ChannelInfo};
+use rsnano_node::representatives::PeeredRep;
 use std::{
     collections::HashMap,
     net::SocketAddrV6,
@@ -35,6 +37,8 @@ impl Channels {
         &mut self,
         channels: Vec<Arc<ChannelInfo>>,
         telemetries: HashMap<SocketAddrV6, TelemetryData>,
+        reps: Vec<PeeredRep>,
+        rep_weights: &RepWeightCache,
     ) {
         let mut insert = Vec::new();
         {
@@ -70,6 +74,8 @@ impl Channels {
             self.channels.sort_by_key(|c| c.remote_addr);
         }
 
+        for rep in reps {}
+
         // Recalculate selected index
         if let Some(channel_id) = self.selected {
             match self
@@ -89,10 +95,6 @@ impl Channels {
 
     pub(crate) fn get(&self, index: usize) -> Option<&Channel> {
         self.channels.get(index)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Channel> {
-        self.channels.iter()
     }
 
     pub fn len(&self) -> usize {
@@ -135,6 +137,8 @@ mod tests {
         channels.update(
             vec![Arc::new(ChannelInfo::new_test_instance())],
             HashMap::new(),
+            Vec::new(),
+            &RepWeightCache::new(),
         );
         channels.select_index(0);
         let guard = messages.read().unwrap();
@@ -151,6 +155,8 @@ mod tests {
         channels.update(
             vec![Arc::new(ChannelInfo::new_test_instance())],
             HashMap::new(),
+            Vec::new(),
+            &RepWeightCache::new(),
         );
         channels.select_index(0);
         channels.select_index(0);

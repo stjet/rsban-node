@@ -20,7 +20,7 @@ impl<'a> MessageTableView<'a> {
                 let mut changed = false;
                 for type_filter in &mut self.model.message_types {
                     if ui
-                        .selectable_label(type_filter.selected, type_filter.name)
+                        .selectable_label(type_filter.selected, type_filter.label.clone())
                         .clicked()
                     {
                         type_filter.selected = !type_filter.selected;

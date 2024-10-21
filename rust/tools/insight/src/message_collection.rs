@@ -1,6 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use rsnano_messages::{Message, MessageType};
 use rsnano_network::{ChannelDirection, ChannelId};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub(crate) struct RecordedMessage {
@@ -85,6 +86,7 @@ pub(crate) struct MessageCollection {
     all_messages: Vec<RecordedMessage>,
     filtered: Vec<RecordedMessage>,
     filter: MessageFilter,
+    message_counts: HashMap<MessageType, usize>,
 }
 
 impl MessageCollection {
@@ -100,6 +102,12 @@ impl MessageCollection {
         if self.filter.include(&message) {
             self.filtered.push(message.clone());
         }
+        if self.filter.include_channel(&message) {
+            *self
+                .message_counts
+                .entry(message.message.message_type())
+                .or_default() += 1;
+        }
         self.all_messages.push(message);
     }
 
@@ -110,6 +118,10 @@ impl MessageCollection {
 
     pub fn current_filter(&self) -> &MessageFilter {
         &self.filter
+    }
+
+    pub fn message_counts(&self) -> &HashMap<MessageType, usize> {
+        &self.message_counts
     }
 
     pub fn filter_channel(&mut self, channel_id: Option<ChannelId>) {
@@ -129,23 +141,20 @@ impl MessageCollection {
             .filter(|m| self.filter.include(m))
             .cloned()
             .collect();
+        self.message_counts.clear();
+
+        for m in self
+            .all_messages
+            .iter()
+            .filter(|m| self.filter.include_channel(m))
+        {
+            *self
+                .message_counts
+                .entry(m.message.message_type())
+                .or_default() += 1;
+        }
     }
 }
-
-pub(crate) const AVALABLE_FILTER_TYPES: [MessageType; 12] = [
-    MessageType::Keepalive,
-    MessageType::Publish,
-    MessageType::ConfirmReq,
-    MessageType::ConfirmAck,
-    MessageType::BulkPull,
-    MessageType::BulkPush,
-    MessageType::FrontierReq,
-    MessageType::BulkPullAccount,
-    MessageType::TelemetryReq,
-    MessageType::TelemetryAck,
-    MessageType::AscPullReq,
-    MessageType::AscPullAck,
-];
 
 #[cfg(test)]
 mod tests {

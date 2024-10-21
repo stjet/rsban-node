@@ -1,5 +1,5 @@
 use super::MessageViewModel;
-use crate::message_collection::{MessageCollection, AVALABLE_FILTER_TYPES};
+use crate::message_collection::MessageCollection;
 use rsnano_messages::MessageType;
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
@@ -24,14 +24,7 @@ impl MessageTableViewModel {
             messages,
             selected: None,
             selected_index: None,
-            message_types: AVALABLE_FILTER_TYPES
-                .iter()
-                .map(|t| MessageTypeOptionViewModel {
-                    value: *t,
-                    name: t.as_str(),
-                    selected: false,
-                })
-                .collect(),
+            message_types: Vec::new(),
         }
     }
 
@@ -75,10 +68,45 @@ impl MessageTableViewModel {
                 .map(|i| i.value),
         );
     }
+
+    pub(crate) fn update_message_counts(&mut self) {
+        let messages = self.messages.read().unwrap();
+        let counts = messages.message_counts();
+        let empty = Vec::with_capacity(counts.len());
+
+        let old = std::mem::replace(&mut self.message_types, empty);
+        for (msg_type, count) in counts {
+            self.message_types.push(MessageTypeOptionViewModel {
+                value: *msg_type,
+                label: format!("{}({})", msg_type.as_str(), count),
+                selected: false,
+            })
+        }
+
+        for mut type_model in old {
+            if type_model.selected {
+                let mut found = false;
+                for mt in self.message_types.iter_mut() {
+                    if mt.value == type_model.value {
+                        mt.selected = true;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if !found {
+                    type_model.label = format!("{}({})", type_model.value.as_str(), 0);
+                    self.message_types.push(type_model);
+                }
+            }
+        }
+
+        self.message_types.sort_by_key(|x| x.value as u8)
+    }
 }
 
 pub(crate) struct MessageTypeOptionViewModel {
     pub value: MessageType,
-    pub name: &'static str,
+    pub label: String,
     pub selected: bool,
 }

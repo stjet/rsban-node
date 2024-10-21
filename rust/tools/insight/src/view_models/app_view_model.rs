@@ -75,6 +75,8 @@ impl AppViewModel {
             );
         }
 
+        self.message_table.update_message_counts();
+
         self.last_update = Some(now);
     }
 

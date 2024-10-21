@@ -1,10 +1,7 @@
-use std::net::Ipv6Addr;
-use crate::RpcCommand;
-
-use super::AddressWithPortArg;
+use crate::{AddressWithPortArgs, RpcCommand};
 
 impl RpcCommand {
-    pub fn work_peer_add(address: Ipv6Addr, port: u16) -> Self {
-        Self::WorkPeerAdd(AddressWithPortArg::new(address, port))
+    pub fn work_peer_add(args: AddressWithPortArgs) -> Self {
+        Self::WorkPeerAdd(args)
     }
 }

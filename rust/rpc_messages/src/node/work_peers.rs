@@ -1,6 +1,6 @@
+use crate::RpcCommand;
 use rsnano_node::config::Peer;
 use serde::{Deserialize, Serialize};
-use crate::RpcCommand;
 
 impl RpcCommand {
     pub fn work_peers() -> Self {
@@ -11,7 +11,7 @@ impl RpcCommand {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 
 pub struct WorkPeersDto {
-    pub work_peers: Vec<Peer>
+    pub work_peers: Vec<Peer>,
 }
 
 impl WorkPeersDto {

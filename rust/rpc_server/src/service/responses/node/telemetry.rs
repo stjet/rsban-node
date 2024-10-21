@@ -1,14 +1,8 @@
 use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, RpcDto, TelemetryArgs, TelemetryDto, TelemetryDtos};
-use std::{
-    net::SocketAddrV6,
-    sync::Arc,
-};
+use std::{net::SocketAddrV6, sync::Arc};
 
-pub async fn telemetry(
-    node: Arc<Node>,
-    args: TelemetryArgs
-) -> RpcDto {
+pub async fn telemetry(node: Arc<Node>, args: TelemetryArgs) -> RpcDto {
     if let (Some(address), Some(port)) = (args.address, args.port) {
         let endpoint = SocketAddrV6::new(address, port, 0, 0);
 
@@ -21,7 +15,7 @@ pub async fn telemetry(
                 Some(data) => RpcDto::Telemetry(TelemetryDtos {
                     metrics: vec![data.into()],
                 }),
-                None => RpcDto::Error(ErrorDto::PeerNotFound)
+                None => RpcDto::Error(ErrorDto::PeerNotFound),
             }
         }
     } else {

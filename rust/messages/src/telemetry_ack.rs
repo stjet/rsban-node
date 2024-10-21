@@ -383,9 +383,9 @@ impl Display for TelemetryData {
 
 #[cfg(test)]
 mod tests {
-    use std::thread::sleep;
     use super::*;
     use crate::{assert_deserializable, Message};
+    use std::thread::sleep;
 
     #[test]
     fn serialized_size() {

@@ -20,19 +20,21 @@ pub struct TelemetryArgs {
 impl TelemetryArgs {
     pub fn new() -> TelemetryArgs {
         TelemetryArgs {
-            raw: None, address: None, port: None 
+            raw: None,
+            address: None,
+            port: None,
         }
     }
 
     pub fn builder() -> TelemetryArgsBuilder {
-        TelemetryArgsBuilder { 
-            args: TelemetryArgs::new()
+        TelemetryArgsBuilder {
+            args: TelemetryArgs::new(),
         }
     }
 }
 
 pub struct TelemetryArgsBuilder {
-    args: TelemetryArgs
+    args: TelemetryArgs,
 }
 
 impl TelemetryArgsBuilder {

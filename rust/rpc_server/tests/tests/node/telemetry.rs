@@ -1,6 +1,6 @@
 use rsnano_rpc_messages::{AddressWithPortArgs, TelemetryArgs, TelemetryDto};
 use std::{net::SocketAddrV6, time::Duration};
-use test_helpers::{assert_timely_eq, establish_tcp, System, setup_rpc_client_and_server};
+use test_helpers::{assert_timely_eq, establish_tcp, setup_rpc_client_and_server, System};
 
 #[test]
 fn telemetry_single() {
@@ -18,27 +18,28 @@ fn telemetry_single() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = TelemetryArgs::builder().address_with_port(AddressWithPortArgs::new(*node.tcp_listener.local_address().ip(), node.tcp_listener.local_address().port())).build();
+    let args = TelemetryArgs::builder()
+        .address_with_port(AddressWithPortArgs::new(
+            *node.tcp_listener.local_address().ip(),
+            node.tcp_listener.local_address().port(),
+        ))
+        .build();
 
     // Test with valid local address
-    let response = node.runtime.block_on(async {
-        rpc_client
-            .telemetry(
-                args
-            )
-            .await
-    });
+    let response = node
+        .runtime
+        .block_on(async { rpc_client.telemetry(args).await });
     assert!(response.is_ok());
     assert!(matches!(response.unwrap().metrics[0], TelemetryDto { .. }));
 
-    let args = TelemetryArgs::builder().address_with_port(AddressWithPortArgs::new("::1".parse().unwrap(), 65)).build();
+    let args = TelemetryArgs::builder()
+        .address_with_port(AddressWithPortArgs::new("::1".parse().unwrap(), 65))
+        .build();
 
     // Test with invalid address
-    let response = node.runtime.block_on(async {
-        rpc_client
-            .telemetry(args)
-            .await
-    });
+    let response = node
+        .runtime
+        .block_on(async { rpc_client.telemetry(args).await });
     assert!(response.is_err());
     assert_eq!(
         response.unwrap_err().to_string(),
@@ -81,9 +82,11 @@ fn telemetry_all() {
     assert!(matches!(local_telemetry.metrics[0], TelemetryDto { .. }));
 
     // Test with raw flag
-    let response = node
-        .runtime
-        .block_on(async { rpc_client.telemetry(TelemetryArgs::builder().raw().build()).await });
+    let response = node.runtime.block_on(async {
+        rpc_client
+            .telemetry(TelemetryArgs::builder().raw().build())
+            .await
+    });
 
     assert!(response.is_ok());
     let raw_response = response.unwrap();

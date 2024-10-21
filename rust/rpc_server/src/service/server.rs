@@ -226,9 +226,7 @@ async fn handle_rpc(
         RpcCommand::BlockCreate(args) => {
             block_create(rpc_service.node, rpc_service.enable_control, args).await
         }
-        RpcCommand::Telemetry(args) => {
-            telemetry(rpc_service.node, args).await
-        }
+        RpcCommand::Telemetry(args) => telemetry(rpc_service.node, args).await,
         _ => todo!(),
     };
 

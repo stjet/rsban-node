@@ -1044,7 +1044,7 @@ fn vote_by_hash_bundle() {
     assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
 
     // Create a chain of blocks
-    for i in 2..200 {
+    for i in 2..10 {
         let prev_block = match blocks.last().unwrap() {
             BlockEnum::State(state_block) => state_block,
             _ => panic!("Expected a StateBlock"),

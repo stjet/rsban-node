@@ -1,6 +1,6 @@
 use super::{
     ChannelsViewModel, LedgerStatsViewModel, MessageStatsViewModel, MessageTableViewModel,
-    NodeRunnerViewModel,
+    NodeRunnerViewModel, TabBarViewModel,
 };
 use crate::{
     channels::Channels, ledger_stats::LedgerStats, message_collection::MessageCollection,
@@ -17,6 +17,7 @@ pub(crate) struct AppViewModel {
     pub msg_recorder: Arc<MessageRecorder>,
     pub node_runner: NodeRunnerViewModel,
     pub message_table: MessageTableViewModel,
+    pub tabs: TabBarViewModel,
     ledger_stats: LedgerStats,
     channels: Channels,
     clock: Arc<SteadyClock>,
@@ -33,6 +34,7 @@ impl AppViewModel {
         Self {
             node_runner: NodeRunnerViewModel::new(node_runner, msg_recorder.clone(), clock.clone()),
             message_table: MessageTableViewModel::new(messages.clone(), message_type_filter),
+            tabs: TabBarViewModel::new(),
             msg_recorder,
             channels: Channels::new(messages),
             clock,

@@ -193,10 +193,12 @@ impl MessageCollection {
             .iter()
             .filter(|m| self.filter.include_channel(m))
         {
-            *self
-                .message_counts
-                .entry(m.message.message_type())
-                .or_default() += 1;
+            if self.filter.include_hash(m) {
+                *self
+                    .message_counts
+                    .entry(m.message.message_type())
+                    .or_default() += 1;
+            }
         }
     }
 }

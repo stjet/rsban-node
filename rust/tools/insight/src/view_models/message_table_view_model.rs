@@ -1,6 +1,6 @@
 use super::MessageViewModel;
 use crate::message_collection::{MessageCollection, RecordedMessage};
-use rsnano_core::BlockHash;
+use rsnano_core::{Account, BlockHash};
 use rsnano_messages::{Message, MessageType};
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
@@ -19,6 +19,8 @@ pub(crate) struct MessageTableViewModel {
     pub message_types: Vec<MessageTypeOptionViewModel>,
     pub hash_filter: String,
     pub hash_error: bool,
+    pub account_filter: String,
+    pub account_error: bool,
 }
 
 impl MessageTableViewModel {
@@ -28,6 +30,8 @@ impl MessageTableViewModel {
             selected: None,
             selected_index: None,
             message_types: Vec::new(),
+            account_filter: String::new(),
+            account_error: false,
             hash_filter: String::new(),
             hash_error: false,
         }
@@ -83,6 +87,21 @@ impl MessageTableViewModel {
             self.hash_error = false;
         } else {
             self.hash_error = true;
+        }
+    }
+
+    pub(crate) fn update_account_filter(&mut self) {
+        if self.account_filter.trim().is_empty() {
+            self.messages.write().unwrap().filter_account(None);
+            self.account_error = false;
+        } else if let Ok(account) = Account::decode_account(self.account_filter.trim()) {
+            self.messages.write().unwrap().filter_account(Some(account));
+            self.account_error = false;
+        } else if let Ok(account) = Account::decode_hex(self.account_filter.trim()) {
+            self.messages.write().unwrap().filter_account(Some(account));
+            self.account_error = false;
+        } else {
+            self.account_error = true;
         }
     }
 

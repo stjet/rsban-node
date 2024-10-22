@@ -33,6 +33,7 @@ pub enum FrontiersConfirmationMode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
+    pub default_peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
     pub hinted_scheduler: HintedSchedulerConfig,
     pub priority_bucket: PriorityBucketConfig,
@@ -82,7 +83,7 @@ pub struct NodeConfig {
     pub rep_crawler_weight_minimum: Amount,
     pub work_peers: Vec<Peer>,
     pub secondary_work_peers: Vec<Peer>,
-    pub preconfigured_peers: Vec<String>,
+    pub preconfigured_peers: Vec<Peer>,
     pub preconfigured_representatives: Vec<PublicKey>,
     pub max_pruning_age_s: i64,
     pub max_pruning_depth: u64,
@@ -179,13 +180,15 @@ impl NodeConfig {
         let mut enable_voting = false;
         let mut preconfigured_peers = Vec::new();
         let mut preconfigured_representatives = Vec::new();
+        let default_port = network_params.network.default_node_port;
         match network_params.network.current_network {
             Networks::NanoDevNetwork => {
                 enable_voting = true;
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());
             }
             Networks::NanoBetaNetwork => {
-                preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_BETA_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     Account::decode_account(
                         "nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
@@ -195,7 +198,8 @@ impl NodeConfig {
                 );
             }
             Networks::NanoLiveNetwork => {
-                preconfigured_peers.push(DEFAULT_LIVE_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_LIVE_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
                         "A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF",
@@ -246,7 +250,8 @@ impl NodeConfig {
                 );
             }
             Networks::NanoTestNetwork => {
-                preconfigured_peers.push(DEFAULT_TEST_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_TEST_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());
             }
             Networks::Invalid => panic!("invalid network"),
@@ -259,6 +264,7 @@ impl NodeConfig {
 
         Self {
             peering_port,
+            default_peering_port: network_params.network.default_node_port,
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
             online_weight_minimum: Amount::nano(60_000_000),

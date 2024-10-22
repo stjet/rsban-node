@@ -130,6 +130,7 @@ public:
 	nano::account random_representative () const;
 	nano::network_params network_params;
 	std::optional<uint16_t> peering_port{};
+	uint16_t default_peering_port;
 	nano::scheduler::optimistic_config optimistic_scheduler;
 	nano::scheduler::hinted_config hinted_scheduler;
 	nano::priority_bucket_config priority_bucket;

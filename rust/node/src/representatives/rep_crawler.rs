@@ -396,7 +396,7 @@ impl RepCrawler {
         for peer in &self.config.preconfigured_peers {
             // can't use `network.port` here because preconfigured peers are referenced
             // just by their address, so we rely on them listening on the default port
-            self.keepalive_or_connect(peer.clone(), self.network_params.network.default_node_port);
+            self.keepalive_or_connect(peer.address.clone(), peer.port);
         }
     }
 

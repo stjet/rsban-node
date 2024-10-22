@@ -28,6 +28,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.priority_bucket = config.priority_bucket.into_dto ();
 	dto.peering_port = config.peering_port.value_or (0);
 	dto.peering_port_defined = config.peering_port.has_value ();
+	dto.default_peering_port = config.default_peering_port;
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	dto.bootstrap_ascending = config.bootstrap_ascending.to_dto ();
 	dto.bootstrap_server = config.bootstrap_server.to_dto ();
@@ -158,6 +159,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	{
 		peering_port = std::nullopt;
 	}
+	default_peering_port = dto.default_peering_port;
 	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
 	hinted_scheduler.load_dto (dto.hinted_scheduler);
 	priority_bucket = nano::priority_bucket_config{ dto.priority_bucket };

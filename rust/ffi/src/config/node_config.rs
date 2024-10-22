@@ -32,6 +32,7 @@ use std::{
 #[repr(C)]
 pub struct NodeConfigDto {
     pub peering_port: u16,
+    pub default_peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfigDto,
     pub hinted_scheduler: HintedSchedulerConfigDto,
     pub priority_bucket: PriorityBucketConfigDto,
@@ -203,6 +204,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
 
 pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port.unwrap_or_default();
+    dto.default_peering_port = cfg.default_peering_port;
     dto.optimistic_scheduler = (&cfg.optimistic_scheduler).into();
     dto.hinted_scheduler = (&cfg.hinted_scheduler).into();
     dto.priority_bucket = (&cfg.priority_bucket).into();
@@ -286,9 +288,10 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
         );
     }
     for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
-        let bytes = peer.as_bytes();
+        let bytes = peer.address.as_bytes();
         dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
         dto.preconfigured_peers[i].address_len = bytes.len();
+        dto.preconfigured_peers[i].port = peer.port;
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
     if cfg.preconfigured_representatives.len() > dto.preconfigured_representatives.len() {
@@ -357,7 +360,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
 
         let mut preconfigured_peers = Vec::with_capacity(value.preconfigured_peers_count);
         for i in 0..value.preconfigured_peers_count {
-            preconfigured_peers.push(Peer::from(&value.preconfigured_peers[i]).address);
+            preconfigured_peers.push(Peer::from(&value.preconfigured_peers[i]));
         }
 
         let mut preconfigured_representatives = Vec::new();
@@ -373,6 +376,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             } else {
                 None
             },
+            default_peering_port: value.default_peering_port,
             optimistic_scheduler: (&value.optimistic_scheduler).into(),
             hinted_scheduler: (&value.hinted_scheduler).into(),
             priority_bucket: (&value.priority_bucket).into(),

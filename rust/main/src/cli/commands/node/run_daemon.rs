@@ -136,8 +136,6 @@ impl RunDaemonArgs {
             daemon_config.merge_toml(&daemon_toml);
         }
 
-        let node_config = daemon_config.node;
-
         let rpc_toml_config_path = get_rpc_toml_config_path(&path);
 
         let mut rpc_server_config = RpcServerConfig::default_for(network, parallelism);
@@ -152,7 +150,6 @@ impl RunDaemonArgs {
 
         let node = NodeBuilder::new(network_params.network.current_network)
             .data_path(path)
-            .config(node_config)
             .network_params(network_params)
             .flags(flags)
             .finish()

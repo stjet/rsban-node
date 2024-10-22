@@ -3,9 +3,12 @@ use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use rsnano_core::Networks;
 use rsnano_node::{Node, NodeCallbacks, NodeExt};
-use std::sync::{
-    atomic::{AtomicU8, Ordering},
-    Arc,
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicU8, Ordering},
+        Arc,
+    },
 };
 
 #[derive(FromPrimitive, PartialEq, Eq)]
@@ -33,8 +36,13 @@ impl NodeRunner {
         }
     }
 
-    pub fn start_node(&mut self, network: Networks, callbacks: NodeCallbacks) {
-        let node = self.node_factory.create_node(network, callbacks);
+    pub fn start_node(
+        &mut self,
+        network: Networks,
+        data_path: impl Into<PathBuf>,
+        callbacks: NodeCallbacks,
+    ) {
+        let node = self.node_factory.create_node(network, data_path, callbacks);
 
         let node2 = node.clone();
 

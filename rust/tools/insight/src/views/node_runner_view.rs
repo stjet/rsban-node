@@ -1,5 +1,5 @@
 use crate::view_models::NodeRunnerViewModel;
-use eframe::egui::{Button, RadioButton, Ui};
+use eframe::egui::{Button, RadioButton, TextEdit, Ui};
 use rsnano_core::Networks;
 
 pub(crate) struct NodeRunnerView<'a> {
@@ -16,6 +16,10 @@ impl<'a> NodeRunnerView<'a> {
             self.network_radio_button(ui, Networks::NanoLiveNetwork);
             self.network_radio_button(ui, Networks::NanoBetaNetwork);
             self.network_radio_button(ui, Networks::NanoTestNetwork);
+            ui.add_enabled(
+                self.model.can_start_node(),
+                TextEdit::singleline(&mut self.model.data_path),
+            );
             self.start_node_button(ui);
             self.stop_button(ui);
             ui.label(self.model.status());
@@ -44,11 +48,11 @@ impl<'a> NodeRunnerView<'a> {
         if ui
             .add_enabled(
                 self.model.can_start_node(),
-                RadioButton::new(self.model.network == network, network.as_str()),
+                RadioButton::new(self.model.network() == network, network.as_str()),
             )
             .clicked()
         {
-            self.model.network = network;
+            self.model.set_network(network);
         }
     }
 }

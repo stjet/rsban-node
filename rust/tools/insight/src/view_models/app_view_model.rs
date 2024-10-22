@@ -7,6 +7,7 @@ use crate::{
     message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
     nullable_runtime::NullableRuntime,
 };
+use rsnano_node::{cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     sync::{Arc, RwLock},
@@ -22,6 +23,8 @@ pub(crate) struct AppViewModel {
     channels: Channels,
     clock: Arc<SteadyClock>,
     last_update: Option<Timestamp>,
+    pub aec_info: ActiveElectionsInfo,
+    pub confirming_set: ConfirmingSetInfo,
 }
 
 impl AppViewModel {
@@ -39,6 +42,8 @@ impl AppViewModel {
             clock,
             ledger_stats: LedgerStats::new(),
             last_update: None,
+            aec_info: Default::default(),
+            confirming_set: Default::default(),
         }
     }
 
@@ -73,6 +78,8 @@ impl AppViewModel {
                 &rep_weights,
                 min_rep_weight,
             );
+            self.aec_info = node.active.info();
+            self.confirming_set = node.confirming_set.info();
         }
 
         self.message_table.update_message_counts();

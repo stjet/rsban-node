@@ -2,6 +2,7 @@
 pub(crate) enum Tab {
     Messages,
     Peers,
+    Queues,
 }
 
 impl Tab {
@@ -9,11 +10,12 @@ impl Tab {
         match self {
             Tab::Messages => "Messages",
             Tab::Peers => "Peers",
+            Tab::Queues => "Queues",
         }
     }
 }
 
-pub static TAB_ORDER: [Tab; 2] = [Tab::Peers, Tab::Messages];
+pub static TAB_ORDER: [Tab; 3] = [Tab::Peers, Tab::Messages, Tab::Queues];
 
 pub(crate) struct TabBarViewModel {
     pub selected: Tab,

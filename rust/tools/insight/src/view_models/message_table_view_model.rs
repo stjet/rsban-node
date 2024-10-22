@@ -148,15 +148,23 @@ pub(crate) struct MessageTypeOptionViewModel {
 }
 
 fn message_summary_label(message: &RecordedMessage) -> String {
-    if let Message::ConfirmAck(ack) = &message.message {
-        let rebroadcast = if ack.is_rebroadcasted() { " rebr" } else { "" };
-        format!(
-            "{:?} ({}){}",
-            message.message.message_type(),
-            ack.vote().hashes.len(),
-            rebroadcast
-        )
-    } else {
-        format!("{:?}", message.message.message_type())
+    match &message.message {
+        Message::ConfirmAck(ack) => {
+            let rebroadcast = if ack.is_rebroadcasted() { " rebr" } else { "" };
+            format!(
+                "{:?} ({}){}",
+                message.message.message_type(),
+                ack.vote().hashes.len(),
+                rebroadcast
+            )
+        }
+        Message::ConfirmReq(req) => {
+            format!(
+                "{:?} ({})",
+                message.message.message_type(),
+                req.roots_hashes().len()
+            )
+        }
+        _ => format!("{:?}", message.message.message_type()),
     }
 }

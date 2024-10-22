@@ -33,14 +33,6 @@ impl NodeRunner {
         }
     }
 
-    pub(crate) fn start_live_node(&mut self, callbacks: NodeCallbacks) {
-        self.start_node(Networks::NanoLiveNetwork, callbacks);
-    }
-
-    pub(crate) fn start_beta_node(&mut self, callbacks: NodeCallbacks) {
-        self.start_node(Networks::NanoBetaNetwork, callbacks);
-    }
-
     pub fn start_node(&mut self, network: Networks, callbacks: NodeCallbacks) {
         let node = self.node_factory.create_node(network, callbacks);
 

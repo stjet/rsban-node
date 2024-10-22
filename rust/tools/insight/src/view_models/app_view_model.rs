@@ -120,7 +120,7 @@ mod tests {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
 
-        model.node_runner.start_beta_node();
+        model.node_runner.start_node();
 
         assert_eq!(model.node_runner.can_start_node(), false);
         assert_eq!(model.node_runner.can_stop_node(), false);
@@ -132,7 +132,7 @@ mod tests {
     async fn starting_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_beta_node();
+        model.node_runner.start_node();
 
         runtime.run_nulled_blocking_task();
 
@@ -145,7 +145,7 @@ mod tests {
     async fn stopping_node() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_beta_node();
+        model.node_runner.start_node();
         runtime.run_nulled_blocking_task();
         model.node_runner.stop_node();
         assert_eq!(model.node_runner.can_start_node(), false);
@@ -158,7 +158,7 @@ mod tests {
     async fn stopping_completed() {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_beta_node();
+        model.node_runner.start_node();
         runtime.run_nulled_blocking_task();
         model.node_runner.stop_node();
         runtime.run_nulled_blocking_task();

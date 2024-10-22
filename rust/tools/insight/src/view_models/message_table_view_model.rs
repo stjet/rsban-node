@@ -1,5 +1,6 @@
 use super::MessageViewModel;
 use crate::message_collection::{MessageCollection, RecordedMessage};
+use rsnano_core::BlockHash;
 use rsnano_messages::{Message, MessageType};
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
@@ -16,6 +17,8 @@ pub(crate) struct MessageTableViewModel {
     selected_index: Option<usize>,
     messages: Arc<RwLock<MessageCollection>>,
     pub message_types: Vec<MessageTypeOptionViewModel>,
+    pub hash_filter: String,
+    pub hash_error: bool,
 }
 
 impl MessageTableViewModel {
@@ -25,6 +28,8 @@ impl MessageTableViewModel {
             selected: None,
             selected_index: None,
             message_types: Vec::new(),
+            hash_filter: String::new(),
+            hash_error: false,
         }
     }
 
@@ -60,13 +65,25 @@ impl MessageTableViewModel {
         self.selected_index = Some(index);
     }
 
-    pub(crate) fn update_filter(&self) {
+    pub(crate) fn update_type_filter(&self) {
         self.messages.write().unwrap().filter_message_types(
             self.message_types
                 .iter()
                 .filter(|i| i.selected)
                 .map(|i| i.value),
         );
+    }
+
+    pub(crate) fn update_hash_filter(&mut self) {
+        if self.hash_filter.trim().is_empty() {
+            self.messages.write().unwrap().filter_hash(None);
+            self.hash_error = false;
+        } else if let Ok(hash) = BlockHash::decode_hex(self.hash_filter.trim()) {
+            self.messages.write().unwrap().filter_hash(Some(hash));
+            self.hash_error = false;
+        } else {
+            self.hash_error = true;
+        }
     }
 
     pub(crate) fn update_message_counts(&mut self) {

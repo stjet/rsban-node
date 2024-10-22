@@ -31,7 +31,7 @@ impl<'a> MessageView<'a> {
             });
 
             ui.add_space(20.0);
-            ui.label(self.model.message.clone());
+            ui.label(&self.model.message);
         });
     }
 }

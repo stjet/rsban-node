@@ -1,5 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
-use rsnano_messages::{Message, MessageType};
+use rsnano_core::BlockHash;
+use rsnano_messages::{AscPullAckType, AscPullReqType, HashType, Message, MessageType};
 use rsnano_network::{ChannelDirection, ChannelId};
 use std::collections::HashMap;
 
@@ -23,9 +24,10 @@ impl RecordedMessage {
     }
 }
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub(crate) struct MessageFilter {
     channel_id: Option<ChannelId>,
+    hash: Option<BlockHash>,
     types: Vec<MessageType>,
 }
 
@@ -37,25 +39,34 @@ impl MessageFilter {
     pub fn channel(channel_id: ChannelId) -> Self {
         Self {
             channel_id: Some(channel_id),
-            types: Vec::new(),
+            ..Default::default()
         }
     }
 
     pub fn include(&self, message: &RecordedMessage) -> bool {
-        self.include_channel(message) && self.include_message_type(message)
+        self.include_channel(message)
+            && self.include_message_type(message)
+            && self.include_hash(message)
     }
 
     pub fn with_types(&self, types: Vec<MessageType>) -> Self {
         Self {
-            channel_id: self.channel_id.clone(),
             types,
+            ..self.clone()
         }
     }
 
     pub fn with_channel(&self, channel_id: Option<ChannelId>) -> Self {
         Self {
             channel_id,
-            types: self.types.clone(),
+            ..self.clone()
+        }
+    }
+
+    pub fn with_hash(&self, hash: Option<BlockHash>) -> Self {
+        Self {
+            hash,
+            ..self.clone()
         }
     }
 
@@ -78,6 +89,36 @@ impl MessageFilter {
         }
 
         false
+    }
+
+    fn include_hash(&self, message: &RecordedMessage) -> bool {
+        let Some(hash) = self.hash else {
+            return true;
+        };
+        match &message.message {
+            Message::Publish(i) => i.block.hash() == hash,
+            Message::AscPullAck(ack) => match &ack.pull_type {
+                AscPullAckType::Blocks(i) => i.blocks().iter().any(|b| b.hash() == hash),
+                AscPullAckType::AccountInfo(i) => {
+                    i.account_open == hash
+                        || i.account_head == hash
+                        || i.account_conf_frontier == hash
+                }
+                AscPullAckType::Frontiers(i) => i.iter().any(|f| f.hash == hash),
+            },
+            Message::AscPullReq(req) => match &req.req_type {
+                AscPullReqType::Blocks(i) => {
+                    i.start_type == HashType::Block && hash == i.start.into()
+                }
+                AscPullReqType::AccountInfo(i) => {
+                    i.target_type == HashType::Block && hash == i.target.into()
+                }
+                AscPullReqType::Frontiers(_) => false,
+            },
+            Message::ConfirmAck(i) => i.vote().hashes.iter().any(|h| *h == hash),
+            Message::ConfirmReq(i) => i.roots_hashes().iter().any(|(h, _)| *h == hash),
+            _ => false,
+        }
     }
 }
 
@@ -131,6 +172,10 @@ impl MessageCollection {
     pub fn filter_message_types(&mut self, types: impl IntoIterator<Item = MessageType>) {
         let types = types.into_iter().collect();
         self.set_filter(self.filter.with_types(types));
+    }
+
+    pub fn filter_hash(&mut self, hash: Option<BlockHash>) {
+        self.set_filter(self.filter.with_hash(hash));
     }
 
     fn set_filter(&mut self, filter: MessageFilter) {

@@ -1,5 +1,5 @@
 use crate::view_models::MessageTableViewModel;
-use eframe::egui::{Label, Sense, TopBottomPanel, Ui};
+use eframe::egui::{Color32, Label, Sense, TextEdit, TopBottomPanel, Ui};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct MessageTableView<'a> {
@@ -28,9 +28,24 @@ impl<'a> MessageTableView<'a> {
                     }
                 }
                 if changed {
-                    self.model.update_filter();
+                    self.model.update_type_filter();
                 }
             });
+            let text_color = if self.model.hash_error {
+                Some(Color32::RED)
+            } else {
+                None
+            };
+            if ui
+                .add(
+                    TextEdit::singleline(&mut self.model.hash_filter)
+                        .hint_text("block hash...")
+                        .text_color_opt(text_color),
+                )
+                .changed()
+            {
+                self.model.update_hash_filter()
+            };
         });
 
         TableBuilder::new(ui)

@@ -1,5 +1,5 @@
 use crate::view_models::MessageTableViewModel;
-use eframe::egui::{Color32, Label, Sense, TextEdit, TopBottomPanel, Ui};
+use eframe::egui::{CentralPanel, Color32, Label, Sense, TextEdit, TopBottomPanel, Ui};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct MessageTableView<'a> {
@@ -12,16 +12,17 @@ impl<'a> MessageTableView<'a> {
     }
 
     pub(crate) fn view(&mut self, ui: &mut Ui) {
-        ui.add_space(5.0);
-        ui.heading(self.model.heading());
-
         TopBottomPanel::bottom("message_filter_panel").show_inside(ui, |ui| {
             self.show_message_type_labels(ui);
             self.show_hash_input(ui);
             self.show_account_input(ui);
         });
 
-        self.show_message_table(ui);
+        CentralPanel::default().show_inside(ui, |ui| {
+            //ui.add_space(5.0);
+            ui.heading(self.model.heading());
+            self.show_message_table(ui);
+        });
     }
 
     fn show_message_type_labels(&mut self, ui: &mut Ui) {

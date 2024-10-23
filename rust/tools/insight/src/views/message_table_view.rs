@@ -1,5 +1,5 @@
 use crate::view_models::MessageTableViewModel;
-use eframe::egui::{CentralPanel, Color32, Label, Sense, TextEdit, TopBottomPanel, Ui};
+use eframe::egui::{CentralPanel, Color32, Label, Sense, TextEdit, TopBottomPanel, Ui, RichText};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct MessageTableView<'a> {
@@ -104,9 +104,12 @@ impl<'a> MessageTableView<'a> {
                     let Some(row_model) = self.model.get_row(row.index()) else {
                         return;
                     };
-                    if row_model.is_selected {
-                        row.set_selected(true);
-                    }
+                    // Set the background color based on whether the row is selected
+                    let bg_color = if row_model.is_selected {
+                        row_model.background_color.linear_multiply(2.0)
+                    } else {
+                        row_model.background_color
+                    };
                     row.col(|ui| {
                         ui.add(Label::new(row_model.channel_id).selectable(false));
                     });
@@ -114,8 +117,15 @@ impl<'a> MessageTableView<'a> {
                         ui.add(Label::new(row_model.direction).selectable(false));
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(row_model.message).selectable(false));
-                    });
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap(),
+                            0.0,
+                            bg_color
+                        );
+                        ui.add(
+                            Label::new(RichText::new(&row_model.message).color(row_model.text_color)).selectable(false)
+                        );
+                    });    
                     if row.response().clicked() {
                         self.model.select_message(row.index());
                     }

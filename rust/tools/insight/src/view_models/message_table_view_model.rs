@@ -150,11 +150,13 @@ pub(crate) struct MessageTypeOptionViewModel {
 fn message_summary_label(message: &RecordedMessage) -> String {
     match &message.message {
         Message::ConfirmAck(ack) => {
-            let rebroadcast = if ack.is_rebroadcasted() { " rebr" } else { "" };
+            let rebroadcast = if ack.is_rebroadcasted() { " (r)" } else { "" };
+            let final_vote = if ack.vote().is_final() { " (f)" } else { "" };
             format!(
-                "{:?} ({}){}",
+                "{:?} ({}){}{}",
                 message.message.message_type(),
                 ack.vote().hashes.len(),
+                final_vote,
                 rebroadcast
             )
         }

@@ -6,7 +6,8 @@ use crate::view_models::{AppViewModel, Tab};
 use eframe::egui::{
     self, global_theme_preference_switch, CentralPanel, Grid, ProgressBar, TopBottomPanel,
 };
-use rsnano_node::{block_processing::BlockProcessorInfo, cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
+use rsnano_node::{block_processing::BlockProcessorInfo, consensus::VoteProcessorInfo,
+    cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -63,7 +64,9 @@ impl eframe::App for AppView {
             Tab::Messages => MessageTabView::new(&mut self.model).show(ctx),
             Tab::Queues => show_queues(ctx, &self.model.aec_info, 
                                             &self.model.confirming_set, 
-                                            &self.model.block_processor_info),
+                                            &self.model.block_processor_info,
+                                            &self.model.vote_processor_info
+                                        ),
         }
 
         // Repaint to show the continuously increasing current block and message counters
@@ -74,7 +77,9 @@ impl eframe::App for AppView {
 fn show_queues(ctx: &egui::Context, 
                 info: &ActiveElectionsInfo, 
                 confirming: &ConfirmingSetInfo,
-                block_processor_info: &BlockProcessorInfo,) {
+                block_processor_info: &BlockProcessorInfo,
+                vote_processor_info: &VoteProcessorInfo,
+               ) {
     CentralPanel::default().show(ctx, |ui| {
         ui.heading("Active Elections");
         Grid::new("aec_grid").num_columns(2).show(ui, |ui| {
@@ -136,6 +141,43 @@ fn show_queues(ctx: &egui::Context,
                     )
                     .text(block_processor_info.total_size.to_string())
                     .desired_width(300.0),
+                );
+                ui.end_row();
+            });
+        
+        ui.heading("Vote Processor Queues"); // New section
+        Grid::new("vote_processor_queues_grid")
+            .num_columns(2)
+            .show(ui, |ui| {
+                for queue_info in &vote_processor_info.queues {
+                    ui.label(format!("{:?}", queue_info.source));
+                    let progress = if queue_info.max_size > 0 {
+                        queue_info.size as f32 / queue_info.max_size as f32
+                    } else {
+                        0.0
+                    };
+                    ui.add(
+                        ProgressBar::new(progress)
+                            .text(format!("{}/{}", queue_info.size, queue_info.max_size))
+                            .desired_width(300.0),
+                    );
+                    ui.end_row();
+                }
+                ui.label("Total");
+                let total_max_size: usize = vote_processor_info
+                    .queues
+                    .iter()
+                    .map(|q| q.max_size)
+                    .sum();
+                let total_progress = if total_max_size > 0 {
+                    vote_processor_info.total_size as f32 / total_max_size as f32
+                } else {
+                    0.0
+                };
+                ui.add(
+                    ProgressBar::new(total_progress)
+                        .text(vote_processor_info.total_size.to_string())
+                        .desired_width(300.0),
                 );
                 ui.end_row();
             });

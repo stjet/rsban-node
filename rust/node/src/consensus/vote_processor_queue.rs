@@ -15,6 +15,19 @@ use std::{
 };
 use strum::IntoEnumIterator;
 
+
+#[derive(Default)]
+pub struct VoteProcessorInfo {
+    pub queues: Vec<VoteQueueInfo>,
+    pub total_size: usize,
+}
+
+pub struct VoteQueueInfo {
+    pub source: RepTier,
+    pub size: usize,
+    pub max_size: usize,
+}
+
 pub struct VoteProcessorQueue {
     data: Mutex<VoteProcessorQueueData>,
     condition: Condvar,
@@ -111,6 +124,45 @@ impl VoteProcessorQueue {
             guard.stopped = true;
         }
         self.condition.notify_all();
+    }
+
+    pub fn info(&self) -> VoteProcessorInfo {
+        let guard = self.data.lock().unwrap();
+
+        let mut queues_info = std::collections::HashMap::new();
+
+        // Iterate over all queues in the FairQueue
+        for (key, entry) in guard.queue.iter_queues() {
+            let (tier, _channel_id) = *key;
+            let size = entry.len();
+
+            queues_info
+                .entry(tier)
+                .and_modify(|e| *e += size)
+                .or_insert(size);
+        }
+
+        // Prepare the VoteQueueInfo for each RepTier
+        let mut queues = Vec::new();
+
+        for tier in RepTier::iter() {
+            let size = queues_info.get(&tier).cloned().unwrap_or(0);
+            let max_size = match tier {
+                RepTier::Tier1 | RepTier::Tier2 | RepTier::Tier3 => self.config.max_pr_queue,
+                RepTier::None => self.config.max_non_pr_queue,
+            };
+
+            queues.push(VoteQueueInfo {
+                source: tier,
+                size,
+                max_size,
+            });
+        }
+
+        VoteProcessorInfo {
+            queues,
+            total_size: guard.queue.len(),
+        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

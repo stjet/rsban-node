@@ -104,12 +104,9 @@ impl<'a> MessageTableView<'a> {
                     let Some(row_model) = self.model.get_row(row.index()) else {
                         return;
                     };
-                    // Set the background color based on whether the row is selected
-                    let bg_color = if row_model.is_selected {
-                        row_model.background_color.linear_multiply(2.0)
-                    } else {
-                        row_model.background_color
-                    };
+                    if row_model.is_selected {
+                        row.set_selected(true);
+                    }
                     row.col(|ui| {
                         ui.add(Label::new(row_model.channel_id).selectable(false));
                     });
@@ -120,12 +117,12 @@ impl<'a> MessageTableView<'a> {
                         ui.painter().rect_filled(
                             ui.available_rect_before_wrap(),
                             0.0,
-                            bg_color
+                            row_model.background_color
                         );
                         ui.add(
                             Label::new(RichText::new(&row_model.message).color(row_model.text_color)).selectable(false)
                         );
-                    });    
+                    });
                     if row.response().clicked() {
                         self.model.select_message(row.index());
                     }

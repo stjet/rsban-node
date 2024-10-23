@@ -142,6 +142,10 @@ where
         }
     }
 
+    pub fn iter_queues(&self) -> impl Iterator<Item = (&S, &Entry<T>)> {
+        self.queues.iter()
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         ContainerInfoComponent::Composite(
             name.into(),
@@ -188,7 +192,7 @@ where
     }
 }
 
-struct Entry<T> {
+pub(crate) struct Entry<T> {
     requests: VecDeque<T>,
     priority: usize,
     max_size: usize,

@@ -29,7 +29,7 @@ impl<'a> MessageTabView<'a> {
     fn show_message_overview(&mut self, ctx: &egui::Context) {
         SidePanel::left("messages_panel")
             .min_width(250.0)
-            .resizable(false)
+            .resizable(true)
             .show(ctx, |ui| {
                 MessageTableView::new(&mut self.model.message_table).view(ui);
             });

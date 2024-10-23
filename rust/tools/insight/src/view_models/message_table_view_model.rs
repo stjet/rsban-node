@@ -4,11 +4,14 @@ use rsnano_core::{Account, BlockHash};
 use rsnano_messages::{Message, MessageType};
 use rsnano_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
+use eframe::egui::Color32;
 
 pub(crate) struct RowViewModel {
     pub channel_id: String,
     pub direction: String,
     pub message: String,
+    pub background_color: Color32,
+    pub text_color: Color32,
     pub is_selected: bool,
 }
 
@@ -43,6 +46,11 @@ impl MessageTableViewModel {
 
     pub(crate) fn get_row(&self, index: usize) -> Option<RowViewModel> {
         let message = self.messages.read().unwrap().get(index)?;
+        
+        let message_text = message_summary_label(&message);
+        let background_color = get_message_background_color(&message.message);
+        let text_color = get_text_color(background_color);
+        
         Some(RowViewModel {
             channel_id: message.channel_id.to_string(),
             direction: if message.direction == ChannelDirection::Inbound {
@@ -50,7 +58,9 @@ impl MessageTableViewModel {
             } else {
                 "out".into()
             },
-            message: message_summary_label(&message),
+            message: message_text,
+            background_color,
+            text_color,
             is_selected: self.selected_index == Some(index),
         })
     }
@@ -147,14 +157,55 @@ pub(crate) struct MessageTypeOptionViewModel {
     pub selected: bool,
 }
 
+
+// Define background colors for different message types
+fn get_message_background_color(message: &Message) -> Color32 {
+    match message {
+        // Important messages 
+        Message::Publish(_) => Color32::from_rgb(100, 143, 255),
+        Message::ConfirmAck(_) => Color32::from_rgb(241, 196, 15),
+        Message::ConfirmReq(_) => Color32::from_rgb(231, 76, 60),
+
+        // Less important messages with refined grays
+        Message::AscPullAck(_) => Color32::from_rgb(149, 165, 166),
+        Message::AscPullReq(_) => Color32::from_rgb(127, 140, 141),
+    
+        Message::TelemetryAck(_) => Color32::from_rgb(155, 89, 182),
+        Message::TelemetryReq => Color32::from_rgb(142, 68, 173),
+
+        // Other messages with neutral background
+        Message::Keepalive(_) => Color32::from_rgb(52, 73, 94),
+        Message::BulkPull(_) => Color32::from_rgb(52, 73, 94),
+        Message::BulkPullAccount(_) => Color32::from_rgb(52, 73, 94),
+        Message::BulkPush => Color32::from_rgb(52, 73, 94),
+        Message::FrontierReq(_) => Color32::from_rgb(52, 73, 94),
+        Message::NodeIdHandshake(_) => Color32::from_rgb(52, 73, 94),
+    }
+}
+
+fn get_text_color(background: Color32) -> Color32 {
+    let luminance = (0.299 * background.r() as f32 + 
+                    0.587 * background.g() as f32 + 
+                    0.114 * background.b() as f32) / 255.0;
+    
+    if luminance > 0.5 {
+        Color32::BLACK
+    } else {
+        Color32::WHITE
+    }
+}
+
+
 fn message_summary_label(message: &RecordedMessage) -> String {
     match &message.message {
         Message::ConfirmAck(ack) => {
-            let rebroadcast = if ack.is_rebroadcasted() { " rebr" } else { "" };
+            let rebroadcast = if ack.is_rebroadcasted() { " (r)" } else { "" };
+            let final_vote = if ack.vote().is_final() { " (f)" } else { "" };
             format!(
-                "{:?} ({}){}",
+                "{:?} ({}){}{}",
                 message.message.message_type(),
                 ack.vote().hashes.len(),
+                final_vote,
                 rebroadcast
             )
         }

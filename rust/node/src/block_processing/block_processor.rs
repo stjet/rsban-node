@@ -22,7 +22,19 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tracing::{debug, error, info, trace};
 
-#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, EnumIter)]
+#[derive(Default)]
+pub struct BlockProcessorInfo {
+    pub queues: Vec<QueueInfo>,
+    pub total_size: usize,
+}
+
+pub struct QueueInfo {
+    pub source: BlockSource,
+    pub size: usize,
+    pub max_size: usize,
+}
+
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, EnumIter, Hash)]
 pub enum BlockSource {
     Unknown = 0,
     Live,
@@ -309,6 +321,10 @@ impl BlockProcessor {
     }
     pub fn force(&self, block: Arc<BlockEnum>) {
         self.processor_loop.force(block);
+    }
+
+    pub fn info(&self) -> BlockProcessorInfo {
+        self.processor_loop.info()
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -695,6 +711,11 @@ impl BlockProcessorLoop {
         }
     }
 
+    pub fn info(&self) -> BlockProcessorInfo {
+        let guard = self.mutex.lock().unwrap();
+        guard.info(&self.config)
+    }
+    
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -745,6 +766,43 @@ impl BlockProcessorImpl {
         }
 
         false
+    }
+
+    pub fn info(&self, config: &BlockProcessorConfig) -> BlockProcessorInfo {
+        let mut queues_info = std::collections::HashMap::new();
+
+        // Iterate over all queues in the FairQueue
+        for (key, entry) in self.queue.iter_queues() {
+            let (source, _channel_id) = *key;
+            let size = entry.len();
+
+            queues_info
+                .entry(source)
+                .and_modify(|e| *e += size)
+                .or_insert(size);
+        }
+
+        // Prepare the QueueInfo for each BlockSource
+        let mut queues = Vec::new();
+
+        for source in BlockSource::iter() {
+            let size = queues_info.get(&source).cloned().unwrap_or(0);
+            let max_size = match source {
+                BlockSource::Live | BlockSource::LiveOriginator => config.max_peer_queue,
+                _ => config.max_system_queue,
+            };
+
+            queues.push(QueueInfo {
+                source,
+                size,
+                max_size,
+            });
+        }
+
+        BlockProcessorInfo {
+            queues,
+            total_size: self.queue.len(),
+        }
     }
 }
 

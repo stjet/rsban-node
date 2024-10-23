@@ -6,7 +6,7 @@ use crate::view_models::{AppViewModel, Tab};
 use eframe::egui::{
     self, global_theme_preference_switch, CentralPanel, Grid, ProgressBar, TopBottomPanel,
 };
-use rsnano_node::{cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
+use rsnano_node::{block_processing::BlockProcessorInfo, cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -61,7 +61,9 @@ impl eframe::App for AppView {
         match self.model.tabs.selected_tab() {
             Tab::Peers => show_peers(ctx, self.model.channels()),
             Tab::Messages => MessageTabView::new(&mut self.model).show(ctx),
-            Tab::Queues => show_queues(ctx, &self.model.aec_info, &self.model.confirming_set),
+            Tab::Queues => show_queues(ctx, &self.model.aec_info, 
+                                            &self.model.confirming_set, 
+                                            &self.model.block_processor_info),
         }
 
         // Repaint to show the continuously increasing current block and message counters
@@ -69,7 +71,10 @@ impl eframe::App for AppView {
     }
 }
 
-fn show_queues(ctx: &egui::Context, info: &ActiveElectionsInfo, confirming: &ConfirmingSetInfo) {
+fn show_queues(ctx: &egui::Context, 
+                info: &ActiveElectionsInfo, 
+                confirming: &ConfirmingSetInfo,
+                block_processor_info: &BlockProcessorInfo,) {
     CentralPanel::default().show(ctx, |ui| {
         ui.heading("Active Elections");
         Grid::new("aec_grid").num_columns(2).show(ui, |ui| {
@@ -105,6 +110,35 @@ fn show_queues(ctx: &egui::Context, info: &ActiveElectionsInfo, confirming: &Con
             );
             ui.end_row();
         });
+
+        ui.heading("Block Processor Queues");
+        Grid::new("block_processor_queues_grid")
+            .num_columns(2)
+            .show(ui, |ui| {
+                for queue_info in &block_processor_info.queues {
+                    ui.label(format!("{:?}", queue_info.source));
+                    ui.add(
+                        ProgressBar::new(queue_info.size as f32 / queue_info.max_size as f32)
+                            .text(format!("{}/{}", queue_info.size, queue_info.max_size))
+                            .desired_width(300.0),
+                    );
+                    ui.end_row();
+                }
+                ui.label("Total");
+                ui.add(
+                    ProgressBar::new(
+                        block_processor_info.total_size as f32
+                            / block_processor_info
+                                .queues
+                                .iter()
+                                .map(|q| q.max_size)
+                                .sum::<usize>() as f32,
+                    )
+                    .text(block_processor_info.total_size.to_string())
+                    .desired_width(300.0),
+                );
+                ui.end_row();
+            });
 
         ui.heading("Miscellaneous");
         Grid::new("misc_grid").num_columns(2).show(ui, |ui| {

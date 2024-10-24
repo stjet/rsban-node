@@ -1,11 +1,11 @@
 use super::{
     ChannelsViewModel, LedgerStatsViewModel, MessageStatsViewModel, MessageTableViewModel,
-    NodeRunnerViewModel, TabBarViewModel,
+    NodeRunnerViewModel, QueueGroupViewModel, TabBarViewModel,
 };
 use crate::{
     channels::Channels, ledger_stats::LedgerStats, message_collection::MessageCollection,
     message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
-    nullable_runtime::NullableRuntime,
+    nullable_runtime::NullableRuntime, view_models::QueueViewModel,
 };
 use rsnano_node::{
     block_processing::BlockSource,
@@ -108,6 +108,38 @@ impl AppViewModel {
 
     pub(crate) fn channels(&mut self) -> ChannelsViewModel {
         ChannelsViewModel::new(&mut self.channels)
+    }
+
+    pub(crate) fn queue_groups(&self) -> Vec<QueueGroupViewModel> {
+        vec![
+            QueueGroupViewModel {
+                heading: "Active Elections".to_string(),
+                queues: vec![
+                    QueueViewModel::new(
+                        "Priority",
+                        self.aec_info.priority,
+                        self.aec_info.max_queue,
+                    ),
+                    QueueViewModel::new("Hinted", self.aec_info.hinted, self.aec_info.max_queue),
+                    QueueViewModel::new(
+                        "Optimistic",
+                        self.aec_info.optimistic,
+                        self.aec_info.max_queue,
+                    ),
+                    QueueViewModel::new("Total", self.aec_info.total, self.aec_info.max_queue),
+                ],
+            },
+            QueueGroupViewModel::for_fair_queue("Block Processor", &self.block_processor_info),
+            QueueGroupViewModel::for_fair_queue("Vote Processor", &self.vote_processor_info),
+            QueueGroupViewModel {
+                heading: "Miscellaneous".to_string(),
+                queues: vec![QueueViewModel::new(
+                    "Confirming",
+                    self.confirming_set.size,
+                    self.confirming_set.max_size,
+                )],
+            },
+        ]
     }
 }
 

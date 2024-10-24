@@ -1,5 +1,5 @@
 use crate::view_models::QueueGroupViewModel;
-use eframe::egui::{Align, Layout, ProgressBar, Ui};
+use eframe::egui::{Align, Layout, ProgressBar, RichText, Ui};
 use egui_extras::{Size, StripBuilder};
 
 pub(crate) fn show_queue_group(ui: &mut Ui, model: QueueGroupViewModel) {
@@ -18,7 +18,17 @@ pub(crate) fn show_queue_group(ui: &mut Ui, model: QueueGroupViewModel) {
                         });
                     });
                     strip.cell(|ui| {
-                        ui.add(ProgressBar::new(queue.progress).text(queue.value));
+                        let visuals = ui.visuals();
+                        let (foreground, background) = if visuals.dark_mode {
+                            queue.color.as_dark_colors()
+                        } else {
+                            queue.color.as_light_colors()
+                        };
+                        ui.add(
+                            ProgressBar::new(queue.progress)
+                                .text(RichText::new(queue.value).color(foreground))
+                                .fill(background),
+                        );
                     });
                     strip.cell(|ui| {
                         ui.label(queue.max);

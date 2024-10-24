@@ -2,21 +2,10 @@ use super::{
     queue_group_view::show_queue_group, show_peers, LedgerStatsView, MessageRecorderControlsView,
     MessageStatsView, MessageTabView, NodeRunnerView, TabBarView,
 };
-use crate::view_models::{
-    create_queue_group_view_model, AppViewModel, QueueGroupViewModel, QueueViewModel, Tab,
-};
+use crate::view_models::{AppViewModel, QueueGroupViewModel, Tab};
 use eframe::egui::{
-    self, global_theme_preference_switch, warn_if_debug_build, CentralPanel, Grid, ProgressBar,
-    TopBottomPanel,
+    self, global_theme_preference_switch, warn_if_debug_build, CentralPanel, TopBottomPanel,
 };
-use num_format::{Locale, ToFormattedString};
-use rsnano_node::{
-    block_processing::BlockSource,
-    cementation::ConfirmingSetInfo,
-    consensus::{ActiveElectionsInfo, RepTier},
-    transport::{FairQueueInfo, QueueInfo},
-};
-use strum::IntoEnumIterator;
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -72,13 +61,7 @@ impl eframe::App for AppView {
         match self.model.tabs.selected_tab() {
             Tab::Peers => show_peers(ctx, self.model.channels()),
             Tab::Messages => MessageTabView::new(&mut self.model).show(ctx),
-            Tab::Queues => show_queues(
-                ctx,
-                &self.model.aec_info,
-                &self.model.confirming_set,
-                &self.model.block_processor_info,
-                &self.model.vote_processor_info,
-            ),
+            Tab::Queues => show_queues(ctx, self.model.queue_groups()),
         }
 
         // Repaint to show the continuously increasing current block and message counters
@@ -86,66 +69,11 @@ impl eframe::App for AppView {
     }
 }
 
-fn show_queues(
-    ctx: &egui::Context,
-    info: &ActiveElectionsInfo,
-    confirming: &ConfirmingSetInfo,
-    block_processor_info: &FairQueueInfo<BlockSource>,
-    vote_processor_info: &FairQueueInfo<RepTier>,
-) {
+fn show_queues(ctx: &egui::Context, groups: Vec<QueueGroupViewModel>) {
     CentralPanel::default().show(ctx, |ui| {
-        let group = QueueGroupViewModel {
-            heading: "Active Elections".to_string(),
-            queues: vec![
-                QueueViewModel {
-                    label: "Priority".to_string(),
-                    value: info.priority.to_formatted_string(&Locale::en),
-                    max: info.max_queue.to_formatted_string(&Locale::en),
-                    progress: info.priority as f32 / info.max_queue as f32,
-                },
-                QueueViewModel {
-                    label: "Hinted".to_string(),
-                    value: info.hinted.to_formatted_string(&Locale::en),
-                    max: info.max_queue.to_formatted_string(&Locale::en),
-                    progress: info.hinted as f32 / info.max_queue as f32,
-                },
-                QueueViewModel {
-                    label: "Optimistic".to_string(),
-                    value: info.optimistic.to_formatted_string(&Locale::en),
-                    max: info.max_queue.to_formatted_string(&Locale::en),
-                    progress: info.optimistic as f32 / info.max_queue as f32,
-                },
-                QueueViewModel {
-                    label: "Total".to_string(),
-                    value: info.total.to_formatted_string(&Locale::en),
-                    max: info.max_queue.to_formatted_string(&Locale::en),
-                    progress: info.total as f32 / info.max_queue as f32,
-                },
-            ],
-        };
-        show_queue_group(ui, group);
-
-        ui.add_space(10.0);
-
-        let group = create_queue_group_view_model("Block Processor", block_processor_info);
-        show_queue_group(ui, group);
-
-        ui.add_space(10.0);
-
-        let group = create_queue_group_view_model("Vote Processor", vote_processor_info);
-        show_queue_group(ui, group);
-
-        ui.add_space(10.0);
-
-        let group = QueueGroupViewModel {
-            heading: "Miscellaneous".to_string(),
-            queues: vec![QueueViewModel {
-                label: "Confirming".to_string(),
-                value: confirming.size.to_formatted_string(&Locale::en),
-                max: confirming.max_size.to_formatted_string(&Locale::en),
-                progress: confirming.size as f32 / confirming.max_size as f32,
-            }],
-        };
-        show_queue_group(ui, group);
+        for group in groups {
+            show_queue_group(ui, group);
+            ui.add_space(10.0);
+        }
     });
 }

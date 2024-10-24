@@ -68,6 +68,8 @@ pub struct NodeConfigDto {
     pub use_memory_pools: bool,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
+    pub max_peers_per_ip: u16,
+    pub max_peers_per_subnetwork: u16,
     pub bootstrap_ascending: BootstrapAscendingConfigDto,
     pub bootstrap_server: BootstrapServerConfigDto,
     pub bootstrap_bandwidth_limit: usize,
@@ -242,6 +244,8 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
 
     dto.bandwidth_limit = cfg.bandwidth_limit;
     dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
+    dto.max_peers_per_ip = cfg.max_peers_per_ip;
+    dto.max_peers_per_subnetwork = cfg.max_peers_per_subnetwork;
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
     dto.bootstrap_bandwidth_burst_ratio = cfg.bootstrap_bandwidth_burst_ratio;
     dto.bootstrap_ascending = (&cfg.bootstrap_ascending).into();
@@ -415,6 +419,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             use_memory_pools: value.use_memory_pools,
             bandwidth_limit: value.bandwidth_limit,
             bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
+            max_peers_per_ip: value.max_peers_per_ip,
+            max_peers_per_subnetwork: value.max_peers_per_subnetwork,
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,
             bootstrap_bandwidth_burst_ratio: value.bootstrap_bandwidth_burst_ratio,
             bootstrap_ascending: (&value.bootstrap_ascending).into(),

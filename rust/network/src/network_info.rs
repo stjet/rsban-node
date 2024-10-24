@@ -24,10 +24,10 @@ pub struct NetworkConfig {
     pub max_outbound_connections: usize,
 
     /** Maximum number of peers per IP. It is also the max number of connections per IP*/
-    pub max_peers_per_ip: usize,
+    pub max_peers_per_ip: u16,
 
     /** Maximum number of peers per subnetwork */
-    pub max_peers_per_subnetwork: usize,
+    pub max_peers_per_subnetwork: u16,
     pub max_attempts_per_ip: usize,
 
     pub allow_local_peers: bool,
@@ -444,7 +444,7 @@ impl NetworkInfo {
         }
         let count =
             self.count_by_ip(&endpoint.ip()) + self.attempts.count_by_address(&endpoint.ip());
-        count >= self.network_config.max_peers_per_ip
+        count >= self.network_config.max_peers_per_ip as usize
     }
 
     fn max_subnetwork_connections(&self, peer: &SocketAddrV6) -> bool {
@@ -461,7 +461,7 @@ impl NetworkInfo {
         let subnet_count =
             self.count_by_subnet(&subnet) + self.attempts.count_by_subnetwork(&subnet);
 
-        subnet_count >= self.network_config.max_peers_per_subnetwork
+        subnet_count >= self.network_config.max_peers_per_subnetwork as usize
     }
 
     pub fn validate_new_connection(
@@ -486,7 +486,7 @@ impl NetworkInfo {
 
         if !self.network_config.disable_max_peers_per_ip {
             let count = self.count_by_ip(peer.ip());
-            if count >= self.network_config.max_peers_per_ip {
+            if count >= self.network_config.max_peers_per_ip as usize {
                 return Err(NetworkError::MaxConnectionsPerIp);
             }
         }

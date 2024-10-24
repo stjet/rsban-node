@@ -1,5 +1,8 @@
+use super::badge::Badge;
 use crate::view_models::MessageTableViewModel;
-use eframe::egui::{CentralPanel, Color32, Label, Sense, TextEdit, TopBottomPanel, Ui, RichText};
+use eframe::egui::{
+    Align, CentralPanel, Color32, Label, Layout, Sense, TextEdit, TextWrapMode, TopBottomPanel, Ui,
+};
 use egui_extras::{Column, TableBuilder};
 
 pub(crate) struct MessageTableView<'a> {
@@ -83,6 +86,7 @@ impl<'a> MessageTableView<'a> {
         TableBuilder::new(ui)
             .striped(true)
             .resizable(false)
+            .cell_layout(Layout::left_to_right(Align::Center))
             .auto_shrink(false)
             .sense(Sense::click())
             .column(Column::auto())
@@ -108,20 +112,17 @@ impl<'a> MessageTableView<'a> {
                         row.set_selected(true);
                     }
                     row.col(|ui| {
-                        ui.add(Label::new(row_model.channel_id).selectable(false));
+                        ui.add(
+                            Label::new(row_model.channel_id)
+                                .wrap_mode(TextWrapMode::Truncate)
+                                .selectable(false),
+                        );
                     });
                     row.col(|ui| {
                         ui.add(Label::new(row_model.direction).selectable(false));
                     });
                     row.col(|ui| {
-                        ui.painter().rect_filled(
-                            ui.available_rect_before_wrap(),
-                            0.0,
-                            row_model.background_color
-                        );
-                        ui.add(
-                            Label::new(RichText::new(&row_model.message).color(row_model.text_color)).selectable(false)
-                        );
+                        ui.add(Badge::new(row_model.message, row_model.color));
                     });
                     if row.response().clicked() {
                         self.model.select_message(row.index());

@@ -19,6 +19,8 @@ pub struct NodeToml {
     pub backup_before_upgrade: Option<bool>,
     pub bandwidth_limit: Option<usize>,
     pub bandwidth_limit_burst_ratio: Option<f64>,
+    pub max_peers_per_ip: Option<u16>,
+    pub max_peers_per_subnetwork: Option<u16>,
     pub block_processor_batch_max_time: Option<i64>,
     pub bootstrap_bandwidth_burst_ratio: Option<f64>,
     pub bootstrap_bandwidth_limit: Option<usize>,
@@ -99,6 +101,12 @@ impl NodeConfig {
         }
         if let Some(bandwidth_limit) = toml.bandwidth_limit {
             self.bandwidth_limit = bandwidth_limit;
+        }
+        if let Some(max) = toml.max_peers_per_ip {
+            self.max_peers_per_ip = max;
+        }
+        if let Some(max) = toml.max_peers_per_subnetwork {
+            self.max_peers_per_subnetwork = max;
         }
         if let Some(bandwidth_limit_burst_ratio) = toml.bandwidth_limit_burst_ratio {
             self.bandwidth_limit_burst_ratio = bandwidth_limit_burst_ratio;
@@ -365,6 +373,8 @@ impl From<&NodeConfig> for NodeToml {
             backup_before_upgrade: Some(config.backup_before_upgrade),
             bandwidth_limit: Some(config.bandwidth_limit),
             bandwidth_limit_burst_ratio: Some(config.bandwidth_limit_burst_ratio),
+            max_peers_per_ip: Some(config.max_peers_per_ip),
+            max_peers_per_subnetwork: Some(config.max_peers_per_subnetwork),
             block_processor_batch_max_time: Some(config.block_processor_batch_max_time_ms),
             bootstrap_bandwidth_burst_ratio: Some(config.bootstrap_bandwidth_burst_ratio),
             bootstrap_bandwidth_limit: Some(config.bootstrap_bandwidth_limit),

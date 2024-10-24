@@ -69,6 +69,8 @@ pub struct NodeConfig {
     pub use_memory_pools: bool,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
+    pub max_peers_per_ip: u16,
+    pub max_peers_per_subnetwork: u16,
     pub bootstrap_ascending: BootstrapAscendingConfig,
     pub bootstrap_server: BootstrapServerConfig,
     pub bootstrap_bandwidth_limit: usize,
@@ -305,6 +307,8 @@ impl NodeConfig {
             bandwidth_limit: 10 * 1024 * 1024,
             // By default, allow bursts of 15MB/s (not sustainable)
             bandwidth_limit_burst_ratio: 3_f64,
+            max_peers_per_ip: network_params.network.max_peers_per_ip as u16,
+            max_peers_per_subnetwork: network_params.network.max_peers_per_subnetwork as u16,
             // Default boostrap outbound traffic limit is 5MB/s
             bootstrap_bandwidth_limit: 5 * 1024 * 1024,
             // Bootstrap traffic does not need bursts

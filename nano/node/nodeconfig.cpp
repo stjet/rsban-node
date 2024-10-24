@@ -62,6 +62,8 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.use_memory_pools = config.use_memory_pools;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
+	dto.max_peers_per_ip = config.max_peers_per_ip;
+	dto.max_peers_per_subnetwork = config.max_peers_per_subnetwork;
 	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
 	dto.bootstrap_bandwidth_burst_ratio = config.bootstrap_bandwidth_burst_ratio;
 	dto.confirming_set_batch_time_ms = config.confirming_set_batch_time.count ();
@@ -195,6 +197,8 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	use_memory_pools = dto.use_memory_pools;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
+	max_peers_per_ip = dto.max_peers_per_ip;
+	max_peers_per_subnetwork = dto.max_peers_per_subnetwork;
 	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
 	bootstrap_bandwidth_burst_ratio = dto.bootstrap_bandwidth_burst_ratio;
 	confirming_set_batch_time = std::chrono::milliseconds (dto.confirming_set_batch_time_ms);

@@ -187,6 +187,8 @@ public:
 	std::size_t bandwidth_limit;
 	/** By default, allow bursts of 15MB/s (not sustainable) */
 	double bandwidth_limit_burst_ratio{ 3. };
+	uint16_t max_peers_per_ip;
+	uint16_t max_peers_per_subnetwork;
 	std::size_t bootstrap_bandwidth_limit;
 	double bootstrap_bandwidth_burst_ratio;
 	nano::bootstrap_ascending_config bootstrap_ascending;

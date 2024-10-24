@@ -1,6 +1,11 @@
-use crate::{channels::RepState, view_models::ChannelsViewModel};
-use eframe::egui::{self, CentralPanel, Color32, Label, RichText, Sense, Ui};
+use crate::{
+    channels::RepState,
+    view_models::{ChannelsViewModel, PaletteColor},
+};
+use eframe::egui::{self, Align, CentralPanel, Label, Layout, Sense, Ui};
 use egui_extras::{Column, Size, StripBuilder, TableBuilder};
+
+use super::badge::Badge;
 
 pub(crate) fn show_peers(ctx: &egui::Context, model: ChannelsViewModel) {
     CentralPanel::default().show(ctx, |ui| {
@@ -30,6 +35,7 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
     TableBuilder::new(ui)
         .striped(true)
         .resizable(false)
+        .cell_layout(Layout::left_to_right(Align::Center))
         .auto_shrink(false)
         .sense(Sense::click())
         .column(Column::auto()) // channel
@@ -127,24 +133,10 @@ fn show_peers_table(ui: &mut Ui, mut model: ChannelsViewModel) {
 pub(crate) fn show_rep_state(ui: &mut Ui, rep_state: RepState) {
     match rep_state {
         RepState::PrincipalRep => {
-            ui.add(
-                Label::new(
-                    RichText::new("PR")
-                        .color(Color32::WHITE)
-                        .background_color(Color32::DARK_RED),
-                )
-                .selectable(false),
-            );
+            ui.add(Badge::new("PR", PaletteColor::Purple1));
         }
         RepState::Rep => {
-            ui.add(
-                Label::new(
-                    RichText::new("R")
-                        .color(Color32::WHITE)
-                        .background_color(Color32::DARK_GRAY),
-                )
-                .selectable(false),
-            );
+            ui.add(Badge::new("R", PaletteColor::Neutral2));
         }
         RepState::NoRep => {}
     }

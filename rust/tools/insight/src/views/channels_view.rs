@@ -1,5 +1,5 @@
 use crate::view_models::ChannelsViewModel;
-use eframe::egui::{Label, Sense, Ui};
+use eframe::egui::{Align, Label, Layout, Sense, Ui};
 use egui_extras::{Column, TableBuilder};
 
 use super::show_rep_state;
@@ -20,6 +20,7 @@ impl<'a> ChannelsView<'a> {
             .striped(true)
             .resizable(false)
             .auto_shrink(false)
+            .cell_layout(Layout::left_to_right(Align::Center))
             .sense(Sense::click())
             .column(Column::auto())
             .column(Column::auto()) // rep state

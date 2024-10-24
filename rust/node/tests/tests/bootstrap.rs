@@ -40,7 +40,11 @@ mod bootstrap_processor {
         flags.disable_legacy_bootstrap = true;
         flags.disable_ascending_bootstrap = true;
         flags.disable_ongoing_bootstrap = true;
-        let node0 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node0 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
         let key1 = KeyPair::new();
         let key2 = KeyPair::new();
         // Generating test chain
@@ -89,11 +93,16 @@ mod bootstrap_processor {
         establish_tcp(&node1, &node0);
         let wallet_id = WalletId::random();
         node1.wallets.create(wallet_id);
-        let account = node1.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+        let account = node1
+            .wallets
+            .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+            .unwrap();
         node1.bootstrap_wallet();
 
         // Check processed blocks
-        assert_timely(Duration::from_secs(10), || node1.block_exists(&send2.hash()));
+        assert_timely(Duration::from_secs(10), || {
+            node1.block_exists(&send2.hash())
+        });
     }
 
     #[test]
@@ -106,7 +115,11 @@ mod bootstrap_processor {
         flags.disable_legacy_bootstrap = true;
         flags.disable_ascending_bootstrap = true;
         flags.disable_ongoing_bootstrap = true;
-        let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node1 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
         let key1 = KeyPair::new();
         let key2 = KeyPair::new();
 
@@ -121,7 +134,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
             .build();
 
-        assert_eq!(node1.process_local(send1.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // send Gxrb_ratio raw from genesis to key2
         let send2 = BlockBuilder::state()
@@ -134,7 +150,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(send1.hash().into()))
             .build();
 
-        assert_eq!(node1.process_local(send2.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // receive send1 on key1
         let open = BlockBuilder::legacy_open()
@@ -145,7 +164,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(key1.public_key().into()))
             .build();
 
-        assert_eq!(node1.process_local(open.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(open.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // receive send2 on key2
         let state_open = BlockBuilder::state()
@@ -158,16 +180,28 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(key2.public_key().into()))
             .build();
 
-        assert_eq!(node1.process_local(state_open.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(state_open.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // Start lazy bootstrap with last block in sender chain
         config.peering_port = Some(get_available_port());
-        let node2 = system.build_node().config(config).flags(flags).disconnected().finish();
+        let node2 = system
+            .build_node()
+            .config(config)
+            .flags(flags)
+            .disconnected()
+            .finish();
         establish_tcp(&node2, &node1);
-        node2.bootstrap_initiator.bootstrap_lazy(send2.hash().into(), true, "".to_string());
+        node2
+            .bootstrap_initiator
+            .bootstrap_lazy(send2.hash().into(), true, "".to_string());
 
         // Check processed blocks
-        assert_timely(Duration::from_secs(5), || !node2.bootstrap_initiator.in_progress());
+        assert_timely(Duration::from_secs(5), || {
+            !node2.bootstrap_initiator.in_progress()
+        });
         assert_timely(Duration::from_secs(5), || node2.block_exists(&send1.hash()));
         assert_timely(Duration::from_secs(5), || node2.block_exists(&send2.hash()));
         assert!(!node2.block_exists(&open.hash()));
@@ -186,7 +220,11 @@ mod bootstrap_processor {
         flags.disable_legacy_bootstrap = true;
         flags.disable_ascending_bootstrap = true;
         flags.disable_ongoing_bootstrap = true;
-        let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node1 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
         let key = KeyPair::new();
         let key2 = KeyPair::new();
         // Generating test chain
@@ -201,7 +239,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
             .build();
 
-        assert_eq!(node1.process_local(send1.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let open = BlockBuilder::legacy_open()
             .source(send1.hash())
@@ -211,7 +252,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(key.public_key().into()))
             .build();
 
-        assert_eq!(node1.process_local(open.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(open.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let send2 = BlockBuilder::state()
             .account(key.public_key())
@@ -223,16 +267,28 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(open.hash().into()))
             .build();
 
-        assert_eq!(node1.process_local(send2.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // Start lazy bootstrap with last block in chain known
         config.peering_port = Some(get_available_port());
-        let node2 = system.build_node().config(config).flags(flags).disconnected().finish();
+        let node2 = system
+            .build_node()
+            .config(config)
+            .flags(flags)
+            .disconnected()
+            .finish();
         establish_tcp(&node2, &node1);
-        node2.bootstrap_initiator.bootstrap_lazy(send2.hash().into(), true, "".to_string());
+        node2
+            .bootstrap_initiator
+            .bootstrap_lazy(send2.hash().into(), true, "".to_string());
 
         // Check processed blocks
-        assert_timely(Duration::from_secs(15), || !node2.bootstrap_initiator.in_progress());
+        assert_timely(Duration::from_secs(15), || {
+            !node2.bootstrap_initiator.in_progress()
+        });
         assert_timely_msg(
             Duration::from_secs(15),
             || node2.block_hashes_exist(vec![send1.hash(), open.hash(), send2.hash()]),
@@ -240,7 +296,11 @@ mod bootstrap_processor {
         );
 
         assert_eq!(
-            node2.stats.count(StatType::Bootstrap, DetailType::BulkPullFailedAccount, Direction::In),
+            node2.stats.count(
+                StatType::Bootstrap,
+                DetailType::BulkPullFailedAccount,
+                Direction::In
+            ),
             1
         );
 
@@ -257,8 +317,12 @@ mod bootstrap_processor {
         flags.disable_legacy_bootstrap = true;
         flags.disable_ascending_bootstrap = true;
         flags.disable_ongoing_bootstrap = true;
-        
-        let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+
+        let node1 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
         let key = KeyPair::new();
 
         let send1 = BlockBuilder::state()
@@ -271,7 +335,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
             .build();
 
-        assert_eq!(node1.process_local(send1.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let send2 = BlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
@@ -282,7 +349,10 @@ mod bootstrap_processor {
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(send1.hash().into()))
             .build();
-        assert_eq!(node1.process_local(send2.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(send2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let open = BlockBuilder::legacy_open()
             .source(send1.hash())
@@ -292,7 +362,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(key.public_key().into()))
             .build();
 
-        assert_eq!(node1.process_local(open.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(open.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let receive = BlockBuilder::state()
             .account(key.public_key())
@@ -304,7 +377,10 @@ mod bootstrap_processor {
             .work(node1.work_generate_dev(open.hash().into()))
             .build();
 
-        assert_eq!(node1.process_local(receive.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node1.process_local(receive.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         assert_timely_msg(
             Duration::from_secs(5),
@@ -314,9 +390,16 @@ mod bootstrap_processor {
 
         // Start lazy bootstrap with last block in chain known
         config.peering_port = Some(get_available_port());
-        let node2 = system.build_node().config(config).flags(flags).disconnected().finish();
+        let node2 = system
+            .build_node()
+            .config(config)
+            .flags(flags)
+            .disconnected()
+            .finish();
         establish_tcp(&node2, &node1);
-        node2.bootstrap_initiator.bootstrap_lazy(receive.hash().into(), true, "".to_string());
+        node2
+            .bootstrap_initiator
+            .bootstrap_lazy(receive.hash().into(), true, "".to_string());
 
         assert_timely_msg(
             Duration::from_secs(5),
@@ -325,7 +408,11 @@ mod bootstrap_processor {
         );
 
         assert_eq!(
-            node2.stats.count(StatType::Bootstrap, DetailType::BulkPullFailedAccount, Direction::In),
+            node2.stats.count(
+                StatType::Bootstrap,
+                DetailType::BulkPullFailedAccount,
+                Direction::In
+            ),
             0
         );
 
@@ -343,7 +430,11 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         flags.enable_pruning = true;
 
-        let node0 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node0 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
 
         let key1 = KeyPair::new();
         let key2 = KeyPair::new();
@@ -436,12 +527,26 @@ mod bootstrap_processor {
             node0.work_generate_dev(key2.public_key().into()),
         ));
 
-        let blocks = vec![send1.clone(), receive1.clone(), change1.clone(), change2.clone(), send2, receive2, send3, receive3.clone()];
+        let blocks = vec![
+            send1.clone(),
+            receive1.clone(),
+            change1.clone(),
+            change2.clone(),
+            send2,
+            receive2,
+            send3,
+            receive3.clone(),
+        ];
         node0.process_multi(&blocks);
         node0.confirm_multi(&blocks);
 
         config.peering_port = Some(get_available_port());
-        let node1 = system.build_node().config(config).flags(flags).disconnected().finish();
+        let node1 = system
+            .build_node()
+            .config(config)
+            .flags(flags)
+            .disconnected()
+            .finish();
 
         // Processing chain to prune for node1
         node1.process_active(send1.clone());
@@ -450,7 +555,14 @@ mod bootstrap_processor {
         node1.process_active(change2.clone());
         assert_timely_msg(
             Duration::from_secs(5),
-            || node1.blocks_exist(&[send1.clone(), receive1.clone(), change1.clone(), change2.clone()]),
+            || {
+                node1.blocks_exist(&[
+                    send1.clone(),
+                    receive1.clone(),
+                    change1.clone(),
+                    change2.clone(),
+                ])
+            },
             "blocks not processed",
         );
 
@@ -468,12 +580,18 @@ mod bootstrap_processor {
 
         // Start lazy bootstrap with last block in chain known
         establish_tcp(&node1, &node0);
-        node1.bootstrap_initiator.bootstrap_lazy(receive3.hash().into(), true, "".to_string());
+        node1
+            .bootstrap_initiator
+            .bootstrap_lazy(receive3.hash().into(), true, "".to_string());
 
         // Check processed blocks
         assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 9);
-        assert_timely(Duration::from_secs(5), || node1.balance(&key2.account()) != Amount::zero());
-        assert_timely(Duration::from_secs(5), || !node1.bootstrap_initiator.in_progress());
+        assert_timely(Duration::from_secs(5), || {
+            node1.balance(&key2.account()) != Amount::zero()
+        });
+        assert_timely(Duration::from_secs(5), || {
+            !node1.bootstrap_initiator.in_progress()
+        });
     }
 
     #[test]
@@ -509,8 +627,12 @@ mod bootstrap_processor {
             genesis_balance - Amount::raw(100),
         );
 
-        node1.peer_connector.connect_to(node0.tcp_listener.local_address());
-        node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+        node1
+            .peer_connector
+            .connect_to(node0.tcp_listener.local_address());
+        node1
+            .bootstrap_initiator
+            .bootstrap2(node0.tcp_listener.local_address(), "".into());
         assert_timely_eq(
             Duration::from_secs(5),
             || node0.balance(&DEV_GENESIS_ACCOUNT),
@@ -537,7 +659,10 @@ mod bootstrap_processor {
             .work(node0.work_generate_dev(node0.latest(&DEV_GENESIS_ACCOUNT).into()))
             .build();
 
-        assert_eq!(node0.process_local(send1.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node0.process_local(send1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let open = BlockBuilder::legacy_open()
             .source(send1.hash())
@@ -546,8 +671,11 @@ mod bootstrap_processor {
             .sign(&key)
             .work(node0.work_generate_dev(key.public_key().into()))
             .build();
-        
-        assert_eq!(node0.process_local(open.clone()).unwrap(), BlockStatus::Progress);
+
+        assert_eq!(
+            node0.process_local(open.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let send2 = BlockBuilder::legacy_send()
             .previous(open.hash())
@@ -557,7 +685,10 @@ mod bootstrap_processor {
             .work(node0.work_generate_dev(open.hash().into()))
             .build();
 
-        assert_eq!(node0.process_local(send2.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node0.process_local(send2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let receive = BlockBuilder::legacy_receive()
             .previous(send1.hash())
@@ -566,11 +697,18 @@ mod bootstrap_processor {
             .work(node0.work_generate_dev(send1.hash().into()))
             .build();
 
-        assert_eq!(node0.process_local(receive.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node0.process_local(receive.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         let node1 = system.make_disconnected_node();
-        node1.peer_connector.connect_to(node0.tcp_listener.local_address());
-        node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+        node1
+            .peer_connector
+            .connect_to(node0.tcp_listener.local_address());
+        node1
+            .bootstrap_initiator
+            .bootstrap2(node0.tcp_listener.local_address(), "".into());
         assert_timely_eq(
             Duration::from_secs(5),
             || node1.balance(&DEV_GENESIS_ACCOUNT),
@@ -585,7 +723,11 @@ mod bootstrap_processor {
         config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
-        let node0 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node0 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
         let wallet_id = node0.wallets.wallet_ids()[0];
@@ -610,12 +752,24 @@ mod bootstrap_processor {
             node0.work_generate_dev(block1.hash().into()),
         ));
 
-        assert_eq!(node0.process_local(block1.clone()).unwrap(), BlockStatus::Progress);
-        assert_eq!(node0.process_local(block2.clone()).unwrap(), BlockStatus::Progress);
-        
+        assert_eq!(
+            node0.process_local(block1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
+        assert_eq!(
+            node0.process_local(block2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
+
         assert_timely_eq(
             Duration::from_secs(5),
-            || node0.ledger.account_info(&node0.ledger.read_txn(), &DEV_GENESIS_ACCOUNT).map(|info| info.block_count).unwrap_or(0),
+            || {
+                node0
+                    .ledger
+                    .account_info(&node0.ledger.read_txn(), &DEV_GENESIS_ACCOUNT)
+                    .map(|info| info.block_count)
+                    .unwrap_or(0)
+            },
             3,
         );
 
@@ -624,8 +778,12 @@ mod bootstrap_processor {
         assert_eq!(node0.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
         assert_ne!(node1.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
 
-        node1.peer_connector.connect_to(node0.tcp_listener.local_address());
-        node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+        node1
+            .peer_connector
+            .connect_to(node0.tcp_listener.local_address());
+        node1
+            .bootstrap_initiator
+            .bootstrap2(node0.tcp_listener.local_address(), "".into());
 
         assert_timely_eq(
             Duration::from_secs(5),
@@ -643,7 +801,11 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let key2 = KeyPair::new();
 
-        let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node1 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
         config.peering_port = Some(get_available_port());
         let node2 = system.build_node().config(config).flags(flags).finish();
 
@@ -667,35 +829,39 @@ mod bootstrap_processor {
             )
             .unwrap();
 
-        assert_timely(
-            Duration::from_secs(5),
-            || !node1.balance(&key2.public_key().into()).is_zero(),
-        );
+        assert_timely(Duration::from_secs(5), || {
+            !node1.balance(&key2.public_key().into()).is_zero()
+        });
 
         // wait for the receive block on node2
-        assert_timely(
-            Duration::from_secs(5),
-            || node2.block(&node2.latest(&key2.public_key().into())).is_some(),
-        );
+        assert_timely(Duration::from_secs(5), || {
+            node2
+                .block(&node2.latest(&key2.public_key().into()))
+                .is_some()
+        });
 
-        let receive = node2.block(&node2.latest(&key2.public_key().into())).unwrap();
+        let receive = node2
+            .block(&node2.latest(&key2.public_key().into()))
+            .unwrap();
 
         // All blocks should be propagated & confirmed
-        assert_timely(
-            Duration::from_secs(5),
-            || node1.blocks_confirmed(&[send.clone(), receive.clone()]),
-        );
-        assert_timely(
-            Duration::from_secs(5),
-            || node2.blocks_confirmed(&[send.clone(), receive.clone()]),
-        );
+        assert_timely(Duration::from_secs(5), || {
+            node1.blocks_confirmed(&[send.clone(), receive.clone()])
+        });
+        assert_timely(Duration::from_secs(5), || {
+            node2.blocks_confirmed(&[send.clone(), receive.clone()])
+        });
         assert_timely(Duration::from_secs(5), || node1.active.len() == 0);
         assert_timely(Duration::from_secs(5), || node2.active.len() == 0);
 
         // create a node manually to avoid making automatic network connections
         let node3 = system.make_disconnected_node();
-        node3.peer_connector.connect_to(node1.tcp_listener.local_address());
-        node3.bootstrap_initiator.bootstrap2(node1.tcp_listener.local_address(), "".into());
+        node3
+            .peer_connector
+            .connect_to(node1.tcp_listener.local_address());
+        node3
+            .bootstrap_initiator
+            .bootstrap2(node1.tcp_listener.local_address(), "".into());
         assert_timely_eq(
             Duration::from_secs(5),
             || node3.balance(&key2.public_key().into()),
@@ -715,8 +881,9 @@ mod bootstrap_processor {
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
         let wallet_id = node0.wallets.wallet_ids()[0];
-        
-        node0.wallets
+
+        node0
+            .wallets
             .send_action2(
                 &wallet_id,
                 *DEV_GENESIS_ACCOUNT,
@@ -727,8 +894,9 @@ mod bootstrap_processor {
                 None,
             )
             .unwrap();
-        
-        node0.wallets
+
+        node0
+            .wallets
             .send_action2(
                 &wallet_id,
                 *DEV_GENESIS_ACCOUNT,
@@ -742,22 +910,32 @@ mod bootstrap_processor {
 
         assert_timely_eq(
             Duration::from_secs(5),
-            || node0.ledger.account_info(&node0.ledger.read_txn(), &DEV_GENESIS_ACCOUNT).map(|info| info.block_count).unwrap_or(0),
+            || {
+                node0
+                    .ledger
+                    .account_info(&node0.ledger.read_txn(), &DEV_GENESIS_ACCOUNT)
+                    .map(|info| info.block_count)
+                    .unwrap_or(0)
+            },
             3,
         );
 
         // Create a node manually to avoid making automatic network connections
         let node1 = system.make_disconnected_node();
-        
+
         // Nodes should be out of sync here
         assert_ne!(
             node1.latest(&DEV_GENESIS_ACCOUNT),
             node0.latest(&DEV_GENESIS_ACCOUNT)
         );
 
-        node1.peer_connector.connect_to(node0.tcp_listener.local_address());
+        node1
+            .peer_connector
+            .connect_to(node0.tcp_listener.local_address());
         // Bootstrap triggered
-        node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+        node1
+            .bootstrap_initiator
+            .bootstrap2(node0.tcp_listener.local_address(), "".into());
 
         // Nodes should sync up
         assert_timely_eq(
@@ -775,7 +953,11 @@ mod bootstrap_processor {
         config.enable_voting = false;
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
-        let node0 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+        let node0 = system
+            .build_node()
+            .config(config.clone())
+            .flags(flags.clone())
+            .finish();
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
         let wallet_id = node0.wallets.wallet_ids()[0];
@@ -792,21 +974,27 @@ mod bootstrap_processor {
             )
             .unwrap();
 
-        assert_timely(
-            Duration::from_secs(5),
-            || node0.latest(&DEV_GENESIS_ACCOUNT) != *DEV_GENESIS_HASH,
-        );
+        assert_timely(Duration::from_secs(5), || {
+            node0.latest(&DEV_GENESIS_ACCOUNT) != *DEV_GENESIS_HASH
+        });
 
         flags.disable_rep_crawler = true;
         config.peering_port = Some(get_available_port());
-        let node1 = system.build_node().config(config).flags(flags).disconnected().finish();
-        
+        let node1 = system
+            .build_node()
+            .config(config)
+            .flags(flags)
+            .disconnected()
+            .finish();
+
         assert_ne!(
             node0.latest(&DEV_GENESIS_ACCOUNT),
             node1.latest(&DEV_GENESIS_ACCOUNT)
         );
 
-        node1.peer_connector.connect_to(node0.tcp_listener.local_address());
+        node1
+            .peer_connector
+            .connect_to(node0.tcp_listener.local_address());
         node1
             .bootstrap_initiator
             .bootstrap2(node0.tcp_listener.local_address(), "".into());

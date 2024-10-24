@@ -1,8 +1,14 @@
-use rsnano_core::{Amount, BlockBuilder, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Amount, BlockBuilder, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource,
+    WalletId, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags}, consensus::{ActiveElectionsExt, ElectionBehavior, RepTier}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
+    config::{FrontiersConfirmationMode, NodeFlags},
+    consensus::{ActiveElectionsExt, ElectionBehavior, RepTier},
+    stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
 };
 use std::{
     sync::Arc,
@@ -171,58 +177,121 @@ fn weights() {
     let node1 = system.make_node();
     let node2 = system.make_node();
     let node3 = system.make_node();
-    
+
     let nodes = vec![node.clone(), node1, node2, node3];
-    
-    let wallet0= WalletId::random(); 
+
+    let wallet0 = WalletId::random();
     nodes[0].wallets.create(wallet0);
-    nodes[0].wallets.insert_adhoc2(&wallet0, &DEV_GENESIS_KEY.private_key(), false).unwrap();
-    
-    let wallet1= WalletId::random(); 
+    nodes[0]
+        .wallets
+        .insert_adhoc2(&wallet0, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+
+    let wallet1 = WalletId::random();
     nodes[1].wallets.create(wallet1);
-    nodes[1].wallets.insert_adhoc2(&wallet1, &key0.private_key(), false).unwrap();
-    
-    let wallet2= WalletId::random(); 
+    nodes[1]
+        .wallets
+        .insert_adhoc2(&wallet1, &key0.private_key(), false)
+        .unwrap();
+
+    let wallet2 = WalletId::random();
     nodes[2].wallets.create(wallet2);
-    nodes[2].wallets.insert_adhoc2(&wallet2, &key1.private_key(), false).unwrap();
-    
-    let wallet3= WalletId::random(); 
+    nodes[2]
+        .wallets
+        .insert_adhoc2(&wallet2, &key1.private_key(), false)
+        .unwrap();
+
+    let wallet3 = WalletId::random();
     nodes[3].wallets.create(wallet3);
-    nodes[3].wallets.insert_adhoc2(&wallet3, &key2.private_key(), false).unwrap();
-    
-    nodes[1].wallets.set_representative(wallet1, key0.public_key(), false).unwrap();
-    nodes[2].wallets.set_representative(wallet2, key1.public_key(), false).unwrap();
-    nodes[3].wallets.set_representative(wallet3, key2.public_key(), false).unwrap();
+    nodes[3]
+        .wallets
+        .insert_adhoc2(&wallet3, &key2.private_key(), false)
+        .unwrap();
+
+    nodes[1]
+        .wallets
+        .set_representative(wallet1, key0.public_key(), false)
+        .unwrap();
+    nodes[2]
+        .wallets
+        .set_representative(wallet2, key1.public_key(), false)
+        .unwrap();
+    nodes[3]
+        .wallets
+        .set_representative(wallet3, key2.public_key(), false)
+        .unwrap();
 
     // Send funds to set up different weight levels
-    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key0.account(), level0, 0, false, None).unwrap();
-    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key1.account(), level1, 0, false, None).unwrap();
-    nodes[0].wallets.send_action2(&wallet0, *DEV_GENESIS_ACCOUNT, key2.account(), level2, 0, false, None).unwrap();
+    nodes[0]
+        .wallets
+        .send_action2(
+            &wallet0,
+            *DEV_GENESIS_ACCOUNT,
+            key0.account(),
+            level0,
+            0,
+            false,
+            None,
+        )
+        .unwrap();
+    nodes[0]
+        .wallets
+        .send_action2(
+            &wallet0,
+            *DEV_GENESIS_ACCOUNT,
+            key1.account(),
+            level1,
+            0,
+            false,
+            None,
+        )
+        .unwrap();
+    nodes[0]
+        .wallets
+        .send_action2(
+            &wallet0,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            level2,
+            0,
+            false,
+            None,
+        )
+        .unwrap();
 
     // Wait for representatives
-    assert_timely_eq(Duration::from_secs(10), || node.online_reps.lock().unwrap().online_reps_count(), 4);
+    assert_timely_eq(
+        Duration::from_secs(10),
+        || node.online_reps.lock().unwrap().online_reps_count(),
+        4,
+    );
 
     // Wait for rep tiers to be updated
     node.stats.clear();
     assert_timely(Duration::from_secs(5), || {
-        node.stats.count(StatType::RepTiers, DetailType::Updated, Direction::In) >= 2
+        node.stats
+            .count(StatType::RepTiers, DetailType::Updated, Direction::In)
+            >= 2
     });
 
     assert_eq!(node.rep_tiers.tier(&key0.public_key()), RepTier::None);
     assert_eq!(node.rep_tiers.tier(&key1.public_key()), RepTier::Tier1);
     assert_eq!(node.rep_tiers.tier(&key2.public_key()), RepTier::Tier2);
-    assert_eq!(node.rep_tiers.tier(&DEV_GENESIS_KEY.public_key()), RepTier::Tier3);
+    assert_eq!(
+        node.rep_tiers.tier(&DEV_GENESIS_KEY.public_key()),
+        RepTier::Tier3
+    );
 }
 
 #[test]
 fn empty_hashes() {
     let key = KeyPair::new();
     let vote = Arc::new(Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![]));
-    
+
     // In Rust, we don't need to explicitly test the creation of the vote object
     // as it would fail to compile if there were any issues.
     // However, we can add some assertions to verify the vote's properties:
-    
+
     assert_eq!(vote.voting_account, key.public_key());
     assert_eq!(vote.timestamp, Vote::TIMESTAMP_MIN);
     assert_eq!(vote.hashes.len(), 0);
@@ -234,7 +303,7 @@ fn timestamp_and_duration_masking() {
     let key = KeyPair::new();
     let hash = vec![*DEV_GENESIS_HASH];
     let vote = Arc::new(Vote::new(&key, 0x123f, 0xf, hash));
-    
+
     assert_eq!(vote.timestamp(), 0x1230);
     assert_eq!(vote.duration().as_millis(), 524288);
     assert_eq!(vote.duration_bits(), 0xf);
@@ -263,18 +332,26 @@ fn no_broadcast_local_with_a_principal_representative() {
         new_balance,
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into())
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
     // Process the send block
     //node.process_active(send.clone());
-    assert_eq!(node.process_local(send.clone()).unwrap(), BlockStatus::Progress);
-    assert_eq!(new_balance, node.ledger.weight(&DEV_GENESIS_KEY.public_key()));
+    assert_eq!(
+        node.process_local(send.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_eq!(
+        new_balance,
+        node.ledger.weight(&DEV_GENESIS_KEY.public_key())
+    );
 
     // Insert account in wallet
     let wallet = WalletId::random();
     node.wallets.create(wallet);
-    node.wallets.insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
 
     // Ensure that the node knows the genesis key in its wallet
     node.wallets.compute_reps();
@@ -288,26 +365,32 @@ fn no_broadcast_local_with_a_principal_representative() {
         Vote::DURATION_MAX,
         vec![send.hash()],
     ));
-    
+
     assert_eq!(
         VoteCode::Vote,
-        node.vote_processor.vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
+        node.vote_processor
+            .vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
     );
 
     // Make sure the vote was processed
     let election = node.active.election(&send.qualified_root()).unwrap();
     let votes = election.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_KEY.public_key()));
-    assert_eq!(vote.timestamp, votes[&DEV_GENESIS_KEY.public_key()].timestamp);
+    assert_eq!(
+        vote.timestamp,
+        votes[&DEV_GENESIS_KEY.public_key()].timestamp
+    );
 
     // Ensure the vote was not broadcast
     assert_eq!(
         0,
-        node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
     );
     assert_eq!(
         1,
-        node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out)
     );
 }
 
@@ -338,12 +421,19 @@ fn local_broadcast_without_a_representative() {
         .build();
 
     // Process the send block
-    assert_eq!(BlockStatus::Progress, node.process_local(send.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send.clone()).unwrap()
+    );
     //assert_timely(Duration::from_secs(10), || !node.active.is_empty());
-    assert_eq!(new_balance, node.ledger.weight(&DEV_GENESIS_KEY.public_key()));
+    assert_eq!(
+        new_balance,
+        node.ledger.weight(&DEV_GENESIS_KEY.public_key())
+    );
 
     // Start election for the send block
-    node.active.insert(&Arc::new(send.clone()), ElectionBehavior::Manual, None);
+    node.active
+        .insert(&Arc::new(send.clone()), ElectionBehavior::Manual, None);
 
     // Process a vote without a representative
     let vote = Arc::new(Vote::new(
@@ -352,29 +442,35 @@ fn local_broadcast_without_a_representative() {
         Vote::DURATION_MAX,
         vec![send.hash()],
     ));
-    
+
     assert_eq!(
         VoteCode::Vote,
-        node.vote_processor.vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
+        node.vote_processor
+            .vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
     );
 
     // Make sure the vote was processed
     //let election = assert_timely(Duration::from_secs(5), || {
-        //node.active.election(&send.qualified_root()).is_some()
+    //node.active.election(&send.qualified_root()).is_some()
     //});
     let election = node.active.election(&send.qualified_root()).unwrap();
     let votes = election.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_KEY.public_key()));
-    assert_eq!(vote.timestamp, votes[&DEV_GENESIS_KEY.public_key()].timestamp);
+    assert_eq!(
+        vote.timestamp,
+        votes[&DEV_GENESIS_KEY.public_key()].timestamp
+    );
 
     // Ensure the vote was broadcast
     assert_eq!(
         1,
-        node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
     );
     assert_eq!(
         1,
-        node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out)
     );
 }
 
@@ -400,18 +496,26 @@ fn no_broadcast_local() {
         new_balance,
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into())
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
     // Process the send block
-    assert_eq!(node.process_local(send.clone()).unwrap(), BlockStatus::Progress);
+    assert_eq!(
+        node.process_local(send.clone()).unwrap(),
+        BlockStatus::Progress
+    );
     //assert_timely(Duration::from_secs(10), || !node.active.is_empty());
-    assert_eq!(new_balance, node.ledger.weight(&DEV_GENESIS_KEY.public_key()));
+    assert_eq!(
+        new_balance,
+        node.ledger.weight(&DEV_GENESIS_KEY.public_key())
+    );
 
     // Insert account in wallet
     let wallet = WalletId::random();
     node.wallets.create(wallet);
-    node.wallets.insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
 
     // Ensure that the node knows the genesis key in its wallet
     node.wallets.compute_reps();
@@ -425,25 +529,31 @@ fn no_broadcast_local() {
         Vote::DURATION_MAX,
         vec![send.hash()],
     ));
-    
+
     assert_eq!(
         VoteCode::Vote,
-        node.vote_processor.vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
+        node.vote_processor
+            .vote_blocking(&vote, ChannelId::from(42), VoteSource::Live)
     );
 
     // Make sure the vote was processed
     let election = node.active.election(&send.qualified_root()).unwrap();
     let votes = election.mutex.lock().unwrap().last_votes.clone();
     assert!(votes.contains_key(&DEV_GENESIS_KEY.public_key()));
-    assert_eq!(vote.timestamp, votes[&DEV_GENESIS_KEY.public_key()].timestamp);
+    assert_eq!(
+        vote.timestamp,
+        votes[&DEV_GENESIS_KEY.public_key()].timestamp
+    );
 
     // Ensure the vote was not broadcast
     assert_eq!(
         0,
-        node.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out)
     );
     assert_eq!(
         1,
-        node.stats.count(StatType::Message, DetailType::Publish, Direction::Out)
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out)
     );
 }

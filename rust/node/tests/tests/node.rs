@@ -1,15 +1,36 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, FullHash, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, StateBlockBuilder, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
+    BlockEnum, BlockHash, DifficultyV1, Epoch, FullHash, KeyPair, LegacySendBlockBuilder, Link,
+    OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, StateBlockBuilder, Vote,
+    VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
-use rsnano_ledger::{BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{
+    BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
+};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    block_processing::BlockSource, bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt, NodeCallbacks
+    block_processing::BlockSource,
+    bootstrap::BootstrapInitiatorExt,
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    consensus::{ActiveElectionsExt, VoteApplierExt},
+    stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
+    NodeCallbacks,
 };
-use std::{collections::HashMap, sync::{atomic::{AtomicI32, AtomicUsize, Ordering}, Arc}, thread::sleep, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicI32, AtomicUsize, Ordering},
+        Arc,
+    },
+    thread::sleep,
+    time::Duration,
+};
 use test_helpers::{
-    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election, start_elections, System
+    activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq,
+    assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election,
+    start_elections, System,
 };
 
 #[test]
@@ -17,13 +38,17 @@ fn pruning_depth_max_depth() {
     let mut system = System::new();
 
     let mut node_config = System::default_config();
-    node_config.enable_voting = false;  // Pruning and voting are incompatible in this test
-    node_config.max_pruning_depth = 1;  // Pruning with max depth 1
+    node_config.enable_voting = false; // Pruning and voting are incompatible in this test
+    node_config.max_pruning_depth = 1; // Pruning with max depth 1
 
     let mut node_flags = NodeFlags::default();
     node_flags.enable_pruning = true;
 
-    let node1 = system.build_node().config(node_config).flags(node_flags).finish();
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .flags(node_flags)
+        .finish();
     let key1 = KeyPair::new();
 
     // Create the first send block
@@ -54,14 +79,18 @@ fn pruning_depth_max_depth() {
 
     // Confirm both blocks
     node1.confirm(send1.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send1.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
 
     node1.confirm(send2.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send2.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
 
     // Perform pruning
     node1.ledger_pruning(1, true);
-    
+
     // Check the pruning result
     assert_eq!(node1.ledger.pruned_count(), 1);
     assert_eq!(node1.ledger.block_count(), 3);
@@ -69,9 +98,18 @@ fn pruning_depth_max_depth() {
     let tx = node1.ledger.read_txn();
 
     // Ensure that the genesis block, send1, and send2 either exist or are pruned
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send1.hash()));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send2.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send1.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send2.hash()));
 }
 
 #[test]
@@ -79,13 +117,17 @@ fn pruning_age() {
     let mut system = System::new();
 
     let mut node_config = System::default_config();
-    node_config.enable_voting = false;  // Pruning and voting are incompatible
-    node_config.max_pruning_age_s = 0;   // Pruning with max age 0, prune immediately
+    node_config.enable_voting = false; // Pruning and voting are incompatible
+    node_config.max_pruning_age_s = 0; // Pruning with max age 0, prune immediately
 
     let mut node_flags = NodeFlags::default();
     node_flags.enable_pruning = true;
 
-    let node1 = system.build_node().config(node_config).flags(node_flags).finish();
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .flags(node_flags)
+        .finish();
     let key1 = KeyPair::new();
 
     // Create the first send block
@@ -115,19 +157,25 @@ fn pruning_age() {
     node1.process_active(send2.clone().into());
 
     // Confirm both blocks and ensure they are confirmed in the node
-    assert_timely(Duration::from_secs(5), || node1.block(&send2.hash()).is_some());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block(&send2.hash()).is_some()
+    });
 
     node1.confirm(send1.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send1.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
 
     node1.confirm(send2.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send2.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
 
     // Check that we have the expected block count and then prune
     assert_eq!(node1.ledger.block_count(), 3);
 
     node1.ledger_pruning(1, true);
-    
+
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.pruned_count(), 1);
     assert_eq!(node1.ledger.pruned_count(), 1);
     assert_eq!(node1.ledger.block_count(), 3);
@@ -135,9 +183,18 @@ fn pruning_age() {
     let tx = node1.ledger.read_txn();
 
     // Check that genesis, send1, and send2 either exist or are pruned
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send1.hash()));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send2.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send1.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send2.hash()));
 }
 
 #[test]
@@ -145,13 +202,17 @@ fn pruning_automatic() {
     let mut system = System::new();
 
     let mut node_config = System::default_config();
-    node_config.enable_voting = false;  // Pruning and voting are incompatible
+    node_config.enable_voting = false; // Pruning and voting are incompatible
     node_config.max_pruning_age_s = 1;
 
     let mut node_flags = NodeFlags::default();
     node_flags.enable_pruning = true;
 
-    let node1 = system.build_node().config(node_config).flags(node_flags).finish();
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .flags(node_flags)
+        .finish();
     let key1 = KeyPair::new();
 
     let latest_hash = *DEV_GENESIS_HASH;
@@ -176,27 +237,42 @@ fn pruning_automatic() {
 
     node1.process_active(send2.clone().into());
 
-    assert_timely(Duration::from_secs(5), || node1.block(&send2.hash()).is_some());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block(&send2.hash()).is_some()
+    });
 
     node1.confirm(send1.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send1.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
 
     node1.confirm(send2.hash().clone());
-    assert_timely(Duration::from_secs(5), || node1.block_confirmed(&send2.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
 
     assert_eq!(node1.ledger.block_count(), 3);
 
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.pruned_count(), 1);
     //assert_timely_eq(Duration::from_secs(5), || node1.store.pruned_count(), 1);
-    
+
     assert_eq!(node1.ledger.pruned_count(), 1);
     assert_eq!(node1.ledger.block_count(), 3);
 
     let tx = node1.ledger.read_txn();
 
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send1.hash()));
-    assert!(node1.ledger.any().block_exists_or_pruned(&tx, &send2.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send1.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send2.hash()));
 }
 
 #[test]
@@ -210,8 +286,16 @@ fn deferred_dependent_elections() {
 
     let mut node_flags = NodeFlags::default();
     node_flags.disable_request_loop = true;
-    let node1 = system.build_node().config(node_config_1).flags(node_flags.clone()).finish();
-    let node2 = system.build_node().config(node_config_2).flags(node_flags).finish();
+    let node1 = system
+        .build_node()
+        .config(node_config_1)
+        .flags(node_flags.clone())
+        .finish();
+    let node2 = system
+        .build_node()
+        .config(node_config_2)
+        .flags(node_flags)
+        .finish();
 
     let key = KeyPair::new();
 
@@ -235,10 +319,10 @@ fn deferred_dependent_elections() {
         .work(node1.work_generate_dev(key.public_key().into()))
         .build();
 
-        let send1_state_block = match &send1 {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let send1_state_block = match &send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let send2 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -250,10 +334,10 @@ fn deferred_dependent_elections() {
         .work(node1.work_generate_dev(send1.hash().into()))
         .build();
 
-        let open_state_block = match &open {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let open_state_block = match &open {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let receive = BlockBuilder::state()
         .account(key.account())
@@ -265,10 +349,10 @@ fn deferred_dependent_elections() {
         .work(node1.work_generate_dev(open.hash().into()))
         .build();
 
-        let receive_state_block = match &receive {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let receive_state_block = match &receive {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let fork = BlockBuilder::state()
         .account(key.account())
@@ -284,15 +368,24 @@ fn deferred_dependent_elections() {
     node1.process_local(open.clone().into()).unwrap();
     node1.process_local(send2.clone().into()).unwrap();
 
-    assert_timely(std::time::Duration::from_secs(5), || node1.block(&open.hash()).is_some());
-    assert_timely(std::time::Duration::from_secs(5), || node1.block(&send2.hash()).is_some());
-
-    assert_never(std::time::Duration::from_millis(500), || {
-        node1.active.election(&open.qualified_root()).is_some() || node1.active.election(&send2.qualified_root()).is_some()
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&open.hash()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&send2.hash()).is_some()
     });
 
-    assert_timely(std::time::Duration::from_secs(5), || node2.block(&open.hash()).is_some());
-    assert_timely(std::time::Duration::from_secs(5), || node2.block(&send2.hash()).is_some());
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&open.qualified_root()).is_some()
+            || node1.active.election(&send2.qualified_root()).is_some()
+    });
+
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node2.block(&open.hash()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node2.block(&send2.hash()).is_some()
+    });
 
     //node1.distributed_work.make_blocking(WorkVersion::Work1, &open, node1.config.work_threshold(&open).unwrap() + 1);
     node1.process_local(open.clone().into()).unwrap();
@@ -318,9 +411,15 @@ fn deferred_dependent_elections() {
     assert!(!node1.active.election(&send2.qualified_root()).is_some());
 
     node1.active.force_confirm(&election_send1);
-    assert_timely(std::time::Duration::from_secs(5), || node1.block_confirmed(&send1.hash()));
-    assert_timely(std::time::Duration::from_secs(5), || node1.active.election(&open.qualified_root()).is_some());
-    assert_timely(std::time::Duration::from_secs(5), || node1.active.election(&send2.qualified_root()).is_some());
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&open.qualified_root()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&send2.qualified_root()).is_some()
+    });
 
     let election_open = node1.active.election(&open.qualified_root());
     assert!(election_open.is_some());
@@ -332,24 +431,36 @@ fn deferred_dependent_elections() {
     assert!(node1.active.election(&receive.qualified_root()).is_none());
 
     node1.active.force_confirm(election_open.as_ref().unwrap());
-    assert_timely(std::time::Duration::from_secs(5), || node1.block_confirmed(&open.hash()));
-    assert!(!node1.ledger.dependents_confirmed(&node1.store.tx_begin_read(), &receive));
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&open.hash())
+    });
+    assert!(!node1
+        .ledger
+        .dependents_confirmed(&node1.store.tx_begin_read(), &receive));
 
     assert_never(std::time::Duration::from_millis(500), || {
         node1.active.election(&receive.qualified_root()).is_some()
     });
 
-    node1.ledger.rollback(&mut node1.store.tx_begin_write(), &receive.hash()).unwrap();
+    node1
+        .ledger
+        .rollback(&mut node1.store.tx_begin_write(), &receive.hash())
+        .unwrap();
     assert!(node1.block(&receive.hash()).is_none());
 
     node1.process_local(receive.clone().into()).unwrap();
-    assert_timely(std::time::Duration::from_secs(5), || node1.block(&receive.hash()).is_some());
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&receive.hash()).is_some()
+    });
 
     assert_never(std::time::Duration::from_millis(500), || {
         node1.active.election(&receive.qualified_root()).is_some()
     });
 
-    assert_eq!(BlockStatus::Fork, node1.process_local(fork.clone().into()).unwrap());
+    assert_eq!(
+        BlockStatus::Fork,
+        node1.process_local(fork.clone().into()).unwrap()
+    );
 
     node1.process_local(fork.clone().into()).unwrap();
     assert_never(std::time::Duration::from_millis(500), || {
@@ -357,8 +468,12 @@ fn deferred_dependent_elections() {
     });
 
     node1.active.force_confirm(&election_send2);
-    assert_timely(std::time::Duration::from_secs(5), || node1.block_confirmed(&send2.hash()));
-    assert_timely(std::time::Duration::from_secs(5), || node1.active.election(&receive.qualified_root()).is_some());
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&receive.qualified_root()).is_some()
+    });
 }
 
 #[test]
@@ -524,21 +639,30 @@ fn dependency_graph_frontier() {
         node.process_local(key3_epoch.clone()).unwrap();
     }
 
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
-    assert_timely_eq(std::time::Duration::from_secs(10), || {
-        node2.block_confirmed(&gen_send1.hash())
-    }, true);
+    assert_timely_eq(
+        std::time::Duration::from_secs(10),
+        || node2.block_confirmed(&gen_send1.hash()),
+        true,
+    );
 
     start_election(&node1, &gen_send1.hash());
 
-    assert_timely_eq(std::time::Duration::from_secs(15), || {
-        node1.ledger.cemented_count() == node1.ledger.block_count()
-    }, true);
+    assert_timely_eq(
+        std::time::Duration::from_secs(15),
+        || node1.ledger.cemented_count() == node1.ledger.block_count(),
+        true,
+    );
 
-    assert_timely_eq(std::time::Duration::from_secs(15), || {
-        node2.ledger.cemented_count() == node2.ledger.block_count()
-    }, true);
+    assert_timely_eq(
+        std::time::Duration::from_secs(15),
+        || node2.ledger.cemented_count() == node2.ledger.block_count(),
+        true,
+    );
 }
 
 #[test]
@@ -584,10 +708,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key1_open.hash().into()))
         .build();
 
-        let gen_send1_state_block = match &gen_send1 {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let gen_send1_state_block = match &gen_send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let gen_receive = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -599,10 +723,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(gen_send1.hash().into()))
         .build();
 
-        let gen_receive_state_block = match &gen_receive {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let gen_receive_state_block = match &gen_receive {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let gen_send2 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -644,10 +768,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key3.public_key().into()))
         .build();
 
-        let key1_send1_state_block = match &key2_send1 {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let key1_send1_state_block = match &key2_send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let key2_send2 = BlockBuilder::state()
         .account(key2.account())
@@ -659,10 +783,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key2_send1.hash().into()))
         .build();
 
-        let key1_send1_state_block = match &key1_send1 {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let key1_send1_state_block = match &key1_send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let key1_receive = BlockBuilder::state()
         .account(key1.account())
@@ -674,10 +798,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key1_send1.hash().into()))
         .build();
 
-        let key1_receive_state_block = match &key1_receive {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let key1_receive_state_block = match &key1_receive {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let key1_send2 = BlockBuilder::state()
         .account(key1.account())
@@ -689,10 +813,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key1_receive.hash().into()))
         .build();
 
-        let key3_open_state_block = match &key3_open {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let key3_open_state_block = match &key3_open {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let key3_receive = BlockBuilder::state()
         .account(key3.account())
@@ -704,10 +828,10 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key3_open.hash().into()))
         .build();
 
-        let key3_receive_state_block = match &key3_receive {
-            BlockEnum::State(state_block) => state_block,
-            _ => panic!("Expected a StateBlock"),
-        };
+    let key3_receive_state_block = match &key3_receive {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
 
     let key3_epoch = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -719,19 +843,58 @@ fn dependency_graph() {
         .work(node.work_generate_dev(key3_receive.hash().into()))
         .build();
 
-    assert_eq!(BlockStatus::Progress, node.process_local(gen_send1.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key1_open.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key1_send1.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(gen_receive.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(gen_send2.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key2_open.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key2_send1.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key3_open.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key2_send2.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key1_receive.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key1_send2.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key3_receive.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(key3_epoch.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(gen_send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key1_open.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key1_send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(gen_receive.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(gen_send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key2_open.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key2_send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key3_open.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key2_send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key1_receive.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key1_send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key3_receive.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(key3_epoch.clone()).unwrap()
+    );
 
     //assert!(node.active.len() == 0);
 
@@ -744,15 +907,25 @@ fn dependency_graph() {
         (key2_send1.hash(), vec![key2_open.hash()]),
         (key3_open.hash(), vec![key2_send1.hash()]),
         (key2_send2.hash(), vec![key2_send1.hash()]),
-        (key1_receive.hash(), vec![key1_send1.hash(), key2_send2.hash()]),
+        (
+            key1_receive.hash(),
+            vec![key1_send1.hash(), key2_send2.hash()],
+        ),
         (key1_send2.hash(), vec![key1_send1.hash()]),
-        (key3_receive.hash(), vec![key3_open.hash(), key1_send2.hash()]),
+        (
+            key3_receive.hash(),
+            vec![key3_open.hash(), key1_send2.hash()],
+        ),
         (key3_epoch.hash(), vec![key3_receive.hash()]),
-    ].into_iter().collect();
+    ]
+    .into_iter()
+    .collect();
 
     assert_eq!(node.ledger.block_count() - 2, dependency_graph.len() as u64);
 
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
     start_election(&&node, &gen_send1.hash());
 
     /*assert!(system.poll_until_true(
@@ -773,7 +946,11 @@ fn dependency_graph() {
         }
     ));*/
     assert_eq!(node.ledger.cemented_count(), node.ledger.block_count());
-    assert_timely_eq(std::time::Duration::from_secs(5), || node.active.len() == 0, true);
+    assert_timely_eq(
+        std::time::Duration::from_secs(5),
+        || node.active.len() == 0,
+        true,
+    );
 }
 
 #[test]
@@ -832,47 +1009,72 @@ fn rollback_gap_source() {
         .sign(&key)
         .build();
 
-    assert_eq!(BlockStatus::Progress, node.process_local(send1.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(fork1a.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(fork1a.clone()).unwrap()
+    );
 
     let fork1_b_arc = Arc::new(fork1b.clone());
 
     assert!(node.block(&send2.hash()).is_none());
     node.block_processor.force(fork1_b_arc.clone());
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.block(&fork1a.hash()).is_none()
-    }, true);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1a.hash()).is_none(),
+        true,
+    );
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.stats.count(StatType::Rollback, DetailType::Open, Direction::In) 
-    }, 1);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats
+                .count(StatType::Rollback, DetailType::Open, Direction::In)
+        },
+        1,
+    );
 
     assert!(node.block(&fork1b.hash()).is_none());
 
     node.process_active(fork1a.clone());
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.block(&fork1a.hash()).is_some()
-    }, true);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1a.hash()).is_some(),
+        true,
+    );
 
-    assert_eq!(BlockStatus::Progress, node.process_local(send2.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send2.clone()).unwrap()
+    );
     node.block_processor.force(fork1_b_arc.clone());
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.stats.count(StatType::Rollback, DetailType::Open, Direction::In) 
-    }, 2);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats
+                .count(StatType::Rollback, DetailType::Open, Direction::In)
+        },
+        2,
+    );
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.block(&fork1b.hash()).is_some()
-    }, true);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1b.hash()).is_some(),
+        true,
+    );
 
     assert!(node.block(&fork1a.hash()).is_none());
 }
 
 #[test]
 fn block_processor_reject_state() {
-    let mut system = System::new();  
-    let node = system.make_node();  
+    let mut system = System::new();
+    let node = system.make_node();
 
     let builder = BlockBuilder::state();
 
@@ -894,11 +1096,14 @@ fn block_processor_reject_state() {
 
     assert_eq!(node.block_confirmed(&send1.hash()), false);
 
-    assert_eq!(BlockStatus::BadSignature, node.process_local(send1.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::BadSignature,
+        node.process_local(send1.clone()).unwrap()
+    );
 
     //node.process_active(send1.clone().into());
     //assert_timely_eq(Duration::from_secs(5), || {
-        //node.stats_count_bad_signature()
+    //node.stats_count_bad_signature()
     //}, 1);
 
     assert_eq!(node.block_confirmed(&send1.hash()), false);
@@ -914,25 +1119,32 @@ fn block_processor_reject_state() {
 
     node.process_active(send2.clone().into());
 
-    assert_eq!(BlockStatus::Progress, node.process_local(send2.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send2.clone()).unwrap()
+    );
 
     //node.confirm(send2.hash());
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.block_exists(&send2.hash())
-    }, true);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block_exists(&send2.hash()),
+        true,
+    );
 }
 
 #[test]
 fn block_processor_signatures() {
-    let mut system = System::new();  
-    let node = system.make_node();  
+    let mut system = System::new();
+    let node = system.make_node();
 
     // Insert the genesis key into the wallet for signing operations
     let wallet_id = node.wallets.wallet_ids()[0];
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
-    let latest = node.latest(&*DEV_GENESIS_ACCOUNT);  
+    let latest = node.latest(&*DEV_GENESIS_ACCOUNT);
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
     let key3 = KeyPair::new();
@@ -949,7 +1161,10 @@ fn block_processor_signatures() {
         .build();
 
     // Process the first valid block
-    assert_eq!(BlockStatus::Progress, node.process_local(send1.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send1.clone()).unwrap()
+    );
 
     // Create additional send blocks with proper signatures
     let send2 = BlockBuilder::state()
@@ -971,8 +1186,14 @@ fn block_processor_signatures() {
         .build();
 
     // Process valid blocks
-    assert_eq!(BlockStatus::Progress, node.process_local(send2.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node.process_local(send3.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send3.clone()).unwrap()
+    );
 
     // Create a block with an invalid signature (tampered signature bits)
     let mut send4 = BlockBuilder::state()
@@ -991,12 +1212,15 @@ fn block_processor_signatures() {
     send4.set_block_signature(&Signature::new());
 
     // Ensure that the block with the invalid signature is rejected
-    assert_eq!(BlockStatus::BadSignature, node.process_local(send4.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::BadSignature,
+        node.process_local(send4.clone()).unwrap()
+    );
 
     // Create a valid receive block
     let receive1 = BlockBuilder::state()
         .account(key1.account())
-        .previous(BlockHash::zero())  // No previous block for the account (open block)
+        .previous(BlockHash::zero()) // No previous block for the account (open block)
         .balance(Amount::raw(*GXRB_RATIO))
         .link(send1.hash())
         .sign(&key1)
@@ -1012,7 +1236,7 @@ fn block_processor_signatures() {
 
     // Ensure the valid blocks have been processed successfully
     //assert_timely_eq(Duration::from_secs(5), || {
-        //node.block_confirmed(&receive1.hash())
+    //node.block_confirmed(&receive1.hash())
     //}, true);
 
     // Ensure that no invalid blocks were processed
@@ -1062,7 +1286,8 @@ fn vote_by_hash_bundle() {
     }
 
     // Confirm the last block to confirm the entire chain
-    node.ledger.confirm(&mut node.ledger.rw_txn(), blocks.last().unwrap().hash());
+    node.ledger
+        .confirm(&mut node.ledger.rw_txn(), blocks.last().unwrap().hash());
 
     // Insert the genesis key and a new key into the wallet
     node.wallets
@@ -1077,17 +1302,20 @@ fn vote_by_hash_bundle() {
     let max_hashes = Arc::new(AtomicUsize::new(0));
     let max_hashes_clone = Arc::clone(&max_hashes);
 
-    node.vote_router.add_vote_processed_observer(Box::new(move |vote: &Arc<Vote>, _vote_source, _vote_code| {
-        let hashes_size = vote.hashes.len();
-        let current_max = max_hashes_clone.load(Ordering::Relaxed);
-        if hashes_size > current_max {
-            max_hashes_clone.store(hashes_size, Ordering::Relaxed);
-        }
-    }));
+    node.vote_router.add_vote_processed_observer(Box::new(
+        move |vote: &Arc<Vote>, _vote_source, _vote_code| {
+            let hashes_size = vote.hashes.len();
+            let current_max = max_hashes_clone.load(Ordering::Relaxed);
+            if hashes_size > current_max {
+                max_hashes_clone.store(hashes_size, Ordering::Relaxed);
+            }
+        },
+    ));
 
     // Enqueue vote requests for all the blocks
     for block in &blocks {
-        node.vote_generators.generate_non_final_vote(&block.root(), &block.hash());
+        node.vote_generators
+            .generate_non_final_vote(&block.root(), &block.hash());
     }
 
     // Verify that bundling occurs
@@ -1101,7 +1329,10 @@ fn confirm_quorum() {
     let mut system = System::new();
     let node1 = system.make_node();
     let wallet_id = node1.wallets.wallet_ids()[0];
-    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
     // Put greater than node.delta() in pending so quorum can't be reached
     let new_balance = node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1);
@@ -1115,17 +1346,23 @@ fn confirm_quorum() {
         .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
         .build();
 
-    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
 
-    node1.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_ACCOUNT,
-        new_balance,
-        0,
-        true,
-        None
-    ).unwrap();
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_ACCOUNT,
+            new_balance,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(2),
@@ -1164,31 +1401,63 @@ fn block_confirm() {
     let hash1 = send1.hash();
     let hash2 = send1_copy.hash();
 
-    node1.block_processor.add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
-    node2.block_processor.add(send1_copy.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
-
-    assert_timely_eq(Duration::from_secs(5), 
-        || (node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &hash1) && node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &hash2)) as u64,
-        1
+    node1
+        .block_processor
+        .add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node2.block_processor.add(
+        send1_copy.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
     );
 
-    assert!(node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &hash1));
-    assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &hash2));
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            (node1
+                .ledger
+                .any()
+                .block_exists_or_pruned(&node1.ledger.read_txn(), &hash1)
+                && node2
+                    .ledger
+                    .any()
+                    .block_exists_or_pruned(&node2.ledger.read_txn(), &hash2)) as u64
+        },
+        1,
+    );
+
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node1.ledger.read_txn(), &hash1));
+    assert!(node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &hash2));
 
     // Confirm send1 on node2 so it can vote for send2
     start_election(&node2, &send1_copy.hash());
 
-    assert_timely_eq(Duration::from_secs(5), 
-        || node2.active.election(&send1_copy.qualified_root()).is_some() as u64,
-        1
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node2
+                .active
+                .election(&send1_copy.qualified_root())
+                .is_some() as u64
+        },
+        1,
     );
 
     // Make node2 genesis representative so it can vote
-    node2.wallets.insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
-    assert_timely_eq(Duration::from_secs(10), 
+    assert_timely_eq(
+        Duration::from_secs(10),
         || node1.active.recently_cemented_list().len(),
-        1
+        1,
     );
 }
 
@@ -1197,18 +1466,78 @@ fn bootstrap_connection_scaling() {
     let mut system = System::new();
     let node = system.make_node();
 
-    assert_eq!(34, node.bootstrap_initiator.connections.target_connections(5000, 1));
-    assert_eq!(4, node.bootstrap_initiator.connections.target_connections(0, 1));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 1));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 1));
-    assert_eq!(32, node.bootstrap_initiator.connections.target_connections(5000, 0));
-    assert_eq!(1, node.bootstrap_initiator.connections.target_connections(0, 0));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 0));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 0));
-    assert_eq!(36, node.bootstrap_initiator.connections.target_connections(5000, 2));
-    assert_eq!(8, node.bootstrap_initiator.connections.target_connections(0, 2));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(50000, 2));
-    assert_eq!(64, node.bootstrap_initiator.connections.target_connections(10000000000, 2));
+    assert_eq!(
+        34,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 1)
+    );
+    assert_eq!(
+        4,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 1)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 1)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 1)
+    );
+    assert_eq!(
+        32,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 0)
+    );
+    assert_eq!(
+        1,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 0)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 0)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 0)
+    );
+    assert_eq!(
+        36,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 2)
+    );
+    assert_eq!(
+        8,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 2)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 2)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 2)
+    );
 }
 
 #[test]
@@ -1229,16 +1558,20 @@ fn balance_observer() {
         }
     });
 
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key.account(),
-        Amount::raw(1),
-        0,
-        true,
-        None
-    ).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(1),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(10),
@@ -1253,14 +1586,18 @@ fn send_callback() {
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
-    
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
-    
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
     //node.config.callback_address = "localhost".to_string();
     //node.config.callback_port = 8010;
     //node.config.callback_target = "/".to_string();
-    
+
     let send_result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -1268,17 +1605,17 @@ fn send_callback() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
-    
+
     assert!(send_result.is_ok());
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
         || node.balance(&key2.account()).is_zero(),
         "balance is not zero",
     );
-    
+
     assert_eq!(
         Amount::MAX - node.config.receive_minimum,
         node.balance(&DEV_GENESIS_ACCOUNT)
@@ -1296,23 +1633,34 @@ fn no_voting() {
     let wallet_id0 = node0.wallets.wallet_ids()[0];
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     // Node1 has a rep
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     let key1 = KeyPair::new();
-    node1.wallets.insert_adhoc2(&wallet_id1, &key1.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &key1.private_key(), true)
+        .unwrap();
     // Broadcast a confirm so others should know this is a rep node
-    node1.wallets.send_action2(
-        &wallet_id1,
-        *DEV_GENESIS_ACCOUNT,
-        key1.account(),
-        Amount::raw(*MXRB_RATIO),
-        0,
-        true,
-        None
-    ).unwrap();
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key1.account(),
+            Amount::raw(*MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_eq(Duration::from_secs(10), || node0.active.len(), 0);
     assert_eq!(
-        node0.stats.count(StatType::Message, DetailType::ConfirmAck, Direction::In),
+        node0
+            .stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::In),
         0
     );
 }
@@ -1323,24 +1671,33 @@ fn unconfirmed_send() {
 
     let node1 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
     let key2 = KeyPair::new();
     let node2 = system.make_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
 
     // firstly, send two units from node1 to node2 and expect that both nodes see the block as confirmed
     // (node1 will start an election for it, vote on it and node2 gets synced up)
-    let send1 = node1.wallets.send_action2(
-        &wallet_id1,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        Amount::raw(2 * *MXRB_RATIO),
-        0,
-        true,
-        None
-    ).unwrap();
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::raw(2 * *MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(5),
@@ -1359,16 +1716,23 @@ fn unconfirmed_send() {
         Duration::from_secs(5),
         || {
             let tx = node2.store.tx_begin_read();
-            node2.ledger.get_confirmation_height(&tx, &key2.account()).unwrap().height
+            node2
+                .ledger
+                .get_confirmation_height(&tx, &key2.account())
+                .unwrap()
+                .height
         },
         1,
     );
 
     assert_eq!(node2.balance(&key2.account()), Amount::raw(2 * *MXRB_RATIO));
-    
+
     let recv1 = {
         let tx = node2.store.tx_begin_read();
-        node2.ledger.find_receive_block_by_send_hash(&tx, &key2.account(), &send1.hash()).unwrap()
+        node2
+            .ledger
+            .find_receive_block_by_send_hash(&tx, &key2.account(), &send1.hash())
+            .unwrap()
     };
 
     // create send2 to send from node2 to node1 and save it to node2's ledger without triggering an election (node1 does not hear about it)
@@ -1381,17 +1745,23 @@ fn unconfirmed_send() {
         &key2,
         system.work.generate_dev2(recv1.hash().into()).unwrap(),
     ));
-    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
 
-    let send3 = node2.wallets.send_action2(
-        &wallet_id2,
-        key2.account(),
-        *DEV_GENESIS_ACCOUNT,
-        Amount::raw(*MXRB_RATIO),
-        0,
-        true,
-        None
-    ).unwrap();
+    let send3 = node2
+        .wallets
+        .send_action2(
+            &wallet_id2,
+            key2.account(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::raw(*MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
     assert_timely_msg(
         Duration::from_secs(5),
         || node2.block_confirmed(&send2.hash()),
@@ -1412,11 +1782,7 @@ fn unconfirmed_send() {
         || node1.block_confirmed(&send3.hash()),
         "send3 not confirmed on node1",
     );
-    assert_timely_eq(
-        Duration::from_secs(5),
-        || node2.ledger.cemented_count(),
-        7,
-    );
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 7);
     assert_timely_eq(
         Duration::from_secs(5),
         || node1.balance(&DEV_GENESIS_ACCOUNT),
@@ -1433,7 +1799,10 @@ fn bootstrap_confirm_frontiers() {
     let node1 = system1.make_node();
     let wallet_id0 = node0.wallets.wallet_ids()[0];
     let wallet_id1 = node1.wallets.wallet_ids()[0];
-    node0.wallets.insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     let key0 = KeyPair::new();
 
     // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
@@ -1442,10 +1811,13 @@ fn bootstrap_confirm_frontiers() {
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
         &DEV_GENESIS_KEY.private_key(),
-        node0.work_generate_dev((*DEV_GENESIS_HASH).into())
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    assert_eq!(BlockStatus::Progress, node0.process_local(send0.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(send0.clone()).unwrap()
+    );
 
     // each system only has one node, so there should be no bootstrapping going on
     assert!(!node0.bootstrap_initiator.in_progress());
@@ -1456,7 +1828,9 @@ fn bootstrap_confirm_frontiers() {
     // this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
     //node1.connect(node0.network.endpoint());
     establish_tcp(&node1, &node0);
-    node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".into());
 
     // Wait until the block is confirmed on node1
     let start_time = std::time::Instant::now();
@@ -1468,7 +1842,10 @@ fn bootstrap_confirm_frontiers() {
                 break;
             }
         }
-        assert!(start_time.elapsed() < timeout, "Timeout waiting for block confirmation");
+        assert!(
+            start_time.elapsed() < timeout,
+            "Timeout waiting for block confirmation"
+        );
         //system0.poll();
         //system1.poll();
         std::thread::sleep(Duration::from_millis(1));
@@ -1490,7 +1867,10 @@ fn bootstrap_fork_open() {
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let open0 = BlockEnum::LegacyOpen(OpenBlock::new(
@@ -1510,8 +1890,14 @@ fn bootstrap_fork_open() {
     ));
 
     // Both know about send0
-    assert_eq!(BlockStatus::Progress, node0.process_local(send0.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node1.process_local(send0.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(send0.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send0.clone()).unwrap()
+    );
 
     // Confirm send0 to allow starting and voting on the following blocks
     for node in [&node0, &node1] {
@@ -1537,14 +1923,28 @@ fn bootstrap_fork_open() {
     );
 
     // They disagree about open0/open1
-    assert_eq!(BlockStatus::Progress, node0.process_local(open0.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node1.process_local(open1.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(open0.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(open1.clone()).unwrap()
+    );
 
-    node0.wallets.insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    assert!(!node1.ledger.any().block_exists_or_pruned(&node1.ledger.read_txn(), &open0.hash()));
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    assert!(!node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node1.ledger.read_txn(), &open0.hash()));
     assert!(!node1.bootstrap_initiator.in_progress());
 
-    node1.bootstrap_initiator.bootstrap2(node0.tcp_listener.local_address(), "".into());
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".into());
 
     assert_timely_msg(
         Duration::from_secs(1),
@@ -1574,7 +1974,10 @@ fn rep_self_vote() {
         &rep_big.account(),
         &Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let open_big = BlockEnum::LegacyOpen(OpenBlock::new(
@@ -1582,11 +1985,20 @@ fn rep_self_vote() {
         rep_big.public_key(),
         rep_big.account(),
         &rep_big.private_key(),
-        system.work.generate_dev2(rep_big.public_key().into()).unwrap(),
+        system
+            .work
+            .generate_dev2(rep_big.public_key().into())
+            .unwrap(),
     ));
 
-    assert_eq!(BlockStatus::Progress, node0.process_local(fund_big.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node0.process_local(open_big.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(fund_big.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(open_big.clone()).unwrap()
+    );
 
     // Confirm both blocks, allowing voting on the upcoming block
     start_election(&node0, &open_big.hash());
@@ -1598,8 +2010,14 @@ fn rep_self_vote() {
     let election = node0.active.election(&open_big.qualified_root()).unwrap();
     node0.active.force_confirm(&election);
 
-    node0.wallets.insert_adhoc2(&wallet_id, &rep_big.private_key(), true).unwrap();
-    node0.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &rep_big.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     assert_eq!(node0.wallets.voting_reps_count(), 2);
 
     let block0 = BlockEnum::LegacySend(SendBlock::new(
@@ -1610,17 +2028,16 @@ fn rep_self_vote() {
         system.work.generate_dev2(fund_big.hash().into()).unwrap(),
     ));
 
-    assert_eq!(BlockStatus::Progress, node0.process_local(block0.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(block0.clone()).unwrap()
+    );
 
     let election1 = start_election(&node0, &block0.hash());
     //assert!(election1.is_some());
 
     // Wait until representatives are activated & make vote
-    assert_timely_eq(
-        Duration::from_secs(1),
-        || election1.vote_count(),
-        3
-    );
+    assert_timely_eq(Duration::from_secs(1), || election1.vote_count(), 3);
 
     let rep_votes = election1.mutex.lock().unwrap().last_votes.clone();
     assert!(rep_votes.contains_key(&DEV_GENESIS_KEY.public_key()));
@@ -1643,7 +2060,10 @@ fn fork_open_flip() {
         &key1.account(),
         &(Amount::MAX - Amount::raw(1)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
     node1.process_active(send1.clone());
 
@@ -1673,7 +2093,10 @@ fn fork_open_flip() {
         || node1.block_exists(&open1.hash()),
         "open1 not found on node1",
     );
-    node1.election_schedulers.manual.push(Arc::new(open1.clone()), None);
+    node1
+        .election_schedulers
+        .manual
+        .push(Arc::new(open1.clone()), None);
     assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.election(&open1.qualified_root()).is_some(),
@@ -1695,7 +2118,10 @@ fn fork_open_flip() {
         || node2.block_exists(&open2.hash()),
         "open2 not found on node2",
     );
-    node2.election_schedulers.manual.push(Arc::new(open2.clone()), None);
+    node2
+        .election_schedulers
+        .manual
+        .push(Arc::new(open2.clone()), None);
     assert_timely_msg(
         Duration::from_secs(5),
         || node2.active.election(&open2.qualified_root()).is_some(),
@@ -1708,7 +2134,10 @@ fn fork_open_flip() {
     assert_timely_eq(Duration::from_secs(5), || node2.active.len(), 2);
 
     // allow node1 to vote and wait for open1 to be confirmed on node1
-    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     assert_timely_msg(
         Duration::from_secs(5),
         || node1.block_confirmed(&open1.hash()),
@@ -1752,17 +2181,27 @@ fn fork_bootstrap_flip() {
     let mut node_flags = NodeFlags::default();
     node_flags.disable_bootstrap_bulk_push_client = true;
     node_flags.disable_lazy_bootstrap = true;
-    
-    let node1 = system.build_node().config(config0).flags(node_flags.clone()).finish();
+
+    let node1 = system
+        .build_node()
+        .config(config0)
+        .flags(node_flags.clone())
+        .finish();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
     let mut config1 = System::default_config();
     config1.peering_port = Some(get_available_port());
     let node2 = system.make_disconnected_node();
     //let node2 = system.build_disconnected_node(config1, node_flags);
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
     let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
     let key1 = KeyPair::new();
     let send1 = BlockEnum::LegacySend(SendBlock::new(
@@ -1783,22 +2222,24 @@ fn fork_bootstrap_flip() {
     ));
 
     // Insert but don't rebroadcast, simulating settled blocks
-    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
 
     node1.confirm(send1.hash());
     assert_timely_msg(
         Duration::from_secs(1),
-        || {
-            node1.block_exists(&send1.hash())
-        },
+        || node1.block_exists(&send1.hash()),
         "send1 not found on node1",
     );
     assert_timely_msg(
         Duration::from_secs(1),
-        || {
-            node2.block_exists(&send2.hash())
-        },
+        || node2.block_exists(&send2.hash()),
         "send2 not found on node2",
     );
 
@@ -1808,9 +2249,7 @@ fn fork_bootstrap_flip() {
 
     assert_timely_msg(
         Duration::from_secs(10),
-        || {
-            node2.block_exists(&send1.hash())
-        },
+        || node2.block_exists(&send1.hash()),
         "send1 not found on node2 after bootstrap",
     );
 }
@@ -1821,19 +2260,26 @@ fn fork_multi_flip() {
     let mut config = System::default_config();
     config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
     let flags = NodeFlags::default();
-    let node1 = system.build_node().config(config.clone()).flags(flags.clone()).finish();
+    let node1 = system
+        .build_node()
+        .config(config.clone())
+        .flags(flags.clone())
+        .finish();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     config.peering_port = Some(get_available_port());
     let node2 = system.build_node().config(config).flags(flags).finish();
     //assert_eq!(1, node1.network.size());
-    
+
     let key1 = KeyPair::new();
     let send1 = BlockEnum::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let key2 = KeyPair::new();
@@ -1842,7 +2288,10 @@ fn fork_multi_flip() {
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let send3 = BlockEnum::LegacySend(SendBlock::new(
@@ -1853,34 +2302,64 @@ fn fork_multi_flip() {
         system.work.generate_dev2(send2.hash().into()).unwrap(),
     ));
 
-    assert_eq!(BlockStatus::Progress, node1.process_local(send1.clone()).unwrap());
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
     // Node2 has two blocks that will be rolled back by node1's vote
-    assert_eq!(BlockStatus::Progress, node2.process_local(send2.clone()).unwrap());
-    assert_eq!(BlockStatus::Progress, node2.process_local(send3.clone()).unwrap());
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap(); // Insert voting key into node1
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send3.clone()).unwrap()
+    );
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap(); // Insert voting key into node1
 
     let election = start_election(&node2, &send2.hash());
     //assert!(election.is_some());
     assert_timely_msg(
         Duration::from_secs(5),
-        || election.mutex.lock().unwrap().last_blocks.contains_key(&send1.hash()),
+        || {
+            election
+                .mutex
+                .lock()
+                .unwrap()
+                .last_blocks
+                .contains_key(&send1.hash())
+        },
         "election doesn't contain send1",
     );
-    
+
     node1.confirm(send1.hash());
     assert_timely_msg(
         Duration::from_secs(10),
-        || node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash()),
+        || {
+            node2
+                .ledger
+                .any()
+                .block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())
+        },
         "send1 not found on node2",
     );
     //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send2.hash()));
     //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
-    
+
     let winner = election.winner_hash().unwrap();
     assert_eq!(send1.hash(), winner);
     assert_eq!(
         Amount::MAX - Amount::raw(100),
-        *election.mutex.lock().unwrap().last_tally.get(&send1.hash()).unwrap()
+        *election
+            .mutex
+            .lock()
+            .unwrap()
+            .last_tally
+            .get(&send1.hash())
+            .unwrap()
     );
 }
 
@@ -1896,7 +2375,10 @@ fn fork_publish_inactive() {
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let send2 = BlockEnum::LegacySend(SendBlock::new(
@@ -1904,7 +2386,10 @@ fn fork_publish_inactive() {
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     node.process_active(send1.clone());
@@ -1930,11 +2415,16 @@ fn fork_publish_inactive() {
     assert_timely_eq(
         Duration::from_secs(5),
         || election.mutex.lock().unwrap().last_blocks.len(),
-        2
+        2,
     );
 
     let find_block = |hash: BlockHash| {
-        election.mutex.lock().unwrap().last_blocks.contains_key(&hash)
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .last_blocks
+            .contains_key(&hash)
     };
 
     assert!(find_block(send1.hash()));
@@ -1951,10 +2441,12 @@ fn unlock_search() {
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
     let balance = node.balance(&DEV_GENESIS_ACCOUNT);
-    
+
     node.wallets.rekey(&wallet_id, "").unwrap();
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
     let send_result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -1962,22 +2454,24 @@ fn unlock_search() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result.is_ok());
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
         || node.balance(&DEV_GENESIS_ACCOUNT) != balance,
         "balance not updated",
     );
-    
+
     assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
-    
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
     //node.wallets.set_password(&wallet_id, &KeyPair::new().private_key()).unwrap();
     node.wallets.enter_password(wallet_id, "").unwrap();
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
         || !node.balance(&key2.account()).is_zero(),
@@ -1993,41 +2487,61 @@ fn search_receivable_confirmed() {
     let node = system.build_node().config(config).finish();
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
-    let send1 = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None
-    ).unwrap();
-    assert_timely(Duration::from_secs(5), || node.blocks_confirmed(&[send1.clone()]));
+    let send1 = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(5), || {
+        node.blocks_confirmed(&[send1.clone()])
+    });
 
-    let send2 = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None
-    ).unwrap();
-    assert_timely(Duration::from_secs(5), || node.blocks_confirmed(&[send2.clone()]));
+    let send2 = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(5), || {
+        node.blocks_confirmed(&[send2.clone()])
+    });
 
-    node.wallets.remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY).unwrap();
+    node.wallets
+        .remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY)
+        .unwrap();
 
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
     //assert_eq!(WalletsError::None, node.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
-    assert_timely(Duration::from_secs(5), || !node.active.election(&send1.qualified_root()).is_some());
-    assert_timely(Duration::from_secs(5), || !node.active.election(&send2.qualified_root()).is_some());
+    assert_timely(Duration::from_secs(5), || {
+        !node.active.election(&send1.qualified_root()).is_some()
+    });
+    assert_timely(Duration::from_secs(5), || {
+        !node.active.election(&send2.qualified_root()).is_some()
+    });
     assert_timely_eq(
         Duration::from_secs(5),
         || node.balance(&key2.account()),
-        node.config.receive_minimum * 2
+        node.config.receive_minimum * 2,
     );
 }
 
@@ -2038,60 +2552,90 @@ fn search_receivable_pruned() {
     config1.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
     let node1 = system.build_node().config(config1).finish();
     let wallet_id = node1.wallets.wallet_ids()[0];
-    
+
     let mut config2 = System::default_config();
     config2.enable_voting = false; // Remove after allowing pruned voting
     let mut flags = NodeFlags::default();
     flags.enable_pruning = true;
     let node2 = system.build_node().config(config2).flags(flags).finish();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    
+
     let key2 = KeyPair::new();
-    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    
-    let send1 = node1.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node2.config.receive_minimum,
-        0,
-        true,
-        None
-    ).unwrap();
-    
-    let send2 = node1.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node2.config.receive_minimum,
-        0,
-        true,
-        None
-    ).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node2.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    let send2 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node2.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     // Confirmation
-    assert_timely(Duration::from_secs(10), || node1.active.len() == 0 && node2.active.len() == 0);
-    assert_timely(Duration::from_secs(5), || node1.ledger.confirmed().block_exists(&node1.ledger.read_txn(), &send2.hash()));
+    assert_timely(Duration::from_secs(10), || {
+        node1.active.len() == 0 && node2.active.len() == 0
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node1
+            .ledger
+            .confirmed()
+            .block_exists(&node1.ledger.read_txn(), &send2.hash())
+    });
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 3);
     //assert_eq!(WalletsError::None, node1.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
-    node1.wallets.remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY).unwrap();
+    node1
+        .wallets
+        .remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY)
+        .unwrap();
 
     // Pruning
     {
         let mut transaction = node2.store.tx_begin_write();
-        assert_eq!(1, node2.ledger.pruning_action(&mut transaction, &send1.hash(), 1));
+        assert_eq!(
+            1,
+            node2
+                .ledger
+                .pruning_action(&mut transaction, &send1.hash(), 1)
+        );
     }
     assert_eq!(1, node2.ledger.pruned_count());
-    assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())); // true for pruned
+    assert!(node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())); // true for pruned
 
     // Receive pruned block
-    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
     //assert_eq!(Ok(()), node2.wallets.search_receivable_wallet(wallet_id2));
     node2.wallets.search_receivable_wallet(wallet_id2).unwrap();
     assert_timely_eq(
         Duration::from_secs(10),
         || node2.balance(&key2.account()),
-        node2.config.receive_minimum * 2
+        node2.config.receive_minimum * 2,
     );
 }
 
@@ -2101,7 +2645,9 @@ fn search_receivable() {
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     let send_result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -2109,10 +2655,12 @@ fn search_receivable() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result.is_ok());
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
     //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
     assert_timely_msg(
@@ -2128,7 +2676,9 @@ fn search_receivable_same() {
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     let send_result1 = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -2136,7 +2686,7 @@ fn search_receivable_same() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result1.is_ok());
     let send_result2 = node.wallets.send_action2(
@@ -2146,10 +2696,12 @@ fn search_receivable_same() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result2.is_ok());
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
     //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
     assert_timely_msg(
@@ -2166,8 +2718,12 @@ fn search_receivable_multiple() {
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
     let key3 = KeyPair::new();
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node.wallets.insert_adhoc2(&wallet_id, &key3.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key3.private_key(), true)
+        .unwrap();
     let send_result1 = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -2175,7 +2731,7 @@ fn search_receivable_multiple() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result1.is_ok());
     assert_timely_msg(
@@ -2190,7 +2746,7 @@ fn search_receivable_multiple() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result2.is_ok());
     let send_result3 = node.wallets.send_action2(
@@ -2200,10 +2756,12 @@ fn search_receivable_multiple() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result3.is_ok());
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
     //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
     assert_timely_msg(
@@ -2223,7 +2781,11 @@ fn auto_bootstrap_age() {
     node_flags.disable_lazy_bootstrap = true;
     node_flags.bootstrap_interval = 1;
 
-    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
     let node1 = system.make_node();
     //node1.start().unwrap();
 
@@ -2232,14 +2794,25 @@ fn auto_bootstrap_age() {
     // Wait for at least 3 bootstrap attempts with frontiers age
     assert_timely_msg(
         Duration::from_secs(10),
-        || node0.stats.count(StatType::Bootstrap, DetailType::InitiateLegacyAge, Direction::Out) >= 3,
+        || {
+            node0.stats.count(
+                StatType::Bootstrap,
+                DetailType::InitiateLegacyAge,
+                Direction::Out,
+            ) >= 3
+        },
         "not enough bootstrap attempts with frontiers age",
     );
 
     // Check that there are more attempts with frontiers age than without
     assert!(
-        node0.stats.count(StatType::Bootstrap, DetailType::InitiateLegacyAge, Direction::Out) >=
-        node0.stats.count(StatType::Bootstrap, DetailType::Initiate, Direction::Out),
+        node0.stats.count(
+            StatType::Bootstrap,
+            DetailType::InitiateLegacyAge,
+            Direction::Out
+        ) >= node0
+            .stats
+            .count(StatType::Bootstrap, DetailType::Initiate, Direction::Out),
         "unexpected ratio of bootstrap attempts"
     );
 }
@@ -2253,12 +2826,22 @@ fn auto_bootstrap_reverse() {
     node_flags.disable_bootstrap_bulk_push_client = true;
     node_flags.disable_lazy_bootstrap = true;
 
-    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
     let wallet_id = node0.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
 
-    node0.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node0.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
 
     let node1 = system.make_node();
 
@@ -2269,7 +2852,7 @@ fn auto_bootstrap_reverse() {
         node0.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
     assert!(send_result.is_ok());
 
@@ -2291,22 +2874,35 @@ fn auto_bootstrap() {
     node_flags.disable_bootstrap_bulk_push_client = true;
     node_flags.disable_lazy_bootstrap = true;
 
-    let node0 = system.build_node().config(config.clone()).flags(node_flags.clone()).finish();
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
     let wallet_id = node0.wallets.wallet_ids()[0];
     let key2 = KeyPair::new();
 
-    node0.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node0.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
 
-    let send1 = node0.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node0.config.receive_minimum,
-        0,
-        true,
-        None
-    ).unwrap();
+    let send1 = node0
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node0.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(10),
@@ -2314,7 +2910,7 @@ fn auto_bootstrap() {
         "balance not updated",
     );
 
-    let node1 = system.make_node(); 
+    let node1 = system.make_node();
 
     establish_tcp(&node1, &node0);
 
@@ -2350,7 +2946,10 @@ fn node_receive_quorum() {
     let key = KeyPair::new();
     let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
 
-    node1.wallets.insert_adhoc2(&wallet_id, &key.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .unwrap();
 
     let send = BlockEnum::LegacySend(SendBlock::new(
         &previous,
@@ -2382,10 +2981,15 @@ fn node_receive_quorum() {
     let node2 = system.make_disconnected_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 
-    node2.wallets.insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
     assert!(node1.balance(&key.account()).is_zero());
 
-    node2.peer_connector.connect_to(node1.tcp_listener.local_address());
+    node2
+        .peer_connector
+        .connect_to(node1.tcp_listener.local_address());
 
     assert_timely_msg(
         Duration::from_secs(10),
@@ -2403,8 +3007,14 @@ fn quick_confirm() {
     let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
     let genesis_start_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
 
-    node1.wallets.insert_adhoc2(&wallet_id, &key.private_key(), true).unwrap();
-    node1.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
 
     let send = BlockEnum::LegacySend(SendBlock::new(
         &previous,
@@ -2444,7 +3054,10 @@ fn send_out_of_order() {
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum),
         &DEV_GENESIS_KEY.private_key(),
-        system.work.generate_dev2((*DEV_GENESIS_HASH).into()).unwrap(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
     ));
 
     let send2 = BlockEnum::LegacySend(SendBlock::new(
@@ -2469,9 +3082,11 @@ fn send_out_of_order() {
 
     assert_timely_msg(
         Duration::from_secs(10),
-        || system.nodes.iter().all(|node| 
-            node.balance(&DEV_GENESIS_ACCOUNT) == Amount::MAX - node1.config.receive_minimum * 3
-        ),
+        || {
+            system.nodes.iter().all(|node| {
+                node.balance(&DEV_GENESIS_ACCOUNT) == Amount::MAX - node1.config.receive_minimum * 3
+            })
+        },
         "balance is incorrect on at least one node",
     );
 }
@@ -2485,10 +3100,16 @@ fn send_single_observing_peer() {
     let _node3 = system.make_node(); // Observing peer
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
-    
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
     let result = node1.wallets.send_action2(
         &wallet_id1,
         *DEV_GENESIS_ACCOUNT,
@@ -2496,21 +3117,26 @@ fn send_single_observing_peer() {
         node1.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
-    
+
     assert!(result.is_ok());
-    
+
     assert_eq!(
         Amount::MAX - node1.config.receive_minimum,
         node1.balance(&DEV_GENESIS_ACCOUNT)
     );
-    
+
     assert!(node1.balance(&key2.account()).is_zero());
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
-        || system.nodes.iter().all(|node| !node.balance(&key2.account()).is_zero()),
+        || {
+            system
+                .nodes
+                .iter()
+                .all(|node| !node.balance(&key2.account()).is_zero())
+        },
         "balance is still zero on at least one node",
     );
 }
@@ -2523,10 +3149,16 @@ fn send_single() {
     let node2 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    
-    node1.wallets.insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node2.wallets.insert_adhoc2(&wallet_id2, &key2.private_key(), true).unwrap();
-    
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
     let result = node1.wallets.send_action2(
         &wallet_id1,
         *DEV_GENESIS_ACCOUNT,
@@ -2534,18 +3166,18 @@ fn send_single() {
         node1.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
-    
+
     assert!(result.is_ok());
-    
+
     assert_eq!(
         Amount::MAX - node1.config.receive_minimum,
         node1.balance(&DEV_GENESIS_ACCOUNT)
     );
-    
+
     assert!(node1.balance(&key2.account()).is_zero());
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
         || !node1.balance(&key2.account()).is_zero(),
@@ -2559,9 +3191,13 @@ fn send_self() {
     let key2 = KeyPair::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    node.wallets.insert_adhoc2(&wallet_id, &key2.private_key(), true).unwrap();
-    
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
     let result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -2569,17 +3205,17 @@ fn send_self() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
-    
+
     assert!(result.is_ok());
-    
+
     assert_timely_msg(
         Duration::from_secs(10),
         || !node.balance(&key2.account()).is_zero(),
         "balance is still zero",
     );
-    
+
     assert_eq!(
         Amount::MAX - node.config.receive_minimum,
         node.balance(&DEV_GENESIS_ACCOUNT)
@@ -2593,13 +3229,15 @@ fn send_unkeyed() {
     let wallet_id = WalletId::random();
     node.wallets.create(wallet_id);
     let key2 = KeyPair::new();
-    
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-    
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
     //let result = node.wallets.enter_password(wallet_id, "random_password");
 
     //assert!(result.is_err());
-    
+
     let result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -2607,9 +3245,9 @@ fn send_unkeyed() {
         node.config.receive_minimum,
         0,
         true,
-        None
+        None,
     );
-    
+
     assert!(result.is_err());
 }
 
@@ -2619,11 +3257,13 @@ fn balance() {
     let node = system.make_node();
     let wallet_id = WalletId::random();
     node.wallets.create(wallet_id);
-    
-    node.wallets.insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true).unwrap();
-        
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
     let balance = node.balance(&DEV_GENESIS_KEY.account());
-    
+
     assert_eq!(Amount::MAX, balance);
 }
 
@@ -2636,8 +3276,11 @@ fn work_generate() {
 
     // Test with higher difficulty
     {
-        let difficulty = DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base(version));
-        let work = node.distributed_work.make_blocking(version, root, difficulty, None);
+        let difficulty =
+            DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base(version));
+        let work = node
+            .distributed_work
+            .make_blocking(version, root, difficulty, None);
         assert!(work.is_some());
         let work = work.unwrap();
         assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
@@ -2645,19 +3288,32 @@ fn work_generate() {
 
     // Test with lower difficulty
     {
-        let difficulty = DifficultyV1::from_multiplier(0.5, node.network_params.work.threshold_base(WorkVersion::Work1));
+        let difficulty = DifficultyV1::from_multiplier(
+            0.5,
+            node.network_params.work.threshold_base(WorkVersion::Work1),
+        );
         let mut work;
         loop {
-            work = node.distributed_work.make_blocking(version, root, difficulty, None);
+            work = node
+                .distributed_work
+                .make_blocking(version, root, difficulty, None);
             if let Some(work_value) = work {
-                if node.network_params.work.difficulty(version, &root, work_value) < node.network_params.work.threshold_base(version) {
+                if node
+                    .network_params
+                    .work
+                    .difficulty(version, &root, work_value)
+                    < node.network_params.work.threshold_base(version)
+                {
                     break;
                 }
             }
         }
         let work = work.unwrap();
         assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
-        assert!(node.network_params.work.difficulty(version, &root, work) < node.network_params.work.threshold_base(version));
+        assert!(
+            node.network_params.work.difficulty(version, &root, work)
+                < node.network_params.work.threshold_base(version)
+        );
     }
 }
 

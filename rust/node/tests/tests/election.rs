@@ -3,7 +3,10 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig}, consensus::{ActiveElectionsExt, ElectionBehavior}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
+    config::{FrontiersConfirmationMode, NodeConfig},
+    consensus::{ActiveElectionsExt, ElectionBehavior},
+    stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
 };
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, get_available_port, System};
@@ -136,7 +139,7 @@ fn continuous_voting() {
 
     node1.process_active(send1.clone());
     //assert_timely(Duration::from_secs(5), || {
-        //node1.block(&send1.hash()).is_some() && node1.active.confirmed(&send1.hash())
+    //node1.block(&send1.hash()).is_some() && node1.active.confirmed(&send1.hash())
     //});
 
     node1.stats.clear();
@@ -157,7 +160,10 @@ fn continuous_voting() {
 
     // Ensure votes are broadcasted in continuous manner
     assert_timely(Duration::from_secs(5), || {
-        node1.stats.count(StatType::Election, DetailType::BroadcastVote, Direction::In) >= 5
+        node1
+            .stats
+            .count(StatType::Election, DetailType::BroadcastVote, Direction::In)
+            >= 5
     });
 }
 

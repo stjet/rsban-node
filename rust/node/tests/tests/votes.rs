@@ -1,12 +1,14 @@
 use rsnano_core::{
-    Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Amount, BlockEnum, Epoch, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, WalletId,
+    DEV_GENESIS_KEY, GXRB_RATIO,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_node::wallets::WalletsExt;
 use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
-use test_helpers::{assert_timely, make_fake_channel, start_election, System};
+use test_helpers::{assert_timely, make_fake_channel, start_election, upgrade_epoch, System};
 
 #[test]
 fn check_signature() {
@@ -179,4 +181,115 @@ fn add_cooldown() {
     assert!(votes.contains_key(&DEV_GENESIS_PUB_KEY));
     assert_eq!(send1.hash(), votes.get(&DEV_GENESIS_PUB_KEY).unwrap().hash);
     assert_eq!(send1.hash(), election1.winner_hash().unwrap());
+}
+
+// Assuming necessary imports and module declarations are present
+#[test]
+fn vote_generator_cache() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let epoch1 = upgrade_epoch(node.clone(), Epoch::Epoch1);
+    let wallet_id = WalletId::random();
+
+    node.wallets.create(wallet_id);
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    node.vote_generators
+        .generate_non_final_vote(&epoch1.root(), &epoch1.hash());
+
+    // Wait until the votes are available
+    assert_timely(Duration::from_secs(1), || {
+        !node
+            .history
+            .votes(&epoch1.root(), &epoch1.hash(), false)
+            .is_empty()
+    });
+
+    let votes = node.history.votes(&epoch1.root(), &epoch1.hash(), false);
+    assert!(!votes.is_empty());
+
+    let hashes = &votes[0].hashes;
+    assert!(hashes.contains(&epoch1.hash()));
+}
+
+#[test]
+fn vote_generator_multiple_representatives() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    // Insert keys into the wallet
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key3.private_key(), true)
+        .unwrap();
+
+    let amount = Amount::raw(100 * *GXRB_RATIO);
+    node.wallets
+        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key1.account(), amount);
+    node.wallets
+        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key2.account(), amount);
+    node.wallets
+        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key3.account(), amount);
+
+    // Assert balances
+    assert_timely(Duration::from_secs(3), || {
+        node.balance(&key1.account()) == amount
+            && node.balance(&key2.account()) == amount
+            && node.balance(&key3.account()) == amount
+    });
+
+    // Change representatives
+    node.wallets
+        .change_action2(&wallet_id, key1.account(), key1.public_key(), 0, true);
+    node.wallets
+        .change_action2(&wallet_id, key2.account(), key2.public_key(), 0, true);
+    node.wallets
+        .change_action2(&wallet_id, key3.account(), key3.public_key(), 0, true);
+
+    assert_eq!(node.ledger.weight(&key1.public_key()), amount);
+    assert_eq!(node.ledger.weight(&key2.public_key()), amount);
+    assert_eq!(node.ledger.weight(&key3.public_key()), amount);
+
+    node.wallets.compute_reps();
+    assert_eq!(node.wallets.voting_reps_count(), 4);
+
+    let hash = node.wallets.send_sync(
+        wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_ACCOUNT,
+        Amount::raw(1),
+    );
+    let send = node.block(&hash).unwrap();
+
+    // Wait until the votes are available
+    assert_timely(Duration::from_secs(5), || {
+        node.history.votes(&send.root(), &send.hash(), false).len() == 4
+    });
+
+    let votes = node.history.votes(&send.root(), &send.hash(), false);
+    for account in &[
+        key1.public_key(),
+        key2.public_key(),
+        key3.public_key(),
+        DEV_GENESIS_KEY.public_key(),
+    ] {
+        let existing = votes.iter().find(|vote| vote.voting_account == *account);
+        assert!(existing.is_some());
+    }
 }

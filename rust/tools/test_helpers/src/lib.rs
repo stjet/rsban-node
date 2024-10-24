@@ -1,8 +1,10 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
-    WalletId, DEV_GENESIS_KEY,
+    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks,
+    StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{
+    BlockStatus, Ledger, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
+};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -627,4 +629,41 @@ pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
     node.process(open.clone()).unwrap();
 
     open
+}
+
+pub fn upgrade_epoch(
+    node: Arc<Node>,
+    //pool: &mut WorkPoolImpl,
+    epoch: Epoch,
+) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+    let account = *DEV_GENESIS_ACCOUNT;
+    let latest = node
+        .ledger
+        .any()
+        .account_head(&transaction, &account)
+        .unwrap();
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &account)
+        .unwrap_or(Amount::zero());
+
+    let builder = StateBlockBuilder::new();
+    let epoch_block = builder
+        .account(account)
+        .previous(latest)
+        .balance(balance)
+        .link(node.ledger.epoch_link(epoch).unwrap())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(epoch_block.clone()).unwrap()
+    );
+
+    epoch_block
 }

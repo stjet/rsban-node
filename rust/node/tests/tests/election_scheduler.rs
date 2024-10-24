@@ -125,10 +125,14 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use std::time::Duration;
     use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{config::{FrontiersConfirmationMode, NodeConfig}, consensus::{ActiveElectionsConfig, ActiveElectionsExt}, wallets::WalletsExt};
+    use rsnano_node::{
+        config::{FrontiersConfirmationMode, NodeConfig},
+        consensus::{ActiveElectionsConfig, ActiveElectionsExt},
+        wallets::WalletsExt,
+    };
+    use std::time::Duration;
     use test_helpers::{assert_timely, assert_timely_eq, System};
 
     #[test]
@@ -162,7 +166,9 @@ mod election_scheduler {
         });
 
         // Activate the account
-        node.election_schedulers.priority.activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
 
         // Assert that the election is created within 5 seconds
         assert_timely(Duration::from_secs(5), || {
@@ -187,10 +193,14 @@ mod election_scheduler {
         ));
 
         // Process the block
-        node.ledger.process(&mut node.store.tx_begin_write(), &mut send1).unwrap();
+        node.ledger
+            .process(&mut node.store.tx_begin_write(), &mut send1)
+            .unwrap();
 
         // Activate the account
-        node.election_schedulers.priority.activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
 
         // Assert that the election is created within 5 seconds
         assert_timely(Duration::from_secs(5), || {
@@ -222,7 +232,10 @@ mod election_scheduler {
             &DEV_GENESIS_KEY,
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
-        assert_eq!(node.process_local(send.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node.process_local(send.clone()).unwrap(),
+            BlockStatus::Progress
+        );
         //node.process_confirmed(ElectionStatus::new(send.clone()));
 
         let receive = BlockEnum::State(StateBlock::new(
@@ -234,11 +247,17 @@ mod election_scheduler {
             &key,
             node.work_generate_dev(key.public_key().into()),
         ));
-        assert_eq!(node.process_local(receive.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node.process_local(receive.clone()).unwrap(),
+            BlockStatus::Progress
+        );
         //node.process_confirmed(ElectionStatus::new(receive.clone()));
         node.confirm(receive.hash());
 
-        assert_timely(Duration::from_secs(5), || { node.confirm_multi(&[send.clone(), receive.clone()]); true });
+        assert_timely(Duration::from_secs(5), || {
+            node.confirm_multi(&[send.clone(), receive.clone()]);
+            true
+        });
 
         // Process two eligible transactions
         let block1 = BlockEnum::State(StateBlock::new(
@@ -250,10 +269,15 @@ mod election_scheduler {
             &DEV_GENESIS_KEY,
             node.work_generate_dev(send.hash().into()),
         ));
-        assert_eq!(node.process_local(block1.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node.process_local(block1.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // There is vacancy so it should be inserted
-        node.election_schedulers.priority.activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
         assert_timely(Duration::from_secs(5), || {
             node.active.election(&block1.qualified_root()).is_some()
         });
@@ -267,11 +291,20 @@ mod election_scheduler {
             &key,
             node.work_generate_dev(receive.hash().into()),
         ));
-        assert_eq!(node.process_local(block2.clone()).unwrap(), BlockStatus::Progress);
+        assert_eq!(
+            node.process_local(block2.clone()).unwrap(),
+            BlockStatus::Progress
+        );
 
         // There is no vacancy so it should stay queued
-        node.election_schedulers.priority.activate(&node.store.tx_begin_read(), &key.account());
-        assert_timely_eq(Duration::from_secs(5), || node.election_schedulers.priority.len(), 1);
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &key.account());
+        assert_timely_eq(
+            Duration::from_secs(5),
+            || node.election_schedulers.priority.len(),
+            1,
+        );
         assert!(node.active.election(&block2.qualified_root()).is_none());
 
         // Election confirmed, next in queue should begin

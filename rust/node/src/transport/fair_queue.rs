@@ -1,7 +1,8 @@
 use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
 use std::{
     cmp::min,
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
+    hash::Hash,
     ops::RangeBounds,
 };
 
@@ -142,8 +143,39 @@ where
         }
     }
 
-    pub fn iter_queues(&self) -> impl Iterator<Item = (&S, &Entry<T>)> {
-        self.queues.iter()
+    pub fn compacted_info<R>(&self, compact: impl Fn(&S) -> R) -> FairQueueInfo<R>
+    where
+        R: Hash + Eq + Copy,
+    {
+        let mut total_size = 0;
+        let mut total_max_size = 0;
+        let mut queues_info: HashMap<R, QueueInfo<R>> = HashMap::new();
+
+        // Iterate over all queues
+        for (key, entry) in self.queues.iter() {
+            let compacted_source = compact(key);
+            let size = entry.len();
+            total_size += size;
+            total_max_size += entry.max_size;
+
+            queues_info
+                .entry(compacted_source)
+                .and_modify(|i| {
+                    i.size += size;
+                    i.max_size += entry.max_size;
+                })
+                .or_insert_with(|| QueueInfo {
+                    source: compacted_source,
+                    size,
+                    max_size: entry.max_size,
+                });
+        }
+
+        FairQueueInfo {
+            queues: queues_info,
+            total_size,
+            total_max_size,
+        }
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -192,7 +224,7 @@ where
     }
 }
 
-pub(crate) struct Entry<T> {
+struct Entry<T> {
     requests: VecDeque<T>,
     priority: usize,
     max_size: usize,
@@ -227,6 +259,38 @@ impl<T> Entry<T> {
     pub fn len(&self) -> usize {
         self.requests.len()
     }
+}
+
+pub struct FairQueueInfo<S>
+where
+    S: Clone + Hash + Eq,
+{
+    pub queues: HashMap<S, QueueInfo<S>>,
+    pub total_size: usize,
+    pub total_max_size: usize,
+}
+
+impl<S> Default for FairQueueInfo<S>
+where
+    S: Clone + Hash + Eq,
+{
+    fn default() -> Self {
+        Self {
+            total_size: 0,
+            total_max_size: 0,
+            queues: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct QueueInfo<S>
+where
+    S: Clone,
+{
+    pub source: S,
+    pub size: usize,
+    pub max_size: usize,
 }
 
 #[cfg(test)]

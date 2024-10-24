@@ -1,13 +1,22 @@
 use super::{
-    show_peers, LedgerStatsView, MessageRecorderControlsView, MessageStatsView, MessageTabView,
-    NodeRunnerView, TabBarView,
+    queue_group_view::show_queue_group, show_peers, LedgerStatsView, MessageRecorderControlsView,
+    MessageStatsView, MessageTabView, NodeRunnerView, TabBarView,
 };
-use crate::view_models::{AppViewModel, Tab};
+use crate::view_models::{
+    create_queue_group_view_model, AppViewModel, QueueGroupViewModel, QueueViewModel, Tab,
+};
 use eframe::egui::{
-    self, global_theme_preference_switch, CentralPanel, Grid, ProgressBar, TopBottomPanel,
+    self, global_theme_preference_switch, warn_if_debug_build, CentralPanel, Grid, ProgressBar,
+    TopBottomPanel,
 };
-use rsnano_node::{block_processing::BlockProcessorInfo, consensus::VoteProcessorInfo,
-    cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
+use num_format::{Locale, ToFormattedString};
+use rsnano_node::{
+    block_processing::BlockSource,
+    cementation::ConfirmingSetInfo,
+    consensus::{ActiveElectionsInfo, RepTier},
+    transport::{FairQueueInfo, QueueInfo},
+};
+use strum::IntoEnumIterator;
 
 pub(crate) struct AppView {
     model: AppViewModel,
@@ -47,6 +56,7 @@ impl AppView {
                 MessageStatsView::new(self.model.message_stats()).view(ui);
                 ui.separator();
                 LedgerStatsView::new(self.model.ledger_stats()).view(ui);
+                warn_if_debug_build(ui);
             });
         });
     }
@@ -62,11 +72,13 @@ impl eframe::App for AppView {
         match self.model.tabs.selected_tab() {
             Tab::Peers => show_peers(ctx, self.model.channels()),
             Tab::Messages => MessageTabView::new(&mut self.model).show(ctx),
-            Tab::Queues => show_queues(ctx, &self.model.aec_info, 
-                                            &self.model.confirming_set, 
-                                            &self.model.block_processor_info,
-                                            &self.model.vote_processor_info
-                                        ),
+            Tab::Queues => show_queues(
+                ctx,
+                &self.model.aec_info,
+                &self.model.confirming_set,
+                &self.model.block_processor_info,
+                &self.model.vote_processor_info,
+            ),
         }
 
         // Repaint to show the continuously increasing current block and message counters
@@ -74,123 +86,66 @@ impl eframe::App for AppView {
     }
 }
 
-fn show_queues(ctx: &egui::Context, 
-                info: &ActiveElectionsInfo, 
-                confirming: &ConfirmingSetInfo,
-                block_processor_info: &BlockProcessorInfo,
-                vote_processor_info: &VoteProcessorInfo,
-               ) {
+fn show_queues(
+    ctx: &egui::Context,
+    info: &ActiveElectionsInfo,
+    confirming: &ConfirmingSetInfo,
+    block_processor_info: &FairQueueInfo<BlockSource>,
+    vote_processor_info: &FairQueueInfo<RepTier>,
+) {
     CentralPanel::default().show(ctx, |ui| {
-        ui.heading("Active Elections");
-        Grid::new("aec_grid").num_columns(2).show(ui, |ui| {
-            ui.label("total");
-            ui.add(
-                ProgressBar::new(info.total as f32 / info.max_queue as f32)
-                    .text(info.total.to_string())
-                    .desired_width(300.0),
-            );
-            ui.end_row();
+        let group = QueueGroupViewModel {
+            heading: "Active Elections".to_string(),
+            queues: vec![
+                QueueViewModel {
+                    label: "Priority".to_string(),
+                    value: info.priority.to_formatted_string(&Locale::en),
+                    max: info.max_queue.to_formatted_string(&Locale::en),
+                    progress: info.priority as f32 / info.max_queue as f32,
+                },
+                QueueViewModel {
+                    label: "Hinted".to_string(),
+                    value: info.hinted.to_formatted_string(&Locale::en),
+                    max: info.max_queue.to_formatted_string(&Locale::en),
+                    progress: info.hinted as f32 / info.max_queue as f32,
+                },
+                QueueViewModel {
+                    label: "Optimistic".to_string(),
+                    value: info.optimistic.to_formatted_string(&Locale::en),
+                    max: info.max_queue.to_formatted_string(&Locale::en),
+                    progress: info.optimistic as f32 / info.max_queue as f32,
+                },
+                QueueViewModel {
+                    label: "Total".to_string(),
+                    value: info.total.to_formatted_string(&Locale::en),
+                    max: info.max_queue.to_formatted_string(&Locale::en),
+                    progress: info.total as f32 / info.max_queue as f32,
+                },
+            ],
+        };
+        show_queue_group(ui, group);
 
-            ui.label("priority");
-            ui.add(
-                ProgressBar::new(info.priority as f32 / info.max_queue as f32)
-                    .text(info.priority.to_string())
-                    .desired_width(300.0),
-            );
-            ui.end_row();
+        ui.add_space(10.0);
 
-            ui.label("hinted");
-            ui.add(
-                ProgressBar::new(info.hinted as f32 / info.max_queue as f32)
-                    .text(info.hinted.to_string())
-                    .desired_width(300.0),
-            );
-            ui.end_row();
+        let group = create_queue_group_view_model("Block Processor", block_processor_info);
+        show_queue_group(ui, group);
 
-            ui.label("optimistic");
-            ui.add(
-                ProgressBar::new(info.optimistic as f32 / info.max_queue as f32)
-                    .text(info.optimistic.to_string())
-                    .desired_width(300.0),
-            );
-            ui.end_row();
-        });
+        ui.add_space(10.0);
 
-        ui.heading("Block Processor Queues");
-        Grid::new("block_processor_queues_grid")
-            .num_columns(2)
-            .show(ui, |ui| {
-                for queue_info in &block_processor_info.queues {
-                    ui.label(format!("{:?}", queue_info.source));
-                    ui.add(
-                        ProgressBar::new(queue_info.size as f32 / queue_info.max_size as f32)
-                            .text(format!("{}/{}", queue_info.size, queue_info.max_size))
-                            .desired_width(300.0),
-                    );
-                    ui.end_row();
-                }
-                ui.label("Total");
-                ui.add(
-                    ProgressBar::new(
-                        block_processor_info.total_size as f32
-                            / block_processor_info
-                                .queues
-                                .iter()
-                                .map(|q| q.max_size)
-                                .sum::<usize>() as f32,
-                    )
-                    .text(block_processor_info.total_size.to_string())
-                    .desired_width(300.0),
-                );
-                ui.end_row();
-            });
-        
-        ui.heading("Vote Processor Queues"); // New section
-        Grid::new("vote_processor_queues_grid")
-            .num_columns(2)
-            .show(ui, |ui| {
-                for queue_info in &vote_processor_info.queues {
-                    ui.label(format!("{:?}", queue_info.source));
-                    let progress = if queue_info.max_size > 0 {
-                        queue_info.size as f32 / queue_info.max_size as f32
-                    } else {
-                        0.0
-                    };
-                    ui.add(
-                        ProgressBar::new(progress)
-                            .text(format!("{}/{}", queue_info.size, queue_info.max_size))
-                            .desired_width(300.0),
-                    );
-                    ui.end_row();
-                }
-                ui.label("Total");
-                let total_max_size: usize = vote_processor_info
-                    .queues
-                    .iter()
-                    .map(|q| q.max_size)
-                    .sum();
-                let total_progress = if total_max_size > 0 {
-                    vote_processor_info.total_size as f32 / total_max_size as f32
-                } else {
-                    0.0
-                };
-                ui.add(
-                    ProgressBar::new(total_progress)
-                        .text(vote_processor_info.total_size.to_string())
-                        .desired_width(300.0),
-                );
-                ui.end_row();
-            });
+        let group = create_queue_group_view_model("Vote Processor", vote_processor_info);
+        show_queue_group(ui, group);
 
-        ui.heading("Miscellaneous");
-        Grid::new("misc_grid").num_columns(2).show(ui, |ui| {
-            ui.label("confirming");
-            ui.add(
-                ProgressBar::new(confirming.size as f32 / confirming.max_size as f32)
-                    .text(confirming.size.to_string())
-                    .desired_width(300.0),
-            );
-            ui.end_row();
-        });
+        ui.add_space(10.0);
+
+        let group = QueueGroupViewModel {
+            heading: "Miscellaneous".to_string(),
+            queues: vec![QueueViewModel {
+                label: "Confirming".to_string(),
+                value: confirming.size.to_formatted_string(&Locale::en),
+                max: confirming.max_size.to_formatted_string(&Locale::en),
+                progress: confirming.size as f32 / confirming.max_size as f32,
+            }],
+        };
+        show_queue_group(ui, group);
     });
 }

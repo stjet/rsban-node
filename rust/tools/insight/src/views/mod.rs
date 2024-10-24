@@ -9,6 +9,7 @@ mod message_table_view;
 mod message_view;
 mod node_runner_view;
 mod peers_view;
+mod queue_group_view;
 mod tab_bar_view;
 
 pub(crate) use app_view::*;

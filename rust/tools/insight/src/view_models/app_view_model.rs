@@ -7,8 +7,12 @@ use crate::{
     message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
     nullable_runtime::NullableRuntime,
 };
-use rsnano_node::{block_processing::BlockProcessorInfo, consensus::VoteProcessorInfo,
-    cementation::ConfirmingSetInfo, consensus::ActiveElectionsInfo};
+use rsnano_node::{
+    block_processing::BlockSource,
+    cementation::ConfirmingSetInfo,
+    consensus::{ActiveElectionsInfo, RepTier},
+    transport::FairQueueInfo,
+};
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     sync::{Arc, RwLock},
@@ -26,8 +30,8 @@ pub(crate) struct AppViewModel {
     last_update: Option<Timestamp>,
     pub aec_info: ActiveElectionsInfo,
     pub confirming_set: ConfirmingSetInfo,
-    pub block_processor_info: BlockProcessorInfo,
-    pub vote_processor_info: VoteProcessorInfo,
+    pub block_processor_info: FairQueueInfo<BlockSource>,
+    pub vote_processor_info: FairQueueInfo<RepTier>,
 }
 
 impl AppViewModel {

@@ -17,7 +17,7 @@ mod syn_cookies;
 mod vec_buffer_reader;
 
 pub use block_deserializer::read_block;
-pub(crate) use fair_queue::*;
+pub use fair_queue::*;
 pub(crate) use handshake_process::*;
 pub use inbound_message_queue::*;
 pub use latest_keepalives::*;

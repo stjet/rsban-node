@@ -24,6 +24,7 @@ pub enum RpcCommand {
     WalletAdd(WalletAddArgs),
     WorkPeers,
     WorkPeerAdd(AddressWithPortArgs),
+    Telemetry(TelemetryArgs),
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
     AccountsCreate(AccountsCreateArgs),
@@ -212,4 +213,5 @@ pub enum RpcDto {
     WorkGenerate(WorkGenerateDto),
     Republish(BlockHashesDto),
     BlockCreate(BlockCreateDto),
+    Telemetry(TelemetryDtos),
 }

@@ -8,7 +8,6 @@ use rsnano_core::{
     sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, PublicKey,
     Signature,
 };
-use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;
@@ -23,7 +22,7 @@ pub enum TelemetryMaker {
     RsNano = 3,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TelemetryData {
     pub signature: Signature,
     pub node_id: PublicKey,
@@ -41,7 +40,6 @@ pub struct TelemetryData {
     pub patch_version: u8,
     pub pre_release_version: u8,
     pub maker: u8, // Where this telemetry information originated
-    #[serde(skip)] // TODO find a way to serialize the timestamp
     pub timestamp: SystemTime,
     pub active_difficulty: u64,
     pub unknown_data: Vec<u8>,
@@ -108,7 +106,7 @@ impl TelemetryData {
           + size_of::<u64>() //active_difficulty)
     }
 
-    fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
+    pub fn serialize_without_signature(&self, writer: &mut dyn BufferWriter) {
         // All values should be serialized in big endian
         self.node_id.serialize(writer);
         writer.write_u64_be_safe(self.block_count);
@@ -243,21 +241,6 @@ impl TelemetryData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TelemetryAck(pub Option<TelemetryData>);
-
-impl serde::Serialize for TelemetryAck {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if let Some(data) = &self.0 {
-            let mut state = serializer.serialize_struct("TelemetryAck", 1)?;
-            state.serialize_field("data", data)?;
-            state.end()
-        } else {
-            serializer.serialize_none()
-        }
-    }
-}
 
 impl TelemetryAck {
     pub fn new_test_instance() -> Self {

@@ -17,6 +17,7 @@ mod republish;
 mod sign;
 mod stats_clear;
 mod stop;
+mod telemetry;
 mod unchecked;
 mod unchecked_clear;
 mod unchecked_get;
@@ -59,3 +60,5 @@ pub use work_peer_add::*;
 pub use work_peers::*;
 pub use work_peers_clear::*;
 pub use work_validate::*;
+
+pub use telemetry::*;

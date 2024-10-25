@@ -32,6 +32,12 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
+    pub async fn work_peers(&self) -> Result<WorkPeersDto> {
+        let cmd = RpcCommand::work_peers();
+        let result = self.rpc_request(&cmd).await?;
+        Ok(serde_json::from_value(result)?)
+    }
+
     pub async fn work_peer_add(&self, args: AddressWithPortArgs) -> Result<SuccessDto> {
         let cmd = RpcCommand::work_peer_add(args);
         let result = self.rpc_request(&cmd).await?;

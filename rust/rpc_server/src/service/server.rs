@@ -1,3 +1,7 @@
+use crate::work_peer_add;
+
+use super::work_peers;
+use super::work_peers_clear;
 use super::{
     account_balance, account_block_count, account_create, account_get, account_history,
     account_info, account_key, account_list, account_move, account_remove, account_representative,
@@ -31,8 +35,6 @@ use serde_json::to_string_pretty;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
-
-use super::work_peers;
 
 #[derive(Clone)]
 struct RpcService {
@@ -70,6 +72,12 @@ async fn handle_rpc(
 ) -> Response {
     let response = match rpc_command {
         RpcCommand::WorkPeers => work_peers(rpc_service.node, rpc_service.enable_control).await,
+        RpcCommand::WorkPeerAdd(args) => {
+            work_peer_add(rpc_service.node, rpc_service.enable_control, args).await
+        }
+        RpcCommand::WorkPeersClear => {
+            work_peers_clear(rpc_service.node, rpc_service.enable_control).await
+        }
         RpcCommand::AccountCreate(args) => {
             account_create(rpc_service.node, rpc_service.enable_control, args).await
         }

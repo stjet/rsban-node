@@ -26,6 +26,7 @@ mod work_cancel;
 mod work_generate;
 mod work_peer_add;
 mod work_peers;
+mod work_peers_clear;
 mod work_validate;
 
 pub use block_create::*;
@@ -49,4 +50,5 @@ pub use unchecked_keys::*;
 pub use uptime::*;
 pub use work_generate::*;
 pub use work_peers::*;
+pub use work_peers_clear::*;
 pub use work_validate::*;

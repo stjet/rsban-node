@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{BlockDetails, DifficultyV1, WorkVersion};
-use rsnano_rpc_messages::{RpcDto, WorkValidateArgs, WorkValidateDto};
+use rsnano_rpc_messages::{WorkValidateArgs, WorkValidateDto};
 
 impl RpcCommandHandler {
     pub(crate) fn work_validate(&self, args: WorkValidateArgs) -> WorkValidateDto {

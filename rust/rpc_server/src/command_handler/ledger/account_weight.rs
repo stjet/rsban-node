@@ -1,9 +1,10 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{AccountWeightArgs, RpcDto, WeightDto};
-use std::sync::Arc;
 
-pub async fn account_weight(node: Arc<Node>, args: AccountWeightArgs) -> RpcDto {
-    let tx = node.ledger.read_txn();
-    let weight = node.ledger.weight_exact(&tx, args.account.into());
-    RpcDto::AccountWeight(WeightDto::new(weight))
+impl RpcCommandHandler {
+    pub(crate) fn account_weight(&self, args: AccountWeightArgs) -> RpcDto {
+        let tx = self.node.ledger.read_txn();
+        let weight = self.node.ledger.weight_exact(&tx, args.account.into());
+        RpcDto::AccountWeight(WeightDto::new(weight))
+    }
 }

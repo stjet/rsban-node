@@ -1,7 +1,8 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{CountRpcMessage, RpcDto};
-use std::sync::Arc;
 
-pub async fn frontier_count(node: Arc<Node>) -> RpcDto {
-    RpcDto::FrontierCount(CountRpcMessage::new(node.ledger.account_count()))
+impl RpcCommandHandler {
+    pub(crate) fn frontier_count(&self) -> RpcDto {
+        RpcDto::FrontierCount(CountRpcMessage::new(self.node.ledger.account_count()))
+    }
 }

@@ -1,12 +1,13 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{ErrorDto, RpcDto, WalletRepresentativeDto, WalletRpcMessage};
-use std::sync::Arc;
 
-pub async fn wallet_representative(node: Arc<Node>, args: WalletRpcMessage) -> RpcDto {
-    match node.wallets.get_representative(args.wallet) {
-        Ok(representative) => {
-            RpcDto::WalletRepresentative(WalletRepresentativeDto::new(representative.into()))
+impl RpcCommandHandler {
+    pub(crate) fn wallet_representative(&self, args: WalletRpcMessage) -> RpcDto {
+        match self.node.wallets.get_representative(args.wallet) {
+            Ok(representative) => {
+                RpcDto::WalletRepresentative(WalletRepresentativeDto::new(representative.into()))
+            }
+            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
         }
-        Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
     }
 }

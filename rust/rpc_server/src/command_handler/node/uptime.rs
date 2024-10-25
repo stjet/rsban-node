@@ -1,9 +1,11 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{RpcDto, UptimeDto};
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
-pub async fn uptime(node: Arc<Node>) -> RpcDto {
-    let seconds = Instant::now() - node.telemetry.startup_time;
-    let uptime = UptimeDto::new(seconds.as_secs());
-    RpcDto::Uptime(uptime)
+impl RpcCommandHandler {
+    pub(crate) fn uptime(&self) -> RpcDto {
+        let seconds = Instant::now() - self.node.telemetry.startup_time;
+        let uptime = UptimeDto::new(seconds.as_secs());
+        RpcDto::Uptime(uptime)
+    }
 }

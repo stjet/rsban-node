@@ -1,14 +1,15 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{ErrorDto, LockedDto, RpcDto, WalletRpcMessage};
-use std::sync::Arc;
 
-pub async fn wallet_lock(node: Arc<Node>, enable_control: bool, args: WalletRpcMessage) -> RpcDto {
-    if enable_control {
-        match node.wallets.lock(&args.wallet) {
-            Ok(()) => RpcDto::Lock(LockedDto::new(true)),
-            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
+impl RpcCommandHandler {
+    pub(crate) fn wallet_lock(&self, args: WalletRpcMessage) -> RpcDto {
+        if self.enable_control {
+            match self.node.wallets.lock(&args.wallet) {
+                Ok(()) => RpcDto::Lock(LockedDto::new(true)),
+                Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
+            }
+        } else {
+            RpcDto::Error(ErrorDto::RPCControlDisabled)
         }
-    } else {
-        RpcDto::Error(ErrorDto::RPCControlDisabled)
     }
 }

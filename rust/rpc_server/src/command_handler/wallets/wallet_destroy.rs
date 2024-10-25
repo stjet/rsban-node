@@ -1,16 +1,13 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{DestroyedDto, ErrorDto, RpcDto, WalletRpcMessage};
-use std::sync::Arc;
 
-pub async fn wallet_destroy(
-    node: Arc<Node>,
-    enable_control: bool,
-    args: WalletRpcMessage,
-) -> RpcDto {
-    if enable_control {
-        node.wallets.destroy(&args.wallet);
-        RpcDto::Destroyed(DestroyedDto::new(true))
-    } else {
-        RpcDto::Error(ErrorDto::RPCControlDisabled)
+impl RpcCommandHandler {
+    pub(crate) fn wallet_destroy(&self, args: WalletRpcMessage) -> RpcDto {
+        if self.enable_control {
+            self.node.wallets.destroy(&args.wallet);
+            RpcDto::Destroyed(DestroyedDto::new(true))
+        } else {
+            RpcDto::Error(ErrorDto::RPCControlDisabled)
+        }
     }
 }

@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesArgs, AccountsBalancesDto, RpcDto};
+use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesArgs, AccountsBalancesDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn accounts_balances(&self, args: AccountsBalancesArgs) -> RpcDto {
+    pub(crate) fn accounts_balances(&self, args: AccountsBalancesArgs) -> AccountsBalancesDto {
         let tx = self.node.ledger.read_txn();
         let mut balances = HashMap::new();
         let only_confirmed = args.include_only_confirmed.unwrap_or(true);
@@ -32,7 +32,6 @@ impl RpcCommandHandler {
             balances.insert(account, AccountBalanceDto::new(balance, pending, pending));
         }
 
-        let accounts_balances = AccountsBalancesDto { balances };
-        RpcDto::AccountsBalances(accounts_balances)
+        AccountsBalancesDto { balances }
     }
 }

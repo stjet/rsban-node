@@ -1,14 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, AccountInfo, Amount};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, LedgerAccountInfo, LedgerArgs, LedgerDto, RpcDto};
+use rsnano_rpc_messages::{LedgerAccountInfo, LedgerArgs, LedgerDto};
 use std::{collections::HashMap, sync::Arc, u64};
 
 impl RpcCommandHandler {
-    pub(crate) fn ledger(&self, args: LedgerArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
+    pub(crate) fn ledger(&self, args: LedgerArgs) -> anyhow::Result<LedgerDto> {
+        self.ensure_control_enabled()?;
 
         let account = args.account;
         let count = args.count.unwrap_or(u64::MAX);
@@ -119,7 +117,7 @@ impl RpcCommandHandler {
             }
         }
 
-        RpcDto::Ledger(LedgerDto {
+        Ok(LedgerDto {
             accounts: accounts_json,
         })
     }

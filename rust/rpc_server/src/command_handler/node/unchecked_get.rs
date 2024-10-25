@@ -1,10 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::anyhow;
 use rsnano_core::{UncheckedInfo, UncheckedKey};
-use rsnano_rpc_messages::{ErrorDto, HashRpcMessage, RpcDto, UncheckedGetDto};
+use rsnano_rpc_messages::{HashRpcMessage, UncheckedGetDto};
 use std::sync::{Arc, Mutex};
 
 impl RpcCommandHandler {
-    pub(crate) fn unchecked_get(&self, args: HashRpcMessage) -> RpcDto {
+    pub(crate) fn unchecked_get(&self, args: HashRpcMessage) -> anyhow::Result<UncheckedGetDto> {
         let result = Arc::new(Mutex::new(None));
 
         self.node.unchecked.for_each(
@@ -26,9 +27,6 @@ impl RpcCommandHandler {
         );
 
         let result = result.lock().unwrap().take();
-        result.map_or_else(
-            || RpcDto::Error(ErrorDto::BlockNotFound),
-            |dto| RpcDto::UncheckedGet(dto),
-        )
+        result.ok_or_else(|| anyhow!(Self::BLOCK_NOT_FOUND))
     }
 }

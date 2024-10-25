@@ -1,8 +1,8 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountRpcMessage, CountRpcMessage, RpcDto};
+use rsnano_rpc_messages::{AccountRpcMessage, CountRpcMessage};
 
 impl RpcCommandHandler {
-    pub(crate) fn delegators_count(&self, args: AccountRpcMessage) -> RpcDto {
+    pub(crate) fn delegators_count(&self, args: AccountRpcMessage) -> CountRpcMessage {
         let representative = args.account;
         let mut count = 0;
 
@@ -16,6 +16,6 @@ impl RpcCommandHandler {
 
             iter.next();
         }
-        RpcDto::DelegatorsCount(CountRpcMessage::new(count))
+        CountRpcMessage::new(count)
     }
 }

@@ -1,18 +1,17 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::{anyhow, bail};
 use rsnano_core::PendingKey;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{BlockDto, ErrorDto, ReceiveArgs, RpcDto};
+use rsnano_rpc_messages::{BlockDto, ReceiveArgs};
 
 impl RpcCommandHandler {
-    pub fn receive(&self, args: ReceiveArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
+    pub fn receive(&self, args: ReceiveArgs) -> anyhow::Result<BlockDto> {
+        self.ensure_control_enabled()?;
 
         let txn = self.node.ledger.read_txn();
 
         if !self.node.ledger.any().block_exists(&txn, &args.block) {
-            return RpcDto::Error(ErrorDto::BlockNotFound);
+            bail!(Self::BLOCK_NOT_FOUND);
         }
 
         let pending_info = self
@@ -21,7 +20,7 @@ impl RpcCommandHandler {
             .any()
             .get_pending(&txn, &PendingKey::new(args.account, args.block));
         if pending_info.is_none() {
-            return RpcDto::Error(ErrorDto::BlockNotReceivable);
+            bail!("Block is not receivable");
         }
 
         let representative = self
@@ -40,16 +39,17 @@ impl RpcCommandHandler {
             .get_block(&self.node.ledger.read_txn(), &args.block)
             .unwrap();
 
-        let receive = self.node.wallets.receive_sync(
-            wallet,
-            &block,
-            representative,
-            self.node.config.receive_minimum,
-        );
+        let _receive = self
+            .node
+            .wallets
+            .receive_sync(
+                wallet,
+                &block,
+                representative,
+                self.node.config.receive_minimum,
+            )
+            .map_err(|_| anyhow!("Receive error"))?;
 
-        match receive {
-            Ok(_) => RpcDto::Receive(BlockDto::new(block.hash())),
-            Err(_) => RpcDto::Error(ErrorDto::ReceiveError),
-        }
+        Ok(BlockDto::new(block.hash()))
     }
 }

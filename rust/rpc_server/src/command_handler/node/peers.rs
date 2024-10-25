@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{PeerData, PeerInfo, PeersArgs, PeersDto, RpcDto};
+use rsnano_rpc_messages::{PeerData, PeerInfo, PeersArgs, PeersDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn peers(&self, args: PeersArgs) -> RpcDto {
+    pub(crate) fn peers(&self, args: PeersArgs) -> PeersDto {
         let peer_details = args.peer_details.unwrap_or(false);
         let mut peers: HashMap<String, PeerInfo> = HashMap::new();
 
@@ -30,8 +30,6 @@ impl RpcCommandHandler {
             PeerData::Simple(peers.keys().cloned().collect())
         };
 
-        let peer_dto = PeersDto::new(peer_data);
-
-        RpcDto::Peers(peer_dto)
+        PeersDto::new(peer_data)
     }
 }

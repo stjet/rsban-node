@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto, RpcDto};
+use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto};
 
 impl RpcCommandHandler {
-    pub(crate) fn account_balance(&self, args: AccountBalanceArgs) -> RpcDto {
+    pub(crate) fn account_balance(&self, args: AccountBalanceArgs) -> AccountBalanceDto {
         let tx = self.node.ledger.read_txn();
         let include_unconfirmed_blocks = args.include_only_confirmed.unwrap_or(false);
 
@@ -26,8 +26,6 @@ impl RpcCommandHandler {
                 .ledger
                 .account_receivable(&tx, &args.account, !include_unconfirmed_blocks);
 
-        let account_balance_dto = AccountBalanceDto::new(balance, pending, pending);
-
-        RpcDto::AccountBalance(account_balance_dto)
+        AccountBalanceDto::new(balance, pending, pending)
     }
 }

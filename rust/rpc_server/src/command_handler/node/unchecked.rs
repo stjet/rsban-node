@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{UncheckedInfo, UncheckedKey};
-use rsnano_rpc_messages::{CountRpcMessage, RpcDto, UncheckedDto};
+use rsnano_rpc_messages::{CountRpcMessage, UncheckedDto};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 impl RpcCommandHandler {
-    pub(crate) fn unchecked(&self, args: CountRpcMessage) -> RpcDto {
+    pub(crate) fn unchecked(&self, args: CountRpcMessage) -> UncheckedDto {
         let blocks = Arc::new(Mutex::new(HashMap::new()));
 
         self.node.unchecked.for_each(
@@ -26,6 +26,6 @@ impl RpcCommandHandler {
         );
 
         let blocks = Arc::try_unwrap(blocks).unwrap().into_inner().unwrap();
-        RpcDto::Unchecked(UncheckedDto::new(blocks))
+        UncheckedDto::new(blocks)
     }
 }

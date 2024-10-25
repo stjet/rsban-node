@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::BlockHash;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ExistsDto, ReceivableExistsArgs, RpcDto};
+use rsnano_rpc_messages::{ExistsDto, ReceivableExistsArgs};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn receivable_exists(&self, args: ReceivableExistsArgs) -> RpcDto {
+    pub(crate) fn receivable_exists(&self, args: ReceivableExistsArgs) -> ExistsDto {
         let include_active = args.include_active.unwrap_or(false);
         let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
         let txn = self.node.ledger.read_txn();
@@ -38,7 +38,7 @@ impl RpcCommandHandler {
             false
         };
 
-        RpcDto::ReceivableExists(ExistsDto::new(exists))
+        ExistsDto::new(exists)
     }
 }
 

@@ -1,8 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{ConfirmationActiveArgs, ConfirmationActiveDto, RpcDto};
+use rsnano_rpc_messages::{ConfirmationActiveArgs, ConfirmationActiveDto};
 
 impl RpcCommandHandler {
-    pub(crate) fn confirmation_active(&self, args: ConfirmationActiveArgs) -> RpcDto {
+    pub(crate) fn confirmation_active(
+        &self,
+        args: ConfirmationActiveArgs,
+    ) -> ConfirmationActiveDto {
         let announcements = args.announcements.unwrap_or(0);
         let mut confirmed = 0;
         let mut confirmations = Vec::new();
@@ -23,10 +26,6 @@ impl RpcCommandHandler {
         }
 
         let unconfirmed = confirmations.len() as u64;
-
-        let confirmation_active_dto =
-            ConfirmationActiveDto::new(confirmations, unconfirmed, confirmed);
-
-        RpcDto::ConfirmationActive(confirmation_active_dto)
+        ConfirmationActiveDto::new(confirmations, unconfirmed, confirmed)
     }
 }

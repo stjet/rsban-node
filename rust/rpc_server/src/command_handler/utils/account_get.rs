@@ -1,5 +1,5 @@
-use rsnano_rpc_messages::{AccountRpcMessage, KeyRpcMessage, RpcDto};
+use rsnano_rpc_messages::{AccountRpcMessage, KeyRpcMessage};
 
-pub(crate) fn account_get(args: KeyRpcMessage) -> RpcDto {
-    RpcDto::AccountGet(AccountRpcMessage::new(args.key.into()))
+pub(crate) fn account_get(args: KeyRpcMessage) -> AccountRpcMessage {
+    AccountRpcMessage::new(args.key.into())
 }

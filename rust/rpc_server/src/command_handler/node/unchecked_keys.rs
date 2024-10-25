@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{UncheckedInfo, UncheckedKey};
-use rsnano_rpc_messages::{RpcDto, UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysDto};
+use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysDto};
 use std::sync::{Arc, Mutex};
 
 impl RpcCommandHandler {
-    pub(crate) fn unchecked_keys(&self, args: UncheckedKeysArgs) -> RpcDto {
+    pub(crate) fn unchecked_keys(&self, args: UncheckedKeysArgs) -> UncheckedKeysDto {
         let unchecked_keys = Arc::new(Mutex::new(Vec::new()));
 
         self.node.unchecked.for_each_with_dependency(
@@ -34,6 +34,6 @@ impl RpcCommandHandler {
             .into_inner()
             .unwrap();
 
-        RpcDto::UncheckedKeys(UncheckedKeysDto::new(unchecked_keys))
+        UncheckedKeysDto::new(unchecked_keys)
     }
 }

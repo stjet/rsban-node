@@ -1,17 +1,16 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, RpcDto, WalletHistoryArgs, WalletHistoryDto};
+use rsnano_rpc_messages::{HistoryEntryDto, WalletHistoryArgs, WalletHistoryDto};
 use rsnano_store_lmdb::Transaction;
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_history(&self, args: WalletHistoryArgs) -> RpcDto {
-        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
-            Ok(accounts) => accounts,
-            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-        };
-
+    pub(crate) fn wallet_history(
+        &self,
+        args: WalletHistoryArgs,
+    ) -> anyhow::Result<WalletHistoryDto> {
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let mut entries: Vec<HistoryEntryDto> = Vec::new();
 
         let block_transaction = self.node.store.tx_begin_read();
@@ -58,9 +57,7 @@ impl RpcCommandHandler {
         }
 
         entries.sort_by(|a, b| b.local_timestamp.cmp(&a.local_timestamp));
-        let wallet_history_dto = WalletHistoryDto::new(entries);
-
-        RpcDto::WalletHistory(wallet_history_dto)
+        Ok(WalletHistoryDto::new(entries))
     }
 }
 

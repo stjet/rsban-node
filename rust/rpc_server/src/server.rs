@@ -1,16 +1,8 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::{Context, Result};
-use axum::{
-    extract::State,
-    http::{Request, StatusCode},
-    middleware::map_request,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, http::Request, middleware::map_request, routing::post, Json, Router};
 use rsnano_node::Node;
 use rsnano_rpc_messages::RpcCommand;
-use serde_json::to_string_pretty;
 use std::sync::Arc;
 use tokio::{net::TcpListener, task::spawn_blocking};
 use tracing::info;
@@ -37,11 +29,11 @@ pub async fn run_rpc_server(
 async fn handle_rpc(
     State(command_handler): State<RpcCommandHandler>,
     Json(command): Json<RpcCommand>,
-) -> Response {
+) -> Json<serde_json::Value> {
     let response = spawn_blocking(move || command_handler.handle(command))
         .await
         .unwrap();
-    (StatusCode::OK, to_string_pretty(&response).unwrap()).into_response()
+    Json(response)
 }
 
 /// JSON is the default and the only accepted content type!

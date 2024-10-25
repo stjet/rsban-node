@@ -1,8 +1,6 @@
-use rsnano_rpc_messages::{JsonDto, RpcDto, WalletRpcMessage};
+use rsnano_rpc_messages::{JsonDto, WalletRpcMessage};
 use serde_json::{to_string, Value};
 
-pub(crate) fn wallet_export(args: WalletRpcMessage) -> RpcDto {
-    RpcDto::WalletExport(JsonDto::new(Value::String(
-        to_string(&args.wallet).unwrap(),
-    )))
+pub(crate) fn wallet_export(args: WalletRpcMessage) -> JsonDto {
+    JsonDto::new(Value::String(to_string(&args.wallet).unwrap()))
 }

@@ -1,6 +1,6 @@
-use rsnano_rpc_messages::{RpcDto, SuccessDto};
+use rsnano_rpc_messages::SuccessDto;
 
-pub fn validate_account_number(account: String) -> RpcDto {
+pub fn validate_account_number(account: String) -> SuccessDto {
     // TODO: actually validate!
-    RpcDto::ValidateAccountNumber(SuccessDto::new())
+    SuccessDto::new()
 }

@@ -1,9 +1,8 @@
 use rsnano_core::{Account, PublicKey};
-use rsnano_rpc_messages::{KeyExpandArgs, KeyPairDto, RpcDto};
+use rsnano_rpc_messages::{KeyExpandArgs, KeyPairDto};
 
-pub fn key_expand(args: KeyExpandArgs) -> RpcDto {
+pub fn key_expand(args: KeyExpandArgs) -> KeyPairDto {
     let public: PublicKey = (&args.key).try_into().unwrap();
     let account = Account::from(public);
-
-    RpcDto::KeyExpand(KeyPairDto::new(args.key, public, account))
+    KeyPairDto::new(args.key, public, account)
 }

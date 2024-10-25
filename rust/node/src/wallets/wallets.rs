@@ -51,9 +51,9 @@ pub enum WalletsError {
     BadPublicKey,
 }
 
-impl fmt::Display for WalletsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let error_message = match self {
+impl WalletsError {
+    pub fn as_str(&self) -> &'static str {
+        match self {
             WalletsError::None => "No error",
             WalletsError::Generic => "Unknown error",
             WalletsError::WalletNotFound => "Wallet not found",
@@ -61,10 +61,17 @@ impl fmt::Display for WalletsError {
             WalletsError::AccountNotFound => "Account not found",
             WalletsError::InvalidPassword => "Invalid password",
             WalletsError::BadPublicKey => "Bad public key",
-        };
-        write!(f, "{}", error_message)
+        }
     }
 }
+
+impl fmt::Display for WalletsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::error::Error for WalletsError {}
 
 pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 

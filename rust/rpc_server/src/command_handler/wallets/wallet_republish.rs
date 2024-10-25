@@ -1,19 +1,16 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, BlockEnum, BlockHash};
 use rsnano_node::NodeExt;
-use rsnano_rpc_messages::{BlockHashesDto, ErrorDto, RpcDto, WalletWithCountArgs};
+use rsnano_rpc_messages::{BlockHashesDto, WalletWithCountArgs};
 use std::{collections::VecDeque, time::Duration};
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_republish(&self, args: WalletWithCountArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
-
-        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
-            Ok(accounts) => accounts,
-            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-        };
+    pub(crate) fn wallet_republish(
+        &self,
+        args: WalletWithCountArgs,
+    ) -> anyhow::Result<BlockHashesDto> {
+        self.ensure_control_enabled()?;
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let (blocks, republish_bundle) = self.collect_blocks_to_republish(accounts, args.count);
         self.node.flood_block_many(
@@ -21,7 +18,7 @@ impl RpcCommandHandler {
             Box::new(|| ()),
             Duration::from_millis(25),
         );
-        RpcDto::WalletRepublish(BlockHashesDto::new(blocks))
+        Ok(BlockHashesDto::new(blocks))
     }
 
     fn collect_blocks_to_republish(

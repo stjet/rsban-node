@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{ErrorDto, RpcDto};
+use rsnano_rpc_messages::RpcError;
 use tracing::warn;
 
 impl RpcCommandHandler {
-    pub(crate) fn work_peers_clear(&self) -> RpcDto {
+    pub(crate) fn work_peers_clear(&self) -> RpcError {
         warn!("Distributed work feature is not implemented yet");
-        RpcDto::Error(ErrorDto::Other)
+        RpcError::new(Self::NOT_IMPLEMENTED)
     }
 }

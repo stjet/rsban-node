@@ -1,13 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{ErrorDto, RpcDto, UnopenedArgs, UnopenedDto};
+use rsnano_rpc_messages::{UnopenedArgs, UnopenedDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn unopened(&self, args: UnopenedArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
+    pub(crate) fn unopened(&self, args: UnopenedArgs) -> anyhow::Result<UnopenedDto> {
+        self.ensure_control_enabled()?;
 
         let start = args.account;
         let mut accounts: HashMap<Account, Amount> = HashMap::new();
@@ -53,8 +51,6 @@ impl RpcCommandHandler {
             accounts.insert(current_account, current_account_sum);
         }
 
-        let response = UnopenedDto::new(accounts);
-
-        RpcDto::Unopened(response)
+        Ok(UnopenedDto::new(accounts))
     }
 }

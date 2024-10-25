@@ -1,11 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::bail;
 use rsnano_node::bootstrap::BootstrapInitiatorExt;
-use rsnano_rpc_messages::{BootstrapLazyArgs, BootstrapLazyDto, ErrorDto, RpcDto};
+use rsnano_rpc_messages::{BootstrapLazyArgs, BootstrapLazyDto};
 
 impl RpcCommandHandler {
-    pub(crate) fn bootstrap_lazy(&self, args: BootstrapLazyArgs) -> RpcDto {
+    pub(crate) fn bootstrap_lazy(
+        &self,
+        args: BootstrapLazyArgs,
+    ) -> anyhow::Result<BootstrapLazyDto> {
         if self.node.flags.disable_lazy_bootstrap {
-            return RpcDto::Error(ErrorDto::LazyBootstrapDisabled);
+            bail!("Lazy bootstrap is disabled");
         }
 
         let force = args.force.unwrap_or(false);
@@ -18,7 +22,6 @@ impl RpcCommandHandler {
                 .bootstrap_lazy(args.hash.into(), force, bootstrap_id);
 
         let started = !existed.is_some() && key_inserted;
-
-        RpcDto::BootstrapLazy(BootstrapLazyDto::new(started, key_inserted))
+        Ok(BootstrapLazyDto::new(started, key_inserted))
     }
 }

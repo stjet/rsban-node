@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
-use rsnano_rpc_messages::{AvailableSupplyDto, RpcDto};
+use rsnano_rpc_messages::AvailableSupplyDto;
 
 impl RpcCommandHandler {
-    pub(crate) fn available_supply(&self) -> RpcDto {
+    pub(crate) fn available_supply(&self) -> AvailableSupplyDto {
         let tx = self.node.store.env.tx_begin_read();
         let genesis_balance = self.node.balance(
             &self
@@ -39,7 +39,6 @@ impl RpcCommandHandler {
         );
 
         let available = genesis_balance - landing_balance - faucet_balance - burned_balance;
-
-        RpcDto::AvailableSupply(AvailableSupplyDto::new(available))
+        AvailableSupplyDto::new(available)
     }
 }

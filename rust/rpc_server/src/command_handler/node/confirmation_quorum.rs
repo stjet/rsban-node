@@ -1,12 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::utils::NULL_ENDPOINT;
-use rsnano_rpc_messages::{ConfirmationQuorumArgs, ConfirmationQuorumDto, PeerDetailsDto, RpcDto};
+use rsnano_rpc_messages::{ConfirmationQuorumArgs, ConfirmationQuorumDto, PeerDetailsDto};
 
 impl RpcCommandHandler {
-    pub(crate) fn confirmation_quorum(&self, args: ConfirmationQuorumArgs) -> RpcDto {
+    pub(crate) fn confirmation_quorum(
+        &self,
+        args: ConfirmationQuorumArgs,
+    ) -> ConfirmationQuorumDto {
         let quorum = self.node.online_reps.lock().unwrap();
 
-        let mut confirmation_quorum_dto = ConfirmationQuorumDto {
+        let mut result = ConfirmationQuorumDto {
             quorum_delta: quorum.quorum_delta(),
             online_weight_quorum_percent: quorum.quorum_percent(),
             online_weight_minimum: quorum.online_weight_minimum(),
@@ -38,9 +41,9 @@ impl RpcCommandHandler {
                 })
                 .collect();
 
-            confirmation_quorum_dto.peers = Some(peers);
+            result.peers = Some(peers);
         }
 
-        RpcDto::ConfirmationQuorum(confirmation_quorum_dto)
+        result
     }
 }

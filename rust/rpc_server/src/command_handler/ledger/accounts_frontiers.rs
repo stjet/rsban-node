@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountsRpcMessage, FrontiersDto, RpcDto};
+use rsnano_rpc_messages::{AccountsRpcMessage, FrontiersDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn accounts_frontiers(&self, args: AccountsRpcMessage) -> RpcDto {
+    pub(crate) fn accounts_frontiers(&self, args: AccountsRpcMessage) -> FrontiersDto {
         let tx = self.node.ledger.read_txn();
         let mut frontiers = HashMap::new();
         let mut errors = HashMap::new();
@@ -16,11 +16,11 @@ impl RpcCommandHandler {
             }
         }
 
-        let mut frontiers_dto = FrontiersDto::new(frontiers);
+        let mut frontiers = FrontiersDto::new(frontiers);
         if !errors.is_empty() {
-            frontiers_dto.errors = Some(errors);
+            frontiers.errors = Some(errors);
         }
 
-        RpcDto::AccountsFrontiers(frontiers_dto)
+        frontiers
     }
 }

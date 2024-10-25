@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use itertools::Itertools;
 use rsnano_core::{Account, Amount, BlockHash};
-use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto, RpcDto, SourceInfo};
+use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto, SourceInfo};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn accounts_receivable(&self, args: AccountsReceivableArgs) -> RpcDto {
+    pub(crate) fn accounts_receivable(&self, args: AccountsReceivableArgs) -> ReceivableDto {
         let transaction = self.node.store.tx_begin_read();
         let count = args.count;
         let threshold = args.threshold.unwrap_or(Amount::zero());
@@ -133,6 +133,6 @@ impl RpcCommandHandler {
             ReceivableDto::Threshold { blocks }
         };
 
-        RpcDto::AccountsReceivable(result)
+        result
     }
 }

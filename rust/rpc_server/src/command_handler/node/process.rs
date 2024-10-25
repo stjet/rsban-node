@@ -1,11 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::{anyhow, bail};
 use rsnano_core::BlockEnum;
 use rsnano_ledger::BlockStatus;
-use rsnano_rpc_messages::{ErrorDto, HashRpcMessage, ProcessArgs, RpcDto};
+use rsnano_rpc_messages::{HashRpcMessage, ProcessArgs};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn process(&self, args: ProcessArgs) -> RpcDto {
+    pub(crate) fn process(&self, args: ProcessArgs) -> anyhow::Result<HashRpcMessage> {
         let is_async = args.is_async.unwrap_or(false);
         let block: BlockEnum = args.block.into();
 
@@ -14,7 +15,7 @@ impl RpcCommandHandler {
             &block.root(),
             block.work(),
         ) {
-            return RpcDto::Error(ErrorDto::WorkLow);
+            bail!("Work low");
         }
 
         if !is_async {
@@ -22,41 +23,28 @@ impl RpcCommandHandler {
                 Some(result) => match result {
                     BlockStatus::Progress => {
                         let hash = block.hash();
-                        RpcDto::Process(HashRpcMessage::new(hash))
-                    }
-                    BlockStatus::GapPrevious => RpcDto::Error(ErrorDto::GapPrevious),
-                    BlockStatus::GapSource => RpcDto::Error(ErrorDto::GapSource),
-                    BlockStatus::Old => RpcDto::Error(ErrorDto::Old),
-                    BlockStatus::BadSignature => RpcDto::Error(ErrorDto::BadSignature),
-                    BlockStatus::NegativeSpend => RpcDto::Error(ErrorDto::NegativeSpend),
-                    BlockStatus::BalanceMismatch => RpcDto::Error(ErrorDto::BalanceMismatch),
-                    BlockStatus::Unreceivable => RpcDto::Error(ErrorDto::Unreceivable),
-                    BlockStatus::BlockPosition => RpcDto::Error(ErrorDto::BlockPosition),
-                    BlockStatus::GapEpochOpenPending => {
-                        RpcDto::Error(ErrorDto::GapEpochOpenPending)
+                        Ok(HashRpcMessage::new(hash))
                     }
                     BlockStatus::Fork => {
                         if args.force.unwrap_or(false) {
                             self.node.active.erase(&block.qualified_root());
                             self.node.block_processor.force(Arc::new(block.clone()));
                             let hash = block.hash();
-                            RpcDto::Process(HashRpcMessage::new(hash))
+                            Ok(HashRpcMessage::new(hash))
                         } else {
-                            RpcDto::Error(ErrorDto::Fork)
+                            Err(anyhow!(result.as_str()))
                         }
                     }
-                    BlockStatus::InsufficientWork => RpcDto::Error(ErrorDto::InsufficientWork),
-                    BlockStatus::OpenedBurnAccount => RpcDto::Error(ErrorDto::OpenedBurnAccount),
-                    _ => RpcDto::Error(ErrorDto::Other),
+                    _ => Err(anyhow!(result.as_str())),
                 },
-                None => RpcDto::Error(ErrorDto::Stopped),
+                None => Err(anyhow!("Stopped")),
             }
         } else {
             if let BlockEnum::State(_) = block {
                 self.node.process(block.clone()).unwrap(); // TODO add error handling!
-                RpcDto::Process(HashRpcMessage::new(block.hash()))
+                Ok(HashRpcMessage::new(block.hash()))
             } else {
-                RpcDto::Error(ErrorDto::BlockError)
+                Err(anyhow!(Self::BLOCK_ERROR))
             }
         }
     }

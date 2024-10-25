@@ -1,15 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{ErrorDto, RpcDto, WalletInfoDto, WalletRpcMessage};
+use rsnano_rpc_messages::{WalletInfoDto, WalletRpcMessage};
 use rsnano_store_lmdb::KeyType;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_info(&self, args: WalletRpcMessage) -> RpcDto {
+    pub(crate) fn wallet_info(&self, args: WalletRpcMessage) -> anyhow::Result<WalletInfoDto> {
         let block_transaction = self.node.ledger.read_txn();
-        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
-            Ok(accounts) => accounts,
-            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-        };
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let mut balance = Amount::zero();
         let mut receivable = Amount::zero();
@@ -55,7 +52,7 @@ impl RpcCommandHandler {
             .deterministic_index_get(&args.wallet)
             .unwrap();
 
-        let account_balance = WalletInfoDto::new(
+        Ok(WalletInfoDto::new(
             balance,
             receivable,
             receivable,
@@ -65,8 +62,6 @@ impl RpcCommandHandler {
             deterministic_index,
             block_count,
             cemented_block_count,
-        );
-
-        RpcDto::WalletInfo(account_balance)
+        ))
     }
 }

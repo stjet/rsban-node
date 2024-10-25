@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, RpcDto, WalletBalancesArgs};
+use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, WalletBalancesArgs};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_balances(&self, args: WalletBalancesArgs) -> RpcDto {
+    pub(crate) fn wallet_balances(&self, args: WalletBalancesArgs) -> AccountsBalancesDto {
         let threshold = args.threshold.unwrap_or(Amount::zero());
         let accounts = self
             .node
@@ -26,6 +26,6 @@ impl RpcCommandHandler {
                 balances.insert(account, account_balance);
             }
         }
-        RpcDto::WalletBalances(AccountsBalancesDto { balances })
+        AccountsBalancesDto { balances }
     }
 }

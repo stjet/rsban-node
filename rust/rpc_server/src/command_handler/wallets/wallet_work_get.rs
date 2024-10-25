@@ -1,29 +1,21 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountsWithWorkDto, ErrorDto, RpcDto, WalletRpcMessage};
+use rsnano_rpc_messages::{AccountsWithWorkDto, WalletRpcMessage};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_work_get(&self, args: WalletRpcMessage) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
-
-        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
-            Ok(accounts) => accounts,
-            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-        };
-
+    pub(crate) fn wallet_work_get(
+        &self,
+        args: WalletRpcMessage,
+    ) -> anyhow::Result<AccountsWithWorkDto> {
+        self.ensure_control_enabled()?;
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let mut works = HashMap::new();
 
         for account in accounts {
-            match self.node.wallets.work_get2(&args.wallet, &account.into()) {
-                Ok(work) => {
-                    works.insert(account, work.into());
-                }
-                Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-            }
+            let work = self.node.wallets.work_get2(&args.wallet, &account.into())?;
+            works.insert(account, work.into());
         }
 
-        RpcDto::WalletWorkGet(AccountsWithWorkDto::new(works))
+        Ok(AccountsWithWorkDto::new(works))
     }
 }

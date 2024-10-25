@@ -1,10 +1,13 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
-use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineDto, RpcDto};
+use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn representatives_online(&self, args: RepresentativesOnlineArgs) -> RpcDto {
+    pub(crate) fn representatives_online(
+        &self,
+        args: RepresentativesOnlineArgs,
+    ) -> RepresentativesOnlineDto {
         let lock = self.node.online_reps.lock().unwrap();
         let online_reps = lock.online_reps();
         let weight = args.weight.unwrap_or(false);
@@ -30,8 +33,6 @@ impl RpcCommandHandler {
             representatives.insert(account, account_weight);
         }
 
-        let dto = RepresentativesOnlineDto { representatives };
-
-        RpcDto::RepresentativesOnline(dto)
+        RepresentativesOnlineDto { representatives }
     }
 }

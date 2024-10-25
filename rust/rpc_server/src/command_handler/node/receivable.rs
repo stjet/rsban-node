@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, BlockHash};
-use rsnano_rpc_messages::{ReceivableArgs, ReceivableDto, RpcDto, SourceInfo};
+use rsnano_rpc_messages::{ReceivableArgs, ReceivableDto, SourceInfo};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn receivable(&self, args: ReceivableArgs) -> RpcDto {
+    pub(crate) fn receivable(&self, args: ReceivableArgs) -> ReceivableDto {
         let transaction = self.node.store.tx_begin_read();
         let receivables = self.node.ledger.any().account_receivable_upper_bound(
             &transaction,
@@ -110,6 +110,6 @@ impl RpcCommandHandler {
             }
         };
 
-        RpcDto::Receivable(receivable_dto)
+        receivable_dto
     }
 }

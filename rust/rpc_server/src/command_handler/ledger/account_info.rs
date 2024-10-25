@@ -1,16 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto, ErrorDto, RpcDto};
+use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto};
 
 impl RpcCommandHandler {
-    pub(crate) fn account_info(&self, args: AccountInfoArgs) -> RpcDto {
+    pub(crate) fn account_info(&self, args: AccountInfoArgs) -> anyhow::Result<AccountInfoDto> {
         let txn = self.node.ledger.read_txn();
         let include_confirmed = args.include_confirmed.unwrap_or(false);
-
-        let info = match self.node.ledger.any().get_account(&txn, &args.account) {
-            Some(account_info) => account_info,
-            None => return RpcDto::Error(ErrorDto::AccountNotFound),
-        };
+        let info = self.load_account(&txn, &args.account)?;
 
         let confirmation_height_info = self
             .node
@@ -102,6 +98,6 @@ impl RpcCommandHandler {
             }
         }
 
-        RpcDto::AccountInfo(account_info)
+        Ok(account_info)
     }
 }

@@ -1,20 +1,16 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::bail;
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, PendingKey,
     PublicKey, RawKey, WorkVersion,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{
-    BlockCreateArgs, BlockCreateDto, BlockTypeDto, ErrorDto, RpcDto, WorkVersionDto,
-};
+use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateDto, BlockTypeDto, WorkVersionDto};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn block_create(&self, args: BlockCreateArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
-
+    pub(crate) fn block_create(&self, args: BlockCreateArgs) -> anyhow::Result<BlockCreateDto> {
+        self.ensure_control_enabled()?;
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let difficulty = args
             .difficulty
@@ -38,9 +34,7 @@ impl RpcCommandHandler {
         }*/
 
         if let (Some(wallet_id), Some(account)) = (wallet, account) {
-            if let Err(e) = self.node.wallets.fetch(&wallet_id, &account.into()) {
-                return RpcDto::Error(ErrorDto::WalletsError(e));
-            }
+            self.node.wallets.fetch(&wallet_id, &account.into())?;
             let tx = self.node.ledger.read_txn();
             previous = self.node.ledger.any().account_head(&tx, &account).unwrap();
             balance = self
@@ -85,7 +79,7 @@ impl RpcCommandHandler {
                         .sign(&key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto::BlockError);
+                    bail!(Self::BLOCK_ERROR);
                 }
             }
             BlockTypeDto::Open => {
@@ -98,7 +92,7 @@ impl RpcCommandHandler {
                         .sign(&key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto::BlockError);
+                    bail!(Self::BLOCK_ERROR);
                 }
             }
             BlockTypeDto::Receive => {
@@ -110,7 +104,7 @@ impl RpcCommandHandler {
                         .sign(&key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto::BlockError);
+                    bail!(Self::BLOCK_ERROR);
                 }
             }
             BlockTypeDto::Change => {
@@ -122,7 +116,7 @@ impl RpcCommandHandler {
                         .sign(&key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto::BlockError);
+                    bail!(Self::BLOCK_ERROR);
                 }
             }
             BlockTypeDto::Send => {
@@ -137,10 +131,10 @@ impl RpcCommandHandler {
                             .sign(key_pair)
                             .build()
                     } else {
-                        return RpcDto::Error(ErrorDto::InsufficientBalance);
+                        bail!("Insufficient balance")
                     }
                 } else {
-                    return RpcDto::Error(ErrorDto::BlockError);
+                    bail!(Self::BLOCK_ERROR);
                 }
             }
         };
@@ -165,7 +159,7 @@ impl RpcCommandHandler {
                 Some(pub_key),
             ) {
                 Some(work) => work,
-                None => return RpcDto::Error(ErrorDto::InsufficientWork),
+                None => bail!("Insufficient work"),
             };
             block.set_work(work);
         } else {
@@ -175,8 +169,7 @@ impl RpcCommandHandler {
         let hash = block.hash();
         let difficulty = block.work();
         let json_block = block.json_representation();
-
-        RpcDto::BlockCreate(BlockCreateDto::new(hash, difficulty.into(), json_block))
+        Ok(BlockCreateDto::new(hash, difficulty.into(), json_block))
     }
 }
 

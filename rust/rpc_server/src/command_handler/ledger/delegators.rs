@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{DelegatorsArgs, DelegatorsDto, RpcDto};
+use rsnano_rpc_messages::{DelegatorsArgs, DelegatorsDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn delegators(&self, args: DelegatorsArgs) -> RpcDto {
+    pub(crate) fn delegators(&self, args: DelegatorsArgs) -> DelegatorsDto {
         let representative = args.account;
         let count = args.count.unwrap_or(1024);
         let threshold = args.threshold.unwrap_or(Amount::zero());
@@ -25,6 +25,6 @@ impl RpcCommandHandler {
 
             iter.next();
         }
-        RpcDto::Delegators(DelegatorsDto::new(delegators))
+        DelegatorsDto::new(delegators)
     }
 }

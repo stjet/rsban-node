@@ -1,13 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{DestroyedDto, ErrorDto, RpcDto, WalletRpcMessage};
+use rsnano_rpc_messages::{DestroyedDto, WalletRpcMessage};
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_destroy(&self, args: WalletRpcMessage) -> RpcDto {
-        if self.enable_control {
-            self.node.wallets.destroy(&args.wallet);
-            RpcDto::Destroyed(DestroyedDto::new(true))
-        } else {
-            RpcDto::Error(ErrorDto::RPCControlDisabled)
-        }
+    pub(crate) fn wallet_destroy(&self, args: WalletRpcMessage) -> anyhow::Result<DestroyedDto> {
+        self.ensure_control_enabled()?;
+        self.node.wallets.destroy(&args.wallet);
+        Ok(DestroyedDto::new(true))
     }
 }

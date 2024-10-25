@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
-use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry, RpcDto};
+use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 
 impl RpcCommandHandler {
-    pub(crate) fn account_history(&self, args: AccountHistoryArgs) -> RpcDto {
+    pub(crate) fn account_history(&self, args: AccountHistoryArgs) -> AccountHistoryDto {
         let transaction = self.node.store.tx_begin_read();
         let mut history = Vec::new();
         let reverse = args.reverse.unwrap_or(false);
@@ -74,14 +74,12 @@ impl RpcCommandHandler {
             None
         };
 
-        let account_history = AccountHistoryDto {
+        AccountHistoryDto {
             account: args.account,
             history,
             previous,
             next,
-        };
-
-        RpcDto::AccountHistory(account_history)
+        }
     }
 
     fn create_history_entry(

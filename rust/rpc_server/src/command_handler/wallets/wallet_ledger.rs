@@ -1,15 +1,13 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountInfo, ErrorDto, RpcDto, WalletLedgerArgs, WalletLedgerDto};
+use rsnano_rpc_messages::{AccountInfo, WalletLedgerArgs, WalletLedgerDto};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_ledger(&self, args: WalletLedgerArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
+    pub(crate) fn wallet_ledger(&self, args: WalletLedgerArgs) -> anyhow::Result<WalletLedgerDto> {
+        self.ensure_control_enabled();
 
         let WalletLedgerArgs {
             wallet,
@@ -24,22 +22,18 @@ impl RpcCommandHandler {
         let receivable = receivable.unwrap_or(false);
         let modified_since = modified_since.unwrap_or(0);
 
-        match self.node.wallets.get_accounts_of_wallet(&wallet) {
-            Ok(accounts) => {
-                let accounts_json = get_accounts_info(
-                    self.node.clone(),
-                    accounts,
-                    representative,
-                    weight,
-                    receivable,
-                    modified_since,
-                );
-                RpcDto::WalletLedger(WalletLedgerDto {
-                    accounts: accounts_json,
-                })
-            }
-            Err(e) => RpcDto::Error(ErrorDto::WalletsError(e)),
-        }
+        let accounts = self.node.wallets.get_accounts_of_wallet(&wallet)?;
+        let accounts_json = get_accounts_info(
+            self.node.clone(),
+            accounts,
+            representative,
+            weight,
+            receivable,
+            modified_since,
+        );
+        Ok(WalletLedgerDto {
+            accounts: accounts_json,
+        })
     }
 }
 

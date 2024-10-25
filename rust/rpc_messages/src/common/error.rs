@@ -39,6 +39,19 @@ pub enum ErrorDto {
     InsufficientBalance,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RpcError {
+    pub error: String,
+}
+
+impl RpcError {
+    pub fn new(error: impl Into<String>) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
 impl Serialize for ErrorDto {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -1,11 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
+use anyhow::bail;
 use rsnano_core::PendingKey;
 use rsnano_node::NodeExt;
-use rsnano_rpc_messages::{BlockHashesDto, ErrorDto, RepublishArgs, RpcDto};
+use rsnano_rpc_messages::{BlockHashesDto, RepublishArgs};
 use std::time::Duration;
 
 impl RpcCommandHandler {
-    pub(crate) fn republish(&self, args: RepublishArgs) -> RpcDto {
+    pub(crate) fn republish(&self, args: RepublishArgs) -> anyhow::Result<BlockHashesDto> {
         let mut blocks = Vec::new();
         let transaction = self.node.store.tx_begin_read();
         let count = args.count.unwrap_or(1024);
@@ -65,7 +66,7 @@ impl RpcCommandHandler {
                                 .account_head(&transaction, &destination)
                             {
                                 Some(block_hash) => block_hash,
-                                None => return RpcDto::Error(ErrorDto::AccountHeadNotFound),
+                                None => bail!("Account head not found"),
                             };
                             let mut dest_block =
                                 self.node.ledger.any().get_block(&transaction, &previous);
@@ -129,6 +130,6 @@ impl RpcCommandHandler {
             );
         }
 
-        RpcDto::Republish(BlockHashesDto::new(blocks))
+        Ok(BlockHashesDto::new(blocks))
     }
 }

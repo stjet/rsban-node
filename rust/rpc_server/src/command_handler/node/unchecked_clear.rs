@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{RpcDto, SuccessDto};
+use rsnano_rpc_messages::SuccessDto;
 
 impl RpcCommandHandler {
-    pub(crate) fn unchecked_clear(&self) -> RpcDto {
+    pub(crate) fn unchecked_clear(&self) -> SuccessDto {
         self.node.unchecked.clear();
-        RpcDto::UncheckedClear(SuccessDto::new())
+        SuccessDto::new()
     }
 }

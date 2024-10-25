@@ -1,18 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Amount, BlockHash};
-use rsnano_rpc_messages::{ErrorDto, ReceivableDto, RpcDto, SourceInfo, WalletReceivableArgs};
+use rsnano_rpc_messages::{ReceivableDto, SourceInfo, WalletReceivableArgs};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_receivable(&self, args: WalletReceivableArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
-
-        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
-            Ok(accounts) => accounts,
-            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-        };
+    pub(crate) fn wallet_receivable(
+        &self,
+        args: WalletReceivableArgs,
+    ) -> anyhow::Result<ReceivableDto> {
+        self.ensure_control_enabled()?;
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let tx = self.node.ledger.read_txn();
         let mut block_source = HashMap::new();
@@ -83,7 +80,6 @@ impl RpcCommandHandler {
                 blocks: block_default,
             }
         };
-
-        RpcDto::WalletReceivable(result)
+        Ok(result)
     }
 }

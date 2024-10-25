@@ -1,17 +1,16 @@
 use super::difficulty_ledger;
 use crate::command_handler::RpcCommandHandler;
+use anyhow::bail;
 use rsnano_core::{
     BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey, WorkVersion,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ErrorDto, RpcDto, WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
+use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> RpcDto {
-        if !self.enable_control {
-            return RpcDto::Error(ErrorDto::RPCControlDisabled);
-        }
+    pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {
+        self.ensure_control_enabled()?;
 
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let default_difficulty = self.node.ledger.constants.work.threshold_base(work_version);
@@ -31,17 +30,17 @@ impl RpcCommandHandler {
                     .work
                     .threshold_entry(BlockType::State, work_version)
         {
-            return RpcDto::Error(ErrorDto::DifficultyOutOfRange);
+            bail!("Difficulty out of range");
         }
 
         // Handle block if provided
         if let Some(block) = args.block {
             let block_enum: BlockEnum = block.into();
             if args.hash != block_enum.hash() {
-                return RpcDto::Error(ErrorDto::BlockRootMismatch);
+                bail!("Block root mismatch");
             }
             if args.version.is_some() && work_version != block_enum.work_version() {
-                return RpcDto::Error(ErrorDto::BlockWorkVersioMismatch);
+                bail!("Block work version mismatch");
             }
             // Recalculate difficulty if not provided
             if args.difficulty.is_none() && args.multiplier.is_none() {
@@ -111,14 +110,12 @@ impl RpcCommandHandler {
             self.node.ledger.constants.work.threshold_base(work_version),
         );
 
-        let work_generate_dto = WorkGenerateDto::new(
+        Ok(WorkGenerateDto::new(
             work_result.unwrap().into(),
             result_difficulty,
             Some(result_multiplier),
             args.hash,
-        );
-
-        RpcDto::WorkGenerate(work_generate_dto)
+        ))
     }
 
     fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {

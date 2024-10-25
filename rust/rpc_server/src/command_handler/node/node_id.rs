@@ -1,15 +1,16 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{ErrorDto, NodeIdDto, RpcDto};
-use std::sync::Arc;
 
-pub async fn node_id(node: Arc<Node>, enable_control: bool) -> RpcDto {
-    if enable_control {
-        let private = node.node_id.private_key();
-        let public = node.node_id.public_key();
-        let as_account = public.as_account();
+impl RpcCommandHandler {
+    pub(crate) fn node_id(&self) -> RpcDto {
+        if self.enable_control {
+            let private = self.node.node_id.private_key();
+            let public = self.node.node_id.public_key();
+            let as_account = public.as_account();
 
-        RpcDto::NodeId(NodeIdDto::new(private, public, as_account))
-    } else {
-        RpcDto::Error(ErrorDto::RPCControlDisabled)
+            RpcDto::NodeId(NodeIdDto::new(private, public, as_account))
+        } else {
+            RpcDto::Error(ErrorDto::RPCControlDisabled)
+        }
     }
 }

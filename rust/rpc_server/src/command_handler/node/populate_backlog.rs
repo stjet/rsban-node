@@ -1,8 +1,9 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{RpcDto, SuccessDto};
-use std::sync::Arc;
 
-pub async fn populate_backlog(node: Arc<Node>) -> RpcDto {
-    node.backlog_population.trigger();
-    RpcDto::PopulateBacklog(SuccessDto::new())
+impl RpcCommandHandler {
+    pub(crate) fn populate_backlog(&self) -> RpcDto {
+        self.node.backlog_population.trigger();
+        RpcDto::PopulateBacklog(SuccessDto::new())
+    }
 }

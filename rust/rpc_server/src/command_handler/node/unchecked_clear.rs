@@ -1,8 +1,9 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{RpcDto, SuccessDto};
-use std::sync::Arc;
 
-pub async fn unchecked_clear(node: Arc<Node>) -> RpcDto {
-    node.unchecked.clear();
-    RpcDto::UncheckedClear(SuccessDto::new())
+impl RpcCommandHandler {
+    pub(crate) fn unchecked_clear(&self) -> RpcDto {
+        self.node.unchecked.clear();
+        RpcDto::UncheckedClear(SuccessDto::new())
+    }
 }

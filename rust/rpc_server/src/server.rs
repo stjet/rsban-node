@@ -12,7 +12,7 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::RpcCommand;
 use serde_json::to_string_pretty;
 use std::sync::Arc;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, task::spawn_blocking};
 use tracing::info;
 
 pub async fn run_rpc_server(
@@ -38,7 +38,9 @@ async fn handle_rpc(
     State(command_handler): State<RpcCommandHandler>,
     Json(command): Json<RpcCommand>,
 ) -> Response {
-    let response = command_handler.handle(command).await;
+    let response = spawn_blocking(move || command_handler.handle(command))
+        .await
+        .unwrap();
     (StatusCode::OK, to_string_pretty(&response).unwrap()).into_response()
 }
 

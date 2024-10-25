@@ -1,28 +1,30 @@
+use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
-use rsnano_node::Node;
 use rsnano_rpc_messages::{AccountsRepresentativesDto, AccountsRpcMessage, RpcDto};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-pub async fn accounts_representatives(node: Arc<Node>, args: AccountsRpcMessage) -> RpcDto {
-    let tx = node.ledger.read_txn();
-    let mut representatives: HashMap<Account, Account> = HashMap::new();
-    let mut errors: HashMap<Account, String> = HashMap::new();
+impl RpcCommandHandler {
+    pub(crate) fn accounts_representatives(&self, args: AccountsRpcMessage) -> RpcDto {
+        let tx = self.node.ledger.read_txn();
+        let mut representatives: HashMap<Account, Account> = HashMap::new();
+        let mut errors: HashMap<Account, String> = HashMap::new();
 
-    for account in args.accounts {
-        match node.ledger.store.account.get(&tx, &account) {
-            Some(account_info) => {
-                representatives.insert(account, account_info.representative.as_account());
-            }
-            None => {
-                errors.insert(account, "Account not found".to_string());
+        for account in args.accounts {
+            match self.node.ledger.store.account.get(&tx, &account) {
+                Some(account_info) => {
+                    representatives.insert(account, account_info.representative.as_account());
+                }
+                None => {
+                    errors.insert(account, "Account not found".to_string());
+                }
             }
         }
-    }
 
-    let mut dto = AccountsRepresentativesDto::new(representatives);
-    if !errors.is_empty() {
-        dto.errors = Some(errors);
-    }
+        let mut dto = AccountsRepresentativesDto::new(representatives);
+        if !errors.is_empty() {
+            dto.errors = Some(errors);
+        }
 
-    RpcDto::AccountsRepresentatives(dto)
+        RpcDto::AccountsRepresentatives(dto)
+    }
 }

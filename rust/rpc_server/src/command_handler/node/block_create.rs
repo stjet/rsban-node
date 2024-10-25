@@ -1,6 +1,7 @@
+use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{
     Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, PendingKey,
-    PublicKey, RawKey,
+    PublicKey, RawKey, WorkVersion,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{
@@ -8,167 +9,175 @@ use rsnano_rpc_messages::{
 };
 use std::sync::Arc;
 
-pub async fn block_create(node: Arc<Node>, enable_control: bool, args: BlockCreateArgs) -> RpcDto {
-    if !enable_control {
-        return RpcDto::Error(ErrorDto::RPCControlDisabled);
-    }
-
-    let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
-    let difficulty = args
-        .difficulty
-        .unwrap_or_else(|| node.ledger.constants.work.threshold_base(work_version));
-
-    let wallet = args.wallet;
-    let account = args.account;
-    let representative = args.representative;
-    let destination = args.destination;
-    let source = args.source;
-    let amount = args.balance;
-    let work = args.work;
-
-    let mut previous = args.previous.unwrap_or(BlockHash::zero());
-    let mut balance = args.balance.unwrap_or(Amount::zero());
-    let mut prv_key = RawKey::default();
-
-    /*if work.is_none() && !node.distributed_work.work_generation_enabled() {
-        return to_string_pretty(&ErrorDto::new("Work generation is disabled".to_string()))
-            .unwrap();
-    }*/
-
-    if let (Some(wallet_id), Some(account)) = (wallet, account) {
-        if let Err(e) = node.wallets.fetch(&wallet_id, &account.into()) {
-            return RpcDto::Error(ErrorDto::WalletsError(e));
+impl RpcCommandHandler {
+    pub(crate) fn block_create(&self, args: BlockCreateArgs) -> RpcDto {
+        if !self.enable_control {
+            return RpcDto::Error(ErrorDto::RPCControlDisabled);
         }
-        let tx = node.ledger.read_txn();
-        previous = node.ledger.any().account_head(&tx, &account).unwrap();
-        balance = node.ledger.any().account_balance(&tx, &account).unwrap();
-    }
 
-    if let Some(key) = args.key {
-        prv_key = key;
-    }
+        let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
+        let difficulty = args
+            .difficulty
+            .unwrap_or_else(|| self.node.ledger.constants.work.threshold_base(work_version));
 
-    //if prv_key.is_zero() {
-    //return to_string_pretty(&ErrorDto::new("Block create key required".to_string())).unwrap();
-    //}
+        let wallet = args.wallet;
+        let account = args.account;
+        let representative = args.representative;
+        let destination = args.destination;
+        let source = args.source;
+        let amount = args.balance;
+        let work = args.work;
 
-    let pub_key: PublicKey = (&prv_key).try_into().unwrap();
-    let pub_key: Account = pub_key.into();
+        let mut previous = args.previous.unwrap_or(BlockHash::zero());
+        let mut balance = args.balance.unwrap_or(Amount::zero());
+        let mut prv_key = RawKey::default();
 
-    /*if let Some(account) = account {
-        if account != pub_key {
-            return RpcDto::Error(BlockDto(ErrorDto2::BlockRootMismatch))
-        }
-    }*/
+        /*if work.is_none() && !node.distributed_work.work_generation_enabled() {
+            return to_string_pretty(&ErrorDto::new("Work generation is disabled".to_string()))
+                .unwrap();
+        }*/
 
-    let key_pair: KeyPair = prv_key.into();
-
-    let mut block = match args.block_type {
-        BlockTypeDto::State => {
-            if !representative.is_none()
-                && (!args.link.unwrap_or_default().is_zero() || args.link.is_some())
-            {
-                let builder = BlockBuilder::state();
-                builder
-                    .account(pub_key)
-                    .previous(previous)
-                    .representative(representative.unwrap())
-                    .balance(balance)
-                    .link(args.link.unwrap_or_default())
-                    .sign(&key_pair)
-                    .build()
-            } else {
-                return RpcDto::Error(ErrorDto::BlockError);
+        if let (Some(wallet_id), Some(account)) = (wallet, account) {
+            if let Err(e) = self.node.wallets.fetch(&wallet_id, &account.into()) {
+                return RpcDto::Error(ErrorDto::WalletsError(e));
             }
+            let tx = self.node.ledger.read_txn();
+            previous = self.node.ledger.any().account_head(&tx, &account).unwrap();
+            balance = self
+                .node
+                .ledger
+                .any()
+                .account_balance(&tx, &account)
+                .unwrap();
         }
-        BlockTypeDto::Open => {
-            if !representative.is_none() && source.is_some() {
-                let builder = BlockBuilder::legacy_open();
-                builder
-                    .account(pub_key)
-                    .source(source.unwrap())
-                    .representative(representative.unwrap().into())
-                    .sign(&key_pair)
-                    .build()
-            } else {
-                return RpcDto::Error(ErrorDto::BlockError);
+
+        if let Some(key) = args.key {
+            prv_key = key;
+        }
+
+        //if prv_key.is_zero() {
+        //return to_string_pretty(&ErrorDto::new("Block create key required".to_string())).unwrap();
+        //}
+
+        let pub_key: PublicKey = (&prv_key).try_into().unwrap();
+        let pub_key: Account = pub_key.into();
+
+        /*if let Some(account) = account {
+            if account != pub_key {
+                return RpcDto::Error(BlockDto(ErrorDto2::BlockRootMismatch))
             }
-        }
-        BlockTypeDto::Receive => {
-            if source.is_some() {
-                let builder = BlockBuilder::legacy_receive();
-                builder
-                    .previous(previous)
-                    .source(source.unwrap())
-                    .sign(&key_pair)
-                    .build()
-            } else {
-                return RpcDto::Error(ErrorDto::BlockError);
-            }
-        }
-        BlockTypeDto::Change => {
-            if !representative.is_none() {
-                let builder = BlockBuilder::legacy_change();
-                builder
-                    .previous(previous)
-                    .representative(representative.unwrap().into())
-                    .sign(&key_pair)
-                    .build()
-            } else {
-                return RpcDto::Error(ErrorDto::BlockError);
-            }
-        }
-        BlockTypeDto::Send => {
-            if destination.is_some() && !balance.is_zero() && !amount.is_none() {
-                let amount = amount.unwrap();
-                if balance >= amount {
-                    let builder = BlockBuilder::legacy_send();
+        }*/
+
+        let key_pair: KeyPair = prv_key.into();
+
+        let mut block = match args.block_type {
+            BlockTypeDto::State => {
+                if !representative.is_none()
+                    && (!args.link.unwrap_or_default().is_zero() || args.link.is_some())
+                {
+                    let builder = BlockBuilder::state();
                     builder
+                        .account(pub_key)
                         .previous(previous)
-                        .destination(destination.unwrap())
-                        .balance(balance - amount)
-                        .sign(key_pair)
+                        .representative(representative.unwrap())
+                        .balance(balance)
+                        .link(args.link.unwrap_or_default())
+                        .sign(&key_pair)
                         .build()
                 } else {
-                    return RpcDto::Error(ErrorDto::InsufficientBalance);
+                    return RpcDto::Error(ErrorDto::BlockError);
                 }
-            } else {
-                return RpcDto::Error(ErrorDto::BlockError);
             }
-        }
-    };
+            BlockTypeDto::Open => {
+                if !representative.is_none() && source.is_some() {
+                    let builder = BlockBuilder::legacy_open();
+                    builder
+                        .account(pub_key)
+                        .source(source.unwrap())
+                        .representative(representative.unwrap().into())
+                        .sign(&key_pair)
+                        .build()
+                } else {
+                    return RpcDto::Error(ErrorDto::BlockError);
+                }
+            }
+            BlockTypeDto::Receive => {
+                if source.is_some() {
+                    let builder = BlockBuilder::legacy_receive();
+                    builder
+                        .previous(previous)
+                        .source(source.unwrap())
+                        .sign(&key_pair)
+                        .build()
+                } else {
+                    return RpcDto::Error(ErrorDto::BlockError);
+                }
+            }
+            BlockTypeDto::Change => {
+                if !representative.is_none() {
+                    let builder = BlockBuilder::legacy_change();
+                    builder
+                        .previous(previous)
+                        .representative(representative.unwrap().into())
+                        .sign(&key_pair)
+                        .build()
+                } else {
+                    return RpcDto::Error(ErrorDto::BlockError);
+                }
+            }
+            BlockTypeDto::Send => {
+                if destination.is_some() && !balance.is_zero() && !amount.is_none() {
+                    let amount = amount.unwrap();
+                    if balance >= amount {
+                        let builder = BlockBuilder::legacy_send();
+                        builder
+                            .previous(previous)
+                            .destination(destination.unwrap())
+                            .balance(balance - amount)
+                            .sign(key_pair)
+                            .build()
+                    } else {
+                        return RpcDto::Error(ErrorDto::InsufficientBalance);
+                    }
+                } else {
+                    return RpcDto::Error(ErrorDto::BlockError);
+                }
+            }
+        };
 
-    let root = if !previous.is_zero() {
-        previous
-    } else {
-        pub_key.into()
-    };
-
-    if work.is_none() {
-        let difficulty = if args.difficulty.is_none() {
-            difficulty_ledger(node.clone(), &block)
+        let root = if !previous.is_zero() {
+            previous
         } else {
-            difficulty
+            pub_key.into()
         };
 
-        let work = match node
-            .distributed_work
-            .make(root.into(), difficulty, Some(pub_key))
-            .await
-        {
-            Some(work) => work,
-            None => return RpcDto::Error(ErrorDto::InsufficientWork),
-        };
-        block.set_work(work);
-    } else {
-        block.set_work(work.unwrap().into());
+        if work.is_none() {
+            let difficulty = if args.difficulty.is_none() {
+                difficulty_ledger(self.node.clone(), &block)
+            } else {
+                difficulty
+            };
+
+            let work = match self.node.distributed_work.make_blocking(
+                WorkVersion::Work1,
+                root.into(),
+                difficulty,
+                Some(pub_key),
+            ) {
+                Some(work) => work,
+                None => return RpcDto::Error(ErrorDto::InsufficientWork),
+            };
+            block.set_work(work);
+        } else {
+            block.set_work(work.unwrap().into());
+        }
+
+        let hash = block.hash();
+        let difficulty = block.work();
+        let json_block = block.json_representation();
+
+        RpcDto::BlockCreate(BlockCreateDto::new(hash, difficulty.into(), json_block))
     }
-
-    let hash = block.hash();
-    let difficulty = block.work();
-    let json_block = block.json_representation();
-
-    RpcDto::BlockCreate(BlockCreateDto::new(hash, difficulty.into(), json_block))
 }
 
 pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {

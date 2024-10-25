@@ -1,59 +1,67 @@
+use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
 use rsnano_node::Node;
 use rsnano_rpc_messages::{ErrorDto, HistoryEntryDto, RpcDto, WalletHistoryArgs, WalletHistoryDto};
 use rsnano_store_lmdb::Transaction;
 use std::sync::Arc;
 
-pub async fn wallet_history(node: Arc<Node>, args: WalletHistoryArgs) -> RpcDto {
-    let accounts = match node.wallets.get_accounts_of_wallet(&args.wallet) {
-        Ok(accounts) => accounts,
-        Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
-    };
+impl RpcCommandHandler {
+    pub(crate) fn wallet_history(&self, args: WalletHistoryArgs) -> RpcDto {
+        let accounts = match self.node.wallets.get_accounts_of_wallet(&args.wallet) {
+            Ok(accounts) => accounts,
+            Err(e) => return RpcDto::Error(ErrorDto::WalletsError(e)),
+        };
 
-    let mut entries: Vec<HistoryEntryDto> = Vec::new();
+        let mut entries: Vec<HistoryEntryDto> = Vec::new();
 
-    let block_transaction = node.store.tx_begin_read();
+        let block_transaction = self.node.store.tx_begin_read();
 
-    for account in accounts {
-        if let Some(info) = node.ledger.any().get_account(&block_transaction, &account) {
-            let mut hash = info.head;
+        for account in accounts {
+            if let Some(info) = self
+                .node
+                .ledger
+                .any()
+                .get_account(&block_transaction, &account)
+            {
+                let mut hash = info.head;
 
-            while !hash.is_zero() {
-                if let Some(block) = node.ledger.get_block(&block_transaction, &hash) {
-                    let timestamp = block
-                        .sideband()
-                        .map(|sideband| sideband.timestamp)
-                        .unwrap_or_default();
+                while !hash.is_zero() {
+                    if let Some(block) = self.node.ledger.get_block(&block_transaction, &hash) {
+                        let timestamp = block
+                            .sideband()
+                            .map(|sideband| sideband.timestamp)
+                            .unwrap_or_default();
 
-                    if timestamp >= args.modified_since.unwrap_or(0) {
-                        let entry = process_block(
-                            &node,
-                            &block_transaction,
-                            &block,
-                            &account,
-                            &hash,
-                            timestamp,
-                        );
+                        if timestamp >= args.modified_since.unwrap_or(0) {
+                            let entry = process_block(
+                                &self.node,
+                                &block_transaction,
+                                &block,
+                                &account,
+                                &hash,
+                                timestamp,
+                            );
 
-                        if let Some(entry) = entry {
-                            entries.push(entry);
+                            if let Some(entry) = entry {
+                                entries.push(entry);
+                            }
+
+                            hash = block.previous();
+                        } else {
+                            break;
                         }
-
-                        hash = block.previous();
                     } else {
                         break;
                     }
-                } else {
-                    break;
                 }
             }
         }
+
+        entries.sort_by(|a, b| b.local_timestamp.cmp(&a.local_timestamp));
+        let wallet_history_dto = WalletHistoryDto::new(entries);
+
+        RpcDto::WalletHistory(wallet_history_dto)
     }
-
-    entries.sort_by(|a, b| b.local_timestamp.cmp(&a.local_timestamp));
-    let wallet_history_dto = WalletHistoryDto::new(entries);
-
-    RpcDto::WalletHistory(wallet_history_dto)
 }
 
 fn process_block(

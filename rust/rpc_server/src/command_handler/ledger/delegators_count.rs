@@ -1,20 +1,21 @@
-use rsnano_node::Node;
+use crate::command_handler::RpcCommandHandler;
 use rsnano_rpc_messages::{AccountRpcMessage, CountRpcMessage, RpcDto};
-use std::sync::Arc;
 
-pub async fn delegators_count(node: Arc<Node>, args: AccountRpcMessage) -> RpcDto {
-    let representative = args.account;
-    let mut count = 0;
+impl RpcCommandHandler {
+    pub(crate) fn delegators_count(&self, args: AccountRpcMessage) -> RpcDto {
+        let representative = args.account;
+        let mut count = 0;
 
-    let tx = node.ledger.read_txn();
-    let mut iter = node.store.account.begin(&tx);
+        let tx = self.node.ledger.read_txn();
+        let mut iter = self.node.store.account.begin(&tx);
 
-    while let Some((_, info)) = iter.current() {
-        if info.representative == representative.into() {
-            count += 1;
+        while let Some((_, info)) = iter.current() {
+            if info.representative == representative.into() {
+                count += 1;
+            }
+
+            iter.next();
         }
-
-        iter.next();
+        RpcDto::DelegatorsCount(CountRpcMessage::new(count))
     }
-    RpcDto::DelegatorsCount(CountRpcMessage::new(count))
 }

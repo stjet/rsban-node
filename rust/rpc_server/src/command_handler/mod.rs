@@ -37,13 +37,14 @@ impl RpcCommandHandler {
 
     fn call_handler(&self, command: RpcCommand) -> anyhow::Result<serde_json::Value> {
         let response = match command {
-            // Not reviewed yet:
             RpcCommand::AccountBalance(args) => to_value(self.account_balance(args)),
+            RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
+            // Not reviewed yet:
+            RpcCommand::AccountCreate(args) => to_value(self.account_create(args)?),
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
-            RpcCommand::AccountCreate(args) => to_value(self.account_create(args)?),
             RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::AccountRemove(args) => to_value(self.account_remove(args)?),
             RpcCommand::AccountMove(args) => to_value(self.account_move(args)?),
@@ -56,7 +57,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()?),
-            RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
             RpcCommand::AccountKey(args) => to_value(account_key(args)),
             RpcCommand::AccountGet(args) => to_value(account_get(args)),
             RpcCommand::AccountRepresentative(args) => to_value(self.account_representative(args)?),

@@ -21,7 +21,11 @@ impl RpcCommandHandler {
 
             let pending = self.node.ledger.account_receivable(&tx, &account, false);
 
-            let account_balance = AccountBalanceDto::new(balance, pending, pending);
+            let account_balance = AccountBalanceDto {
+                balance,
+                pending,
+                receivable: pending,
+            };
             if balance >= threshold {
                 balances.insert(account, account_balance);
             }

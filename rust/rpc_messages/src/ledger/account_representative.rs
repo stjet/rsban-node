@@ -1,10 +1,10 @@
-use crate::{common::AccountRpcMessage, RpcCommand};
+use crate::{common::AccountArg, RpcCommand};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
     pub fn account_representative(account: Account) -> Self {
-        Self::AccountRepresentative(AccountRpcMessage::new(account))
+        Self::AccountRepresentative(AccountArg::new(account))
     }
 }
 

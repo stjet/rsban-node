@@ -1,14 +1,13 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{AccountCreateArgs, AccountRpcMessage};
+use rsnano_rpc_messages::{AccountCreateArgs, AccountResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn account_create(
         &self,
         args: AccountCreateArgs,
-    ) -> anyhow::Result<AccountRpcMessage> {
+    ) -> anyhow::Result<AccountResponse> {
         self.ensure_control_enabled()?;
-
         let work = args.work.unwrap_or(true);
 
         let account = match args.index {
@@ -22,6 +21,6 @@ impl RpcCommandHandler {
                 .deterministic_insert2(&args.wallet, work)?,
         };
 
-        Ok(AccountRpcMessage::new(account.as_account()))
+        Ok(AccountResponse::new(account.as_account()))
     }
 }

@@ -79,7 +79,11 @@ fn wallet_balances_threshold_some() {
     let mut expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
     expected_balances.insert(
         public_key.into(),
-        AccountBalanceDto::new(Amount::zero(), Amount::raw(1), Amount::raw(1)),
+        AccountBalanceDto {
+            balance: Amount::zero(),
+            pending: Amount::raw(1),
+            receivable: Amount::raw(1),
+        },
     );
     let expected_result = AccountsBalancesDto {
         balances: expected_balances,

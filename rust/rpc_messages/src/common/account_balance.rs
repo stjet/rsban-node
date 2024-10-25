@@ -8,16 +8,6 @@ pub struct AccountBalanceDto {
     pub receivable: Amount,
 }
 
-impl AccountBalanceDto {
-    pub fn new(balance: Amount, pending: Amount, receivable: Amount) -> Self {
-        Self {
-            balance,
-            pending,
-            receivable,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::common::AccountBalanceDto;

@@ -1,7 +1,11 @@
-# RPC functions to review:
+# RPC functions already reviewed:
 - account_balance
 - account_block_count
+
+# RPC functions MISSING:
 - account_count
+
+# RPC functions to review:
 - account_create
 - account_get
 - account_history

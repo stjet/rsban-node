@@ -1,9 +1,9 @@
-use crate::{common::AccountRpcMessage, RpcCommand};
+use crate::{common::AccountArg, RpcCommand};
 use rsnano_core::Account;
 
 impl RpcCommand {
     pub fn delegators_count(account: Account) -> Self {
-        Self::DelegatorsCount(AccountRpcMessage::new(account))
+        Self::DelegatorsCount(AccountArg::new(account))
     }
 }
 

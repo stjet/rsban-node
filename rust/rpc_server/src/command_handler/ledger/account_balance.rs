@@ -1,13 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceArgs, AccountBalanceDto};
+use rsnano_rpc_messages::{
+    AccountArg, AccountBalanceArgs, AccountBalanceDto, AccountBlockCountDto,
+};
 
 impl RpcCommandHandler {
     pub(crate) fn account_balance(&self, args: AccountBalanceArgs) -> AccountBalanceDto {
-        let tx = self.node.ledger.read_txn();
-        let include_unconfirmed_blocks = args.include_only_confirmed.unwrap_or(false);
+        let only_confirmed = args.include_only_confirmed.unwrap_or(true);
 
-        let balance = if !include_unconfirmed_blocks {
+        let tx = self.node.ledger.read_txn();
+        let balance = if only_confirmed {
             self.node
                 .ledger
                 .confirmed()
@@ -21,11 +23,24 @@ impl RpcCommandHandler {
                 .unwrap_or(Amount::zero())
         };
 
-        let pending =
-            self.node
-                .ledger
-                .account_receivable(&tx, &args.account, !include_unconfirmed_blocks);
+        let receivable = self
+            .node
+            .ledger
+            .account_receivable(&tx, &args.account, only_confirmed);
 
-        AccountBalanceDto::new(balance, pending, pending)
+        AccountBalanceDto {
+            balance,
+            pending: receivable,
+            receivable,
+        }
+    }
+
+    pub(crate) fn account_block_count(
+        &self,
+        args: AccountArg,
+    ) -> anyhow::Result<AccountBlockCountDto> {
+        let tx = self.node.ledger.read_txn();
+        let account = self.load_account(&tx, &args.account)?;
+        Ok(AccountBlockCountDto::new(account.block_count))
     }
 }

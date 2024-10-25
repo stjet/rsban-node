@@ -29,7 +29,14 @@ impl RpcCommandHandler {
                 .ledger
                 .account_receivable(&tx, &account, only_confirmed);
 
-            balances.insert(account, AccountBalanceDto::new(balance, pending, pending));
+            balances.insert(
+                account,
+                AccountBalanceDto {
+                    balance,
+                    pending,
+                    receivable: pending,
+                },
+            );
         }
 
         AccountsBalancesDto { balances }

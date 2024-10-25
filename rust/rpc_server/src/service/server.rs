@@ -1,5 +1,4 @@
-use crate::work_peer_add;
-
+use super::receive;
 use super::work_peers;
 use super::work_peers_clear;
 use super::{
@@ -20,6 +19,7 @@ use super::{
     wallet_receivable, wallet_representative, wallet_representative_set, wallet_republish,
     wallet_work_get, work_cancel, work_generate, work_get, work_set, work_validate,
 };
+use crate::work_peer_add;
 use anyhow::{Context, Result};
 use axum::{
     extract::State,
@@ -79,6 +79,9 @@ async fn handle_rpc(
         }
         RpcCommand::WorkPeersClear => {
             work_peers_clear(rpc_service.node, rpc_service.enable_control).await
+        }
+        RpcCommand::Receive(args) => {
+            receive(rpc_service.node, rpc_service.enable_control, args).await
         }
         RpcCommand::AccountCreate(args) => {
             account_create(rpc_service.node, rpc_service.enable_control, args).await
@@ -238,7 +241,6 @@ async fn handle_rpc(
             block_create(rpc_service.node, rpc_service.enable_control, args).await
         }
         RpcCommand::Telemetry(args) => telemetry(rpc_service.node, args).await,
-        _ => todo!(),
     };
 
     (StatusCode::OK, to_string_pretty(&response).unwrap()).into_response()

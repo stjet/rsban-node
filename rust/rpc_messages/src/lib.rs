@@ -214,4 +214,5 @@ pub enum RpcDto {
     Republish(BlockHashesDto),
     BlockCreate(BlockCreateDto),
     Telemetry(TelemetryDtos),
+    Receive(BlockDto),
 }

@@ -1,11 +1,11 @@
-use super::AccountBalanceDto;
+use super::AccountBalanceResponse;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsBalancesDto {
-    pub balances: HashMap<Account, AccountBalanceDto>,
+    pub balances: HashMap<Account, AccountBalanceResponse>,
 }
 
 #[cfg(test)]
@@ -21,7 +21,7 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap(),
-            AccountBalanceDto {
+            AccountBalanceResponse {
                 balance: Amount::raw(325586539664609129644855132177),
                 pending: Amount::raw(2309372032769300000000000000000000),
                 receivable: Amount::raw(2309372032769300000000000000000000),
@@ -32,7 +32,7 @@ mod tests {
                 "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
             )
             .unwrap(),
-            AccountBalanceDto {
+            AccountBalanceResponse {
                 balance: Amount::raw(10000000),
                 pending: Amount::raw(0),
                 receivable: Amount::raw(0),

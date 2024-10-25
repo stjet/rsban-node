@@ -8,17 +8,17 @@ impl RpcCommandHandler {
         args: AccountCreateArgs,
     ) -> anyhow::Result<AccountResponse> {
         self.ensure_control_enabled()?;
-        let work = args.work.unwrap_or(true);
+        let generate_work = args.work.unwrap_or(true);
 
         let account = match args.index {
             Some(i) => self
                 .node
                 .wallets
-                .deterministic_insert_at(&args.wallet, i, work)?,
+                .deterministic_insert_at(&args.wallet, i, generate_work)?,
             None => self
                 .node
                 .wallets
-                .deterministic_insert2(&args.wallet, work)?,
+                .deterministic_insert2(&args.wallet, generate_work)?,
         };
 
         Ok(AccountResponse::new(account.as_account()))

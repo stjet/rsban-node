@@ -39,11 +39,13 @@ impl RpcCommandHandler {
         let response = match command {
             RpcCommand::AccountBalance(args) => to_value(self.account_balance(args)),
             RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
-            // Not reviewed yet:
             RpcCommand::AccountCreate(args) => to_value(self.account_create(args)?),
+            RpcCommand::AccountGet(args) => to_value(account_get(args)),
+            // Not implemented:
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
+            // Not reviewed yet:
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::AccountRemove(args) => to_value(self.account_remove(args)?),
@@ -58,7 +60,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()?),
             RpcCommand::AccountKey(args) => to_value(account_key(args)),
-            RpcCommand::AccountGet(args) => to_value(account_get(args)),
             RpcCommand::AccountRepresentative(args) => to_value(self.account_representative(args)?),
             RpcCommand::AccountWeight(args) => to_value(self.account_weight(args)),
             RpcCommand::AvailableSupply => to_value(self.available_supply()),

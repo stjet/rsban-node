@@ -1,12 +1,15 @@
 # RPC functions already reviewed:
 - account_balance
 - account_block_count
+- account_create
 
 # RPC functions MISSING:
 - account_count
+- work_peer_add
+- work_peers
+- work_peers_clear
 
 # RPC functions to review:
-- account_create
 - account_get
 - account_history
 - account_info
@@ -115,7 +118,4 @@
 - work_get
 - work_set
 - work_validate
-- work_peer_add
-- work_peers
-- work_peers_clear
 - populate_backlog

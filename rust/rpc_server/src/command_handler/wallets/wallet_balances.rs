@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, WalletBalancesArgs};
+use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesDto, WalletBalancesArgs};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
@@ -21,7 +21,7 @@ impl RpcCommandHandler {
 
             let pending = self.node.ledger.account_receivable(&tx, &account, false);
 
-            let account_balance = AccountBalanceDto {
+            let account_balance = AccountBalanceResponse {
                 balance,
                 pending,
                 receivable: pending,

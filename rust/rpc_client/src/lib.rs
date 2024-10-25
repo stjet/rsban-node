@@ -1,4 +1,4 @@
-use crate::AccountBalanceDto;
+use crate::AccountBalanceResponse;
 use anyhow::{bail, Ok, Result};
 use reqwest::Client;
 pub use reqwest::Url;
@@ -236,7 +236,7 @@ impl NanoRpcClient {
     pub async fn account_balance(
         &self,
         args: impl Into<AccountBalanceArgs>,
-    ) -> Result<AccountBalanceDto> {
+    ) -> Result<AccountBalanceResponse> {
         let cmd = RpcCommand::account_balance(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -325,7 +325,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_key(&self, account: Account) -> Result<KeyRpcMessage> {
+    pub async fn account_key(&self, account: Account) -> Result<KeyResponse> {
         let cmd = RpcCommand::account_key(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, WalletBalancesArgs};
+use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesDto, WalletBalancesArgs};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -40,7 +40,7 @@ fn wallet_balances_threshold_none() {
         .runtime
         .block_on(async { rpc_client.wallet_balances(wallet).await.unwrap() });
 
-    let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+    let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
     let expected_result = AccountsBalancesDto {
         balances: expected_balances,
     };
@@ -76,10 +76,10 @@ fn wallet_balances_threshold_some() {
         rpc_client.wallet_balances(args).await.unwrap()
     });
 
-    let mut expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+    let mut expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
     expected_balances.insert(
         public_key.into(),
-        AccountBalanceDto {
+        AccountBalanceResponse {
             balance: Amount::zero(),
             pending: Amount::raw(1),
             receivable: Amount::raw(1),
@@ -119,7 +119,7 @@ fn wallet_balances_threshold_some_fails() {
         rpc_client.wallet_balances(args).await.unwrap()
     });
 
-    let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+    let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
     let expected_result = AccountsBalancesDto {
         balances: expected_balances,
     };

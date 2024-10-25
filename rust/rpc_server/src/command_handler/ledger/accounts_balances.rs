@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesArgs, AccountsBalancesDto};
+use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesArgs, AccountsBalancesDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
@@ -31,7 +31,7 @@ impl RpcCommandHandler {
 
             balances.insert(
                 account,
-                AccountBalanceDto {
+                AccountBalanceResponse {
                     balance,
                     pending,
                     receivable: pending,

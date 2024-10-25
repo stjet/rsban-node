@@ -38,7 +38,7 @@ pub enum RpcCommand {
     WalletLocked(WalletRpcMessage),
     AccountBlockCount(AccountArg),
     AccountKey(AccountArg),
-    AccountGet(KeyRpcMessage),
+    AccountGet(KeyArg),
     AccountRepresentative(AccountArg),
     AccountWeight(AccountWeightArgs),
     AvailableSupply,

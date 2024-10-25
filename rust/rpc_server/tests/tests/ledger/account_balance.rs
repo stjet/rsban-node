@@ -24,9 +24,7 @@ fn account_balance_default_include_only_confirmed_blocks() {
     );
 
     assert_eq!(result.pending, Amount::zero());
-
     assert_eq!(result.receivable, Amount::zero());
-
     server.abort();
 }
 
@@ -53,8 +51,6 @@ fn account_balance_include_unconfirmed_blocks() {
     );
 
     assert_eq!(result.pending, Amount::raw(1));
-
     assert_eq!(result.receivable, Amount::raw(1));
-
     server.abort();
 }

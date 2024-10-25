@@ -32,7 +32,7 @@ impl From<Account> for AccountBalanceArgs {
     fn from(account: Account) -> Self {
         Self {
             account,
-            include_only_confirmed: Some(false),
+            include_only_confirmed: Some(true),
         }
     }
 }
@@ -52,7 +52,7 @@ impl AccountBalanceArgsBuilder {
     }
 
     pub fn include_unconfirmed_blocks(mut self) -> Self {
-        self.args.include_only_confirmed = Some(true);
+        self.args.include_only_confirmed = Some(false);
         self
     }
 
@@ -76,7 +76,7 @@ mod tests {
             r#"{
   "action": "account_balance",
   "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-  "include_only_confirmed": true
+  "include_only_confirmed": false
 }"#
         )
     }
@@ -126,6 +126,6 @@ mod tests {
         let args: AccountBalanceArgs = account.into();
 
         assert_eq!(args.account, account);
-        assert_eq!(args.include_only_confirmed, Some(false));
+        assert_eq!(args.include_only_confirmed, Some(true));
     }
 }

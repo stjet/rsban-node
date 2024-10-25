@@ -41,6 +41,7 @@ impl RpcCommandHandler {
             RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
             RpcCommand::AccountCreate(args) => to_value(self.account_create(args)?),
             RpcCommand::AccountGet(args) => to_value(account_get(args)),
+            RpcCommand::AccountHistory(args) => to_value(self.account_history(args)),
             // Not implemented:
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
@@ -116,7 +117,6 @@ impl RpcCommandHandler {
             RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
             RpcCommand::WorkValidate(args) => to_value(self.work_validate(args)),
             RpcCommand::AccountInfo(args) => to_value(self.account_info(args)?),
-            RpcCommand::AccountHistory(args) => to_value(self.account_history(args)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),
             RpcCommand::WorkCancel(args) => to_value(self.work_cancel(args)?),

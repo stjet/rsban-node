@@ -4,14 +4,14 @@ use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
 
 impl RpcCommandHandler {
     pub(crate) fn account_history(&self, args: AccountHistoryArgs) -> AccountHistoryDto {
-        let transaction = self.node.store.tx_begin_read();
+        let tx = self.node.store.tx_begin_read();
         let mut history = Vec::new();
         let reverse = args.reverse.unwrap_or(false);
         let mut hash = if reverse {
             self.node
                 .ledger
                 .any()
-                .get_account(&transaction, &args.account)
+                .get_account(&tx, &args.account)
                 .unwrap_or_default()
                 .open_block
         } else {
@@ -19,7 +19,7 @@ impl RpcCommandHandler {
                 self.node
                     .ledger
                     .any()
-                    .account_head(&transaction, &args.account)
+                    .account_head(&tx, &args.account)
                     .unwrap_or_default()
             })
         };
@@ -28,7 +28,7 @@ impl RpcCommandHandler {
         let raw = args.raw.unwrap_or(false);
         let account_filter = args.account_filter.clone();
 
-        while let Some(block) = self.node.ledger.get_block(&transaction, &hash) {
+        while let Some(block) = self.node.ledger.get_block(&tx, &hash) {
             if offset > 0 {
                 offset -= 1;
             } else if count > 0 {
@@ -48,7 +48,7 @@ impl RpcCommandHandler {
                     .node
                     .ledger
                     .any()
-                    .block_successor(&transaction, &hash)
+                    .block_successor(&tx, &hash)
                     .unwrap_or_default();
                 a
             };

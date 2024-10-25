@@ -2,6 +2,7 @@
 - account_balance
 - account_block_count
 - account_create
+- account_get
 
 # RPC functions MISSING:
 - account_count
@@ -10,7 +11,6 @@
 - work_peers_clear
 
 # RPC functions to review:
-- account_get
 - account_history
 - account_info
 - account_key

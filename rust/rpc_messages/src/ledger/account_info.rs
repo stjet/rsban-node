@@ -102,7 +102,7 @@ impl AccountInfoArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountInfoDto {
+pub struct AccountInfoResponse {
     pub frontier: BlockHash,
     pub open_block: BlockHash,
     pub representative_block: BlockHash,
@@ -111,6 +111,7 @@ pub struct AccountInfoDto {
     pub block_count: u64,
     pub account_version: u8,
     pub confirmed_height: Option<u64>,
+    pub confirmed_frontier: Option<BlockHash>,
     pub confirmation_height_frontier: Option<BlockHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub representative: Option<Account>,
@@ -128,38 +129,6 @@ pub struct AccountInfoDto {
     pub confirmed_receivable: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confirmed_representative: Option<Account>,
-}
-
-impl AccountInfoDto {
-    pub fn new(
-        frontier: BlockHash,
-        open_block: BlockHash,
-        representative_block: BlockHash,
-        balance: Amount,
-        modified_timestamp: u64,
-        block_count: u64,
-        account_version: u8,
-    ) -> Self {
-        Self {
-            frontier,
-            open_block,
-            representative_block,
-            balance,
-            modified_timestamp,
-            block_count,
-            account_version,
-            confirmed_height: None,
-            confirmation_height_frontier: None,
-            representative: None,
-            weight: None,
-            pending: None,
-            receivable: None,
-            confirmed_balance: None,
-            confirmed_pending: None,
-            confirmed_receivable: None,
-            confirmed_representative: None,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -300,7 +269,7 @@ mod tests {
 
     #[test]
     fn serialize_account_info_dto_with_none_values() {
-        let account_info = AccountInfoDto {
+        let account_info = AccountInfoResponse {
             frontier: BlockHash::zero(),
             open_block: BlockHash::zero(),
             representative_block: BlockHash::zero(),
@@ -318,28 +287,40 @@ mod tests {
             confirmed_pending: None,
             confirmed_receivable: None,
             confirmed_representative: None,
+            confirmed_frontier: None,
         };
 
         let serialized = to_string_pretty(&account_info).unwrap();
-        let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
+        let deserialized: AccountInfoResponse = from_str(&serialized).unwrap();
 
         assert_eq!(account_info, deserialized);
     }
 
     #[test]
     fn deserialize_account_info_dto_with_none_values() {
-        let account_info = AccountInfoDto::new(
-            BlockHash::zero(),
-            BlockHash::zero(),
-            BlockHash::zero(),
-            Amount::raw(1000),
-            1234567890,
-            100,
-            1,
-        );
+        let account_info = AccountInfoResponse {
+            frontier: BlockHash::zero(),
+            open_block: BlockHash::zero(),
+            representative_block: BlockHash::zero(),
+            balance: Amount::raw(1000),
+            modified_timestamp: 1234567890,
+            block_count: 100,
+            account_version: 1,
+            confirmed_height: None,
+            confirmation_height_frontier: None,
+            representative: None,
+            weight: None,
+            pending: None,
+            receivable: None,
+            confirmed_balance: None,
+            confirmed_pending: None,
+            confirmed_receivable: None,
+            confirmed_representative: None,
+            confirmed_frontier: None,
+        };
 
         let serialized = to_string_pretty(&account_info).unwrap();
-        let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
+        let deserialized: AccountInfoResponse = from_str(&serialized).unwrap();
 
         assert_eq!(account_info, deserialized);
         assert!(!serialized.contains("weight"));
@@ -351,8 +332,8 @@ mod tests {
         assert!(!serialized.contains("confirmed_representative"));
     }
 
-    fn create_account_info_dto_with_some_values() -> AccountInfoDto {
-        AccountInfoDto {
+    fn create_account_info_dto_with_some_values() -> AccountInfoResponse {
+        AccountInfoResponse {
             frontier: BlockHash::zero(),
             open_block: BlockHash::zero(),
             representative_block: BlockHash::zero(),
@@ -370,6 +351,7 @@ mod tests {
             confirmed_pending: Some(Amount::from(250)),
             confirmed_receivable: Some(Amount::from(350)),
             confirmed_representative: Some(Account::zero()),
+            confirmed_frontier: None,
         }
     }
 
@@ -393,7 +375,7 @@ mod tests {
     fn deserialize_account_info_dto_with_some_values() {
         let account_info = create_account_info_dto_with_some_values();
         let serialized = to_string_pretty(&account_info).unwrap();
-        let deserialized: AccountInfoDto = from_str(&serialized).unwrap();
+        let deserialized: AccountInfoResponse = from_str(&serialized).unwrap();
 
         assert_eq!(account_info, deserialized);
     }

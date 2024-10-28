@@ -1,9 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoDto};
+use rsnano_core::{Amount, Epoch};
+use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoResponse};
 
 impl RpcCommandHandler {
-    pub(crate) fn account_info(&self, args: AccountInfoArgs) -> anyhow::Result<AccountInfoDto> {
+    pub(crate) fn account_info(
+        &self,
+        args: AccountInfoArgs,
+    ) -> anyhow::Result<AccountInfoResponse> {
         let txn = self.node.ledger.read_txn();
         let include_confirmed = args.include_confirmed.unwrap_or(false);
         let info = self.load_account(&txn, &args.account)?;
@@ -15,18 +18,26 @@ impl RpcCommandHandler {
             .get(&txn, &args.account)
             .unwrap();
 
-        let mut account_info = AccountInfoDto::new(
-            info.head,
-            info.open_block,
-            self.node.ledger.representative_block_hash(&txn, &info.head),
-            info.balance,
-            info.modified,
-            info.block_count,
-            info.epoch as u8,
-        );
-
-        account_info.confirmed_height = Some(confirmation_height_info.height);
-        account_info.confirmation_height_frontier = Some(confirmation_height_info.frontier);
+        let mut account_info = AccountInfoResponse {
+            frontier: info.head,
+            open_block: info.open_block,
+            representative_block: self.node.ledger.representative_block_hash(&txn, &info.head),
+            balance: info.balance,
+            modified_timestamp: info.modified,
+            block_count: info.block_count,
+            account_version: epoch_as_number(info.epoch),
+            confirmed_height: None,
+            confirmation_height_frontier: None,
+            representative: None,
+            weight: None,
+            pending: None,
+            receivable: None,
+            confirmed_balance: None,
+            confirmed_pending: None,
+            confirmed_receivable: None,
+            confirmed_representative: None,
+            confirmed_frontier: None,
+        };
 
         if include_confirmed {
             let confirmed_balance = if info.block_count != confirmation_height_info.height {
@@ -36,9 +47,16 @@ impl RpcCommandHandler {
                     .block_balance(&txn, &confirmation_height_info.frontier)
                     .unwrap_or(Amount::zero())
             } else {
+                // block_height and confirmed height are the same, so can just reuse balance
                 info.balance
             };
             account_info.confirmed_balance = Some(confirmed_balance);
+            account_info.confirmed_height = Some(confirmation_height_info.height);
+            account_info.confirmed_frontier = Some(confirmation_height_info.frontier);
+        } else {
+            // For backwards compatibility purposes
+            account_info.confirmed_height = Some(confirmation_height_info.height);
+            account_info.confirmation_height_frontier = Some(confirmation_height_info.frontier);
         }
 
         if args.representative.unwrap_or(false) {
@@ -80,7 +98,8 @@ impl RpcCommandHandler {
             account_info.weight = Some(self.node.ledger.weight_exact(&txn, args.account.into()));
         }
 
-        if args.pending.unwrap_or(false) || args.receivable.unwrap_or(false) {
+        let receivable = args.receivable.unwrap_or(args.pending.unwrap_or(false));
+        if receivable {
             let account_receivable =
                 self.node
                     .ledger
@@ -99,5 +118,13 @@ impl RpcCommandHandler {
         }
 
         Ok(account_info)
+    }
+}
+
+fn epoch_as_number(epoch: Epoch) -> u8 {
+    match epoch {
+        Epoch::Epoch1 => 1,
+        Epoch::Epoch2 => 2,
+        _ => 0,
     }
 }

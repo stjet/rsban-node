@@ -665,7 +665,10 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn account_info(&self, args: impl Into<AccountInfoArgs>) -> Result<AccountInfoDto> {
+    pub async fn account_info(
+        &self,
+        args: impl Into<AccountInfoArgs>,
+    ) -> Result<AccountInfoResponse> {
         let account_info_args = args.into();
         let cmd = RpcCommand::account_info(account_info_args);
         let result = self.rpc_request(&cmd).await?;

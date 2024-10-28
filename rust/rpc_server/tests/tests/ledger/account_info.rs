@@ -51,9 +51,9 @@ fn account_info() {
     assert_eq!(result.balance, Amount::MAX);
     assert!(result.modified_timestamp > 0);
     assert_eq!(result.block_count, 1);
-    assert_eq!(result.account_version, 2);
+    assert_eq!(result.account_version, 0);
     assert_eq!(result.confirmed_height, Some(1));
-    assert_eq!(result.confirmation_height_frontier, Some(*DEV_GENESIS_HASH));
+    assert_eq!(result.confirmed_frontier, Some(*DEV_GENESIS_HASH));
     assert_eq!(result.representative, Some(*DEV_GENESIS_ACCOUNT));
     assert_eq!(result.weight, Some(Amount::MAX));
     assert_eq!(result.pending, Some(Amount::raw(0)));

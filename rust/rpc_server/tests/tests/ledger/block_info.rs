@@ -15,12 +15,12 @@ fn block_info() {
         .runtime
         .block_on(async { rpc_client.block_info(*DEV_GENESIS_HASH).await.unwrap() });
 
-    assert_eq!(result.amount, Amount::MAX);
+    assert_eq!(result.amount, Some(Amount::MAX));
     assert_eq!(result.balance, Amount::MAX);
     assert_eq!(result.block_account, *DEV_GENESIS_ACCOUNT);
     assert_eq!(result.confirmed, true);
     assert_eq!(result.height, 1);
-    assert_eq!(result.subtype, BlockSubTypeDto::Open);
+    assert_eq!(result.subtype, None);
     assert_eq!(result.successor, BlockHash::zero());
     assert_eq!(result.contents, DEV_GENESIS.json_representation());
 

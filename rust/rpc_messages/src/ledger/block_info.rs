@@ -11,40 +11,16 @@ impl RpcCommand {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlockInfoDto {
     pub block_account: Account,
-    pub amount: Amount,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<Amount>,
     pub balance: Amount,
     pub height: u64,
     pub local_timestamp: u64,
     pub successor: BlockHash,
     pub confirmed: bool,
     pub contents: JsonBlock,
-    pub subtype: BlockSubTypeDto,
-}
-
-impl BlockInfoDto {
-    pub fn new(
-        block_account: Account,
-        amount: Amount,
-        balance: Amount,
-        height: u64,
-        local_timestamp: u64,
-        successor: BlockHash,
-        confirmed: bool,
-        contents: JsonBlock,
-        subtype: BlockSubTypeDto,
-    ) -> Self {
-        Self {
-            block_account,
-            amount,
-            balance,
-            height,
-            local_timestamp,
-            successor,
-            confirmed,
-            contents,
-            subtype,
-        }
-    }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subtype: Option<BlockSubTypeDto>,
 }
 
 #[cfg(test)]
@@ -60,7 +36,7 @@ mod tests {
                 "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
             .unwrap(),
-            amount: Amount::raw(30000000000000000000000000000000000u128),
+            amount: Some(Amount::raw(30000000000000000000000000000000000u128)),
             balance: Amount::raw(5606157000000000000000000000000000000u128),
             height: 58,
             local_timestamp: 0,
@@ -70,7 +46,7 @@ mod tests {
             .unwrap(),
             confirmed: true,
             contents: BlockEnum::new_test_instance().json_representation(),
-            subtype: BlockSubTypeDto::Send,
+            subtype: Some(BlockSubTypeDto::Send),
         };
 
         let serialized = serde_json::to_value(&block_info).unwrap();
@@ -135,7 +111,7 @@ mod tests {
             .unwrap()
         );
         assert_eq!(
-            deserialized.amount,
+            deserialized.amount.unwrap(),
             Amount::raw(30000000000000000000000000000000000u128)
         );
         assert_eq!(
@@ -149,7 +125,7 @@ mod tests {
             "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72"
         );
         assert!(deserialized.confirmed);
-        assert_eq!(deserialized.subtype, BlockSubTypeDto::Send);
+        assert_eq!(deserialized.subtype, Some(BlockSubTypeDto::Send));
         assert_eq!(
             deserialized.contents,
             BlockEnum::new_test_instance().json_representation()

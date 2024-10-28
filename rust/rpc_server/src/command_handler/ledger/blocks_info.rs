@@ -12,7 +12,7 @@ impl RpcCommandHandler {
         for hash in args.hashes {
             let block = self.load_block_any(&txn, &hash)?;
             let account = block.account();
-            let amount = self.node.ledger.any().block_amount(&txn, &hash).unwrap();
+            let amount = self.node.ledger.any().block_amount(&txn, &hash);
             let balance = self.node.ledger.any().block_balance(&txn, &hash).unwrap();
             let height = block.sideband().unwrap().height;
             let local_timestamp = block.sideband().unwrap().timestamp;
@@ -33,8 +33,8 @@ impl RpcCommandHandler {
                 _ => bail!(Self::BLOCK_ERROR),
             };
 
-            let block_info_dto = BlockInfoDto::new(
-                account,
+            let block_info_dto = BlockInfoDto {
+                block_account: account,
                 amount,
                 balance,
                 height,
@@ -42,8 +42,8 @@ impl RpcCommandHandler {
                 successor,
                 confirmed,
                 contents,
-                subtype.into(),
-            );
+                subtype: Some(subtype.into()),
+            };
 
             blocks_info.insert(hash, block_info_dto);
         }

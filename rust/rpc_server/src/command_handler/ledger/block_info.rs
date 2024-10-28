@@ -1,7 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use anyhow::bail;
-use rsnano_core::{BlockSubType, BlockType};
-use rsnano_rpc_messages::{BlockInfoDto, HashRpcMessage};
+use rsnano_core::BlockType;
+use rsnano_rpc_messages::{BlockInfoDto, BlockSubTypeDto, HashRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn block_info(&self, args: HashRpcMessage) -> anyhow::Result<BlockInfoDto> {
@@ -9,12 +8,7 @@ impl RpcCommandHandler {
         let block = self.load_block_any(&txn, &args.hash)?;
         let account = block.account();
 
-        let amount = self
-            .node
-            .ledger
-            .any()
-            .block_amount(&txn, &args.hash)
-            .unwrap();
+        let amount = self.node.ledger.any().block_amount(&txn, &args.hash);
 
         let balance = self
             .node
@@ -23,9 +17,10 @@ impl RpcCommandHandler {
             .block_balance(&txn, &args.hash)
             .unwrap();
 
-        let height = block.sideband().unwrap().height;
-        let local_timestamp = block.sideband().unwrap().timestamp;
-        let successor = block.sideband().unwrap().successor;
+        let sideband = block.sideband().unwrap();
+        let height = sideband.height;
+        let local_timestamp = sideband.timestamp;
+        let successor = sideband.successor;
 
         let confirmed = self
             .node
@@ -35,17 +30,14 @@ impl RpcCommandHandler {
 
         let contents = block.json_representation();
 
-        let subtype = match block.block_type() {
-            BlockType::State => block.sideband().unwrap().details.subtype(),
-            BlockType::LegacyChange => BlockSubType::Change,
-            BlockType::LegacyOpen => BlockSubType::Open,
-            BlockType::LegacySend => BlockSubType::Send,
-            BlockType::LegacyReceive => BlockSubType::Receive,
-            _ => bail!(Self::BLOCK_ERROR),
+        let subtype: Option<BlockSubTypeDto> = if block.block_type() == BlockType::State {
+            Some(sideband.details.subtype().into())
+        } else {
+            None
         };
 
-        Ok(BlockInfoDto::new(
-            account,
+        Ok(BlockInfoDto {
+            block_account: account,
             amount,
             balance,
             height,
@@ -53,7 +45,7 @@ impl RpcCommandHandler {
             successor,
             confirmed,
             contents,
-            subtype.into(),
-        ))
+            subtype,
+        })
     }
 }

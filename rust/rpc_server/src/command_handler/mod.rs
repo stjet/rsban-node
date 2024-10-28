@@ -56,6 +56,7 @@ impl RpcCommandHandler {
             RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::AccountsFrontiers(args) => to_value(self.accounts_frontiers(args)),
             RpcCommand::AvailableSupply => to_value(self.available_supply()),
+            RpcCommand::BlockInfo(args) => to_value(self.block_info(args)?),
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -113,7 +114,6 @@ impl RpcCommandHandler {
             RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
             RpcCommand::BlockHash(args) => to_value(block_hash(args)),
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
-            RpcCommand::BlockInfo(args) => to_value(self.block_info(args)?),
             RpcCommand::Blocks(args) => to_value(self.blocks(args)),
             RpcCommand::BlocksInfo(args) => to_value(self.blocks_info(args)?),
             RpcCommand::Chain(args) => to_value(self.chain(args, false)),

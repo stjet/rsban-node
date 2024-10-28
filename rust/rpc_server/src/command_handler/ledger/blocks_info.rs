@@ -1,53 +1,132 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockHash, BlockSubType, BlockType};
-use rsnano_rpc_messages::{BlockInfoDto, BlocksInfoDto, HashesArgs};
+use rsnano_core::{BlockHash, BlockType, PendingKey};
+use rsnano_rpc_messages::{BlockInfoResponse, BlocksInfoArgs, BlocksInfoResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn blocks_info(&self, args: HashesArgs) -> anyhow::Result<BlocksInfoDto> {
+    pub(crate) fn blocks_info(&self, args: BlocksInfoArgs) -> anyhow::Result<BlocksInfoResponse> {
+        let receivable = args.receivable.unwrap_or(false);
+        let receive_hash = args.receive_hash.unwrap_or(false);
+        let source = args.source.unwrap_or(false);
+        let include_not_found = args.include_not_found.unwrap_or(false);
+
         let txn = self.node.ledger.read_txn();
-        let mut blocks_info: HashMap<BlockHash, BlockInfoDto> = HashMap::new();
+        let mut blocks: HashMap<BlockHash, BlockInfoResponse> = HashMap::new();
+        let mut blocks_not_found = Vec::new();
 
         for hash in args.hashes {
-            let block = self.load_block_any(&txn, &hash)?;
-            let account = block.account();
-            let amount = self.node.ledger.any().block_amount(&txn, &hash);
-            let balance = self.node.ledger.any().block_balance(&txn, &hash).unwrap();
-            let height = block.sideband().unwrap().height;
-            let local_timestamp = block.sideband().unwrap().timestamp;
-            let successor = block.sideband().unwrap().successor;
-            let confirmed = self
-                .node
-                .ledger
-                .confirmed()
-                .block_exists_or_pruned(&txn, &hash);
-            let contents = block.json_representation();
+            if let Some(block) = self.node.ledger.any().get_block(&txn, &hash) {
+                let block_account = block.account();
+                let amount = self.node.ledger.any().block_amount(&txn, &hash);
+                let balance = self.node.ledger.any().block_balance(&txn, &hash).unwrap();
+                let sideband = block.sideband().unwrap();
+                let height = sideband.height;
+                let local_timestamp = sideband.timestamp;
+                let successor = sideband.successor;
+                let confirmed = self
+                    .node
+                    .ledger
+                    .confirmed()
+                    .block_exists_or_pruned(&txn, &hash);
+                let contents = block.json_representation();
 
-            let subtype = match block.block_type() {
-                BlockType::State => block.sideband().unwrap().details.subtype(),
-                BlockType::LegacyChange => BlockSubType::Change,
-                BlockType::LegacyOpen => BlockSubType::Open,
-                BlockType::LegacySend => BlockSubType::Send,
-                BlockType::LegacyReceive => BlockSubType::Receive,
-                _ => bail!(Self::BLOCK_ERROR),
-            };
+                let subtype = if block.block_type() == BlockType::State {
+                    Some(sideband.details.subtype().into())
+                } else {
+                    None
+                };
 
-            let block_info_dto = BlockInfoDto {
-                block_account: account,
-                amount,
-                balance,
-                height,
-                local_timestamp,
-                successor,
-                confirmed,
-                contents,
-                subtype: Some(subtype.into()),
-            };
+                let mut block_info = BlockInfoResponse {
+                    block_account,
+                    amount,
+                    balance,
+                    height,
+                    local_timestamp,
+                    successor,
+                    confirmed,
+                    contents,
+                    subtype,
+                    receivable: None,
+                    receive_hash: None,
+                    source_account: None,
+                };
 
-            blocks_info.insert(hash, block_info_dto);
+                if receivable || receive_hash {
+                    if block.is_send() {
+                        if receivable {
+                            block_info.receivable = Some(0);
+                        }
+                        if receive_hash {
+                            block_info.receive_hash = Some(BlockHash::zero());
+                        }
+                    } else if self
+                        .node
+                        .ledger
+                        .any()
+                        .get_pending(&txn, &PendingKey::new(block.destination_or_link(), hash))
+                        .is_some()
+                    {
+                        if receivable {
+                            block_info.receivable = Some(1)
+                        }
+                        if receive_hash {
+                            block_info.receive_hash = Some(BlockHash::zero());
+                        }
+                    } else {
+                        if receivable {
+                            block_info.receivable = Some(0);
+                        }
+                        if receive_hash {
+                            let receive_block = self.node.ledger.find_receive_block_by_send_hash(
+                                &txn,
+                                &block.destination_or_link(),
+                                &hash,
+                            );
+
+                            block_info.receive_hash = Some(match receive_block {
+                                Some(b) => b.hash(),
+                                None => BlockHash::zero(),
+                            });
+                        }
+                    }
+                }
+
+                if source {
+                    if !block.is_receive()
+                        || !self
+                            .node
+                            .ledger
+                            .any()
+                            .block_exists(&txn, &block.source_or_link())
+                    {
+                        block_info.source_account = Some("0".to_string());
+                    } else {
+                        let block_a = self
+                            .node
+                            .ledger
+                            .any()
+                            .get_block(&txn, &block.source_or_link())
+                            .unwrap();
+                        block_info.source_account = Some(block_a.account().encode_account());
+                    }
+                }
+
+                blocks.insert(hash, block_info);
+            } else if include_not_found {
+                blocks_not_found.push(hash);
+            } else {
+                bail!(Self::BLOCK_NOT_FOUND);
+            }
         }
 
-        Ok(BlocksInfoDto::new(blocks_info))
+        Ok(BlocksInfoResponse {
+            blocks,
+            blocks_not_found: if include_not_found {
+                Some(blocks_not_found)
+            } else {
+                None
+            },
+        })
     }
 }

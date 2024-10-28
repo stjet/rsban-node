@@ -9,7 +9,7 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BlockInfoDto {
+pub struct BlockInfoResponse {
     pub block_account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount: Option<Amount>,
@@ -21,6 +21,12 @@ pub struct BlockInfoDto {
     pub contents: JsonBlock,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<BlockSubTypeDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receivable: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receive_hash: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_account: Option<String>,
 }
 
 #[cfg(test)]
@@ -31,7 +37,7 @@ mod tests {
 
     #[test]
     fn serialize_block_info_dto() {
-        let block_info = BlockInfoDto {
+        let block_info = BlockInfoResponse {
             block_account: Account::decode_account(
                 "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
@@ -47,6 +53,9 @@ mod tests {
             confirmed: true,
             contents: BlockEnum::new_test_instance().json_representation(),
             subtype: Some(BlockSubTypeDto::Send),
+            receivable: None,
+            receive_hash: None,
+            source_account: None,
         };
 
         let serialized = serde_json::to_value(&block_info).unwrap();
@@ -101,7 +110,7 @@ mod tests {
             "subtype": "send"
         });
 
-        let deserialized: BlockInfoDto = serde_json::from_value(json).unwrap();
+        let deserialized: BlockInfoResponse = serde_json::from_value(json).unwrap();
 
         assert_eq!(
             deserialized.block_account,

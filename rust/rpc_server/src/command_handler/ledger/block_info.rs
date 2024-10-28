@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::BlockType;
-use rsnano_rpc_messages::{BlockInfoDto, BlockSubTypeDto, HashRpcMessage};
+use rsnano_rpc_messages::{BlockInfoResponse, BlockSubTypeDto, HashRpcMessage};
 
 impl RpcCommandHandler {
-    pub(crate) fn block_info(&self, args: HashRpcMessage) -> anyhow::Result<BlockInfoDto> {
+    pub(crate) fn block_info(&self, args: HashRpcMessage) -> anyhow::Result<BlockInfoResponse> {
         let txn = self.node.ledger.read_txn();
         let block = self.load_block_any(&txn, &args.hash)?;
         let account = block.account();
@@ -36,7 +36,7 @@ impl RpcCommandHandler {
             None
         };
 
-        Ok(BlockInfoDto {
+        Ok(BlockInfoResponse {
             block_account: account,
             amount,
             balance,
@@ -46,6 +46,9 @@ impl RpcCommandHandler {
             confirmed,
             contents,
             subtype,
+            source_account: None,
+            receive_hash: None,
+            receivable: None,
         })
     }
 }

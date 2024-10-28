@@ -88,7 +88,7 @@ pub enum RpcCommand {
     AccountsBalances(AccountsBalancesArgs),
     BlockInfo(HashRpcMessage),
     Blocks(HashesArgs),
-    BlocksInfo(HashesArgs),
+    BlocksInfo(BlocksInfoArgs),
     Chain(ChainArgs),
     Successors(ChainArgs),
     ConfirmationActive(ConfirmationActiveArgs),

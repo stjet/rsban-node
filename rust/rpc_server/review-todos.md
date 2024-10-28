@@ -14,6 +14,8 @@
 - accounts_create
 - accounts_frontiers
 - available_supply
+- block_info
+- blocks_info
 - receive
 
 # RPC functions MISSING:
@@ -28,11 +30,8 @@
 
 # RPC functions to review:
 - accounts_receivable
-- block_info
-- block
 - block_confirm
 - blocks
-- blocks_info
 - block_account
 - block_count
 - block_create

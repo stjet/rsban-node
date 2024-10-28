@@ -624,7 +624,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn block_info(&self, hash: BlockHash) -> Result<BlockInfoDto> {
+    pub async fn block_info(&self, hash: BlockHash) -> Result<BlockInfoResponse> {
         let cmd = RpcCommand::block_info(hash);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -636,7 +636,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn blocks_info(&self, blocks: Vec<BlockHash>) -> Result<BlocksInfoDto> {
+    pub async fn blocks_info(&self, blocks: Vec<BlockHash>) -> Result<BlocksInfoResponse> {
         let cmd = RpcCommand::blocks_info(blocks);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

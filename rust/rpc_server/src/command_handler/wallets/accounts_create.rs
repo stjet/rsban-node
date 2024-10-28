@@ -8,15 +8,15 @@ impl RpcCommandHandler {
         &self,
         args: AccountsCreateArgs,
     ) -> anyhow::Result<AccountsRpcMessage> {
-        let work = args.work.unwrap_or(true);
-        let count = args.wallet_with_count.count as usize;
-        let wallet = &args.wallet_with_count.wallet;
+        let generate_work = args.work.unwrap_or(false);
+        let count = args.count as usize;
+        let wallet = &args.wallet;
 
         let accounts: Result<Vec<Account>, _> = (0..count)
             .map(|_| {
                 self.node
                     .wallets
-                    .deterministic_insert2(wallet, work)
+                    .deterministic_insert2(wallet, generate_work)
                     .map(|key| Account::from(key))
             })
             .collect();

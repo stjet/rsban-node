@@ -53,6 +53,7 @@ impl RpcCommandHandler {
             RpcCommand::AccountsRepresentatives(args) => {
                 to_value(self.accounts_representatives(args))
             }
+            RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -61,7 +62,6 @@ impl RpcCommandHandler {
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             // Not reviewed yet:
-            RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
             RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::WalletAdd(args) => to_value(self.wallet_add(args)?),

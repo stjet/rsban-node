@@ -10,8 +10,8 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsCreateArgs {
-    #[serde(flatten)]
-    pub wallet_with_count: WalletWithCountArgs,
+    pub wallet: WalletId,
+    pub count: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub work: Option<bool>,
 }
@@ -19,7 +19,8 @@ pub struct AccountsCreateArgs {
 impl AccountsCreateArgs {
     pub fn new(wallet: WalletId, count: u64) -> AccountsCreateArgs {
         AccountsCreateArgs {
-            wallet_with_count: WalletWithCountArgs::new(wallet, count),
+            wallet,
+            count,
             work: None,
         }
     }
@@ -47,7 +48,8 @@ impl AccountsCreateArgsBuilder {
 
     pub fn build(self) -> AccountsCreateArgs {
         AccountsCreateArgs {
-            wallet_with_count: WalletWithCountArgs::new(self.wallet, self.count),
+            wallet: self.wallet,
+            count: self.count,
             work: self.work,
         }
     }
@@ -56,7 +58,8 @@ impl AccountsCreateArgsBuilder {
 impl From<WalletWithCountArgs> for AccountsCreateArgs {
     fn from(wallet_with_count: WalletWithCountArgs) -> Self {
         Self {
-            wallet_with_count,
+            wallet: wallet_with_count.wallet,
+            count: wallet_with_count.count,
             work: None,
         }
     }
@@ -123,8 +126,8 @@ mod tests {
             .without_precomputed_work()
             .build();
 
-        assert_eq!(args.wallet_with_count.wallet, WalletId::from(1));
-        assert_eq!(args.wallet_with_count.count, 5);
+        assert_eq!(args.wallet, WalletId::from(1));
+        assert_eq!(args.count, 5);
         assert_eq!(args.work, Some(false));
 
         let json = to_string_pretty(&args).unwrap();
@@ -144,8 +147,8 @@ mod tests {
         let count = 3;
         let args: AccountsCreateArgs = WalletWithCountArgs::new(wallet_id, count).into();
 
-        assert_eq!(args.wallet_with_count.wallet, wallet_id);
-        assert_eq!(args.wallet_with_count.count, count);
+        assert_eq!(args.wallet, wallet_id);
+        assert_eq!(args.count, count);
         assert_eq!(args.work, None);
     }
 

@@ -20,7 +20,10 @@ fn accounts_representatives() {
     let mut accounts_representatives = HashMap::new();
     accounts_representatives.insert(*DEV_GENESIS_ACCOUNT, *DEV_GENESIS_ACCOUNT);
 
-    let expected = AccountsRepresentativesResponse::new(accounts_representatives);
+    let expected = AccountsRepresentativesResponse {
+        representatives: Some(accounts_representatives),
+        errors: None,
+    };
     assert_eq!(result, expected);
 
     server.abort();

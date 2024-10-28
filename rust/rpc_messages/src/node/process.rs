@@ -1,5 +1,5 @@
-use crate::RpcCommand;
-use rsnano_core::{BlockSubType, JsonBlock};
+use crate::{BlockSubTypeDto, RpcCommand};
+use rsnano_core::JsonBlock;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -18,7 +18,7 @@ impl From<JsonBlock> for ProcessArgs {
 pub struct ProcessArgs {
     pub block: JsonBlock,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub subtype: Option<BlockSubType>,
+    pub subtype: Option<BlockSubTypeDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub force: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,7 +46,7 @@ pub struct ProcessArgsBuilder {
 }
 
 impl ProcessArgsBuilder {
-    pub fn subtype(mut self, subtype: BlockSubType) -> Self {
+    pub fn subtype(mut self, subtype: BlockSubTypeDto) -> Self {
         self.args.subtype = Some(subtype);
         self
     }
@@ -81,7 +81,7 @@ mod tests {
     fn test_process_command_serialize() {
         let process_args =
             ProcessArgs::builder(BlockEnum::new_test_instance().json_representation())
-                .subtype(BlockSubType::Send)
+                .subtype(BlockSubTypeDto::Send)
                 .force()
                 .as_async()
                 .without_watch_work()
@@ -135,7 +135,7 @@ mod tests {
 
         let deserialized: RpcCommand = serde_json::from_value(json).unwrap();
         if let RpcCommand::Process(args) = deserialized {
-            assert_eq!(args.subtype, Some(BlockSubType::Receive));
+            assert_eq!(args.subtype, Some(BlockSubTypeDto::Receive));
             assert_eq!(
                 args.block,
                 BlockEnum::new_test_instance().json_representation()

@@ -77,14 +77,25 @@ impl TryFrom<u8> for BlockType {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum BlockSubType {
     Send,
     Receive,
     Open,
     Change,
     Epoch,
+}
+
+impl BlockSubType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BlockSubType::Send => "send",
+            BlockSubType::Receive => "receive",
+            BlockSubType::Open => "open",
+            BlockSubType::Change => "change",
+            BlockSubType::Epoch => "epoch",
+        }
+    }
 }
 
 #[derive(Clone, Default)]

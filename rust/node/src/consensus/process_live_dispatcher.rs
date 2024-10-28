@@ -72,7 +72,7 @@ impl ProcessLiveDispatcherExt for Arc<ProcessLiveDispatcher> {
 fn new_block_arrived_message(block: &BlockEnum) -> OutgoingMessageEnvelope {
     let mut json_block = SerdePropertyTree::new();
     block.serialize_json(&mut json_block).unwrap();
-    let subtype = block.sideband().unwrap().details.state_subtype();
+    let subtype = block.sideband().unwrap().details.subtype_str();
     json_block.put_string("subtype", subtype).unwrap();
     OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value)
 }

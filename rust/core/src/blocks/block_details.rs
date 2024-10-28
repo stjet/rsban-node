@@ -5,6 +5,8 @@ use crate::{
 use anyhow::Result;
 use num::FromPrimitive;
 
+use super::BlockSubType;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BlockDetails {
     pub epoch: Epoch,
@@ -62,16 +64,20 @@ impl BlockDetails {
         })
     }
 
-    pub fn state_subtype(&self) -> &'static str {
+    pub fn subtype(&self) -> BlockSubType {
         if self.is_send {
-            "send"
+            BlockSubType::Send
         } else if self.is_receive {
-            "receive"
+            BlockSubType::Receive
         } else if self.is_epoch {
-            "epoch"
+            BlockSubType::Epoch
         } else {
-            "change"
+            BlockSubType::Change
         }
+    }
+
+    pub fn subtype_str(&self) -> &'static str {
+        self.subtype().as_str()
     }
 }
 

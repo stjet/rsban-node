@@ -1,5 +1,5 @@
-use crate::RpcCommand;
-use rsnano_core::{Account, Amount, BlockHash, BlockSubType, Signature, WorkNonce};
+use crate::{BlockSubTypeDto, BlockTypeDto, RpcCommand};
+use rsnano_core::{Account, Amount, BlockHash, Link, Signature, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -10,7 +10,8 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountHistoryArgs {
-    pub account: Account,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account: Option<Account>,
     pub count: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<bool>,
@@ -27,7 +28,7 @@ pub struct AccountHistoryArgs {
 impl AccountHistoryArgs {
     pub fn new(account: Account, count: u64) -> AccountHistoryArgs {
         AccountHistoryArgs {
-            account,
+            account: Some(account),
             count,
             raw: None,
             head: None,
@@ -37,8 +38,12 @@ impl AccountHistoryArgs {
         }
     }
 
-    pub fn builder(account: Account, count: u64) -> AccountHistoryArgsBuilder {
-        AccountHistoryArgsBuilder::new(account, count)
+    pub fn builder_for_account(account: Account, count: u64) -> AccountHistoryArgsBuilder {
+        AccountHistoryArgsBuilder::new(Some(account), None, count)
+    }
+
+    pub fn builder_for_head(head: BlockHash, count: u64) -> AccountHistoryArgsBuilder {
+        AccountHistoryArgsBuilder::new(None, Some(head), count)
     }
 }
 
@@ -47,13 +52,13 @@ pub struct AccountHistoryArgsBuilder {
 }
 
 impl AccountHistoryArgsBuilder {
-    fn new(account: Account, count: u64) -> Self {
+    fn new(account: Option<Account>, head: Option<BlockHash>, count: u64) -> Self {
         Self {
             args: AccountHistoryArgs {
                 account,
+                head,
                 count,
                 raw: None,
-                head: None,
                 offset: None,
                 reverse: None,
                 account_filter: None,
@@ -92,7 +97,7 @@ impl AccountHistoryArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountHistoryDto {
+pub struct AccountHistoryResponse {
     pub account: Account,
     pub history: Vec<HistoryEntry>,
     pub previous: Option<BlockHash>,
@@ -102,15 +107,36 @@ pub struct AccountHistoryDto {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HistoryEntry {
     #[serde(rename = "type")]
-    pub block_type: BlockSubType,
-    pub account: Account,
-    pub amount: Amount,
     pub local_timestamp: u64,
     pub height: u64,
     pub hash: BlockHash,
     pub confirmed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_type: Option<BlockTypeDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subtype: Option<BlockSubTypeDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<Amount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub work: Option<WorkNonce>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<Signature>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub representative: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub balance: Option<Amount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub opened: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link: Option<Link>,
 }
 
 #[cfg(test)]
@@ -120,9 +146,8 @@ mod tests {
 
     #[test]
     fn serialize_account_history_command() {
-        let account_history_args = AccountHistoryArgsBuilder::new(Account::zero(), 10)
+        let account_history_args = AccountHistoryArgs::builder_for_head(BlockHash::zero(), 10)
             .raw()
-            .head(BlockHash::zero())
             .offset(5)
             .reverse()
             .account_filter(vec![Account::from(123)])
@@ -132,7 +157,6 @@ mod tests {
             to_string_pretty(&RpcCommand::account_history(account_history_args)).unwrap(),
             r#"{
   "action": "account_history",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
   "count": 10,
   "raw": true,
   "head": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -161,7 +185,8 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
 
         if let RpcCommand::AccountHistory(args) = deserialized {
-            assert_eq!(args.account, Account::from(123));
+            assert_eq!(args.account, Some(Account::from(123)));
+            assert_eq!(args.head, Some(BlockHash::zero()));
             assert_eq!(args.count, 5);
             assert_eq!(args.raw, Some(true));
             assert_eq!(args.head, Some(BlockHash::zero()));

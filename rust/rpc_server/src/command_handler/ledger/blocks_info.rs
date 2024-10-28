@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockDetails, BlockHash, BlockSubType, BlockType};
+use rsnano_core::{BlockHash, BlockSubType, BlockType};
 use rsnano_rpc_messages::{BlockInfoDto, BlocksInfoDto, HashesArgs};
 use std::collections::HashMap;
 
@@ -25,10 +25,7 @@ impl RpcCommandHandler {
             let contents = block.json_representation();
 
             let subtype = match block.block_type() {
-                BlockType::State => serde_json::from_str::<BlockSubType>(
-                    &BlockDetails::state_subtype(&block.sideband().unwrap().details),
-                )
-                .unwrap(),
+                BlockType::State => block.sideband().unwrap().details.subtype(),
                 BlockType::LegacyChange => BlockSubType::Change,
                 BlockType::LegacyOpen => BlockSubType::Open,
                 BlockType::LegacySend => BlockSubType::Send,
@@ -45,7 +42,7 @@ impl RpcCommandHandler {
                 successor,
                 confirmed,
                 contents,
-                subtype,
+                subtype.into(),
             );
 
             blocks_info.insert(hash, block_info_dto);

@@ -41,7 +41,7 @@ impl RpcCommandHandler {
             RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
             RpcCommand::AccountCreate(args) => to_value(self.account_create(args)?),
             RpcCommand::AccountGet(args) => to_value(account_get(args)),
-            RpcCommand::AccountHistory(args) => to_value(self.account_history(args)),
+            RpcCommand::AccountHistory(args) => to_value(self.account_history(args)?),
             // Not implemented:
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),

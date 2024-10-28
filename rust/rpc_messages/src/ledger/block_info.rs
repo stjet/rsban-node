@@ -1,5 +1,5 @@
-use crate::{common::HashRpcMessage, RpcCommand};
-use rsnano_core::{Account, Amount, BlockHash, BlockSubType, JsonBlock};
+use crate::{common::HashRpcMessage, BlockSubTypeDto, RpcCommand};
+use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -18,7 +18,7 @@ pub struct BlockInfoDto {
     pub successor: BlockHash,
     pub confirmed: bool,
     pub contents: JsonBlock,
-    pub subtype: BlockSubType,
+    pub subtype: BlockSubTypeDto,
 }
 
 impl BlockInfoDto {
@@ -31,7 +31,7 @@ impl BlockInfoDto {
         successor: BlockHash,
         confirmed: bool,
         contents: JsonBlock,
-        subtype: BlockSubType,
+        subtype: BlockSubTypeDto,
     ) -> Self {
         Self {
             block_account,
@@ -70,7 +70,7 @@ mod tests {
             .unwrap(),
             confirmed: true,
             contents: BlockEnum::new_test_instance().json_representation(),
-            subtype: BlockSubType::Send,
+            subtype: BlockSubTypeDto::Send,
         };
 
         let serialized = serde_json::to_value(&block_info).unwrap();
@@ -149,7 +149,7 @@ mod tests {
             "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72"
         );
         assert!(deserialized.confirmed);
-        assert_eq!(deserialized.subtype, BlockSubType::Send);
+        assert_eq!(deserialized.subtype, BlockSubTypeDto::Send);
         assert_eq!(
             deserialized.contents,
             BlockEnum::new_test_instance().json_representation()

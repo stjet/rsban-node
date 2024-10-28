@@ -466,6 +466,10 @@ impl Ledger {
         self.constants.epochs.is_epoch_link(link)
     }
 
+    pub fn epoch_signer(&self, link: &Link) -> Option<Account> {
+        self.constants.epochs.epoch_signer(link)
+    }
+
     /// Given the block hash of a send block, find the associated receive block that receives that send.
     /// The send block hash is not checked in any way, it is assumed to be correct.
     /// Return the receive block on success and None on failure

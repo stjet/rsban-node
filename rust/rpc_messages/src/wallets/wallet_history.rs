@@ -1,6 +1,6 @@
-use crate::RpcCommand;
+use crate::{BlockSubTypeDto, RpcCommand};
 use rsnano_core::WalletId;
-use rsnano_core::{Account, Amount, BlockHash, BlockSubType};
+use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -62,7 +62,7 @@ impl WalletHistoryDto {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct HistoryEntryDto {
     #[serde(rename = "type")]
-    pub entry_type: BlockSubType,
+    pub entry_type: BlockSubTypeDto,
     pub account: Account,
     pub amount: Amount,
     pub block_account: Account,
@@ -72,7 +72,7 @@ pub struct HistoryEntryDto {
 
 impl HistoryEntryDto {
     pub fn new(
-        entry_type: BlockSubType,
+        entry_type: BlockSubTypeDto,
         account: Account,
         amount: Amount,
         block_account: Account,
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn serialize_wallet_history_dto() {
         let history_entry = HistoryEntryDto {
-            entry_type: BlockSubType::Send,
+            entry_type: BlockSubTypeDto::Send,
             account: Account::decode_account(
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
@@ -228,7 +228,7 @@ mod tests {
 }"#;
 
         let expected_history_entry = HistoryEntryDto {
-            entry_type: BlockSubType::Send,
+            entry_type: BlockSubTypeDto::Send,
             account: Account::decode_account(
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )

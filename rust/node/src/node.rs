@@ -147,7 +147,7 @@ pub(crate) struct NodeArgs {
 
 impl NodeArgs {
     pub fn create_test_instance() -> Self {
-        let network_params = NetworkParams::new(Networks::NanoTestNetwork);
+        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
         let config = NodeConfig::new(None, &network_params, 2);
         Self {
             runtime: tokio::runtime::Handle::current(),

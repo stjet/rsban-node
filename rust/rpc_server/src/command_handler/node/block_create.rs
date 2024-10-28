@@ -137,6 +137,9 @@ impl RpcCommandHandler {
                     bail!(Self::BLOCK_ERROR);
                 }
             }
+            BlockTypeDto::Unknown => {
+                bail!(Self::BLOCK_ERROR);
+            }
         };
 
         let root = if !previous.is_zero() {

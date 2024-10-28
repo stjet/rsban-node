@@ -60,7 +60,7 @@ pub use wallet_with_count::*;
 pub use wallet_with_password::*;
 pub use weight::*;
 
-use rsnano_core::{BlockType, WorkVersion};
+use rsnano_core::{BlockSubType, BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -94,6 +94,7 @@ pub enum BlockTypeDto {
     Open,
     Change,
     State,
+    Unknown,
 }
 
 impl From<BlockType> for BlockTypeDto {
@@ -104,7 +105,7 @@ impl From<BlockType> for BlockTypeDto {
             BlockType::LegacyOpen => BlockTypeDto::Open,
             BlockType::LegacyChange => BlockTypeDto::Change,
             BlockType::State => BlockTypeDto::State,
-            BlockType::Invalid | BlockType::NotABlock => unimplemented!(),
+            BlockType::Invalid | BlockType::NotABlock => BlockTypeDto::Unknown,
         }
     }
 }
@@ -117,6 +118,30 @@ impl From<BlockTypeDto> for BlockType {
             BlockTypeDto::Open => BlockType::LegacyOpen,
             BlockTypeDto::Change => BlockType::LegacyChange,
             BlockTypeDto::State => BlockType::State,
+            BlockTypeDto::Unknown => BlockType::Invalid,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockSubTypeDto {
+    Send,
+    Receive,
+    Open,
+    Change,
+    Epoch,
+    Unknown,
+}
+
+impl From<BlockSubType> for BlockSubTypeDto {
+    fn from(value: BlockSubType) -> Self {
+        match value {
+            BlockSubType::Send => Self::Send,
+            BlockSubType::Receive => Self::Receive,
+            BlockSubType::Open => Self::Open,
+            BlockSubType::Change => Self::Change,
+            BlockSubType::Epoch => Self::Epoch,
         }
     }
 }

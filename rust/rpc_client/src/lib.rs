@@ -1,5 +1,5 @@
 use crate::AccountBalanceResponse;
-use anyhow::{bail, Ok, Result};
+use anyhow::{anyhow, bail, Ok, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
@@ -227,7 +227,7 @@ impl NanoRpcClient {
     pub async fn account_history(
         &self,
         args: impl Into<AccountHistoryArgs>,
-    ) -> Result<AccountHistoryDto> {
+    ) -> Result<AccountHistoryResponse> {
         let cmd = RpcCommand::account_history(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -735,10 +735,7 @@ impl NanoRpcClient {
             .json::<Value>()
             .await?;
 
-        if let Some(error) = result.get("error") {
-            bail!("node returned error: {}", error);
-        }
-
+        check_error(&result).map_err(|e| anyhow!("node returned error: \"{}\"", e))?;
         Ok(result)
     }
 }

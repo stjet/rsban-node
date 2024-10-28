@@ -116,3 +116,11 @@ pub enum RpcCommand {
     BlockCreate(BlockCreateArgs),
     WorkPeersClear,
 }
+
+pub fn check_error(value: &serde_json::Value) -> Result<(), String> {
+    if let Some(serde_json::Value::String(error)) = value.get("error") {
+        Err(error.clone())
+    } else {
+        Ok(())
+    }
+}

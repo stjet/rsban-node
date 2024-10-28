@@ -3,6 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
+use rsnano_rpc_messages::BlockSubTypeDto;
 use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
@@ -58,7 +59,7 @@ fn wallet_history() {
 
     let entry = &wallet_history.history[0];
 
-    assert_eq!(entry.entry_type, BlockSubType::Receive);
+    assert_eq!(entry.entry_type, BlockSubTypeDto::Receive);
     assert_eq!(entry.account, *DEV_GENESIS_ACCOUNT);
     assert_eq!(entry.amount, send_amount);
     assert_eq!(entry.block_account, keys.account());

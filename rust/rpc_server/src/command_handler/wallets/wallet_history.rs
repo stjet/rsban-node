@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
+use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{HistoryEntryDto, WalletHistoryArgs, WalletHistoryDto};
+use rsnano_rpc_messages::{BlockSubTypeDto, HistoryEntryDto, WalletHistoryArgs, WalletHistoryDto};
 use rsnano_store_lmdb::Transaction;
 use std::sync::Arc;
 
@@ -82,7 +82,7 @@ fn process_block(
                 // Send
                 let account: Account = state_block.link().into();
                 Some(HistoryEntryDto::new(
-                    BlockSubType::Send,
+                    BlockSubTypeDto::Send,
                     account,
                     previous_balance - balance,
                     *block_account,
@@ -97,7 +97,7 @@ fn process_block(
                     .block_account(transaction, &state_block.link().into())
                     .unwrap_or_else(|| Account::from(state_block.link()));
                 Some(HistoryEntryDto::new(
-                    BlockSubType::Receive,
+                    BlockSubTypeDto::Receive,
                     source_account,
                     balance - previous_balance,
                     *block_account,

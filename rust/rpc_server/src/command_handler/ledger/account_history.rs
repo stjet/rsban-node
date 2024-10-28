@@ -1,290 +1,305 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{Account, Amount, Block, BlockEnum, BlockHash, BlockSubType};
-use rsnano_rpc_messages::{AccountHistoryArgs, AccountHistoryDto, HistoryEntry};
+use anyhow::{anyhow, bail};
+use rsnano_core::{Account, Block, BlockEnum, BlockHash};
+use rsnano_ledger::Ledger;
+use rsnano_rpc_messages::{
+    AccountHistoryArgs, AccountHistoryResponse, BlockSubTypeDto, BlockTypeDto, HistoryEntry,
+};
 
 impl RpcCommandHandler {
-    pub(crate) fn account_history(&self, args: AccountHistoryArgs) -> AccountHistoryDto {
-        let tx = self.node.store.tx_begin_read();
-        let mut history = Vec::new();
-        let reverse = args.reverse.unwrap_or(false);
-        let mut hash = if reverse {
-            self.node
-                .ledger
-                .any()
-                .get_account(&tx, &args.account)
-                .unwrap_or_default()
-                .open_block
-        } else {
-            args.head.unwrap_or_else(|| {
-                self.node
-                    .ledger
-                    .any()
-                    .account_head(&tx, &args.account)
-                    .unwrap_or_default()
-            })
-        };
-        let mut count = args.count;
-        let mut offset = args.offset.unwrap_or(0);
-        let raw = args.raw.unwrap_or(false);
-        let account_filter = args.account_filter.clone();
+    pub(crate) fn account_history(
+        &self,
+        args: AccountHistoryArgs,
+    ) -> anyhow::Result<AccountHistoryResponse> {
+        let helper = AccountHistoryHelper::new(&self.node.ledger, args);
+        helper.account_history()
+    }
+}
 
-        while let Some(block) = self.node.ledger.get_block(&tx, &hash) {
-            if offset > 0 {
-                offset -= 1;
-            } else if count > 0 {
-                if let Some(entry) = self.create_history_entry(&block, &hash, raw, &account_filter)
-                {
-                    history.push(entry);
-                    count -= 1;
-                }
-            } else {
-                break;
-            }
+struct AccountHistoryHelper<'a> {
+    ledger: &'a Ledger,
+    accounts_to_filter: Vec<Account>,
+    reverse: bool,
+    offset: u64,
+    head: Option<BlockHash>,
+    account: Option<Account>,
+    output_raw: bool,
+    count: u64,
+}
 
-            hash = if !reverse {
-                block.previous()
-            } else {
-                let a = self
-                    .node
-                    .ledger
-                    .any()
-                    .block_successor(&tx, &hash)
-                    .unwrap_or_default();
-                a
-            };
-
-            if hash.is_zero() {
-                break;
-            }
-        }
-
-        //if reverse {
-        //history.reverse();
-        //}
-
-        let next = if !hash.is_zero() { Some(hash) } else { None };
-
-        let previous = if !history.is_empty() {
-            Some(if reverse {
-                history.last().unwrap().hash
-            } else {
-                history.first().unwrap().hash
-            })
-        } else {
-            None
-        };
-
-        AccountHistoryDto {
+impl<'a> AccountHistoryHelper<'a> {
+    fn new(ledger: &'a Ledger, args: AccountHistoryArgs) -> Self {
+        Self {
+            ledger,
+            accounts_to_filter: args.account_filter.unwrap_or_default(),
+            reverse: args.reverse.unwrap_or(false),
+            offset: args.offset.unwrap_or_default(),
             account: args.account,
-            history,
-            previous,
-            next,
+            output_raw: args.raw.unwrap_or(false),
+            count: args.count,
+            head: args.head,
         }
     }
 
-    fn create_history_entry(
-        &self,
-        block: &BlockEnum,
-        hash: &BlockHash,
-        raw: bool,
-        account_filter: &Option<Vec<Account>>,
-    ) -> Option<HistoryEntry> {
-        let transaction = self.node.store.tx_begin_read();
-        let confirmed = self
-            .node
-            .ledger
-            .confirmed()
-            .block_exists_or_pruned(&transaction, hash);
-        let local_timestamp = block.sideband().unwrap().timestamp;
-        let height = block.sideband().unwrap().height;
+    pub(crate) fn account_history(mut self) -> anyhow::Result<AccountHistoryResponse> {
+        let tx = self.ledger.read_txn();
+        let (account, mut hash) = if let Some(head) = &self.head {
+            let account = self
+                .ledger
+                .any()
+                .block_account(&tx, head)
+                .ok_or_else(|| anyhow!(RpcCommandHandler::BLOCK_NOT_FOUND))?;
+            (account, *head)
+        } else {
+            let account = self
+                .account
+                .ok_or_else(|| anyhow!("account argument missing"))?;
 
-        let (block_type, account, amount) = match block {
-            BlockEnum::LegacySend(send_block) => {
-                let amount = self
-                    .node
+            let hash = if self.reverse {
+                let info = self
                     .ledger
                     .any()
-                    .block_amount(&transaction, hash)
-                    .unwrap_or_default();
-                let destination = *send_block.destination();
-                if account_filter
-                    .as_ref()
-                    .map_or(false, |filter| !filter.contains(&destination))
-                {
-                    return None;
-                }
-                (BlockSubType::Send, destination, amount)
-            }
-            BlockEnum::LegacyReceive(receive_block) => {
-                let amount = self
-                    .node
-                    .ledger
+                    .get_account(&tx, &account)
+                    .ok_or_else(|| anyhow!("Account not found"))?;
+                info.open_block
+            } else {
+                self.ledger
                     .any()
-                    .block_amount(&transaction, hash)
-                    .unwrap_or_default();
-                let source_account = self
-                    .node
-                    .ledger
-                    .any()
-                    .block_account(&transaction, &receive_block.source())
-                    .unwrap_or_default();
-                if account_filter
-                    .as_ref()
-                    .map_or(false, |filter| !filter.contains(&source_account))
-                {
-                    return None;
-                }
-                (BlockSubType::Receive, source_account, amount)
-            }
-            BlockEnum::LegacyOpen(open_block) => {
-                let (amount, source_account) = if open_block.source().as_bytes()
-                    == self.node.ledger.constants.genesis_account.as_bytes()
-                {
-                    (
-                        self.node.ledger.constants.genesis_amount,
-                        self.node.ledger.constants.genesis_account,
-                    )
-                } else {
-                    let amount = self
-                        .node
-                        .ledger
-                        .any()
-                        .block_amount(&transaction, hash)
-                        .unwrap_or_default();
-                    let source_account = self
-                        .node
-                        .ledger
-                        .any()
-                        .block_account(&transaction, &open_block.source())
-                        .unwrap_or_default();
-                    if account_filter
-                        .as_ref()
-                        .map_or(false, |filter| !filter.contains(&source_account))
-                    {
-                        return None;
-                    } else {
-                        (amount, source_account)
-                    }
-                };
-                (BlockSubType::Receive, source_account, amount)
-            }
-            BlockEnum::LegacyChange(_) => {
-                if raw {
-                    (BlockSubType::Change, Account::default(), Amount::zero())
-                } else {
-                    return None; // Skip change blocks if not raw
-                }
-            }
-            BlockEnum::State(state_block) => {
-                if state_block.previous().is_zero() {
-                    // Open block
-                    let source_account = self
-                        .node
-                        .ledger
-                        .any()
-                        .block_account(&transaction, &state_block.link().into())
-                        .unwrap_or_default();
-                    if account_filter
-                        .as_ref()
-                        .map_or(false, |filter| !filter.contains(&source_account))
-                    {
-                        return None;
-                    }
-                    (BlockSubType::Receive, source_account, state_block.balance())
-                } else {
-                    let previous_balance = self
-                        .node
-                        .ledger
-                        .any()
-                        .block_balance(&transaction, &state_block.previous())
-                        .unwrap_or_default();
-                    if state_block.balance() < previous_balance {
-                        // Send block
-                        let destination = state_block.link().into();
-                        if account_filter
-                            .as_ref()
-                            .map_or(false, |filter| !filter.contains(&destination))
-                        {
-                            return None;
-                        }
-                        (
-                            BlockSubType::Send,
-                            destination,
-                            previous_balance - state_block.balance(),
-                        )
-                    } else if state_block.link().is_zero() {
-                        // Change block
-                        if raw {
-                            (BlockSubType::Change, Account::default(), Amount::zero())
-                        } else {
-                            return None; // Skip change blocks if not raw
-                        }
-                    } else {
-                        // Receive block
-                        let source_account = self
-                            .node
-                            .ledger
-                            .any()
-                            .block_account(&transaction, &state_block.link().into())
-                            .unwrap_or_default();
-                        if account_filter
-                            .as_ref()
-                            .map_or(false, |filter| !filter.contains(&source_account))
-                        {
-                            return None;
-                        }
-                        (
-                            BlockSubType::Receive,
-                            source_account,
-                            state_block.balance() - previous_balance,
-                        )
-                    }
-                }
-            }
+                    .account_head(&tx, &account)
+                    .ok_or_else(|| anyhow!("Account not found"))?
+            };
+
+            (account, hash)
         };
 
-        Some(HistoryEntry {
-            block_type,
-            account,
-            amount,
-            local_timestamp,
-            height,
-            hash: *hash,
-            confirmed,
-            work: if raw { Some(block.work().into()) } else { None },
-            signature: if raw {
-                Some(block.block_signature().clone())
+        let mut history = Vec::new();
+
+        let mut next_block = self.ledger.any().get_block(&tx, &hash);
+        while let Some(block) = next_block {
+            if self.count == 0 {
+                break;
+            }
+
+            if self.offset > 0 {
+                self.offset -= 1;
             } else {
-                None
-            },
-        })
+                let sideband = block.sideband().unwrap();
+                let mut entry = HistoryEntry {
+                    block_type: None,
+                    amount: None,
+                    account: None,
+                    local_timestamp: sideband.timestamp,
+                    height: sideband.height,
+                    hash,
+                    confirmed: self.ledger.confirmed().block_exists_or_pruned(&tx, &hash),
+                    work: if self.output_raw {
+                        Some(block.work().into())
+                    } else {
+                        None
+                    },
+                    signature: if self.output_raw {
+                        Some(block.block_signature().clone())
+                    } else {
+                        None
+                    },
+                    representative: None,
+                    previous: None,
+                    balance: None,
+                    source: None,
+                    opened: None,
+                    destination: None,
+                    link: None,
+                    subtype: None,
+                };
+                let mut skip_this_entry = false;
+                match &block {
+                    BlockEnum::LegacySend(b) => {
+                        entry.block_type = Some(BlockTypeDto::Send);
+                        entry.account = Some(account);
+                        if let Some(amount) = self.ledger.any().block_amount(&tx, &hash) {
+                            entry.amount = Some(amount);
+                        } else {
+                            entry.destination = Some(account);
+                            entry.balance = Some(b.balance());
+                            entry.previous = Some(b.previous());
+                        }
+                    }
+                    BlockEnum::LegacyReceive(b) => {
+                        entry.block_type = Some(BlockTypeDto::Receive);
+                        if let Some(amount) = self.ledger.any().block_amount(&tx, &hash) {
+                            if let Some(source_account) =
+                                self.ledger.any().block_account(&tx, &b.source())
+                            {
+                                entry.account = Some(source_account);
+                            }
+                            entry.amount = Some(amount);
+                        }
+                        if self.output_raw {
+                            entry.source = Some(b.source());
+                            entry.previous = Some(b.previous());
+                        }
+                    }
+                    BlockEnum::LegacyOpen(b) => {
+                        if self.output_raw {
+                            entry.block_type = Some(BlockTypeDto::Open);
+                            entry.representative = Some(b.hashables.representative.into());
+                            entry.source = Some(b.source());
+                            entry.opened = Some(b.account());
+                        } else {
+                            // Report opens as a receive
+                            entry.block_type = Some(BlockTypeDto::Receive);
+                        }
+
+                        if b.source() != self.ledger.constants.genesis_account.into() {
+                            if let Some(amount) = self.ledger.any().block_amount(&tx, &hash) {
+                                entry.account = self.ledger.any().block_account(&tx, &b.source());
+                                entry.amount = Some(amount);
+                            }
+                        } else {
+                            entry.account = Some(self.ledger.constants.genesis_account);
+                            entry.amount = Some(self.ledger.constants.genesis_amount);
+                        }
+                    }
+                    BlockEnum::LegacyChange(b) => {
+                        if self.output_raw {
+                            entry.block_type = Some(BlockTypeDto::Change);
+                            entry.representative = Some(b.mandatory_representative().into());
+                            entry.previous = Some(b.previous());
+                        } else {
+                            skip_this_entry = true;
+                        }
+                    }
+                    BlockEnum::State(b) => {
+                        if self.output_raw {
+                            entry.block_type = Some(BlockTypeDto::State);
+                            entry.representative = Some(b.mandatory_representative().into());
+                            entry.link = Some(b.link());
+                            entry.balance = Some(b.balance());
+                            entry.previous = Some(b.previous());
+                        }
+
+                        let balance = b.balance();
+                        let previous_balance_raw =
+                            self.ledger.any().block_balance(&tx, &b.previous());
+                        let previous_balance = previous_balance_raw.unwrap_or_default();
+                        if !b.previous().is_zero() && previous_balance_raw.is_none() {
+                            // If previous hash is non-zero and we can't query the balance, e.g. it's pruned, we can't determine the block type
+                            if self.output_raw {
+                                entry.subtype = Some(BlockSubTypeDto::Unknown);
+                            } else {
+                                entry.block_type = Some(BlockTypeDto::Unknown);
+                            }
+                        } else if balance < previous_balance {
+                            if self.should_ignore_account(&b.link().into()) {
+                                skip_this_entry = !self.output_raw;
+                            } else {
+                                if self.output_raw {
+                                    entry.subtype = Some(BlockSubTypeDto::Send);
+                                } else {
+                                    entry.block_type = Some(BlockTypeDto::Send);
+                                }
+                                entry.account = Some(b.link().into());
+                                entry.amount = Some(previous_balance - b.balance());
+                            }
+                        } else {
+                            if b.link().is_zero() {
+                                if self.output_raw && self.accounts_to_filter.is_empty() {
+                                    entry.subtype = Some(BlockSubTypeDto::Change);
+                                } else {
+                                    skip_this_entry = !self.output_raw;
+                                }
+                            } else if balance == previous_balance
+                                && self.ledger.is_epoch_link(&b.link())
+                            {
+                                if self.output_raw && self.accounts_to_filter.is_empty() {
+                                    entry.subtype = Some(BlockSubTypeDto::Epoch);
+                                    entry.account = self.ledger.epoch_signer(&b.link());
+                                } else {
+                                    skip_this_entry = !self.output_raw;
+                                }
+                            } else {
+                                let source_account_opt =
+                                    self.ledger.any().block_account(&tx, &b.link().into());
+                                let source_account = source_account_opt.unwrap_or_default();
+
+                                if source_account_opt.is_some()
+                                    && self.should_ignore_account(&source_account)
+                                {
+                                    skip_this_entry = !self.output_raw;
+                                } else {
+                                    if self.output_raw {
+                                        entry.subtype = Some(BlockSubTypeDto::Receive);
+                                    } else {
+                                        entry.block_type = Some(BlockTypeDto::Receive);
+                                    }
+                                    if source_account_opt.is_some() {
+                                        entry.account = Some(source_account);
+                                    }
+                                    entry.amount = Some(balance - previous_balance);
+                                }
+                            }
+                        }
+                    }
+                };
+                if !skip_this_entry {
+                    history.push(entry);
+                    self.count -= 1;
+                }
+            }
+
+            hash = if self.reverse {
+                self.ledger
+                    .any()
+                    .block_successor(&tx, &hash)
+                    .unwrap_or_default()
+            } else {
+                block.previous()
+            };
+            next_block = self.ledger.any().get_block(&tx, &hash);
+        }
+
+        let mut response = AccountHistoryResponse {
+            account,
+            history,
+            previous: None,
+            next: None,
+        };
+
+        if !hash.is_zero() {
+            if self.reverse {
+                response.next = Some(hash);
+            } else {
+                response.previous = Some(hash);
+            }
+        }
+
+        Ok(response)
+    }
+
+    fn should_ignore_account(&self, account: &Account) -> bool {
+        if self.accounts_to_filter.is_empty() {
+            return false;
+        }
+        !self.accounts_to_filter.contains(account)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
     use rsnano_node::Node;
-    use rsnano_rpc_messages::RpcCommand;
+    use rsnano_rpc_messages::{check_error, RpcCommand};
     use std::sync::Arc;
 
     #[tokio::test]
     async fn history_rpc_call() {
         let node = Arc::new(Node::new_null());
         let cmd_handler = RpcCommandHandler::new(node, true);
-        let account = Account::from(1);
         let result = cmd_handler.handle(RpcCommand::account_history(
-            AccountHistoryArgs::builder(account, 3).build(),
+            AccountHistoryArgs::builder_for_account(Account::from(42), 3).build(),
         ));
-        let response = serde_json::from_value::<AccountHistoryDto>(result).unwrap();
-        assert_eq!(
-            response,
-            AccountHistoryDto {
-                account,
-                history: Vec::new(),
-                previous: None,
-                next: None
-            }
-        )
+        let error = check_error(&result).unwrap_err();
+        assert_eq!(error, "Account not found");
     }
 }

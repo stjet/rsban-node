@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, BlockHash};
-use rsnano_rpc_messages::{FrontiersArgs, FrontiersDto};
+use rsnano_rpc_messages::{FrontiersArgs, FrontiersResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn frontiers(&self, args: FrontiersArgs) -> FrontiersDto {
+    pub(crate) fn frontiers(&self, args: FrontiersArgs) -> FrontiersResponse {
         let tx = self.node.ledger.read_txn();
         let mut frontiers: HashMap<Account, BlockHash> = HashMap::new();
 
@@ -22,6 +22,6 @@ impl RpcCommandHandler {
             }
         }
 
-        FrontiersDto::new(frontiers)
+        FrontiersResponse::new(frontiers)
     }
 }

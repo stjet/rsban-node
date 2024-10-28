@@ -9,11 +9,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AvailableSupplyDto {
+pub struct AvailableSupplyReponse {
     pub available: Amount,
 }
 
-impl AvailableSupplyDto {
+impl AvailableSupplyReponse {
     pub fn new(available: Amount) -> Self {
         Self { available }
     }

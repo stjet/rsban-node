@@ -17,7 +17,11 @@ fn accounts_frontiers_found() {
     });
 
     assert_eq!(
-        result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(),
+        result
+            .frontiers
+            .unwrap()
+            .get(&*DEV_GENESIS_ACCOUNT)
+            .unwrap(),
         &*DEV_GENESIS_HASH
     );
 
@@ -61,7 +65,12 @@ fn accounts_frontiers_found_and_not_found() {
     });
 
     assert_eq!(
-        result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(),
+        result
+            .frontiers
+            .as_ref()
+            .unwrap()
+            .get(&*DEV_GENESIS_ACCOUNT)
+            .unwrap(),
         &*DEV_GENESIS_HASH
     );
 
@@ -75,7 +84,7 @@ fn accounts_frontiers_found_and_not_found() {
         "Account not found"
     );
 
-    assert_eq!(result.frontiers.len(), 1);
+    assert_eq!(result.frontiers.unwrap().len(), 1);
     assert_eq!(result.errors.as_ref().unwrap().len(), 1);
 
     server.abort();

@@ -54,6 +54,8 @@ impl RpcCommandHandler {
                 to_value(self.accounts_representatives(args))
             }
             RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
+            RpcCommand::AccountsFrontiers(args) => to_value(self.accounts_frontiers(args)),
+            RpcCommand::AvailableSupply => to_value(self.available_supply()),
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -62,6 +64,7 @@ impl RpcCommandHandler {
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             // Not reviewed yet:
+            RpcCommand::AccountsReceivable(args) => to_value(self.accounts_receivable(args)),
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
             RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::WalletAdd(args) => to_value(self.wallet_add(args)?),
@@ -70,7 +73,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()),
-            RpcCommand::AvailableSupply => to_value(self.available_supply()),
             RpcCommand::BlockConfirm(args) => to_value(self.block_confirm(args)?),
             RpcCommand::BlockCount => to_value(self.block_count()),
             RpcCommand::BlockAccount(args) => to_value(self.block_account(args)?),
@@ -87,7 +89,6 @@ impl RpcCommandHandler {
             RpcCommand::WorkSet(args) => to_value(self.work_set(args)?),
             RpcCommand::WorkGet(args) => to_value(self.work_get(args)?),
             RpcCommand::WalletWorkGet(args) => to_value(self.wallet_work_get(args)?),
-            RpcCommand::AccountsFrontiers(args) => to_value(self.accounts_frontiers(args)),
             RpcCommand::WalletFrontiers(args) => to_value(self.wallet_frontiers(args)?),
             RpcCommand::Frontiers(args) => to_value(self.frontiers(args)),
             RpcCommand::WalletInfo(args) => to_value(self.wallet_info(args)?),
@@ -135,7 +136,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletBalances(args) => to_value(self.wallet_balances(args)),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
-            RpcCommand::AccountsReceivable(args) => to_value(self.accounts_receivable(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
             RpcCommand::ReceivableExists(args) => to_value(self.receivable_exists(args)),
             RpcCommand::RepresentativesOnline(args) => to_value(self.representatives_online(args)),
@@ -152,6 +152,7 @@ impl RpcCommandHandler {
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
             RpcCommand::Stats(_) => self.not_implemented(),
+            RpcCommand::ActiveDifficulty => self.not_implemented(),
         }?;
 
         Ok(response)

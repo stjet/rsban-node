@@ -1,9 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{FrontiersDto, WalletRpcMessage};
+use rsnano_rpc_messages::{FrontiersResponse, WalletRpcMessage};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_frontiers(&self, args: WalletRpcMessage) -> anyhow::Result<FrontiersDto> {
+    pub(crate) fn wallet_frontiers(
+        &self,
+        args: WalletRpcMessage,
+    ) -> anyhow::Result<FrontiersResponse> {
         let tx = self.node.ledger.read_txn();
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let mut frontiers = HashMap::new();
@@ -13,6 +16,6 @@ impl RpcCommandHandler {
                 frontiers.insert(account, block_hash);
             }
         }
-        Ok(FrontiersDto::new(frontiers))
+        Ok(FrontiersResponse::new(frontiers))
     }
 }

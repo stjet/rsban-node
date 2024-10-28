@@ -11,6 +11,9 @@
 - account_representative
 - account_weight
 - accounts_representatives
+- accounts_create
+- accounts_frontiers
+- available_supply
 - receive
 
 # RPC functions MISSING:
@@ -18,17 +21,13 @@
 - account_move
 - account_representative_set
 - accounts_balances
+- active_difficulty
 - work_peer_add
 - work_peers
 - work_peers_clear
 
 # RPC functions to review:
-- accounts_create
-- accounts_frontiers
-- accounts_pending
 - accounts_receivable
-- active_difficulty
-- available_supply
 - block_info
 - block
 - block_confirm

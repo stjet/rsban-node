@@ -253,9 +253,22 @@ impl NanoRpcClient {
 
     pub async fn accounts_create(
         &self,
+        wallet: WalletId,
+        count: u64,
+    ) -> Result<AccountsRpcMessage> {
+        self.accounts_create_args(AccountsCreateArgs {
+            wallet,
+            count,
+            work: None,
+        })
+        .await
+    }
+
+    pub async fn accounts_create_args(
+        &self,
         args: impl Into<AccountsCreateArgs>,
     ) -> Result<AccountsRpcMessage> {
-        let cmd = RpcCommand::accounts_create(args.into());
+        let cmd = RpcCommand::AccountsCreate(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -346,7 +359,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn available_supply(&self) -> Result<AvailableSupplyDto> {
+    pub async fn available_supply(&self) -> Result<AvailableSupplyReponse> {
         let cmd = RpcCommand::AvailableSupply;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -439,19 +452,19 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn accounts_frontiers(&self, accounts: Vec<Account>) -> Result<FrontiersDto> {
+    pub async fn accounts_frontiers(&self, accounts: Vec<Account>) -> Result<FrontiersResponse> {
         let cmd = RpcCommand::accounts_frontiers(accounts);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_frontiers(&self, wallet: WalletId) -> Result<FrontiersDto> {
+    pub async fn wallet_frontiers(&self, wallet: WalletId) -> Result<FrontiersResponse> {
         let cmd = RpcCommand::wallet_frontiers(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn frontiers(&self, account: Account, count: u64) -> Result<FrontiersDto> {
+    pub async fn frontiers(&self, account: Account, count: u64) -> Result<FrontiersResponse> {
         let cmd = RpcCommand::frontiers(account, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

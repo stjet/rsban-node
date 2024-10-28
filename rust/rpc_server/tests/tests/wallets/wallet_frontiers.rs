@@ -23,7 +23,14 @@ fn wallet_frontiers() {
         .runtime
         .block_on(async { rpc_client.wallet_frontiers(wallet).await.unwrap() });
 
-    assert_eq!(result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(), &hash);
+    assert_eq!(
+        result
+            .frontiers
+            .unwrap()
+            .get(&*DEV_GENESIS_ACCOUNT)
+            .unwrap(),
+        &hash
+    );
 
     server.abort();
 }

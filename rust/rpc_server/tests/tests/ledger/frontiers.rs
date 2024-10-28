@@ -13,7 +13,11 @@ fn frontiers() {
         .block_on(async { rpc_client.frontiers(*DEV_GENESIS_ACCOUNT, 1).await.unwrap() });
 
     assert_eq!(
-        result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(),
+        result
+            .frontiers
+            .unwrap()
+            .get(&*DEV_GENESIS_ACCOUNT)
+            .unwrap(),
         &*DEV_GENESIS_HASH
     );
 

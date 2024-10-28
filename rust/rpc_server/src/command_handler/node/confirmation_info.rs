@@ -15,8 +15,8 @@ impl RpcCommandHandler {
             .election(&args.root)
             .ok_or_else(|| anyhow!("Invalid root"))?;
 
-        if !self.node.active.confirmed(&election) {
-            bail!("Confirmation info not found");
+        if self.node.active.confirmed(&election) {
+            bail!("Active confirmation not found");
         }
 
         let info = election.mutex.lock().unwrap();

@@ -162,6 +162,10 @@ impl NodeArgs {
 }
 
 impl Node {
+    pub fn new_null() -> Self {
+        Self::new_null_with_callbacks(Default::default())
+    }
+
     pub fn new_null_with_callbacks(callbacks: NodeCallbacks) -> Self {
         let args = NodeArgs {
             callbacks,

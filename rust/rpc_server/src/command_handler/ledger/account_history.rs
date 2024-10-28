@@ -260,3 +260,31 @@ impl RpcCommandHandler {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_node::Node;
+    use rsnano_rpc_messages::RpcCommand;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn history_rpc_call() {
+        let node = Arc::new(Node::new_null());
+        let cmd_handler = RpcCommandHandler::new(node, true);
+        let account = Account::from(1);
+        let result = cmd_handler.handle(RpcCommand::account_history(
+            AccountHistoryArgs::builder(account, 3).build(),
+        ));
+        let response = serde_json::from_value::<AccountHistoryDto>(result).unwrap();
+        assert_eq!(
+            response,
+            AccountHistoryDto {
+                account,
+                history: Vec::new(),
+                previous: None,
+                next: None
+            }
+        )
+    }
+}

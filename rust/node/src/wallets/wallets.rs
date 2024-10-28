@@ -1070,10 +1070,13 @@ pub trait WalletsExt {
     fn receive_sync(
         &self,
         wallet: Arc<Wallet>,
-        block: &BlockEnum,
+        block: BlockHash,
         representative: PublicKey,
         amount: Amount,
-    ) -> Result<(), ()>;
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<BlockEnum, ()>;
 
     fn send_async_wallet(
         &self,
@@ -1729,29 +1732,32 @@ impl WalletsExt for Arc<Wallets> {
     fn receive_sync(
         &self,
         wallet: Arc<Wallet>,
-        block: &BlockEnum,
+        block_hash: BlockHash,
         representative: PublicKey,
         amount: Amount,
-    ) -> Result<(), ()> {
-        let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<BlockEnum, ()> {
+        let result = Arc::new((Condvar::new(), Mutex::new((false, None)))); // done, result
         let result_clone = Arc::clone(&result);
         self.receive_async_wallet(
             wallet,
-            block.hash(),
+            block_hash,
             representative,
             amount,
-            block.destination().unwrap(),
+            account,
             Box::new(move |block| {
-                *result_clone.1.lock().unwrap() = (true, block.is_some());
+                *result_clone.1.lock().unwrap() = (true, block.clone());
                 result_clone.0.notify_all();
             }),
-            0,
-            true,
+            work,
+            generate_work,
         );
         let mut guard = result.1.lock().unwrap();
         guard = result.0.wait_while(guard, |i| !i.0).unwrap();
-        if guard.1 {
-            Ok(())
+        if let Some(block) = guard.1.clone() {
+            Ok(block)
         } else {
             Err(())
         }

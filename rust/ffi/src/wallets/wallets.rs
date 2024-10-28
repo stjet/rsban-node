@@ -677,9 +677,12 @@ pub unsafe extern "C" fn rsn_wallets_receive_sync(
     handle
         .receive_sync(
             Arc::clone(wallet),
-            block,
+            block.hash(),
             PublicKey::from_ptr(representative),
             Amount::from_ptr(amount),
+            block.destination().unwrap(),
+            0,
+            true,
         )
         .is_err()
 }

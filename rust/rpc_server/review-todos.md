@@ -7,18 +7,18 @@
 - account_info
 - account_key
 - account_list
+- account_remove
+- account_representative
 
 # RPC functions MISSING:
 - account_count
+- account_move
+- account_representative_set
 - work_peer_add
 - work_peers
 - work_peers_clear
 
 # RPC functions to review:
-- account_move
-- account_remove
-- account_representative
-- account_representative_set
 - account_weight
 - accounts_balances
 - accounts_representatives

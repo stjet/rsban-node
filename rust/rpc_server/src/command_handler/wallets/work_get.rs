@@ -3,7 +3,6 @@ use rsnano_rpc_messages::{WalletWithAccountArgs, WorkDto};
 
 impl RpcCommandHandler {
     pub(crate) fn work_get(&self, args: WalletWithAccountArgs) -> anyhow::Result<WorkDto> {
-        self.ensure_control_enabled()?;
         let work = self
             .node
             .wallets

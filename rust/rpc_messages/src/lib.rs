@@ -31,6 +31,7 @@ pub enum RpcCommand {
     AccountRemove(WalletWithAccountArgs),
     AccountMove(AccountMoveArgs),
     AccountList(WalletRpcMessage),
+    AccountRepresentativeSet(()), // TODO
     WalletCreate(WalletCreateArgs),
     WalletContains(WalletWithAccountArgs),
     WalletDestroy(WalletRpcMessage),
@@ -44,6 +45,8 @@ pub enum RpcCommand {
     AvailableSupply,
     BlockAccount(HashRpcMessage),
     BlockConfirm(HashRpcMessage),
+    BootstrapLazy(()),      // TODO
+    DatabaseTxnTracker(()), // TODO
     BlockCount,
     Uptime,
     FrontierCount,
@@ -75,6 +78,8 @@ pub enum RpcCommand {
     NodeId,
     SearchReceivableAll,
     ReceiveMinimum,
+    ReceiveMinimumSet(()), // TODO
+    Stats(StatsArgs),      // TODO
     WalletChangeSeed(WalletChangeSeedArgs),
     Delegators(DelegatorsArgs),
     DelegatorsCount(AccountArg),

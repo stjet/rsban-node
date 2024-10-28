@@ -7,7 +7,6 @@ impl RpcCommandHandler {
         &self,
         args: WalletRpcMessage,
     ) -> anyhow::Result<AccountsWithWorkDto> {
-        self.ensure_control_enabled()?;
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let mut works = HashMap::new();
 

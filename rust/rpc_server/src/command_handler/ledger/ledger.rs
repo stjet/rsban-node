@@ -5,9 +5,7 @@ use rsnano_rpc_messages::{LedgerAccountInfo, LedgerArgs, LedgerDto};
 use std::{collections::HashMap, sync::Arc, u64};
 
 impl RpcCommandHandler {
-    pub(crate) fn ledger(&self, args: LedgerArgs) -> anyhow::Result<LedgerDto> {
-        self.ensure_control_enabled()?;
-
+    pub(crate) fn ledger(&self, args: LedgerArgs) -> LedgerDto {
         let account = args.account;
         let count = args.count.unwrap_or(u64::MAX);
         let representative = args.representative.unwrap_or(false);
@@ -117,9 +115,9 @@ impl RpcCommandHandler {
             }
         }
 
-        Ok(LedgerDto {
+        LedgerDto {
             accounts: accounts_json,
-        })
+        }
     }
 }
 

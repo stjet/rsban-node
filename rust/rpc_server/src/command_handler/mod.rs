@@ -6,9 +6,9 @@ mod wallets;
 use anyhow::anyhow;
 use rsnano_core::{Account, AccountInfo, BlockEnum, BlockHash};
 use rsnano_node::Node;
-use rsnano_rpc_messages::{RpcCommand, RpcError};
+use rsnano_rpc_messages::{RpcCommand, RpcError, StatsType};
 use rsnano_store_lmdb::Transaction;
-use serde_json::to_value;
+use serde_json::{to_value, Value};
 use std::sync::Arc;
 use utils::*;
 use wallets::*;
@@ -36,6 +36,7 @@ impl RpcCommandHandler {
     }
 
     fn call_handler(&self, command: RpcCommand) -> anyhow::Result<serde_json::Value> {
+        self.check_control_enabled(&command)?;
         let response = match command {
             RpcCommand::AccountBalance(args) => to_value(self.account_balance(args)),
             RpcCommand::AccountBlockCount(args) => to_value(self.account_block_count(args)?),
@@ -44,6 +45,8 @@ impl RpcCommandHandler {
             RpcCommand::AccountHistory(args) => to_value(self.account_history(args)?),
             RpcCommand::AccountInfo(args) => to_value(self.account_info(args)?),
             RpcCommand::AccountKey(args) => to_value(account_key(args)),
+            RpcCommand::AccountList(args) => to_value(self.account_list(args)?),
+            RpcCommand::AccountMove(args) => to_value(self.account_move(args)?),
             // Not implemented:
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
@@ -52,16 +55,14 @@ impl RpcCommandHandler {
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             RpcCommand::AccountsCreate(args) => to_value(self.accounts_create(args)?),
             RpcCommand::AccountRemove(args) => to_value(self.account_remove(args)?),
-            RpcCommand::AccountMove(args) => to_value(self.account_move(args)?),
-            RpcCommand::AccountList(args) => to_value(self.account_list(args)?),
-            RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)?),
+            RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
             RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::WalletAdd(args) => to_value(self.wallet_add(args)?),
             RpcCommand::WalletContains(args) => to_value(self.wallet_contains(args)?),
-            RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)?),
+            RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)),
             RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
-            RpcCommand::Stop => to_value(self.stop()?),
+            RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::AccountRepresentative(args) => to_value(self.account_representative(args)?),
             RpcCommand::AccountWeight(args) => to_value(self.account_weight(args)),
             RpcCommand::AvailableSupply => to_value(self.available_supply()),
@@ -99,12 +100,12 @@ impl RpcCommandHandler {
             }
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
-            RpcCommand::Unopened(args) => to_value(self.unopened(args)?),
-            RpcCommand::NodeId => to_value(self.node_id()?),
-            RpcCommand::Send(args) => to_value(self.send(args)?),
-            RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()?),
-            RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()?),
-            RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)?),
+            RpcCommand::Unopened(args) => to_value(self.unopened(args)),
+            RpcCommand::NodeId => to_value(self.node_id()),
+            RpcCommand::Send(args) => to_value(self.send(args)),
+            RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
+            RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
+            RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),
             RpcCommand::Delegators(args) => to_value(self.delegators(args)),
             RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
             RpcCommand::BlockHash(args) => to_value(block_hash(args)),
@@ -119,7 +120,7 @@ impl RpcCommandHandler {
             RpcCommand::WorkValidate(args) => to_value(self.work_validate(args)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),
-            RpcCommand::WorkCancel(args) => to_value(self.work_cancel(args)?),
+            RpcCommand::WorkCancel(args) => to_value(self.work_cancel(args)),
             RpcCommand::Bootstrap(args) => to_value(self.bootstrap(args)),
             RpcCommand::BootstrapAny(args) => to_value(self.bootstrap_any(args)?),
             RpcCommand::BoostrapLazy(args) => to_value(self.bootstrap_lazy(args)?),
@@ -140,18 +141,23 @@ impl RpcCommandHandler {
             RpcCommand::UncheckedGet(args) => to_value(self.unchecked_get(args)?),
             RpcCommand::UncheckedKeys(args) => to_value(self.unchecked_keys(args)),
             RpcCommand::ConfirmationInfo(args) => to_value(self.confirmation_info(args)?),
-            RpcCommand::Ledger(args) => to_value(self.ledger(args)?),
+            RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::BlockCreate(args) => to_value(self.block_create(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
+            RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
+            RpcCommand::BootstrapLazy(_) => self.not_implemented(),
+            RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
+            RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
+            RpcCommand::Stats(_) => self.not_implemented(),
         }?;
 
         Ok(response)
     }
 
-    fn ensure_control_enabled(&self) -> anyhow::Result<()> {
-        if !self.enable_control {
+    fn check_control_enabled(&self, command: &RpcCommand) -> anyhow::Result<()> {
+        if !self.enable_control && requires_control(command) {
             Err(anyhow!("RPC control is disabled"))
         } else {
             Ok(())
@@ -183,4 +189,59 @@ impl RpcCommandHandler {
     const NOT_IMPLEMENTED: &str = "Not implemented yet";
     const ACCOUNT_NOT_FOUND: &str = "Account not found";
     const PEER_NOT_FOUND: &str = "Peer not found";
+
+    fn not_implemented(&self) -> Result<Value, serde_json::Error> {
+        Ok(Value::String(Self::NOT_IMPLEMENTED.to_string()))
+    }
+}
+
+fn requires_control(command: &RpcCommand) -> bool {
+    match command {
+        RpcCommand::AccountCreate(_)
+        | RpcCommand::AccountMove(_)
+        | RpcCommand::AccountRemove(_)
+        | RpcCommand::AccountRepresentativeSet(_)
+        | RpcCommand::AccountsCreate(_)
+        | RpcCommand::BlockCreate(_)
+        | RpcCommand::BootstrapLazy(_)
+        | RpcCommand::DatabaseTxnTracker(_)
+        | RpcCommand::Keepalive(_)
+        | RpcCommand::Ledger(_)
+        | RpcCommand::NodeId
+        | RpcCommand::PasswordChange(_)
+        | RpcCommand::PopulateBacklog
+        | RpcCommand::Receive(_)
+        | RpcCommand::ReceiveMinimum
+        | RpcCommand::ReceiveMinimumSet(_)
+        | RpcCommand::SearchReceivable(_)
+        | RpcCommand::SearchReceivableAll
+        | RpcCommand::Send(_)
+        | RpcCommand::Stop
+        | RpcCommand::UncheckedClear
+        | RpcCommand::Unopened(_)
+        | RpcCommand::WalletAdd(_)
+        | RpcCommand::WalletAddWatch(_)
+        | RpcCommand::WalletChangeSeed(_)
+        | RpcCommand::WalletCreate(_)
+        | RpcCommand::WalletDestroy(_)
+        | RpcCommand::WalletLock(_)
+        | RpcCommand::WalletLedger(_)
+        | RpcCommand::WalletRepresentativeSet(_)
+        | RpcCommand::WalletReceivable(_)
+        | RpcCommand::WalletRepublish(_)
+        | RpcCommand::WalletWorkGet(_)
+        | RpcCommand::WorkGenerate(_)
+        | RpcCommand::WorkCancel(_)
+        | RpcCommand::WorkGet(_)
+        | RpcCommand::WorkSet(_)
+        | RpcCommand::WorkPeerAdd(_)
+        | RpcCommand::WorkPeers
+        | RpcCommand::WorkPeersClear => true,
+        RpcCommand::Stats(s) => match s.stats_type {
+            StatsType::Objects => true,
+            _ => false,
+        },
+        RpcCommand::Process(args) => args.force == Some(true),
+        _ => false,
+    }
 }

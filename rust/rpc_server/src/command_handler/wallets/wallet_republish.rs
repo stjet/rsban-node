@@ -9,7 +9,6 @@ impl RpcCommandHandler {
         &self,
         args: WalletWithCountArgs,
     ) -> anyhow::Result<BlockHashesDto> {
-        self.ensure_control_enabled()?;
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let (blocks, republish_bundle) = self.collect_blocks_to_republish(accounts, args.count);

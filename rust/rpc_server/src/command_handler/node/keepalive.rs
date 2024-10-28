@@ -7,8 +7,6 @@ use std::net::SocketAddrV6;
 
 impl RpcCommandHandler {
     pub(crate) fn keepalive(&self, args: AddressWithPortArgs) -> anyhow::Result<StartedDto> {
-        self.ensure_control_enabled()?;
-
         let peering_addr = SocketAddrV6::new(args.address.into(), args.port, 0, 0);
         let id = self
             .node

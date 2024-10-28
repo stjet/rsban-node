@@ -7,7 +7,6 @@ impl RpcCommandHandler {
         &self,
         args: AccountCreateArgs,
     ) -> anyhow::Result<AccountResponse> {
-        self.ensure_control_enabled()?;
         let generate_work = args.work.unwrap_or(true);
 
         let account = match args.index {

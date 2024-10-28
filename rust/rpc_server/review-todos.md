@@ -6,6 +6,7 @@
 - account_history
 - account_info
 - account_key
+- account_list
 
 # RPC functions MISSING:
 - account_count
@@ -14,7 +15,6 @@
 - work_peers_clear
 
 # RPC functions to review:
-- account_list
 - account_move
 - account_remove
 - account_representative

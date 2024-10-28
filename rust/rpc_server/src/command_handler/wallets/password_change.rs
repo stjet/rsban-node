@@ -6,7 +6,6 @@ impl RpcCommandHandler {
         &self,
         args: WalletWithPasswordArgs,
     ) -> anyhow::Result<SuccessDto> {
-        self.ensure_control_enabled()?;
         self.node.wallets.rekey(&args.wallet, args.password)?;
         Ok(SuccessDto::new())
     }

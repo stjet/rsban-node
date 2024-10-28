@@ -8,8 +8,6 @@ impl RpcCommandHandler {
         &self,
         args: AccountsCreateArgs,
     ) -> anyhow::Result<AccountsRpcMessage> {
-        self.ensure_control_enabled()?;
-
         let work = args.work.unwrap_or(true);
         let count = args.wallet_with_count.count as usize;
         let wallet = &args.wallet_with_count.wallet;

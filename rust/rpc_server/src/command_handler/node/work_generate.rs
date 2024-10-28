@@ -10,8 +10,6 @@ use std::sync::Arc;
 
 impl RpcCommandHandler {
     pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {
-        self.ensure_control_enabled()?;
-
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let default_difficulty = self.node.ledger.constants.work.threshold_base(work_version);
         let mut difficulty = args.difficulty.unwrap_or_else(|| default_difficulty);

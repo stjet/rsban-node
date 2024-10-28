@@ -7,8 +7,6 @@ use std::sync::Arc;
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_ledger(&self, args: WalletLedgerArgs) -> anyhow::Result<WalletLedgerDto> {
-        self.ensure_control_enabled()?;
-
         let WalletLedgerArgs {
             wallet,
             representative,

@@ -6,7 +6,7 @@ fn populate_backlog() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime

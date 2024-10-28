@@ -6,8 +6,6 @@ use rsnano_rpc_messages::{BlockDto, ReceiveArgs};
 
 impl RpcCommandHandler {
     pub fn receive(&self, args: ReceiveArgs) -> anyhow::Result<BlockDto> {
-        self.ensure_control_enabled()?;
-
         let txn = self.node.ledger.read_txn();
 
         if !self.node.ledger.any().block_exists(&txn, &args.block) {

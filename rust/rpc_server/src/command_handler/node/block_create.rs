@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 impl RpcCommandHandler {
     pub(crate) fn block_create(&self, args: BlockCreateArgs) -> anyhow::Result<BlockCreateDto> {
-        self.ensure_control_enabled()?;
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let difficulty = args
             .difficulty

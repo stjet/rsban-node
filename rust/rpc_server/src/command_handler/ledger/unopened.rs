@@ -4,9 +4,7 @@ use rsnano_rpc_messages::{UnopenedArgs, UnopenedDto};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn unopened(&self, args: UnopenedArgs) -> anyhow::Result<UnopenedDto> {
-        self.ensure_control_enabled()?;
-
+    pub(crate) fn unopened(&self, args: UnopenedArgs) -> UnopenedDto {
         let start = args.account;
         let mut accounts: HashMap<Account, Amount> = HashMap::new();
 
@@ -51,6 +49,6 @@ impl RpcCommandHandler {
             accounts.insert(current_account, current_account_sum);
         }
 
-        Ok(UnopenedDto::new(accounts))
+        UnopenedDto::new(accounts)
     }
 }

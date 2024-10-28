@@ -4,7 +4,6 @@ use rsnano_rpc_messages::{AccountMoveArgs, MovedDto};
 
 impl RpcCommandHandler {
     pub(crate) fn account_move(&self, args: AccountMoveArgs) -> anyhow::Result<MovedDto> {
-        self.ensure_control_enabled()?;
         let public_keys: Vec<PublicKey> =
             args.accounts.iter().map(|account| account.into()).collect();
 

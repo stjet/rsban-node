@@ -7,7 +7,6 @@ impl RpcCommandHandler {
         &self,
         args: WalletRepresentativeSetArgs,
     ) -> anyhow::Result<SetDto> {
-        self.ensure_control_enabled()?;
         let update_existing = args.update_existing_accounts.unwrap_or(false);
         self.node
             .wallets

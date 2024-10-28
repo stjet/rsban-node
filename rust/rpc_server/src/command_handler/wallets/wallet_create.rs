@@ -4,8 +4,7 @@ use rsnano_node::wallets::WalletsExt;
 use rsnano_rpc_messages::{WalletCreateArgs, WalletRpcMessage};
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_create(&self, args: WalletCreateArgs) -> anyhow::Result<WalletRpcMessage> {
-        self.ensure_control_enabled()?;
+    pub(crate) fn wallet_create(&self, args: WalletCreateArgs) -> WalletRpcMessage {
         let wallet = WalletId::random();
         self.node.wallets.create(wallet);
 
@@ -15,6 +14,6 @@ impl RpcCommandHandler {
                 .change_seed(wallet, &seed, 0)
                 .expect("This should not fail since the wallet was just created");
         }
-        Ok(WalletRpcMessage::new(wallet))
+        WalletRpcMessage::new(wallet)
     }
 }

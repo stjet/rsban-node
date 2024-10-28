@@ -8,7 +8,6 @@ impl RpcCommandHandler {
         &self,
         args: WalletReceivableArgs,
     ) -> anyhow::Result<ReceivableDto> {
-        self.ensure_control_enabled()?;
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let tx = self.node.ledger.read_txn();

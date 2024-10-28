@@ -524,7 +524,7 @@ impl NanoRpcClient {
     pub async fn accounts_representatives(
         &self,
         accounts: Vec<Account>,
-    ) -> Result<AccountsRepresentativesDto> {
+    ) -> Result<AccountsRepresentativesResponse> {
         let cmd = RpcCommand::accounts_representatives(accounts);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

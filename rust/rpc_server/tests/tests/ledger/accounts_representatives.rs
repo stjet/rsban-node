@@ -1,5 +1,5 @@
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_rpc_messages::AccountsRepresentativesDto;
+use rsnano_rpc_messages::AccountsRepresentativesResponse;
 use std::collections::HashMap;
 use test_helpers::{setup_rpc_client_and_server, System};
 
@@ -20,7 +20,7 @@ fn accounts_representatives() {
     let mut accounts_representatives = HashMap::new();
     accounts_representatives.insert(*DEV_GENESIS_ACCOUNT, *DEV_GENESIS_ACCOUNT);
 
-    let expected = AccountsRepresentativesDto::new(accounts_representatives);
+    let expected = AccountsRepresentativesResponse::new(accounts_representatives);
     assert_eq!(result, expected);
 
     server.abort();

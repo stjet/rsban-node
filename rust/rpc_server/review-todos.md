@@ -9,19 +9,20 @@
 - account_list
 - account_remove
 - account_representative
+- account_weight
+- accounts_representatives
+- receive
 
 # RPC functions MISSING:
 - account_count
 - account_move
 - account_representative_set
+- accounts_balances
 - work_peer_add
 - work_peers
 - work_peers_clear
 
 # RPC functions to review:
-- account_weight
-- accounts_balances
-- accounts_representatives
 - accounts_create
 - accounts_frontiers
 - accounts_pending
@@ -68,7 +69,6 @@
 - receivable_exists
 - process
 - pruned_exists
-- receive
 - receive_minimum
 - receive_minimum_set
 - representatives

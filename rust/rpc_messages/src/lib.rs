@@ -27,6 +27,7 @@ pub enum RpcCommand {
     Telemetry(TelemetryArgs),
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
+    AccountBalances(()), // TODO
     AccountsCreate(AccountsCreateArgs),
     AccountRemove(WalletWithAccountArgs),
     AccountMove(AccountMoveArgs),

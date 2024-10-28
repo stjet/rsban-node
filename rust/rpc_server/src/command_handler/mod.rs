@@ -49,9 +49,14 @@ impl RpcCommandHandler {
             RpcCommand::AccountMove(args) => to_value(self.account_move(args)?),
             RpcCommand::AccountRemove(args) => to_value(self.account_remove(args)?),
             RpcCommand::AccountRepresentative(args) => to_value(self.account_representative(args)?),
+            RpcCommand::AccountWeight(args) => to_value(self.account_weight(args)),
+            RpcCommand::AccountsRepresentatives(args) => {
+                to_value(self.accounts_representatives(args))
+            }
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
+            RpcCommand::AccountBalances(_) => self.not_implemented(),
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
@@ -65,7 +70,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()),
-            RpcCommand::AccountWeight(args) => to_value(self.account_weight(args)),
             RpcCommand::AvailableSupply => to_value(self.available_supply()),
             RpcCommand::BlockConfirm(args) => to_value(self.block_confirm(args)?),
             RpcCommand::BlockCount => to_value(self.block_count()),
@@ -96,9 +100,6 @@ impl RpcCommandHandler {
             RpcCommand::Peers(args) => to_value(self.peers(args)),
             RpcCommand::PopulateBacklog => to_value(self.populate_backlog()),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),
-            RpcCommand::AccountsRepresentatives(args) => {
-                to_value(self.accounts_representatives(args))
-            }
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),

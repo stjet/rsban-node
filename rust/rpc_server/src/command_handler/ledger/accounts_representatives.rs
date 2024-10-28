@@ -1,13 +1,13 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
-use rsnano_rpc_messages::{AccountsRepresentativesDto, AccountsRpcMessage};
+use rsnano_rpc_messages::{AccountsRepresentativesResponse, AccountsRpcMessage};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn accounts_representatives(
         &self,
         args: AccountsRpcMessage,
-    ) -> AccountsRepresentativesDto {
+    ) -> AccountsRepresentativesResponse {
         let tx = self.node.ledger.read_txn();
         let mut representatives: HashMap<Account, Account> = HashMap::new();
         let mut errors: HashMap<Account, String> = HashMap::new();
@@ -23,11 +23,17 @@ impl RpcCommandHandler {
             }
         }
 
-        let mut dto = AccountsRepresentativesDto::new(representatives);
-        if !errors.is_empty() {
-            dto.errors = Some(errors);
+        AccountsRepresentativesResponse {
+            representatives: if representatives.is_empty() {
+                None
+            } else {
+                Some(representatives)
+            },
+            errors: if errors.is_empty() {
+                None
+            } else {
+                Some(errors)
+            },
         }
-
-        dto
     }
 }

@@ -28,7 +28,7 @@ fn wallet_contains_true() {
             .unwrap()
     });
 
-    assert_eq!(result.exists, true);
+    assert_eq!(result.exists, "1");
 
     server.abort();
 }
@@ -51,7 +51,7 @@ fn wallet_contains_false() {
             .unwrap()
     });
 
-    assert_eq!(result.exists, false);
+    assert_eq!(result.exists, "0");
 
     server.abort();
 }

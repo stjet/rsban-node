@@ -40,6 +40,8 @@
 - node_id
 - password_change
 - password_enter
+- peers
+- receivable_exists
 
 # RPC functions MISSING:
 - account_count
@@ -58,11 +60,7 @@
 
 # RPC functions to review:
 - ledger
-- peers
-- pending
-- pending_exists
 - receivable
-- receivable_exists
 - process
 - pruned_exists
 - receive_minimum

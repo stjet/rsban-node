@@ -58,7 +58,6 @@
 
 # RPC functions to review:
 - ledger
-- wallet_unlock
 - peers
 - pending
 - pending_exists

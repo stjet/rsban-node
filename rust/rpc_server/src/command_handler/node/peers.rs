@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{PeerData, PeerInfo, PeersArgs, PeersDto};
-use std::collections::HashMap;
+use rsnano_rpc_messages::{DetailedPeers, PeerInfo, PeersArgs, PeersDto, SimplePeers};
+use std::{collections::HashMap, net::SocketAddrV6};
 
 impl RpcCommandHandler {
     pub(crate) fn peers(&self, args: PeersArgs) -> PeersDto {
         let peer_details = args.peer_details.unwrap_or(false);
-        let mut peers: HashMap<String, PeerInfo> = HashMap::new();
+        let mut peers: HashMap<SocketAddrV6, PeerInfo> = HashMap::new();
 
         self.node
             .network_info
@@ -15,21 +15,28 @@ impl RpcCommandHandler {
             .iter()
             .for_each(|channel| {
                 peers.insert(
-                    channel.ipv4_address_or_ipv6_subnet().to_string(),
-                    PeerInfo::Detailed {
+                    channel.peer_addr(),
+                    PeerInfo {
                         protocol_version: channel.protocol_version(),
-                        node_id: channel.node_id().unwrap().into(),
+                        node_id: channel
+                            .node_id()
+                            .map(|i| i.to_node_id())
+                            .unwrap_or_default(),
                         connection_type: "tcp".to_string(),
+                        peering: channel.peering_addr_or_peer_addr(),
                     },
                 );
             });
 
-        let peer_data = if peer_details {
-            PeerData::Detailed(peers)
+        if peer_details {
+            PeersDto::Detailed(DetailedPeers { peers })
         } else {
-            PeerData::Simple(peers.keys().cloned().collect())
-        };
-
-        PeersDto::new(peer_data)
+            PeersDto::Simple(SimplePeers {
+                peers: peers
+                    .drain()
+                    .map(|(k, v)| (k, v.protocol_version))
+                    .collect(),
+            })
+        }
     }
 }

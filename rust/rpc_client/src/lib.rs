@@ -536,7 +536,13 @@ impl NanoRpcClient {
     pub async fn peers(&self, peer_details: Option<bool>) -> Result<PeersDto> {
         let cmd = RpcCommand::peers(peer_details);
         let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        if peer_details.unwrap_or_default() {
+            let peers: DetailedPeers = serde_json::from_value(result)?;
+            Ok(PeersDto::Detailed(peers))
+        } else {
+            let peers: SimplePeers = serde_json::from_value(result)?;
+            Ok(PeersDto::Simple(peers))
+        }
     }
 
     pub async fn populate_backlog(&self) -> Result<SuccessResponse> {

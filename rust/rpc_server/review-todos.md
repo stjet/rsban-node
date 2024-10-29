@@ -39,6 +39,7 @@
 - key_expand
 - node_id
 - password_change
+- password_enter
 
 # RPC functions MISSING:
 - account_count
@@ -57,7 +58,6 @@
 
 # RPC functions to review:
 - ledger
-- password_enter
 - wallet_unlock
 - peers
 - pending

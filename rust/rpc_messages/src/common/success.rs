@@ -15,13 +15,17 @@ impl SuccessResponse {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ChangedResponse {
-    changed: &'static str,
+    changed: String,
 }
 
 impl ChangedResponse {
     pub fn new(changed: bool) -> Self {
         Self {
-            changed: if changed { "1" } else { "0" },
+            changed: if changed {
+                "1".to_owned()
+            } else {
+                "0".to_owned()
+            },
         }
     }
 }

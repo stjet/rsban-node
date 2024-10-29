@@ -46,6 +46,7 @@
 - representatives
 - representatives_online
 - search_receivable
+- search_receivable_all
 
 # RPC functions MISSING:
 - account_count
@@ -69,8 +70,6 @@
 - receivable
 - process
 - republish
-- search_pending_all
-- search_receivable_all
 - send
 - sign
 - stats

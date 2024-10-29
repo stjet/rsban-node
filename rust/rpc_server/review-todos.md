@@ -34,6 +34,9 @@
 - deterministic_key
 - frontiers
 - frontier_count
+- keepalive
+- key_create
+- key_expand
 
 # RPC functions MISSING:
 - account_count
@@ -51,9 +54,6 @@
 - election_statistics
 
 # RPC functions to review:
-- keepalive
-- key_create
-- key_expand
 - ledger
 - node_id
 - node_id_delete

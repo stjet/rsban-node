@@ -77,6 +77,8 @@ impl RpcCommandHandler {
             RpcCommand::Frontiers(args) => to_value(self.frontiers(args)),
             RpcCommand::FrontierCount => to_value(self.frontier_count()),
             RpcCommand::Keepalive(args) => to_value(self.keepalive(args)?),
+            RpcCommand::KeyCreate => to_value(key_create()),
+            RpcCommand::KeyExpand(args) => to_value(key_expand(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -87,7 +89,6 @@ impl RpcCommandHandler {
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             // Not reviewed yet:
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
-            RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::WalletAdd(args) => to_value(self.wallet_add(args)?),
             RpcCommand::WalletContains(args) => to_value(self.wallet_contains(args)?),
             RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)),
@@ -111,7 +112,6 @@ impl RpcCommandHandler {
             RpcCommand::PasswordChange(args) => to_value(self.password_change(args)?),
             RpcCommand::PasswordEnter(args) => to_value(self.password_enter(args)?),
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
-            RpcCommand::KeyExpand(args) => to_value(key_expand(args)),
             RpcCommand::Peers(args) => to_value(self.peers(args)),
             RpcCommand::PopulateBacklog => to_value(self.populate_backlog()),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),

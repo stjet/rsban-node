@@ -79,6 +79,7 @@ impl RpcCommandHandler {
             RpcCommand::Keepalive(args) => to_value(self.keepalive(args)?),
             RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::KeyExpand(args) => to_value(key_expand(args)?),
+            RpcCommand::NodeId => to_value(self.node_id()),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -88,6 +89,7 @@ impl RpcCommandHandler {
             RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             // Not reviewed yet:
+            RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
             RpcCommand::WalletAdd(args) => to_value(self.wallet_add(args)?),
             RpcCommand::WalletContains(args) => to_value(self.wallet_contains(args)?),
@@ -118,7 +120,6 @@ impl RpcCommandHandler {
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
-            RpcCommand::NodeId => to_value(self.node_id()),
             RpcCommand::Send(args) => to_value(self.send(args)),
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
             RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
@@ -146,7 +147,6 @@ impl RpcCommandHandler {
             RpcCommand::Unchecked(args) => to_value(self.unchecked(args)),
             RpcCommand::UncheckedGet(args) => to_value(self.unchecked_get(args)?),
             RpcCommand::UncheckedKeys(args) => to_value(self.unchecked_keys(args)),
-            RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),

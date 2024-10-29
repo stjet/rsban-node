@@ -582,7 +582,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn node_id(&self) -> Result<NodeIdDto> {
+    pub async fn node_id(&self) -> Result<NodeIdResponse> {
         let cmd = RpcCommand::node_id();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

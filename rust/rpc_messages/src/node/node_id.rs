@@ -6,12 +6,11 @@ impl RpcCommand {
     }
 }
 
-use rsnano_core::{Account, PublicKey, RawKey};
+use rsnano_core::{Account, PublicKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct NodeIdDto {
-    pub private: RawKey,
+pub struct NodeIdResponse {
     pub public: PublicKey,
     pub as_account: Account,
     #[serde(
@@ -19,17 +18,6 @@ pub struct NodeIdDto {
         deserialize_with = "deserialize_node_id"
     )]
     pub node_id: Account,
-}
-
-impl NodeIdDto {
-    pub fn new(private: RawKey, public: PublicKey, as_account: Account) -> Self {
-        Self {
-            private,
-            public,
-            as_account,
-            node_id: as_account,
-        }
-    }
 }
 
 fn serialize_node_id<S>(account: &Account, serializer: S) -> Result<S::Ok, S::Error>
@@ -72,8 +60,7 @@ mod tests {
 
     #[test]
     fn serialize_node_id_dto() {
-        let node_id_dto = NodeIdDto {
-            private: RawKey::zero(),
+        let node_id_dto = NodeIdResponse {
             public: PublicKey::zero(),
             as_account: Account::zero(),
             node_id: Account::zero(),
@@ -81,7 +68,6 @@ mod tests {
 
         let serialized = serde_json::to_value(&node_id_dto).unwrap();
         let expected = json!({
-            "private": "0000000000000000000000000000000000000000000000000000000000000000",
             "public": "0000000000000000000000000000000000000000000000000000000000000000",
             "as_account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
             "node_id": "node_1111111111111111111111111111111111111111111111111111hifc8npp"
@@ -93,16 +79,14 @@ mod tests {
     #[test]
     fn deserialize_node_id_dto() {
         let json_str = r#"{
-            "private": "0000000000000000000000000000000000000000000000000000000000000000",
             "public": "0000000000000000000000000000000000000000000000000000000000000000",
             "as_account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
             "node_id": "node_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
 
-        let deserialized: NodeIdDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: NodeIdResponse = serde_json::from_str(json_str).unwrap();
 
-        let node_id_dto = NodeIdDto {
-            private: RawKey::zero(),
+        let node_id_dto = NodeIdResponse {
             public: PublicKey::zero(),
             as_account: Account::zero(),
             node_id: Account::zero(),

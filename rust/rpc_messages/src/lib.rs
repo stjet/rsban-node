@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
     AccountInfo(AccountInfoArgs),
-    Keepalive(AddressWithPortArgs),
+    Keepalive(HostWithPortArgs),
     Stop,
     KeyCreate,
     Receive(ReceiveArgs),

@@ -1,9 +1,8 @@
-use crate::{common::AddressWithPortArgs, RpcCommand};
-use std::net::Ipv6Addr;
+use crate::{HostWithPortArgs, RpcCommand};
 
 impl RpcCommand {
-    pub fn keepalive(address: Ipv6Addr, port: u16) -> Self {
-        Self::Keepalive(AddressWithPortArgs::new(address, port))
+    pub fn keepalive(address: impl Into<String>, port: u16) -> Self {
+        Self::Keepalive(HostWithPortArgs::new(address, port))
     }
 }
 
@@ -11,16 +10,11 @@ impl RpcCommand {
 mod tests {
     use crate::RpcCommand;
     use serde_json::to_string_pretty;
-    use std::{net::Ipv6Addr, str::FromStr};
 
     #[test]
     fn serialize_keepalive_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::keepalive(
-                Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap(),
-                1024
-            ))
-            .unwrap(),
+            to_string_pretty(&RpcCommand::keepalive("::ffff:192.169.0.1", 1024)).unwrap(),
             r#"{
   "action": "keepalive",
   "address": "::ffff:192.169.0.1",
@@ -37,8 +31,7 @@ mod tests {
 "port": 1024
 }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command =
-            RpcCommand::keepalive(Ipv6Addr::from_str("::ffff:192.169.0.1").unwrap(), 1024);
+        let expected_command = RpcCommand::keepalive("::ffff:192.169.0.1", 1024);
         assert_eq!(deserialized, expected_command);
     }
 }

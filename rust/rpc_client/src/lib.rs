@@ -735,7 +735,7 @@ impl NanoRpcClient {
         Ok(())
     }
 
-    pub async fn keepalive(&self, address: Ipv6Addr, port: u16) -> Result<StartedDto> {
+    pub async fn keepalive(&self, address: impl Into<String>, port: u16) -> Result<StartedDto> {
         let cmd = RpcCommand::keepalive(address, port);
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

@@ -73,6 +73,10 @@ impl RpcCommandHandler {
             RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
             RpcCommand::Delegators(args) => to_value(self.delegators(args)),
             RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
+            RpcCommand::DeterministicKey(args) => to_value(deterministic_key(args)),
+            RpcCommand::Frontiers(args) => to_value(self.frontiers(args)),
+            RpcCommand::FrontierCount => to_value(self.frontier_count()),
+            RpcCommand::Keepalive(args) => to_value(self.keepalive(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -91,8 +95,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::Uptime => to_value(self.uptime()),
-            RpcCommand::Keepalive(args) => to_value(self.keepalive(args)?),
-            RpcCommand::FrontierCount => to_value(self.frontier_count()),
             RpcCommand::ValidateAccountNumber(_args) => {
                 to_value(validate_account_number("TODO".to_string()))
             }
@@ -104,13 +106,11 @@ impl RpcCommandHandler {
             RpcCommand::WorkGet(args) => to_value(self.work_get(args)?),
             RpcCommand::WalletWorkGet(args) => to_value(self.wallet_work_get(args)?),
             RpcCommand::WalletFrontiers(args) => to_value(self.wallet_frontiers(args)?),
-            RpcCommand::Frontiers(args) => to_value(self.frontiers(args)),
             RpcCommand::WalletInfo(args) => to_value(self.wallet_info(args)?),
             RpcCommand::WalletExport(args) => to_value(wallet_export(args)),
             RpcCommand::PasswordChange(args) => to_value(self.password_change(args)?),
             RpcCommand::PasswordEnter(args) => to_value(self.password_enter(args)?),
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
-            RpcCommand::DeterministicKey(args) => to_value(deterministic_key(args)),
             RpcCommand::KeyExpand(args) => to_value(key_expand(args)),
             RpcCommand::Peers(args) => to_value(self.peers(args)),
             RpcCommand::PopulateBacklog => to_value(self.populate_backlog()),

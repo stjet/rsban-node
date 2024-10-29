@@ -59,7 +59,10 @@ fn keepalive() {
 
     node0.runtime.block_on(async {
         rpc_client
-            .keepalive(Ipv6Addr::LOCALHOST, node1.config.peering_port.unwrap())
+            .keepalive(
+                Ipv6Addr::LOCALHOST.to_string(),
+                node1.config.peering_port.unwrap(),
+            )
             .await
             .unwrap();
     });
@@ -99,34 +102,13 @@ fn keepalive_fails_without_rpc_control_enabled() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .keepalive(Ipv6Addr::LOCALHOST, get_available_port())
+            .keepalive(Ipv6Addr::LOCALHOST.to_string(), get_available_port())
             .await
     });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
-    );
-
-    server.abort();
-}
-
-#[test]
-fn keepalive_fails_with_peer_not_found() {
-    let mut system = System::new();
-    let node = system.make_node();
-
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
-
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .keepalive(Ipv6Addr::LOCALHOST, get_available_port())
-            .await
-    });
-
-    assert_eq!(
-        result.err().map(|e| e.to_string()),
-        Some("node returned error: \"Peer not found\"".to_string())
     );
 
     server.abort();

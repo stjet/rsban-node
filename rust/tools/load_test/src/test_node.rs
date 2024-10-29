@@ -80,7 +80,7 @@ impl TestNode {
 
     pub async fn connect(&self, other: &TestNode) -> Result<StartedDto> {
         self.node_client
-            .keepalive(Ipv6Addr::LOCALHOST, other.peering_port)
+            .keepalive(Ipv6Addr::LOCALHOST.to_string(), other.peering_port)
             .await
     }
 

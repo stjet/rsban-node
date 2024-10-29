@@ -31,6 +31,9 @@
 - confirmation_info
 - delegators
 - delegators_count
+- deterministic_key
+- frontiers
+- frontier_count
 
 # RPC functions MISSING:
 - account_count
@@ -45,12 +48,9 @@
 - confirmation_history
 - confirmation_quorum
 - database_txn_tracker
+- election_statistics
 
 # RPC functions to review:
-- deterministic_key
-- election_statistics
-- frontiers
-- frontier_count
 - keepalive
 - key_create
 - key_expand

@@ -13,6 +13,21 @@ impl AddressWithPortArgs {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct HostWithPortArgs {
+    pub address: String,
+    pub port: u16,
+}
+
+impl HostWithPortArgs {
+    pub fn new(address: impl Into<String>, port: u16) -> Self {
+        Self {
+            address: address.into(),
+            port,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::AddressWithPortArgs;

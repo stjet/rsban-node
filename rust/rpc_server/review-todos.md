@@ -45,6 +45,7 @@
 - receive_minimum
 - representatives
 - representatives_online
+- search_receivable
 
 # RPC functions MISSING:
 - account_count
@@ -68,8 +69,6 @@
 - receivable
 - process
 - republish
-- search_pending
-- search_receivable
 - search_pending_all
 - search_receivable_all
 - send

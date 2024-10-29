@@ -86,6 +86,7 @@ impl RpcCommandHandler {
             RpcCommand::ReceivableExists(args) => to_value(self.receivable_exists(args)?),
             RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
             RpcCommand::RepresentativesOnline(args) => to_value(self.representatives_online(args)),
+            RpcCommand::SearchReceivable(args) => to_value(self.search_receivable(args)?),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -145,7 +146,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletRepresentativeSet(args) => {
                 to_value(self.wallet_representative_set(args)?)
             }
-            RpcCommand::SearchReceivable(args) => to_value(self.search_receivable(args)?),
             RpcCommand::WalletRepublish(args) => to_value(self.wallet_republish(args)?),
             RpcCommand::WalletBalances(args) => to_value(self.wallet_balances(args)),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),

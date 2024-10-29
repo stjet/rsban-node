@@ -16,6 +16,7 @@
 - available_supply
 - block_info
 - blocks_info
+- blocks
 - receive
 
 # RPC functions MISSING:
@@ -31,7 +32,6 @@
 # RPC functions to review:
 - accounts_receivable
 - block_confirm
-- blocks
 - block_account
 - block_count
 - block_create

@@ -10,11 +10,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BlocksDto {
+pub struct BlocksResponse {
     pub blocks: HashMap<BlockHash, JsonBlock>,
 }
 
-impl BlocksDto {
+impl BlocksResponse {
     pub fn new(blocks: HashMap<BlockHash, JsonBlock>) -> Self {
         Self { blocks }
     }

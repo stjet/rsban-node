@@ -13,10 +13,14 @@
 - accounts_representatives
 - accounts_create
 - accounts_frontiers
+- accounts_receivable
 - available_supply
 - block_info
 - blocks_info
 - blocks
+- block_confirm
+- block_account
+- block_count
 - receive
 
 # RPC functions MISSING:
@@ -30,10 +34,6 @@
 - work_peers_clear
 
 # RPC functions to review:
-- accounts_receivable
-- block_confirm
-- block_account
-- block_count
 - block_create
 - block_hash
 - bootstrap

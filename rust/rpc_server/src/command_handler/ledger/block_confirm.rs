@@ -13,6 +13,7 @@ impl RpcCommandHandler {
             .confirmed()
             .block_exists_or_pruned(&tx, &args.hash)
         {
+            // Start new confirmation for unconfirmed (or not being confirmed) block
             if !self.node.confirming_set.exists(&args.hash) {
                 self.node
                     .election_schedulers
@@ -20,6 +21,7 @@ impl RpcCommandHandler {
                     .push(Arc::new(block.clone()), None);
             }
         } else {
+            // Add record in confirmation history for confirmed block
             let mut status = ElectionStatus::default();
             status.winner = Some(Arc::new(block.clone()));
             status.election_end = std::time::SystemTime::now();

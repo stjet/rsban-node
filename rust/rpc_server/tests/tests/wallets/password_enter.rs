@@ -44,16 +44,16 @@ fn password_enter_fails_with_invalid_password() {
 
     node.wallets.create(wallet_id);
 
-    let result = node.runtime.block_on(async {
-        rpc_client
-            .password_enter(wallet_id, "password".to_string())
-            .await
-    });
+    let result = node
+        .runtime
+        .block_on(async {
+            rpc_client
+                .password_enter(wallet_id, "password".to_string())
+                .await
+        })
+        .unwrap();
 
-    assert_eq!(
-        result.err().map(|e| e.to_string()),
-        Some("node returned error: \"Invalid password\"".to_string())
-    );
+    assert_eq!(result.valid, "0",);
 
     server.abort();
 }

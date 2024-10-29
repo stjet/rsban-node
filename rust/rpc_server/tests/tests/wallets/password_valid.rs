@@ -19,7 +19,7 @@ fn password_valid() {
         .runtime
         .block_on(async { rpc_client.password_valid(wallet_id).await.unwrap() });
 
-    assert_eq!(result.valid, false);
+    assert_eq!(result.valid, "0");
 
     let _ = node.wallets.enter_password(wallet_id, "");
 
@@ -27,7 +27,7 @@ fn password_valid() {
         .runtime
         .block_on(async { rpc_client.password_valid(wallet_id).await.unwrap() });
 
-    assert_eq!(result.valid, true);
+    assert_eq!(result.valid, "1");
 
     server.abort();
 }

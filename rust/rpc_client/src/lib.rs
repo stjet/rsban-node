@@ -503,7 +503,7 @@ impl NanoRpcClient {
         &self,
         wallet: WalletId,
         password: String,
-    ) -> Result<SuccessResponse> {
+    ) -> Result<ChangedResponse> {
         let cmd = RpcCommand::password_change(wallet, password);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

@@ -1,7 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
+use indexmap::IndexMap;
 use rsnano_core::{Account, Amount, BlockHash};
-use rsnano_rpc_messages::{ReceivableArgs, ReceivableDto, SourceInfo};
-use std::collections::HashMap;
+use rsnano_rpc_messages::{
+    ReceivableArgs, ReceivableDto, ReceivableSimple, ReceivableSource, ReceivableThreshold,
+    SourceInfo,
+};
 
 impl RpcCommandHandler {
     pub(crate) fn receivable(&self, args: ReceivableArgs) -> ReceivableDto {
@@ -12,9 +15,9 @@ impl RpcCommandHandler {
             BlockHash::zero(),
         );
 
-        let mut blocks_source: HashMap<Account, HashMap<BlockHash, SourceInfo>> = HashMap::new();
-        let mut blocks_threshold: HashMap<Account, HashMap<BlockHash, Amount>> = HashMap::new();
-        let mut blocks_default: HashMap<Account, Vec<BlockHash>> = HashMap::new();
+        let mut blocks_source: IndexMap<Account, IndexMap<BlockHash, SourceInfo>> = IndexMap::new();
+        let mut blocks_threshold: IndexMap<Account, IndexMap<BlockHash, Amount>> = IndexMap::new();
+        let mut blocks_default: IndexMap<Account, Vec<BlockHash>> = IndexMap::new();
 
         let mut account_blocks_source: Vec<(BlockHash, SourceInfo)> = Vec::new();
         let mut account_blocks_threshold: Vec<(BlockHash, Amount)> = Vec::new();
@@ -79,11 +82,11 @@ impl RpcCommandHandler {
                     .into_iter()
                     .skip(offset)
                     .take(count)
-                    .collect::<HashMap<_, _>>(),
+                    .collect::<IndexMap<_, _>>(),
             );
-            ReceivableDto::Source {
+            ReceivableDto::Source(ReceivableSource {
                 blocks: blocks_source,
-            }
+            })
         } else if args.threshold.is_some() {
             blocks_threshold.insert(
                 args.account,
@@ -93,9 +96,9 @@ impl RpcCommandHandler {
                     .take(count)
                     .collect(),
             );
-            ReceivableDto::Threshold {
+            ReceivableDto::Threshold(ReceivableThreshold {
                 blocks: blocks_threshold,
-            }
+            })
         } else {
             blocks_default.insert(
                 args.account,
@@ -105,9 +108,9 @@ impl RpcCommandHandler {
                     .take(count)
                     .collect(),
             );
-            ReceivableDto::Blocks {
+            ReceivableDto::Simple(ReceivableSimple {
                 blocks: blocks_default,
-            }
+            })
         };
 
         receivable_dto

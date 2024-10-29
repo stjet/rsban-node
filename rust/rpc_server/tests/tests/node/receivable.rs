@@ -65,8 +65,12 @@ fn receivable_include_only_confirmed() {
             .unwrap()
     });
 
-    if let ReceivableDto::Blocks { blocks } = result1 {
-        assert!(blocks.get(&public_key.into()).unwrap().is_empty());
+    if let ReceivableDto::Simple(simple) = result1 {
+        assert!(simple
+            .blocks
+            .get(&Account::from(public_key))
+            .unwrap()
+            .is_empty());
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
@@ -79,8 +83,11 @@ fn receivable_include_only_confirmed() {
         .runtime
         .block_on(async { rpc_client.receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Blocks { blocks } = result2 {
-        assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
+    if let ReceivableDto::Simple(simple) = result2 {
+        assert_eq!(
+            simple.blocks.get(&Account::from(public_key)).unwrap(),
+            &vec![send.hash()]
+        );
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
@@ -113,8 +120,11 @@ fn receivable_options_none() {
             .unwrap()
     });
 
-    if let ReceivableDto::Blocks { blocks } = result {
-        assert_eq!(blocks.get(&public_key.into()).unwrap(), &vec![send.hash()]);
+    if let ReceivableDto::Simple(simple) = result {
+        assert_eq!(
+            simple.blocks.get(&Account::from(public_key)).unwrap(),
+            &vec![send.hash()]
+        );
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
@@ -152,10 +162,11 @@ fn receivable_threshold_some() {
 
     println!("{:?}", result);
 
-    if let ReceivableDto::Threshold { blocks } = result {
+    if let ReceivableDto::Threshold(threshold) = result {
         assert_eq!(
-            blocks
-                .get(&public_key.into())
+            threshold
+                .blocks
+                .get(&Account::from(public_key))
                 .unwrap()
                 .get(&send2.hash())
                 .unwrap(),
@@ -194,9 +205,9 @@ fn receivable_sorting() {
         .runtime
         .block_on(async { rpc_client.receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Blocks { blocks } = result {
-        assert_eq!(blocks.len(), 1);
-        let recv_blocks = blocks.get(&public_key.into()).unwrap();
+    if let ReceivableDto::Simple(simple) = result {
+        assert_eq!(simple.blocks.len(), 1);
+        let recv_blocks = simple.blocks.get(&Account::from(public_key)).unwrap();
         assert_eq!(recv_blocks.len(), 1);
         assert_eq!(recv_blocks[0], send.hash());
     } else {

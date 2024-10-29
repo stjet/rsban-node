@@ -2368,6 +2368,7 @@ checksum = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
+ "serde",
 ]
 
 [[package]]
@@ -3941,6 +3942,7 @@ dependencies = [
 name = "rsnano_rpc_messages"
 version = "0.1.0"
 dependencies = [
+ "indexmap 2.5.0",
  "rsnano_core",
  "rsnano_messages",
  "rsnano_node",
@@ -3954,6 +3956,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "indexmap 2.5.0",
  "itertools 0.13.0",
  "rsnano_core",
  "rsnano_ledger",
@@ -4129,6 +4132,7 @@ version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff5456707a1de34e7e37f2a6fd3d3f808c318259cbd01ab6377795054b483d8"
 dependencies = [
+ "indexmap 2.5.0",
  "itoa",
  "memchr",
  "ryu",

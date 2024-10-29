@@ -1,5 +1,5 @@
 use crate::AccountBalanceResponse;
-use anyhow::{anyhow, bail, Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use reqwest::Client;
 pub use reqwest::Url;
 use rsnano_core::{
@@ -134,10 +134,24 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn accounts_receivable(&self, args: AccountsReceivableArgs) -> Result<ReceivableDto> {
-        let cmd = RpcCommand::accounts_receivable(args);
+    pub async fn accounts_receivable(
+        &self,
+        args: impl Into<AccountsReceivableArgs>,
+    ) -> Result<ReceivableDto> {
+        let args = args.into();
+
+        let threshold = args.threshold.unwrap_or_default();
+        let source = args.source.unwrap_or(false);
+        let simple = threshold.is_zero() && !source && !args.sorting.unwrap_or(false);
+        let cmd = RpcCommand::AccountsReceivable(args);
         let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        if simple {
+            Ok(ReceivableDto::Simple(serde_json::from_value(result)?))
+        } else if source {
+            Ok(ReceivableDto::Source(serde_json::from_value(result)?))
+        } else {
+            Ok(ReceivableDto::Threshold(serde_json::from_value(result)?))
+        }
     }
 
     pub async fn wallet_ledger(

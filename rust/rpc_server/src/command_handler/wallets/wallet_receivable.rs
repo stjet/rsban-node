@@ -1,7 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
+use indexmap::IndexMap;
 use rsnano_core::{Amount, BlockHash};
-use rsnano_rpc_messages::{ReceivableDto, SourceInfo, WalletReceivableArgs};
-use std::collections::HashMap;
+use rsnano_rpc_messages::{
+    ReceivableDto, ReceivableSimple, ReceivableSource, ReceivableThreshold, SourceInfo,
+    WalletReceivableArgs,
+};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_receivable(
@@ -11,13 +14,13 @@ impl RpcCommandHandler {
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let tx = self.node.ledger.read_txn();
-        let mut block_source = HashMap::new();
-        let mut block_threshold = HashMap::new();
-        let mut block_default = HashMap::new();
+        let mut block_source = IndexMap::new();
+        let mut block_threshold = IndexMap::new();
+        let mut block_default = IndexMap::new();
 
         for account in accounts {
-            let mut account_blocks_source: HashMap<BlockHash, SourceInfo> = HashMap::new();
-            let mut account_blocks_threshold: HashMap<BlockHash, Amount> = HashMap::new();
+            let mut account_blocks_source: IndexMap<BlockHash, SourceInfo> = IndexMap::new();
+            let mut account_blocks_threshold: IndexMap<BlockHash, Amount> = IndexMap::new();
             let mut account_blocks_default: Vec<BlockHash> = Vec::new();
             for (key, info) in self
                 .node
@@ -67,17 +70,17 @@ impl RpcCommandHandler {
         }
 
         let result = if args.source.unwrap_or(false) || args.min_version.unwrap_or(false) {
-            ReceivableDto::Source {
+            ReceivableDto::Source(ReceivableSource {
                 blocks: block_source,
-            }
+            })
         } else if args.threshold.is_some() {
-            ReceivableDto::Threshold {
+            ReceivableDto::Threshold(ReceivableThreshold {
                 blocks: block_threshold,
-            }
+            })
         } else {
-            ReceivableDto::Blocks {
+            ReceivableDto::Simple(ReceivableSimple {
                 blocks: block_default,
-            }
+            })
         };
         Ok(result)
     }

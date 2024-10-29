@@ -1,28 +1,22 @@
-use crate::RpcCommand;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
-impl RpcCommand {
-    pub fn accounts_receivable(args: AccountsReceivableArgs) -> Self {
-        Self::AccountsReceivable(args)
-    }
-}
-
 impl AccountsReceivableArgs {
-    pub fn new(accounts: Vec<Account>, count: u64) -> AccountsReceivableArgs {
+    pub fn new(accounts: Vec<Account>) -> AccountsReceivableArgs {
         Self {
             accounts,
-            count,
+            count: None,
             threshold: None,
             source: None,
             sorting: None,
             include_only_confirmed: None,
+            include_active: None,
         }
     }
 
-    pub fn builder(accounts: Vec<Account>, count: u64) -> AccountsReceivableArgsBuilder {
+    pub fn builder(accounts: Vec<Account>) -> AccountsReceivableArgsBuilder {
         AccountsReceivableArgsBuilder {
-            args: AccountsReceivableArgs::new(accounts, count),
+            args: AccountsReceivableArgs::new(accounts),
         }
     }
 }
@@ -32,8 +26,13 @@ pub struct AccountsReceivableArgsBuilder {
 }
 
 impl AccountsReceivableArgsBuilder {
-    pub fn with_minimum_balance(mut self, threshold: Amount) -> Self {
+    pub fn threshold(mut self, threshold: Amount) -> Self {
         self.args.threshold = Some(threshold);
+        self
+    }
+
+    pub fn count(mut self, count: u64) -> Self {
+        self.args.count = Some(count);
         self
     }
 
@@ -42,13 +41,18 @@ impl AccountsReceivableArgsBuilder {
         self
     }
 
+    pub fn include_active(mut self, value: bool) -> Self {
+        self.args.include_active = Some(value);
+        self
+    }
+
     pub fn sorted(mut self) -> Self {
         self.args.sorting = Some(true);
         self
     }
 
-    pub fn include_only_confirmed_blocks(mut self) -> Self {
-        self.args.include_only_confirmed = Some(true);
+    pub fn only_confirmed(mut self, value: bool) -> Self {
+        self.args.include_only_confirmed = Some(value);
         self
     }
 
@@ -60,7 +64,8 @@ impl AccountsReceivableArgsBuilder {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsReceivableArgs {
     pub accounts: Vec<Account>,
-    pub count: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,6 +74,14 @@ pub struct AccountsReceivableArgs {
     pub sorting: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_only_confirmed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_active: Option<bool>,
+}
+
+impl From<Vec<Account>> for AccountsReceivableArgs {
+    fn from(value: Vec<Account>) -> Self {
+        Self::new(value)
+    }
 }
 
 #[cfg(test)]
@@ -83,11 +96,12 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
-            count: 10,
+            count: Some(10),
             threshold: Some(Amount::raw(1000)),
             source: Some(true),
             sorting: Some(false),
             include_only_confirmed: Some(true),
+            include_active: None,
         };
 
         let serialized = serde_json::to_string(&args).unwrap();
@@ -110,7 +124,8 @@ mod tests {
             "threshold": "1000",
             "source": true,
             "sorting": false,
-            "include_only_confirmed": true
+            "include_only_confirmed": true,
+            "include_active": true
         }"#;
 
         let deserialized: AccountsReceivableArgs = serde_json::from_str(json).unwrap();
@@ -123,11 +138,12 @@ mod tests {
             )
             .unwrap()
         );
-        assert_eq!(deserialized.count, 5);
+        assert_eq!(deserialized.count, Some(5));
         assert_eq!(deserialized.threshold, Some(Amount::raw(1000)));
         assert_eq!(deserialized.source, Some(true));
         assert_eq!(deserialized.sorting, Some(false));
         assert_eq!(deserialized.include_only_confirmed, Some(true));
+        assert_eq!(deserialized.include_active, Some(true));
     }
 
     #[test]
@@ -137,11 +153,12 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
-            count: 10,
+            count: Some(10),
             threshold: None,
             source: None,
             sorting: None,
             include_only_confirmed: None,
+            include_active: None,
         };
 
         let serialized = serde_json::to_string(&args).unwrap();
@@ -173,7 +190,7 @@ mod tests {
             )
             .unwrap()
         );
-        assert_eq!(deserialized.count, 5);
+        assert_eq!(deserialized.count, Some(5));
         assert_eq!(deserialized.threshold, None);
         assert_eq!(deserialized.source, None);
         assert_eq!(deserialized.sorting, None);

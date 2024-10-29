@@ -9,4 +9,4 @@ rsnano_rpc_messages = { path = "../rpc_messages" }
 anyhow = "1"
 reqwest = { version = "0", default-features = false, features = ["json"]}
 serde = { version = "1" }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }

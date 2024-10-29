@@ -72,6 +72,7 @@ impl RpcCommandHandler {
             RpcCommand::ConfirmationInfo(args) => to_value(self.confirmation_info(args)?),
             RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
             RpcCommand::Delegators(args) => to_value(self.delegators(args)),
+            RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -122,7 +123,6 @@ impl RpcCommandHandler {
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
             RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
             RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),
-            RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
             RpcCommand::BlocksInfo(args) => to_value(self.blocks_info(args)?),
             RpcCommand::Chain(args) => to_value(self.chain(args, false)),

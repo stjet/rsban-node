@@ -29,6 +29,8 @@
 - bootstrap_lazy
 - confirmation_active
 - confirmation_info
+- delegators
+- delegators_count
 
 # RPC functions MISSING:
 - account_count
@@ -45,8 +47,6 @@
 - database_txn_tracker
 
 # RPC functions to review:
-- delegators
-- delegators_count
 - deterministic_key
 - election_statistics
 - frontiers

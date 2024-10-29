@@ -37,6 +37,8 @@
 - keepalive
 - key_create
 - key_expand
+- node_id
+- password_change
 
 # RPC functions MISSING:
 - account_count
@@ -55,9 +57,6 @@
 
 # RPC functions to review:
 - ledger
-- node_id
-- node_id_delete
-- password_change
 - password_enter
 - wallet_unlock
 - peers

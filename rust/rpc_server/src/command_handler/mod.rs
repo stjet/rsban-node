@@ -80,6 +80,7 @@ impl RpcCommandHandler {
             RpcCommand::KeyCreate => to_value(key_create()),
             RpcCommand::KeyExpand(args) => to_value(key_expand(args)?),
             RpcCommand::NodeId => to_value(self.node_id()),
+            RpcCommand::PasswordChange(args) => to_value(self.password_change(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -111,7 +112,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletFrontiers(args) => to_value(self.wallet_frontiers(args)?),
             RpcCommand::WalletInfo(args) => to_value(self.wallet_info(args)?),
             RpcCommand::WalletExport(args) => to_value(wallet_export(args)),
-            RpcCommand::PasswordChange(args) => to_value(self.password_change(args)?),
             RpcCommand::PasswordEnter(args) => to_value(self.password_enter(args)?),
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
             RpcCommand::Peers(args) => to_value(self.peers(args)),

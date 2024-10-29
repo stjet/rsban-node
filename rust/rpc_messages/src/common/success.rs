@@ -13,6 +13,19 @@ impl SuccessResponse {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct ChangedResponse {
+    changed: &'static str,
+}
+
+impl ChangedResponse {
+    pub fn new(changed: bool) -> Self {
+        Self {
+            changed: if changed { "1" } else { "0" },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

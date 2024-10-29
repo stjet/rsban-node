@@ -35,9 +35,10 @@ fn confirmation_info() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.confirmation_info(args).await.unwrap() });
+        .block_on(async { rpc_client.confirmation_info(args).await })
+        .unwrap();
 
-    //assert_eq!(result.announcements, 1); TODO
+    assert_eq!(result.announcements, 0);
     assert_eq!(result.voters, 1);
     assert_eq!(result.last_winner, send.hash());
 

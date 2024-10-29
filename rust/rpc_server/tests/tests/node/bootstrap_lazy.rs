@@ -15,8 +15,8 @@ fn bootstrap_any() {
         .runtime
         .block_on(async { rpc_client.bootstrap_lazy(hash).await.unwrap() });
 
-    assert_eq!(result.started, true);
-    assert_eq!(result.key_inserted, true);
+    assert_eq!(result.started, 1);
+    assert_eq!(result.key_inserted, 1);
 
     server.abort();
 }

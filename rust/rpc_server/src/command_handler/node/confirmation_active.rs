@@ -1,14 +1,14 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{ConfirmationActiveArgs, ConfirmationActiveDto};
+use rsnano_rpc_messages::{ConfirmationActiveArgs, ConfirmationActiveResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn confirmation_active(
         &self,
         args: ConfirmationActiveArgs,
-    ) -> ConfirmationActiveDto {
+    ) -> ConfirmationActiveResponse {
         let announcements = args.announcements.unwrap_or(0);
         let mut confirmed = 0;
-        let mut confirmations = Vec::new();
+        let mut elections = Vec::new();
 
         let active_elections = self.node.active.list_active(usize::MAX);
         for election in active_elections {
@@ -18,14 +18,18 @@ impl RpcCommandHandler {
                 >= announcements
             {
                 if !self.node.active.confirmed(&election) {
-                    confirmations.push(election.qualified_root.clone());
+                    elections.push(election.qualified_root.clone());
                 } else {
                     confirmed += 1;
                 }
             }
         }
 
-        let unconfirmed = confirmations.len() as u64;
-        ConfirmationActiveDto::new(confirmations, unconfirmed, confirmed)
+        let unconfirmed = elections.len() as u64;
+        ConfirmationActiveResponse {
+            confirmations: elections,
+            unconfirmed,
+            confirmed,
+        }
     }
 }

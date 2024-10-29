@@ -25,6 +25,9 @@
 - block_hash
 - receive
 - bootstrap
+- bootstrap_any
+- bootstrap_lazy
+- confirmation_active
 
 # RPC functions MISSING:
 - account_count
@@ -35,13 +38,10 @@
 - work_peer_add
 - work_peers
 - work_peers_clear
+- bootstrap_status
+- confirmation_history
 
 # RPC functions to review:
-- bootstrap_any
-- bootstrap_lazy
-- bootstrap_status
-- confirmation_active
-- confirmation_history
 - confirmation_info
 - confirmation_quorum
 - database_txn_tracker

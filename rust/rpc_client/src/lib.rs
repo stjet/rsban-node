@@ -205,7 +205,7 @@ impl NanoRpcClient {
     pub async fn bootstrap_lazy(
         &self,
         args: impl Into<BootstrapLazyArgs>,
-    ) -> Result<BootstrapLazyDto> {
+    ) -> Result<BootstrapLazyResponse> {
         let cmd = RpcCommand::bootstrap_lazy(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -678,7 +678,7 @@ impl NanoRpcClient {
     pub async fn confirmation_active(
         &self,
         announcements: Option<u64>,
-    ) -> Result<ConfirmationActiveDto> {
+    ) -> Result<ConfirmationActiveResponse> {
         let cmd = RpcCommand::confirmation_active(announcements);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

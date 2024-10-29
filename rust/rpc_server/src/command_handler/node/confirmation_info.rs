@@ -1,66 +1,85 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::{anyhow, bail};
-use rsnano_core::Amount;
+use indexmap::IndexMap;
+use rsnano_core::{Account, Amount};
 use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoArgs, ConfirmationInfoDto};
-use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn confirmation_info(
         &self,
         args: ConfirmationInfoArgs,
     ) -> anyhow::Result<ConfirmationInfoDto> {
+        let include_representatives = args.representatives.unwrap_or(false);
+        let contents = args.contents.unwrap_or(true);
         let election = self
             .node
             .active
             .election(&args.root)
-            .ok_or_else(|| anyhow!("Invalid root"))?;
+            .ok_or_else(|| anyhow!("Active confirmation not found"))?;
 
         if self.node.active.confirmed(&election) {
             bail!("Active confirmation not found");
         }
 
         let info = election.mutex.lock().unwrap();
-        let mut blocks = HashMap::new();
+        let announcements = info.status.confirmation_request_count;
+        let voters = info.last_votes.len();
+        let last_winner = info
+            .status
+            .winner
+            .as_ref()
+            .map(|b| b.hash())
+            .unwrap_or_default();
+
+        let final_tally = info.status.final_tally;
         let mut total_tally = Amount::zero();
+        let mut blocks = IndexMap::new();
 
-        for (hash, block) in info.last_blocks.iter() {
-            let tally = info.last_tally.get(hash).cloned().unwrap_or(Amount::zero());
-            let mut block_info = ConfirmationBlockInfoDto {
-                tally,
-                contents: None,
-                representatives: None,
-            };
-
-            if args.contents.unwrap_or(true) {
-                block_info.contents = Some(block.json_representation());
-            }
-
-            if args.representatives.unwrap_or(false) {
-                let mut reps = HashMap::new();
-                for (representative, vote) in &info.last_votes {
-                    if hash == &vote.hash {
-                        let amount = self.node.ledger.rep_weights.weight(representative);
-                        reps.insert(representative.clone().into(), amount);
-                    }
-                }
-                block_info.representatives = Some(reps);
-            }
+        for block in info.last_blocks.values() {
+            let tally = info
+                .last_tally
+                .get(&block.hash())
+                .cloned()
+                .unwrap_or_default();
 
             total_tally += tally;
-            blocks.insert(*hash, block_info);
+
+            let contents = if contents {
+                Some(block.json_representation())
+            } else {
+                None
+            };
+
+            let representatives = if include_representatives {
+                let mut reps = IndexMap::new();
+                for (representative, vote) in &info.last_votes {
+                    if block.hash() == vote.hash {
+                        let amount = self.node.ledger.rep_weights.weight(representative);
+                        reps.insert(Account::from(representative), amount);
+                    }
+                }
+                reps.sort_by(|k1, _, k2, _| k2.cmp(k1));
+                Some(reps)
+            } else {
+                None
+            };
+
+            let entry = ConfirmationBlockInfoDto {
+                tally,
+                contents,
+                representatives,
+            };
+
+            blocks.insert(block.hash(), entry);
         }
 
-        Ok(ConfirmationInfoDto::new(
-            info.status.confirmation_request_count,
-            info.last_votes.len(),
-            info.status
-                .winner
-                .as_ref()
-                .map(|w| w.hash())
-                .unwrap_or_default(),
+        Ok(ConfirmationInfoDto {
+            announcements,
+            voters,
+            last_winner,
             total_tally,
-            info.status.final_tally,
+            final_tally,
             blocks,
-        ))
+        })
     }
 }

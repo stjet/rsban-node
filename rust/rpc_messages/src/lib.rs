@@ -46,8 +46,9 @@ pub enum RpcCommand {
     AvailableSupply,
     BlockAccount(HashRpcMessage),
     BlockConfirm(HashRpcMessage),
-    BootstrapLazy(()),      // TODO
-    DatabaseTxnTracker(()), // TODO
+    BootstrapLazy(()),       // TODO
+    DatabaseTxnTracker(()),  // TODO
+    ConfirmationHistory(()), //TODO
     BlockCount,
     Uptime,
     FrontierCount,

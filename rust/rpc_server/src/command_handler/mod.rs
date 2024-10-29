@@ -63,6 +63,7 @@ impl RpcCommandHandler {
             RpcCommand::BlockAccount(args) => to_value(self.block_account(args)?),
             RpcCommand::BlockCount => to_value(self.block_count()),
             RpcCommand::Receive(args) => to_value(self.receive(args)?),
+            RpcCommand::BlockCreate(args) => to_value(self.block_create(args)?),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -146,7 +147,6 @@ impl RpcCommandHandler {
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
-            RpcCommand::BlockCreate(args) => to_value(self.block_create(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),

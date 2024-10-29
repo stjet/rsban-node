@@ -1,153 +1,212 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
-    Account, Amount, BlockBuilder, BlockDetails, BlockEnum, BlockHash, Epoch, KeyPair, PendingKey,
-    PublicKey, RawKey, WorkVersion,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, OpenBlock,
+    PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock, WorkVersion,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateDto, BlockTypeDto, WorkVersionDto};
+use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto, WorkVersionDto};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn block_create(&self, args: BlockCreateArgs) -> anyhow::Result<BlockCreateDto> {
+    pub(crate) fn block_create(
+        &self,
+        args: BlockCreateArgs,
+    ) -> anyhow::Result<BlockCreateResponse> {
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let difficulty = args
             .difficulty
             .unwrap_or_else(|| self.node.ledger.constants.work.threshold_base(work_version));
 
-        let wallet = args.wallet;
-        let account = args.account;
-        let representative = args.representative;
-        let destination = args.destination;
-        let source = args.source;
-        let amount = args.balance;
-        let work = args.work;
+        let wallet_id = args.wallet.unwrap_or_default();
+        let account = args.account.unwrap_or_default();
+        let representative = PublicKey::from(args.representative.unwrap_or_default());
+        let destination = args.destination.unwrap_or_default();
+        let source = args.source.unwrap_or_default();
+        let amount = args.balance.unwrap_or_default();
+        let work: u64 = args.work.unwrap_or(0.into()).into();
 
         let mut previous = args.previous.unwrap_or(BlockHash::zero());
         let mut balance = args.balance.unwrap_or(Amount::zero());
         let mut prv_key = RawKey::default();
 
-        /*if work.is_none() && !node.distributed_work.work_generation_enabled() {
-            return to_string_pretty(&ErrorDto::new("Work generation is disabled".to_string()))
-                .unwrap();
-        }*/
+        if work == 0 && !self.node.distributed_work.work_generation_enabled() {
+            bail!("Work generation is disabled");
+        }
 
-        if let (Some(wallet_id), Some(account)) = (wallet, account) {
+        if !wallet_id.is_zero() && !account.is_zero() {
             self.node.wallets.fetch(&wallet_id, &account.into())?;
             let tx = self.node.ledger.read_txn();
-            previous = self.node.ledger.any().account_head(&tx, &account).unwrap();
+            previous = self
+                .node
+                .ledger
+                .any()
+                .account_head(&tx, &account)
+                .unwrap_or_default();
             balance = self
                 .node
                 .ledger
                 .any()
                 .account_balance(&tx, &account)
-                .unwrap();
+                .unwrap_or_default();
         }
 
         if let Some(key) = args.key {
             prv_key = key;
         }
 
-        //if prv_key.is_zero() {
-        //return to_string_pretty(&ErrorDto::new("Block create key required".to_string())).unwrap();
-        //}
-
-        let pub_key: PublicKey = (&prv_key).try_into().unwrap();
-        let pub_key: Account = pub_key.into();
-
-        /*if let Some(account) = account {
-            if account != pub_key {
-                return RpcDto::Error(BlockDto(ErrorDto2::BlockRootMismatch))
+        let link = args.link.unwrap_or_else(|| {
+            // Retrieve link from source or destination
+            if source.is_zero() {
+                destination.into()
+            } else {
+                source.into()
             }
-        }*/
+        });
 
-        let key_pair: KeyPair = prv_key.into();
+        // TODO block_response_put_l
+        // TODO get_callback_l
 
+        if prv_key.is_zero() {
+            bail!("Private key or local wallet and account required");
+        }
+        let pub_key = PublicKey::try_from(&prv_key)?;
+        let account = Account::from(pub_key);
+        // Fetching account balance & previous for send blocks (if aren't given directly)
+        if args.previous.is_none() && args.balance.is_none() {
+            let tx = self.node.ledger.read_txn();
+            previous = self
+                .node
+                .ledger
+                .any()
+                .account_head(&tx, &account)
+                .unwrap_or_default();
+            balance = self
+                .node
+                .ledger
+                .any()
+                .account_balance(&tx, &account)
+                .unwrap_or_default();
+        }
+        // Double check current balance if previous block is specified
+        else if args.previous.is_some()
+            && args.balance.is_some()
+            && args.block_type == BlockTypeDto::Send
+        {
+            let tx = self.node.ledger.read_txn();
+            if self.node.ledger.any().block_exists(&tx, &previous)
+                && self.node.ledger.any().block_balance(&tx, &previous) != Some(balance)
+            {
+                bail!("Balance mismatch for previous block");
+            }
+        }
+
+        // Check for incorrect account key
+        if args.account.is_some() {
+            if account != account {
+                bail!("Incorrect key for given account");
+            }
+        }
+
+        let root: Root;
+        let keys = KeyPair::from(prv_key);
         let mut block = match args.block_type {
             BlockTypeDto::State => {
-                if !representative.is_none()
-                    && (!args.link.unwrap_or_default().is_zero() || args.link.is_some())
+                if args.previous.is_some()
+                    && !representative.is_zero()
+                    && (!link.is_zero() || args.link.is_some())
                 {
-                    let builder = BlockBuilder::state();
-                    builder
-                        .account(pub_key)
-                        .previous(previous)
-                        .representative(representative.unwrap())
-                        .balance(balance)
-                        .link(args.link.unwrap_or_default())
-                        .sign(&key_pair)
-                        .build()
+                    let block = BlockEnum::State(StateBlock::new(
+                        account,
+                        previous,
+                        representative,
+                        balance,
+                        link,
+                        &keys,
+                        work,
+                    ));
+                    if previous.is_zero() {
+                        root = account.into();
+                    } else {
+                        root = previous.into();
+                    }
+                    block
                 } else {
-                    bail!(Self::BLOCK_ERROR);
+                    bail!("Previous, representative, final balance and link (source or destination) are required");
                 }
             }
             BlockTypeDto::Open => {
-                if !representative.is_none() && source.is_some() {
-                    let builder = BlockBuilder::legacy_open();
-                    builder
-                        .account(pub_key)
-                        .source(source.unwrap())
-                        .representative(representative.unwrap().into())
-                        .sign(&key_pair)
-                        .build()
+                if !representative.is_zero() && !source.is_zero() {
+                    let block = BlockEnum::LegacyOpen(OpenBlock::new(
+                        source,
+                        representative,
+                        account,
+                        &prv_key,
+                        work,
+                    ));
+                    root = account.into();
+                    block
                 } else {
-                    bail!(Self::BLOCK_ERROR);
+                    bail!("Representative account and source hash required");
                 }
             }
             BlockTypeDto::Receive => {
-                if source.is_some() {
-                    let builder = BlockBuilder::legacy_receive();
-                    builder
-                        .previous(previous)
-                        .source(source.unwrap())
-                        .sign(&key_pair)
-                        .build()
+                if !source.is_zero() && !previous.is_zero() {
+                    let block = BlockEnum::LegacyReceive(ReceiveBlock::new(
+                        previous, source, &prv_key, work,
+                    ));
+                    root = previous.into();
+                    block
                 } else {
-                    bail!(Self::BLOCK_ERROR);
+                    bail!("Previous hash and source hash required");
                 }
             }
             BlockTypeDto::Change => {
-                if !representative.is_none() {
-                    let builder = BlockBuilder::legacy_change();
-                    builder
-                        .previous(previous)
-                        .representative(representative.unwrap().into())
-                        .sign(&key_pair)
-                        .build()
+                if !representative.is_zero() && !previous.is_zero() {
+                    let block = BlockEnum::LegacyChange(ChangeBlock::new(
+                        previous,
+                        representative,
+                        &prv_key,
+                        work,
+                    ));
+                    root = previous.into();
+                    block
                 } else {
-                    bail!(Self::BLOCK_ERROR);
+                    bail!("Representative account and previous hash required");
                 }
             }
             BlockTypeDto::Send => {
-                if destination.is_some() && !balance.is_zero() && !amount.is_none() {
-                    let amount = amount.unwrap();
+                if !destination.is_zero()
+                    && !previous.is_zero()
+                    && !balance.is_zero()
+                    && !amount.is_zero()
+                {
                     if balance >= amount {
-                        let builder = BlockBuilder::legacy_send();
-                        builder
-                            .previous(previous)
-                            .destination(destination.unwrap())
-                            .balance(balance - amount)
-                            .sign(key_pair)
-                            .build()
+                        let block = BlockEnum::LegacySend(SendBlock::new(
+                            &previous,
+                            &destination,
+                            &(balance - amount),
+                            &prv_key,
+                            work,
+                        ));
+                        root = previous.into();
+                        block
                     } else {
                         bail!("Insufficient balance")
                     }
                 } else {
-                    bail!(Self::BLOCK_ERROR);
+                    bail!(
+                        "Destination account, previous hash, current balance and amount required"
+                    );
                 }
             }
             BlockTypeDto::Unknown => {
-                bail!(Self::BLOCK_ERROR);
+                bail!("Invalid block type");
             }
         };
 
-        let root = if !previous.is_zero() {
-            previous
-        } else {
-            pub_key.into()
-        };
-
-        if work.is_none() {
+        if work == 0 {
+            // Difficulty calculation
             let difficulty = if args.difficulty.is_none() {
                 difficulty_ledger(self.node.clone(), &block)
             } else {
@@ -158,40 +217,47 @@ impl RpcCommandHandler {
                 WorkVersion::Work1,
                 root.into(),
                 difficulty,
-                Some(pub_key),
+                Some(account),
             ) {
                 Some(work) => work,
-                None => bail!("Insufficient work"),
+                None => bail!("Work generation cancellation or failure"),
             };
             block.set_work(work);
-        } else {
-            block.set_work(work.unwrap().into());
         }
 
-        let hash = block.hash();
-        let difficulty = block.work();
         let json_block = block.json_representation();
-        Ok(BlockCreateDto::new(hash, difficulty.into(), json_block))
+        Ok(BlockCreateResponse::new(
+            block.hash(),
+            self.node
+                .network_params
+                .work
+                .difficulty_block(&block)
+                .into(),
+            json_block,
+        ))
     }
 }
 
 pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
     let mut details = BlockDetails::new(Epoch::Epoch0, false, false, false);
     let mut details_found = false;
-
-    let transaction = node.store.tx_begin_read();
+    let tx = node.store.tx_begin_read();
 
     // Previous block find
     let mut block_previous: Option<BlockEnum> = None;
     let previous = block.previous();
     if !previous.is_zero() {
-        block_previous = node.ledger.any().get_block(&transaction, &previous);
+        block_previous = node.ledger.any().get_block(&tx, &previous);
     }
 
     // Send check
-    if let Some(_prev_block) = &block_previous {
-        let is_send =
-            node.ledger.any().block_balance(&transaction, &previous) > block.balance_field();
+    if block_previous.is_some() {
+        let is_send = node
+            .ledger
+            .any()
+            .block_balance(&tx, &previous)
+            .unwrap_or_default()
+            > block.balance_field().unwrap();
         details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);
         details_found = true;
     }
@@ -205,12 +271,12 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
     // Link check
     if let Some(link) = block.link_field() {
         if !details.is_send {
-            if let Some(block_link) = node.ledger.any().get_block(&transaction, &link.into()) {
-                let account = block.account_field().unwrap();
+            if let Some(block_link) = node.ledger.any().get_block(&tx, &link.into()) {
+                let account = block.account_field().unwrap(); // Link is non-zero therefore it's a state block and has an account field;
                 if node
                     .ledger
                     .any()
-                    .get_pending(&transaction, &PendingKey::new(account, link.into()))
+                    .get_pending(&tx, &PendingKey::new(account, link.into()))
                     .is_some()
                 {
                     let epoch =

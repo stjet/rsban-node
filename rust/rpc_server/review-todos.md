@@ -21,6 +21,7 @@
 - block_confirm
 - block_account
 - block_count
+- block_create
 - receive
 
 # RPC functions MISSING:
@@ -34,7 +35,6 @@
 - work_peers_clear
 
 # RPC functions to review:
-- block_create
 - block_hash
 - bootstrap
 - bootstrap_any

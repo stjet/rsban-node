@@ -609,7 +609,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn delegators(&self, args: impl Into<DelegatorsArgs>) -> Result<DelegatorsDto> {
+    pub async fn delegators(&self, args: impl Into<DelegatorsArgs>) -> Result<DelegatorsResponse> {
         let cmd = RpcCommand::delegators(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

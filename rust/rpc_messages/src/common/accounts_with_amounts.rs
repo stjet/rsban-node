@@ -25,11 +25,11 @@ impl RepresentativesDto {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct DelegatorsDto {
+pub struct DelegatorsResponse {
     pub delegators: HashMap<Account, Amount>,
 }
 
-impl DelegatorsDto {
+impl DelegatorsResponse {
     pub fn new(delegators: HashMap<Account, Amount>) -> Self {
         Self { delegators }
     }

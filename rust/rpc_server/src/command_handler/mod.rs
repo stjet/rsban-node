@@ -71,6 +71,7 @@ impl RpcCommandHandler {
             RpcCommand::ConfirmationActive(args) => to_value(self.confirmation_active(args)),
             RpcCommand::ConfirmationInfo(args) => to_value(self.confirmation_info(args)?),
             RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
+            RpcCommand::Delegators(args) => to_value(self.delegators(args)),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -78,6 +79,7 @@ impl RpcCommandHandler {
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
+            RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             // Not reviewed yet:
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)),
             RpcCommand::KeyCreate => to_value(key_create()),
@@ -120,7 +122,6 @@ impl RpcCommandHandler {
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
             RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
             RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),
-            RpcCommand::Delegators(args) => to_value(self.delegators(args)),
             RpcCommand::DelegatorsCount(args) => to_value(self.delegators_count(args)),
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
             RpcCommand::BlocksInfo(args) => to_value(self.blocks_info(args)?),
@@ -150,7 +151,6 @@ impl RpcCommandHandler {
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
-            RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
             RpcCommand::Stats(_) => self.not_implemented(),
             RpcCommand::ActiveDifficulty => self.not_implemented(),

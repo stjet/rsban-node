@@ -42,9 +42,9 @@
 - bootstrap_status
 - confirmation_history
 - confirmation_quorum
+- database_txn_tracker
 
 # RPC functions to review:
-- database_txn_tracker
 - delegators
 - delegators_count
 - deterministic_key

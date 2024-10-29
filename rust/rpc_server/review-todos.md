@@ -47,6 +47,7 @@
 - representatives_online
 - search_receivable
 - search_receivable_all
+- unchecked_clear
 
 # RPC functions MISSING:
 - account_count
@@ -77,7 +78,6 @@
 - stop
 - telemetry
 - unchecked
-- unchecked_clear
 - unchecked_get
 - unchecked_keys
 - unopened
@@ -99,7 +99,6 @@
 - wallet_key_valid
 - wallet_ledger
 - wallet_lock
-- wallet_pending
 - wallet_receivable
 - wallet_representative
 - wallet_representative_set

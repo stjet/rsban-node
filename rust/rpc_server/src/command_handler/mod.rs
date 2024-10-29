@@ -88,6 +88,7 @@ impl RpcCommandHandler {
             RpcCommand::RepresentativesOnline(args) => to_value(self.representatives_online(args)),
             RpcCommand::SearchReceivable(args) => to_value(self.search_receivable(args)?),
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
+            RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -130,7 +131,6 @@ impl RpcCommandHandler {
             RpcCommand::PopulateBacklog => to_value(self.populate_backlog()),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),
             RpcCommand::StatsClear => to_value(self.stats_clear()),
-            RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
             RpcCommand::Send(args) => to_value(self.send(args)),
             RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),

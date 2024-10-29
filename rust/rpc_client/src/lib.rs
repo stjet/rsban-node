@@ -687,7 +687,7 @@ impl NanoRpcClient {
     pub async fn confirmation_quorum(
         &self,
         peer_details: Option<bool>,
-    ) -> Result<ConfirmationQuorumDto> {
+    ) -> Result<ConfirmationQuorumResponse> {
         let cmd = RpcCommand::confirmation_quorum(peer_details);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

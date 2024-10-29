@@ -28,6 +28,7 @@
 - bootstrap_any
 - bootstrap_lazy
 - confirmation_active
+- confirmation_info
 
 # RPC functions MISSING:
 - account_count
@@ -40,10 +41,9 @@
 - work_peers_clear
 - bootstrap_status
 - confirmation_history
+- confirmation_quorum
 
 # RPC functions to review:
-- confirmation_info
-- confirmation_quorum
 - database_txn_tracker
 - delegators
 - delegators_count

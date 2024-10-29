@@ -70,6 +70,7 @@ impl RpcCommandHandler {
             RpcCommand::BoostrapLazy(args) => to_value(self.bootstrap_lazy(args)?),
             RpcCommand::ConfirmationActive(args) => to_value(self.confirmation_active(args)),
             RpcCommand::ConfirmationInfo(args) => to_value(self.confirmation_info(args)?),
+            RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -125,7 +126,6 @@ impl RpcCommandHandler {
             RpcCommand::BlocksInfo(args) => to_value(self.blocks_info(args)?),
             RpcCommand::Chain(args) => to_value(self.chain(args, false)),
             RpcCommand::Successors(args) => to_value(self.chain(args, true)),
-            RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),
             RpcCommand::WorkValidate(args) => to_value(self.work_validate(args)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),

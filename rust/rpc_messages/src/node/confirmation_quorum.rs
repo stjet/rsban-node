@@ -22,13 +22,14 @@ impl ConfirmationQuorumArgs {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct ConfirmationQuorumDto {
+pub struct ConfirmationQuorumResponse {
     pub quorum_delta: Amount,
     pub online_weight_quorum_percent: u8,
     pub online_weight_minimum: Amount,
     pub online_stake_total: Amount,
     pub peers_stake_total: Amount,
     pub trended_stake_total: Amount,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub peers: Option<Vec<PeerDetailsDto>>,
 }
 

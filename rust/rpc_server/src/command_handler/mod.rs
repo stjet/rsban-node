@@ -85,6 +85,7 @@ impl RpcCommandHandler {
             RpcCommand::Peers(args) => to_value(self.peers(args)),
             RpcCommand::ReceivableExists(args) => to_value(self.receivable_exists(args)?),
             RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
+            RpcCommand::RepresentativesOnline(args) => to_value(self.representatives_online(args)),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -149,7 +150,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletBalances(args) => to_value(self.wallet_balances(args)),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
-            RpcCommand::RepresentativesOnline(args) => to_value(self.representatives_online(args)),
             RpcCommand::Unchecked(args) => to_value(self.unchecked(args)),
             RpcCommand::UncheckedGet(args) => to_value(self.unchecked_get(args)?),
             RpcCommand::UncheckedKeys(args) => to_value(self.unchecked_keys(args)),

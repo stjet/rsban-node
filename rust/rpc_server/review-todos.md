@@ -44,6 +44,7 @@
 - receivable_exists
 - receive_minimum
 - representatives
+- representatives_online
 
 # RPC functions MISSING:
 - account_count
@@ -66,7 +67,6 @@
 - ledger
 - receivable
 - process
-- representatives_online
 - republish
 - search_pending
 - search_receivable

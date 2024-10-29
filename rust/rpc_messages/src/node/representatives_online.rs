@@ -46,8 +46,25 @@ impl RepresentativesOnlineArgsBuilder {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepresentativesOnlineDto {
-    pub representatives: HashMap<Account, Option<Amount>>,
+#[serde(untagged)]
+pub enum RepresentativesOnlineResponse {
+    Simple(SimpleRepresentativesOnline),
+    Detailed(DetailedRepresentativesOnline),
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SimpleRepresentativesOnline {
+    pub representatives: Vec<Account>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct DetailedRepresentativesOnline {
+    pub representatives: HashMap<Account, RepWeightDto>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepWeightDto {
+    pub weight: Amount,
 }
 
 #[cfg(test)]
@@ -115,40 +132,42 @@ mod tests {
 
     #[test]
     fn serialize_representatives_online_dto_with_weight() {
-        let mut representatives = HashMap::new();
-        representatives.insert(
+        let mut detailed = DetailedRepresentativesOnline::default();
+        detailed.representatives.insert(
             Account::decode_account(
                 "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
             )
             .unwrap(),
-            Some(Amount::raw(150462654614686936429917024683496890)),
+            RepWeightDto {
+                weight: Amount::raw(150462654614686936429917024683496890),
+            },
         );
-        let dto = RepresentativesOnlineDto { representatives };
+        let dto = RepresentativesOnlineResponse::Detailed(detailed);
         let serialized = serde_json::to_string(&dto).unwrap();
-        let expected = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":"150462654614686936429917024683496890"}}"#;
+        let expected = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":{"weight":"150462654614686936429917024683496890"}}}"#;
         assert_eq!(serialized, expected);
     }
 
     #[test]
     fn serialize_representatives_online_dto_without_weight() {
-        let mut representatives = HashMap::new();
-        representatives.insert(
+        let mut representatives = Vec::new();
+        representatives.push(
             Account::decode_account(
                 "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
             )
             .unwrap(),
-            None,
         );
-        let dto = RepresentativesOnlineDto { representatives };
+        let dto =
+            RepresentativesOnlineResponse::Simple(SimpleRepresentativesOnline { representatives });
         let serialized = serde_json::to_string(&dto).unwrap();
-        let expected = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":null}}"#;
+        let expected = r#"{"representatives":["nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi"]}"#;
         assert_eq!(serialized, expected);
     }
 
     #[test]
     fn deserialize_representatives_online_dto() {
-        let json = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":"150462654614686936429917024683496890"}}"#;
-        let deserialized: RepresentativesOnlineDto = serde_json::from_str(json).unwrap();
+        let json = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":{"weight":"150462654614686936429917024683496890"}}}"#;
+        let deserialized: DetailedRepresentativesOnline = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.representatives.len(), 1);
         let account = Account::decode_account(
@@ -156,21 +175,21 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            deserialized.representatives[&account],
-            Some(Amount::raw(150462654614686936429917024683496890))
+            deserialized.representatives[&account].weight,
+            Amount::raw(150462654614686936429917024683496890)
         );
     }
 
     #[test]
     fn deserialize_representatives_online_dto_without_weight() {
-        let json = r#"{"representatives":{"nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi":null}}"#;
-        let deserialized: RepresentativesOnlineDto = serde_json::from_str(json).unwrap();
+        let json = r#"{"representatives":["nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi"]}"#;
+        let deserialized: SimpleRepresentativesOnline = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.representatives.len(), 1);
         let account = Account::decode_account(
             "nano_114nk4rwjctu6n6tr6g6ps61g1w3hdpjxfas4xj1tq6i8jyomc5d858xr1xi",
         )
         .unwrap();
-        assert_eq!(deserialized.representatives[&account], None);
+        assert!(deserialized.representatives.contains(&account));
     }
 }

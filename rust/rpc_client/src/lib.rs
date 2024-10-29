@@ -116,10 +116,17 @@ impl NanoRpcClient {
     pub async fn representatives_online(
         &self,
         args: RepresentativesOnlineArgs,
-    ) -> Result<RepresentativesOnlineDto> {
+    ) -> Result<RepresentativesOnlineResponse> {
+        let detailed = args.weight.unwrap_or(false);
         let cmd = RpcCommand::representatives_online(args);
         let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        if detailed {
+            let detailed: DetailedRepresentativesOnline = serde_json::from_value(result)?;
+            Ok(RepresentativesOnlineResponse::Detailed(detailed))
+        } else {
+            let simple: SimpleRepresentativesOnline = serde_json::from_value(result)?;
+            Ok(RepresentativesOnlineResponse::Simple(simple))
+        }
     }
 
     pub async fn receivable_exists(

@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::RepresentativesOnlineArgs;
+use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineResponse};
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -137,7 +137,12 @@ fn representatives_online() {
     // Test filtering by accounts using node2
     let filtered_result = node2
         .runtime
-        .block_on(async { rpc_client.representatives_online(args).await.unwrap() });
+        .block_on(async { rpc_client.representatives_online(args).await })
+        .unwrap();
+
+    let RepresentativesOnlineResponse::Detailed(filtered_result) = filtered_result else {
+        panic!("Not a detailed result")
+    };
 
     assert_eq!(filtered_result.representatives.len(), 1);
     assert!(filtered_result

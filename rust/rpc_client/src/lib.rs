@@ -555,7 +555,7 @@ impl NanoRpcClient {
         &self,
         count: Option<u64>,
         sorting: Option<bool>,
-    ) -> Result<RepresentativesDto> {
+    ) -> Result<RepresentativesResponse> {
         let cmd = RpcCommand::representatives(count, sorting);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

@@ -42,6 +42,8 @@
 - password_enter
 - peers
 - receivable_exists
+- receive_minimum
+- representatives
 
 # RPC functions MISSING:
 - account_count
@@ -57,15 +59,13 @@
 - confirmation_quorum
 - database_txn_tracker
 - election_statistics
+- pruned_exists
+- receive_minimum_set
 
 # RPC functions to review:
 - ledger
 - receivable
 - process
-- pruned_exists
-- receive_minimum
-- receive_minimum_set
-- representatives
 - representatives_online
 - republish
 - search_pending

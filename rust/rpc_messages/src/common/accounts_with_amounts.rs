@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,12 +15,12 @@ impl AccountsWithAmountsDto {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct RepresentativesDto {
-    pub representatives: HashMap<Account, Amount>,
+pub struct RepresentativesResponse {
+    pub representatives: IndexMap<Account, Amount>,
 }
 
-impl RepresentativesDto {
-    pub fn new(representatives: HashMap<Account, Amount>) -> Self {
+impl RepresentativesResponse {
+    pub fn new(representatives: IndexMap<Account, Amount>) -> Self {
         Self { representatives }
     }
 }

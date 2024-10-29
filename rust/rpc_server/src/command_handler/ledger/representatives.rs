@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
+use indexmap::IndexMap;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{RepresentativesArgs, RepresentativesDto};
-use std::collections::HashMap;
+use rsnano_rpc_messages::{RepresentativesArgs, RepresentativesResponse};
 
 impl RpcCommandHandler {
-    pub(crate) fn representatives(&self, args: RepresentativesArgs) -> RepresentativesDto {
-        let mut representatives: Vec<(Account, Amount)> = self
+    pub(crate) fn representatives(&self, args: RepresentativesArgs) -> RepresentativesResponse {
+        let mut representatives: IndexMap<Account, Amount> = self
             .node
             .ledger
             .rep_weights
@@ -15,13 +15,14 @@ impl RpcCommandHandler {
             .collect();
 
         if args.sorting.unwrap_or(false) {
-            representatives.sort_by(|a, b| b.1.cmp(&a.1));
+            representatives.sort_by(|_, v1, _, v2| v2.cmp(v1));
         }
 
         let count = args.count.unwrap_or(std::u64::MAX);
-        let limited_representatives: HashMap<Account, Amount> =
-            representatives.into_iter().take(count as usize).collect();
+        while representatives.len() as u64 > count {
+            representatives.pop();
+        }
 
-        RepresentativesDto::new(limited_representatives)
+        RepresentativesResponse::new(representatives)
     }
 }

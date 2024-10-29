@@ -84,6 +84,8 @@ impl RpcCommandHandler {
             RpcCommand::PasswordEnter(args) => to_value(self.password_enter(args)?),
             RpcCommand::Peers(args) => to_value(self.peers(args)),
             RpcCommand::ReceivableExists(args) => to_value(self.receivable_exists(args)?),
+            RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
+
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
@@ -92,6 +94,11 @@ impl RpcCommandHandler {
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
+            RpcCommand::BootstrapLazy(_) => self.not_implemented(),
+            RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
+            RpcCommand::Stats(_) => self.not_implemented(),
+            RpcCommand::ActiveDifficulty => self.not_implemented(),
+
             // Not reviewed yet:
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
@@ -124,7 +131,6 @@ impl RpcCommandHandler {
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
             RpcCommand::Send(args) => to_value(self.send(args)),
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
-            RpcCommand::ReceiveMinimum => to_value(self.receive_minimum()),
             RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
             RpcCommand::BlocksInfo(args) => to_value(self.blocks_info(args)?),
@@ -150,10 +156,6 @@ impl RpcCommandHandler {
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
-            RpcCommand::BootstrapLazy(_) => self.not_implemented(),
-            RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
-            RpcCommand::Stats(_) => self.not_implemented(),
-            RpcCommand::ActiveDifficulty => self.not_implemented(),
         }?;
 
         Ok(response)

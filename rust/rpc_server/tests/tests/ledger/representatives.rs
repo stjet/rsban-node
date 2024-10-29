@@ -1,6 +1,6 @@
+use indexmap::IndexMap;
 use rsnano_core::Amount;
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use std::collections::HashMap;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -14,7 +14,7 @@ fn representatives_rpc_response() {
         .runtime
         .block_on(async { rpc_client.representatives(None, None).await.unwrap() });
 
-    let mut representatives = HashMap::new();
+    let mut representatives = IndexMap::new();
     representatives.insert(*DEV_GENESIS_ACCOUNT, Amount::MAX);
 
     assert_eq!(result.representatives, representatives);

@@ -1,10 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_node::bootstrap::BootstrapInitiatorExt;
-use rsnano_rpc_messages::{BootstrapAnyArgs, SuccessDto};
+use rsnano_rpc_messages::{BootstrapAnyArgs, SuccessResponse};
 
 impl RpcCommandHandler {
-    pub(crate) fn bootstrap_any(&self, args: BootstrapAnyArgs) -> anyhow::Result<SuccessDto> {
+    pub(crate) fn bootstrap_any(&self, args: BootstrapAnyArgs) -> anyhow::Result<SuccessResponse> {
         if self.node.flags.disable_legacy_bootstrap {
             bail!("Legacy bootstrap is disabled");
         }
@@ -17,6 +17,6 @@ impl RpcCommandHandler {
             .bootstrap_initiator
             .bootstrap(force, bootstrap_id, u32::MAX, start_account);
 
-        Ok(SuccessDto::new())
+        Ok(SuccessResponse::new())
     }
 }

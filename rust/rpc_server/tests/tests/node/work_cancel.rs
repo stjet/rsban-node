@@ -1,7 +1,7 @@
 use std::u64;
 
 use rsnano_core::BlockHash;
-use rsnano_rpc_messages::SuccessDto;
+use rsnano_rpc_messages::SuccessResponse;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 
 #[test]
@@ -51,7 +51,7 @@ fn work_cancel() {
         .block_on(async { rpc_client.work_cancel(hash).await.unwrap() });
 
     // Check the result
-    assert_eq!(result, SuccessDto::new());
+    assert_eq!(result, SuccessResponse::new());
 
     // Ensure work generation was actually cancelled
     assert_timely(std::time::Duration::from_secs(10), || {

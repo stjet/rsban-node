@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::SuccessDto;
+use rsnano_rpc_messages::SuccessResponse;
 
 impl RpcCommandHandler {
-    pub(crate) fn stats_clear(&self) -> SuccessDto {
+    pub(crate) fn stats_clear(&self) -> SuccessResponse {
         self.node.stats.clear();
-        SuccessDto::new()
+        SuccessResponse::new()
     }
 }

@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct SuccessDto {
+pub struct SuccessResponse {
     success: String,
 }
 
-impl SuccessDto {
+impl SuccessResponse {
     pub fn new() -> Self {
         Self {
             success: String::new(),
@@ -20,7 +20,7 @@ mod tests {
 
     #[test]
     fn serialize_success_dto() {
-        let success_dto = SuccessDto::new();
+        let success_dto = SuccessResponse::new();
         let serialized = serde_json::to_string(&success_dto).unwrap();
         let expected_json = r#"{"success":""}"#;
         assert_eq!(serialized, expected_json);
@@ -29,8 +29,8 @@ mod tests {
     #[test]
     fn deserialize_success_dto() {
         let json_str = r#"{"success":""}"#;
-        let deserialized: SuccessDto = serde_json::from_str(json_str).unwrap();
-        let expected_error_dto = SuccessDto::new();
+        let deserialized: SuccessResponse = serde_json::from_str(json_str).unwrap();
+        let expected_error_dto = SuccessResponse::new();
         assert_eq!(deserialized, expected_error_dto);
     }
 }

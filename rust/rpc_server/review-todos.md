@@ -22,7 +22,9 @@
 - block_account
 - block_count
 - block_create
+- block_hash
 - receive
+- bootstrap
 
 # RPC functions MISSING:
 - account_count
@@ -35,8 +37,6 @@
 - work_peers_clear
 
 # RPC functions to review:
-- block_hash
-- bootstrap
 - bootstrap_any
 - bootstrap_lazy
 - bootstrap_status

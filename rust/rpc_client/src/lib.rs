@@ -44,13 +44,13 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn work_peer_add(&self, args: AddressWithPortArgs) -> Result<SuccessDto> {
+    pub async fn work_peer_add(&self, args: AddressWithPortArgs) -> Result<SuccessResponse> {
         let cmd = RpcCommand::work_peer_add(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn work_peers_clear(&self) -> Result<SuccessDto> {
+    pub async fn work_peers_clear(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::work_peers_clear();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -211,19 +211,19 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn bootstrap_any(&self, args: BootstrapAnyArgs) -> Result<SuccessDto> {
+    pub async fn bootstrap_any(&self, args: BootstrapAnyArgs) -> Result<SuccessResponse> {
         let cmd = RpcCommand::bootstrap_any(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn bootstrap(&self, args: BootstrapArgs) -> Result<SuccessDto> {
+    pub async fn bootstrap(&self, args: BootstrapArgs) -> Result<SuccessResponse> {
         let cmd = RpcCommand::bootstrap(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn work_cancel(&self, hash: BlockHash) -> Result<SuccessDto> {
+    pub async fn work_cancel(&self, hash: BlockHash) -> Result<SuccessResponse> {
         let cmd = RpcCommand::work_cancel(hash);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -343,7 +343,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn stop(&self) -> Result<SuccessDto> {
+    pub async fn stop(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::stop();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -412,7 +412,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn validate_account_number(&self, account: Account) -> Result<SuccessDto> {
+    pub async fn validate_account_number(&self, account: Account) -> Result<SuccessResponse> {
         let cmd = RpcCommand::validate_account_number(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -434,7 +434,7 @@ impl NanoRpcClient {
         &self,
         wallet: WalletId,
         accounts: Vec<Account>,
-    ) -> Result<SuccessDto> {
+    ) -> Result<SuccessResponse> {
         let cmd = RpcCommand::wallet_add_watch(wallet, accounts);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -451,7 +451,7 @@ impl NanoRpcClient {
         wallet: WalletId,
         account: Account,
         work: WorkNonce,
-    ) -> Result<SuccessDto> {
+    ) -> Result<SuccessResponse> {
         let cmd = RpcCommand::work_set(wallet, account, work);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -499,7 +499,11 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn password_change(&self, wallet: WalletId, password: String) -> Result<SuccessDto> {
+    pub async fn password_change(
+        &self,
+        wallet: WalletId,
+        password: String,
+    ) -> Result<SuccessResponse> {
         let cmd = RpcCommand::password_change(wallet, password);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -535,7 +539,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn populate_backlog(&self) -> Result<SuccessDto> {
+    pub async fn populate_backlog(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::populate_backlog();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -560,13 +564,13 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn stats_clear(&self) -> Result<SuccessDto> {
+    pub async fn stats_clear(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::stats_clear();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn unchecked_clear(&self) -> Result<SuccessDto> {
+    pub async fn unchecked_clear(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::unchecked_clear();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -584,7 +588,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn search_receivable_all(&self) -> Result<SuccessDto> {
+    pub async fn search_receivable_all(&self) -> Result<SuccessResponse> {
         let cmd = RpcCommand::search_receivable_all();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

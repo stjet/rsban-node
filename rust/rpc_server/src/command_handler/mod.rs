@@ -89,6 +89,7 @@ impl RpcCommandHandler {
             RpcCommand::SearchReceivable(args) => to_value(self.search_receivable(args)?),
             RpcCommand::SearchReceivableAll => to_value(self.search_receivable_all()),
             RpcCommand::UncheckedClear => to_value(self.unchecked_clear()),
+            RpcCommand::Unchecked(args) => to_value(self.unchecked(args)),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -150,7 +151,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletBalances(args) => to_value(self.wallet_balances(args)),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
-            RpcCommand::Unchecked(args) => to_value(self.unchecked(args)),
             RpcCommand::UncheckedGet(args) => to_value(self.unchecked_get(args)?),
             RpcCommand::UncheckedKeys(args) => to_value(self.unchecked_keys(args)),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),

@@ -139,8 +139,8 @@ impl UncheckedMap {
 
     pub fn for_each(
         &self,
-        action: Box<dyn FnMut(&UncheckedKey, &UncheckedInfo)>,
-        predicate: Box<dyn Fn() -> bool>,
+        action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        predicate: impl FnMut() -> bool,
     ) {
         let lock = self.mutable.lock().unwrap();
         lock.entries_container.for_each(action, predicate)
@@ -380,8 +380,8 @@ impl EntriesContainer {
 
     pub fn for_each(
         &self,
-        mut action: Box<dyn FnMut(&UncheckedKey, &UncheckedInfo)>,
-        predicate: Box<dyn Fn() -> bool>,
+        mut action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        mut predicate: impl FnMut() -> bool,
     ) {
         for entry in self.by_id.values() {
             if !predicate() {

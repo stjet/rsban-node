@@ -107,7 +107,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn unchecked(&self, count: u64) -> Result<UncheckedDto> {
+    pub async fn unchecked(&self, count: Option<u64>) -> Result<UncheckedResponse> {
         let cmd = RpcCommand::unchecked(count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -413,7 +413,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn frontier_count(&self) -> Result<CountRpcMessage> {
+    pub async fn frontier_count(&self) -> Result<CountResponse> {
         let cmd = RpcCommand::frontier_count();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -628,7 +628,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn delegators_count(&self, account: Account) -> Result<CountRpcMessage> {
+    pub async fn delegators_count(&self, account: Account) -> Result<CountResponse> {
         let cmd = RpcCommand::delegators_count(account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

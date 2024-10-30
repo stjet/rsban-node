@@ -42,7 +42,7 @@ fn test_unchecked() {
 
     let unchecked_dto = node
         .runtime
-        .block_on(async { rpc_client.unchecked(2).await.unwrap() });
+        .block_on(async { rpc_client.unchecked(Some(2)).await.unwrap() });
 
     assert_eq!(unchecked_dto.blocks.len(), 2);
     assert!(unchecked_dto.blocks.contains_key(&open.hash()));

@@ -113,7 +113,7 @@ pub enum RpcCommand {
     Receivable(ReceivableArgs),
     ReceivableExists(ReceivableExistsArgs),
     RepresentativesOnline(RepresentativesOnlineArgs),
-    Unchecked(CountRpcMessage),
+    Unchecked(CountArgs),
     UncheckedGet(HashRpcMessage),
     UncheckedKeys(UncheckedKeysArgs),
     ConfirmationInfo(ConfirmationInfoArgs),

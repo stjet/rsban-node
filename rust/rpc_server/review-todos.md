@@ -48,6 +48,7 @@
 - search_receivable
 - search_receivable_all
 - unchecked_clear
+- unchecked
 
 # RPC functions MISSING:
 - account_count
@@ -77,7 +78,6 @@
 - stats_clear
 - stop
 - telemetry
-- unchecked
 - unchecked_get
 - unchecked_keys
 - unopened

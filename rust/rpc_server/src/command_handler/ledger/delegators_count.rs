@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::PublicKey;
-use rsnano_rpc_messages::{AccountArg, CountRpcMessage};
+use rsnano_rpc_messages::{AccountArg, CountResponse};
 
 impl RpcCommandHandler {
-    pub(crate) fn delegators_count(&self, args: AccountArg) -> CountRpcMessage {
+    pub(crate) fn delegators_count(&self, args: AccountArg) -> CountResponse {
         let representative: PublicKey = args.account.into();
         let mut count = 0;
 
@@ -17,6 +17,6 @@ impl RpcCommandHandler {
 
             iter.next();
         }
-        CountRpcMessage::new(count)
+        CountResponse::new(count)
     }
 }

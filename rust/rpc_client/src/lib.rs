@@ -101,7 +101,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn unchecked_get(&self, hash: BlockHash) -> Result<UncheckedGetDto> {
+    pub async fn unchecked_get(&self, hash: BlockHash) -> Result<UncheckedGetResponse> {
         let cmd = RpcCommand::unchecked_get(hash);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

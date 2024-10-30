@@ -10,16 +10,7 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct UncheckedGetDto {
+pub struct UncheckedGetResponse {
     pub modified_timestamp: u64,
     pub contents: JsonBlock,
-}
-
-impl UncheckedGetDto {
-    pub fn new(modified_timestamp: u64, contents: JsonBlock) -> Self {
-        Self {
-            modified_timestamp,
-            contents,
-        }
-    }
 }

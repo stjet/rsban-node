@@ -14,19 +14,21 @@ impl RpcCommandHandler {
         let mut balances = HashMap::new();
         let tx = self.node.ledger.read_txn();
         for account in accounts {
-            let balance = match self.node.ledger.any().account_balance(&tx, &account) {
-                Some(balance) => balance,
-                None => Amount::zero(),
-            };
+            let balance = self
+                .node
+                .ledger
+                .any()
+                .account_balance(&tx, &account)
+                .unwrap_or_default();
 
-            let pending = self.node.ledger.account_receivable(&tx, &account, false);
-
-            let account_balance = AccountBalanceResponse {
-                balance,
-                pending,
-                receivable: pending,
-            };
             if balance >= threshold {
+                let pending = self.node.ledger.account_receivable(&tx, &account, false);
+
+                let account_balance = AccountBalanceResponse {
+                    balance,
+                    pending,
+                    receivable: pending,
+                };
                 balances.insert(account, account_balance);
             }
         }

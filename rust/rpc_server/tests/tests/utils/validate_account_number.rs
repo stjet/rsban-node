@@ -10,7 +10,7 @@ fn validate_account_number() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .validate_account_number(Account::zero().to_string())
+            .validate_account_number(Account::zero().encode_account())
             .await
             .unwrap()
     });

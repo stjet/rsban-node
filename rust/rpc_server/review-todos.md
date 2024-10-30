@@ -52,6 +52,11 @@
 - unchecked_get
 - unchecked_keys
 - uptime
+- validate_account_number
+- wallet_add
+- wallet_add_watch
+- wallet_balances
+- populate_backlog
 
 # RPC functions MISSING:
 - account_count
@@ -69,6 +74,8 @@
 - election_statistics
 - pruned_exists
 - receive_minimum_set
+- version
+- stats
 
 # RPC functions to review:
 - ledger
@@ -77,16 +84,10 @@
 - republish
 - send
 - sign
-- stats
 - stats_clear
 - stop
 - telemetry
 - unopened
-- validate_account_number
-- version
-- wallet_add
-- wallet_add_watch
-- wallet_balances
 - wallet_change_seed
 - wallet_contains
 - wallet_create
@@ -109,4 +110,3 @@
 - work_get
 - work_set
 - work_validate
-- populate_backlog

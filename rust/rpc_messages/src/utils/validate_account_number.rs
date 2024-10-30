@@ -16,7 +16,7 @@ mod tests {
     fn serialize_validate_account_number_command() {
         assert_eq!(
             to_string_pretty(&RpcCommand::validate_account_number(
-                Account::zero().to_string()
+                Account::zero().encode_account()
             ))
             .unwrap(),
             r#"{
@@ -33,7 +33,8 @@ mod tests {
 "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command = RpcCommand::validate_account_number(Account::zero().to_string());
+        let expected_command =
+            RpcCommand::validate_account_number(Account::zero().encode_account());
         assert_eq!(deserialized, expected_command);
     }
 }

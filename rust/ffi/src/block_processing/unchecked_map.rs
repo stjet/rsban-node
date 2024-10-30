@@ -159,7 +159,7 @@ pub unsafe extern "C" fn rsn_unchecked_map_for_each2(
     predicate_callback_context: *mut c_void,
     drop_predicate_callback: VoidPointerCallback,
 ) {
-    let mut notify_observers_callback = wrap_action_callback(
+    let notify_observers_callback = wrap_action_callback(
         action_callback,
         action_callback_context,
         drop_action_callback,
@@ -175,7 +175,7 @@ pub unsafe extern "C" fn rsn_unchecked_map_for_each2(
     bytes.copy_from_slice(std::slice::from_raw_parts(dependency, 32));
     (*handle).0.for_each_with_dependency(
         &HashOrAccount::from_bytes(bytes),
-        &mut notify_observers_callback,
-        &notify_observers_callback2,
+        notify_observers_callback,
+        notify_observers_callback2,
     );
 }

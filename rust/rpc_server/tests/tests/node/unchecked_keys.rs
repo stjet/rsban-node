@@ -54,7 +54,7 @@ fn test_unchecked_keys() {
 
     let unchecked_dto = node.runtime.block_on(async {
         rpc_client
-            .unchecked_keys(key.account().into(), 2)
+            .unchecked_keys(key.account().into(), Some(2))
             .await
             .unwrap()
     });

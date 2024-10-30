@@ -8,7 +8,7 @@ use rsnano_core::{
 use rsnano_rpc_messages::*;
 use serde::Serialize;
 use serde_json::{from_value, Value};
-use std::{net::Ipv6Addr, time::Duration};
+use std::time::Duration;
 
 pub struct NanoRpcClient {
     url: Url,
@@ -95,7 +95,11 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn unchecked_keys(&self, key: HashOrAccount, count: u64) -> Result<UncheckedKeysDto> {
+    pub async fn unchecked_keys(
+        &self,
+        key: HashOrAccount,
+        count: Option<u64>,
+    ) -> Result<UncheckedKeysResponse> {
         let cmd = RpcCommand::unchecked_keys(key, count);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

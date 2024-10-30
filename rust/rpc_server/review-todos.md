@@ -50,6 +50,7 @@
 - unchecked_clear
 - unchecked
 - unchecked_get
+- unchecked_keys
 
 # RPC functions MISSING:
 - account_count
@@ -79,7 +80,6 @@
 - stats_clear
 - stop
 - telemetry
-- unchecked_keys
 - unopened
 - uptime
 - validate_account_number

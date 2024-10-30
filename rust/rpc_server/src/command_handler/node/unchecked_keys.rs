@@ -1,39 +1,28 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{UncheckedInfo, UncheckedKey};
-use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysDto};
-use std::sync::{Arc, Mutex};
+use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysResponse};
+use std::cell::RefCell;
 
 impl RpcCommandHandler {
-    pub(crate) fn unchecked_keys(&self, args: UncheckedKeysArgs) -> UncheckedKeysDto {
-        let unchecked_keys = Arc::new(Mutex::new(Vec::new()));
+    pub(crate) fn unchecked_keys(&self, args: UncheckedKeysArgs) -> UncheckedKeysResponse {
+        let count = args.count.unwrap_or(u64::MAX);
+        let unchecked_keys = RefCell::new(Vec::new());
 
         self.node.unchecked.for_each_with_dependency(
             &args.key,
-            &mut {
-                let unchecked_keys = Arc::clone(&unchecked_keys);
-                move |unchecked_key: &UncheckedKey, info: &UncheckedInfo| {
-                    let mut unchecked_keys_guard = unchecked_keys.lock().unwrap();
-                    if unchecked_keys_guard.len() < args.count as usize {
-                        if let Some(block) = info.block.as_ref() {
-                            let dto = UncheckedKeyDto::new(
-                                unchecked_key.hash,
-                                block.hash(),
-                                info.modified,
-                                block.json_representation(),
-                            );
-                            unchecked_keys_guard.push(dto);
-                        }
-                    }
+            |key, info| {
+                if let Some(block) = info.block.as_ref() {
+                    let key_dto = UncheckedKeyDto {
+                        key: key.previous,
+                        hash: block.hash(),
+                        modified_timestamp: info.modified,
+                        contents: block.json_representation(),
+                    };
+                    unchecked_keys.borrow_mut().push(key_dto);
                 }
             },
-            &Box::new(|| unchecked_keys.lock().unwrap().len() < args.count as usize),
+            || (unchecked_keys.borrow().len() as u64) < count,
         );
 
-        let unchecked_keys = Arc::try_unwrap(unchecked_keys)
-            .unwrap()
-            .into_inner()
-            .unwrap();
-
-        UncheckedKeysDto::new(unchecked_keys)
+        UncheckedKeysResponse::new(unchecked_keys.take())
     }
 }

@@ -116,9 +116,7 @@ impl RpcCommandHandler {
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::Uptime => to_value(self.uptime()),
-            RpcCommand::ValidateAccountNumber(_args) => {
-                to_value(validate_account_number("TODO".to_string()))
-            }
+            RpcCommand::ValidateAccountNumber(args) => to_value(validate_account_number(args)),
             RpcCommand::NanoToRaw(args) => to_value(nano_to_raw(args)),
             RpcCommand::RawToNano(args) => to_value(raw_to_nano(args)),
             RpcCommand::WalletAddWatch(args) => to_value(self.wallet_add_watch(args)?),
@@ -193,7 +191,6 @@ impl RpcCommandHandler {
     const BLOCK_ERROR: &str = "Block error";
     const NOT_IMPLEMENTED: &str = "Not implemented yet";
     const ACCOUNT_NOT_FOUND: &str = "Account not found";
-    const PEER_NOT_FOUND: &str = "Peer not found";
 
     fn not_implemented(&self) -> Result<Value, serde_json::Error> {
         Ok(Value::String(Self::NOT_IMPLEMENTED.to_string()))

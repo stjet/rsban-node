@@ -22,3 +22,8 @@ impl AccountResponse {
         Self { account }
     }
 }
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountCandidateArg {
+    pub account: String,
+}

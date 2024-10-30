@@ -411,7 +411,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn uptime(&self) -> Result<UptimeDto> {
+    pub async fn uptime(&self) -> Result<UptimeResponse> {
         let cmd = RpcCommand::uptime();
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -423,8 +423,11 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn validate_account_number(&self, account: Account) -> Result<SuccessResponse> {
-        let cmd = RpcCommand::validate_account_number(account);
+    pub async fn validate_account_number(
+        &self,
+        account: impl Into<String>,
+    ) -> Result<ValidResponse> {
+        let cmd = RpcCommand::validate_account_number(account.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -520,13 +523,17 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn password_enter(&self, wallet: WalletId, password: String) -> Result<ValidDto> {
+    pub async fn password_enter(
+        &self,
+        wallet: WalletId,
+        password: String,
+    ) -> Result<ValidResponse> {
         let cmd = RpcCommand::password_enter(wallet, password);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn password_valid(&self, wallet: WalletId) -> Result<ValidDto> {
+    pub async fn password_valid(&self, wallet: WalletId) -> Result<ValidResponse> {
         let cmd = RpcCommand::password_valid(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

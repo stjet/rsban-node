@@ -51,6 +51,7 @@
 - unchecked
 - unchecked_get
 - unchecked_keys
+- uptime
 
 # RPC functions MISSING:
 - account_count
@@ -81,7 +82,6 @@
 - stop
 - telemetry
 - unopened
-- uptime
 - validate_account_number
 - version
 - wallet_add

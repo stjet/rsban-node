@@ -8,11 +8,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct UptimeDto {
+pub struct UptimeResponse {
     pub seconds: u64,
 }
 
-impl UptimeDto {
+impl UptimeResponse {
     pub fn new(seconds: u64) -> Self {
         Self { seconds }
     }

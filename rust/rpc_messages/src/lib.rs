@@ -52,7 +52,7 @@ pub enum RpcCommand {
     BlockCount,
     Uptime,
     FrontierCount,
-    ValidateAccountNumber(AccountArg),
+    ValidateAccountNumber(AccountCandidateArg),
     NanoToRaw(AmountRpcMessage),
     RawToNano(AmountRpcMessage),
     WalletAddWatch(WalletAddWatchArgs),

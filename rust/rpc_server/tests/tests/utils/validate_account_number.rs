@@ -8,12 +8,14 @@ fn validate_account_number() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
 
-    node.runtime.block_on(async {
+    let result = node.runtime.block_on(async {
         rpc_client
-            .validate_account_number(Account::zero())
+            .validate_account_number(Account::zero().to_string())
             .await
             .unwrap()
     });
+
+    assert_eq!(result.valid, "1");
 
     server.abort();
 }

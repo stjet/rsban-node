@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct ValidDto {
+pub struct ValidResponse {
     pub valid: String,
 }
 
-impl ValidDto {
+impl ValidResponse {
     pub fn new(valid: bool) -> Self {
         Self {
             valid: if valid {

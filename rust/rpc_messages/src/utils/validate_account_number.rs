@@ -1,9 +1,8 @@
-use crate::{common::AccountArg, RpcCommand};
-use rsnano_core::Account;
+use crate::{AccountCandidateArg, RpcCommand};
 
 impl RpcCommand {
-    pub fn validate_account_number(account: Account) -> Self {
-        Self::ValidateAccountNumber(AccountArg::new(account))
+    pub fn validate_account_number(account: String) -> Self {
+        Self::ValidateAccountNumber(AccountCandidateArg { account })
     }
 }
 
@@ -16,7 +15,10 @@ mod tests {
     #[test]
     fn serialize_validate_account_number_command() {
         assert_eq!(
-            to_string_pretty(&RpcCommand::validate_account_number(Account::zero())).unwrap(),
+            to_string_pretty(&RpcCommand::validate_account_number(
+                Account::zero().to_string()
+            ))
+            .unwrap(),
             r#"{
   "action": "validate_account_number",
   "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
@@ -31,7 +33,7 @@ mod tests {
 "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command = RpcCommand::validate_account_number(Account::zero());
+        let expected_command = RpcCommand::validate_account_number(Account::zero().to_string());
         assert_eq!(deserialized, expected_command);
     }
 }

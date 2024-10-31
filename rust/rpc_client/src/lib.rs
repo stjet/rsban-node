@@ -80,7 +80,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn ledger(&self, ledger_args: LedgerArgs) -> Result<LedgerDto> {
+    pub async fn ledger(&self, ledger_args: LedgerArgs) -> Result<LedgerResponse> {
         let cmd = RpcCommand::ledger(ledger_args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

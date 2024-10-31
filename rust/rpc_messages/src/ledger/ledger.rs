@@ -90,7 +90,7 @@ impl LedgerArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct LedgerDto {
+pub struct LedgerResponse {
     pub accounts: HashMap<Account, LedgerAccountInfo>,
 }
 
@@ -108,40 +108,12 @@ pub struct LedgerAccountInfo {
     pub receivable: Option<Amount>,
 }
 
-impl LedgerAccountInfo {
-    pub fn new(
-        frontier: BlockHash,
-        open_block: BlockHash,
-        representative_block: BlockHash,
-        balance: Amount,
-        modified_timestamp: u64,
-        block_count: u64,
-        representative: Option<Account>,
-        weight: Option<Amount>,
-        pending: Option<Amount>,
-        receivable: Option<Amount>,
-    ) -> Self {
-        Self {
-            frontier,
-            open_block,
-            representative_block,
-            balance,
-            modified_timestamp,
-            block_count,
-            representative,
-            weight,
-            pending,
-            receivable,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        ledger::{LedgerAccountInfo, LedgerArgs, LedgerDto},
+        ledger::{LedgerAccountInfo, LedgerArgs, LedgerResponse},
         RpcCommand,
     };
     use rsnano_core::{Account, Amount, BlockHash};
@@ -235,35 +207,35 @@ mod tests {
                 "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
             .unwrap(),
-            LedgerAccountInfo::new(
-                BlockHash::decode_hex(
+            LedgerAccountInfo {
+                frontier: BlockHash::decode_hex(
                     "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
                 )
                 .unwrap(),
-                BlockHash::decode_hex(
+                open_block: BlockHash::decode_hex(
                     "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                 )
                 .unwrap(),
-                BlockHash::decode_hex(
+                representative_block: BlockHash::decode_hex(
                     "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                 )
                 .unwrap(),
-                Amount::raw(10000000000000000000000000000000u128),
-                1553174994,
-                50,
-                Some(
+                balance: Amount::raw(10000000000000000000000000000000u128),
+                modified_timestamp: 1553174994,
+                block_count: 50,
+                representative: Some(
                     Account::decode_account(
                         "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     )
                     .unwrap(),
                 ),
-                Some(Amount::raw(10000000000000000000000000000000u128)),
-                Some(Amount::raw(10000000000000000000000000000u128)),
-                Some(Amount::raw(10000000000000000000000000000u128)),
-            ),
+                weight: Some(Amount::raw(10000000000000000000000000000000u128)),
+                pending: Some(Amount::raw(10000000000000000000000000000u128)),
+                receivable: Some(Amount::raw(10000000000000000000000000000u128)),
+            },
         );
 
-        let ledger_dto = LedgerDto { accounts };
+        let ledger_dto = LedgerResponse { accounts };
 
         let serialized = serde_json::to_value(&ledger_dto).unwrap();
 
@@ -306,7 +278,7 @@ mod tests {
             }
         }"#;
 
-        let deserialized: LedgerDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: LedgerResponse = serde_json::from_str(json_str).unwrap();
 
         assert_eq!(deserialized.accounts.len(), 1);
 

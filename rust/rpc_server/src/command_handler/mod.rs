@@ -121,6 +121,7 @@ impl RpcCommandHandler {
             RpcCommand::Uptime => to_value(self.uptime()),
             RpcCommand::NanoToRaw(args) => to_value(nano_to_raw(args)?),
             RpcCommand::RawToNano(args) => to_value(raw_to_nano(args)),
+            RpcCommand::Ledger(args) => to_value(self.ledger(args)),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -136,7 +137,6 @@ impl RpcCommandHandler {
             RpcCommand::ActiveDifficulty => self.not_implemented(),
 
             // Not reviewed yet:
-            RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
             RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),

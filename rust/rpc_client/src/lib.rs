@@ -142,16 +142,33 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn receivable(&self, args: ReceivableArgs) -> Result<ReceivableDto> {
+    pub async fn receivable(&self, args: impl Into<ReceivableArgs>) -> Result<ReceivableResponse> {
+        let args = args.into();
+        let source = args.source.unwrap_or_default();
+        let min_version = args.min_version.unwrap_or_default();
+        let simple = args.threshold.unwrap_or_default().is_zero()
+            && !source
+            && !min_version
+            && !args.sorting.unwrap_or_default();
+
         let cmd = RpcCommand::receivable(args);
         let result = self.rpc_request(&cmd).await?;
-        Ok(serde_json::from_value(result)?)
+        if simple {
+            let blocks = serde_json::from_value::<ReceivableSimple>(result)?;
+            Ok(ReceivableResponse::Simple(blocks))
+        } else if source || min_version {
+            let blocks = serde_json::from_value::<ReceivableSource>(result)?;
+            Ok(ReceivableResponse::Source(blocks))
+        } else {
+            let blocks = serde_json::from_value::<ReceivableThreshold>(result)?;
+            Ok(ReceivableResponse::Threshold(blocks))
+        }
     }
 
     pub async fn accounts_receivable(
         &self,
         args: impl Into<AccountsReceivableArgs>,
-    ) -> Result<ReceivableDto> {
+    ) -> Result<AccountsReceivableResponse> {
         let args = args.into();
 
         let threshold = args.threshold.unwrap_or_default();
@@ -160,11 +177,17 @@ impl NanoRpcClient {
         let cmd = RpcCommand::AccountsReceivable(args);
         let result = self.rpc_request(&cmd).await?;
         if simple {
-            Ok(ReceivableDto::Simple(serde_json::from_value(result)?))
+            Ok(AccountsReceivableResponse::Simple(serde_json::from_value(
+                result,
+            )?))
         } else if source {
-            Ok(ReceivableDto::Source(serde_json::from_value(result)?))
+            Ok(AccountsReceivableResponse::Source(serde_json::from_value(
+                result,
+            )?))
         } else {
-            Ok(ReceivableDto::Threshold(serde_json::from_value(result)?))
+            Ok(AccountsReceivableResponse::Threshold(
+                serde_json::from_value(result)?,
+            ))
         }
     }
 
@@ -211,7 +234,10 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_receivable(&self, args: WalletReceivableArgs) -> Result<ReceivableDto> {
+    pub async fn wallet_receivable(
+        &self,
+        args: WalletReceivableArgs,
+    ) -> Result<AccountsReceivableResponse> {
         let cmd = RpcCommand::wallet_receivable(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum ReceivableDto {
+pub enum ReceivableResponse {
     Simple(ReceivableSimple),
     Source(ReceivableSource),
     Threshold(ReceivableThreshold),
@@ -12,23 +12,49 @@ pub enum ReceivableDto {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ReceivableSimple {
-    pub blocks: IndexMap<Account, Vec<BlockHash>>,
+    pub blocks: Vec<BlockHash>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ReceivableThreshold {
-    pub blocks: IndexMap<Account, IndexMap<BlockHash, Amount>>,
+    pub blocks: IndexMap<BlockHash, Amount>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ReceivableSource {
+    pub blocks: IndexMap<BlockHash, SourceInfo>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AccountsReceivableResponse {
+    Simple(AccountsReceivableSimple),
+    Source(AccountsReceivableSource),
+    Threshold(AccountsReceivableThreshold),
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountsReceivableSimple {
+    pub blocks: IndexMap<Account, Vec<BlockHash>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountsReceivableThreshold {
+    pub blocks: IndexMap<Account, IndexMap<BlockHash, Amount>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountsReceivableSource {
     pub blocks: IndexMap<Account, IndexMap<BlockHash, SourceInfo>>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SourceInfo {
     pub amount: Amount,
-    pub source: Account,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_version: Option<u8>,
 }
 
 #[cfg(test)]
@@ -39,7 +65,7 @@ mod tests {
     fn serialize_wallet_receivable_dto_blocks() {
         let mut blocks = IndexMap::new();
         blocks.insert(Account::zero(), vec![BlockHash::zero()]);
-        let works = ReceivableDto::Simple(ReceivableSimple { blocks });
+        let works = AccountsReceivableResponse::Simple(AccountsReceivableSimple { blocks });
         let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
 
         let serialized = serde_json::to_string(&works).unwrap();
@@ -50,12 +76,12 @@ mod tests {
     #[test]
     fn deserialize_wallet_receivable_dto_blocks() {
         let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
-        let works: ReceivableDto = serde_json::from_str(json_data).unwrap();
+        let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();
         expected_blocks.insert(Account::zero(), vec![BlockHash::zero()]);
 
-        let expected_works = ReceivableDto::Simple(ReceivableSimple {
+        let expected_works = AccountsReceivableResponse::Simple(AccountsReceivableSimple {
             blocks: expected_blocks,
         });
 
@@ -69,7 +95,7 @@ mod tests {
         inner_map.insert(BlockHash::zero(), Amount::from(1000));
         blocks.insert(Account::zero(), inner_map);
 
-        let works = ReceivableDto::Threshold(ReceivableThreshold { blocks });
+        let works = AccountsReceivableResponse::Threshold(AccountsReceivableThreshold { blocks });
 
         let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
@@ -80,14 +106,14 @@ mod tests {
     #[test]
     fn deserialize_wallet_receivable_dto_threshold() {
         let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
-        let works: ReceivableDto = serde_json::from_str(json_data).unwrap();
+        let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();
         let mut inner_map = IndexMap::new();
         inner_map.insert(BlockHash::zero(), Amount::from(1000));
         expected_blocks.insert(Account::zero(), inner_map);
 
-        let expected_works = ReceivableDto::Threshold(ReceivableThreshold {
+        let expected_works = AccountsReceivableResponse::Threshold(AccountsReceivableThreshold {
             blocks: expected_blocks,
         });
 
@@ -102,12 +128,13 @@ mod tests {
             BlockHash::zero(),
             SourceInfo {
                 amount: Amount::from(1000),
-                source: Account::zero(),
+                source: Some(Account::zero()),
+                min_version: None,
             },
         );
         blocks.insert(Account::zero(), inner_map);
 
-        let works = ReceivableDto::Source(ReceivableSource { blocks });
+        let works = AccountsReceivableResponse::Source(AccountsReceivableSource { blocks });
 
         let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"nano_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
@@ -118,7 +145,7 @@ mod tests {
     #[test]
     fn deserialize_wallet_receivable_dto_source() {
         let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"nano_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
-        let works: ReceivableDto = serde_json::from_str(json_data).unwrap();
+        let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();
         let mut inner_map = IndexMap::new();
@@ -126,12 +153,13 @@ mod tests {
             BlockHash::zero(),
             SourceInfo {
                 amount: Amount::from(1000),
-                source: Account::zero(),
+                source: Some(Account::zero()),
+                min_version: None,
             },
         );
         expected_blocks.insert(Account::zero(), inner_map);
 
-        let expected_works = ReceivableDto::Source(ReceivableSource {
+        let expected_works = AccountsReceivableResponse::Source(AccountsReceivableSource {
             blocks: expected_blocks,
         });
 

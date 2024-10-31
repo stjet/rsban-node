@@ -1,6 +1,6 @@
 use rsnano_core::{Account, Amount, PublicKey, RawKey, WalletId};
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{ReceivableDto, WalletReceivableArgs};
+use rsnano_rpc_messages::{AccountsReceivableResponse, WalletReceivableArgs};
 use test_helpers::{send_block_to, setup_rpc_client_and_server, System};
 
 #[test]
@@ -28,7 +28,7 @@ fn wallet_receivable_include_only_confirmed_false() {
         .runtime
         .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Simple(simple) = result {
+    if let AccountsReceivableResponse::Simple(simple) = result {
         assert_eq!(
             simple.blocks.get(&Account::from(public_key)).unwrap(),
             &vec![send.hash()]
@@ -69,7 +69,7 @@ fn wallet_receivable_options_none() {
             .unwrap()
     });
 
-    if let ReceivableDto::Simple(simple) = result {
+    if let AccountsReceivableResponse::Simple(simple) = result {
         assert_eq!(
             simple.blocks.get(&Account::from(public_key)).unwrap(),
             &vec![send.hash()]
@@ -109,7 +109,7 @@ fn wallet_receivable_threshold_some() {
         .runtime
         .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Threshold(simple) = result {
+    if let AccountsReceivableResponse::Threshold(simple) = result {
         let account_blocks = simple.blocks.get(&Account::from(public_key)).unwrap();
         assert_eq!(account_blocks.len(), 2);
         assert_eq!(account_blocks.get(&send.hash()).unwrap(), &Amount::raw(1));

@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{ReceivableArgs, ReceivableDto};
+use rsnano_rpc_messages::{ReceivableArgs, ReceivableResponse};
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
@@ -60,34 +60,34 @@ fn receivable_include_only_confirmed() {
 
     let result1 = node.runtime.block_on(async {
         rpc_client
-            .receivable(ReceivableArgs::new(public_key.into(), 1))
+            .receivable(ReceivableArgs {
+                account: public_key.into(),
+                count: Some(1),
+                ..Default::default()
+            })
             .await
             .unwrap()
     });
 
-    if let ReceivableDto::Simple(simple) = result1 {
-        assert!(simple
-            .blocks
-            .get(&Account::from(public_key))
-            .unwrap()
-            .is_empty());
+    if let ReceivableResponse::Simple(simple) = result1 {
+        assert!(simple.blocks.is_empty());
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
 
-    let args = ReceivableArgs::builder(public_key.into(), 1)
-        .include_unconfirmed_blocks()
-        .build();
+    let args = ReceivableArgs {
+        account: public_key.into(),
+        count: Some(1),
+        include_only_confirmed: Some(false),
+        ..Default::default()
+    };
 
     let result2 = node
         .runtime
         .block_on(async { rpc_client.receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Simple(simple) = result2 {
-        assert_eq!(
-            simple.blocks.get(&Account::from(public_key)).unwrap(),
-            &vec![send.hash()]
-        );
+    if let ReceivableResponse::Simple(simple) = result2 {
+        assert_eq!(simple.blocks, vec![send.hash()]);
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
@@ -115,16 +115,13 @@ fn receivable_options_none() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .receivable(ReceivableArgs::new(public_key.into(), 1))
+            .receivable(Account::from(public_key))
             .await
             .unwrap()
     });
 
-    if let ReceivableDto::Simple(simple) = result {
-        assert_eq!(
-            simple.blocks.get(&Account::from(public_key)).unwrap(),
-            &vec![send.hash()]
-        );
+    if let ReceivableResponse::Simple(simple) = result {
+        assert_eq!(simple.blocks, vec![send.hash()]);
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
@@ -152,66 +149,24 @@ fn receivable_threshold_some() {
 
     let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = ReceivableArgs::builder(public_key.into(), 2)
-        .threshold(Amount::raw(1))
-        .build();
+    let args = ReceivableArgs {
+        account: public_key.into(),
+        count: Some(2),
+        threshold: Some(Amount::raw(1)),
+        ..Default::default()
+    };
 
     let result = node
         .runtime
         .block_on(async { rpc_client.receivable(args).await.unwrap() });
 
-    println!("{:?}", result);
-
-    if let ReceivableDto::Threshold(threshold) = result {
+    if let ReceivableResponse::Threshold(threshold) = result {
         assert_eq!(
-            threshold
-                .blocks
-                .get(&Account::from(public_key))
-                .unwrap()
-                .get(&send2.hash())
-                .unwrap(),
+            threshold.blocks.get(&send2.hash()).unwrap(),
             &Amount::raw(2)
         );
     } else {
         panic!("Expected ReceivableDto::Threshold variant");
-    }
-
-    server.abort();
-}
-
-#[test]
-fn receivable_sorting() {
-    let mut system = System::new();
-    let node = system.make_node();
-
-    let wallet = WalletId::zero();
-    node.wallets.create(wallet);
-    let private_key = RawKey::zero();
-    let public_key: PublicKey = (&private_key).try_into().unwrap();
-    node.wallets
-        .insert_adhoc2(&wallet, &private_key, false)
-        .unwrap();
-
-    let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
-
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
-
-    let args = ReceivableArgs::builder(public_key.into(), 1)
-        .sorting()
-        .include_unconfirmed_blocks()
-        .build();
-
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.receivable(args).await.unwrap() });
-
-    if let ReceivableDto::Simple(simple) = result {
-        assert_eq!(simple.blocks.len(), 1);
-        let recv_blocks = simple.blocks.get(&Account::from(public_key)).unwrap();
-        assert_eq!(recv_blocks.len(), 1);
-        assert_eq!(recv_blocks[0], send.hash());
-    } else {
-        panic!("Expected ReceivableDto::Blocks variant");
     }
 
     server.abort();

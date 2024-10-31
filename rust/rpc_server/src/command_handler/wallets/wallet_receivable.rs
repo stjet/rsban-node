@@ -2,15 +2,15 @@ use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Amount, BlockHash};
 use rsnano_rpc_messages::{
-    ReceivableDto, ReceivableSimple, ReceivableSource, ReceivableThreshold, SourceInfo,
-    WalletReceivableArgs,
+    AccountsReceivableResponse, AccountsReceivableSimple, AccountsReceivableSource,
+    AccountsReceivableThreshold, SourceInfo, WalletReceivableArgs,
 };
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_receivable(
         &self,
         args: WalletReceivableArgs,
-    ) -> anyhow::Result<ReceivableDto> {
+    ) -> anyhow::Result<AccountsReceivableResponse> {
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let tx = self.node.ledger.read_txn();
@@ -48,7 +48,8 @@ impl RpcCommandHandler {
                 if args.source.unwrap_or(false) || args.min_version.unwrap_or(false) {
                     let source_info = SourceInfo {
                         amount: info.amount,
-                        source: info.source,
+                        source: Some(info.source),
+                        min_version: None,
                     };
                     account_blocks_source.insert(key.send_block_hash, source_info);
                 } else if args.threshold.is_some() {
@@ -70,15 +71,15 @@ impl RpcCommandHandler {
         }
 
         let result = if args.source.unwrap_or(false) || args.min_version.unwrap_or(false) {
-            ReceivableDto::Source(ReceivableSource {
+            AccountsReceivableResponse::Source(AccountsReceivableSource {
                 blocks: block_source,
             })
         } else if args.threshold.is_some() {
-            ReceivableDto::Threshold(ReceivableThreshold {
+            AccountsReceivableResponse::Threshold(AccountsReceivableThreshold {
                 blocks: block_threshold,
             })
         } else {
-            ReceivableDto::Simple(ReceivableSimple {
+            AccountsReceivableResponse::Simple(AccountsReceivableSimple {
                 blocks: block_default,
             })
         };

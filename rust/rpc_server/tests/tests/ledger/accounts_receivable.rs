@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountsReceivableArgs, ReceivableDto};
+use rsnano_rpc_messages::{AccountsReceivableArgs, AccountsReceivableResponse};
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
@@ -67,7 +67,7 @@ fn accounts_receivable_include_only_confirmed() {
         .runtime
         .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Simple(simple) = result1 {
+    if let AccountsReceivableResponse::Simple(simple) = result1 {
         assert!(simple.blocks.is_empty());
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
@@ -82,7 +82,7 @@ fn accounts_receivable_include_only_confirmed() {
         .block_on(async { rpc_client.accounts_receivable(args).await })
         .unwrap();
 
-    if let ReceivableDto::Simple(simple) = result2 {
+    if let AccountsReceivableResponse::Simple(simple) = result2 {
         assert!(simple.blocks.is_empty());
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
@@ -118,7 +118,7 @@ fn accounts_receivable_options_none() {
         .runtime
         .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Simple(simple) = result {
+    if let AccountsReceivableResponse::Simple(simple) = result {
         assert_eq!(
             simple.blocks.get(&Account::from(public_key)).unwrap(),
             &vec![send.hash()]
@@ -159,7 +159,7 @@ fn accounts_receivable_threshold_some() {
         .runtime
         .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Threshold(threshold) = result {
+    if let AccountsReceivableResponse::Threshold(threshold) = result {
         assert_eq!(
             threshold
                 .blocks
@@ -204,7 +204,7 @@ fn accounts_receivable_sorted() {
         .runtime
         .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
 
-    if let ReceivableDto::Threshold(threshold) = result {
+    if let AccountsReceivableResponse::Threshold(threshold) = result {
         assert_eq!(threshold.blocks.len(), 1);
         let (recv_account, recv_blocks) = threshold.blocks.iter().next().unwrap();
         assert_eq!(recv_account, &public_key.into());

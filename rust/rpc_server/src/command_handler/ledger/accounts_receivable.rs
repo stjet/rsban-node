@@ -2,13 +2,16 @@ use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey};
 use rsnano_rpc_messages::{
-    AccountsReceivableArgs, ReceivableDto, ReceivableSimple, ReceivableSource, ReceivableThreshold,
-    SourceInfo,
+    AccountsReceivableArgs, AccountsReceivableResponse, AccountsReceivableSimple,
+    AccountsReceivableSource, AccountsReceivableThreshold, SourceInfo,
 };
 use std::ops::{Deref, DerefMut};
 
 impl RpcCommandHandler {
-    pub(crate) fn accounts_receivable(&self, args: AccountsReceivableArgs) -> ReceivableDto {
+    pub(crate) fn accounts_receivable(
+        &self,
+        args: AccountsReceivableArgs,
+    ) -> AccountsReceivableResponse {
         let count = args.count.unwrap_or(u64::MAX);
         let threshold = args.threshold.unwrap_or(Amount::zero());
         let source = args.source.unwrap_or(false);
@@ -68,7 +71,7 @@ enum ResponseBuilderEnum {
 }
 
 impl ResponseBuilderEnum {
-    fn finish(self) -> ReceivableDto {
+    fn finish(self) -> AccountsReceivableResponse {
         match self {
             ResponseBuilderEnum::Simple(i) => i.finish(),
             ResponseBuilderEnum::Threshold(i) => i.finish(),
@@ -103,7 +106,7 @@ trait ResponseBuilder {
     fn len(&self) -> usize;
     fn add(&mut self, account: Account, key: &PendingKey, info: &PendingInfo);
     fn sort(&mut self);
-    fn finish(self) -> ReceivableDto;
+    fn finish(self) -> AccountsReceivableResponse;
 }
 
 struct SimpleBuilder {
@@ -132,8 +135,8 @@ impl ResponseBuilder for SimpleBuilder {
 
     fn sort(&mut self) {}
 
-    fn finish(self) -> ReceivableDto {
-        ReceivableDto::Simple(ReceivableSimple {
+    fn finish(self) -> AccountsReceivableResponse {
+        AccountsReceivableResponse::Simple(AccountsReceivableSimple {
             blocks: self.result,
         })
     }
@@ -169,8 +172,8 @@ impl ResponseBuilder for ThresholdBuilder {
         }
     }
 
-    fn finish(self) -> ReceivableDto {
-        ReceivableDto::Threshold(ReceivableThreshold {
+    fn finish(self) -> AccountsReceivableResponse {
+        AccountsReceivableResponse::Threshold(AccountsReceivableThreshold {
             blocks: self.result,
         })
     }
@@ -198,7 +201,8 @@ impl ResponseBuilder for SourceBuilder {
             key.send_block_hash,
             SourceInfo {
                 amount: info.amount,
-                source: info.source,
+                source: Some(info.source),
+                min_version: None,
             },
         );
     }
@@ -209,8 +213,8 @@ impl ResponseBuilder for SourceBuilder {
         }
     }
 
-    fn finish(self) -> ReceivableDto {
-        ReceivableDto::Source(ReceivableSource {
+    fn finish(self) -> AccountsReceivableResponse {
+        AccountsReceivableResponse::Source(AccountsReceivableSource {
             blocks: self.result,
         })
     }

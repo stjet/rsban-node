@@ -516,6 +516,10 @@ impl Wallets {
         }
     }
 
+    pub fn wallet_exists(&self, wallet_id: &WalletId) -> bool {
+        self.mutex.lock().unwrap().contains_key(wallet_id)
+    }
+
     pub fn destroy(&self, id: &WalletId) {
         let mut guard = self.mutex.lock().unwrap();
         let mut tx = self.env.tx_begin_write();

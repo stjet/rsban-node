@@ -340,7 +340,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_destroy(&self, wallet: WalletId) -> Result<DestroyedDto> {
+    pub async fn wallet_destroy(&self, wallet: WalletId) -> Result<DestroyedResponse> {
         let cmd = RpcCommand::wallet_destroy(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

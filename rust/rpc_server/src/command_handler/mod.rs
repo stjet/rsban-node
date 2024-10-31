@@ -100,6 +100,8 @@ impl RpcCommandHandler {
             RpcCommand::UncheckedKeys(args) => to_value(self.unchecked_keys(args)),
             RpcCommand::WalletChangeSeed(args) => to_value(self.wallet_change_seed(args)),
             RpcCommand::WalletContains(args) => to_value(self.wallet_contains(args)?),
+            RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)?),
+            RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)?),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -117,8 +119,6 @@ impl RpcCommandHandler {
             // Not reviewed yet:
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
-            RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)?),
-            RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)),
             RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::Stop => to_value(self.stop()),

@@ -494,9 +494,17 @@ pub fn setup_rpc_client_and_server(
             .expect("Failed to bind to address")
     });
 
-    let server = node
-        .runtime
-        .spawn(run_rpc_server(node.clone(), listener, enable_control));
+    let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
+
+    let server = node.runtime.spawn(run_rpc_server(
+        node.clone(),
+        listener,
+        enable_control,
+        tx_stop,
+        async move {
+            let _ = rx_stop.await;
+        },
+    ));
 
     let rpc_url = format!("http://[::1]:{}/", port);
     let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));

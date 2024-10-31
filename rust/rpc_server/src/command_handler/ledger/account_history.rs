@@ -346,7 +346,8 @@ mod tests {
     #[tokio::test]
     async fn history_rpc_call() {
         let node = Arc::new(Node::new_null());
-        let cmd_handler = RpcCommandHandler::new(node, true);
+        let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
+        let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
         let result = cmd_handler.handle(RpcCommand::account_history(
             AccountHistoryArgs::builder_for_account(Account::from(42), 3).build(),
         ));

@@ -1,10 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::NodeExt;
 use rsnano_rpc_messages::SuccessResponse;
 
 impl RpcCommandHandler {
     pub(crate) fn stop(&self) -> SuccessResponse {
-        self.node.stop();
+        if let Some(tx_stop) = self.stop.lock().unwrap().take() {
+            let _ = tx_stop.send(());
+        }
         SuccessResponse::new()
     }
 }

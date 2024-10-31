@@ -9,20 +9,23 @@ use rsnano_node::Node;
 use rsnano_rpc_messages::{RpcCommand, RpcError, StatsType};
 use rsnano_store_lmdb::Transaction;
 use serde_json::{to_value, Value};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use tokio::sync::oneshot;
 use utils::*;
 
 #[derive(Clone)]
 pub(crate) struct RpcCommandHandler {
     node: Arc<Node>,
     enable_control: bool,
+    stop: Arc<Mutex<Option<oneshot::Sender<()>>>>,
 }
 
 impl RpcCommandHandler {
-    pub fn new(node: Arc<Node>, enable_control: bool) -> Self {
+    pub fn new(node: Arc<Node>, enable_control: bool, tx_stop: oneshot::Sender<()>) -> Self {
         Self {
             node,
             enable_control,
+            stop: Arc::new(Mutex::new(Some(tx_stop))),
         }
     }
 
@@ -122,6 +125,8 @@ impl RpcCommandHandler {
             RpcCommand::NanoToRaw(args) => to_value(nano_to_raw(args)?),
             RpcCommand::RawToNano(args) => to_value(raw_to_nano(args)),
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
+            RpcCommand::Receivable(args) => to_value(self.receivable(args)),
+            RpcCommand::Stop => to_value(self.stop()),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -137,8 +142,6 @@ impl RpcCommandHandler {
             RpcCommand::ActiveDifficulty => self.not_implemented(),
 
             // Not reviewed yet:
-            RpcCommand::Receivable(args) => to_value(self.receivable(args)),
-            RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),

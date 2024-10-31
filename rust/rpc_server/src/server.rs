@@ -3,16 +3,21 @@ use anyhow::{Context, Result};
 use axum::{extract::State, http::Request, middleware::map_request, routing::post, Json, Router};
 use rsnano_node::Node;
 use rsnano_rpc_messages::RpcCommand;
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 use tokio::{net::TcpListener, task::spawn_blocking};
 use tracing::info;
 
-pub async fn run_rpc_server(
+pub async fn run_rpc_server<F>(
     node: Arc<Node>,
     listener: TcpListener,
     enable_control: bool,
-) -> Result<()> {
-    let command_handler = RpcCommandHandler::new(node, enable_control);
+    tx_stop: tokio::sync::oneshot::Sender<()>,
+    shutdown: F,
+) -> Result<()>
+where
+    F: Future<Output = ()> + Send + 'static,
+{
+    let command_handler = RpcCommandHandler::new(node, enable_control, tx_stop);
 
     let app = Router::new()
         .route("/", post(handle_rpc))
@@ -22,6 +27,7 @@ pub async fn run_rpc_server(
     info!("RPC listening address: {}", listener.local_addr()?);
 
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
         .await
         .context("Failed to run the server")
 }

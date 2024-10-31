@@ -76,6 +76,7 @@
 - work_set
 - work_validate
 - ledger
+- receivable
 
 # RPC functions MISSING:
 - account_count
@@ -97,7 +98,6 @@
 - stats
 
 # RPC functions to review:
-- receivable
 - process
 - republish
 - send

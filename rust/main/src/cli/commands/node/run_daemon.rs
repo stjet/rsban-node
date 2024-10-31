@@ -14,7 +14,7 @@ use std::{
     fs::read_to_string,
     net::{IpAddr, SocketAddr},
     str::FromStr,
-    sync::{Arc, Condvar, Mutex},
+    sync::Arc,
 };
 use tokio::net::TcpListener;
 use toml::from_str;
@@ -156,34 +156,25 @@ impl RunDaemonArgs {
         let node = Arc::new(node);
         node.start();
 
-        let rpc_server = if daemon_config.rpc_enable {
+        let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
+
+        if daemon_config.rpc_enable {
             let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
             let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
-            Some(tokio::spawn({
-                let listener = TcpListener::bind(socket_addr).await?;
-
-                run_rpc_server(node.clone(), listener, rpc_server_config.enable_control)
-            }))
+            let listener = TcpListener::bind(socket_addr).await?;
+            run_rpc_server(
+                node.clone(),
+                listener,
+                rpc_server_config.enable_control,
+                tx_stop,
+                shutdown_signal(rx_stop),
+            )
+            .await?;
         } else {
-            None
+            shutdown_signal(rx_stop).await;
         };
 
-        let finished = Arc::new((Mutex::new(false), Condvar::new()));
-        let finished_clone = finished.clone();
-
-        ctrlc::set_handler(move || {
-            if let Some(server) = rpc_server.as_ref() {
-                server.abort();
-            }
-            node.stop();
-            *finished_clone.0.lock().unwrap() = true;
-            finished_clone.1.notify_all();
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        let guard = finished.0.lock().unwrap();
-        drop(finished.1.wait_while(guard, |g| !*g).unwrap());
-
+        node.stop();
         Ok(())
     }
 
@@ -263,5 +254,30 @@ impl RunDaemonArgs {
         if let Some(vote_processor_capacity) = self.vote_processor_capacity {
             node_flags.set_vote_processor_capacity(vote_processor_capacity);
         }
+    }
+}
+
+async fn shutdown_signal(tx_stop: tokio::sync::oneshot::Receiver<()>) {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+        _ = tx_stop => {},
     }
 }

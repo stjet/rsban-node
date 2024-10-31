@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{Account, JsonBlock, RawKey, Signature, WalletId};
+use rsnano_core::{Account, BlockHash, JsonBlock, RawKey, Signature, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -10,32 +10,28 @@ impl RpcCommand {
 
 impl From<JsonBlock> for SignArgs {
     fn from(value: JsonBlock) -> Self {
-        Self::builder(value).build()
+        Self {
+            block: Some(value),
+            key: None,
+            wallet: None,
+            account: None,
+            hash: None,
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SignArgs {
-    pub block: JsonBlock,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block: Option<JsonBlock>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key: Option<RawKey>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet: Option<WalletId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Account>,
-}
-
-impl SignArgs {
-    pub fn builder(block: JsonBlock) -> SignArgsBuilder {
-        SignArgsBuilder {
-            args: SignArgs {
-                block,
-                key: None,
-                wallet: None,
-                account: None,
-            },
-        }
-    }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<BlockHash>,
 }
 
 pub struct SignArgsBuilder {
@@ -64,13 +60,8 @@ impl SignArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct SignDto {
+pub struct SignResponse {
     pub signature: Signature,
-    pub block: JsonBlock,
-}
-
-impl SignDto {
-    pub fn new(signature: Signature, block: JsonBlock) -> Self {
-        Self { signature, block }
-    }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block: Option<JsonBlock>,
 }

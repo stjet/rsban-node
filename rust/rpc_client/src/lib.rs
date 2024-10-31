@@ -276,7 +276,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn sign(&self, args: impl Into<SignArgs>) -> Result<SignDto> {
+    pub async fn sign(&self, args: impl Into<SignArgs>) -> Result<SignResponse> {
         let cmd = RpcCommand::sign(args.into());
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

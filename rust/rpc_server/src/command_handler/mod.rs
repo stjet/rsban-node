@@ -131,6 +131,9 @@ impl RpcCommandHandler {
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
             RpcCommand::Send(args) => to_value(self.send(args)?),
+            RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
+            RpcCommand::Chain(args) => to_value(self.chain(args, false)),
+            RpcCommand::Successors(args) => to_value(self.chain(args, true)),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -146,9 +149,6 @@ impl RpcCommandHandler {
             RpcCommand::ActiveDifficulty => self.not_implemented(),
 
             // Not reviewed yet:
-            RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
-            RpcCommand::Chain(args) => to_value(self.chain(args, false)),
-            RpcCommand::Successors(args) => to_value(self.chain(args, true)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),
             RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),

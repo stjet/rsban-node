@@ -32,16 +32,19 @@ fn sign() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let args: SignArgs = SignArgs::builder(send.json_representation())
-        .wallet(wallet_id)
-        .account(key.public_key().into())
-        .build();
+    let args: SignArgs = SignArgs {
+        block: Some(send.json_representation()),
+        wallet: None,
+        account: None,
+        hash: None,
+        key: Some(DEV_GENESIS_KEY.private_key()),
+    };
 
     let result = node
         .runtime
         .block_on(async { server.client.sign(args).await.unwrap() });
 
-    let signed_block: BlockEnum = result.block.into();
+    let signed_block: BlockEnum = result.block.unwrap().into();
 
     if let BlockEnum::State(ref state_block) = signed_block {
         assert!(validate_block_signature(&state_block).is_ok());
@@ -76,6 +79,8 @@ fn sign_without_key() {
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
-        Some("node returned error: \"Missing account information\"".to_string())
+        Some(
+            "node returned error: \"Private key or local wallet and account required\"".to_string()
+        )
     );
 }

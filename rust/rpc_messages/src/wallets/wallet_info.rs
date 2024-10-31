@@ -10,7 +10,7 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletInfoDto {
+pub struct WalletInfoResponse {
     pub balance: Amount,
     pub pending: Amount,
     pub receivable: Amount,
@@ -20,32 +20,6 @@ pub struct WalletInfoDto {
     pub deterministic_index: u32,
     pub accounts_block_count: u64,
     pub accounts_cemented_block_count: u64,
-}
-
-impl WalletInfoDto {
-    pub fn new(
-        balance: Amount,
-        pending: Amount,
-        receivable: Amount,
-        accounts_count: u64,
-        adhoc_count: u64,
-        deterministic_count: u64,
-        deterministic_index: u32,
-        accounts_block_count: u64,
-        accounts_cemented_block_count: u64,
-    ) -> Self {
-        Self {
-            balance,
-            pending,
-            receivable,
-            accounts_count,
-            adhoc_count,
-            deterministic_count,
-            deterministic_index,
-            accounts_block_count,
-            accounts_cemented_block_count,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -75,7 +49,7 @@ mod tests {
 
     #[test]
     fn serialize_wallet_info_dto() {
-        let wallet_info = WalletInfoDto {
+        let wallet_info = WalletInfoResponse {
             balance: Amount::raw(1000),
             pending: Amount::raw(200),
             receivable: Amount::raw(300),
@@ -99,9 +73,9 @@ mod tests {
     fn deserialize_account_balance_dto() {
         let json_str = r#"{"balance":"1000","pending":"200","receivable":"300","accounts_count":1,"adhoc_count":1,"deterministic_count":1,"deterministic_index":1,"accounts_block_count":1,"accounts_cemented_block_count":1}"#;
 
-        let deserialized: WalletInfoDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: WalletInfoResponse = serde_json::from_str(json_str).unwrap();
 
-        let expected = WalletInfoDto {
+        let expected = WalletInfoResponse {
             balance: Amount::raw(1000),
             pending: Amount::raw(200),
             receivable: Amount::raw(300),

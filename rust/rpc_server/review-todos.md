@@ -62,6 +62,8 @@
 - wallet_create
 - wallet_destroy
 - wallet_export
+- wallet_frontiers
+- wallet_info
 
 # RPC functions MISSING:
 - account_count
@@ -93,9 +95,7 @@
 - stop
 - telemetry
 - unopened
-- wallet_frontiers
 - wallet_history
-- wallet_info
 - wallet_balance_total
 - wallet_key_valid
 - wallet_ledger

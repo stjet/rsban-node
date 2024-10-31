@@ -6,16 +6,15 @@ fn delegators_count_rpc_response() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .delegators_count(*DEV_GENESIS_ACCOUNT)
             .await
             .unwrap()
     });
 
     assert_eq!(result.count, 1);
-
-    server.abort();
 }

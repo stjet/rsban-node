@@ -11,7 +11,7 @@ fn work_cancel() {
     let node_clone = node.clone();
     let node_clone2 = node.clone();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let hash = BlockHash::random();
 
@@ -48,7 +48,7 @@ fn work_cancel() {
 
     let result = node_clone
         .runtime
-        .block_on(async { rpc_client.work_cancel(hash).await.unwrap() });
+        .block_on(async { server.client.work_cancel(hash).await.unwrap() });
 
     // Check the result
     assert_eq!(result, SuccessResponse::new());
@@ -64,8 +64,6 @@ fn work_cancel() {
         .runtime
         .block_on(async { work_handle.await.unwrap() });
     assert!(work_result.is_none());
-
-    server.abort();
 }
 
 #[test]
@@ -74,16 +72,14 @@ fn work_cancel_fails_without_enable_control() {
     let node = system.make_node();
     let node_clone = node.clone();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node_clone
         .runtime
-        .block_on(async { rpc_client.work_cancel(BlockHash::zero()).await });
+        .block_on(async { server.client.work_cancel(BlockHash::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

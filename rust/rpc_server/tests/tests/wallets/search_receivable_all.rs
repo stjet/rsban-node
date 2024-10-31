@@ -9,7 +9,7 @@ fn search_receivable_all() {
     let mut system = System::new();
     let node: Arc<Node> = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -30,7 +30,7 @@ fn search_receivable_all() {
     assert_eq!(node.process_local(send).unwrap(), BlockStatus::Progress);
 
     node.runtime.block_on(async {
-        rpc_client.search_receivable_all().await.unwrap();
+        server.client.search_receivable_all().await.unwrap();
     });
 
     assert_timely_eq(
@@ -38,8 +38,6 @@ fn search_receivable_all() {
         || node.balance(&DEV_GENESIS_KEY.account()),
         Amount::MAX,
     );
-
-    server.abort();
 }
 
 #[test]
@@ -47,16 +45,14 @@ fn search_receivable_all_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.search_receivable_all().await });
+        .block_on(async { server.client.search_receivable_all().await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

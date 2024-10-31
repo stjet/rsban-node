@@ -9,7 +9,7 @@ fn account_create_default() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -17,11 +17,9 @@ fn account_create_default() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(wallet_id).await.unwrap() });
+        .block_on(async { server.client.account_create(wallet_id).await.unwrap() });
 
     assert!(node.wallets.exists(&result.account.into()));
-
-    server.abort();
 }
 
 #[test]
@@ -29,7 +27,7 @@ fn account_create_index_max() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -41,11 +39,9 @@ fn account_create_index_max() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(args).await.unwrap() });
+        .block_on(async { server.client.account_create(args).await.unwrap() });
 
     assert!(node.wallets.exists(&result.account.into()));
-
-    server.abort();
 }
 
 #[test]
@@ -53,7 +49,7 @@ fn account_create_work_without_precomputed_work() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -65,7 +61,7 @@ fn account_create_work_without_precomputed_work() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(args).await.unwrap() });
+        .block_on(async { server.client.account_create(args).await.unwrap() });
 
     assert!(node.wallets.exists(&result.account.into()));
 
@@ -75,8 +71,6 @@ fn account_create_work_without_precomputed_work() {
             .unwrap()
             == 0
     });
-
-    server.abort();
 }
 
 #[test]
@@ -84,7 +78,7 @@ fn account_create_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet_id = WalletId::random();
 
@@ -92,14 +86,12 @@ fn account_create_fails_without_enable_control() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(wallet_id).await });
+        .block_on(async { server.client.account_create(wallet_id).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -107,7 +99,7 @@ fn account_create_fails_wallet_locked() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -117,14 +109,12 @@ fn account_create_fails_wallet_locked() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(wallet_id).await });
+        .block_on(async { server.client.account_create(wallet_id).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet is locked\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -132,18 +122,16 @@ fn account_create_fails_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_create(wallet_id).await });
+        .block_on(async { server.client.account_create(wallet_id).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

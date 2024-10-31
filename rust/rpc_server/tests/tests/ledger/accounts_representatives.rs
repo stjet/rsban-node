@@ -8,10 +8,11 @@ fn accounts_representatives() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .accounts_representatives(vec![*DEV_GENESIS_ACCOUNT])
             .await
             .unwrap()
@@ -25,6 +26,4 @@ fn accounts_representatives() {
         errors: None,
     };
     assert_eq!(result, expected);
-
-    server.abort();
 }

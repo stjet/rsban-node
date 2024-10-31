@@ -25,7 +25,7 @@ fn confirmation_info() {
         "not active on node 1",
     );
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let root = send.qualified_root();
 
@@ -35,7 +35,7 @@ fn confirmation_info() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.confirmation_info(args).await })
+        .block_on(async { server.client.confirmation_info(args).await })
         .unwrap();
 
     assert_eq!(result.announcements, 0);
@@ -64,6 +64,4 @@ fn confirmation_info() {
         }
         _ => (),
     }
-
-    server.abort();
 }

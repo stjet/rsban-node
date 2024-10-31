@@ -56,10 +56,11 @@ fn receivable_include_only_confirmed() {
 
     let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result1 = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .receivable(ReceivableArgs {
                 account: public_key.into(),
                 count: Some(1),
@@ -84,15 +85,13 @@ fn receivable_include_only_confirmed() {
 
     let result2 = node
         .runtime
-        .block_on(async { rpc_client.receivable(args).await.unwrap() });
+        .block_on(async { server.client.receivable(args).await.unwrap() });
 
     if let ReceivableResponse::Simple(simple) = result2 {
         assert_eq!(simple.blocks, vec![send.hash()]);
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -111,10 +110,11 @@ fn receivable_options_none() {
     let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
     node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .receivable(Account::from(public_key))
             .await
             .unwrap()
@@ -125,8 +125,6 @@ fn receivable_options_none() {
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -147,7 +145,7 @@ fn receivable_threshold_some() {
     let send2 = send_block(node.clone(), public_key.into(), Amount::raw(2));
     node.ledger.confirm(&mut node.ledger.rw_txn(), send2.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = ReceivableArgs {
         account: public_key.into(),
@@ -158,7 +156,7 @@ fn receivable_threshold_some() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.receivable(args).await.unwrap() });
+        .block_on(async { server.client.receivable(args).await.unwrap() });
 
     if let ReceivableResponse::Threshold(threshold) = result {
         assert_eq!(
@@ -168,6 +166,4 @@ fn receivable_threshold_some() {
     } else {
         panic!("Expected ReceivableDto::Threshold variant");
     }
-
-    server.abort();
 }

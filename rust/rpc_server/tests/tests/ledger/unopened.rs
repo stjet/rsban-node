@@ -32,10 +32,11 @@ fn unopened() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .unopened(UnopenedArgs::new(Account::zero(), 1))
             .await
             .unwrap()
@@ -45,8 +46,6 @@ fn unopened() {
         result.accounts.get(&Account::zero()).unwrap(),
         &Amount::raw(1)
     );
-
-    server.abort();
 }
 
 #[test]
@@ -56,7 +55,7 @@ fn unopened_with_threshold() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let args = UnopenedArgs::builder(Account::zero(), 1)
         .with_minimum_balance(Amount::nano(1))
@@ -64,11 +63,9 @@ fn unopened_with_threshold() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.unopened(args).await.unwrap() });
+        .block_on(async { server.client.unopened(args).await.unwrap() });
 
     assert!(result.accounts.is_empty());
-
-    server.abort();
 }
 
 #[test]
@@ -76,10 +73,11 @@ fn unopened_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .unopened(UnopenedArgs::new(Account::zero(), 1))
             .await
     });
@@ -88,6 +86,4 @@ fn unopened_fails_without_enable_control() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

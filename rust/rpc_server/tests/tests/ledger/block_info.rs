@@ -8,11 +8,11 @@ fn block_info() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.block_info(*DEV_GENESIS_HASH).await.unwrap() });
+        .block_on(async { server.client.block_info(*DEV_GENESIS_HASH).await.unwrap() });
 
     assert_eq!(result.amount, Some(Amount::MAX));
     assert_eq!(result.balance, Amount::MAX);
@@ -28,6 +28,4 @@ fn block_info() {
         .expect("Time went backwards")
         .as_secs() as u64;
     assert!(result.local_timestamp <= current_unix_timestamp);
-
-    server.abort();
 }

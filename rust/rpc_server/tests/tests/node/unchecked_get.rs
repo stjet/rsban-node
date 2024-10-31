@@ -6,7 +6,7 @@ use tokio::time::Duration;
 fn unchecked_get() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let key = KeyPair::new();
 
@@ -30,7 +30,7 @@ fn unchecked_get() {
 
     let unchecked_dto = node
         .runtime
-        .block_on(async { rpc_client.unchecked_get(open.hash()).await.unwrap() });
+        .block_on(async { server.client.unchecked_get(open.hash()).await.unwrap() });
 
     let current_timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -51,6 +51,4 @@ fn unchecked_get() {
     } else {
         panic!("Expected a state block");
     }
-
-    server.abort();
 }

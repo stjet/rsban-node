@@ -11,7 +11,7 @@ fn keepalive() {
     let mut system = System::new();
     let node0 = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node0.clone(), true);
+    let server = setup_rpc_client_and_server(node0.clone(), true);
 
     let mut node1_config = System::default_config();
     node1_config.tcp_incoming_connections_max = 0; // Prevent ephemeral node1->node0 channel replacement with incoming connection
@@ -58,7 +58,8 @@ fn keepalive() {
     );
 
     node0.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .keepalive(
                 Ipv6Addr::LOCALHOST.to_string(),
                 node1.config.peering_port.unwrap(),
@@ -89,8 +90,6 @@ fn keepalive() {
 
     let timestamp_after_keepalive = channel0.last_activity();
     assert!(timestamp_after_keepalive > timestamp_before_keepalive);
-
-    server.abort();
 }
 
 #[test]
@@ -98,10 +97,11 @@ fn keepalive_fails_without_rpc_control_enabled() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .keepalive(Ipv6Addr::LOCALHOST.to_string(), get_available_port())
             .await
     });
@@ -110,6 +110,4 @@ fn keepalive_fails_without_rpc_control_enabled() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

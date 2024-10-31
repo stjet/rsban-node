@@ -6,7 +6,7 @@ use tokio::time::Duration;
 fn test_unchecked_keys() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let key = KeyPair::new();
 
@@ -53,7 +53,8 @@ fn test_unchecked_keys() {
     );
 
     let unchecked_dto = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .unchecked_keys(key.account().into(), Some(2))
             .await
             .unwrap()
@@ -78,6 +79,4 @@ fn test_unchecked_keys() {
             .any(|uk| uk.hash == open2.hash()),
         "Second hash not found in DTO"
     );
-
-    server.abort();
 }

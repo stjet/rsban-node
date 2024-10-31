@@ -7,11 +7,11 @@ fn peers_without_details() {
     let node1 = system.make_node();
     let _node2 = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
+    let server = setup_rpc_client_and_server(node1.clone(), false);
 
     let result = node1
         .runtime
-        .block_on(async { rpc_client.peers(None).await })
+        .block_on(async { server.client.peers(None).await })
         .unwrap();
 
     match result {
@@ -20,8 +20,6 @@ fn peers_without_details() {
         }
         PeersDto::Detailed(_) => panic!("Expected Simple peer data"),
     }
-
-    server.abort();
 }
 
 #[test]
@@ -30,11 +28,11 @@ fn peers_with_details() {
     let node1 = system.make_node();
     let _node2 = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
+    let server = setup_rpc_client_and_server(node1.clone(), false);
 
     let result = node1
         .runtime
-        .block_on(async { rpc_client.peers(Some(true)).await.unwrap() });
+        .block_on(async { server.client.peers(Some(true)).await.unwrap() });
 
     println!("{:?}", result);
 
@@ -44,6 +42,4 @@ fn peers_with_details() {
         }
         PeersDto::Simple(_) => panic!("Expected Detailed peer data"),
     }
-
-    server.abort();
 }

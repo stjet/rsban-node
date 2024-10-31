@@ -21,7 +21,7 @@ fn receive() {
         .insert_adhoc2(&wallet, &key1.private_key(), false)
         .unwrap();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let send1 = node
         .wallets
@@ -76,7 +76,7 @@ fn receive() {
 
     let block_hash = node
         .runtime
-        .block_on(async { rpc_client.receive(args).await.unwrap() })
+        .block_on(async { server.client.receive(args).await.unwrap() })
         .block;
 
     let tx = node.ledger.read_txn();
@@ -98,7 +98,7 @@ fn receive() {
 
     let error_result = node
         .runtime
-        .block_on(async { rpc_client.receive(args).await });
+        .block_on(async { server.client.receive(args).await });
 
     assert_eq!(
         error_result.err().map(|e| e.to_string()),
@@ -109,12 +109,10 @@ fn receive() {
 
     let error_result = node
         .runtime
-        .block_on(async { rpc_client.receive(args).await });
+        .block_on(async { server.client.receive(args).await });
 
     assert_eq!(
         error_result.err().map(|e| e.to_string()),
         Some("node returned error: \"Block not found\"".to_string())
     );
-
-    server.abort();
 }

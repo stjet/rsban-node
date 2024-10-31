@@ -9,7 +9,7 @@ fn account_create_index_none() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -19,7 +19,8 @@ fn account_create_index_none() {
     let public_key: PublicKey = (&private_key).try_into().unwrap();
 
     node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_add(WalletAddArgs::new(wallet_id, private_key))
             .await
             .unwrap()
@@ -30,8 +31,6 @@ fn account_create_index_none() {
         .get_accounts_of_wallet(&wallet_id)
         .unwrap()
         .contains(&public_key.into()));
-
-    server.abort();
 }
 
 #[test]
@@ -39,7 +38,7 @@ fn account_create_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet_id = WalletId::random();
 
@@ -48,7 +47,8 @@ fn account_create_fails_without_enable_control() {
     let private_key = RawKey::random();
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_add(WalletAddArgs::new(wallet_id, private_key))
             .await
     });
@@ -57,8 +57,6 @@ fn account_create_fails_without_enable_control() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -66,10 +64,11 @@ fn wallet_add_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_add(WalletAddArgs::new(WalletId::zero(), RawKey::zero()))
             .await
     });
@@ -78,8 +77,6 @@ fn wallet_add_fails_with_wallet_not_found() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -87,7 +84,7 @@ fn wallet_add_work_true() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -96,7 +93,8 @@ fn wallet_add_work_true() {
     let private_key = RawKey::random();
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_add(WalletAddArgs::new(wallet_id, private_key))
             .await
             .unwrap()
@@ -108,8 +106,6 @@ fn wallet_add_work_true() {
             .unwrap()
             != 0
     });
-
-    server.abort();
 }
 
 #[test]
@@ -117,7 +113,7 @@ fn wallet_add_work_false() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -131,7 +127,7 @@ fn wallet_add_work_false() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_add(args).await.unwrap() });
+        .block_on(async { server.client.wallet_add(args).await.unwrap() });
 
     assert_timely(Duration::from_secs(5), || {
         node.wallets
@@ -139,6 +135,4 @@ fn wallet_add_work_false() {
             .unwrap()
             == 0
     });
-
-    server.abort();
 }

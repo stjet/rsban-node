@@ -8,7 +8,7 @@ fn wallet_change_seed() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -17,15 +17,14 @@ fn wallet_change_seed() {
             .unwrap();
 
     node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_change_seed(WalletWithSeedArgs::new(wallet_id, new_seed))
             .await
             .unwrap()
     });
 
     assert_eq!(node.wallets.get_seed(wallet_id).unwrap(), new_seed);
-
-    server.abort();
 }
 
 #[test]
@@ -33,10 +32,11 @@ fn wallet_change_seed_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_change_seed(WalletWithSeedArgs::new(WalletId::zero(), RawKey::zero()))
             .await
     });
@@ -45,6 +45,4 @@ fn wallet_change_seed_fails_without_enable_control() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

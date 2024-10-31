@@ -7,7 +7,7 @@ fn password_enter() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id: WalletId = 1.into();
 
@@ -19,7 +19,8 @@ fn password_enter() {
         .is_err());
 
     node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .password_enter(wallet_id, "".to_string())
             .await
             .unwrap()
@@ -29,8 +30,6 @@ fn password_enter() {
         .wallets
         .deterministic_insert2(&wallet_id, false)
         .is_ok());
-
-    server.abort();
 }
 
 #[test]
@@ -38,7 +37,7 @@ fn password_enter_fails_with_invalid_password() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet_id: WalletId = 1.into();
 
@@ -47,15 +46,14 @@ fn password_enter_fails_with_invalid_password() {
     let result = node
         .runtime
         .block_on(async {
-            rpc_client
+            server
+                .client
                 .password_enter(wallet_id, "password".to_string())
                 .await
         })
         .unwrap();
 
     assert_eq!(result.valid, "0",);
-
-    server.abort();
 }
 
 #[test]
@@ -63,10 +61,11 @@ fn password_enter_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .password_enter(WalletId::zero(), "password".to_string())
             .await
     });
@@ -75,6 +74,4 @@ fn password_enter_fails_with_wallet_not_found() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

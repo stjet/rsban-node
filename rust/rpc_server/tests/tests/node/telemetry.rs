@@ -16,7 +16,7 @@ fn telemetry_single() {
         1,
     );
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = TelemetryArgs::builder()
         .address_with_port(AddressWithPortArgs::new(
@@ -28,7 +28,7 @@ fn telemetry_single() {
     // Test with valid local address
     let response = node
         .runtime
-        .block_on(async { rpc_client.telemetry(args).await });
+        .block_on(async { server.client.telemetry(args).await });
     assert!(response.is_ok());
     assert!(matches!(response.unwrap().metrics[0], TelemetryDto { .. }));
 
@@ -39,7 +39,7 @@ fn telemetry_single() {
     // Test with invalid address
     let response = node
         .runtime
-        .block_on(async { rpc_client.telemetry(args).await });
+        .block_on(async { server.client.telemetry(args).await });
     assert!(response.is_err());
     assert_eq!(
         response.unwrap_err().to_string(),
@@ -49,11 +49,9 @@ fn telemetry_single() {
     // Test with missing address (should return local telemetry)
     let response = node
         .runtime
-        .block_on(async { rpc_client.telemetry(TelemetryArgs::new()).await });
+        .block_on(async { server.client.telemetry(TelemetryArgs::new()).await });
     assert!(response.is_ok());
     assert!(matches!(response.unwrap().metrics[0], TelemetryDto { .. }));
-
-    server.abort();
 }
 
 #[test]
@@ -70,12 +68,12 @@ fn telemetry_all() {
         1,
     );
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     // Test without raw flag (should return local telemetry)
     let response = node
         .runtime
-        .block_on(async { rpc_client.telemetry(TelemetryArgs::new()).await });
+        .block_on(async { server.client.telemetry(TelemetryArgs::new()).await });
 
     assert!(response.is_ok());
     let local_telemetry = response.unwrap();
@@ -83,7 +81,8 @@ fn telemetry_all() {
 
     // Test with raw flag
     let response = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .telemetry(TelemetryArgs::builder().raw().build())
             .await
     });
@@ -108,6 +107,4 @@ fn telemetry_all() {
         !matching_channels.is_empty(),
         "Peer endpoint not found in network info"
     );
-
-    server.abort();
 }

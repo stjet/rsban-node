@@ -6,10 +6,11 @@ fn key_expand() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .key_expand(
                 RawKey::decode_hex(
                     "781186FB9EF17DB6E3D1056550D9FAE5D5BBADA6A6BC370E4CBB938B1DC71DA3",
@@ -39,6 +40,4 @@ fn key_expand() {
         )
         .unwrap()
     );
-
-    server.abort();
 }

@@ -8,7 +8,7 @@ fn process() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -26,13 +26,10 @@ fn process() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.process(args).await.unwrap() });
+        .block_on(async { server.client.process(args).await.unwrap() });
 
     assert_eq!(result.hash, send1.hash());
-
     assert_eq!(node.latest(&*DEV_GENESIS_ACCOUNT), send1.hash());
-
-    server.abort();
 }
 
 #[test]
@@ -40,7 +37,7 @@ fn process_fails_with_low_work() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -58,12 +55,10 @@ fn process_fails_with_low_work() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.process(args).await });
+        .block_on(async { server.client.process(args).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Work low\"".to_string())
     );
-
-    server.abort();
 }

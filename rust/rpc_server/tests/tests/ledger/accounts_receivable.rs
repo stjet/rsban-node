@@ -56,7 +56,7 @@ fn accounts_receivable_include_only_confirmed() {
 
     let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountsReceivableArgs::builder(vec![public_key.into()])
         .count(1)
@@ -65,7 +65,7 @@ fn accounts_receivable_include_only_confirmed() {
 
     let result1 = node
         .runtime
-        .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
+        .block_on(async { server.client.accounts_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Simple(simple) = result1 {
         assert!(simple.blocks.is_empty());
@@ -79,7 +79,7 @@ fn accounts_receivable_include_only_confirmed() {
 
     let result2 = node
         .runtime
-        .block_on(async { rpc_client.accounts_receivable(args).await })
+        .block_on(async { server.client.accounts_receivable(args).await })
         .unwrap();
 
     if let AccountsReceivableResponse::Simple(simple) = result2 {
@@ -87,8 +87,6 @@ fn accounts_receivable_include_only_confirmed() {
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -107,7 +105,7 @@ fn accounts_receivable_options_none() {
     let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
     node.ledger.confirm(&mut node.ledger.rw_txn(), send.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountsReceivableArgs::builder(vec![public_key.into()])
         .count(1)
@@ -116,7 +114,7 @@ fn accounts_receivable_options_none() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
+        .block_on(async { server.client.accounts_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Simple(simple) = result {
         assert_eq!(
@@ -126,8 +124,6 @@ fn accounts_receivable_options_none() {
     } else {
         panic!("Expected ReceivableDto::Blocks variant");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -148,7 +144,7 @@ fn accounts_receivable_threshold_some() {
     let send2 = send_block(node.clone(), public_key.into(), Amount::raw(2));
     node.ledger.confirm(&mut node.ledger.rw_txn(), send2.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountsReceivableArgs::builder(vec![public_key.into()])
         .count(1)
@@ -157,7 +153,7 @@ fn accounts_receivable_threshold_some() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
+        .block_on(async { server.client.accounts_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Threshold(threshold) = result {
         assert_eq!(
@@ -172,8 +168,6 @@ fn accounts_receivable_threshold_some() {
     } else {
         panic!("Expected ReceivableDto::Threshold variant");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -191,7 +185,7 @@ fn accounts_receivable_sorted() {
 
     let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountsReceivableArgs::builder(vec![public_key.into()])
         .count(1)
@@ -202,7 +196,7 @@ fn accounts_receivable_sorted() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.accounts_receivable(args).await.unwrap() });
+        .block_on(async { server.client.accounts_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Threshold(threshold) = result {
         assert_eq!(threshold.blocks.len(), 1);
@@ -215,6 +209,4 @@ fn accounts_receivable_sorted() {
     } else {
         panic!("Expected ReceivableDto::Threshold variant");
     }
-
-    server.abort();
 }

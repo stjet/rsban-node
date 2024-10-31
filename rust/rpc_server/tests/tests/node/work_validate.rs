@@ -7,12 +7,13 @@ fn work_validate() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let work = node.work_generate_dev((*DEV_GENESIS_HASH).into());
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .work_validate(WorkValidateArgs {
                 work: Some(1.into()),
                 hash: *DEV_GENESIS_HASH,
@@ -27,7 +28,8 @@ fn work_validate() {
     assert_eq!(result.valid_receive, "0");
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .work_validate(WorkValidateArgs {
                 work: Some(work.into()),
                 hash: *DEV_GENESIS_HASH,
@@ -40,6 +42,4 @@ fn work_validate() {
 
     assert_eq!(result.valid_all, "1");
     assert_eq!(result.valid_receive, "1");
-
-    server.abort();
 }

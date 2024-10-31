@@ -12,7 +12,7 @@ fn sign() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let key = rsnano_core::KeyPair::new();
 
@@ -39,7 +39,7 @@ fn sign() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.sign(args).await.unwrap() });
+        .block_on(async { server.client.sign(args).await.unwrap() });
 
     let signed_block: BlockEnum = result.block.into();
 
@@ -50,10 +50,7 @@ fn sign() {
     }
 
     assert_eq!(signed_block.block_signature(), send.block_signature());
-
     assert_eq!(signed_block.hash(), send.hash());
-
-    server.abort();
 }
 
 #[test]
@@ -61,7 +58,7 @@ fn sign_without_key() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let send = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -75,12 +72,10 @@ fn sign_without_key() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.sign(send.json_representation()).await });
+        .block_on(async { server.client.sign(send.json_representation()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Missing account information\"".to_string())
     );
-
-    server.abort();
 }

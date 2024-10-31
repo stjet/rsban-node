@@ -9,10 +9,11 @@ fn account_balance_default_include_only_confirmed_blocks() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_balance(DEV_GENESIS_KEY.public_key().as_account())
             .await
             .unwrap()
@@ -25,7 +26,6 @@ fn account_balance_default_include_only_confirmed_blocks() {
 
     assert_eq!(result.pending, Amount::zero());
     assert_eq!(result.receivable, Amount::zero());
-    server.abort();
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn account_balance_include_unconfirmed_blocks() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountBalanceArgs::builder(DEV_GENESIS_KEY.public_key().as_account())
         .include_unconfirmed_blocks()
@@ -43,7 +43,7 @@ fn account_balance_include_unconfirmed_blocks() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_balance(args).await.unwrap() });
+        .block_on(async { server.client.account_balance(args).await.unwrap() });
 
     assert_eq!(
         result.balance,
@@ -52,5 +52,4 @@ fn account_balance_include_unconfirmed_blocks() {
 
     assert_eq!(result.pending, Amount::raw(1));
     assert_eq!(result.receivable, Amount::raw(1));
-    server.abort();
 }

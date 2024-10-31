@@ -7,7 +7,7 @@ fn wallet_info() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet = WalletId::zero();
 
@@ -21,7 +21,7 @@ fn wallet_info() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_info(wallet).await.unwrap() });
+        .block_on(async { server.client.wallet_info(wallet).await.unwrap() });
 
     assert_eq!(result.balance, Amount::MAX - Amount::raw(1));
     assert_eq!(result.pending, Amount::raw(1));
@@ -32,8 +32,6 @@ fn wallet_info() {
     assert_eq!(result.deterministic_count, 1);
     assert_eq!(result.deterministic_index, 1);
     assert_eq!(result.accounts_count, 2);
-
-    server.abort();
 }
 
 #[test]
@@ -41,16 +39,14 @@ fn wallet_info_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_info(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_info(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

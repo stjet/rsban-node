@@ -6,10 +6,11 @@ fn deterministic_key() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .deterministic_key(RawKey::zero(), 0)
             .await
             .unwrap()
@@ -34,6 +35,4 @@ fn deterministic_key() {
         )
         .unwrap()
     );
-
-    server.abort();
 }

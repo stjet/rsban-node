@@ -8,7 +8,7 @@ fn unchecked_clear() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let keypair = KeyPair::new();
 
@@ -27,9 +27,7 @@ fn unchecked_clear() {
     assert_timely(Duration::from_secs(5), || !node.unchecked.is_empty());
 
     node.runtime
-        .block_on(async { rpc_client.unchecked_clear().await.unwrap() });
+        .block_on(async { server.client.unchecked_clear().await.unwrap() });
 
     assert!(node.unchecked.is_empty());
-
-    server.abort();
 }

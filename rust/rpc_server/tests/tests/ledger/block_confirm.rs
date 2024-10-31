@@ -7,18 +7,17 @@ fn block_confirm() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .block_confirm(DEV_GENESIS_HASH.to_owned())
             .await
             .unwrap()
     });
 
     assert_eq!(result.started, true);
-
-    server.abort();
 }
 
 #[test]
@@ -26,16 +25,14 @@ fn block_confirm_fails_with_block_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.block_confirm(BlockHash::zero()).await });
+        .block_on(async { server.client.block_confirm(BlockHash::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Block not found\"".to_string())
     );
-
-    server.abort();
 }

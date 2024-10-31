@@ -93,13 +93,13 @@ fn account_history() {
         .unwrap();
 
     // Set up RPC client and server
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let args = AccountHistoryArgs::new(*DEV_GENESIS_ACCOUNT, 100);
 
     let account_history = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history.account, *DEV_GENESIS_ACCOUNT);
     assert_eq!(account_history.history.len(), 5);
@@ -151,7 +151,7 @@ fn account_history() {
     // Test count and reverse
     let account_history_reverse = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_reverse.history.len(), 1);
     assert_eq!(account_history_reverse.history[0].height, 1);
@@ -196,7 +196,7 @@ fn account_history() {
     // Test filter for send state blocks
     let account_history_filtered_send = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_filtered_send.history.len(), 2);
     assert_eq!(
@@ -215,7 +215,7 @@ fn account_history() {
     // Test filter for receive state blocks
     let account_history_filtered_receive = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_filtered_receive.history.len(), 1);
     assert_eq!(
@@ -226,6 +226,4 @@ fn account_history() {
         account_history_filtered_receive.history[0].account,
         Some(*DEV_GENESIS_ACCOUNT)
     );
-
-    server.abort();
 }

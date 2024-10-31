@@ -7,7 +7,7 @@ fn wallet_locked_false() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id: WalletId = 1.into();
 
@@ -17,11 +17,9 @@ fn wallet_locked_false() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
+        .block_on(async { server.client.wallet_locked(wallet_id).await.unwrap() });
 
     assert_eq!(result.locked, "0");
-
-    server.abort();
 }
 
 #[test]
@@ -29,7 +27,7 @@ fn wallet_locked_true() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet_id: WalletId = 1.into();
 
@@ -39,11 +37,9 @@ fn wallet_locked_true() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_locked(wallet_id).await.unwrap() });
+        .block_on(async { server.client.wallet_locked(wallet_id).await.unwrap() });
 
     assert_eq!(result.locked, "1");
-
-    server.abort();
 }
 
 #[test]
@@ -51,16 +47,14 @@ fn wallet_locked_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_locked(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_locked(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

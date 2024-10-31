@@ -35,15 +35,13 @@ fn receivable_exists_confirmed() {
     let send = send_block(node.clone());
     node.confirm(send.hash().clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.receivable_exists(send.hash()).await.unwrap() });
+        .block_on(async { server.client.receivable_exists(send.hash()).await.unwrap() });
 
     assert_eq!(result.exists, "1");
-
-    server.abort();
 }
 
 #[test]
@@ -53,7 +51,7 @@ fn test_receivable_exists_unconfirmed() {
 
     let send = send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = ReceivableExistsArgs::builder(send.hash())
         .include_active()
@@ -62,11 +60,9 @@ fn test_receivable_exists_unconfirmed() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.receivable_exists(args).await.unwrap() });
+        .block_on(async { server.client.receivable_exists(args).await.unwrap() });
 
     assert_eq!(result.exists, "1");
-
-    server.abort();
 }
 
 #[test]
@@ -74,14 +70,13 @@ fn test_receivable_exists_non_existent() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let non_existent_hash = BlockHash::zero();
     let result = node
         .runtime
-        .block_on(async { rpc_client.receivable_exists(non_existent_hash).await })
+        .block_on(async { server.client.receivable_exists(non_existent_hash).await })
         .unwrap_err();
 
     assert!(result.to_string().contains("Block not found"));
-    server.abort();
 }

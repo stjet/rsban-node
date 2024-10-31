@@ -10,7 +10,7 @@ fn successors() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -42,7 +42,8 @@ fn successors() {
     );
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .successors(ChainArgs::builder(genesis, u64::MAX).build())
             .await
             .unwrap()
@@ -58,9 +59,7 @@ fn successors() {
 
     let reverse_result = node
         .runtime
-        .block_on(async { rpc_client.chain(args).await.unwrap() });
+        .block_on(async { server.client.chain(args).await.unwrap() });
 
     assert_eq!(result, reverse_result);
-
-    server.abort();
 }

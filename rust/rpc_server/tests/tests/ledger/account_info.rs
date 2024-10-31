@@ -8,10 +8,11 @@ fn account_info() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_info(AccountInfoArgs {
                 account: Account::decode_account(
                     "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
@@ -32,7 +33,8 @@ fn account_info() {
     );
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_info(AccountInfoArgs {
                 account: *DEV_GENESIS_ACCOUNT,
                 representative: Some(true),
@@ -62,6 +64,4 @@ fn account_info() {
     assert_eq!(result.confirmed_pending, Some(Amount::raw(0)));
     assert_eq!(result.confirmed_receivable, Some(Amount::raw(0)));
     assert_eq!(result.confirmed_representative, Some(*DEV_GENESIS_ACCOUNT));
-
-    server.abort();
 }

@@ -32,7 +32,7 @@ fn wallet_republish() {
 
     let send = send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::zero();
 
@@ -44,7 +44,7 @@ fn wallet_republish() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_republish(wallet, 1).await.unwrap() });
+        .block_on(async { server.client.wallet_republish(wallet, 1).await.unwrap() });
 
     assert!(
         result.blocks.len() == 1,
@@ -52,8 +52,6 @@ fn wallet_republish() {
         result.blocks.len()
     );
     assert_eq!(result.blocks[0], send.hash(), "Unexpected block hash");
-
-    server.abort();
 }
 
 #[test]
@@ -61,18 +59,16 @@ fn wallet_republish_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
+        .block_on(async { server.client.wallet_republish(WalletId::zero(), 1).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -80,16 +76,14 @@ fn wallet_republish_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_republish(WalletId::zero(), 1).await });
+        .block_on(async { server.client.wallet_republish(WalletId::zero(), 1).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

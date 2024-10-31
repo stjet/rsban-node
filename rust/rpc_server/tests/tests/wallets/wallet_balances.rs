@@ -31,14 +31,14 @@ fn wallet_balances_threshold_none() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet: WalletId = 1.into();
     node.wallets.create(wallet);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_balances(wallet).await.unwrap() });
+        .block_on(async { server.client.wallet_balances(wallet).await.unwrap() });
 
     let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
     let expected_result = AccountsBalancesDto {
@@ -46,8 +46,6 @@ fn wallet_balances_threshold_none() {
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }
 
 #[test]
@@ -55,7 +53,7 @@ fn wallet_balances_threshold_some() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet: WalletId = 1.into();
     let private_key = RawKey::zero();
@@ -73,7 +71,7 @@ fn wallet_balances_threshold_some() {
         let args = WalletBalancesArgs::builder(wallet)
             .with_minimum_balance(Amount::zero())
             .build();
-        rpc_client.wallet_balances(args).await.unwrap()
+        server.client.wallet_balances(args).await.unwrap()
     });
 
     let mut expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
@@ -90,8 +88,6 @@ fn wallet_balances_threshold_some() {
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }
 
 #[test]
@@ -99,7 +95,7 @@ fn wallet_balances_threshold_some_fails() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet = 1.into();
     node.wallets.create(wallet);
@@ -116,7 +112,7 @@ fn wallet_balances_threshold_some_fails() {
             .with_minimum_balance(Amount::nano(1))
             .build();
 
-        rpc_client.wallet_balances(args).await.unwrap()
+        server.client.wallet_balances(args).await.unwrap()
     });
 
     let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
@@ -125,6 +121,4 @@ fn wallet_balances_threshold_some_fails() {
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }

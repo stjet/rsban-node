@@ -47,7 +47,7 @@ fn wallet_ledger() {
         .insert_adhoc2(&wallet_id, &keys.private_key(), true)
         .unwrap();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let args = WalletLedgerArgs::builder(wallet_id)
         .receivable()
@@ -57,7 +57,7 @@ fn wallet_ledger() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_ledger(args).await.unwrap() });
+        .block_on(async { server.client.wallet_ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
 
@@ -77,7 +77,7 @@ fn wallet_ledger() {
 
     let result_without_optional = node
         .runtime
-        .block_on(async { rpc_client.wallet_ledger(wallet_id).await.unwrap() });
+        .block_on(async { server.client.wallet_ledger(wallet_id).await.unwrap() });
 
     let accounts_without_optional = result_without_optional.accounts;
     let (_, info_without_optional) = accounts_without_optional.iter().next().unwrap();
@@ -85,8 +85,6 @@ fn wallet_ledger() {
     assert!(info_without_optional.pending.is_none());
     assert!(info_without_optional.receivable.is_none());
     assert!(info_without_optional.representative.is_none());
-
-    server.abort();
 }
 
 #[test]
@@ -94,18 +92,16 @@ fn account_create_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_ledger(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_ledger(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -113,16 +109,14 @@ fn account_create_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_ledger(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_ledger(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

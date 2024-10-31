@@ -8,13 +8,11 @@ fn uptime() {
 
     sleep(Duration::from_millis(1000));
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.uptime().await.unwrap() });
+        .block_on(async { server.client.uptime().await.unwrap() });
 
     assert!(result.seconds > 0);
-
-    server.abort();
 }

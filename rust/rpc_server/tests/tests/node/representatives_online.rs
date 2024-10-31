@@ -10,7 +10,7 @@ fn representatives_online() {
     let mut system = System::new();
     let node = system.make_node();
     let node2 = system.make_node(); // Create node2
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
@@ -137,7 +137,7 @@ fn representatives_online() {
     // Test filtering by accounts using node2
     let filtered_result = node2
         .runtime
-        .block_on(async { rpc_client.representatives_online(args).await })
+        .block_on(async { server.client.representatives_online(args).await })
         .unwrap();
 
     let RepresentativesOnlineResponse::Detailed(filtered_result) = filtered_result else {
@@ -158,6 +158,4 @@ fn representatives_online() {
         node2_online_reps, 2,
         "Node2 doesn't have the correct number of online representatives"
     );
-
-    server.abort();
 }

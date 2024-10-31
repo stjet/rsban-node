@@ -1,6 +1,4 @@
-use rsnano_core::{
-    Amount, BlockEnum, BlockHash, BlockSubType, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY,
-};
+use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::BlockSubTypeDto;
@@ -49,11 +47,11 @@ fn wallet_history() {
         .insert_adhoc2(&wallet_id, &keys.private_key(), true)
         .unwrap();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_history = node
         .runtime
-        .block_on(async { rpc_client.wallet_history(wallet_id).await.unwrap() });
+        .block_on(async { server.client.wallet_history(wallet_id).await.unwrap() });
 
     assert_eq!(wallet_history.history.len(), 1);
 
@@ -73,8 +71,6 @@ fn wallet_history() {
 
     assert!(entry.local_timestamp <= current_time);
     assert!(entry.local_timestamp >= current_time - 10);
-
-    server.abort();
 }
 
 #[test]
@@ -82,16 +78,14 @@ fn wallet_history_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_history(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_history(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

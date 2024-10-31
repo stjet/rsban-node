@@ -6,13 +6,13 @@ fn work_generate() {
     let mut system = System::new();
     let node = system.build_node().finish();
 
-    let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let hash = BlockHash::from_bytes([1; 32]);
 
     let work_generate_dto = node
         .runtime
-        .block_on(async { rpc_client.work_generate(hash).await.unwrap() });
+        .block_on(async { server.client.work_generate(hash).await.unwrap() });
 
     assert_eq!(hash, work_generate_dto.hash);
 

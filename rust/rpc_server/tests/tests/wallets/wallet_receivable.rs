@@ -18,7 +18,7 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let send = send_block_to(node.clone(), public_key.into(), Amount::raw(1));
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let args = WalletReceivableArgs::builder(wallet, 1)
         .include_unconfirmed_blocks()
@@ -26,7 +26,7 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
+        .block_on(async { server.client.wallet_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Simple(simple) = result {
         assert_eq!(
@@ -36,8 +36,6 @@ fn wallet_receivable_include_only_confirmed_false() {
     } else {
         panic!("Expected ReceivableDto::Blocks");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -60,10 +58,11 @@ fn wallet_receivable_options_none() {
         .confirmed()
         .block_exists_or_pruned(&node.ledger.read_txn(), &send.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_receivable(WalletReceivableArgs::new(wallet, 1))
             .await
             .unwrap()
@@ -77,8 +76,6 @@ fn wallet_receivable_options_none() {
     } else {
         panic!("Expected ReceivableDto::Blocks");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -99,7 +96,7 @@ fn wallet_receivable_threshold_some() {
     let send2 = send_block_to(node.clone(), public_key.into(), Amount::raw(2));
     node.ledger.confirm(&mut node.ledger.rw_txn(), send2.hash());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let args = WalletReceivableArgs::builder(wallet, 2)
         .threshold(Amount::raw(1))
@@ -107,7 +104,7 @@ fn wallet_receivable_threshold_some() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_receivable(args).await.unwrap() });
+        .block_on(async { server.client.wallet_receivable(args).await.unwrap() });
 
     if let AccountsReceivableResponse::Threshold(simple) = result {
         let account_blocks = simple.blocks.get(&Account::from(public_key)).unwrap();
@@ -117,8 +114,6 @@ fn wallet_receivable_threshold_some() {
     } else {
         panic!("Expected ReceivableDto::Threshold");
     }
-
-    server.abort();
 }
 
 #[test]
@@ -126,10 +121,11 @@ fn wallet_receivable_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .wallet_receivable(WalletReceivableArgs::new(WalletId::zero(), 1))
             .await
     });
@@ -138,6 +134,4 @@ fn wallet_receivable_fails_without_enable_control() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

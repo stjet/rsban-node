@@ -8,7 +8,7 @@ fn search_receivable() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     // Create a wallet and insert the genesis key
     let wallet_id = WalletId::zero();
@@ -36,7 +36,7 @@ fn search_receivable() {
 
     // Call search_receivable
     node.runtime.block_on(async {
-        rpc_client.search_receivable(wallet_id).await.unwrap();
+        server.client.search_receivable(wallet_id).await.unwrap();
     });
 
     // Check that the balance has been updated
@@ -53,8 +53,6 @@ fn search_receivable() {
     });
 
     assert_eq!(final_balance, Amount::MAX);
-
-    server.abort();
 }
 
 #[test]
@@ -62,18 +60,16 @@ fn search_receivable_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.search_receivable(WalletId::zero()).await });
+        .block_on(async { server.client.search_receivable(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -81,16 +77,14 @@ fn search_receivable_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.search_receivable(WalletId::zero()).await });
+        .block_on(async { server.client.search_receivable(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

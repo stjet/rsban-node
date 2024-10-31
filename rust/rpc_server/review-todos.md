@@ -64,6 +64,7 @@
 - wallet_export
 - wallet_frontiers
 - wallet_info
+- password_valid
 
 # RPC functions MISSING:
 - account_count
@@ -96,7 +97,6 @@
 - telemetry
 - unopened
 - wallet_history
-- wallet_balance_total
 - wallet_key_valid
 - wallet_ledger
 - wallet_lock

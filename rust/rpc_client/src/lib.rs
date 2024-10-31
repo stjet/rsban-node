@@ -346,13 +346,13 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_lock(&self, wallet: WalletId) -> Result<LockedDto> {
+    pub async fn wallet_lock(&self, wallet: WalletId) -> Result<LockedResponse> {
         let cmd = RpcCommand::wallet_lock(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_locked(&self, wallet: WalletId) -> Result<LockedDto> {
+    pub async fn wallet_locked(&self, wallet: WalletId) -> Result<LockedResponse> {
         let cmd = RpcCommand::wallet_locked(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

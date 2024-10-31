@@ -10,11 +10,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletRepresentativeDto {
+pub struct WalletRepresentativeResponse {
     pub representative: Account,
 }
 
-impl WalletRepresentativeDto {
+impl WalletRepresentativeResponse {
     pub fn new(representative: Account) -> Self {
         Self { representative }
     }

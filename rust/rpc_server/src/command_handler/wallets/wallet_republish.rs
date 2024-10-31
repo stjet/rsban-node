@@ -1,23 +1,20 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, BlockEnum, BlockHash};
 use rsnano_node::NodeExt;
-use rsnano_rpc_messages::{BlockHashesDto, WalletWithCountArgs};
+use rsnano_rpc_messages::{BlockHashesResponse, WalletWithCountArgs};
 use std::{collections::VecDeque, time::Duration};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_republish(
         &self,
         args: WalletWithCountArgs,
-    ) -> anyhow::Result<BlockHashesDto> {
+    ) -> anyhow::Result<BlockHashesResponse> {
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
         let (blocks, republish_bundle) = self.collect_blocks_to_republish(accounts, args.count);
-        self.node.flood_block_many(
-            republish_bundle.into(),
-            Box::new(|| ()),
-            Duration::from_millis(25),
-        );
-        Ok(BlockHashesDto::new(blocks))
+        self.node
+            .flood_block_many(republish_bundle, Box::new(|| ()), Duration::from_millis(25));
+        Ok(BlockHashesResponse::new(blocks))
     }
 
     fn collect_blocks_to_republish(
@@ -33,9 +30,9 @@ impl RpcCommandHandler {
             let mut latest = self.node.ledger.any().account_head(&tx, &account).unwrap();
             let mut hashes = Vec::new();
 
-            while !latest.is_zero() && hashes.len() < count as usize {
+            while !latest.is_zero() && (hashes.len() as u64) < count {
                 hashes.push(latest);
-                if let Some(block) = self.node.ledger.get_block(&tx, &latest) {
+                if let Some(block) = self.node.ledger.any().get_block(&tx, &latest) {
                     latest = block.previous();
                 } else {
                     latest = BlockHash::zero();

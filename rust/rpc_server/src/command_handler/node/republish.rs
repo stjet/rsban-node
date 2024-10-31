@@ -2,11 +2,11 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::PendingKey;
 use rsnano_node::NodeExt;
-use rsnano_rpc_messages::{BlockHashesDto, RepublishArgs};
+use rsnano_rpc_messages::{BlockHashesResponse, RepublishArgs};
 use std::time::Duration;
 
 impl RpcCommandHandler {
-    pub(crate) fn republish(&self, args: RepublishArgs) -> anyhow::Result<BlockHashesDto> {
+    pub(crate) fn republish(&self, args: RepublishArgs) -> anyhow::Result<BlockHashesResponse> {
         let mut blocks = Vec::new();
         let transaction = self.node.store.tx_begin_read();
         let count = args.count.unwrap_or(1024);
@@ -130,6 +130,6 @@ impl RpcCommandHandler {
             );
         }
 
-        Ok(BlockHashesDto::new(blocks))
+        Ok(BlockHashesResponse::new(blocks))
     }
 }

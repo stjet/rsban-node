@@ -66,6 +66,15 @@
 - wallet_info
 - password_valid
 - wallet_ledger
+- wallet_lock
+- wallet_representative
+- wallet_representative_set
+- wallet_republish
+- wallet_work_get
+- work_cancel
+- work_get
+- work_set
+- work_validate
 
 # RPC functions MISSING:
 - account_count
@@ -98,14 +107,5 @@
 - telemetry
 - unopened
 - wallet_history
-- wallet_lock
 - wallet_receivable
-- wallet_representative
-- wallet_representative_set
-- wallet_republish
-- wallet_work_get
 - work_generate
-- work_cancel
-- work_get
-- work_set
-- work_validate

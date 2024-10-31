@@ -1,4 +1,5 @@
 use rsnano_ledger::DEV_GENESIS_HASH;
+use rsnano_rpc_messages::WorkValidateArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -12,23 +13,33 @@ fn work_validate() {
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .work_validate(1.into(), *DEV_GENESIS_HASH)
+            .work_validate(WorkValidateArgs {
+                work: Some(1.into()),
+                hash: *DEV_GENESIS_HASH,
+                multiplier: None,
+                difficulty: None,
+            })
             .await
             .unwrap()
     });
 
-    assert_eq!(result.valid_all, false);
-    assert_eq!(result.valid_receive, false);
+    assert_eq!(result.valid_all, "0");
+    assert_eq!(result.valid_receive, "0");
 
     let result = node.runtime.block_on(async {
         rpc_client
-            .work_validate(work.into(), *DEV_GENESIS_HASH)
+            .work_validate(WorkValidateArgs {
+                work: Some(work.into()),
+                hash: *DEV_GENESIS_HASH,
+                multiplier: None,
+                difficulty: None,
+            })
             .await
             .unwrap()
     });
 
-    assert_eq!(result.valid_all, true);
-    assert_eq!(result.valid_receive, true);
+    assert_eq!(result.valid_all, "1");
+    assert_eq!(result.valid_receive, "1");
 
     server.abort();
 }

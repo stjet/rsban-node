@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::BlockHash;
-use rsnano_rpc_messages::{BlockHashesDto, ChainArgs};
+use rsnano_rpc_messages::{BlockHashesResponse, ChainArgs};
 
 impl RpcCommandHandler {
-    pub(crate) fn chain(&self, args: ChainArgs, successors: bool) -> BlockHashesDto {
+    pub(crate) fn chain(&self, args: ChainArgs, successors: bool) -> BlockHashesResponse {
         let successors = successors != args.reverse.unwrap_or(false);
         let mut hash = args.block;
         let count = args.count;
@@ -34,6 +34,6 @@ impl RpcCommandHandler {
             }
         }
 
-        BlockHashesDto::new(blocks)
+        BlockHashesResponse::new(blocks)
     }
 }

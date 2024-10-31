@@ -12,7 +12,7 @@ pub use wallets::*;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
     AccountInfo(AccountInfoArgs),

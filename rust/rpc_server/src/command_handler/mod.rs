@@ -107,6 +107,17 @@ impl RpcCommandHandler {
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
             RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
+            RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
+            RpcCommand::WalletRepresentative(args) => to_value(self.wallet_representative(args)?),
+            RpcCommand::WalletRepresentativeSet(args) => {
+                to_value(self.wallet_representative_set(args)?)
+            }
+            RpcCommand::WalletRepublish(args) => to_value(self.wallet_republish(args)?),
+            RpcCommand::WalletWorkGet(args) => to_value(self.wallet_work_get(args)?),
+            RpcCommand::WorkCancel(args) => to_value(self.work_cancel(args)),
+            RpcCommand::WorkGet(args) => to_value(self.work_get(args)?),
+            RpcCommand::WorkSet(args) => to_value(self.work_set(args)?),
+            RpcCommand::WorkValidate(args) => to_value(self.work_validate(args)),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -124,15 +135,10 @@ impl RpcCommandHandler {
             // Not reviewed yet:
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
-            RpcCommand::WalletLock(args) => to_value(self.wallet_lock(args)?),
             RpcCommand::Stop => to_value(self.stop()),
             RpcCommand::Uptime => to_value(self.uptime()),
             RpcCommand::NanoToRaw(args) => to_value(nano_to_raw(args)),
             RpcCommand::RawToNano(args) => to_value(raw_to_nano(args)),
-            RpcCommand::WalletRepresentative(args) => to_value(self.wallet_representative(args)?),
-            RpcCommand::WorkSet(args) => to_value(self.work_set(args)?),
-            RpcCommand::WorkGet(args) => to_value(self.work_get(args)?),
-            RpcCommand::WalletWorkGet(args) => to_value(self.wallet_work_get(args)?),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),
             RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
@@ -140,15 +146,9 @@ impl RpcCommandHandler {
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
             RpcCommand::Chain(args) => to_value(self.chain(args, false)),
             RpcCommand::Successors(args) => to_value(self.chain(args, true)),
-            RpcCommand::WorkValidate(args) => to_value(self.work_validate(args)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),
-            RpcCommand::WorkCancel(args) => to_value(self.work_cancel(args)),
             RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
-            RpcCommand::WalletRepresentativeSet(args) => {
-                to_value(self.wallet_representative_set(args)?)
-            }
-            RpcCommand::WalletRepublish(args) => to_value(self.wallet_republish(args)?),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),

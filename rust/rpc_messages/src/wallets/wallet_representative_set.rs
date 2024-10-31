@@ -11,16 +11,16 @@ impl RpcCommand {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct WalletRepresentativeSetArgs {
     pub wallet: WalletId,
-    pub account: Account,
+    pub representative: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub update_existing_accounts: Option<bool>,
 }
 
 impl WalletRepresentativeSetArgs {
-    pub fn new(wallet: WalletId, account: Account) -> Self {
+    pub fn new(wallet: WalletId, representative: Account) -> Self {
         Self {
             wallet,
-            account,
+            representative,
             update_existing_accounts: None,
         }
     }
@@ -48,13 +48,15 @@ impl WalletRepresentativeSetArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct SetDto {
-    pub set: bool,
+pub struct SetResponse {
+    pub set: String,
 }
 
-impl SetDto {
+impl SetResponse {
     pub fn new(set: bool) -> Self {
-        Self { set }
+        Self {
+            set: if set { "1".to_owned() } else { "0".to_owned() },
+        }
     }
 }
 
@@ -73,7 +75,7 @@ mod tests {
 
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
 
         let actual_json: serde_json::Value = from_str(&serialized).unwrap();
@@ -91,7 +93,7 @@ mod tests {
 
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
             "update_existing_accounts": true
         });
 
@@ -103,7 +105,7 @@ mod tests {
     fn deserialize_wallet_representative_set_args_update_existing_accounts_none() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
 
         let deserialized: WalletRepresentativeSetArgs = from_str(json_str).unwrap();
@@ -117,7 +119,7 @@ mod tests {
     fn deserialize_wallet_representative_set_args_update_existing_accounts_some() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
             "update_existing_accounts": true
         }"#;
 

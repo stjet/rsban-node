@@ -1,12 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountsWithWorkDto, WalletRpcMessage};
+use rsnano_rpc_messages::{AccountsWithWorkResponse, WalletRpcMessage};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_work_get(
         &self,
         args: WalletRpcMessage,
-    ) -> anyhow::Result<AccountsWithWorkDto> {
+    ) -> anyhow::Result<AccountsWithWorkResponse> {
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let mut works = HashMap::new();
 
@@ -15,6 +15,6 @@ impl RpcCommandHandler {
             works.insert(account, work.into());
         }
 
-        Ok(AccountsWithWorkDto::new(works))
+        Ok(AccountsWithWorkResponse::new(works))
     }
 }

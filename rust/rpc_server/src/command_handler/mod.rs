@@ -11,7 +11,6 @@ use rsnano_store_lmdb::Transaction;
 use serde_json::{to_value, Value};
 use std::sync::Arc;
 use utils::*;
-use wallets::*;
 
 #[derive(Clone)]
 pub(crate) struct RpcCommandHandler {
@@ -102,6 +101,7 @@ impl RpcCommandHandler {
             RpcCommand::WalletContains(args) => to_value(self.wallet_contains(args)?),
             RpcCommand::WalletCreate(args) => to_value(self.wallet_create(args)?),
             RpcCommand::WalletDestroy(args) => to_value(self.wallet_destroy(args)?),
+            RpcCommand::WalletExport(args) => to_value(self.wallet_export(args)?),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -131,7 +131,6 @@ impl RpcCommandHandler {
             RpcCommand::WalletWorkGet(args) => to_value(self.wallet_work_get(args)?),
             RpcCommand::WalletFrontiers(args) => to_value(self.wallet_frontiers(args)?),
             RpcCommand::WalletInfo(args) => to_value(self.wallet_info(args)?),
-            RpcCommand::WalletExport(args) => to_value(wallet_export(args)),
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
             RpcCommand::Representatives(args) => to_value(self.representatives(args)),
             RpcCommand::StatsClear => to_value(self.stats_clear()),

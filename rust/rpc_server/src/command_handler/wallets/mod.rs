@@ -32,5 +32,3 @@ mod wallet_republish;
 mod wallet_work_get;
 mod work_get;
 mod work_set;
-
-pub(crate) use wallet_export::wallet_export;

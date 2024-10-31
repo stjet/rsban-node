@@ -511,7 +511,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_export(&self, wallet: WalletId) -> Result<JsonDto> {
+    pub async fn wallet_export(&self, wallet: WalletId) -> Result<JsonResponse> {
         let cmd = RpcCommand::wallet_export(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

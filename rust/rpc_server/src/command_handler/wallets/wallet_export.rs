@@ -1,6 +1,9 @@
-use rsnano_rpc_messages::{JsonDto, WalletRpcMessage};
-use serde_json::{to_string, Value};
+use crate::command_handler::RpcCommandHandler;
+use rsnano_rpc_messages::{JsonResponse, WalletRpcMessage};
 
-pub(crate) fn wallet_export(args: WalletRpcMessage) -> JsonDto {
-    JsonDto::new(Value::String(to_string(&args.wallet).unwrap()))
+impl RpcCommandHandler {
+    pub(crate) fn wallet_export(&self, args: WalletRpcMessage) -> anyhow::Result<JsonResponse> {
+        let json = self.node.wallets.serialize(args.wallet)?;
+        Ok(JsonResponse::new(json))
+    }
 }

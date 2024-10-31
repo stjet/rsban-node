@@ -440,7 +440,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn nano_to_raw(&self, amount: Amount) -> Result<AmountRpcMessage> {
+    pub async fn nano_to_raw(&self, amount: u64) -> Result<AmountRpcMessage> {
         let cmd = RpcCommand::nano_to_raw(amount);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

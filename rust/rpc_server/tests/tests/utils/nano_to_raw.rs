@@ -10,9 +10,9 @@ fn nano_to_raw() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.nano_to_raw(Amount::nano(1)).await.unwrap() });
+        .block_on(async { rpc_client.nano_to_raw(1).await.unwrap() });
 
-    assert_eq!(result.amount, Amount::raw(1000000000000000000000000000000));
+    assert_eq!(result.amount, Amount::nano(1));
 
     server.abort();
 }

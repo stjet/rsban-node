@@ -80,6 +80,8 @@
 - stats_clear
 - unopened
 - send
+- sign
+- process
 
 # RPC functions MISSING:
 - account_count
@@ -101,9 +103,7 @@
 - stats
 
 # RPC functions to review:
-- process
 - republish
-- sign
 - stop
 - telemetry
 - wallet_history

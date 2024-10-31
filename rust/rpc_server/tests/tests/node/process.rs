@@ -59,6 +59,6 @@ fn process_fails_with_low_work() {
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
-        Some("node returned error: \"Work low\"".to_string())
+        Some("node returned error: \"Block work is less than threshold\"".to_string())
     );
 }

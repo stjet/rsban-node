@@ -134,6 +134,8 @@ impl RpcCommandHandler {
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),
             RpcCommand::Chain(args) => to_value(self.chain(args, false)),
             RpcCommand::Successors(args) => to_value(self.chain(args, true)),
+            RpcCommand::Sign(args) => to_value(self.sign(args)?),
+            RpcCommand::Process(args) => to_value(self.process(args)?),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -149,8 +151,6 @@ impl RpcCommandHandler {
             RpcCommand::ActiveDifficulty => self.not_implemented(),
 
             // Not reviewed yet:
-            RpcCommand::Sign(args) => to_value(self.sign(args)?),
-            RpcCommand::Process(args) => to_value(self.process(args)?),
             RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),

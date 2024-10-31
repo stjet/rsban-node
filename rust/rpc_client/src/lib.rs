@@ -219,7 +219,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn search_receivable(&self, wallet: WalletId) -> Result<StartedDto> {
+    pub async fn search_receivable(&self, wallet: WalletId) -> Result<StartedResponse> {
         let cmd = RpcCommand::search_receivable(wallet);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -433,7 +433,7 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn block_confirm(&self, hash: BlockHash) -> Result<StartedDto> {
+    pub async fn block_confirm(&self, hash: BlockHash) -> Result<StartedResponse> {
         let cmd = RpcCommand::block_confirm(hash);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -805,7 +805,11 @@ impl NanoRpcClient {
         Ok(())
     }
 
-    pub async fn keepalive(&self, address: impl Into<String>, port: u16) -> Result<StartedDto> {
+    pub async fn keepalive(
+        &self,
+        address: impl Into<String>,
+        port: u16,
+    ) -> Result<StartedResponse> {
         let cmd = RpcCommand::keepalive(address, port);
         let json = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(json)?)

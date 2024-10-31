@@ -1,10 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{UnopenedArgs, UnopenedDto};
+use rsnano_rpc_messages::{UnopenedArgs, UnopenedResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
-    pub(crate) fn unopened(&self, args: UnopenedArgs) -> UnopenedDto {
+    pub(crate) fn unopened(&self, args: UnopenedArgs) -> UnopenedResponse {
+        let count = args.count.unwrap_or(usize::MAX);
         let start = args.account;
         let mut accounts: HashMap<Account, Amount> = HashMap::new();
 
@@ -15,7 +16,7 @@ impl RpcCommandHandler {
         let mut current_account = start;
         let mut current_account_sum = Amount::zero();
 
-        while iterator != end && accounts.len() < args.count as usize {
+        while iterator != end && accounts.len() < count {
             let (key, info) = iterator.current().unwrap();
             let account = key.receiving_account;
 
@@ -42,13 +43,13 @@ impl RpcCommandHandler {
             iterator.next();
         }
 
-        if accounts.len() < args.count as usize
+        if accounts.len() < count
             && !current_account_sum.is_zero()
             && args.threshold.map_or(true, |t| current_account_sum >= t)
         {
             accounts.insert(current_account, current_account_sum);
         }
 
-        UnopenedDto::new(accounts)
+        UnopenedResponse::new(accounts)
     }
 }

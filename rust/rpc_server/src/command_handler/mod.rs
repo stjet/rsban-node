@@ -127,6 +127,8 @@ impl RpcCommandHandler {
             RpcCommand::Ledger(args) => to_value(self.ledger(args)),
             RpcCommand::Receivable(args) => to_value(self.receivable(args)),
             RpcCommand::Stop => to_value(self.stop()),
+            RpcCommand::Representatives(args) => to_value(self.representatives(args)),
+            RpcCommand::StatsClear => to_value(self.stats_clear()),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -142,8 +144,6 @@ impl RpcCommandHandler {
             RpcCommand::ActiveDifficulty => self.not_implemented(),
 
             // Not reviewed yet:
-            RpcCommand::Representatives(args) => to_value(self.representatives(args)),
-            RpcCommand::StatsClear => to_value(self.stats_clear()),
             RpcCommand::Unopened(args) => to_value(self.unopened(args)),
             RpcCommand::Send(args) => to_value(self.send(args)),
             RpcCommand::AccountsBalances(args) => to_value(self.accounts_balances(args)),

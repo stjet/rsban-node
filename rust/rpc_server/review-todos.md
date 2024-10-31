@@ -77,6 +77,7 @@
 - work_validate
 - ledger
 - receivable
+- stats_clear
 
 # RPC functions MISSING:
 - account_count
@@ -102,7 +103,6 @@
 - republish
 - send
 - sign
-- stats_clear
 - stop
 - telemetry
 - unopened

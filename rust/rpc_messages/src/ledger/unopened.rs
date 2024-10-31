@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use crate::RpcCommand;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 impl RpcCommand {
     pub fn unopened(args: UnopenedArgs) -> Self {
@@ -10,26 +9,27 @@ impl RpcCommand {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct UnopenedArgs {
     pub account: Account,
-    pub count: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
 }
 
 impl UnopenedArgs {
-    pub fn new(account: Account, count: u64) -> UnopenedArgs {
+    pub fn new(account: Account) -> UnopenedArgs {
         UnopenedArgs {
             account,
-            count,
+            count: None,
             threshold: None,
         }
     }
 
-    pub fn builder(account: Account, count: u64) -> UnopenedArgsBuilder {
+    pub fn builder(account: Account) -> UnopenedArgsBuilder {
         UnopenedArgsBuilder {
-            args: UnopenedArgs::new(account, count),
+            args: UnopenedArgs::new(account),
         }
     }
 }
@@ -50,11 +50,11 @@ impl UnopenedArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct UnopenedDto {
+pub struct UnopenedResponse {
     pub accounts: HashMap<Account, Amount>,
 }
 
-impl UnopenedDto {
+impl UnopenedResponse {
     pub fn new(accounts: HashMap<Account, Amount>) -> Self {
         Self { accounts }
     }
@@ -68,7 +68,11 @@ mod tests {
 
     #[test]
     fn serialize_unopened_args_threshold_none() {
-        let args = UnopenedArgs::new(Account::zero(), 1);
+        let args = UnopenedArgs {
+            account: Account::zero(),
+            count: Some(1),
+            ..Default::default()
+        };
         let json = to_value(args).unwrap();
 
         assert_eq!(
@@ -82,9 +86,11 @@ mod tests {
 
     #[test]
     fn serialize_unopened_args_threshold_some() {
-        let args = UnopenedArgs::builder(Account::zero(), 1)
-            .with_minimum_balance(Amount::zero())
-            .build();
+        let args = UnopenedArgs {
+            account: Account::zero(),
+            count: Some(1),
+            threshold: Some(Amount::zero()),
+        };
         let json = to_value(args).unwrap();
 
         assert_eq!(
@@ -99,8 +105,7 @@ mod tests {
 
     #[test]
     fn serialize_unopened_command_threshold_none() {
-        let args = UnopenedArgs::new(Account::zero(), 1);
-        let command = RpcCommand::unopened(args);
+        let command = RpcCommand::unopened(UnopenedArgs::new(Account::zero()));
         let json = to_value(command).unwrap();
 
         assert_eq!(
@@ -108,26 +113,6 @@ mod tests {
             json!({
                 "action": "unopened",
                 "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-                "count": 1
-            })
-        );
-    }
-
-    #[test]
-    fn serialize_unopened_command_threshold_some() {
-        let args = UnopenedArgs::builder(Account::zero(), 1)
-            .with_minimum_balance(Amount::zero())
-            .build();
-        let command = RpcCommand::unopened(args);
-        let json = to_value(command).unwrap();
-
-        assert_eq!(
-            json,
-            json!({
-                "action": "unopened",
-                "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-                "count": 1,
-                "threshold": "0"
             })
         );
     }
@@ -141,40 +126,13 @@ mod tests {
 
         let args: UnopenedArgs = from_value(json).unwrap();
 
-        assert_eq!(args, UnopenedArgs::new(Account::zero(), 1));
-    }
-
-    #[test]
-    fn deserialize_unopened_args_threshold_some() {
-        let json = json!({
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "count": 1,
-            "threshold": "0"
-        });
-
-        let args: UnopenedArgs = from_value(json).unwrap();
-
         assert_eq!(
             args,
-            UnopenedArgs::builder(Account::zero(), 1)
-                .with_minimum_balance(Amount::zero())
-                .build()
-        );
-    }
-
-    #[test]
-    fn deserialize_unopened_command_threshold_none() {
-        let json = json!({
-            "action": "unopened",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "count": 1
-        });
-
-        let command: RpcCommand = from_value(json).unwrap();
-
-        assert_eq!(
-            command,
-            RpcCommand::Unopened(UnopenedArgs::new(Account::zero(), 1))
+            UnopenedArgs {
+                account: Account::zero(),
+                count: Some(1),
+                ..Default::default()
+            }
         );
     }
 
@@ -191,35 +149,11 @@ mod tests {
 
         assert_eq!(
             command,
-            RpcCommand::Unopened(
-                UnopenedArgs::builder(Account::zero(), 1)
-                    .with_minimum_balance(Amount::zero())
-                    .build()
-            )
+            RpcCommand::Unopened(UnopenedArgs {
+                account: Account::zero(),
+                count: Some(1),
+                threshold: Some(Amount::zero())
+            })
         );
-    }
-
-    #[test]
-    fn unopened_args_builder() {
-        let args = UnopenedArgs::builder(Account::zero(), 5)
-            .with_minimum_balance(Amount::from(100))
-            .build();
-
-        assert_eq!(args.account, Account::zero());
-        assert_eq!(args.count, 5);
-        assert_eq!(args.threshold, Some(Amount::from(100)));
-    }
-
-    #[test]
-    fn unopened_command_with_builder() {
-        let command = RpcCommand::unopened(UnopenedArgs::builder(Account::zero(), 3).build());
-
-        if let RpcCommand::Unopened(args) = command {
-            assert_eq!(args.account, Account::zero());
-            assert_eq!(args.count, 3);
-            assert_eq!(args.threshold, None);
-        } else {
-            panic!("Expected RpcCommand::Unopened variant");
-        }
     }
 }

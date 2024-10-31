@@ -608,7 +608,7 @@ impl NanoRpcClient {
 
     pub async fn representatives(
         &self,
-        count: Option<u64>,
+        count: Option<usize>,
         sorting: Option<bool>,
     ) -> Result<RepresentativesResponse> {
         let cmd = RpcCommand::representatives(count, sorting);

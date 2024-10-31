@@ -4,20 +4,14 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct RepresentativesArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<u64>,
+    pub count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sorting: Option<bool>,
 }
 
-impl RepresentativesArgs {
-    pub fn new(count: Option<u64>, sorting: Option<bool>) -> Self {
-        Self { count, sorting }
-    }
-}
-
 impl RpcCommand {
-    pub fn representatives(count: Option<u64>, sorting: Option<bool>) -> Self {
-        Self::Representatives(RepresentativesArgs::new(count, sorting))
+    pub fn representatives(count: Option<usize>, sorting: Option<bool>) -> Self {
+        Self::Representatives(RepresentativesArgs { count, sorting })
     }
 }
 

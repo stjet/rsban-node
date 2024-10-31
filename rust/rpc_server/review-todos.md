@@ -78,6 +78,7 @@
 - ledger
 - receivable
 - stats_clear
+- unopened
 
 # RPC functions MISSING:
 - account_count
@@ -105,7 +106,6 @@
 - sign
 - stop
 - telemetry
-- unopened
 - wallet_history
 - wallet_receivable
 - work_generate

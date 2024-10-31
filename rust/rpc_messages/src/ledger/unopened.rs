@@ -11,42 +11,12 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct UnopenedArgs {
-    pub account: Account,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
-}
-
-impl UnopenedArgs {
-    pub fn new(account: Account) -> UnopenedArgs {
-        UnopenedArgs {
-            account,
-            count: None,
-            threshold: None,
-        }
-    }
-
-    pub fn builder(account: Account) -> UnopenedArgsBuilder {
-        UnopenedArgsBuilder {
-            args: UnopenedArgs::new(account),
-        }
-    }
-}
-
-pub struct UnopenedArgsBuilder {
-    args: UnopenedArgs,
-}
-
-impl UnopenedArgsBuilder {
-    pub fn with_minimum_balance(mut self, threshold: Amount) -> Self {
-        self.args.threshold = Some(threshold);
-        self
-    }
-
-    pub fn build(self) -> UnopenedArgs {
-        self.args
-    }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -69,7 +39,7 @@ mod tests {
     #[test]
     fn serialize_unopened_args_threshold_none() {
         let args = UnopenedArgs {
-            account: Account::zero(),
+            account: Some(Account::zero()),
             count: Some(1),
             ..Default::default()
         };
@@ -87,7 +57,7 @@ mod tests {
     #[test]
     fn serialize_unopened_args_threshold_some() {
         let args = UnopenedArgs {
-            account: Account::zero(),
+            account: Some(Account::zero()),
             count: Some(1),
             threshold: Some(Amount::zero()),
         };
@@ -105,7 +75,10 @@ mod tests {
 
     #[test]
     fn serialize_unopened_command_threshold_none() {
-        let command = RpcCommand::unopened(UnopenedArgs::new(Account::zero()));
+        let command = RpcCommand::unopened(UnopenedArgs {
+            account: Some(Account::zero()),
+            ..Default::default()
+        });
         let json = to_value(command).unwrap();
 
         assert_eq!(
@@ -129,7 +102,7 @@ mod tests {
         assert_eq!(
             args,
             UnopenedArgs {
-                account: Account::zero(),
+                account: Some(Account::zero()),
                 count: Some(1),
                 ..Default::default()
             }
@@ -150,7 +123,7 @@ mod tests {
         assert_eq!(
             command,
             RpcCommand::Unopened(UnopenedArgs {
-                account: Account::zero(),
+                account: Some(Account::zero()),
                 count: Some(1),
                 threshold: Some(Amount::zero())
             })

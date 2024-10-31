@@ -996,6 +996,9 @@ pub unsafe extern "C" fn rsn_wallets_send_sync(
         Account::from_ptr(source),
         Account::from_ptr(account),
         Amount::from_ptr(amount),
+        0,
+        true,
+        None,
     );
     result.copy_bytes(hash);
 }

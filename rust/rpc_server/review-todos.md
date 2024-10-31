@@ -79,6 +79,7 @@
 - receivable
 - stats_clear
 - unopened
+- send
 
 # RPC functions MISSING:
 - account_count
@@ -102,7 +103,6 @@
 # RPC functions to review:
 - process
 - republish
-- send
 - sign
 - stop
 - telemetry

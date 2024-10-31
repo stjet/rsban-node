@@ -1112,6 +1112,9 @@ pub trait WalletsExt {
         source: Account,
         account: Account,
         amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
     ) -> BlockHash;
 
     fn search_receivable(
@@ -1837,6 +1840,9 @@ impl WalletsExt for Arc<Wallets> {
         source: Account,
         account: Account,
         amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
     ) -> BlockHash {
         let guard = self.mutex.lock().unwrap();
         let Some(wallet) = guard.get(&wallet_id) else {
@@ -1856,9 +1862,9 @@ impl WalletsExt for Arc<Wallets> {
                     (true, block.map(|b| b.hash()).unwrap_or_default());
                 result_clone.0.notify_all();
             }),
-            0,
-            true,
-            None,
+            work,
+            generate_work,
+            id,
         );
 
         let mut guard = result.1.lock().unwrap();

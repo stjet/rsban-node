@@ -27,7 +27,13 @@ fn send() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
+            .send(SendArgs {
+                wallet,
+                source: *DEV_GENESIS_ACCOUNT,
+                destination,
+                amount,
+                ..Default::default()
+            })
             .await
             .unwrap()
     });
@@ -71,7 +77,13 @@ fn send_fails_without_enable_control() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
+            .send(SendArgs {
+                wallet,
+                source: *DEV_GENESIS_ACCOUNT,
+                destination,
+                amount,
+                ..Default::default()
+            })
             .await
     });
 

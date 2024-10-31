@@ -792,10 +792,16 @@ impl NanoRpcClient {
         destination: Account,
         amount: Amount,
     ) -> Result<()> {
-        let send_args = SendArgs::builder(wallet, source, destination, amount).build();
+        let send_args = SendArgs {
+            wallet,
+            source,
+            destination,
+            amount,
+            ..Default::default()
+        };
         let block = self.send(send_args).await?;
         let receive_args = ReceiveArgs::builder(wallet, destination, block.block).build();
-        let _ = self.receive(receive_args).await;
+        self.receive(receive_args).await?;
         Ok(())
     }
 

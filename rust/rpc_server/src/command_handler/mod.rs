@@ -106,6 +106,7 @@ impl RpcCommandHandler {
             RpcCommand::WalletInfo(args) => to_value(self.wallet_info(args)?),
             RpcCommand::PasswordValid(args) => to_value(self.password_valid(args)?),
             RpcCommand::WalletLocked(args) => to_value(self.wallet_locked(args)?),
+            RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
@@ -149,7 +150,6 @@ impl RpcCommandHandler {
             }
             RpcCommand::WalletRepublish(args) => to_value(self.wallet_republish(args)?),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
-            RpcCommand::WalletLedger(args) => to_value(self.wallet_ledger(args)?),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),

@@ -1,27 +1,22 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{AccountInfo, WalletLedgerArgs, WalletLedgerDto};
+use rsnano_rpc_messages::{AccountInfo, WalletLedgerArgs, WalletLedgerResponse};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_ledger(&self, args: WalletLedgerArgs) -> anyhow::Result<WalletLedgerDto> {
-        let WalletLedgerArgs {
-            wallet,
-            representative,
-            weight,
-            receivable,
-            modified_since,
-        } = args;
+    pub(crate) fn wallet_ledger(
+        &self,
+        args: WalletLedgerArgs,
+    ) -> anyhow::Result<WalletLedgerResponse> {
+        let representative = args.representative.unwrap_or(false);
+        let weight = args.weight.unwrap_or(false);
+        let receivable = args.receivable.unwrap_or(false);
+        let modified_since = args.modified_since.unwrap_or(0);
 
-        let representative = representative.unwrap_or(false);
-        let weight = weight.unwrap_or(false);
-        let receivable = receivable.unwrap_or(false);
-        let modified_since = modified_since.unwrap_or(0);
-
-        let accounts = self.node.wallets.get_accounts_of_wallet(&wallet)?;
-        let accounts_json = get_accounts_info(
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
+        let account_dtos = get_accounts_info(
             self.node.clone(),
             accounts,
             representative,
@@ -29,8 +24,8 @@ impl RpcCommandHandler {
             receivable,
             modified_since,
         );
-        Ok(WalletLedgerDto {
-            accounts: accounts_json,
+        Ok(WalletLedgerResponse {
+            accounts: account_dtos,
         })
     }
 }
@@ -43,36 +38,31 @@ fn get_accounts_info(
     receivable: bool,
     modified_since: u64,
 ) -> HashMap<Account, AccountInfo> {
-    let block_transaction = node.store.tx_begin_read();
-    let mut accounts_json = HashMap::new();
+    let tx = node.store.tx_begin_read();
+    let mut account_dtos = HashMap::new();
 
     for account in accounts {
-        if let Some(info) = node.ledger.any().get_account(&block_transaction, &account) {
+        if let Some(info) = node.ledger.any().get_account(&tx, &account) {
             if info.modified >= modified_since {
-                let entry = AccountInfo::new(
-                    info.head,
-                    info.open_block,
-                    node.ledger
-                        .representative_block_hash(&block_transaction, &info.head),
-                    info.balance,
-                    info.modified,
-                    info.block_count,
-                    representative.then(|| info.representative.as_account()),
-                    weight.then(|| node.ledger.weight_exact(&block_transaction, account.into())),
-                    receivable.then(|| {
-                        node.ledger
-                            .account_receivable(&block_transaction, &account, false)
-                    }),
-                    receivable.then(|| {
-                        node.ledger
-                            .account_receivable(&block_transaction, &account, false)
-                    }),
-                );
+                let entry = AccountInfo {
+                    frontier: info.head,
+                    open_block: info.open_block,
+                    representative_block: node.ledger.representative_block_hash(&tx, &info.head),
+                    balance: info.balance,
+                    modified_timestamp: info.modified,
+                    block_count: info.block_count,
+                    representative: representative.then(|| info.representative.as_account()),
+                    weight: weight.then(|| node.ledger.weight_exact(&tx, account.into())),
+                    receivable: receivable
+                        .then(|| node.ledger.account_receivable(&tx, &account, false)),
+                    pending: receivable
+                        .then(|| node.ledger.account_receivable(&tx, &account, false)),
+                };
 
-                accounts_json.insert(account, entry);
+                account_dtos.insert(account, entry);
             }
         }
     }
 
-    accounts_json
+    account_dtos
 }

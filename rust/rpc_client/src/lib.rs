@@ -171,7 +171,7 @@ impl NanoRpcClient {
     pub async fn wallet_ledger(
         &self,
         args: impl Into<WalletLedgerArgs>,
-    ) -> Result<WalletLedgerDto> {
+    ) -> Result<WalletLedgerResponse> {
         let cmd = RpcCommand::wallet_ledger(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

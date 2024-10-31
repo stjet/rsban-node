@@ -149,9 +149,9 @@ impl RpcCommandHandler {
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
             RpcCommand::Stats(_) => self.not_implemented(),
             RpcCommand::ActiveDifficulty => self.not_implemented(),
+            RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
 
             // Not reviewed yet:
-            RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
@@ -190,7 +190,6 @@ impl RpcCommandHandler {
     }
 
     const BLOCK_NOT_FOUND: &str = "Block not found";
-    const BLOCK_ERROR: &str = "Block error";
     const NOT_IMPLEMENTED: &str = "Not implemented yet";
     const ACCOUNT_NOT_FOUND: &str = "Account not found";
 

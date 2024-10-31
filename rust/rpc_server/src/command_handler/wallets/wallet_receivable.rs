@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Amount, BlockHash};
 use rsnano_rpc_messages::{
     AccountsReceivableResponse, AccountsReceivableSimple, AccountsReceivableSource,
-    AccountsReceivableThreshold, SourceInfo, WalletReceivableArgs,
+    AccountsReceivableThreshold, ReceivableResponse, ReceivableSource, SourceInfo,
+    WalletReceivableArgs,
 };
 
 impl RpcCommandHandler {
@@ -11,25 +14,32 @@ impl RpcCommandHandler {
         &self,
         args: WalletReceivableArgs,
     ) -> anyhow::Result<AccountsReceivableResponse> {
-        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
+        let count = args.count.unwrap_or(usize::MAX);
+        let threshold = args.threshold.unwrap_or_default();
+        let source = args.source.unwrap_or(false);
+        let min_version = args.min_version.unwrap_or(false);
+        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
 
+        let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let tx = self.node.ledger.read_txn();
-        let mut block_source = IndexMap::new();
-        let mut block_threshold = IndexMap::new();
-        let mut block_default = IndexMap::new();
+
+        let mut pending_source = IndexMap::new();
+        let mut pending_threshold = IndexMap::new();
+        let mut pending_default = IndexMap::new();
 
         for account in accounts {
-            let mut account_blocks_source: IndexMap<BlockHash, SourceInfo> = IndexMap::new();
-            let mut account_blocks_threshold: IndexMap<BlockHash, Amount> = IndexMap::new();
-            let mut account_blocks_default: Vec<BlockHash> = Vec::new();
+            let mut block_source = IndexMap::new();
+            let mut block_threshold = IndexMap::new();
+            let mut block_default = Vec::new();
+
             for (key, info) in self
                 .node
                 .ledger
                 .any()
                 .account_receivable_upper_bound(&tx, account, BlockHash::zero())
-                .take(args.count as usize)
+                .take(count)
             {
-                if args.include_only_confirmed.unwrap_or(true)
+                if include_only_confirmed
                     && !self
                         .node
                         .ledger
@@ -39,50 +49,51 @@ impl RpcCommandHandler {
                     continue;
                 }
 
-                if let Some(threshold) = args.threshold {
-                    if info.amount < threshold {
-                        continue;
-                    }
+                if threshold.is_zero() && !source {
+                    block_default.push(key.send_block_hash);
+                    continue;
                 }
 
-                if args.source.unwrap_or(false) || args.min_version.unwrap_or(false) {
-                    let source_info = SourceInfo {
-                        amount: info.amount,
-                        source: Some(info.source),
-                        min_version: None,
-                    };
-                    account_blocks_source.insert(key.send_block_hash, source_info);
-                } else if args.threshold.is_some() {
-                    account_blocks_threshold.insert(key.send_block_hash, info.amount);
+                if source || min_version {
+                    block_source.insert(
+                        key.send_block_hash,
+                        SourceInfo {
+                            amount: info.amount,
+                            source: source.then(|| info.source),
+                            min_version: min_version.then(|| info.epoch.epoch_number()),
+                        },
+                    );
                 } else {
-                    account_blocks_default.push(key.send_block_hash);
+                    block_threshold.insert(key.send_block_hash, info.amount);
                 }
             }
-
-            if !account_blocks_source.is_empty() {
-                block_source.insert(account, account_blocks_source);
-            }
-            if !account_blocks_threshold.is_empty() {
-                block_threshold.insert(account, account_blocks_threshold);
-            }
-            if !account_blocks_default.is_empty() {
-                block_default.insert(account, account_blocks_default);
+            if !block_source.is_empty() {
+                pending_source.insert(account, block_source);
+            } else if !block_threshold.is_empty() {
+                pending_threshold.insert(account, block_threshold);
+            } else if !block_default.is_empty() {
+                pending_default.insert(account, block_default);
             }
         }
 
-        let result = if args.source.unwrap_or(false) || args.min_version.unwrap_or(false) {
-            AccountsReceivableResponse::Source(AccountsReceivableSource {
-                blocks: block_source,
-            })
-        } else if args.threshold.is_some() {
-            AccountsReceivableResponse::Threshold(AccountsReceivableThreshold {
-                blocks: block_threshold,
-            })
+        if threshold.is_zero() && !source {
+            Ok(AccountsReceivableResponse::Simple(
+                AccountsReceivableSimple {
+                    blocks: pending_default,
+                },
+            ))
+        } else if source || min_version {
+            Ok(AccountsReceivableResponse::Source(
+                AccountsReceivableSource {
+                    blocks: pending_source,
+                },
+            ))
         } else {
-            AccountsReceivableResponse::Simple(AccountsReceivableSimple {
-                blocks: block_default,
-            })
-        };
-        Ok(result)
+            Ok(AccountsReceivableResponse::Threshold(
+                AccountsReceivableThreshold {
+                    blocks: pending_threshold,
+                },
+            ))
+        }
     }
 }

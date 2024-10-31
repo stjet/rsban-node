@@ -20,9 +20,12 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = WalletReceivableArgs::builder(wallet, 1)
-        .include_unconfirmed_blocks()
-        .build();
+    let args = WalletReceivableArgs {
+        wallet,
+        count: Some(1),
+        include_only_confirmed: Some(false),
+        ..Default::default()
+    };
 
     let result = node
         .runtime
@@ -63,7 +66,11 @@ fn wallet_receivable_options_none() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .wallet_receivable(WalletReceivableArgs::new(wallet, 1))
+            .wallet_receivable(WalletReceivableArgs {
+                wallet,
+                count: Some(1),
+                ..Default::default()
+            })
             .await
             .unwrap()
     });
@@ -98,9 +105,12 @@ fn wallet_receivable_threshold_some() {
 
     let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = WalletReceivableArgs::builder(wallet, 2)
-        .threshold(Amount::raw(1))
-        .build();
+    let args = WalletReceivableArgs {
+        wallet,
+        count: Some(2),
+        threshold: Some(Amount::raw(1)),
+        ..Default::default()
+    };
 
     let result = node
         .runtime
@@ -126,7 +136,10 @@ fn wallet_receivable_fails_without_enable_control() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .wallet_receivable(WalletReceivableArgs::new(WalletId::zero(), 1))
+            .wallet_receivable(WalletReceivableArgs {
+                wallet: WalletId::zero(),
+                ..Default::default()
+            })
             .await
     });
 

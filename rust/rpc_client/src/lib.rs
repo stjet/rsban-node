@@ -238,7 +238,7 @@ impl NanoRpcClient {
         &self,
         args: WalletReceivableArgs,
     ) -> Result<AccountsReceivableResponse> {
-        let cmd = RpcCommand::wallet_receivable(args);
+        let cmd = RpcCommand::WalletReceivable(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

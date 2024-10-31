@@ -136,7 +136,7 @@ impl NanoRpcClient {
     pub async fn receivable_exists(
         &self,
         args: impl Into<ReceivableExistsArgs>,
-    ) -> Result<ExistsDto> {
+    ) -> Result<ExistsResponse> {
         let cmd = RpcCommand::receivable_exists(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -324,13 +324,17 @@ impl NanoRpcClient {
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_create(&self, seed: Option<RawKey>) -> Result<WalletCreateDto> {
+    pub async fn wallet_create(&self, seed: Option<RawKey>) -> Result<WalletCreateResponse> {
         let cmd = RpcCommand::wallet_create(seed);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
-    pub async fn wallet_contains(&self, wallet: WalletId, account: Account) -> Result<ExistsDto> {
+    pub async fn wallet_contains(
+        &self,
+        wallet: WalletId,
+        account: Account,
+    ) -> Result<ExistsResponse> {
         let cmd = RpcCommand::wallet_contains(wallet, account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
@@ -627,7 +631,7 @@ impl NanoRpcClient {
     pub async fn wallet_change_seed(
         &self,
         args: impl Into<WalletChangeSeedArgs>,
-    ) -> Result<WalletChangeSeedDto> {
+    ) -> Result<WalletChangeSeedResponse> {
         let cmd = RpcCommand::wallet_change_seed(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

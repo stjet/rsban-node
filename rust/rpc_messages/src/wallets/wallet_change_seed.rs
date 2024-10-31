@@ -76,13 +76,13 @@ impl From<WalletWithSeedArgs> for WalletChangeSeedArgs {
     }
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletChangeSeedDto {
+pub struct WalletChangeSeedResponse {
     pub success: String,
     pub last_restored_account: Account,
     pub restored_count: u32,
 }
 
-impl WalletChangeSeedDto {
+impl WalletChangeSeedResponse {
     pub fn new(last_restored_account: Account, restored_count: u32) -> Self {
         Self {
             success: String::new(),
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn deserialize_wallet_change_seed_dto() {
         let json = r#"{"success":"","last_restored_account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","restored_count":15}"#;
-        let deserialized: WalletChangeSeedDto = serde_json::from_str(json).unwrap();
+        let deserialized: WalletChangeSeedResponse = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.success, "");
         assert_eq!(

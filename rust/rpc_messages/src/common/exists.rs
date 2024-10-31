@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct ExistsDto {
+pub struct ExistsResponse {
     pub exists: String,
 }
 
-impl ExistsDto {
+impl ExistsResponse {
     pub fn new(exists: bool) -> Self {
         Self {
             exists: if exists {

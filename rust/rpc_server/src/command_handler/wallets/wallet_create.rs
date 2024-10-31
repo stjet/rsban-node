@@ -1,19 +1,31 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::WalletId;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{WalletCreateArgs, WalletRpcMessage};
+use rsnano_rpc_messages::{WalletCreateArgs, WalletCreateResponse};
 
 impl RpcCommandHandler {
-    pub(crate) fn wallet_create(&self, args: WalletCreateArgs) -> WalletRpcMessage {
+    pub(crate) fn wallet_create(
+        &self,
+        args: WalletCreateArgs,
+    ) -> anyhow::Result<WalletCreateResponse> {
         let wallet = WalletId::random();
         self.node.wallets.create(wallet);
 
+        let last_restored_account;
+        let restored_count;
         if let Some(seed) = args.seed {
-            self.node
-                .wallets
-                .change_seed(wallet, &seed, 0)
-                .expect("This should not fail since the wallet was just created");
+            let (count, last) = self.node.wallets.change_seed(wallet, &seed, 0)?;
+            last_restored_account = Some(last);
+            restored_count = Some(count);
+        } else {
+            last_restored_account = None;
+            restored_count = None;
         }
-        WalletRpcMessage::new(wallet)
+
+        Ok(WalletCreateResponse {
+            wallet,
+            last_restored_account,
+            restored_count,
+        })
     }
 }

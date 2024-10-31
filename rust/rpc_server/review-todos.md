@@ -57,6 +57,8 @@
 - wallet_add_watch
 - wallet_balances
 - populate_backlog
+- wallet_change_seed
+- wallet_contains
 
 # RPC functions MISSING:
 - account_count
@@ -88,8 +90,6 @@
 - stop
 - telemetry
 - unopened
-- wallet_change_seed
-- wallet_contains
 - wallet_create
 - wallet_destroy
 - wallet_export

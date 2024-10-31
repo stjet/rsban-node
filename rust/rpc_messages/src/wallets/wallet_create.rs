@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{RawKey, WalletId};
+use rsnano_core::{Account, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -21,14 +21,12 @@ impl WalletCreateArgs {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct WalletCreateDto {
+pub struct WalletCreateResponse {
     pub wallet: WalletId,
-}
-
-impl WalletCreateDto {
-    pub fn new(wallet: WalletId) -> Self {
-        Self { wallet }
-    }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_restored_account: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub restored_count: Option<u32>,
 }
 
 #[cfg(test)]
@@ -76,7 +74,11 @@ mod tests {
 
     #[test]
     fn serialize_wallet_rpc_message() {
-        let wallet_rpc_message = WalletCreateDto::new(WalletId::zero());
+        let wallet_rpc_message = WalletCreateResponse {
+            wallet: WalletId::zero(),
+            restored_count: None,
+            last_restored_account: None,
+        };
 
         let serialized = to_string(&wallet_rpc_message).unwrap();
 
@@ -94,9 +96,13 @@ mod tests {
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000"
         }"#;
 
-        let deserialized: WalletCreateDto = from_str(json_str).unwrap();
+        let deserialized: WalletCreateResponse = from_str(json_str).unwrap();
 
-        let expected = WalletCreateDto::new(WalletId::zero());
+        let expected = WalletCreateResponse {
+            wallet: WalletId::zero(),
+            last_restored_account: None,
+            restored_count: None,
+        };
 
         assert_eq!(deserialized, expected);
     }

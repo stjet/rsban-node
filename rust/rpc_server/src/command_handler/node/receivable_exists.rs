@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::BlockHash;
 use rsnano_node::Node;
-use rsnano_rpc_messages::{ExistsDto, ReceivableExistsArgs};
+use rsnano_rpc_messages::{ExistsResponse, ReceivableExistsArgs};
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ impl RpcCommandHandler {
     pub(crate) fn receivable_exists(
         &self,
         args: ReceivableExistsArgs,
-    ) -> anyhow::Result<ExistsDto> {
+    ) -> anyhow::Result<ExistsResponse> {
         let include_active = args.include_active.unwrap_or(false);
         let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
         let txn = self.node.ledger.read_txn();
@@ -39,7 +39,7 @@ impl RpcCommandHandler {
                 include_only_confirmed,
             );
         }
-        Ok(ExistsDto::new(exists))
+        Ok(ExistsResponse::new(exists))
     }
 }
 

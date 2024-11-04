@@ -15,19 +15,16 @@ use crate::{
     WebsocketConfigDto,
 };
 use num::FromPrimitive;
-use rsnano_core::{utils::get_cpu_count, Amount, PublicKey};
+use rsnano_core::{utils::get_cpu_count, Amount, Networks, PublicKey};
 use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
     cementation::ConfirmingSetConfig,
-    config::{MonitorConfig, NodeConfig, Peer},
+    config::{MonitorConfig, NetworkConstants, NodeConfig, Peer},
     consensus::PriorityBucketConfig,
     transport::{MessageProcessorConfig, TcpConfig},
-    NetworkParams,
+    IpcConfig, NetworkParams,
 };
-use std::{
-    convert::{TryFrom, TryInto},
-    time::Duration,
-};
+use std::{convert::TryFrom, time::Duration};
 
 #[repr(C)]
 pub struct NodeConfigDto {
@@ -452,7 +449,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             .to_string(),
             callback_port: value.callback_port,
             websocket_config: (&value.websocket_config).into(),
-            ipc_config: (&value.ipc_config).try_into()?,
+            ipc_config: IpcConfig::new(&NetworkConstants::default_for(Networks::NanoLiveNetwork)),
             diagnostics_config: (&value.diagnostics_config).into(),
             stat_config: (&value.stat_config).into(),
             lmdb_config: (&value.lmdb_config).into(),

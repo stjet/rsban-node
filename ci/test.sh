@@ -36,14 +36,10 @@ run_tests()
     cargo_test_res=${?}
 	popd
 
-    (cd ../systest && export NANO_NODE_EXE=../build/nano_node && ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} 300 ./RUNALL)
-    sys_test_res=${?}
-
     echo "Core Test return code: ${core_test_res}"
     echo "Cargo Test return code: ${cargo_test_res}"
-    echo "Sys Test return code: ${sys_test_res}"
 
-    if [[ ${core_test_res} != 0 || ${sys_test_res} != 0 || ${cargo_test_res} != 0 ]]; then
+    if [[ ${core_test_res} != 0 || ${cargo_test_res} != 0 ]]; then
         return 1
     else
         return 0

@@ -110,7 +110,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.callback_target_len = config.callback_target.size ();
 	dto.callback_port = config.callback_port;
 	dto.websocket_config = config.websocket_config.to_dto ();
-	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
 	dto.stat_config = config.stats_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
@@ -137,7 +136,6 @@ nano::node_config::node_config (nano::network_params & network_params) :
 nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::network_params & network_params) :
 	network_params{ network_params },
 	websocket_config{ network_params.network },
-	ipc_config (network_params.network),
 	rep_crawler{ std::chrono::milliseconds (0) }
 {
 	rsnano::NodeConfigDto dto;
@@ -240,7 +238,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
 	callback_port = dto.callback_port;
 	websocket_config.load_dto (dto.websocket_config);
-	ipc_config.load_dto (dto.ipc_config);
 	diagnostics_config.load_dto (dto.diagnostics_config);
 	stats_config.load_dto (dto.stat_config);
 	lmdb_config.load_dto (dto.lmdb_config);
@@ -276,12 +273,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto websocket_config_l (toml.get_required_child ("websocket"));
 			websocket_config.deserialize_toml (websocket_config_l);
-		}
-
-		if (toml.has_key ("ipc"))
-		{
-			auto ipc_config_l (toml.get_required_child ("ipc"));
-			ipc_config.deserialize_toml (ipc_config_l);
 		}
 
 		if (toml.has_key ("diagnostics"))

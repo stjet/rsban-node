@@ -193,18 +193,6 @@ TEST (toml, daemon_config_deserialize_defaults)
 	ASSERT_EQ (conf.node.callback_port, defaults.node.callback_port);
 	ASSERT_EQ (conf.node.callback_target, defaults.node.callback_target);
 
-	ASSERT_EQ (conf.node.ipc_config.transport_domain.allow_unsafe, defaults.node.ipc_config.transport_domain.allow_unsafe);
-	ASSERT_EQ (conf.node.ipc_config.transport_domain.enabled, defaults.node.ipc_config.transport_domain.enabled);
-	ASSERT_EQ (conf.node.ipc_config.transport_domain.io_timeout, defaults.node.ipc_config.transport_domain.io_timeout);
-	ASSERT_EQ (conf.node.ipc_config.transport_domain.io_threads, defaults.node.ipc_config.transport_domain.io_threads);
-	ASSERT_EQ (conf.node.ipc_config.transport_domain.path, defaults.node.ipc_config.transport_domain.path);
-	ASSERT_EQ (conf.node.ipc_config.transport_tcp.enabled, defaults.node.ipc_config.transport_tcp.enabled);
-	ASSERT_EQ (conf.node.ipc_config.transport_tcp.io_timeout, defaults.node.ipc_config.transport_tcp.io_timeout);
-	ASSERT_EQ (conf.node.ipc_config.transport_tcp.io_threads, defaults.node.ipc_config.transport_tcp.io_threads);
-	ASSERT_EQ (conf.node.ipc_config.transport_tcp.port, defaults.node.ipc_config.transport_tcp.port);
-	ASSERT_EQ (conf.node.ipc_config.flatbuffers.skip_unexpected_fields_in_json, defaults.node.ipc_config.flatbuffers.skip_unexpected_fields_in_json);
-	ASSERT_EQ (conf.node.ipc_config.flatbuffers.verify_buffers, defaults.node.ipc_config.flatbuffers.verify_buffers);
-
 	ASSERT_EQ (conf.node.diagnostics_config.txn_tracking.enable, defaults.node.diagnostics_config.txn_tracking.enable);
 	ASSERT_EQ (conf.node.diagnostics_config.txn_tracking.ignore_writes_below_block_processor_max_time, defaults.node.diagnostics_config.txn_tracking.ignore_writes_below_block_processor_max_time);
 	ASSERT_EQ (conf.node.diagnostics_config.txn_tracking.min_read_txn_time, defaults.node.diagnostics_config.txn_tracking.min_read_txn_time);
@@ -627,18 +615,6 @@ TEST (toml, daemon_config_deserialize_no_defaults)
 	ASSERT_NE (conf.node.callback_address, defaults.node.callback_address);
 	ASSERT_NE (conf.node.callback_port, defaults.node.callback_port);
 	ASSERT_NE (conf.node.callback_target, defaults.node.callback_target);
-
-	ASSERT_NE (conf.node.ipc_config.transport_domain.allow_unsafe, defaults.node.ipc_config.transport_domain.allow_unsafe);
-	ASSERT_NE (conf.node.ipc_config.transport_domain.enabled, defaults.node.ipc_config.transport_domain.enabled);
-	ASSERT_NE (conf.node.ipc_config.transport_domain.io_timeout, defaults.node.ipc_config.transport_domain.io_timeout);
-	ASSERT_NE (conf.node.ipc_config.transport_domain.io_threads, defaults.node.ipc_config.transport_domain.io_threads);
-	ASSERT_NE (conf.node.ipc_config.transport_domain.path, defaults.node.ipc_config.transport_domain.path);
-	ASSERT_NE (conf.node.ipc_config.transport_tcp.enabled, defaults.node.ipc_config.transport_tcp.enabled);
-	ASSERT_NE (conf.node.ipc_config.transport_tcp.io_timeout, defaults.node.ipc_config.transport_tcp.io_timeout);
-	ASSERT_NE (conf.node.ipc_config.transport_tcp.io_threads, defaults.node.ipc_config.transport_tcp.io_threads);
-	ASSERT_NE (conf.node.ipc_config.transport_tcp.port, defaults.node.ipc_config.transport_tcp.port);
-	ASSERT_NE (conf.node.ipc_config.flatbuffers.skip_unexpected_fields_in_json, defaults.node.ipc_config.flatbuffers.skip_unexpected_fields_in_json);
-	ASSERT_NE (conf.node.ipc_config.flatbuffers.verify_buffers, defaults.node.ipc_config.flatbuffers.verify_buffers);
 
 	ASSERT_NE (conf.node.diagnostics_config.txn_tracking.enable, defaults.node.diagnostics_config.txn_tracking.enable);
 	ASSERT_NE (conf.node.diagnostics_config.txn_tracking.ignore_writes_below_block_processor_max_time, defaults.node.diagnostics_config.txn_tracking.ignore_writes_below_block_processor_max_time);

@@ -260,7 +260,8 @@ impl StatsJsonWriterV2 {
     }
 
     pub fn add(&mut self, key: impl Into<String>, value: u64) {
-        self.tree.insert(key.into(), value.into());
+        self.tree
+            .insert(key.into(), serde_json::Value::String(value.to_string()));
     }
 
     pub fn finish(self) -> serde_json::Value {
@@ -322,7 +323,10 @@ impl StatsLogSink for StatsJsonWriterV2 {
             serde_json::Value::String(detail.to_owned()),
         );
         entry.insert("dir".to_owned(), serde_json::Value::String(dir.to_owned()));
-        entry.insert("value".to_owned(), serde_json::Value::Number(value.into()));
+        entry.insert(
+            "value".to_owned(),
+            serde_json::Value::String(value.to_string()),
+        );
         self.entries.push(serde_json::Value::Object(entry));
         Ok(())
     }

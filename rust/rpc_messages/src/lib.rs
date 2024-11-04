@@ -32,6 +32,7 @@ pub enum RpcCommand {
     AccountMove(AccountMoveArgs),
     AccountList(WalletRpcMessage),
     AccountRepresentativeSet(()), // TODO
+    ActiveDifficulty,
     WalletCreate(WalletCreateArgs),
     WalletContains(WalletWithAccountArgs),
     WalletDestroy(WalletRpcMessage),

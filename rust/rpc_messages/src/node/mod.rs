@@ -1,3 +1,4 @@
+mod active_difficulty;
 mod block_create;
 mod bootstrap;
 mod bootstrap_any;
@@ -33,6 +34,7 @@ mod work_peers;
 mod work_peers_clear;
 mod work_validate;
 
+pub use active_difficulty::*;
 pub use block_create::*;
 pub use bootstrap::*;
 pub use bootstrap_any::*;

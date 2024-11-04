@@ -144,6 +144,7 @@ impl RpcCommandHandler {
             RpcCommand::Stats(args) => Ok(self.stats(args)?),
             RpcCommand::ConfirmationHistory(args) => to_value(self.confirmation_history(args)),
             RpcCommand::Version => to_value(self.version()),
+            RpcCommand::ActiveDifficulty => to_value(self.active_difficulty()),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),

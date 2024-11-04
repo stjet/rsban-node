@@ -1,3 +1,4 @@
+mod active_difficulty;
 mod block_create;
 mod bootstrap;
 mod bootstrap_any;

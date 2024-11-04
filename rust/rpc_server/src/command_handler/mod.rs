@@ -142,18 +142,16 @@ impl RpcCommandHandler {
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
             RpcCommand::Stats(args) => Ok(self.stats(args)?),
+            RpcCommand::ConfirmationHistory(args) => to_value(self.confirmation_history(args)),
 
             // Not implemented:
-            RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
-            RpcCommand::AccountBalances(_) => self.not_implemented(),
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
-            RpcCommand::ActiveDifficulty => self.not_implemented(),
         }?;
 
         Ok(response)

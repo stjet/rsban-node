@@ -27,7 +27,6 @@ pub enum RpcCommand {
     Telemetry(TelemetryArgs),
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
-    AccountBalances(()), // TODO
     AccountsCreate(AccountsCreateArgs),
     AccountRemove(WalletWithAccountArgs),
     AccountMove(AccountMoveArgs),
@@ -46,9 +45,9 @@ pub enum RpcCommand {
     AvailableSupply,
     BlockAccount(HashRpcMessage),
     BlockConfirm(HashRpcMessage),
-    BootstrapLazy(()),       // TODO
-    DatabaseTxnTracker(()),  // TODO
-    ConfirmationHistory(()), //TODO
+    BootstrapLazy(()),      // TODO
+    DatabaseTxnTracker(()), // TODO
+    ConfirmationHistory(ConfirmationHistoryArgs),
     BlockCount,
     Uptime,
     FrontierCount,
@@ -81,7 +80,7 @@ pub enum RpcCommand {
     SearchReceivableAll,
     ReceiveMinimum,
     ReceiveMinimumSet(()), // TODO
-    Stats(StatsArgs),      // TODO
+    Stats(StatsArgs),
     WalletChangeSeed(WalletChangeSeedArgs),
     Delegators(DelegatorsArgs),
     DelegatorsCount(AccountArg),
@@ -122,7 +121,6 @@ pub enum RpcCommand {
     Republish(RepublishArgs),
     BlockCreate(BlockCreateArgs),
     WorkPeersClear,
-    ActiveDifficulty,
 }
 
 pub fn check_error(value: &serde_json::Value) -> Result<(), String> {

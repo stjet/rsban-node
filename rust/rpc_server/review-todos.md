@@ -87,24 +87,21 @@
 - republish
 - wallet_history
 - work_generate
+- stats
 - telemetry
+- confirmation_history
 
 # RPC functions MISSING:
-- account_count
 - account_move
 - account_representative_set
-- accounts_balances
-- active_difficulty
 - work_peer_add
 - work_peers
 - work_peers_clear
 - bootstrap_status
-- confirmation_history
 - confirmation_quorum
 - database_txn_tracker
 - election_statistics
 - pruned_exists
 - receive_minimum_set
 - version
-- stats
 

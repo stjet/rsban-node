@@ -3,6 +3,7 @@ mod bootstrap;
 mod bootstrap_any;
 mod bootstrap_lazy;
 mod confirmation_active;
+mod confirmation_history;
 mod confirmation_info;
 mod confirmation_quorum;
 mod keepalive;

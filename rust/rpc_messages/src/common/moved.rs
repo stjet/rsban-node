@@ -1,12 +1,15 @@
+use super::primitives::RpcBoolNumber;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct MovedDto {
-    pub moved: bool,
+pub struct MovedResponse {
+    pub moved: RpcBoolNumber,
 }
 
-impl MovedDto {
+impl MovedResponse {
     pub fn new(moved: bool) -> Self {
-        Self { moved }
+        Self {
+            moved: moved.into(),
+        }
     }
 }

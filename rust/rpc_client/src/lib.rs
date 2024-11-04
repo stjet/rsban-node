@@ -342,7 +342,7 @@ impl NanoRpcClient {
         wallet: WalletId,
         source: WalletId,
         account: Vec<Account>,
-    ) -> Result<MovedDto> {
+    ) -> Result<MovedResponse> {
         let cmd = RpcCommand::account_move(wallet, source, account);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

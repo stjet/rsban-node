@@ -11,17 +11,6 @@
 # Fix DTOS:
 src
  ├── common
- │   ├── destroyed.rs
- │   ├── error.rs
- │   ├── exists.rs
- │   ├── frontiers.rs
- │   ├── hash.rs
- │   ├── hashes.rs
- │   ├── key_pair.rs
- │   ├── locked.rs
- │   ├── mod.rs
- │   ├── moved.rs
- │   ├── public_key.rs
  │   ├── receivable.rs
  │   ├── removed.rs
  │   ├── started.rs

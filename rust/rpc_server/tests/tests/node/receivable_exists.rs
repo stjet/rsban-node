@@ -41,7 +41,7 @@ fn receivable_exists_confirmed() {
         .runtime
         .block_on(async { server.client.receivable_exists(send.hash()).await.unwrap() });
 
-    assert_eq!(result.exists, "1");
+    assert_eq!(result.exists, true.into());
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn test_receivable_exists_unconfirmed() {
         .runtime
         .block_on(async { server.client.receivable_exists(args).await.unwrap() });
 
-    assert_eq!(result.exists, "1");
+    assert_eq!(result.exists, true.into());
 }
 
 #[test]

@@ -19,7 +19,7 @@ fn wallet_locked_false() {
         .runtime
         .block_on(async { server.client.wallet_locked(wallet_id).await.unwrap() });
 
-    assert_eq!(result.locked, "0");
+    assert_eq!(result.locked, false.into());
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn wallet_locked_true() {
         .runtime
         .block_on(async { server.client.wallet_locked(wallet_id).await.unwrap() });
 
-    assert_eq!(result.locked, "1");
+    assert_eq!(result.locked, true.into());
 }
 
 #[test]

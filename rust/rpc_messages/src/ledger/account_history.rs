@@ -106,17 +106,19 @@ pub struct AccountHistoryResponse {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HistoryEntry {
-    #[serde(rename = "type")]
     pub local_timestamp: u64,
     pub height: u64,
     pub hash: BlockHash,
     pub confirmed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
     pub block_type: Option<BlockTypeDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<BlockSubTypeDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Account>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]

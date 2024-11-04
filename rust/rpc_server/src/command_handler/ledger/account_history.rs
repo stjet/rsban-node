@@ -12,22 +12,33 @@ impl RpcCommandHandler {
         &self,
         args: AccountHistoryArgs,
     ) -> anyhow::Result<AccountHistoryResponse> {
-        let helper = AccountHistoryHelper::new(&self.node.ledger, args);
+        let helper = AccountHistoryHelper {
+            ledger: &self.node.ledger,
+            accounts_to_filter: args.account_filter.unwrap_or_default(),
+            reverse: args.reverse.unwrap_or(false),
+            offset: args.offset.unwrap_or_default(),
+            head: args.head,
+            requested_account: args.account,
+            output_raw: args.raw.unwrap_or(false),
+            count: args.count,
+            current_block_hash: BlockHash::zero(),
+            account: Account::zero(),
+        };
         helper.account_history()
     }
 }
 
-struct AccountHistoryHelper<'a> {
-    ledger: &'a Ledger,
-    accounts_to_filter: Vec<Account>,
-    reverse: bool,
-    offset: u64,
-    head: Option<BlockHash>,
-    requested_account: Option<Account>,
-    output_raw: bool,
-    count: u64,
-    current_block_hash: BlockHash,
-    account: Account,
+pub(crate) struct AccountHistoryHelper<'a> {
+    pub ledger: &'a Ledger,
+    pub accounts_to_filter: Vec<Account>,
+    pub reverse: bool,
+    pub offset: u64,
+    pub head: Option<BlockHash>,
+    pub requested_account: Option<Account>,
+    pub output_raw: bool,
+    pub count: u64,
+    pub current_block_hash: BlockHash,
+    pub account: Account,
 }
 
 impl<'a> AccountHistoryHelper<'a> {
@@ -129,7 +140,11 @@ impl<'a> AccountHistoryHelper<'a> {
         !self.accounts_to_filter.contains(account)
     }
 
-    fn entry_for(&self, block: &BlockEnum, tx: &LmdbReadTransaction) -> Option<HistoryEntry> {
+    pub(crate) fn entry_for(
+        &self,
+        block: &BlockEnum,
+        tx: &LmdbReadTransaction,
+    ) -> Option<HistoryEntry> {
         let mut entry = match &block {
             BlockEnum::LegacySend(b) => {
                 let mut entry = empty_entry();
@@ -319,6 +334,7 @@ fn empty_entry() -> HistoryEntry {
         block_type: None,
         amount: None,
         account: None,
+        block_account: None,
         local_timestamp: 0,
         height: 0,
         hash: BlockHash::zero(),

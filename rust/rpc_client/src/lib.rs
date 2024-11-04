@@ -203,7 +203,7 @@ impl NanoRpcClient {
     pub async fn wallet_history(
         &self,
         args: impl Into<WalletHistoryArgs>,
-    ) -> Result<WalletHistoryDto> {
+    ) -> Result<WalletHistoryResponse> {
         let cmd = RpcCommand::wallet_history(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

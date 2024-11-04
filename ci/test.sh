@@ -31,9 +31,6 @@ run_tests()
     ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} RUST_BACKTRACE=1 ./core_test
     core_test_res=${?}
 
-    ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} ./rpc_test
-    rpc_test_res=${?}
-
 	pushd ../rust
     ${TIMEOUT_CMD} ${TIMEOUT_TIME_ARG} ${TIMEOUT_DEFAULT} RUST_BACKTRACE=1 ~/.cargo/bin/cargo test -q
     cargo_test_res=${?}
@@ -43,11 +40,10 @@ run_tests()
     sys_test_res=${?}
 
     echo "Core Test return code: ${core_test_res}"
-    echo "RPC  Test return code: ${rpc_test_res}"
     echo "Cargo Test return code: ${cargo_test_res}"
     echo "Sys Test return code: ${sys_test_res}"
 
-    if [[ ${core_test_res} != 0 || ${rpc_test_res} != 0 || ${sys_test_res} != 0 || ${cargo_test_res} != 0 ]]; then
+    if [[ ${core_test_res} != 0 || ${sys_test_res} != 0 || ${cargo_test_res} != 0 ]]; then
         return 1
     else
         return 0

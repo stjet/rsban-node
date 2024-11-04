@@ -552,12 +552,11 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
 
   add_subdirectory(nano/test_common)
   add_subdirectory(nano/core_test)
-  add_subdirectory(nano/rpc_test)
   add_custom_target(
     all_tests
     COMMAND echo "BATCH BUILDING TESTS"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS core_test load_test rpc_test nano_node)
+    DEPENDS core_test load_test nano_node)
 endif()
 
 if(NANO_TEST OR RAIBLOCKS_TEST)
@@ -565,7 +564,7 @@ if(NANO_TEST OR RAIBLOCKS_TEST)
     quick_tests
     COMMAND echo "BATCH QUICK TESTS"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS core_test rpc_test)
+    DEPENDS core_test)
 endif()
 
 if(COVERAGE)

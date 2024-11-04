@@ -34,7 +34,6 @@ add_custom_target(
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_test/*'
     '${PROJECT_SOURCE_DIR}/nano/ipc_flatbuffers_lib/*'
     '${PROJECT_SOURCE_DIR}/nano/nano_node/*'
-    '${PROJECT_SOURCE_DIR}/nano/rpc_test/*'
     '${PROJECT_SOURCE_DIR}/nano/test_common/*' --output-file
     ${PROJECT_SOURCE_DIR}/coverage/lcov.info -q
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

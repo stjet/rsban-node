@@ -1,6 +1,4 @@
 # RPC functions MISSING:
-- confirmation_quorum
-
 - work_peer_add
 - work_peers
 - work_peers_clear
@@ -9,5 +7,4 @@
 - election_statistics
 - pruned_exists
 - receive_minimum_set
-- version
 

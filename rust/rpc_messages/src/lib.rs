@@ -121,6 +121,7 @@ pub enum RpcCommand {
     Republish(RepublishArgs),
     BlockCreate(BlockCreateArgs),
     WorkPeersClear,
+    Version,
 }
 
 pub fn check_error(value: &serde_json::Value) -> Result<(), String> {

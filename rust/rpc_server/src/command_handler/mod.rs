@@ -143,6 +143,7 @@ impl RpcCommandHandler {
             RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
             RpcCommand::Stats(args) => Ok(self.stats(args)?),
             RpcCommand::ConfirmationHistory(args) => to_value(self.confirmation_history(args)),
+            RpcCommand::Version => to_value(self.version()),
 
             // Not implemented:
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),

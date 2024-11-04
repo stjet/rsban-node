@@ -24,6 +24,7 @@ mod unchecked_clear;
 mod unchecked_get;
 mod unchecked_keys;
 mod uptime;
+mod version;
 mod work_cancel;
 mod work_generate;
 mod work_peer_add;

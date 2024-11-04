@@ -832,6 +832,16 @@ impl NanoRpcClient {
         Ok(())
     }
 
+    pub async fn stats(&self, stats_type: StatsType) -> Result<serde_json::Value> {
+        self.rpc_request(&RpcCommand::Stats(StatsArgs { stats_type }))
+            .await
+    }
+
+    pub async fn version(&self) -> Result<VersionResponse> {
+        let json = self.rpc_request(&RpcCommand::Version).await?;
+        Ok(serde_json::from_value(json)?)
+    }
+
     async fn rpc_request<T>(&self, request: &T) -> Result<serde_json::Value>
     where
         T: Serialize,

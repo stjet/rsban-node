@@ -26,7 +26,7 @@ impl NanoRpcClient {
         }
     }
 
-    pub async fn telemetry(&self, args: TelemetryArgs) -> Result<TelemetryDtos> {
+    pub async fn telemetry(&self, args: TelemetryArgs) -> Result<TelemetryResponose> {
         let cmd = RpcCommand::telemetry(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)

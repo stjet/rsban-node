@@ -1,46 +1,53 @@
 use crate::command_handler::RpcCommandHandler;
-use anyhow::anyhow;
-use rsnano_rpc_messages::{TelemetryArgs, TelemetryDto, TelemetryDtos};
+use anyhow::bail;
+use rsnano_rpc_messages::{TelemetryArgs, TelemetryDto, TelemetryResponose};
 use std::net::SocketAddrV6;
 
 impl RpcCommandHandler {
-    pub(crate) fn telemetry(&self, args: TelemetryArgs) -> anyhow::Result<TelemetryDtos> {
-        if let (Some(address), Some(port)) = (args.address, args.port) {
+    pub(crate) fn telemetry(&self, args: TelemetryArgs) -> anyhow::Result<TelemetryResponose> {
+        let mut responses = Vec::new();
+        if args.address.is_some() || args.port.is_some() {
+            // Check both are specified
+            let Some(address) = args.address else {
+                bail!("Both port and address required");
+            };
+            let Some(port) = args.port else {
+                bail!("Both port and address required");
+            };
+
             let endpoint = SocketAddrV6::new(address, port, 0, 0);
 
-            if address.is_loopback() && port == self.node.network.port() {
-                Ok(TelemetryDtos {
-                    metrics: vec![self.node.telemetry.local_telemetry().into()],
-                })
+            if address.is_loopback() && port == self.node.tcp_listener.local_address().port() {
+                // Requesting telemetry metrics locally
+                let data = self.node.telemetry.local_telemetry();
+                responses.push(TelemetryDto::from(data));
+                return Ok(TelemetryResponose { metrics: responses });
             } else {
-                match self.node.telemetry.get_telemetry(&endpoint.into()) {
-                    Some(data) => Ok(TelemetryDtos {
-                        metrics: vec![data.into()],
-                    }),
-                    None => Err(anyhow!("Peer not found")),
-                }
+                let Some(telemetry) = self.node.telemetry.get_telemetry(&endpoint) else {
+                    bail!("Peer not found");
+                };
+
+                responses.push(TelemetryDto::from(telemetry));
             }
         } else {
+            // By default, local telemetry metrics are returned,
+            // setting "raw" to true returns metrics from all nodes requested.
             let output_raw = args.raw.unwrap_or(false);
-
+            let all_telemetries = self.node.telemetry.get_all_telemetries();
             if output_raw {
-                let all_telemetries = self.node.telemetry.get_all_telemetries();
-                let metrics: Vec<TelemetryDto> = all_telemetries
-                    .iter()
-                    .map(|(endpoint, telemetry)| {
-                        let mut dto: TelemetryDto = telemetry.clone().into();
-                        dto.address = Some(*endpoint.ip());
-                        dto.port = Some(endpoint.port());
-                        dto
-                    })
-                    .collect();
-
-                Ok(TelemetryDtos { metrics })
+                for (addr, data) in all_telemetries {
+                    let mut metric = TelemetryDto::from(data);
+                    metric.address = Some(addr.ip().clone());
+                    metric.port = Some(addr.port());
+                    responses.push(metric);
+                }
             } else {
-                Ok(TelemetryDtos {
-                    metrics: vec![self.node.telemetry.local_telemetry().into()],
-                })
+                // Default case without any parameters, requesting telemetry metrics locally
+                let data = self.node.telemetry.local_telemetry();
+                responses.push(data.into());
             }
         }
+
+        Ok(TelemetryResponose { metrics: responses })
     }
 }

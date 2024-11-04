@@ -87,6 +87,7 @@
 - republish
 - wallet_history
 - work_generate
+- telemetry
 
 # RPC functions MISSING:
 - account_count
@@ -107,5 +108,3 @@
 - version
 - stats
 
-# RPC functions to review:
-- telemetry

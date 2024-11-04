@@ -138,6 +138,7 @@ impl RpcCommandHandler {
             RpcCommand::Process(args) => to_value(self.process(args)?),
             RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
+            RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
 
             // Not implemented:
             RpcCommand::ActiveDifficulty => self.not_implemented(),
@@ -153,9 +154,6 @@ impl RpcCommandHandler {
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
-
-            // Not reviewed yet:
-            RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
         }?;
 
         Ok(response)

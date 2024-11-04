@@ -114,11 +114,11 @@ impl From<TelemetryData> for TelemetryDto {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct TelemetryDtos {
+pub struct TelemetryResponose {
     pub metrics: Vec<TelemetryDto>,
 }
 
-impl Serialize for TelemetryDtos {
+impl Serialize for TelemetryResponose {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -133,7 +133,7 @@ impl Serialize for TelemetryDtos {
     }
 }
 
-impl<'de> Deserialize<'de> for TelemetryDtos {
+impl<'de> Deserialize<'de> for TelemetryResponose {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -147,10 +147,10 @@ impl<'de> Deserialize<'de> for TelemetryDtos {
 
         let helper = TelemetryDtoHelper::deserialize(deserializer)?;
         match helper {
-            TelemetryDtoHelper::Single(data) => Ok(TelemetryDtos {
+            TelemetryDtoHelper::Single(data) => Ok(TelemetryResponose {
                 metrics: vec![data],
             }),
-            TelemetryDtoHelper::Multiple { metrics } => Ok(TelemetryDtos { metrics }),
+            TelemetryDtoHelper::Multiple { metrics } => Ok(TelemetryResponose { metrics }),
         }
     }
 }
@@ -190,12 +190,12 @@ mod tests {
     fn test_telemetry_dto_serialize_single() {
         let data = create_test_telemetry_data();
         let dto = TelemetryDto::from(data);
-        let dtos = TelemetryDtos {
+        let dtos = TelemetryResponose {
             metrics: vec![dto.clone()],
         };
 
         let serialized = serde_json::to_string(&dtos).unwrap();
-        let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TelemetryResponose = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(dtos.metrics, deserialized.metrics);
     }
@@ -208,12 +208,12 @@ mod tests {
 
         let dto1 = TelemetryDto::from(data1);
         let dto2 = TelemetryDto::from(data2);
-        let dtos = TelemetryDtos {
+        let dtos = TelemetryResponose {
             metrics: vec![dto1.clone(), dto2.clone()],
         };
 
         let serialized = serde_json::to_string(&dtos).unwrap();
-        let deserialized: TelemetryDtos = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TelemetryResponose = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(dtos.metrics, deserialized.metrics);
     }
@@ -224,7 +224,7 @@ mod tests {
         let dto = TelemetryDto::from(data);
         let json = serde_json::to_string(&dto).unwrap();
 
-        let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
+        let deserialized: TelemetryResponose = serde_json::from_str(&json).unwrap();
 
         assert_eq!(deserialized.metrics.len(), 1);
         assert_eq!(dto, deserialized.metrics[0]);
@@ -245,7 +245,7 @@ mod tests {
             serde_json::to_string(&dto2).unwrap()
         );
 
-        let deserialized: TelemetryDtos = serde_json::from_str(&json).unwrap();
+        let deserialized: TelemetryResponose = serde_json::from_str(&json).unwrap();
 
         assert_eq!(deserialized.metrics.len(), 2);
         assert_eq!(dto1, deserialized.metrics[0]);

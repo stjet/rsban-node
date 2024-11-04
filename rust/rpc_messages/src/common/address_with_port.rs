@@ -1,29 +1,34 @@
 use serde::{Deserialize, Serialize};
 use std::net::Ipv6Addr;
 
+use super::primitives::RpcU16;
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AddressWithPortArgs {
     pub address: Ipv6Addr,
-    pub port: u16,
+    pub port: RpcU16,
 }
 
 impl AddressWithPortArgs {
     pub fn new(address: Ipv6Addr, port: u16) -> Self {
-        Self { address, port }
+        Self {
+            address,
+            port: port.into(),
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HostWithPortArgs {
     pub address: String,
-    pub port: u16,
+    pub port: RpcU16,
 }
 
 impl HostWithPortArgs {
     pub fn new(address: impl Into<String>, port: u16) -> Self {
         Self {
             address: address.into(),
-            port,
+            port: port.into(),
         }
     }
 }

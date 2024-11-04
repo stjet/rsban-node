@@ -17,6 +17,7 @@ mod hashes;
 mod key_pair;
 mod locked;
 mod moved;
+mod primitives;
 mod public_key;
 mod receivable;
 mod removed;

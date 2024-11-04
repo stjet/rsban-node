@@ -1,8 +1,8 @@
-use crate::{AddressWithPortArgs, RpcCommand};
+use crate::RpcCommand;
 use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
-use std::net::Ipv6Addr;
+use std::net::{Ipv6Addr, SocketAddrV6};
 
 impl RpcCommand {
     pub fn telemetry(args: TelemetryArgs) -> Self {
@@ -43,9 +43,9 @@ impl TelemetryArgsBuilder {
         self
     }
 
-    pub fn address_with_port(mut self, address_with_port: AddressWithPortArgs) -> Self {
-        self.args.address = Some(address_with_port.address);
-        self.args.port = Some(address_with_port.port);
+    pub fn remote_addr(mut self, addr: SocketAddrV6) -> Self {
+        self.args.address = Some(addr.ip().clone());
+        self.args.port = Some(addr.port().into());
         self
     }
 

@@ -5,7 +5,7 @@ impl RpcCommandHandler {
     pub(crate) fn keepalive(&self, args: HostWithPortArgs) -> anyhow::Result<StartedResponse> {
         self.node
             .rep_crawler
-            .keepalive_or_connect(args.address, args.port);
+            .keepalive_or_connect(args.address, args.port.into());
         Ok(StartedResponse::new(true))
     }
 }

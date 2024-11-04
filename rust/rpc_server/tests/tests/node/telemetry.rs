@@ -1,5 +1,8 @@
-use rsnano_rpc_messages::{AddressWithPortArgs, TelemetryArgs, TelemetryDto};
-use std::{net::SocketAddrV6, time::Duration};
+use rsnano_rpc_messages::{TelemetryArgs, TelemetryDto};
+use std::{
+    net::{Ipv6Addr, SocketAddrV6},
+    time::Duration,
+};
 use test_helpers::{assert_timely_eq, establish_tcp, setup_rpc_client_and_server, System};
 
 #[test]
@@ -19,10 +22,7 @@ fn telemetry_single() {
     let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = TelemetryArgs::builder()
-        .address_with_port(AddressWithPortArgs::new(
-            *node.tcp_listener.local_address().ip(),
-            node.tcp_listener.local_address().port(),
-        ))
+        .remote_addr(node.tcp_listener.local_address())
         .build();
 
     // Test with valid local address
@@ -33,7 +33,7 @@ fn telemetry_single() {
     assert!(matches!(response.unwrap().metrics[0], TelemetryDto { .. }));
 
     let args = TelemetryArgs::builder()
-        .address_with_port(AddressWithPortArgs::new("::1".parse().unwrap(), 65))
+        .remote_addr(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 65, 0, 0))
         .build();
 
     // Test with invalid address

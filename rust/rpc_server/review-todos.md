@@ -84,6 +84,7 @@
 - process
 - stop
 - wallet_receivable
+- republish
 
 # RPC functions MISSING:
 - account_count
@@ -105,7 +106,6 @@
 - stats
 
 # RPC functions to review:
-- republish
 - telemetry
 - wallet_history
 - work_generate

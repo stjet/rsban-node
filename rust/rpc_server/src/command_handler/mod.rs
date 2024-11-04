@@ -136,25 +136,25 @@ impl RpcCommandHandler {
             RpcCommand::Successors(args) => to_value(self.chain(args, true)),
             RpcCommand::Sign(args) => to_value(self.sign(args)?),
             RpcCommand::Process(args) => to_value(self.process(args)?),
+            RpcCommand::Republish(args) => to_value(self.republish(args)?),
 
             // Not implemented:
+            RpcCommand::ActiveDifficulty => self.not_implemented(),
+            RpcCommand::Stats(_) => self.not_implemented(),
+            RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
             RpcCommand::AccountRepresentativeSet(_) => self.not_implemented(),
             RpcCommand::AccountBalances(_) => self.not_implemented(),
+            RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
             RpcCommand::WorkPeers => to_value(self.work_peers()),
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
-            RpcCommand::ConfirmationHistory(_) => self.not_implemented(),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
-            RpcCommand::Stats(_) => self.not_implemented(),
-            RpcCommand::ActiveDifficulty => self.not_implemented(),
-            RpcCommand::WalletReceivable(args) => to_value(self.wallet_receivable(args)?),
 
             // Not reviewed yet:
             RpcCommand::WalletHistory(args) => to_value(self.wallet_history(args)?),
             RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
-            RpcCommand::Republish(args) => to_value(self.republish(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
         }?;
 

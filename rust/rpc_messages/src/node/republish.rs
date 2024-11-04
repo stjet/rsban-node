@@ -17,9 +17,9 @@ impl From<BlockHash> for RepublishArgs {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct RepublishArgs {
     pub hash: BlockHash,
-    pub sources: Option<u64>,
-    pub destinations: Option<u64>,
-    pub count: Option<u64>,
+    pub sources: Option<usize>,
+    pub destinations: Option<usize>,
+    pub count: Option<usize>,
 }
 
 impl RepublishArgs {
@@ -30,9 +30,9 @@ impl RepublishArgs {
 
 pub struct RepublishArgsBuilder {
     hash: BlockHash,
-    sources: Option<u64>,
-    destinations: Option<u64>,
-    count: Option<u64>,
+    sources: Option<usize>,
+    destinations: Option<usize>,
+    count: Option<usize>,
 }
 
 impl RepublishArgsBuilder {
@@ -45,17 +45,17 @@ impl RepublishArgsBuilder {
         }
     }
 
-    pub fn with_sources(mut self, sources: u64) -> Self {
+    pub fn with_sources(mut self, sources: usize) -> Self {
         self.sources = Some(sources);
         self
     }
 
-    pub fn with_destinations(mut self, destinations: u64) -> Self {
+    pub fn with_destinations(mut self, destinations: usize) -> Self {
         self.destinations = Some(destinations);
         self
     }
 
-    pub fn with_count(mut self, count: u64) -> Self {
+    pub fn with_count(mut self, count: usize) -> Self {
         self.count = Some(count);
         self
     }

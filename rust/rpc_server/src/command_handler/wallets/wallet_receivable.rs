@@ -1,12 +1,9 @@
-use std::collections::HashMap;
-
 use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
-use rsnano_core::{Amount, BlockHash};
+use rsnano_core::BlockHash;
 use rsnano_rpc_messages::{
     AccountsReceivableResponse, AccountsReceivableSimple, AccountsReceivableSource,
-    AccountsReceivableThreshold, ReceivableResponse, ReceivableSource, SourceInfo,
-    WalletReceivableArgs,
+    AccountsReceivableThreshold, SourceInfo, WalletReceivableArgs,
 };
 
 impl RpcCommandHandler {

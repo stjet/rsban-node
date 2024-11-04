@@ -8,6 +8,7 @@ use crate::{
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
 use rsnano_core::utils::{seconds_since_epoch, PropertyTree};
+use serde::{Deserialize, Serialize};
 use std::{
     ffi::CString,
     path::{Path, PathBuf},
@@ -166,6 +167,18 @@ impl LmdbStore {
         }
 
         Ok(())
+    }
+
+    pub fn memory_stats(&self) -> anyhow::Result<MemoryStats> {
+        let stats = self.env.environment.stat()?;
+        Ok(MemoryStats {
+            branch_pages: stats.branch_pages(),
+            depth: stats.depth(),
+            entries: stats.entries(),
+            leaf_pages: stats.leaf_pages(),
+            overflow_pages: stats.overflow_pages(),
+            page_size: stats.page_size(),
+        })
     }
 
     pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTree) -> anyhow::Result<()> {
@@ -334,6 +347,16 @@ fn ensure_success(status: i32) -> Result<(), anyhow::Error> {
     } else {
         Err(anyhow!("lmdb returned status code {}", status))
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MemoryStats {
+    pub branch_pages: usize,
+    pub depth: u32,
+    pub entries: usize,
+    pub leaf_pages: usize,
+    pub overflow_pages: usize,
+    pub page_size: u32,
 }
 
 /// Takes a filepath, appends '_backup_<timestamp>' to the end (but before any extension) and saves that file in the same directory

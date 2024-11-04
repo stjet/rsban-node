@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct StatsArgs {
+    #[serde(rename = "type")]
     pub stats_type: StatsType,
 }
 
@@ -11,4 +12,5 @@ pub enum StatsType {
     Counters,
     Objects,
     Samples,
+    Database,
 }

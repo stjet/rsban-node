@@ -152,9 +152,9 @@ impl RpcCommandHandler {
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
             RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
+            RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
 
             // Not reviewed yet:
-            RpcCommand::WorkGenerate(args) => to_value(self.work_generate(args)?),
             RpcCommand::Telemetry(args) => to_value(self.telemetry(args)?),
         }?;
 

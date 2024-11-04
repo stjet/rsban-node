@@ -1,12 +1,8 @@
 use super::difficulty_ledger;
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{
-    BlockDetails, BlockEnum, BlockType, DifficultyV1, Epoch, PendingKey, WorkVersion,
-};
-use rsnano_node::Node;
+use rsnano_core::{BlockEnum, BlockType, DifficultyV1, WorkVersion};
 use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
-use std::sync::Arc;
 
 impl RpcCommandHandler {
     pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {
@@ -31,10 +27,10 @@ impl RpcCommandHandler {
             bail!("Difficulty out of range");
         }
 
-        // Handle block if provided
+        // Retrieving optional block
         if let Some(block) = args.block {
             let block_enum: BlockEnum = block.into();
-            if args.hash != block_enum.hash() {
+            if args.hash != block_enum.root().into() {
                 bail!("Block root mismatch");
             }
             if args.version.is_some() && work_version != block_enum.work_version() {
@@ -42,136 +38,61 @@ impl RpcCommandHandler {
             }
             // Recalculate difficulty if not provided
             if args.difficulty.is_none() && args.multiplier.is_none() {
-                difficulty = difficulty_ledger(self.node.clone(), &block_enum.into());
+                difficulty = difficulty_ledger(self.node.clone(), &block_enum);
             }
-            /*if node
-                .network_params
-                .work
-                .difficulty(work_version, &args.hash.into(), 0)
-                >= difficulty
-            {
-                return to_string_pretty(&ErrorDto::new(
-                    "Block work is already sufficient".to_string(),
-                ))
-                .unwrap();
-            }*/
+
+            // If optional block difficulty is higher than requested difficulty, send error
+            if self.node.network_params.work.difficulty_block(&block_enum) >= difficulty {
+                bail!("Provided work is already enough for given difficulty");
+            }
         }
 
         let use_peers = args.use_peers.unwrap_or(false);
-        let mut account = args.account;
-        if account.is_none() {
-            // Fetch account from block if not given
-            account = self
-                .node
-                .ledger
-                .any()
-                .block_account(&self.node.ledger.read_txn(), &args.hash);
-        }
 
-        //let secondary_work_peers = args.secondary_work_peers.unwrap_or(false);
-
-        let work_result = if !use_peers {
-            //if node.distributed_work.work_generation_enabled() {
-            self.node.distributed_work.make_blocking(
-                WorkVersion::Work1,
-                args.hash.into(),
-                difficulty,
-                account,
-            )
-            /*} else {
-                return to_string_pretty(&ErrorDto::new(
-                    "Local work generation is disabled".to_string(),
-                ))
-                .unwrap();
-            }*/
+        let work = if !use_peers {
+            if self.node.work.work_generation_enabled() {
+                self.node.distributed_work.make_blocking(
+                    work_version,
+                    args.hash.into(),
+                    difficulty,
+                    None,
+                )
+            } else {
+                bail!("Local work generation is disabled");
+            }
         } else {
-            //if node.distributed_work.work_generation_enabled() {
-            self.node.distributed_work.make_blocking(
-                WorkVersion::Work1,
-                args.hash.into(),
-                difficulty,
-                account,
-            )
-            /*} else {
-                return to_string_pretty(&ErrorDto::new("Work generation is disabled".to_string()))
-                    .unwrap();
-            }*/
+            let _account = if let Some(_account) = args.account {
+                // Fetch account from block if not given
+                let tx = self.node.ledger.read_txn();
+                if self.node.ledger.any().block_exists(&tx, &args.hash) {
+                    self.node.ledger.any().block_account(&tx, &args.hash)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // TODO implement
+            bail!("Distributed work generation isn't implemented yet");
         };
 
-        let result_difficulty = self.node.network_params.work.difficulty(
-            work_version,
-            &args.hash.into(),
-            work_result.unwrap(),
-        );
-        let result_multiplier = DifficultyV1::to_multiplier(
-            result_difficulty,
-            self.node.ledger.constants.work.threshold_base(work_version),
-        );
+        let Some(work) = work else {
+            bail!("Work generation cancelled")
+        };
 
-        Ok(WorkGenerateDto::new(
-            work_result.unwrap().into(),
-            result_difficulty,
-            Some(result_multiplier),
-            args.hash,
-        ))
-    }
-
-    fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
-        let mut details = BlockDetails::new(Epoch::Epoch0, false, false, false);
-        let mut details_found = false;
-
-        let transaction = node.store.tx_begin_read();
-
-        // Previous block find
-        let mut block_previous: Option<BlockEnum> = None;
-        let previous = block.previous();
-        if !previous.is_zero() {
-            block_previous = node.ledger.any().get_block(&transaction, &previous);
-        }
-
-        // Send check
-        if let Some(_prev_block) = &block_previous {
-            let is_send =
-                node.ledger.any().block_balance(&transaction, &previous) > block.balance_field();
-            details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);
-            details_found = true;
-        }
-
-        // Epoch check
-        if let Some(prev_block) = &block_previous {
-            let epoch = prev_block.sideband().unwrap().details.epoch;
-            details =
-                BlockDetails::new(epoch, details.is_send, details.is_receive, details.is_epoch);
-        }
-
-        // Link check
-        if let Some(link) = block.link_field() {
-            if !details.is_send {
-                if let Some(block_link) = node.ledger.any().get_block(&transaction, &link.into()) {
-                    let account = block.account_field().unwrap();
-                    if node
-                        .ledger
-                        .any()
-                        .get_pending(&transaction, &PendingKey::new(account, link.into()))
-                        .is_some()
-                    {
-                        let epoch = std::cmp::max(
-                            details.epoch,
-                            block_link.sideband().unwrap().details.epoch,
-                        );
-                        details = BlockDetails::new(epoch, details.is_send, true, details.is_epoch);
-                        details_found = true;
-                    }
-                }
-            }
-        }
-
-        if details_found {
-            node.network_params.work.threshold(&details)
-        } else {
-            node.network_params
+        let result_difficulty =
+            self.node
+                .network_params
                 .work
-                .threshold_base(block.work_version())
-        }
+                .difficulty(WorkVersion::Work1, &args.hash.into(), work);
+        let result_multiplier = DifficultyV1::to_multiplier(result_difficulty, default_difficulty);
+
+        Ok(WorkGenerateDto {
+            hash: args.hash,
+            work: work.into(),
+            difficulty: result_difficulty,
+            multiplier: Some(result_multiplier),
+        })
     }
 }

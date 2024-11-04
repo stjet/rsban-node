@@ -85,7 +85,7 @@ pub struct Node {
     wallet_workers: Arc<dyn ThreadPool>,
     election_workers: Arc<dyn ThreadPool>,
     pub flags: NodeFlags,
-    work: Arc<WorkPoolImpl>,
+    pub work: Arc<WorkPoolImpl>,
     pub distributed_work: Arc<DistributedWorkFactory>,
     pub store: Arc<LmdbStore>,
     pub unchecked: Arc<UncheckedMap>,

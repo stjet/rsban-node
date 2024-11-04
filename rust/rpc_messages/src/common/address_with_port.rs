@@ -49,7 +49,7 @@ mod tests {
             .unwrap(),
             r#"{
   "address": "::ffff:192.169.0.1",
-  "port": 1024
+  "port": "1024"
 }"#
         )
     }
@@ -58,7 +58,7 @@ mod tests {
     fn deserialize_address_with_port_arg() {
         let json_str = r#"{
 "address": "::ffff:192.169.0.1",
-"port": 1024
+"port": "1024"
 }"#;
         let deserialized: AddressWithPortArgs = serde_json::from_str(json_str).unwrap();
         let expected_arg =

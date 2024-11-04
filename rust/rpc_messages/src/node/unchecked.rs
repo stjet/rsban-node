@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 impl RpcCommand {
-    pub fn unchecked(count: Option<u64>) -> Self {
-        Self::Unchecked(CountArgs { count })
+    pub fn unchecked(count: u64) -> Self {
+        Self::Unchecked(CountArgs {
+            count: Some(count.into()),
+        })
     }
 }
 

@@ -11,5 +11,5 @@ fn frontier_count() {
         .runtime
         .block_on(async { server.client.frontier_count().await.unwrap() });
 
-    assert_eq!(result.count, 1);
+    assert_eq!(result.count, 1.into());
 }

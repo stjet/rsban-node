@@ -59,6 +59,64 @@ impl<'de> Visitor<'de> for U16Visitor {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct RpcU64(u64);
+
+impl From<u64> for RpcU64 {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RpcU64> for u64 {
+    fn from(value: RpcU64) -> Self {
+        value.0
+    }
+}
+
+impl Debug for RpcU64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Serialize for RpcU64 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RpcU64 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(U64Visitor {})
+    }
+}
+
+struct U64Visitor {}
+
+impl<'de> Visitor<'de> for U64Visitor {
+    type Value = RpcU64;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("u64")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let value =
+            u64::from_str_radix(v, 10).map_err(|_| serde::de::Error::custom("expected u64"))?;
+        Ok(value.into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,8 +131,21 @@ mod tests {
 
     #[test]
     fn u16_deserialize() {
-        assert_eq!(42, serde_json::from_str::<u16>("42").unwrap());
         let value: RpcU16 = serde_json::from_str("\"123\"").unwrap();
+        assert_eq!(value, 123.into());
+    }
+
+    #[test]
+    fn u64_serialize() {
+        let value = RpcU64::from(123);
+        assert_eq!(format!("{:?}", value), "123");
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, "\"123\"");
+    }
+
+    #[test]
+    fn u64_deserialize() {
+        let value: RpcU64 = serde_json::from_str("\"123\"").unwrap();
         assert_eq!(value, 123.into());
     }
 }

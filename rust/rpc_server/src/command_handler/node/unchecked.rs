@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn unchecked(&self, args: CountArgs) -> UncheckedResponse {
-        let count = args.count.unwrap_or(u64::MAX);
+        let count = args.count.map(|i| u64::from(i)).unwrap_or(u64::MAX);
         let mut blocks = HashMap::new();
 
         let mut iterations = 0;

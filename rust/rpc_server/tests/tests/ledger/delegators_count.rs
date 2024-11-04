@@ -16,5 +16,5 @@ fn delegators_count_rpc_response() {
             .unwrap()
     });
 
-    assert_eq!(result.count, 1);
+    assert_eq!(result.count, 1.into());
 }

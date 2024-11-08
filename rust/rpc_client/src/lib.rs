@@ -633,7 +633,7 @@ impl NanoRpcClient {
     }
 
     pub async fn unopened(&self, args: impl Into<UnopenedArgs>) -> Result<AccountsWithAmountsDto> {
-        let cmd = RpcCommand::unopened(args.into());
+        let cmd = RpcCommand::Unopened(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -720,7 +720,7 @@ impl NanoRpcClient {
     }
 
     pub async fn successors(&self, args: impl Into<ChainArgs>) -> Result<BlockHashesResponse> {
-        let cmd = RpcCommand::successors(args.into());
+        let cmd = RpcCommand::Successors(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

@@ -11,10 +11,6 @@
 # Fix DTOS:
 src
  ├── ledger
- │   ├── ledger.rs
- │   ├── mod.rs
- │   ├── representatives.rs
- │   ├── successors.rs
  │   └── unopened.rs
  ├── lib.rs
  ├── node

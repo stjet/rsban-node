@@ -1,12 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{RepresentativesArgs, RepresentativesResponse};
+use rsnano_rpc_messages::{
+    unwrap_bool_or_false, unwrap_u64_or_max, RepresentativesArgs, RepresentativesResponse,
+};
 
 impl RpcCommandHandler {
     pub(crate) fn representatives(&self, args: RepresentativesArgs) -> RepresentativesResponse {
-        let count = args.count.unwrap_or(usize::MAX);
-        let representatives = if args.sorting.unwrap_or(false) {
+        let count = unwrap_u64_or_max(args.count) as usize;
+        let sorting = unwrap_bool_or_false(args.sorting);
+        let representatives = if sorting {
             let mut representatives: IndexMap<Account, Amount> = self
                 .node
                 .ledger

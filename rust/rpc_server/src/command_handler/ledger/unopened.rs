@@ -1,11 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, BlockHash, PendingKey};
-use rsnano_rpc_messages::{UnopenedArgs, UnopenedResponse};
+use rsnano_rpc_messages::{unwrap_u64_or_max, UnopenedArgs, UnopenedResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn unopened(&self, args: UnopenedArgs) -> UnopenedResponse {
-        let count = args.count.unwrap_or(usize::MAX);
+        let count = unwrap_u64_or_max(args.count) as usize;
         let threshold = args.threshold.unwrap_or_default();
         let start = args.account.unwrap_or(Account::from(1)); // exclude burn account by default
         let mut accounts: HashMap<Account, Amount> = HashMap::new();

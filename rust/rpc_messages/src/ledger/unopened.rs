@@ -1,20 +1,14 @@
-use crate::RpcCommand;
+use crate::RpcU64;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-impl RpcCommand {
-    pub fn unopened(args: UnopenedArgs) -> Self {
-        Self::Unopened(args)
-    }
-}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct UnopenedArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<usize>,
+    pub count: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
 }
@@ -33,6 +27,7 @@ impl UnopenedResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RpcCommand;
     use rsnano_core::Account;
     use serde_json::{from_value, json, to_value};
 
@@ -40,7 +35,7 @@ mod tests {
     fn serialize_unopened_args_threshold_none() {
         let args = UnopenedArgs {
             account: Some(Account::zero()),
-            count: Some(1),
+            count: Some(1.into()),
             ..Default::default()
         };
         let json = to_value(args).unwrap();
@@ -49,7 +44,7 @@ mod tests {
             json,
             json!({
                 "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-                "count": 1
+                "count": "1"
             })
         );
     }
@@ -58,7 +53,7 @@ mod tests {
     fn serialize_unopened_args_threshold_some() {
         let args = UnopenedArgs {
             account: Some(Account::zero()),
-            count: Some(1),
+            count: Some(1.into()),
             threshold: Some(Amount::zero()),
         };
         let json = to_value(args).unwrap();
@@ -67,7 +62,7 @@ mod tests {
             json,
             json!({
                 "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-                "count": 1,
+                "count": "1",
                 "threshold": "0"
             })
         );
@@ -75,7 +70,7 @@ mod tests {
 
     #[test]
     fn serialize_unopened_command_threshold_none() {
-        let command = RpcCommand::unopened(UnopenedArgs {
+        let command = RpcCommand::Unopened(UnopenedArgs {
             account: Some(Account::zero()),
             ..Default::default()
         });
@@ -94,7 +89,7 @@ mod tests {
     fn deserialize_unopened_args_threshold_none() {
         let json = json!({
             "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "count": 1
+            "count": "1"
         });
 
         let args: UnopenedArgs = from_value(json).unwrap();
@@ -103,7 +98,7 @@ mod tests {
             args,
             UnopenedArgs {
                 account: Some(Account::zero()),
-                count: Some(1),
+                count: Some(1.into()),
                 ..Default::default()
             }
         );
@@ -114,7 +109,7 @@ mod tests {
         let json = json!({
             "action": "unopened",
             "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "count": 1,
+            "count": "1",
             "threshold": "0"
         });
 
@@ -124,7 +119,7 @@ mod tests {
             command,
             RpcCommand::Unopened(UnopenedArgs {
                 account: Some(Account::zero()),
-                count: Some(1),
+                count: Some(1.into()),
                 threshold: Some(Amount::zero())
             })
         );

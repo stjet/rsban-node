@@ -16,7 +16,7 @@ pub(crate) mod run_daemon;
 #[derive(Subcommand)]
 pub(crate) enum NodeSubcommands {
     /// Start node daemon.
-    RunDaemon(RunDaemonArgs),
+    Run(RunDaemonArgs),
     /// Initialize the data folder, if it is not already initialised.
     ///
     /// This command is meant to be run when the data folder is empty, to populate it with the genesis block.
@@ -41,7 +41,7 @@ pub(crate) struct NodeCommand {
 impl NodeCommand {
     pub(crate) async fn run(&self) -> Result<()> {
         match &self.subcommand {
-            Some(NodeSubcommands::RunDaemon(args)) => args.run_daemon().await?,
+            Some(NodeSubcommands::Run(args)) => args.run_daemon().await?,
             Some(NodeSubcommands::Initialize(args)) => args.initialize().await?,
             Some(NodeSubcommands::GenerateConfig(args)) => args.generate_config()?,
             Some(NodeSubcommands::Version) => Self::version(),

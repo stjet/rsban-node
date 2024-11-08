@@ -24,7 +24,7 @@ impl ContainerInfoComponent {
     fn into_json_impl(&self) -> (String, serde_json::Value) {
         match self {
             ContainerInfoComponent::Leaf(leaf) => {
-                let fields = json!({"count": leaf.count, "size": leaf.sizeof_element});
+                let fields = json!({"count": leaf.count.to_string(), "size": leaf.sizeof_element.to_string()});
                 (leaf.name.clone(), fields)
             }
             ContainerInfoComponent::Composite(name, leafs) => {

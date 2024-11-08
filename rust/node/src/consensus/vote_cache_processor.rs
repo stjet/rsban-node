@@ -1,3 +1,5 @@
+use super::{VoteCache, VoteProcessorConfig, VoteRouter};
+use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     BlockHash, VoteSource,
@@ -7,10 +9,6 @@ use std::{
     sync::{Arc, Condvar, Mutex, MutexGuard},
     thread::JoinHandle,
 };
-
-use crate::stats::{DetailType, StatType, Stats};
-
-use super::{VoteCache, VoteProcessorConfig, VoteRouter};
 
 pub(crate) struct VoteCacheProcessor {
     state: Arc<Mutex<State>>,

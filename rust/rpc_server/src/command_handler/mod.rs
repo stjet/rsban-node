@@ -11,6 +11,7 @@ use rsnano_store_lmdb::Transaction;
 use serde_json::{to_value, Value};
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
+use tracing::debug;
 use utils::*;
 
 #[derive(Clone)]
@@ -30,6 +31,7 @@ impl RpcCommandHandler {
     }
 
     pub fn handle(&self, command: RpcCommand) -> serde_json::Value {
+        debug!(?command, "Handling RPC command");
         self.call_handler(command).unwrap_or_else(Self::error_value)
     }
 

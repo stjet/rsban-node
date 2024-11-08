@@ -1,12 +1,13 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
 use rsnano_rpc_messages::{
-    AccountArg, AccountBalanceArgs, AccountBalanceResponse, AccountBlockCountDto,
+    unwrap_bool_or_true, AccountArg, AccountBalanceArgs, AccountBalanceResponse,
+    AccountBlockCountDto,
 };
 
 impl RpcCommandHandler {
     pub(crate) fn account_balance(&self, args: AccountBalanceArgs) -> AccountBalanceResponse {
-        let only_confirmed = args.include_only_confirmed.unwrap_or(true);
+        let only_confirmed = unwrap_bool_or_true(args.include_only_confirmed);
 
         let tx = self.node.ledger.read_txn();
         let balance = if only_confirmed {

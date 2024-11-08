@@ -1,12 +1,7 @@
-use crate::RpcCommand;
+use crate::AccountBalanceResponse;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
-
-impl RpcCommand {
-    pub fn accounts_balances(args: AccountsBalancesArgs) -> Self {
-        RpcCommand::AccountsBalances(args)
-    }
-}
+use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsBalancesArgs {
@@ -54,10 +49,17 @@ impl From<Vec<Account>> for AccountsBalancesArgs {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct AccountsBalancesResponse {
+    pub balances: HashMap<Account, AccountBalanceResponse>,
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::RpcCommand;
+
     use super::*;
-    use rsnano_core::Account;
+    use rsnano_core::Amount;
 
     #[test]
     fn deserialize_accounts_balances_rpc_command() {
@@ -72,7 +74,7 @@ mod tests {
             .unwrap(),
         ];
 
-        let command = RpcCommand::accounts_balances(accounts.clone().into());
+        let command = RpcCommand::AccountsBalances(accounts.clone().into());
         let serialized = serde_json::to_string(&command).unwrap();
         let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"]}"#;
         assert_eq!(serialized, expected);
@@ -80,7 +82,7 @@ mod tests {
         let args = AccountsBalancesArgsBuilder::new(accounts)
             .include_unconfirmed_blocks()
             .build();
-        let command = RpcCommand::accounts_balances(args);
+        let command = RpcCommand::AccountsBalances(args);
         let serialized = serde_json::to_string(&command).unwrap();
         let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"],"include_only_confirmed":false}"#;
         assert_eq!(serialized, expected);
@@ -166,5 +168,121 @@ mod tests {
 
         assert_eq!(args_default.accounts, accounts);
         assert_eq!(args_default.include_only_confirmed, None);
+    }
+
+    #[test]
+    fn serialize_accounts_balances_dto() {
+        let mut balances = HashMap::new();
+        balances.insert(
+            Account::decode_account(
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            )
+            .unwrap(),
+            AccountBalanceResponse {
+                balance: Amount::raw(325586539664609129644855132177),
+                pending: Amount::raw(2309372032769300000000000000000000),
+                receivable: Amount::raw(2309372032769300000000000000000000),
+            },
+        );
+        balances.insert(
+            Account::decode_account(
+                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+            )
+            .unwrap(),
+            AccountBalanceResponse {
+                balance: Amount::raw(10000000),
+                pending: Amount::raw(0),
+                receivable: Amount::raw(0),
+            },
+        );
+
+        let dto = AccountsBalancesResponse { balances };
+
+        let serialized = serde_json::to_string(&dto).unwrap();
+        let deserialized: AccountsBalancesResponse = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(dto.balances.len(), deserialized.balances.len());
+        assert_eq!(
+            dto.balances
+                .get(
+                    &Account::decode_account(
+                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                    )
+                    .unwrap()
+                )
+                .unwrap()
+                .balance,
+            Amount::raw(325586539664609129644855132177)
+        );
+        assert_eq!(
+            dto.balances
+                .get(
+                    &Account::decode_account(
+                        "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                    )
+                    .unwrap()
+                )
+                .unwrap()
+                .pending,
+            Amount::raw(0)
+        );
+    }
+
+    #[test]
+    fn deserialize_accounts_balances_dto() {
+        let json_data = r#"
+        {
+            "balances": {
+                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3": {
+                    "balance": "325586539664609129644855132177",
+                    "pending": "2309372032769300000000000000000000",
+                    "receivable": "2309372032769300000000000000000000"
+                },
+                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7": {
+                    "balance": "10000000",
+                    "pending": "0",
+                    "receivable": "0"
+                }
+            }
+        }"#;
+
+        let deserialized: AccountsBalancesResponse = serde_json::from_str(json_data).unwrap();
+
+        assert_eq!(deserialized.balances.len(), 2);
+
+        let balance1 = deserialized
+            .balances
+            .get(
+                &Account::decode_account(
+                    "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            balance1.balance,
+            Amount::raw(325586539664609129644855132177)
+        );
+        assert_eq!(
+            balance1.pending,
+            Amount::raw(2309372032769300000000000000000000)
+        );
+        assert_eq!(
+            balance1.receivable,
+            Amount::raw(2309372032769300000000000000000000)
+        );
+
+        let balance2 = deserialized
+            .balances
+            .get(
+                &Account::decode_account(
+                    "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(balance2.balance, Amount::raw(10000000));
+        assert_eq!(balance2.pending, Amount::raw(0));
+        assert_eq!(balance2.receivable, Amount::raw(0));
     }
 }

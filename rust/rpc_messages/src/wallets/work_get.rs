@@ -1,7 +1,5 @@
-use crate::common::WalletWithAccountArgs;
-use crate::RpcCommand;
-use rsnano_core::WorkNonce;
-use rsnano_core::{Account, WalletId};
+use crate::{RpcCommand, WalletWithAccountArgs};
+use rsnano_core::{Account, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {

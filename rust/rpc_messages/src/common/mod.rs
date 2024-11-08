@@ -24,7 +24,6 @@ mod started;
 mod success;
 mod valid;
 mod wallet;
-mod wallet_with_account;
 
 pub use account::*;
 pub use account_balance::*;
@@ -52,7 +51,6 @@ pub use started::*;
 pub use success::*;
 pub use valid::*;
 pub use wallet::*;
-pub use wallet_with_account::*;
 
 use rsnano_core::{BlockSubType, BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};

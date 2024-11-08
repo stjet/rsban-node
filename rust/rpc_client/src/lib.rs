@@ -447,7 +447,7 @@ impl NanoRpcClient {
     }
 
     pub async fn frontier_count(&self) -> Result<CountResponse> {
-        let cmd = RpcCommand::frontier_count();
+        let cmd = RpcCommand::FrontierCount;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

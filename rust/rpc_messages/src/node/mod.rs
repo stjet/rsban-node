@@ -60,5 +60,4 @@ pub use uptime::*;
 pub use version::*;
 pub use work_generate::*;
 pub use work_peers::*;
-pub use work_peers_clear::*;
 pub use work_validate::*;

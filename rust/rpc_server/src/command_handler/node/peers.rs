@@ -4,7 +4,7 @@ use std::{collections::HashMap, net::SocketAddrV6};
 
 impl RpcCommandHandler {
     pub(crate) fn peers(&self, args: PeersArgs) -> PeersDto {
-        let peer_details = args.peer_details.unwrap_or(false);
+        let peer_details = args.peer_details.unwrap_or_default().inner();
         let mut peers: HashMap<SocketAddrV6, PeerInfo> = HashMap::new();
 
         self.node
@@ -17,7 +17,7 @@ impl RpcCommandHandler {
                 peers.insert(
                     channel.peer_addr(),
                     PeerInfo {
-                        protocol_version: channel.protocol_version(),
+                        protocol_version: channel.protocol_version().into(),
                         node_id: channel
                             .node_id()
                             .map(|i| i.to_node_id())

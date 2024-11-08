@@ -16,7 +16,10 @@ fn confirmation_quorum() {
     let reps = node.online_reps.lock().unwrap();
 
     assert_eq!(result.quorum_delta, reps.quorum_delta());
-    assert_eq!(result.online_weight_quorum_percent, reps.quorum_percent());
+    assert_eq!(
+        result.online_weight_quorum_percent,
+        reps.quorum_percent().into()
+    );
     assert_eq!(result.online_weight_minimum, reps.online_weight_minimum());
     assert_eq!(result.online_stake_total, reps.online_weight());
     assert_eq!(result.peers_stake_total, reps.peered_weight());
@@ -62,7 +65,10 @@ fn confirmation_quorum_peer_details() {
     let reps = node0.online_reps.lock().unwrap();
 
     assert_eq!(result.quorum_delta, reps.quorum_delta());
-    assert_eq!(result.online_weight_quorum_percent, reps.quorum_percent());
+    assert_eq!(
+        result.online_weight_quorum_percent,
+        reps.quorum_percent().into()
+    );
     assert_eq!(result.online_weight_minimum, reps.online_weight_minimum());
     assert_eq!(result.online_stake_total, reps.online_weight());
     assert_eq!(result.peers_stake_total, reps.peered_weight());

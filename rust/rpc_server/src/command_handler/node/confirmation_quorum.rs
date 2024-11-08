@@ -11,7 +11,7 @@ impl RpcCommandHandler {
 
         let mut result = ConfirmationQuorumResponse {
             quorum_delta: quorum.quorum_delta(),
-            online_weight_quorum_percent: quorum.quorum_percent(),
+            online_weight_quorum_percent: quorum.quorum_percent().into(),
             online_weight_minimum: quorum.online_weight_minimum(),
             online_stake_total: quorum.online_weight(),
             trended_stake_total: quorum.trended_weight(),
@@ -19,7 +19,7 @@ impl RpcCommandHandler {
             peers: None,
         };
 
-        if args.peer_details.unwrap_or(false) {
+        if args.peer_details.unwrap_or_default().inner() {
             let peers = quorum
                 .peered_reps()
                 .iter()

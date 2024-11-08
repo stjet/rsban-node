@@ -11,12 +11,6 @@
 # Fix DTOS:
 src
  ├── node
- │   ├── confirmation_info.rs
- │   ├── confirmation_quorum.rs
- │   ├── keepalive.rs
- │   ├── mod.rs
- │   ├── node_id.rs
- │   ├── peers.rs
  │   ├── populate_backlog.rs
  │   ├── process.rs
  │   ├── receivable.rs

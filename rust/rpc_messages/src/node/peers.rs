@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand, RpcU8};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddrV6};
 
@@ -10,18 +10,20 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct PeersArgs {
-    pub peer_details: Option<bool>,
+    pub peer_details: Option<RpcBool>,
 }
 
 impl PeersArgs {
     pub fn new(peer_details: Option<bool>) -> Self {
-        PeersArgs { peer_details }
+        PeersArgs {
+            peer_details: peer_details.map(|i| i.into()),
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct PeerInfo {
-    pub protocol_version: u8,
+    pub protocol_version: RpcU8,
     pub node_id: String,
     #[serde(rename = "type")]
     pub connection_type: String,
@@ -37,7 +39,7 @@ pub enum PeersDto {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SimplePeers {
-    pub peers: HashMap<SocketAddrV6, u8>,
+    pub peers: HashMap<SocketAddrV6, RpcU8>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,16 +57,16 @@ mod tests {
     #[test]
     fn serialize_simple_peers() {
         let simple_peers = PeersDto::Simple(SimplePeers {
-            peers: [("[::ffff:172.17.0.1]:32841".parse().unwrap(), 16)].into(),
+            peers: [("[::ffff:172.17.0.1]:32841".parse().unwrap(), 16.into())].into(),
         });
 
         let json = serde_json::to_string(&simple_peers).unwrap();
-        assert_eq!(json, r#"{"peers":{"[::ffff:172.17.0.1]:32841":16}}"#);
+        assert_eq!(json, r#"{"peers":{"[::ffff:172.17.0.1]:32841":"16"}}"#);
     }
 
     #[test]
     fn deserialize_simple_peers() {
-        let json = r#"{"peers":{"[::ffff:172.17.0.1]:32841": 16}}"#;
+        let json = r#"{"peers":{"[::ffff:172.17.0.1]:32841": "16"}}"#;
         let peers: SimplePeers = serde_json::from_str(json).unwrap();
 
         assert_eq!(peers.peers.len(), 1);
@@ -76,7 +78,7 @@ mod tests {
         peers.insert(
             "[::ffff:172.17.0.1]:7075".parse().unwrap(),
             PeerInfo {
-                protocol_version: 18,
+                protocol_version: 18.into(),
                 node_id: Account::decode_account(
                     "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3",
                 )
@@ -92,13 +94,13 @@ mod tests {
         let json = serde_json::to_string(&peers).unwrap();
         assert_eq!(
             json,
-            r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#
+            r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#
         );
     }
 
     #[test]
     fn deserialize_detailed_peers() {
-        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#;
+        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#;
         let peers: DetailedPeers = serde_json::from_str(json).unwrap();
 
         assert_eq!(peers.peers.len(), 1);
@@ -106,7 +108,7 @@ mod tests {
             .peers
             .get(&"[::ffff:172.17.0.1]:7075".parse().unwrap())
             .unwrap();
-        assert_eq!(peer_info.protocol_version, 18);
+        assert_eq!(peer_info.protocol_version, 18.into());
         assert_eq!(
             peer_info.node_id,
             Account::decode_account(

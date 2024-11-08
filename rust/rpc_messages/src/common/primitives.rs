@@ -71,6 +71,7 @@ macro_rules! rpc_number {
     };
 }
 
+rpc_number!(RpcU8, u8, RpcU8Visitor);
 rpc_number!(RpcU16, u16, RpcU16Visitor);
 rpc_number!(RpcU32, u32, RpcU32Visitor);
 rpc_number!(RpcU64, u64, RpcU64Visitor);

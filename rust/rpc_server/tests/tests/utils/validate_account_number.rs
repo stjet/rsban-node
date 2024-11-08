@@ -16,5 +16,5 @@ fn validate_account_number() {
             .unwrap()
     });
 
-    assert_eq!(result.valid, "1");
+    assert_eq!(result.valid, true.into());
 }

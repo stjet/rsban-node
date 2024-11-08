@@ -313,12 +313,8 @@ impl NanoRpcClient {
         wallet: WalletId,
         count: u64,
     ) -> Result<AccountsRpcMessage> {
-        self.accounts_create_args(AccountsCreateArgs {
-            wallet,
-            count,
-            work: None,
-        })
-        .await
+        self.accounts_create_args(AccountsCreateArgs::build(wallet, count).finish())
+            .await
     }
 
     pub async fn accounts_create_args(

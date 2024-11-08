@@ -1,3 +1,4 @@
+use crate::RpcBoolNumber;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -15,17 +16,13 @@ impl SuccessResponse {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ChangedResponse {
-    changed: String,
+    changed: RpcBoolNumber,
 }
 
 impl ChangedResponse {
     pub fn new(changed: bool) -> Self {
         Self {
-            changed: if changed {
-                "1".to_owned()
-            } else {
-                "0".to_owned()
-            },
+            changed: changed.into(),
         }
     }
 }

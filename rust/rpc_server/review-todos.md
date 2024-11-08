@@ -10,14 +10,6 @@
 
 # Fix DTOS:
 src
- ├── common
- │   ├── success.rs
- │   ├── valid.rs
- │   ├── wallet.rs
- │   ├── wallet_with_account.rs
- │   ├── wallet_with_count.rs
- │   ├── wallet_with_password.rs
- │   └── weight.rs
  ├── ledger
  │   ├── account_balance.rs
  │   ├── account_block_count.rs

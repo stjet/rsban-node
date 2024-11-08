@@ -53,7 +53,7 @@ fn password_enter_fails_with_invalid_password() {
         })
         .unwrap();
 
-    assert_eq!(result.valid, "0",);
+    assert_eq!(result.valid, false.into());
 }
 
 #[test]

@@ -11,7 +11,8 @@ impl RpcCommandHandler {
     ) -> anyhow::Result<BlockHashesResponse> {
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
 
-        let (blocks, republish_bundle) = self.collect_blocks_to_republish(accounts, args.count);
+        let (blocks, republish_bundle) =
+            self.collect_blocks_to_republish(accounts, args.count.into());
         self.node
             .flood_block_many(republish_bundle, Box::new(|| ()), Duration::from_millis(25));
         Ok(BlockHashesResponse::new(blocks))

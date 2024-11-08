@@ -39,9 +39,9 @@ fn accounts_create_default_with_precomputed_work() {
         server
             .client
             .accounts_create_args(
-                AccountsCreateArgs::builder(wallet_id, 1)
+                AccountsCreateArgs::build(wallet_id, 1)
                     .precompute_work(true)
-                    .build(),
+                    .finish(),
             )
             .await
             .unwrap()
@@ -68,9 +68,9 @@ fn accounts_create_without_precomputed_work() {
 
     node.wallets.create(wallet_id);
 
-    let args = AccountsCreateArgs::builder(wallet_id, 1)
+    let args = AccountsCreateArgs::build(wallet_id, 1)
         .precompute_work(false)
-        .build();
+        .finish();
 
     let result = node
         .runtime

@@ -26,7 +26,7 @@ mod tests {
             json!({
                 "action": "wallet_republish",
                 "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-                "count": 2
+                "count": "2"
             })
         );
     }
@@ -36,7 +36,7 @@ mod tests {
         let json = json!({
             "action": "wallet_republish",
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 2
+            "count": "2"
         });
 
         let command: RpcCommand = serde_json::from_value(json).unwrap();
@@ -49,7 +49,7 @@ mod tests {
                     )
                     .unwrap()
                 );
-                assert_eq!(args.count, 2);
+                assert_eq!(args.count, 2.into());
             }
             _ => panic!("Unexpected RpcCommand variant"),
         }

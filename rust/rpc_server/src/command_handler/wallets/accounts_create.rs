@@ -1,15 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Account;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{AccountsCreateArgs, AccountsRpcMessage};
+use rsnano_rpc_messages::{unwrap_bool_or_false, AccountsCreateArgs, AccountsRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn accounts_create(
         &self,
         args: AccountsCreateArgs,
     ) -> anyhow::Result<AccountsRpcMessage> {
-        let generate_work = args.work.unwrap_or(false);
-        let count = args.count as usize;
+        let generate_work = unwrap_bool_or_false(args.work);
+        let count = args.count.into();
         let wallet = &args.wallet;
 
         let accounts: Result<Vec<Account>, _> = (0..count)

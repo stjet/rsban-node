@@ -152,7 +152,6 @@ impl RpcCommandHandler {
             RpcCommand::WorkPeerAdd(args) => to_value(self.work_peer_add(args)),
             RpcCommand::WorkPeersClear => to_value(self.work_peers_clear()),
             RpcCommand::DatabaseTxnTracker(_) => self.not_implemented(),
-            RpcCommand::BootstrapLazy(_) => self.not_implemented(),
             RpcCommand::ReceiveMinimumSet(_) => self.not_implemented(),
         }?;
 
@@ -242,7 +241,7 @@ fn requires_control(command: &RpcCommand) -> bool {
             StatsType::Objects => true,
             _ => false,
         },
-        RpcCommand::Process(args) => args.force == Some(true),
+        RpcCommand::Process(args) => args.force == Some(true.into()),
         _ => false,
     }
 }

@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
-use crate::{RpcBool, RpcU64};
+use crate::{RpcBool, RpcU64, RpcU8};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct ReceivableArgs {
@@ -139,7 +139,7 @@ pub struct SourceInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_version: Option<u8>,
+    pub min_version: Option<RpcU8>,
 }
 
 #[cfg(test)]

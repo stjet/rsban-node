@@ -11,8 +11,8 @@ impl RpcCommandHandler {
         &self,
         args: ReceivableExistsArgs,
     ) -> anyhow::Result<ExistsResponse> {
-        let include_active = args.include_active.unwrap_or(false);
-        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
+        let include_active = args.include_active.unwrap_or_default().inner();
+        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true.into()).inner();
         let txn = self.node.ledger.read_txn();
 
         let Some(block) = self.node.ledger.any().get_block(&txn, &args.hash) else {

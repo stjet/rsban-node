@@ -137,7 +137,7 @@ impl NanoRpcClient {
         &self,
         args: impl Into<ReceivableExistsArgs>,
     ) -> Result<ExistsResponse> {
-        let cmd = RpcCommand::receivable_exists(args.into());
+        let cmd = RpcCommand::receivable_exists(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

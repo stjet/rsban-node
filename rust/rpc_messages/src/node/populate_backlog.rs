@@ -1,8 +1,6 @@
-use crate::RpcCommand;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::RpcCommand;
 
     #[test]
     fn serialize_populate_backlog() {

@@ -1,4 +1,4 @@
-use crate::{BlockSubTypeDto, RpcCommand};
+use crate::{BlockSubTypeDto, RpcBool, RpcCommand};
 use rsnano_core::JsonBlock;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ impl RpcCommand {
 
 impl From<JsonBlock> for ProcessArgs {
     fn from(value: JsonBlock) -> Self {
-        Self::builder(value).build()
+        Self::build(value).finish()
     }
 }
 
@@ -20,15 +20,15 @@ pub struct ProcessArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<BlockSubTypeDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub force: Option<bool>,
+    pub force: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub watch_work: Option<bool>,
+    pub watch_work: Option<RpcBool>,
     #[serde(rename = "async", skip_serializing_if = "Option::is_none")]
-    pub is_async: Option<bool>,
+    pub is_async: Option<RpcBool>,
 }
 
 impl ProcessArgs {
-    pub fn builder(block: JsonBlock) -> ProcessArgsBuilder {
+    pub fn build(block: JsonBlock) -> ProcessArgsBuilder {
         ProcessArgsBuilder {
             args: ProcessArgs {
                 subtype: None,
@@ -52,21 +52,21 @@ impl ProcessArgsBuilder {
     }
 
     pub fn force(mut self) -> Self {
-        self.args.force = Some(true);
+        self.args.force = Some(true.into());
         self
     }
 
     pub fn as_async(mut self) -> Self {
-        self.args.is_async = Some(true);
+        self.args.is_async = Some(true.into());
         self
     }
 
     pub fn without_watch_work(mut self) -> Self {
-        self.args.watch_work = Some(false);
+        self.args.watch_work = Some(false.into());
         self
     }
 
-    pub fn build(self) -> ProcessArgs {
+    pub fn finish(self) -> ProcessArgs {
         self.args
     }
 }
@@ -79,13 +79,12 @@ mod tests {
 
     #[test]
     fn test_process_command_serialize() {
-        let process_args =
-            ProcessArgs::builder(BlockEnum::new_test_instance().json_representation())
-                .subtype(BlockSubTypeDto::Send)
-                .force()
-                .as_async()
-                .without_watch_work()
-                .build();
+        let process_args = ProcessArgs::build(BlockEnum::new_test_instance().json_representation())
+            .subtype(BlockSubTypeDto::Send)
+            .force()
+            .as_async()
+            .without_watch_work()
+            .finish();
         let command = RpcCommand::Process(process_args);
 
         let serialized = serde_json::to_value(&command).unwrap();
@@ -105,9 +104,9 @@ mod tests {
                     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
                     "work": "0000000000010F2C"
                 },
-                "force": true,
-                "watch_work": false,
-                "async": true
+                "force": "true",
+                "watch_work": "false",
+                "async": "true"
             })
         );
     }
@@ -128,9 +127,9 @@ mod tests {
                 "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
                 "work": "0000000000010F2C"
             },
-            "force": false,
-            "watch_work": true,
-            "async": false
+            "force": "false",
+            "watch_work": "true",
+            "async": "false"
         });
 
         let deserialized: RpcCommand = serde_json::from_value(json).unwrap();
@@ -140,9 +139,9 @@ mod tests {
                 args.block,
                 BlockEnum::new_test_instance().json_representation()
             );
-            assert_eq!(args.force, Some(false));
-            assert_eq!(args.watch_work, Some(true));
-            assert_eq!(args.is_async, Some(false));
+            assert_eq!(args.force, Some(false.into()));
+            assert_eq!(args.watch_work, Some(true.into()));
+            assert_eq!(args.is_async, Some(false.into()));
         } else {
             panic!("Deserialized to wrong variant");
         }

@@ -57,7 +57,7 @@ impl RpcCommandHandler {
                         SourceInfo {
                             amount: info.amount,
                             source: source.then(|| info.source),
-                            min_version: min_version.then(|| info.epoch.epoch_number()),
+                            min_version: min_version.then(|| info.epoch.epoch_number().into()),
                         },
                     );
                 } else {

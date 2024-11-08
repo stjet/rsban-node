@@ -20,9 +20,9 @@ fn process() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let args: ProcessArgs = ProcessArgs::builder(send1.json_representation())
+    let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
         .subtype(BlockSubTypeDto::Send)
-        .build();
+        .finish();
 
     let result = node
         .runtime
@@ -49,9 +49,9 @@ fn process_fails_with_low_work() {
         1,
     ));
 
-    let args: ProcessArgs = ProcessArgs::builder(send1.json_representation())
+    let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
         .subtype(BlockSubTypeDto::Send)
-        .build();
+        .finish();
 
     let result = node
         .runtime

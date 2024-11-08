@@ -8,7 +8,7 @@ use rsnano_rpc_messages::{BlockSubTypeDto, HashRpcMessage, ProcessArgs, StartedR
 
 impl RpcCommandHandler {
     pub(crate) fn process(&self, args: ProcessArgs) -> anyhow::Result<serde_json::Value> {
-        let is_async = args.is_async.unwrap_or(false);
+        let is_async = args.is_async.unwrap_or_default().inner();
         let block: BlockEnum = args.block.into();
 
         // State blocks subtype check
@@ -80,7 +80,7 @@ impl RpcCommandHandler {
                 BlockStatus::Old => Err(anyhow!("Old block")),
                 BlockStatus::NegativeSpend => Err(anyhow!("Negative spend")),
                 BlockStatus::Fork => {
-                    if args.force.unwrap_or(false) {
+                    if args.force.unwrap_or_default().inner() {
                         self.node.active.erase(&block.qualified_root());
                         self.node.block_processor.force(block.into());
                         Ok(serde_json::to_value(HashRpcMessage::new(hash))?)

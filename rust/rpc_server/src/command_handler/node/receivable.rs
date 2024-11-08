@@ -67,7 +67,7 @@ impl RpcCommandHandler {
                 let source_info = SourceInfo {
                     amount: info.amount,
                     source: source.then(|| info.source),
-                    min_version: min_version.then(|| info.epoch.epoch_number()),
+                    min_version: min_version.then(|| info.epoch.epoch_number().into()),
                 };
                 peers_source.insert(key.send_block_hash, source_info);
             } else {

@@ -53,10 +53,10 @@ fn test_receivable_exists_unconfirmed() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = ReceivableExistsArgs::builder(send.hash())
+    let args = ReceivableExistsArgs::build(send.hash())
         .include_active()
         .include_unconfirmed_blocks()
-        .build();
+        .finish();
 
     let result = node
         .runtime

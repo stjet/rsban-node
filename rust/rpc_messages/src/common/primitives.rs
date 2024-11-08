@@ -1,7 +1,4 @@
-use serde::{
-    de::{Expected, Visitor},
-    Deserialize, Serialize,
-};
+use serde::{de::Visitor, Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -161,6 +158,46 @@ impl<'de> Deserialize<'de> for RpcBoolNumber {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct RpcBool(bool);
+
+impl From<bool> for RpcBool {
+    fn from(value: bool) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RpcBool> for bool {
+    fn from(value: RpcBool) -> Self {
+        value.0
+    }
+}
+
+impl Debug for RpcBool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Serialize for RpcBool {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(if self.0 { "true" } else { "false" })
+    }
+}
+
+impl<'de> Deserialize<'de> for RpcBool {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let result = deserializer.deserialize_str(BoolVisitor {})?;
+        Ok(RpcBool(result))
+    }
+}
+
 struct BoolVisitor {}
 
 impl<'de> Visitor<'de> for BoolVisitor {
@@ -215,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn bool_serialize() {
+    fn bool_number_serialize() {
         let true_value = RpcBoolNumber::from(true);
         let false_value = RpcBoolNumber::from(false);
         assert_eq!(format!("{:?}", true_value), "true");
@@ -224,6 +261,30 @@ mod tests {
         assert_eq!(json, "\"1\"");
         let json = serde_json::to_string(&false_value).unwrap();
         assert_eq!(json, "\"0\"");
+    }
+
+    #[test]
+    fn bool_number_deserialize() {
+        let a: RpcBoolNumber = serde_json::from_str("\"1\"").unwrap();
+        let b: RpcBoolNumber = serde_json::from_str("\"0\"").unwrap();
+        let c: RpcBoolNumber = serde_json::from_str("\"true\"").unwrap();
+        let d: RpcBoolNumber = serde_json::from_str("\"false\"").unwrap();
+        assert_eq!(a, true.into());
+        assert_eq!(b, false.into());
+        assert_eq!(c, true.into());
+        assert_eq!(d, false.into());
+    }
+
+    #[test]
+    fn bool_serialize() {
+        let true_value = RpcBool::from(true);
+        let false_value = RpcBool::from(false);
+        assert_eq!(format!("{:?}", true_value), "true");
+        assert_eq!(format!("{:?}", false_value), "false");
+        let json = serde_json::to_string(&true_value).unwrap();
+        assert_eq!(json, "\"true\"");
+        let json = serde_json::to_string(&false_value).unwrap();
+        assert_eq!(json, "\"false\"");
     }
 
     #[test]

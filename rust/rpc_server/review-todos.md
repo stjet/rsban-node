@@ -11,7 +11,6 @@
 # Fix DTOS:
 src
  ├── common
- │   ├── receivable.rs
  │   ├── removed.rs
  │   ├── started.rs
  │   ├── success.rs

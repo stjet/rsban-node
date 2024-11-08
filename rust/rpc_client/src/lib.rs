@@ -151,7 +151,7 @@ impl NanoRpcClient {
             && !min_version
             && !args.sorting.unwrap_or_default();
 
-        let cmd = RpcCommand::receivable(args);
+        let cmd = RpcCommand::Receivable(args);
         let result = self.rpc_request(&cmd).await?;
         if simple {
             let blocks = serde_json::from_value::<ReceivableSimple>(result)?;

@@ -74,6 +74,7 @@ macro_rules! rpc_number {
 rpc_number!(RpcU16, u16, RpcU16Visitor);
 rpc_number!(RpcU32, u32, RpcU32Visitor);
 rpc_number!(RpcU64, u64, RpcU64Visitor);
+rpc_number!(RpcUsize, usize, RpcUsizeVisitor);
 
 #[derive(Copy, Clone, PartialEq, Default, PartialOrd)]
 pub struct RpcF32(f32);
@@ -177,6 +178,12 @@ impl<'de> Deserialize<'de> for RpcBoolNumber {
 
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcBool(bool);
+
+impl RpcBool {
+    pub fn inner(&self) -> bool {
+        self.0
+    }
+}
 
 impl From<bool> for RpcBool {
     fn from(value: bool) -> Self {

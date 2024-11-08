@@ -35,7 +35,7 @@ impl RpcCommandHandler {
 
         ConfirmationHistoryResponse {
             confirmation_stats: ConfirmationStats {
-                count: elections.len(),
+                count: elections.len().into(),
                 average: if elections.is_empty() {
                     None
                 } else {

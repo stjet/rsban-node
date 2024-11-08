@@ -90,7 +90,7 @@ impl NanoRpcClient {
         &self,
         args: impl Into<ConfirmationInfoArgs>,
     ) -> Result<ConfirmationInfoDto> {
-        let cmd = RpcCommand::confirmation_info(args.into());
+        let cmd = RpcCommand::ConfirmationInfo(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

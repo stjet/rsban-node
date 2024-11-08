@@ -9,8 +9,8 @@ impl RpcCommandHandler {
         &self,
         args: ConfirmationInfoArgs,
     ) -> anyhow::Result<ConfirmationInfoDto> {
-        let include_representatives = args.representatives.unwrap_or(false);
-        let contents = args.contents.unwrap_or(true);
+        let include_representatives = args.representatives.unwrap_or(false.into()).inner();
+        let contents = args.contents.unwrap_or(true.into()).inner();
         let election = self
             .node
             .active
@@ -74,8 +74,8 @@ impl RpcCommandHandler {
         }
 
         Ok(ConfirmationInfoDto {
-            announcements,
-            voters,
+            announcements: announcements.into(),
+            voters: voters.into(),
             last_winner,
             total_tally,
             final_tally,

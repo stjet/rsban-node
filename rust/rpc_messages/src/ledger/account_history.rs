@@ -1,4 +1,4 @@
-use crate::{BlockSubTypeDto, BlockTypeDto, RpcCommand};
+use crate::{BlockSubTypeDto, BlockTypeDto, RpcBool, RpcCommand, RpcU64};
 use rsnano_core::{Account, Amount, BlockHash, Link, Signature, WorkNonce};
 use serde::{Deserialize, Serialize};
 
@@ -12,15 +12,15 @@ impl RpcCommand {
 pub struct AccountHistoryArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Account>,
-    pub count: u64,
+    pub count: RpcU64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw: Option<bool>,
+    pub raw: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub head: Option<BlockHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u64>,
+    pub offset: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reverse: Option<bool>,
+    pub reverse: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_filter: Option<Vec<Account>>,
 }
@@ -29,7 +29,7 @@ impl AccountHistoryArgs {
     pub fn new(account: Account, count: u64) -> AccountHistoryArgs {
         AccountHistoryArgs {
             account: Some(account),
-            count,
+            count: count.into(),
             raw: None,
             head: None,
             offset: None,
@@ -38,11 +38,11 @@ impl AccountHistoryArgs {
         }
     }
 
-    pub fn builder_for_account(account: Account, count: u64) -> AccountHistoryArgsBuilder {
+    pub fn build_for_account(account: Account, count: u64) -> AccountHistoryArgsBuilder {
         AccountHistoryArgsBuilder::new(Some(account), None, count)
     }
 
-    pub fn builder_for_head(head: BlockHash, count: u64) -> AccountHistoryArgsBuilder {
+    pub fn build_for_head(head: BlockHash, count: u64) -> AccountHistoryArgsBuilder {
         AccountHistoryArgsBuilder::new(None, Some(head), count)
     }
 }
@@ -57,7 +57,7 @@ impl AccountHistoryArgsBuilder {
             args: AccountHistoryArgs {
                 account,
                 head,
-                count,
+                count: count.into(),
                 raw: None,
                 offset: None,
                 reverse: None,
@@ -67,7 +67,7 @@ impl AccountHistoryArgsBuilder {
     }
 
     pub fn raw(mut self) -> Self {
-        self.args.raw = Some(true);
+        self.args.raw = Some(true.into());
         self
     }
 
@@ -77,12 +77,12 @@ impl AccountHistoryArgsBuilder {
     }
 
     pub fn offset(mut self, offset: u64) -> Self {
-        self.args.offset = Some(offset);
+        self.args.offset = Some(offset.into());
         self
     }
 
     pub fn reverse(mut self) -> Self {
-        self.args.reverse = Some(true);
+        self.args.reverse = Some(true.into());
         self
     }
 
@@ -91,7 +91,7 @@ impl AccountHistoryArgsBuilder {
         self
     }
 
-    pub fn build(self) -> AccountHistoryArgs {
+    pub fn finish(self) -> AccountHistoryArgs {
         self.args
     }
 }
@@ -106,10 +106,10 @@ pub struct AccountHistoryResponse {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HistoryEntry {
-    pub local_timestamp: u64,
-    pub height: u64,
+    pub local_timestamp: RpcU64,
+    pub height: RpcU64,
     pub hash: BlockHash,
-    pub confirmed: bool,
+    pub confirmed: RpcBool,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "type")]
     pub block_type: Option<BlockTypeDto>,
@@ -148,22 +148,22 @@ mod tests {
 
     #[test]
     fn serialize_account_history_command() {
-        let account_history_args = AccountHistoryArgs::builder_for_head(BlockHash::zero(), 10)
+        let account_history_args = AccountHistoryArgs::build_for_head(BlockHash::zero(), 10)
             .raw()
             .offset(5)
             .reverse()
             .account_filter(vec![Account::from(123)])
-            .build();
+            .finish();
 
         assert_eq!(
             to_string_pretty(&RpcCommand::account_history(account_history_args)).unwrap(),
             r#"{
   "action": "account_history",
-  "count": 10,
-  "raw": true,
+  "count": "10",
+  "raw": "true",
   "head": "0000000000000000000000000000000000000000000000000000000000000000",
-  "offset": 5,
-  "reverse": true,
+  "offset": "5",
+  "reverse": "true",
   "account_filter": [
     "nano_111111111111111111111111111111111111111111111111115uwdgas549"
   ]
@@ -176,11 +176,11 @@ mod tests {
         let json = r#"{
             "action": "account_history",
             "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
-            "count": 5,
-            "raw": true,
+            "count": "5",
+            "raw": "true",
             "head": "0000000000000000000000000000000000000000000000000000000000000000",
-            "offset": 10,
-            "reverse": false,
+            "offset": "10",
+            "reverse": "false",
             "account_filter": ["nano_1111111111111111111111111111111111111111111111111111hifc8npp"]
         }"#;
 
@@ -189,11 +189,11 @@ mod tests {
         if let RpcCommand::AccountHistory(args) = deserialized {
             assert_eq!(args.account, Some(Account::from(123)));
             assert_eq!(args.head, Some(BlockHash::zero()));
-            assert_eq!(args.count, 5);
-            assert_eq!(args.raw, Some(true));
+            assert_eq!(args.count, 5.into());
+            assert_eq!(args.raw, Some(true.into()));
             assert_eq!(args.head, Some(BlockHash::zero()));
-            assert_eq!(args.offset, Some(10));
-            assert_eq!(args.reverse, Some(false));
+            assert_eq!(args.offset, Some(10.into()));
+            assert_eq!(args.reverse, Some(false.into()));
             assert_eq!(args.account_filter, Some(vec![Account::zero()]));
         } else {
             panic!("Deserialized to wrong RpcCommand variant");

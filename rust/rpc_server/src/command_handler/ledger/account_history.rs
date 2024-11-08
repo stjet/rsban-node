@@ -3,7 +3,8 @@ use anyhow::anyhow;
 use rsnano_core::{Account, Block, BlockEnum, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_rpc_messages::{
-    AccountHistoryArgs, AccountHistoryResponse, BlockSubTypeDto, BlockTypeDto, HistoryEntry,
+    unwrap_bool_or_false, unwrap_u64_or_zero, AccountHistoryArgs, AccountHistoryResponse,
+    BlockSubTypeDto, BlockTypeDto, HistoryEntry,
 };
 use rsnano_store_lmdb::LmdbReadTransaction;
 
@@ -12,18 +13,7 @@ impl RpcCommandHandler {
         &self,
         args: AccountHistoryArgs,
     ) -> anyhow::Result<AccountHistoryResponse> {
-        let helper = AccountHistoryHelper {
-            ledger: &self.node.ledger,
-            accounts_to_filter: args.account_filter.unwrap_or_default(),
-            reverse: args.reverse.unwrap_or(false),
-            offset: args.offset.unwrap_or_default(),
-            head: args.head,
-            requested_account: args.account,
-            output_raw: args.raw.unwrap_or(false),
-            count: args.count,
-            current_block_hash: BlockHash::zero(),
-            account: Account::zero(),
-        };
+        let helper = AccountHistoryHelper::new(&self.node.ledger, args);
         helper.account_history()
     }
 }
@@ -46,12 +36,12 @@ impl<'a> AccountHistoryHelper<'a> {
         Self {
             ledger,
             accounts_to_filter: args.account_filter.unwrap_or_default(),
-            reverse: args.reverse.unwrap_or(false),
-            offset: args.offset.unwrap_or_default(),
-            requested_account: args.account,
-            output_raw: args.raw.unwrap_or(false),
-            count: args.count,
+            reverse: unwrap_bool_or_false(args.reverse),
+            offset: unwrap_u64_or_zero(args.offset),
             head: args.head,
+            requested_account: args.account,
+            output_raw: unwrap_bool_or_false(args.raw),
+            count: args.count.into(),
             current_block_hash: BlockHash::zero(),
             account: Account::zero(),
         }
@@ -297,13 +287,14 @@ impl<'a> AccountHistoryHelper<'a> {
         tx: &LmdbReadTransaction,
     ) {
         let sideband = block.sideband().unwrap();
-        entry.local_timestamp = sideband.timestamp;
-        entry.height = sideband.height;
+        entry.local_timestamp = sideband.timestamp.into();
+        entry.height = sideband.height.into();
         entry.hash = block.hash();
         entry.confirmed = self
             .ledger
             .confirmed()
-            .block_exists_or_pruned(tx, &block.hash());
+            .block_exists_or_pruned(tx, &block.hash())
+            .into();
         if self.output_raw {
             entry.work = Some(block.work().into());
             entry.signature = Some(block.block_signature().clone());
@@ -335,10 +326,10 @@ fn empty_entry() -> HistoryEntry {
         amount: None,
         account: None,
         block_account: None,
-        local_timestamp: 0,
-        height: 0,
+        local_timestamp: 0.into(),
+        height: 0.into(),
         hash: BlockHash::zero(),
-        confirmed: false,
+        confirmed: false.into(),
         work: None,
         signature: None,
         representative: None,
@@ -365,7 +356,7 @@ mod tests {
         let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
         let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
         let result = cmd_handler.handle(RpcCommand::account_history(
-            AccountHistoryArgs::builder_for_account(Account::from(42), 3).build(),
+            AccountHistoryArgs::build_for_account(Account::from(42), 3).finish(),
         ));
         let error = check_error(&result).unwrap_err();
         assert_eq!(error, "Account not found");

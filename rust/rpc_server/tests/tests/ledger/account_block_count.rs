@@ -17,7 +17,7 @@ fn account_block_count() {
             .unwrap()
     });
 
-    assert_eq!(result.block_count, 1);
+    assert_eq!(result.block_count, 1.into());
 }
 
 #[test]

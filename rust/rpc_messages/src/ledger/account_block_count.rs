@@ -1,4 +1,4 @@
-use crate::{AccountArg, RpcCommand};
+use crate::{AccountArg, RpcCommand, RpcU64};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
@@ -20,13 +20,15 @@ impl AccountBlockCountArgs {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountBlockCountDto {
-    pub block_count: u64,
+pub struct AccountBlockCountResponse {
+    pub block_count: RpcU64,
 }
 
-impl AccountBlockCountDto {
+impl AccountBlockCountResponse {
     pub fn new(count: u64) -> Self {
-        Self { block_count: count }
+        Self {
+            block_count: count.into(),
+        }
     }
 }
 

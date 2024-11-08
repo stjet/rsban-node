@@ -59,8 +59,14 @@ impl<'de> Visitor<'de> for U16Visitor {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct RpcU64(u64);
+
+impl RpcU64 {
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
+}
 
 impl From<u64> for RpcU64 {
     fn from(value: u64) -> Self {

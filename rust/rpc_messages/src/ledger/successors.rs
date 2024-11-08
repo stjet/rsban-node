@@ -29,9 +29,9 @@ mod tests {
         let expected = json!({
             "action": "successors",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
 
         assert_eq!(serialized, expected);
@@ -42,9 +42,9 @@ mod tests {
         let json_value = json!({
             "action": "successors",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
 
         let deserialized: RpcCommand = from_value(json_value).unwrap();

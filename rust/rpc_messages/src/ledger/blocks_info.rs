@@ -1,5 +1,5 @@
 use super::BlockInfoResponse;
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -29,13 +29,13 @@ impl BlocksInfoResponse {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlocksInfoArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receivable: Option<bool>,
+    pub receivable: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receive_hash: Option<bool>,
+    pub receive_hash: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source: Option<bool>,
+    pub source: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_not_found: Option<bool>,
+    pub include_not_found: Option<RpcBool>,
     pub hashes: Vec<BlockHash>,
 }
 

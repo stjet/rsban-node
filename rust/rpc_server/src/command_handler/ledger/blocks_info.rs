@@ -1,15 +1,17 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{BlockHash, BlockType, PendingKey};
-use rsnano_rpc_messages::{BlockInfoResponse, BlocksInfoArgs, BlocksInfoResponse};
+use rsnano_rpc_messages::{
+    unwrap_bool_or_false, BlockInfoResponse, BlocksInfoArgs, BlocksInfoResponse,
+};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn blocks_info(&self, args: BlocksInfoArgs) -> anyhow::Result<BlocksInfoResponse> {
-        let receivable = args.receivable.unwrap_or(false);
-        let receive_hash = args.receive_hash.unwrap_or(false);
-        let source = args.source.unwrap_or(false);
-        let include_not_found = args.include_not_found.unwrap_or(false);
+        let receivable = unwrap_bool_or_false(args.receivable);
+        let receive_hash = unwrap_bool_or_false(args.receive_hash);
+        let source = unwrap_bool_or_false(args.source);
+        let include_not_found = unwrap_bool_or_false(args.include_not_found);
 
         let txn = self.node.ledger.read_txn();
         let mut blocks: HashMap<BlockHash, BlockInfoResponse> = HashMap::new();
@@ -41,10 +43,10 @@ impl RpcCommandHandler {
                     block_account,
                     amount,
                     balance,
-                    height,
-                    local_timestamp,
+                    height: height.into(),
+                    local_timestamp: local_timestamp.into(),
                     successor,
-                    confirmed,
+                    confirmed: confirmed.into(),
                     contents,
                     subtype,
                     receivable: None,
@@ -55,7 +57,7 @@ impl RpcCommandHandler {
                 if receivable || receive_hash {
                     if block.is_send() {
                         if receivable {
-                            block_info.receivable = Some(0);
+                            block_info.receivable = Some(0.into());
                         }
                         if receive_hash {
                             block_info.receive_hash = Some(BlockHash::zero());
@@ -68,14 +70,14 @@ impl RpcCommandHandler {
                         .is_some()
                     {
                         if receivable {
-                            block_info.receivable = Some(1)
+                            block_info.receivable = Some(1.into())
                         }
                         if receive_hash {
                             block_info.receive_hash = Some(BlockHash::zero());
                         }
                     } else {
                         if receivable {
-                            block_info.receivable = Some(0);
+                            block_info.receivable = Some(0.into());
                         }
                         if receive_hash {
                             let receive_block = self.node.ledger.find_receive_block_by_send_hash(

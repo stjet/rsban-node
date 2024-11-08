@@ -666,7 +666,7 @@ impl NanoRpcClient {
     }
 
     pub async fn delegators(&self, args: impl Into<DelegatorsArgs>) -> Result<DelegatorsResponse> {
-        let cmd = RpcCommand::delegators(args.into());
+        let cmd = RpcCommand::Delegators(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
@@ -726,7 +726,7 @@ impl NanoRpcClient {
     }
 
     pub async fn chain(&self, args: ChainArgs) -> Result<BlockHashesResponse> {
-        let cmd = RpcCommand::chain(args);
+        let cmd = RpcCommand::Chain(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

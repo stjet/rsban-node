@@ -1,12 +1,6 @@
-use crate::RpcCommand;
+use crate::RpcU64;
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
-
-impl RpcCommand {
-    pub fn delegators(args: DelegatorsArgs) -> Self {
-        Self::Delegators(args)
-    }
-}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct DelegatorsArgs {
@@ -14,7 +8,7 @@ pub struct DelegatorsArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<u64>,
+    pub count: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<Account>,
 }
@@ -56,7 +50,7 @@ impl DelegatorsArgsBuilder {
     }
 
     pub fn count(mut self, count: u64) -> Self {
-        self.args.count = Some(count);
+        self.args.count = Some(count.into());
         self
     }
 
@@ -84,11 +78,12 @@ impl From<Account> for DelegatorsArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RpcCommand;
     use serde_json::json;
 
     #[test]
     fn serialize_delegators_command() {
-        let command = RpcCommand::delegators(Account::zero().into());
+        let command = RpcCommand::Delegators(Account::zero().into());
         let serialized = serde_json::to_value(command).unwrap();
         let expected = json!({"action": "delegators", "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"});
         assert_eq!(serialized, expected);
@@ -98,7 +93,7 @@ mod tests {
     fn deserialize_delegators_command() {
         let json = r#"{"action": "delegators","account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
-        let expected = RpcCommand::delegators(Account::zero().into());
+        let expected = RpcCommand::Delegators(Account::zero().into());
         assert_eq!(deserialized, expected);
     }
 
@@ -110,14 +105,14 @@ mod tests {
             )
             .unwrap(),
             threshold: Some(Amount::raw(1)),
-            count: Some(0),
+            count: Some(0.into()),
             start: Some(Account::zero()),
         };
         let serialized = serde_json::to_value(args).unwrap();
         let expected = json!({
             "account": "nano_1111111111111111111111111111111111111111111111111117353trpda",
             "threshold": "1",
-            "count": 0,
+            "count": "0",
             "start": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
         assert_eq!(serialized, expected);
@@ -128,7 +123,7 @@ mod tests {
         let json = r#"{
             "account": "nano_1111111111111111111111111111111111111111111111111117353trpda",
             "threshold": "1",
-            "count": 0,
+            "count": "0",
             "start": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
         let deserialized: DelegatorsArgs = serde_json::from_str(json).unwrap();
@@ -140,7 +135,7 @@ mod tests {
             .unwrap()
         );
         assert_eq!(deserialized.threshold, Some(Amount::raw(1)));
-        assert_eq!(deserialized.count, Some(0));
+        assert_eq!(deserialized.count, Some(0.into()));
         assert_eq!(deserialized.start, Some(Account::zero()));
     }
 
@@ -154,7 +149,7 @@ mod tests {
 
         assert_eq!(args.account, Account::zero());
         assert_eq!(args.threshold, Some(Amount::raw(1000)));
-        assert_eq!(args.count, Some(50));
+        assert_eq!(args.count, Some(50.into()));
         assert_eq!(args.start, Some(Account::from(123)));
     }
 
@@ -164,7 +159,7 @@ mod tests {
 
         assert_eq!(args.account, Account::zero());
         assert_eq!(args.threshold, None);
-        assert_eq!(args.count, Some(30));
+        assert_eq!(args.count, Some(30.into()));
         assert_eq!(args.start, None);
     }
 

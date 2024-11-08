@@ -225,6 +225,10 @@ impl<'de> Visitor<'de> for BoolVisitor {
     }
 }
 
+pub fn unwrap_u64_or(i: Option<RpcU64>, default_value: u64) -> u64 {
+    i.map(|x| x.into()).unwrap_or(default_value)
+}
+
 pub fn unwrap_u64_or_max(i: Option<RpcU64>) -> u64 {
     i.unwrap_or(u64::MAX.into()).into()
 }

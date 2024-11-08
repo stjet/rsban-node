@@ -11,7 +11,7 @@ fn block_count() {
         .runtime
         .block_on(async { server.client.block_count().await.unwrap() });
 
-    assert_eq!(result.count, 1);
-    assert_eq!(result.cemented, 1);
-    assert_eq!(result.unchecked, 0);
+    assert_eq!(result.count, 1.into());
+    assert_eq!(result.cemented, 1.into());
+    assert_eq!(result.unchecked, 0.into());
 }

@@ -7,9 +7,9 @@ impl RpcCommandHandler {
         let unchecked = self.node.unchecked.buffer_count() as u64;
         let cemented = self.node.ledger.cemented_count();
         BlockCountResponse {
-            count,
-            unchecked,
-            cemented,
+            count: count.into(),
+            unchecked: unchecked.into(),
+            cemented: cemented.into(),
         }
     }
 }

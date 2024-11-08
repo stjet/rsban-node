@@ -1,4 +1,4 @@
-use crate::{common::HashRpcMessage, BlockSubTypeDto, RpcCommand};
+use crate::{common::HashRpcMessage, BlockSubTypeDto, RpcBool, RpcCommand, RpcU64};
 use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 
@@ -14,15 +14,15 @@ pub struct BlockInfoResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount: Option<Amount>,
     pub balance: Amount,
-    pub height: u64,
-    pub local_timestamp: u64,
+    pub height: RpcU64,
+    pub local_timestamp: RpcU64,
     pub successor: BlockHash,
-    pub confirmed: bool,
+    pub confirmed: RpcBool,
     pub contents: JsonBlock,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<BlockSubTypeDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receivable: Option<u64>,
+    pub receivable: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receive_hash: Option<BlockHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -44,13 +44,13 @@ mod tests {
             .unwrap(),
             amount: Some(Amount::raw(30000000000000000000000000000000000u128)),
             balance: Amount::raw(5606157000000000000000000000000000000u128),
-            height: 58,
-            local_timestamp: 0,
+            height: 58.into(),
+            local_timestamp: 0.into(),
             successor: BlockHash::decode_hex(
                 "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72",
             )
             .unwrap(),
-            confirmed: true,
+            confirmed: true.into(),
             contents: BlockEnum::new_test_instance().json_representation(),
             subtype: Some(BlockSubTypeDto::Send),
             receivable: None,
@@ -66,10 +66,10 @@ mod tests {
                 "block_account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
                 "amount": "30000000000000000000000000000000000",
                 "balance": "5606157000000000000000000000000000000",
-                "height": 58,
-                "local_timestamp": 0,
+                "height": "58",
+                "local_timestamp": "0",
                 "successor": "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72",
-                "confirmed": true,
+                "confirmed": "true",
                 "contents": {
                     "type": "state",
                     "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
@@ -92,10 +92,10 @@ mod tests {
             "block_account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             "amount": "30000000000000000000000000000000000",
             "balance": "5606157000000000000000000000000000000",
-            "height": 58,
-            "local_timestamp": 0,
+            "height": "58",
+            "local_timestamp": "0",
             "successor": "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72",
-            "confirmed": true,
+            "confirmed": "true",
             "contents": {
                 "type": "state",
                 "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
@@ -127,13 +127,13 @@ mod tests {
             deserialized.balance,
             Amount::raw(5606157000000000000000000000000000000u128)
         );
-        assert_eq!(deserialized.height, 58);
-        assert_eq!(deserialized.local_timestamp, 0);
+        assert_eq!(deserialized.height, 58.into());
+        assert_eq!(deserialized.local_timestamp, 0.into());
         assert_eq!(
             deserialized.successor.to_string(),
             "8D3AB98B301224253750D448B4BD997132400CEDD0A8432F775724F2D9821C72"
         );
-        assert!(deserialized.confirmed);
+        assert_eq!(deserialized.confirmed, true.into());
         assert_eq!(deserialized.subtype, Some(BlockSubTypeDto::Send));
         assert_eq!(
             deserialized.contents,

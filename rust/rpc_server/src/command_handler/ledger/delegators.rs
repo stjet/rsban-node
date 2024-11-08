@@ -1,12 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount, PublicKey};
-use rsnano_rpc_messages::{DelegatorsArgs, DelegatorsResponse};
+use rsnano_rpc_messages::{unwrap_u64_or, DelegatorsArgs, DelegatorsResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn delegators(&self, args: DelegatorsArgs) -> DelegatorsResponse {
         let representative: PublicKey = args.account.into();
-        let count = args.count.unwrap_or(1024);
+        let count = unwrap_u64_or(args.count, 1024);
         let threshold = args.threshold.unwrap_or(Amount::zero());
         let start_account = args.start.unwrap_or(Account::zero());
 

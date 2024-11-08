@@ -1,28 +1,22 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcU64};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
-
-impl RpcCommand {
-    pub fn chain(args: ChainArgs) -> Self {
-        Self::Chain(args)
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ChainArgs {
     pub block: BlockHash,
-    pub count: u64,
+    pub count: RpcU64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u64>,
+    pub offset: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reverse: Option<bool>,
+    pub reverse: Option<RpcBool>,
 }
 
 impl ChainArgs {
     pub fn new(block: BlockHash, count: u64) -> ChainArgs {
         ChainArgs {
             block,
-            count,
+            count: count.into(),
             offset: None,
             reverse: None,
         }
@@ -42,7 +36,7 @@ impl ChainArgsBuilder {
         Self {
             args: ChainArgs {
                 block,
-                count,
+                count: count.into(),
                 offset: None,
                 reverse: None,
             },
@@ -50,12 +44,12 @@ impl ChainArgsBuilder {
     }
 
     pub fn offset(mut self, offset: u64) -> Self {
-        self.args.offset = Some(offset);
+        self.args.offset = Some(offset.into());
         self
     }
 
     pub fn reverse(mut self) -> Self {
-        self.args.reverse = Some(true);
+        self.args.reverse = Some(true.into());
         self
     }
 
@@ -67,6 +61,7 @@ impl ChainArgsBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RpcCommand;
     use serde_json::{from_value, json, to_value};
 
     fn create_test_block_hash() -> BlockHash {
@@ -82,8 +77,8 @@ mod tests {
         let serialized = serde_json::to_value(chain_args).unwrap();
         let expected = json!({
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1
+            "count": "1",
+            "offset": "1"
         });
 
         assert_eq!(serialized, expected);
@@ -93,9 +88,9 @@ mod tests {
     fn deserialize_chain_args() {
         let json_value = json!({
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
 
         let deserialized: ChainArgs = from_value(json_value).unwrap();
@@ -118,14 +113,14 @@ mod tests {
         )
         .unwrap();
         let args = ChainArgs::builder(block_hash, 1).offset(1).build();
-        let chain_command = RpcCommand::chain(args);
+        let chain_command = RpcCommand::Chain(args);
 
         let serialized = serde_json::to_value(chain_command).unwrap();
         let expected = json!({
             "action": "chain",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1
+            "count": "1",
+            "offset": "1"
         });
 
         assert_eq!(serialized, expected);
@@ -136,8 +131,8 @@ mod tests {
         let json_value = json!({
             "action": "chain",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1
+            "count": "1",
+            "offset": "1"
         });
 
         let deserialized: RpcCommand = from_value(json_value).unwrap();
@@ -146,7 +141,7 @@ mod tests {
         )
         .unwrap();
         let args = ChainArgs::builder(expected_block_hash, 1).offset(1).build();
-        let expected = RpcCommand::chain(args);
+        let expected = RpcCommand::Chain(args);
 
         assert_eq!(deserialized, expected);
     }
@@ -165,18 +160,18 @@ mod tests {
 
         let expected = ChainArgs {
             block: block_hash,
-            count: 1,
-            offset: Some(1),
-            reverse: Some(true),
+            count: 1.into(),
+            offset: Some(1.into()),
+            reverse: Some(true.into()),
         };
         assert_eq!(chain_args, expected);
 
         let serialized = to_value(chain_args).unwrap();
         let expected_json = json!({
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
         assert_eq!(serialized, expected_json);
     }
@@ -193,7 +188,7 @@ mod tests {
         let serialized = to_value(chain_args).unwrap();
         let expected_json = json!({
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1
+            "count": "1"
         });
         assert_eq!(serialized, expected_json);
     }

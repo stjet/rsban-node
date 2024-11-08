@@ -17,8 +17,8 @@ fn block_info() {
     assert_eq!(result.amount, Some(Amount::MAX));
     assert_eq!(result.balance, Amount::MAX);
     assert_eq!(result.block_account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(result.confirmed, true);
-    assert_eq!(result.height, 1);
+    assert_eq!(result.confirmed, true.into());
+    assert_eq!(result.height, 1.into());
     assert_eq!(result.subtype, None);
     assert_eq!(result.successor, BlockHash::zero());
     assert_eq!(result.contents, DEV_GENESIS.json_representation());
@@ -27,5 +27,5 @@ fn block_info() {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs() as u64;
-    assert!(result.local_timestamp <= current_unix_timestamp);
+    assert!(result.local_timestamp <= current_unix_timestamp.into());
 }

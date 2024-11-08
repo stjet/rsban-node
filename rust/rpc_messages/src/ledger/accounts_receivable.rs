@@ -1,6 +1,8 @@
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
+use crate::{RpcBool, RpcU64};
+
 impl AccountsReceivableArgs {
     pub fn new(accounts: Vec<Account>) -> AccountsReceivableArgs {
         Self {
@@ -14,7 +16,7 @@ impl AccountsReceivableArgs {
         }
     }
 
-    pub fn builder(accounts: Vec<Account>) -> AccountsReceivableArgsBuilder {
+    pub fn build(accounts: Vec<Account>) -> AccountsReceivableArgsBuilder {
         AccountsReceivableArgsBuilder {
             args: AccountsReceivableArgs::new(accounts),
         }
@@ -32,31 +34,31 @@ impl AccountsReceivableArgsBuilder {
     }
 
     pub fn count(mut self, count: u64) -> Self {
-        self.args.count = Some(count);
+        self.args.count = Some(count.into());
         self
     }
 
     pub fn include_source(mut self) -> Self {
-        self.args.source = Some(true);
+        self.args.source = Some(true.into());
         self
     }
 
     pub fn include_active(mut self, value: bool) -> Self {
-        self.args.include_active = Some(value);
+        self.args.include_active = Some(value.into());
         self
     }
 
     pub fn sorted(mut self) -> Self {
-        self.args.sorting = Some(true);
+        self.args.sorting = Some(true.into());
         self
     }
 
     pub fn only_confirmed(mut self, value: bool) -> Self {
-        self.args.include_only_confirmed = Some(value);
+        self.args.include_only_confirmed = Some(value.into());
         self
     }
 
-    pub fn build(self) -> AccountsReceivableArgs {
+    pub fn finish(self) -> AccountsReceivableArgs {
         self.args
     }
 }
@@ -65,17 +67,17 @@ impl AccountsReceivableArgsBuilder {
 pub struct AccountsReceivableArgs {
     pub accounts: Vec<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<u64>,
+    pub count: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source: Option<bool>,
+    pub source: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sorting: Option<bool>,
+    pub sorting: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>,
+    pub include_only_confirmed: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_active: Option<bool>,
+    pub include_active: Option<RpcBool>,
 }
 
 impl From<Vec<Account>> for AccountsReceivableArgs {
@@ -96,11 +98,11 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
-            count: Some(10),
+            count: Some(10.into()),
             threshold: Some(Amount::raw(1000)),
-            source: Some(true),
-            sorting: Some(false),
-            include_only_confirmed: Some(true),
+            source: Some(true.into()),
+            sorting: Some(false.into()),
+            include_only_confirmed: Some(true.into()),
             include_active: None,
         };
 
@@ -109,23 +111,23 @@ mod tests {
         assert!(serialized.contains(
             "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
         ));
-        assert!(serialized.contains("\"count\":10"));
+        assert!(serialized.contains("\"count\":\"10\""));
         assert!(serialized.contains("\"threshold\":\"1000\""));
-        assert!(serialized.contains("\"source\":true"));
-        assert!(serialized.contains("\"sorting\":false"));
-        assert!(serialized.contains("\"include_only_confirmed\":true"));
+        assert!(serialized.contains("\"source\":\"true\""));
+        assert!(serialized.contains("\"sorting\":\"false\""));
+        assert!(serialized.contains("\"include_only_confirmed\":\"true\""));
     }
 
     #[test]
     fn deserialize_accounts_receivable_args_options_some() {
         let json = r#"{
             "accounts": ["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
-            "count": 5,
+            "count": "5",
             "threshold": "1000",
-            "source": true,
-            "sorting": false,
-            "include_only_confirmed": true,
-            "include_active": true
+            "source": "true",
+            "sorting": "false",
+            "include_only_confirmed": "true",
+            "include_active": "true"
         }"#;
 
         let deserialized: AccountsReceivableArgs = serde_json::from_str(json).unwrap();
@@ -138,12 +140,12 @@ mod tests {
             )
             .unwrap()
         );
-        assert_eq!(deserialized.count, Some(5));
+        assert_eq!(deserialized.count, Some(5.into()));
         assert_eq!(deserialized.threshold, Some(Amount::raw(1000)));
-        assert_eq!(deserialized.source, Some(true));
-        assert_eq!(deserialized.sorting, Some(false));
-        assert_eq!(deserialized.include_only_confirmed, Some(true));
-        assert_eq!(deserialized.include_active, Some(true));
+        assert_eq!(deserialized.source, Some(true.into()));
+        assert_eq!(deserialized.sorting, Some(false.into()));
+        assert_eq!(deserialized.include_only_confirmed, Some(true.into()));
+        assert_eq!(deserialized.include_active, Some(true.into()));
     }
 
     #[test]
@@ -153,7 +155,7 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
-            count: Some(10),
+            count: Some(10.into()),
             threshold: None,
             source: None,
             sorting: None,
@@ -166,7 +168,7 @@ mod tests {
         assert!(serialized.contains(
             "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
         ));
-        assert!(serialized.contains("\"count\":10"));
+        assert!(serialized.contains("\"count\":\"10\""));
         assert!(!serialized.contains("\"threshold\""));
         assert!(!serialized.contains("\"source\""));
         assert!(!serialized.contains("\"sorting\""));
@@ -177,7 +179,7 @@ mod tests {
     fn deserialize_accounts_receivable_args_options_none() {
         let json = r#"{
             "accounts": ["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
-            "count": 5
+            "count": "5"
         }"#;
 
         let deserialized: AccountsReceivableArgs = serde_json::from_str(json).unwrap();
@@ -190,7 +192,7 @@ mod tests {
             )
             .unwrap()
         );
-        assert_eq!(deserialized.count, Some(5));
+        assert_eq!(deserialized.count, Some(5.into()));
         assert_eq!(deserialized.threshold, None);
         assert_eq!(deserialized.source, None);
         assert_eq!(deserialized.sorting, None);

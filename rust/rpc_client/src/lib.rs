@@ -171,8 +171,8 @@ impl NanoRpcClient {
         let args = args.into();
 
         let threshold = args.threshold.unwrap_or_default();
-        let source = args.source.unwrap_or(false);
-        let simple = threshold.is_zero() && !source && !args.sorting.unwrap_or(false);
+        let source = unwrap_bool_or_false(args.source);
+        let simple = threshold.is_zero() && !source && !unwrap_bool_or_false(args.sorting);
         let cmd = RpcCommand::AccountsReceivable(args);
         let result = self.rpc_request(&cmd).await?;
         if simple {

@@ -58,10 +58,10 @@ fn accounts_receivable_include_only_confirmed() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountsReceivableArgs::builder(vec![public_key.into()])
+    let args = AccountsReceivableArgs::build(vec![public_key.into()])
         .count(1)
         .only_confirmed(true)
-        .build();
+        .finish();
 
     let result1 = node
         .runtime
@@ -73,9 +73,9 @@ fn accounts_receivable_include_only_confirmed() {
         panic!("Expected ReceivableDto::Blocks variant");
     }
 
-    let args = AccountsReceivableArgs::builder(vec![public_key.into()])
+    let args = AccountsReceivableArgs::build(vec![public_key.into()])
         .count(1)
-        .build();
+        .finish();
 
     let result2 = node
         .runtime
@@ -107,10 +107,10 @@ fn accounts_receivable_options_none() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountsReceivableArgs::builder(vec![public_key.into()])
+    let args = AccountsReceivableArgs::build(vec![public_key.into()])
         .count(1)
         .only_confirmed(true)
-        .build();
+        .finish();
 
     let result = node
         .runtime
@@ -146,10 +146,10 @@ fn accounts_receivable_threshold_some() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountsReceivableArgs::builder(vec![public_key.into()])
+    let args = AccountsReceivableArgs::build(vec![public_key.into()])
         .count(1)
         .threshold(Amount::raw(1))
-        .build();
+        .finish();
 
     let result = node
         .runtime
@@ -187,12 +187,12 @@ fn accounts_receivable_sorted() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = AccountsReceivableArgs::builder(vec![public_key.into()])
+    let args = AccountsReceivableArgs::build(vec![public_key.into()])
         .count(1)
         .threshold(Amount::raw(1))
         .only_confirmed(false)
         .sorted()
-        .build();
+        .finish();
 
     let result = node
         .runtime

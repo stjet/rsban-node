@@ -2,8 +2,9 @@ use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey};
 use rsnano_rpc_messages::{
-    AccountsReceivableArgs, AccountsReceivableResponse, AccountsReceivableSimple,
-    AccountsReceivableSource, AccountsReceivableThreshold, SourceInfo,
+    unwrap_bool_or_false, unwrap_bool_or_true, unwrap_u64_or_max, AccountsReceivableArgs,
+    AccountsReceivableResponse, AccountsReceivableSimple, AccountsReceivableSource,
+    AccountsReceivableThreshold, SourceInfo,
 };
 use std::ops::{Deref, DerefMut};
 
@@ -12,11 +13,11 @@ impl RpcCommandHandler {
         &self,
         args: AccountsReceivableArgs,
     ) -> AccountsReceivableResponse {
-        let count = args.count.unwrap_or(u64::MAX);
+        let count = unwrap_u64_or_max(args.count);
         let threshold = args.threshold.unwrap_or(Amount::zero());
-        let source = args.source.unwrap_or(false);
-        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
-        let sorting = args.sorting.unwrap_or(false);
+        let source = unwrap_bool_or_false(args.source);
+        let include_only_confirmed = unwrap_bool_or_true(args.include_only_confirmed);
+        let sorting = unwrap_bool_or_false(args.sorting);
         let simple = threshold.is_zero() && !source && !sorting; // if simple, response is a list of hashes for each account
         let tx = self.node.store.tx_begin_read();
 

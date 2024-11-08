@@ -11,8 +11,6 @@
 # Fix DTOS:
 src
  ├── common
- │   ├── removed.rs
- │   ├── started.rs
  │   ├── success.rs
  │   ├── valid.rs
  │   ├── wallet.rs

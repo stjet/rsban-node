@@ -17,7 +17,7 @@ fn block_confirm() {
             .unwrap()
     });
 
-    assert_eq!(result.started, "1");
+    assert_eq!(result.started, true.into());
 }
 
 #[test]

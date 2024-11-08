@@ -144,12 +144,11 @@ impl NanoRpcClient {
 
     pub async fn receivable(&self, args: impl Into<ReceivableArgs>) -> Result<ReceivableResponse> {
         let args = args.into();
-        let source = args.source.unwrap_or_default();
-        let min_version = args.min_version.unwrap_or_default();
-        let simple = args.threshold.unwrap_or_default().is_zero()
-            && !source
-            && !min_version
-            && !args.sorting.unwrap_or_default();
+        let source: bool = args.source.unwrap_or_default().into();
+        let min_version: bool = args.min_version.unwrap_or_default().into();
+        let sort: bool = args.sorting.unwrap_or_default().into();
+        let simple =
+            args.threshold.unwrap_or_default().is_zero() && !source && !min_version && !sort;
 
         let cmd = RpcCommand::Receivable(args);
         let result = self.rpc_request(&cmd).await?;

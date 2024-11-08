@@ -63,7 +63,7 @@ fn receivable_include_only_confirmed() {
             .client
             .receivable(ReceivableArgs {
                 account: public_key.into(),
-                count: Some(1),
+                count: Some(1.into()),
                 ..Default::default()
             })
             .await
@@ -76,12 +76,10 @@ fn receivable_include_only_confirmed() {
         panic!("Expected ReceivableDto::Blocks variant");
     }
 
-    let args = ReceivableArgs {
-        account: public_key.into(),
-        count: Some(1),
-        include_only_confirmed: Some(false),
-        ..Default::default()
-    };
+    let args = ReceivableArgs::build(public_key)
+        .count(1)
+        .include_only_confirmed(false)
+        .finish();
 
     let result2 = node
         .runtime
@@ -147,12 +145,10 @@ fn receivable_threshold_some() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let args = ReceivableArgs {
-        account: public_key.into(),
-        count: Some(2),
-        threshold: Some(Amount::raw(1)),
-        ..Default::default()
-    };
+    let args = ReceivableArgs::build(public_key)
+        .count(2)
+        .threshold(Amount::raw(1))
+        .finish();
 
     let result = node
         .runtime

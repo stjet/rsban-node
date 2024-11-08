@@ -59,7 +59,7 @@ impl<'de> Visitor<'de> for U16Visitor {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcU64(u64);
 
 impl From<u64> for RpcU64 {
@@ -118,7 +118,7 @@ impl<'de> Visitor<'de> for U64Visitor {
 }
 
 /// Bool expressed as "1"=true and "0"=false
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcBoolNumber(bool);
 
 impl From<bool> for RpcBoolNumber {
@@ -158,7 +158,7 @@ impl<'de> Deserialize<'de> for RpcBoolNumber {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcBool(bool);
 
 impl From<bool> for RpcBool {
@@ -217,6 +217,22 @@ impl<'de> Visitor<'de> for BoolVisitor {
             _ => Err(serde::de::Error::custom("bool expected")),
         }
     }
+}
+
+pub fn unwrap_u64_or_max(i: Option<RpcU64>) -> u64 {
+    i.unwrap_or(u64::MAX.into()).into()
+}
+
+pub fn unwrap_u64_or_zero(i: Option<RpcU64>) -> u64 {
+    i.unwrap_or_default().into()
+}
+
+pub fn unwrap_bool_or_false(i: Option<RpcBool>) -> bool {
+    i.unwrap_or_default().into()
+}
+
+pub fn unwrap_bool_or_true(i: Option<RpcBool>) -> bool {
+    i.unwrap_or(true.into()).into()
 }
 
 #[cfg(test)]

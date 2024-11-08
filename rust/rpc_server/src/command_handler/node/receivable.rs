@@ -2,19 +2,20 @@ use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
 use rsnano_core::{Amount, BlockHash};
 use rsnano_rpc_messages::{
+    unwrap_bool_or_false, unwrap_bool_or_true, unwrap_u64_or_max, unwrap_u64_or_zero,
     ReceivableArgs, ReceivableResponse, ReceivableSimple, ReceivableSource, ReceivableThreshold,
     SourceInfo,
 };
 
 impl RpcCommandHandler {
     pub(crate) fn receivable(&self, args: ReceivableArgs) -> ReceivableResponse {
-        let count = args.count.unwrap_or(u64::MAX) as usize;
-        let offset = args.offset.unwrap_or(0) as usize;
+        let count = unwrap_u64_or_max(args.count) as usize;
+        let offset = unwrap_u64_or_zero(args.offset) as usize;
         let threshold = args.threshold.unwrap_or_default();
-        let source = args.source.unwrap_or(false);
-        let min_version = args.min_version.unwrap_or(false);
-        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
-        let sorting = args.sorting.unwrap_or(false);
+        let source = unwrap_bool_or_false(args.source);
+        let min_version = unwrap_bool_or_false(args.min_version);
+        let include_only_confirmed = unwrap_bool_or_true(args.include_only_confirmed);
+        let sorting = unwrap_bool_or_false(args.sorting);
 
         let mut offset_counter = offset;
 

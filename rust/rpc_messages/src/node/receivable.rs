@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
-use crate::RpcU64;
+use crate::{RpcBool, RpcU64};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct ReceivableArgs {
@@ -14,13 +14,13 @@ pub struct ReceivableArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source: Option<bool>,
+    pub source: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_version: Option<bool>,
+    pub min_version: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sorting: Option<bool>,
+    pub sorting: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>,
+    pub include_only_confirmed: Option<RpcBool>,
 }
 
 impl ReceivableArgs {
@@ -31,9 +31,9 @@ impl ReceivableArgs {
         }
     }
 
-    pub fn builder(account: Account) -> ReceivableArgsBuilder {
+    pub fn build(account: impl Into<Account>) -> ReceivableArgsBuilder {
         ReceivableArgsBuilder {
-            args: ReceivableArgs::new(account),
+            args: ReceivableArgs::new(account.into()),
         }
     }
 }
@@ -57,23 +57,23 @@ impl ReceivableArgsBuilder {
         self
     }
 
-    pub fn include_unconfirmed_blocks(mut self) -> Self {
-        self.args.include_only_confirmed = Some(false);
+    pub fn include_only_confirmed(mut self, include: bool) -> Self {
+        self.args.include_only_confirmed = Some(include.into());
         self
     }
 
     pub fn min_version(mut self) -> Self {
-        self.args.min_version = Some(true);
+        self.args.min_version = Some(true.into());
         self
     }
 
-    pub fn sorting(mut self) -> Self {
-        self.args.sorting = Some(true);
+    pub fn sort(mut self) -> Self {
+        self.args.sorting = Some(true.into());
         self
     }
 
     pub fn source(mut self) -> Self {
-        self.args.source = Some(true);
+        self.args.source = Some(true.into());
         self
     }
 
@@ -82,7 +82,7 @@ impl ReceivableArgsBuilder {
         self
     }
 
-    pub fn build(self) -> ReceivableArgs {
+    pub fn finish(self) -> ReceivableArgs {
         self.args
     }
 }

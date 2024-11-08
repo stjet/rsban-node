@@ -11,8 +11,6 @@
 # Fix DTOS:
 src
  ├── node
- │   ├── bootstrap_lazy.rs
- │   ├── confirmation_active.rs
  │   ├── confirmation_history.rs
  │   ├── confirmation_info.rs
  │   ├── confirmation_quorum.rs

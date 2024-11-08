@@ -66,7 +66,7 @@ fn test_ledger() {
         assert_eq!(open.hash(), info.open_block);
         assert_eq!(open.hash(), info.representative_block);
         assert_eq!(Amount::MAX - Amount::raw(100), info.balance);
-        assert!(((time as i64) - (info.modified_timestamp.as_u64() as i64)).abs() < 5);
+        assert!(((time as i64) - (info.modified_timestamp.inner() as i64)).abs() < 5);
         assert_eq!(info.block_count, 1.into());
         assert!(info.weight.is_none());
         assert!(info.pending.is_none());

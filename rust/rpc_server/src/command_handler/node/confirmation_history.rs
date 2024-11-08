@@ -16,17 +16,18 @@ impl RpcCommandHandler {
             if hash.is_zero() || status.winner.as_ref().unwrap().hash() == hash {
                 elections.push(ConfirmationEntry {
                     hash: status.winner.as_ref().unwrap().hash(),
-                    duration: status.election_duration.as_secs(),
+                    duration: status.election_duration.as_secs().into(),
                     time: status
                         .election_end
                         .duration_since(UNIX_EPOCH)
                         .unwrap_or_default()
-                        .as_secs(),
+                        .as_secs()
+                        .into(),
                     tally: status.tally,
                     final_tally: status.final_tally,
-                    blocks: status.block_count,
-                    voters: status.voter_count,
-                    request_count: status.confirmation_request_count,
+                    blocks: status.block_count.into(),
+                    voters: status.voter_count.into(),
+                    request_count: status.confirmation_request_count.into(),
                 });
             }
             running_total += status.election_duration;
@@ -38,7 +39,7 @@ impl RpcCommandHandler {
                 average: if elections.is_empty() {
                     None
                 } else {
-                    Some(running_total.as_secs() / elections.len() as u64)
+                    Some((running_total.as_secs() / elections.len() as u64).into())
                 },
             },
             confirmations: elections,

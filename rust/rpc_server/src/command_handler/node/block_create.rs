@@ -24,7 +24,7 @@ impl RpcCommandHandler {
                     .threshold_base(work_version)
                     .into()
             })
-            .as_u64();
+            .inner();
 
         let wallet_id = args.wallet.unwrap_or_default();
         let account = args.account.unwrap_or_default();

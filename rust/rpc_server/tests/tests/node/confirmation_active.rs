@@ -14,6 +14,6 @@ fn confirmation_active() {
         .block_on(async { server.client.confirmation_active(None).await.unwrap() });
 
     assert!(!result.confirmations.is_empty());
-    assert_eq!(result.confirmed, 0);
-    assert_eq!(result.unconfirmed, 1);
+    assert_eq!(result.confirmed, 0.into());
+    assert_eq!(result.unconfirmed, 1.into());
 }

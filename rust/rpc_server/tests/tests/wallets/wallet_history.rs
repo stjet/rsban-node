@@ -69,8 +69,8 @@ fn wallet_history() {
         .unwrap()
         .as_secs();
 
-    assert!(entry.local_timestamp.as_u64() <= current_time);
-    assert!(entry.local_timestamp.as_u64() >= current_time - 10);
+    assert!(entry.local_timestamp.inner() <= current_time);
+    assert!(entry.local_timestamp.inner() >= current_time - 10);
 }
 
 #[test]

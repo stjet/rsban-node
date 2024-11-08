@@ -42,12 +42,12 @@ impl NodeRunner {
         data_path: impl Into<PathBuf>,
         callbacks: NodeCallbacks,
     ) {
-        let node = self.node_factory.create_node(network, data_path, callbacks);
-
-        let node2 = node.clone();
-
         self.state
             .store(NodeState::Starting as u8, Ordering::SeqCst);
+
+        let node = self.node_factory.create_node(network, data_path, callbacks);
+        let node2 = node.clone();
+
         self.node = Some(node);
 
         let state = self.state.clone();

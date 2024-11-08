@@ -1,4 +1,4 @@
-use crate::cli::{get_path, init_tracing};
+use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rsnano_core::utils::get_cpu_count;
@@ -114,16 +114,13 @@ pub(crate) struct RunDaemonArgs {
 
 impl RunDaemonArgs {
     pub(crate) async fn run_daemon(&self) -> Result<()> {
-        let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("info"));
-
-        init_tracing(dirs);
+        init_tracing();
 
         let path = get_path(&self.data_path, &self.network);
         let network = NetworkConstants::active_network();
         let network_params = NetworkParams::new(network);
         let parallelism = get_cpu_count();
-
-        std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
+        let flags = self.get_flags();
 
         let node_toml_config_path = get_node_toml_config_path(&path);
 
@@ -143,10 +140,7 @@ impl RunDaemonArgs {
             rpc_server_config.merge_toml(&rpc_server_toml);
         }
 
-        let mut flags = NodeFlags::new();
-        self.set_flags(&mut flags);
-
-        let node = NodeBuilder::new(network_params.network.current_network)
+        let node = NodeBuilder::new(network)
             .data_path(path)
             .network_params(network_params)
             .flags(flags)
@@ -178,45 +172,48 @@ impl RunDaemonArgs {
         Ok(())
     }
 
-    pub(crate) fn set_flags(&self, node_flags: &mut NodeFlags) {
+    pub(crate) fn get_flags(&self) -> NodeFlags {
+        let mut flags = NodeFlags::new();
         if let Some(config_overrides) = &self.config_overrides {
-            node_flags.config_overrides = config_overrides.clone();
+            flags.config_overrides = config_overrides.clone();
         }
         if let Some(rpc_config_overrides) = &self.rpc_config_overrides {
-            node_flags.rpc_config_overrides = rpc_config_overrides.clone();
+            flags.rpc_config_overrides = rpc_config_overrides.clone();
         }
-        node_flags.disable_activate_successors = self.disable_activate_successors;
-        node_flags.disable_backup = self.disable_backup;
-        node_flags.disable_lazy_bootstrap = self.disable_lazy_bootstrap;
-        node_flags.disable_legacy_bootstrap = self.disable_legacy_bootstrap;
-        node_flags.disable_wallet_bootstrap = self.disable_wallet_bootstrap;
-        node_flags.disable_bootstrap_listener = self.disable_bootstrap_listener;
-        node_flags.disable_bootstrap_bulk_pull_server = self.disable_bootstrap_bulk_pull_server;
-        node_flags.disable_bootstrap_bulk_push_client = self.disable_bootstrap_bulk_push_client;
-        node_flags.disable_ongoing_bootstrap = self.disable_ongoing_bootstrap;
-        node_flags.disable_ascending_bootstrap = self.disable_ascending_bootstrap;
-        node_flags.disable_rep_crawler = self.disable_rep_crawler;
-        node_flags.disable_request_loop = self.disable_request_loop;
-        node_flags.disable_tcp_realtime = self.disable_tcp_realtime;
-        node_flags.disable_providing_telemetry_metrics = self.disable_providing_telemetry_metrics;
-        node_flags.disable_block_processor_unchecked_deletion =
+        flags.disable_activate_successors = self.disable_activate_successors;
+        flags.disable_backup = self.disable_backup;
+        flags.disable_lazy_bootstrap = self.disable_lazy_bootstrap;
+        flags.disable_legacy_bootstrap = self.disable_legacy_bootstrap;
+        flags.disable_wallet_bootstrap = self.disable_wallet_bootstrap;
+        flags.disable_bootstrap_listener = self.disable_bootstrap_listener;
+        flags.disable_bootstrap_bulk_pull_server = self.disable_bootstrap_bulk_pull_server;
+        flags.disable_bootstrap_bulk_push_client = self.disable_bootstrap_bulk_push_client;
+        flags.disable_ongoing_bootstrap = self.disable_ongoing_bootstrap;
+        flags.disable_ascending_bootstrap = self.disable_ascending_bootstrap;
+        flags.disable_rep_crawler = self.disable_rep_crawler;
+        flags.disable_request_loop = self.disable_request_loop;
+        flags.disable_tcp_realtime = self.disable_tcp_realtime;
+        flags.disable_providing_telemetry_metrics = self.disable_providing_telemetry_metrics;
+        flags.disable_block_processor_unchecked_deletion =
             self.disable_block_processor_unchecked_deletion;
-        node_flags.disable_block_processor_republishing = self.disable_block_processor_republishing;
-        node_flags.allow_bootstrap_peers_duplicates = self.allow_bootstrap_peers_duplicates;
-        node_flags.enable_pruning = self.enable_pruning;
-        node_flags.fast_bootstrap = self.fast_bootstrap;
+        flags.disable_block_processor_republishing = self.disable_block_processor_republishing;
+        flags.allow_bootstrap_peers_duplicates = self.allow_bootstrap_peers_duplicates;
+        flags.enable_pruning = self.enable_pruning;
+        flags.fast_bootstrap = self.fast_bootstrap;
         if let Some(block_processor_batch_size) = self.block_processor_batch_size {
-            node_flags.block_processor_batch_size = block_processor_batch_size;
+            flags.block_processor_batch_size = block_processor_batch_size;
         }
         if let Some(block_processor_full_size) = self.block_processor_full_size {
-            node_flags.block_processor_full_size = block_processor_full_size;
+            flags.block_processor_full_size = block_processor_full_size;
         }
         if let Some(block_processor_verification_size) = self.block_processor_verification_size {
-            node_flags.block_processor_verification_size = block_processor_verification_size;
+            flags.block_processor_verification_size = block_processor_verification_size;
         }
         if let Some(vote_processor_capacity) = self.vote_processor_capacity {
-            node_flags.vote_processor_capacity = vote_processor_capacity;
+            flags.vote_processor_capacity = vote_processor_capacity;
         }
+
+        flags
     }
 }
 
@@ -243,4 +240,32 @@ async fn shutdown_signal(tx_stop: tokio::sync::oneshot::Receiver<()>) {
         _ = terminate => {},
         _ = tx_stop => {},
     }
+}
+
+fn init_tracing() {
+    let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("info"));
+    let filter = EnvFilter::builder().parse_lossy(dirs);
+    let value = std::env::var("NANO_LOG");
+    let log_style = value.as_ref().map(|i| i.as_str()).unwrap_or_default();
+    match log_style {
+        "json" => {
+            tracing_subscriber::fmt::fmt()
+                .json()
+                .with_env_filter(filter)
+                .init();
+        }
+        "noansi" => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(false)
+                .init();
+        }
+        _ => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(true)
+                .init();
+        }
+    }
+    tracing::debug!(log_style, ?value, "init tracing");
 }

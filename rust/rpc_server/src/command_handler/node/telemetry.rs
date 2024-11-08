@@ -15,9 +15,10 @@ impl RpcCommandHandler {
                 bail!("Both port and address required");
             };
 
-            let endpoint = SocketAddrV6::new(address, port, 0, 0);
+            let endpoint = SocketAddrV6::new(address, port.into(), 0, 0);
 
-            if address.is_loopback() && port == self.node.tcp_listener.local_address().port() {
+            if address.is_loopback() && port == self.node.tcp_listener.local_address().port().into()
+            {
                 // Requesting telemetry metrics locally
                 let data = self.node.telemetry.local_telemetry();
                 responses.push(TelemetryDto::from(data));
@@ -32,13 +33,13 @@ impl RpcCommandHandler {
         } else {
             // By default, local telemetry metrics are returned,
             // setting "raw" to true returns metrics from all nodes requested.
-            let output_raw = args.raw.unwrap_or(false);
+            let output_raw = args.raw.unwrap_or_default().inner();
             let all_telemetries = self.node.telemetry.get_all_telemetries();
             if output_raw {
                 for (addr, data) in all_telemetries {
                     let mut metric = TelemetryDto::from(data);
                     metric.address = Some(addr.ip().clone());
-                    metric.port = Some(addr.port());
+                    metric.port = Some(addr.port().into());
                     responses.push(metric);
                 }
             } else {

@@ -121,7 +121,7 @@ impl NanoRpcClient {
         &self,
         args: RepresentativesOnlineArgs,
     ) -> Result<RepresentativesOnlineResponse> {
-        let detailed = args.weight.unwrap_or(false);
+        let detailed = args.weight.unwrap_or(false.into()).inner();
         let cmd = RpcCommand::representatives_online(args);
         let result = self.rpc_request(&cmd).await?;
         if detailed {
@@ -627,7 +627,7 @@ impl NanoRpcClient {
     }
 
     pub async fn unchecked_clear(&self) -> Result<SuccessResponse> {
-        let cmd = RpcCommand::unchecked_clear();
+        let cmd = RpcCommand::UncheckedClear;
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

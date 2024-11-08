@@ -98,7 +98,7 @@ fn telemetry_all() {
 
     // Verify the endpoint matches a known peer
     let peer_address = peer_telemetry.address.unwrap();
-    let peer_port = peer_telemetry.port.unwrap();
+    let peer_port = peer_telemetry.port.unwrap().inner();
     let peer_endpoint = SocketAddrV6::new(peer_address, peer_port, 0, 0);
 
     let network_info = node.network.info.read().unwrap();

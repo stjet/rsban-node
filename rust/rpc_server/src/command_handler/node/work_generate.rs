@@ -8,7 +8,10 @@ impl RpcCommandHandler {
     pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let default_difficulty = self.node.ledger.constants.work.threshold_base(work_version);
-        let mut difficulty = args.difficulty.unwrap_or_else(|| default_difficulty);
+        let mut difficulty = args
+            .difficulty
+            .unwrap_or_else(|| default_difficulty.into())
+            .inner();
 
         let max_difficulty = DifficultyV1::from_multiplier(
             self.node.config.max_work_generate_multiplier,
@@ -47,7 +50,7 @@ impl RpcCommandHandler {
             }
         }
 
-        let use_peers = args.use_peers.unwrap_or(false);
+        let use_peers = args.use_peers.unwrap_or_default().inner();
 
         let work = if !use_peers {
             if self.node.work.work_generation_enabled() {
@@ -91,8 +94,8 @@ impl RpcCommandHandler {
         Ok(WorkGenerateDto {
             hash: args.hash,
             work: work.into(),
-            difficulty: result_difficulty,
-            multiplier: Some(result_multiplier),
+            difficulty: result_difficulty.into(),
+            multiplier: Some(result_multiplier.into()),
         })
     }
 }

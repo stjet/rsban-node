@@ -22,7 +22,7 @@ fn work_generate() {
             .work
             .difficulty(WorkVersion::Work1, &hash.into(), work);
 
-    assert_eq!(result_difficulty, work_generate_dto.difficulty);
+    assert_eq!(result_difficulty, work_generate_dto.difficulty.inner());
 
     let expected_multiplier = DifficultyV1::to_multiplier(
         result_difficulty,
@@ -31,5 +31,5 @@ fn work_generate() {
             .work
             .threshold_base(WorkVersion::Work1),
     );
-    assert!((expected_multiplier - work_generate_dto.multiplier.unwrap()).abs() < 1e-6);
+    assert!((expected_multiplier - work_generate_dto.multiplier.unwrap().inner()).abs() < 1e-6);
 }

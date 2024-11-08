@@ -68,9 +68,9 @@ fn wallet_balances_threshold_some() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet)
+        let args = WalletBalancesArgs::build(wallet)
             .with_minimum_balance(Amount::zero())
-            .build();
+            .finish();
         server.client.wallet_balances(args).await.unwrap()
     });
 
@@ -108,9 +108,9 @@ fn wallet_balances_threshold_some_fails() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet)
+        let args = WalletBalancesArgs::build(wallet)
             .with_minimum_balance(Amount::nano(1))
-            .build();
+            .finish();
 
         server.client.wallet_balances(args).await.unwrap()
     });

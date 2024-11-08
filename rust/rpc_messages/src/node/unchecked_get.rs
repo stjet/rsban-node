@@ -1,3 +1,4 @@
+use crate::RpcU64;
 use crate::{common::HashRpcMessage, RpcCommand};
 use rsnano_core::BlockHash;
 use rsnano_core::JsonBlock;
@@ -11,6 +12,6 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct UncheckedGetResponse {
-    pub modified_timestamp: u64,
+    pub modified_timestamp: RpcU64,
     pub contents: JsonBlock,
 }

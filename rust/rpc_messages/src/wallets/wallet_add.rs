@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand};
 use rsnano_core::{RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct WalletAddArgs {
     pub wallet: WalletId,
     pub key: RawKey,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub work: Option<bool>,
+    pub work: Option<RpcBool>,
 }
 
 impl WalletAddArgs {
@@ -46,7 +46,7 @@ impl WalletAddArgsBuilder {
     }
 
     pub fn without_precomputed_work(mut self) -> Self {
-        self.args.work = Some(false);
+        self.args.work = Some(false.into());
         self
     }
 
@@ -89,7 +89,7 @@ mod tests {
   "action": "wallet_add",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
   "key": "0000000000000000000000000000000000000000000000000000000000000002",
-  "work": false
+  "work": "false"
 }"#
         )
     }

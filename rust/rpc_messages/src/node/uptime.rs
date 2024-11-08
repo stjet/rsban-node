@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, RpcU64};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -9,12 +9,14 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct UptimeResponse {
-    pub seconds: u64,
+    pub seconds: RpcU64,
 }
 
 impl UptimeResponse {
     pub fn new(seconds: u64) -> Self {
-        Self { seconds }
+        Self {
+            seconds: seconds.into(),
+        }
     }
 }
 

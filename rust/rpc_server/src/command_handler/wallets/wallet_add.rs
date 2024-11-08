@@ -4,7 +4,7 @@ use rsnano_rpc_messages::{AccountResponse, WalletAddArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_add(&self, args: WalletAddArgs) -> anyhow::Result<AccountResponse> {
-        let generate_work = args.work.unwrap_or(true);
+        let generate_work = args.work.unwrap_or(true.into()).inner();
         let pub_key = self
             .node
             .wallets

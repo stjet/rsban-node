@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, RpcF64, RpcU64};
 use rsnano_core::{BlockHash, WorkNonce};
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ impl RpcCommand {
 pub struct WorkValidateArgs {
     pub hash: BlockHash,
     pub work: Option<WorkNonce>,
-    pub multiplier: Option<f64>,
+    pub multiplier: Option<RpcF64>,
     pub difficulty: Option<WorkNonce>,
 }
 
@@ -21,6 +21,6 @@ pub struct WorkValidateResponse {
     pub valid: Option<String>,
     pub valid_all: String,
     pub valid_receive: String,
-    pub difficulty: u64,
-    pub multiplier: f64,
+    pub difficulty: RpcU64,
+    pub multiplier: RpcF64,
 }

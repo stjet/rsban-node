@@ -10,56 +10,7 @@
 
 # Fix DTOS:
 src
- ├── node
- │   ├── receivable_exists.rs
- │   ├── representatives_online.rs
- │   ├── republish.rs
- │   ├── sign.rs
- │   ├── stats.rs
- │   ├── stats_clear.rs
- │   ├── stop.rs
- │   ├── telemetry.rs
- │   ├── unchecked.rs
- │   ├── unchecked_clear.rs
- │   ├── unchecked_get.rs
- │   ├── unchecked_keys.rs
- │   ├── uptime.rs
- │   ├── version.rs
- │   ├── work_cancel.rs
- │   ├── work_generate.rs
- │   ├── work_peer_add.rs
- │   ├── work_peers.rs
- │   ├── work_peers_clear.rs
- │   └── work_validate.rs
- ├── utils
- │   ├── account_get.rs
- │   ├── account_key.rs
- │   ├── block_hash.rs
- │   ├── deterministic_key.rs
- │   ├── key_create.rs
- │   ├── key_expand.rs
- │   ├── mod.rs
- │   ├── nano_to_raw.rs
- │   ├── raw_to_nano.rs
- │   └── validate_account_number.rs
  └── wallets
-     ├── account_create.rs
-     ├── account_list.rs
-     ├── account_move.rs
-     ├── account_remove.rs
-     ├── accounts_create.rs
-     ├── mod.rs
-     ├── password_change.rs
-     ├── password_enter.rs
-     ├── password_valid.rs
-     ├── receive.rs
-     ├── receive_minimum.rs
-     ├── search_receivable.rs
-     ├── search_receivable_all.rs
-     ├── send.rs
-     ├── wallet_add.rs
-     ├── wallet_add_watch.rs
-     ├── wallet_balances.rs
      ├── wallet_change_seed.rs
      ├── wallet_contains.rs
      ├── wallet_create.rs

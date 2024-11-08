@@ -14,5 +14,5 @@ fn uptime() {
         .runtime
         .block_on(async { server.client.uptime().await.unwrap() });
 
-    assert!(result.seconds > 0);
+    assert!(result.seconds.inner() > 0);
 }

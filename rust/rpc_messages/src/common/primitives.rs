@@ -136,6 +136,71 @@ impl<'de> Visitor<'de> for F32Visitor {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Default, PartialOrd)]
+pub struct RpcF64(f64);
+
+impl RpcF64 {
+    pub fn inner(&self) -> f64 {
+        self.0
+    }
+}
+
+impl From<f64> for RpcF64 {
+    fn from(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RpcF64> for f64 {
+    fn from(value: RpcF64) -> Self {
+        value.0
+    }
+}
+
+impl Debug for RpcF64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Serialize for RpcF64 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RpcF64 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(F64Visitor {})
+    }
+}
+
+struct F64Visitor {}
+
+impl<'de> Visitor<'de> for F64Visitor {
+    type Value = RpcF64;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("f64")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let value = v
+            .parse::<f64>()
+            .map_err(|_| serde::de::Error::custom("expected f64"))?;
+        Ok(value.into())
+    }
+}
+
 /// Bool expressed as "1"=true and "0"=false
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcBoolNumber(bool);

@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand, RpcU16, RpcU32, RpcU64, RpcU8};
 use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
@@ -12,9 +12,9 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct TelemetryArgs {
-    pub raw: Option<bool>,
+    pub raw: Option<RpcBool>,
     pub address: Option<Ipv6Addr>,
-    pub port: Option<u16>,
+    pub port: Option<RpcU16>,
 }
 
 impl TelemetryArgs {
@@ -39,7 +39,7 @@ pub struct TelemetryArgsBuilder {
 
 impl TelemetryArgsBuilder {
     pub fn raw(mut self) -> Self {
-        self.args.raw = Some(true);
+        self.args.raw = Some(true.into());
         self
     }
 
@@ -56,21 +56,21 @@ impl TelemetryArgsBuilder {
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct TelemetryDto {
-    pub block_count: u64,
-    pub cemented_count: u64,
-    pub unchecked_count: u64,
-    pub account_count: u64,
-    pub bandwidth_cap: u64,
-    pub uptime: u64,
-    pub peer_count: u32,
-    pub protocol_version: u8,
+    pub block_count: RpcU64,
+    pub cemented_count: RpcU64,
+    pub unchecked_count: RpcU64,
+    pub account_count: RpcU64,
+    pub bandwidth_cap: RpcU64,
+    pub uptime: RpcU64,
+    pub peer_count: RpcU32,
+    pub protocol_version: RpcU8,
     pub genesis_block: BlockHash,
-    pub major_version: u8,
-    pub minor_version: u8,
-    pub patch_version: u8,
-    pub pre_release_version: u8,
-    pub maker: u8,
-    pub timestamp: u64,
+    pub major_version: RpcU8,
+    pub minor_version: RpcU8,
+    pub patch_version: RpcU8,
+    pub pre_release_version: RpcU8,
+    pub maker: RpcU8,
+    pub timestamp: RpcU64,
     pub active_difficulty: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<Signature>,
@@ -79,31 +79,32 @@ pub struct TelemetryDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Ipv6Addr>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub port: Option<u16>,
+    pub port: Option<RpcU16>,
 }
 
 impl From<TelemetryData> for TelemetryDto {
     fn from(data: TelemetryData) -> Self {
         Self {
-            block_count: data.block_count,
-            cemented_count: data.cemented_count,
-            unchecked_count: data.unchecked_count,
-            account_count: data.account_count,
-            bandwidth_cap: data.bandwidth_cap,
-            uptime: data.uptime,
-            peer_count: data.peer_count,
-            protocol_version: data.protocol_version,
-            genesis_block: data.genesis_block,
-            major_version: data.major_version,
-            minor_version: data.minor_version,
-            patch_version: data.patch_version,
-            pre_release_version: data.pre_release_version,
-            maker: data.maker,
+            block_count: data.block_count.into(),
+            cemented_count: data.cemented_count.into(),
+            unchecked_count: data.unchecked_count.into(),
+            account_count: data.account_count.into(),
+            bandwidth_cap: data.bandwidth_cap.into(),
+            uptime: data.uptime.into(),
+            peer_count: data.peer_count.into(),
+            protocol_version: data.protocol_version.into(),
+            genesis_block: data.genesis_block.into(),
+            major_version: data.major_version.into(),
+            minor_version: data.minor_version.into(),
+            patch_version: data.patch_version.into(),
+            pre_release_version: data.pre_release_version.into(),
+            maker: data.maker.into(),
             timestamp: data
                 .timestamp
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
+                .as_secs()
+                .into(),
             active_difficulty: to_hex_string(data.active_difficulty),
             signature: Some(data.signature),
             node_id: Some(data.node_id),
@@ -257,22 +258,22 @@ mod tests {
         let data = create_test_telemetry_data();
         let dto: TelemetryDto = data.clone().into();
 
-        assert_eq!(dto.block_count, data.block_count);
-        assert_eq!(dto.cemented_count, data.cemented_count);
-        assert_eq!(dto.unchecked_count, data.unchecked_count);
-        assert_eq!(dto.account_count, data.account_count);
-        assert_eq!(dto.bandwidth_cap, data.bandwidth_cap);
-        assert_eq!(dto.uptime, data.uptime);
-        assert_eq!(dto.peer_count, data.peer_count);
-        assert_eq!(dto.protocol_version, data.protocol_version);
-        assert_eq!(dto.genesis_block, data.genesis_block);
-        assert_eq!(dto.major_version, data.major_version);
-        assert_eq!(dto.minor_version, data.minor_version);
-        assert_eq!(dto.patch_version, data.patch_version);
-        assert_eq!(dto.pre_release_version, data.pre_release_version);
-        assert_eq!(dto.maker, data.maker);
-        assert_eq!(dto.timestamp, 1623456789);
-        assert_eq!(dto.active_difficulty, to_hex_string(data.active_difficulty),);
+        assert_eq!(dto.block_count, data.block_count.into());
+        assert_eq!(dto.cemented_count, data.cemented_count.into());
+        assert_eq!(dto.unchecked_count, data.unchecked_count.into());
+        assert_eq!(dto.account_count, data.account_count.into());
+        assert_eq!(dto.bandwidth_cap, data.bandwidth_cap.into());
+        assert_eq!(dto.uptime, data.uptime.into());
+        assert_eq!(dto.peer_count, data.peer_count.into());
+        assert_eq!(dto.protocol_version, data.protocol_version.into());
+        assert_eq!(dto.genesis_block, data.genesis_block.into());
+        assert_eq!(dto.major_version, data.major_version.into());
+        assert_eq!(dto.minor_version, data.minor_version.into());
+        assert_eq!(dto.patch_version, data.patch_version.into());
+        assert_eq!(dto.pre_release_version, data.pre_release_version.into());
+        assert_eq!(dto.maker, data.maker.into());
+        assert_eq!(dto.timestamp, 1623456789.into());
+        assert_eq!(dto.active_difficulty, to_hex_string(data.active_difficulty));
         assert_eq!(dto.signature, Some(data.signature));
         assert_eq!(dto.node_id, Some(data.node_id));
         assert_eq!(dto.address, None);

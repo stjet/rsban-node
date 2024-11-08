@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand};
 use rsnano_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ impl RpcCommand {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct RepresentativesOnlineArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<bool>,
+    pub weight: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accounts: Option<Vec<Account>>,
 }
@@ -31,7 +31,7 @@ pub struct RepresentativesOnlineArgsBuilder {
 
 impl RepresentativesOnlineArgsBuilder {
     pub fn weight(mut self) -> Self {
-        self.args.weight = Some(true);
+        self.args.weight = Some(true.into());
         self
     }
 
@@ -102,7 +102,7 @@ mod tests {
         let serialized = serde_json::to_value(command).unwrap();
         let expected = json!({
             "action": "representatives_online",
-            "weight": true,
+            "weight": "true",
             "accounts": ["nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j"]
         });
         assert_eq!(serialized, expected);
@@ -112,12 +112,12 @@ mod tests {
     fn deserialize_representatives_online_command_options_some() {
         let json = r#"{
             "action": "representatives_online",
-            "weight": true,
+            "weight": "true",
             "accounts": ["nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j"]
         }"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         if let RpcCommand::RepresentativesOnline(args) = deserialized {
-            assert_eq!(args.weight, Some(true));
+            assert_eq!(args.weight, Some(true.into()));
             assert_eq!(
                 args.accounts,
                 Some(vec![Account::decode_account(

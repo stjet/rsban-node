@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, RpcUsize};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
@@ -17,9 +17,9 @@ impl From<BlockHash> for RepublishArgs {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct RepublishArgs {
     pub hash: BlockHash,
-    pub sources: Option<usize>,
-    pub destinations: Option<usize>,
-    pub count: Option<usize>,
+    pub sources: Option<RpcUsize>,
+    pub destinations: Option<RpcUsize>,
+    pub count: Option<RpcUsize>,
 }
 
 impl RepublishArgs {
@@ -30,9 +30,9 @@ impl RepublishArgs {
 
 pub struct RepublishArgsBuilder {
     hash: BlockHash,
-    sources: Option<usize>,
-    destinations: Option<usize>,
-    count: Option<usize>,
+    sources: Option<RpcUsize>,
+    destinations: Option<RpcUsize>,
+    count: Option<RpcUsize>,
 }
 
 impl RepublishArgsBuilder {
@@ -46,17 +46,17 @@ impl RepublishArgsBuilder {
     }
 
     pub fn with_sources(mut self, sources: usize) -> Self {
-        self.sources = Some(sources);
+        self.sources = Some(sources.into());
         self
     }
 
     pub fn with_destinations(mut self, destinations: usize) -> Self {
-        self.destinations = Some(destinations);
+        self.destinations = Some(destinations.into());
         self
     }
 
     pub fn with_count(mut self, count: usize) -> Self {
-        self.count = Some(count);
+        self.count = Some(count.into());
         self
     }
 

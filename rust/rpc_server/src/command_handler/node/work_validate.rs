@@ -13,7 +13,7 @@ impl RpcCommandHandler {
             .threshold_base(WorkVersion::Work1);
 
         let difficulty = if let Some(multiplier) = args.multiplier {
-            DifficultyV1::from_multiplier(multiplier, default_difficulty)
+            DifficultyV1::from_multiplier(multiplier.inner(), default_difficulty)
         } else {
             default_difficulty
         };
@@ -66,8 +66,8 @@ impl RpcCommandHandler {
             valid,
             valid_all,
             valid_receive,
-            difficulty: result_difficulty,
-            multiplier: result_multiplier,
+            difficulty: result_difficulty.into(),
+            multiplier: result_multiplier.into(),
         }
     }
 }

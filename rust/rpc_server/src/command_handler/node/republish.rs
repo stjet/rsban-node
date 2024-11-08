@@ -7,9 +7,9 @@ use std::time::Duration;
 
 impl RpcCommandHandler {
     pub(crate) fn republish(&self, args: RepublishArgs) -> anyhow::Result<BlockHashesResponse> {
-        let count = args.count.unwrap_or(1024);
-        let sources = args.sources.unwrap_or(0);
-        let destinations = args.destinations.unwrap_or(0);
+        let count = args.count.unwrap_or(1024.into()).inner();
+        let sources = args.sources.unwrap_or_default().inner();
+        let destinations = args.destinations.unwrap_or_default().inner();
         let mut hash = args.hash;
         let mut blocks = Vec::new();
         let tx = self.node.store.tx_begin_read();

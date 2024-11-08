@@ -7,13 +7,14 @@ impl RpcCommandHandler {
         &self,
         args: AccountCreateArgs,
     ) -> anyhow::Result<AccountResponse> {
-        let generate_work = args.work.unwrap_or(true);
+        let generate_work = args.work.unwrap_or(true.into()).inner();
 
         let account = match args.index {
-            Some(i) => self
-                .node
-                .wallets
-                .deterministic_insert_at(&args.wallet, i, generate_work)?,
+            Some(i) => {
+                self.node
+                    .wallets
+                    .deterministic_insert_at(&args.wallet, i.inner(), generate_work)?
+            }
             None => self
                 .node
                 .wallets

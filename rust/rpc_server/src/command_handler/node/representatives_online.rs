@@ -13,7 +13,7 @@ impl RpcCommandHandler {
     ) -> RepresentativesOnlineResponse {
         let lock = self.node.online_reps.lock().unwrap();
         let online_reps = lock.online_reps();
-        let weight = args.weight.unwrap_or(false);
+        let weight = args.weight.unwrap_or_default().inner();
 
         let mut representatives_simple = Vec::new();
         let mut representatives_detailed = HashMap::new();

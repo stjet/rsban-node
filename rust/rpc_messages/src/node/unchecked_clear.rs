@@ -1,19 +1,11 @@
-use crate::RpcCommand;
-
-impl RpcCommand {
-    pub fn unchecked_clear() -> Self {
-        Self::UncheckedClear
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::RpcCommand;
     use serde_json::json;
 
     #[test]
     fn serialize_unchecked_clear() {
-        let command = RpcCommand::unchecked_clear();
+        let command = RpcCommand::UncheckedClear;
         let serialized = serde_json::to_value(command).unwrap();
         assert_eq!(serialized, json!({"action": "unchecked_clear"}));
     }

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 impl RpcCommandHandler {
     pub(crate) fn unchecked_keys(&self, args: UncheckedKeysArgs) -> UncheckedKeysResponse {
-        let count = args.count.unwrap_or(u64::MAX);
+        let count = args.count.unwrap_or(u64::MAX.into()).inner();
         let unchecked_keys = RefCell::new(Vec::new());
 
         self.node.unchecked.for_each_with_dependency(
@@ -14,7 +14,7 @@ impl RpcCommandHandler {
                     let key_dto = UncheckedKeyDto {
                         key: key.previous,
                         hash: block.hash(),
-                        modified_timestamp: info.modified,
+                        modified_timestamp: info.modified.into(),
                         contents: block.json_representation(),
                     };
                     unchecked_keys.borrow_mut().push(key_dto);

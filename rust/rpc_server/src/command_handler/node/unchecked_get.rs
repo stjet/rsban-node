@@ -20,7 +20,7 @@ impl RpcCommandHandler {
                     if let Some(block) = info.block.as_ref() {
                         let contents = block.json_representation();
                         result = Some(UncheckedGetResponse {
-                            modified_timestamp,
+                            modified_timestamp: modified_timestamp.into(),
                             contents,
                         });
                         *done.borrow_mut() = true;

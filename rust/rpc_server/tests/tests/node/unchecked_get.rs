@@ -36,7 +36,7 @@ fn unchecked_get() {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    assert!(unchecked_dto.modified_timestamp <= current_timestamp);
+    assert!(unchecked_dto.modified_timestamp.inner() <= current_timestamp);
 
     let json_block: JsonBlock = unchecked_dto.contents;
 

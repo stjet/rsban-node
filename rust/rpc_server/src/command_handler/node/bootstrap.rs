@@ -7,7 +7,7 @@ use std::net::SocketAddrV6;
 impl RpcCommandHandler {
     pub(crate) fn bootstrap(&self, args: BootstrapArgs) -> anyhow::Result<SuccessResponse> {
         let bootstrap_id = args.id.unwrap_or(String::new());
-        let endpoint = SocketAddrV6::new(args.address, args.port, 0, 0);
+        let endpoint = SocketAddrV6::new(args.address, args.port.into(), 0, 0);
         if self.node.flags.disable_legacy_bootstrap {
             bail!("Legacy bootstrap is disabled");
         }

@@ -1,6 +1,6 @@
 use crate::{
     common::{BlockTypeDto, WorkVersionDto},
-    RpcCommand,
+    RpcCommand, RpcU64,
 };
 use rsnano_core::{Account, Amount, BlockHash, JsonBlock, Link, RawKey, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
@@ -38,7 +38,7 @@ pub struct BlockCreateArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<WorkVersionDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub difficulty: Option<u64>,
+    pub difficulty: Option<RpcU64>,
 }
 
 impl BlockCreateArgs {
@@ -70,7 +70,7 @@ impl BlockCreateArgs {
             previous,
             work,
             version,
-            difficulty,
+            difficulty: difficulty.map(|i| i.into()),
         }
     }
 }

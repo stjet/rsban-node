@@ -1,12 +1,6 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcBoolNumber};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
-
-impl RpcCommand {
-    pub fn bootstrap_lazy(args: BootstrapLazyArgs) -> Self {
-        Self::BoostrapLazy(args)
-    }
-}
 
 impl From<BlockHash> for BootstrapLazyArgs {
     fn from(value: BlockHash) -> Self {
@@ -17,7 +11,7 @@ impl From<BlockHash> for BootstrapLazyArgs {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BootstrapLazyArgs {
     pub hash: BlockHash,
-    pub force: Option<bool>,
+    pub force: Option<RpcBool>,
     pub id: Option<String>,
 }
 
@@ -39,7 +33,7 @@ pub struct BootsrapLazyArgsBuilder {
 
 impl BootsrapLazyArgsBuilder {
     pub fn force(mut self) -> Self {
-        self.args.force = Some(true);
+        self.args.force = Some(true.into());
         self
     }
 
@@ -55,6 +49,6 @@ impl BootsrapLazyArgsBuilder {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BootstrapLazyResponse {
-    pub started: u8,
-    pub key_inserted: u8,
+    pub started: RpcBoolNumber,
+    pub key_inserted: RpcBoolNumber,
 }

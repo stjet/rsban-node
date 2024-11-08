@@ -123,6 +123,65 @@ impl<'de> Visitor<'de> for U64Visitor {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Default, PartialOrd)]
+pub struct RpcF32(f32);
+
+impl From<f32> for RpcF32 {
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RpcF32> for f32 {
+    fn from(value: RpcF32) -> Self {
+        value.0
+    }
+}
+
+impl Debug for RpcF32 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Serialize for RpcF32 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RpcF32 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(F32Visitor {})
+    }
+}
+
+struct F32Visitor {}
+
+impl<'de> Visitor<'de> for F32Visitor {
+    type Value = RpcF32;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("f32")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let value = v
+            .parse::<f32>()
+            .map_err(|_| serde::de::Error::custom("expected f32"))?;
+        Ok(value.into())
+    }
+}
+
 /// Bool expressed as "1"=true and "0"=false
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct RpcBoolNumber(bool);
@@ -275,6 +334,20 @@ mod tests {
     fn u64_deserialize() {
         let value: RpcU64 = serde_json::from_str("\"123\"").unwrap();
         assert_eq!(value, 123.into());
+    }
+
+    #[test]
+    fn f32_serialize() {
+        let value = RpcF32::from(1.23);
+        assert_eq!(format!("{:?}", value), "1.23");
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, "\"1.23\"");
+    }
+
+    #[test]
+    fn f32_deserialize() {
+        let value: RpcF32 = serde_json::from_str("\"1.23\"").unwrap();
+        assert_eq!(value, 1.23.into());
     }
 
     #[test]

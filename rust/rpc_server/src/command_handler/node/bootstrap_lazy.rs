@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_node::bootstrap::BootstrapInitiatorExt;
-use rsnano_rpc_messages::{BootstrapLazyArgs, BootstrapLazyResponse};
+use rsnano_rpc_messages::{unwrap_bool_or_false, BootstrapLazyArgs, BootstrapLazyResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn bootstrap_lazy(
@@ -12,7 +12,7 @@ impl RpcCommandHandler {
             bail!("Lazy bootstrap is disabled");
         }
 
-        let force = args.force.unwrap_or(false);
+        let force = unwrap_bool_or_false(args.force);
         let existed = self
             .node
             .bootstrap_initiator
@@ -27,8 +27,8 @@ impl RpcCommandHandler {
 
         let started = !existed && key_inserted;
         Ok(BootstrapLazyResponse {
-            started: if started { 1 } else { 0 },
-            key_inserted: if key_inserted { 1 } else { 0 },
+            started: started.into(),
+            key_inserted: key_inserted.into(),
         })
     }
 }

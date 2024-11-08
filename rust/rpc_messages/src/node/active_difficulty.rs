@@ -1,3 +1,4 @@
+use crate::RpcF32;
 use rsnano_core::WorkNonce;
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +9,6 @@ pub struct ActiveDifficultyResponse {
     pub network_receive_minimum: WorkNonce,
     pub network_current: WorkNonce,
     pub network_receive_current: WorkNonce,
-    pub multiplier: f32,
-    pub difficulty_trend: Option<f32>,
+    pub multiplier: RpcF32,
+    pub difficulty_trend: Option<RpcF32>,
 }

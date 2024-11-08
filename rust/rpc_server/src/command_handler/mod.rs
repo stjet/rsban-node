@@ -70,7 +70,7 @@ impl RpcCommandHandler {
             RpcCommand::BlockHash(args) => to_value(block_hash(args)),
             RpcCommand::Bootstrap(args) => to_value(self.bootstrap(args)?),
             RpcCommand::BootstrapAny(args) => to_value(self.bootstrap_any(args)?),
-            RpcCommand::BoostrapLazy(args) => to_value(self.bootstrap_lazy(args)?),
+            RpcCommand::BootstrapLazy(args) => to_value(self.bootstrap_lazy(args)?),
             RpcCommand::ConfirmationActive(args) => to_value(self.confirmation_active(args)),
             RpcCommand::ConfirmationInfo(args) => to_value(self.confirmation_info(args)?),
             RpcCommand::ConfirmationQuorum(args) => to_value(self.confirmation_quorum(args)),

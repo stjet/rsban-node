@@ -28,8 +28,8 @@ impl RpcCommandHandler {
                 default_receive_difficulty,
             )
             .into(),
-            multiplier: 1.0,
-            difficulty_trend: Some(1.0),
+            multiplier: 1.0.into(),
+            difficulty_trend: Some(1.0.into()),
         }
     }
 }

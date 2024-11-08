@@ -246,19 +246,19 @@ impl NanoRpcClient {
         &self,
         args: impl Into<BootstrapLazyArgs>,
     ) -> Result<BootstrapLazyResponse> {
-        let cmd = RpcCommand::bootstrap_lazy(args.into());
+        let cmd = RpcCommand::BootstrapLazy(args.into());
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
     pub async fn bootstrap_any(&self, args: BootstrapAnyArgs) -> Result<SuccessResponse> {
-        let cmd = RpcCommand::bootstrap_any(args);
+        let cmd = RpcCommand::BootstrapAny(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }
 
     pub async fn bootstrap(&self, args: BootstrapArgs) -> Result<SuccessResponse> {
-        let cmd = RpcCommand::bootstrap(args);
+        let cmd = RpcCommand::Bootstrap(args);
         let result = self.rpc_request(&cmd).await?;
         Ok(serde_json::from_value(result)?)
     }

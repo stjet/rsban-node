@@ -10,14 +10,7 @@
 
 # Fix DTOS:
 src
- ├── ledger
- │   └── unopened.rs
- ├── lib.rs
  ├── node
- │   ├── active_difficulty.rs
- │   ├── block_create.rs
- │   ├── bootstrap.rs
- │   ├── bootstrap_any.rs
  │   ├── bootstrap_lazy.rs
  │   ├── confirmation_active.rs
  │   ├── confirmation_history.rs

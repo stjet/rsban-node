@@ -46,7 +46,6 @@ pub enum RpcCommand {
     AvailableSupply,
     BlockAccount(HashRpcMessage),
     BlockConfirm(HashRpcMessage),
-    BootstrapLazy(()),      // TODO
     DatabaseTxnTracker(()), // TODO
     ConfirmationHistory(ConfirmationHistoryArgs),
     BlockCount,
@@ -101,7 +100,7 @@ pub enum RpcCommand {
     WorkCancel(HashRpcMessage),
     Bootstrap(BootstrapArgs),
     BootstrapAny(BootstrapAnyArgs),
-    BoostrapLazy(BootstrapLazyArgs),
+    BootstrapLazy(BootstrapLazyArgs),
     WalletReceivable(WalletReceivableArgs),
     WalletRepresentativeSet(WalletRepresentativeSetArgs),
     SearchReceivable(WalletRpcMessage),

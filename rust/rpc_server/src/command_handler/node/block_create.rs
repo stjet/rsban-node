@@ -16,7 +16,15 @@ impl RpcCommandHandler {
         let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let difficulty = args
             .difficulty
-            .unwrap_or_else(|| self.node.ledger.constants.work.threshold_base(work_version));
+            .unwrap_or_else(|| {
+                self.node
+                    .ledger
+                    .constants
+                    .work
+                    .threshold_base(work_version)
+                    .into()
+            })
+            .as_u64();
 
         let wallet_id = args.wallet.unwrap_or_default();
         let account = args.account.unwrap_or_default();

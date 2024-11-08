@@ -1,4 +1,4 @@
-use crate::AccountBalanceResponse;
+use crate::{AccountBalanceResponse, RpcBool};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct AccountsBalancesArgs {
     pub accounts: Vec<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_only_confirmed: Option<bool>,
+    pub include_only_confirmed: Option<RpcBool>,
 }
 
 impl AccountsBalancesArgs {
@@ -31,11 +31,11 @@ impl AccountsBalancesArgsBuilder {
     }
 
     pub fn include_unconfirmed_blocks(mut self) -> Self {
-        self.args.include_only_confirmed = Some(false);
+        self.args.include_only_confirmed = Some(false.into());
         self
     }
 
-    pub fn build(self) -> AccountsBalancesArgs {
+    pub fn finish(self) -> AccountsBalancesArgs {
         self.args
     }
 }
@@ -81,7 +81,7 @@ mod tests {
 
         let args = AccountsBalancesArgsBuilder::new(accounts)
             .include_unconfirmed_blocks()
-            .build();
+            .finish();
         let command = RpcCommand::AccountsBalances(args);
         let serialized = serde_json::to_string(&command).unwrap();
         let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"],"include_only_confirmed":false}"#;
@@ -97,7 +97,7 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                 "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
             ],
-            "include_only_confirmed": true
+            "include_only_confirmed": "true"
         }"#;
 
         let deserialized: RpcCommand = serde_json::from_str(json_data).unwrap();
@@ -119,7 +119,7 @@ mod tests {
                     )
                     .unwrap()
                 );
-                assert_eq!(args.include_only_confirmed, Some(true));
+                assert_eq!(args.include_only_confirmed, Some(true.into()));
             }
             _ => panic!("Deserialized to wrong RpcCommand variant"),
         }
@@ -159,12 +159,12 @@ mod tests {
 
         let args = AccountsBalancesArgs::new(accounts.clone())
             .include_unconfirmed_blocks()
-            .build();
+            .finish();
 
         assert_eq!(args.accounts, accounts);
-        assert_eq!(args.include_only_confirmed, Some(false));
+        assert_eq!(args.include_only_confirmed, Some(false.into()));
 
-        let args_default = AccountsBalancesArgs::new(accounts.clone()).build();
+        let args_default = AccountsBalancesArgs::new(accounts.clone()).finish();
 
         assert_eq!(args_default.accounts, accounts);
         assert_eq!(args_default.include_only_confirmed, None);

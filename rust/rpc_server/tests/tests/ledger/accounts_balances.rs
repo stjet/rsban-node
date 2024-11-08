@@ -91,7 +91,7 @@ fn account_balance_only_confirmed_false() {
 
     let args = AccountsBalancesArgs::new(vec![DEV_GENESIS_KEY.public_key().as_account()])
         .include_unconfirmed_blocks()
-        .build();
+        .finish();
 
     let result = node
         .runtime

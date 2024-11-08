@@ -1,13 +1,15 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::Amount;
-use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesArgs, AccountsBalancesResponse};
+use rsnano_rpc_messages::{
+    unwrap_bool_or_true, AccountBalanceResponse, AccountsBalancesArgs, AccountsBalancesResponse,
+};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn accounts_balances(&self, args: AccountsBalancesArgs) -> AccountsBalancesResponse {
         let tx = self.node.ledger.read_txn();
         let mut balances = HashMap::new();
-        let only_confirmed = args.include_only_confirmed.unwrap_or(true);
+        let only_confirmed = unwrap_bool_or_true(args.include_only_confirmed);
 
         for account in args.accounts {
             let balance = if only_confirmed {

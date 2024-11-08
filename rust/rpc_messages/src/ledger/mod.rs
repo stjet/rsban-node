@@ -24,6 +24,7 @@ mod ledger;
 mod representatives;
 mod successors;
 mod unopened;
+mod weight;
 
 pub use account_balance::*;
 pub use account_block_count::*;
@@ -45,3 +46,4 @@ pub use frontiers::*;
 pub use ledger::*;
 pub use representatives::*;
 pub use unopened::*;
+pub use weight::*;

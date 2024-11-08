@@ -1,4 +1,4 @@
-use crate::{common::WalletWithPasswordArgs, RpcCommand};
+use crate::{RpcCommand, WalletWithPasswordArgs};
 use rsnano_core::WalletId;
 
 impl RpcCommand {

@@ -25,9 +25,6 @@ mod success;
 mod valid;
 mod wallet;
 mod wallet_with_account;
-mod wallet_with_count;
-mod wallet_with_password;
-mod weight;
 
 pub use account::*;
 pub use account_balance::*;
@@ -56,9 +53,6 @@ pub use success::*;
 pub use valid::*;
 pub use wallet::*;
 pub use wallet_with_account::*;
-pub use wallet_with_count::*;
-pub use wallet_with_password::*;
-pub use weight::*;
 
 use rsnano_core::{BlockSubType, BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};

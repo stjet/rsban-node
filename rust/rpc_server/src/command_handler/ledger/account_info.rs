@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Amount, Epoch};
-use rsnano_rpc_messages::{AccountInfoArgs, AccountInfoResponse};
+use rsnano_rpc_messages::{unwrap_bool_or_false, AccountInfoArgs, AccountInfoResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn account_info(
@@ -8,7 +8,7 @@ impl RpcCommandHandler {
         args: AccountInfoArgs,
     ) -> anyhow::Result<AccountInfoResponse> {
         let txn = self.node.ledger.read_txn();
-        let include_confirmed = args.include_confirmed.unwrap_or(false);
+        let include_confirmed = unwrap_bool_or_false(args.include_confirmed);
         let info = self.load_account(&txn, &args.account)?;
 
         let confirmation_height_info = self
@@ -23,9 +23,9 @@ impl RpcCommandHandler {
             open_block: info.open_block,
             representative_block: self.node.ledger.representative_block_hash(&txn, &info.head),
             balance: info.balance,
-            modified_timestamp: info.modified,
-            block_count: info.block_count,
-            account_version: epoch_as_number(info.epoch),
+            modified_timestamp: info.modified.into(),
+            block_count: info.block_count.into(),
+            account_version: (epoch_as_number(info.epoch) as u16).into(),
             confirmed_height: None,
             confirmation_height_frontier: None,
             representative: None,
@@ -51,15 +51,15 @@ impl RpcCommandHandler {
                 info.balance
             };
             account_info.confirmed_balance = Some(confirmed_balance);
-            account_info.confirmed_height = Some(confirmation_height_info.height);
+            account_info.confirmed_height = Some(confirmation_height_info.height.into());
             account_info.confirmed_frontier = Some(confirmation_height_info.frontier);
         } else {
             // For backwards compatibility purposes
-            account_info.confirmed_height = Some(confirmation_height_info.height);
+            account_info.confirmed_height = Some(confirmation_height_info.height.into());
             account_info.confirmation_height_frontier = Some(confirmation_height_info.frontier);
         }
 
-        if args.representative.unwrap_or(false) {
+        if unwrap_bool_or_false(args.representative) {
             account_info.representative = Some(info.representative.into());
             if include_confirmed {
                 let confirmed_representative = if confirmation_height_info.height > 0 {
@@ -94,11 +94,11 @@ impl RpcCommandHandler {
             }
         }
 
-        if args.weight.unwrap_or(false) {
+        if unwrap_bool_or_false(args.weight) {
             account_info.weight = Some(self.node.ledger.weight_exact(&txn, args.account.into()));
         }
 
-        let receivable = args.receivable.unwrap_or(args.pending.unwrap_or(false));
+        let receivable = unwrap_bool_or_false(args.receivable);
         if receivable {
             let account_receivable =
                 self.node

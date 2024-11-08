@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand, RpcU16, RpcU64};
 use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
@@ -12,15 +12,13 @@ impl RpcCommand {
 pub struct AccountInfoArgs {
     pub account: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub representative: Option<bool>,
+    pub representative: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<bool>,
+    pub weight: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pending: Option<bool>,
+    pub receivable: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receivable: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_confirmed: Option<bool>,
+    pub include_confirmed: Option<RpcBool>,
 }
 
 impl AccountInfoArgs {
@@ -29,13 +27,12 @@ impl AccountInfoArgs {
             account,
             representative: None,
             weight: None,
-            pending: None,
             receivable: None,
             include_confirmed: None,
         }
     }
 
-    pub fn builder(account: Account) -> AccountInfoArgsBuilder {
+    pub fn build(account: Account) -> AccountInfoArgsBuilder {
         AccountInfoArgsBuilder::new(account)
     }
 }
@@ -46,7 +43,6 @@ impl From<Account> for AccountInfoArgs {
             account,
             representative: None,
             weight: None,
-            pending: None,
             receivable: None,
             include_confirmed: None,
         }
@@ -64,7 +60,6 @@ impl AccountInfoArgsBuilder {
                 account,
                 representative: None,
                 weight: None,
-                pending: None,
                 receivable: None,
                 include_confirmed: None,
             },
@@ -72,31 +67,31 @@ impl AccountInfoArgsBuilder {
     }
 
     pub fn include_representative(mut self) -> Self {
-        self.args.representative = Some(true);
+        self.args.representative = Some(true.into());
         self
     }
 
     pub fn include_weight(mut self) -> Self {
-        self.args.weight = Some(true);
+        self.args.weight = Some(true.into());
         self
     }
 
     pub fn include_pending(mut self) -> Self {
-        self.args.pending = Some(true);
+        self.args.receivable = Some(true.into());
         self
     }
 
     pub fn include_receivable(mut self) -> Self {
-        self.args.receivable = Some(true);
+        self.args.receivable = Some(true.into());
         self
     }
 
     pub fn include_confirmed(mut self) -> Self {
-        self.args.include_confirmed = Some(true);
+        self.args.include_confirmed = Some(true.into());
         self
     }
 
-    pub fn build(self) -> AccountInfoArgs {
+    pub fn finish(self) -> AccountInfoArgs {
         self.args
     }
 }
@@ -107,10 +102,10 @@ pub struct AccountInfoResponse {
     pub open_block: BlockHash,
     pub representative_block: BlockHash,
     pub balance: Amount,
-    pub modified_timestamp: u64,
-    pub block_count: u64,
-    pub account_version: u8,
-    pub confirmed_height: Option<u64>,
+    pub modified_timestamp: RpcU64,
+    pub block_count: RpcU64,
+    pub account_version: RpcU16,
+    pub confirmed_height: Option<RpcU64>,
     pub confirmed_frontier: Option<BlockHash>,
     pub confirmation_height_frontier: Option<BlockHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -139,30 +134,29 @@ mod tests {
     #[test]
     fn test_account_info_args_builder() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account)
+        let args = AccountInfoArgs::build(account)
             .include_weight()
             .include_pending()
             .include_confirmed()
-            .build();
+            .finish();
 
         assert_eq!(args.account, account);
         assert_eq!(args.representative, None);
-        assert_eq!(args.weight, Some(true));
-        assert_eq!(args.pending, Some(true));
-        assert_eq!(args.receivable, None);
-        assert_eq!(args.include_confirmed, Some(true));
+        assert_eq!(args.weight, Some(true.into()));
+        assert_eq!(args.receivable, Some(true.into()));
+        assert_eq!(args.include_confirmed, Some(true.into()));
     }
 
     #[test]
     fn serialize_account_info_command_with_optionals() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account)
+        let args = AccountInfoArgs::build(account)
             .include_representative()
             .include_weight()
             .include_pending()
             .include_receivable()
             .include_confirmed()
-            .build();
+            .finish();
 
         let serialized = to_string_pretty(&RpcCommand::account_info(args)).unwrap();
 
@@ -170,11 +164,10 @@ mod tests {
         assert!(serialized.contains(
             r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#
         ));
-        assert!(serialized.contains(r#""representative": true"#));
-        assert!(serialized.contains(r#""weight": true"#));
-        assert!(serialized.contains(r#""pending": true"#));
-        assert!(serialized.contains(r#""receivable": true"#));
-        assert!(serialized.contains(r#""include_confirmed": true"#));
+        assert!(serialized.contains(r#""representative": "true""#));
+        assert!(serialized.contains(r#""weight": "true""#));
+        assert!(serialized.contains(r#""receivable": "true""#));
+        assert!(serialized.contains(r#""include_confirmed": "true""#));
     }
 
     #[test]
@@ -182,22 +175,20 @@ mod tests {
         let json = r#"{
             "action": "account_info",
             "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
-            "representative": true,
-            "weight": true,
-            "pending": true,
-            "receivable": true,
-            "include_confirmed": true
+            "representative": "true",
+            "weight": "true",
+            "receivable": "true",
+            "include_confirmed": "true"
         }"#;
 
         let deserialized: RpcCommand = from_str(json).unwrap();
 
         if let RpcCommand::AccountInfo(args) = deserialized {
             assert_eq!(args.account, Account::from(123));
-            assert_eq!(args.representative, Some(true));
-            assert_eq!(args.weight, Some(true));
-            assert_eq!(args.pending, Some(true));
-            assert_eq!(args.receivable, Some(true));
-            assert_eq!(args.include_confirmed, Some(true));
+            assert_eq!(args.representative, Some(true.into()));
+            assert_eq!(args.weight, Some(true.into()));
+            assert_eq!(args.receivable, Some(true.into()));
+            assert_eq!(args.include_confirmed, Some(true.into()));
         } else {
             panic!("Deserialized to wrong RpcCommand variant");
         }
@@ -206,7 +197,7 @@ mod tests {
     #[test]
     fn serialize_account_info_command_without_optionals() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account).build();
+        let args = AccountInfoArgs::build(account).finish();
 
         assert_eq!(
             serde_json::to_string_pretty(&RpcCommand::account_info(args)).unwrap(),
@@ -220,7 +211,7 @@ mod tests {
     #[test]
     fn derialize_account_info_command_without_optionals() {
         let account = Account::from(123);
-        let args = AccountInfoArgs::builder(account).build();
+        let args = AccountInfoArgs::build(account).finish();
         let cmd = RpcCommand::account_info(args);
         let serialized = to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = from_str(&serialized).unwrap();
@@ -230,11 +221,11 @@ mod tests {
 
     #[test]
     fn serialize_account_info_args() {
-        let args = AccountInfoArgs::builder(Account::zero())
+        let args = AccountInfoArgs::build(Account::zero())
             .include_representative()
             .include_weight()
             .include_receivable()
-            .build();
+            .finish();
 
         let serialized = to_string_pretty(&args).unwrap();
         let deserialized: AccountInfoArgs = from_str(&serialized).unwrap();
@@ -250,11 +241,11 @@ mod tests {
 
     #[test]
     fn serialize_account_info_command_with_some_args() {
-        let args = AccountInfoArgs::builder(Account::zero())
+        let args = AccountInfoArgs::build(Account::zero())
             .include_representative()
             .include_weight()
             .include_receivable()
-            .build();
+            .finish();
 
         let command = RpcCommand::account_info(args);
         let serialized = to_string_pretty(&command).unwrap();
@@ -263,7 +254,6 @@ mod tests {
         assert!(serialized.contains("representative"));
         assert!(serialized.contains("weight"));
         assert!(serialized.contains("receivable"));
-        assert!(!serialized.contains("pending"));
         assert!(!serialized.contains("include_confirmed"));
     }
 
@@ -274,10 +264,10 @@ mod tests {
             open_block: BlockHash::zero(),
             representative_block: BlockHash::zero(),
             balance: Amount::raw(1000),
-            modified_timestamp: 1234567890,
-            block_count: 100,
-            account_version: 1,
-            confirmed_height: Some(99),
+            modified_timestamp: 1234567890.into(),
+            block_count: 100.into(),
+            account_version: 1.into(),
+            confirmed_height: Some(99.into()),
             confirmation_height_frontier: Some(BlockHash::zero()),
             representative: Some(Account::zero()),
             weight: Some(Amount::raw(2000)),
@@ -303,9 +293,9 @@ mod tests {
             open_block: BlockHash::zero(),
             representative_block: BlockHash::zero(),
             balance: Amount::raw(1000),
-            modified_timestamp: 1234567890,
-            block_count: 100,
-            account_version: 1,
+            modified_timestamp: 1234567890.into(),
+            block_count: 100.into(),
+            account_version: 1.into(),
             confirmed_height: None,
             confirmation_height_frontier: None,
             representative: None,
@@ -338,10 +328,10 @@ mod tests {
             open_block: BlockHash::zero(),
             representative_block: BlockHash::zero(),
             balance: Amount::from(1000),
-            modified_timestamp: 1234567890,
-            block_count: 100,
-            account_version: 1,
-            confirmed_height: Some(99),
+            modified_timestamp: 1234567890.into(),
+            block_count: 100.into(),
+            account_version: 1.into(),
+            confirmed_height: Some(99.into()),
             confirmation_height_frontier: Some(BlockHash::zero()),
             representative: Some(Account::zero()),
             weight: Some(Amount::from(2000)),

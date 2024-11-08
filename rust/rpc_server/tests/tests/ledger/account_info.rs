@@ -13,17 +13,15 @@ fn account_info() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .account_info(AccountInfoArgs {
-                account: Account::decode_account(
-                    "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            .account_info(
+                AccountInfoArgs::build(
+                    Account::decode_account(
+                        "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-                representative: None,
-                weight: None,
-                pending: None,
-                receivable: None,
-                include_confirmed: None,
-            })
+                .finish(),
+            )
             .await
     });
 
@@ -35,14 +33,14 @@ fn account_info() {
     let result = node.runtime.block_on(async {
         server
             .client
-            .account_info(AccountInfoArgs {
-                account: *DEV_GENESIS_ACCOUNT,
-                representative: Some(true),
-                weight: Some(true),
-                pending: Some(true),
-                receivable: Some(true),
-                include_confirmed: Some(true),
-            })
+            .account_info(
+                AccountInfoArgs::build(*DEV_GENESIS_ACCOUNT)
+                    .include_representative()
+                    .include_weight()
+                    .include_receivable()
+                    .include_confirmed()
+                    .finish(),
+            )
             .await
             .unwrap()
     });
@@ -51,10 +49,10 @@ fn account_info() {
     assert_eq!(result.open_block, *DEV_GENESIS_HASH);
     assert_eq!(result.representative_block, *DEV_GENESIS_HASH);
     assert_eq!(result.balance, Amount::MAX);
-    assert!(result.modified_timestamp > 0);
-    assert_eq!(result.block_count, 1);
-    assert_eq!(result.account_version, 0);
-    assert_eq!(result.confirmed_height, Some(1));
+    assert!(result.modified_timestamp > 0.into());
+    assert_eq!(result.block_count, 1.into());
+    assert_eq!(result.account_version, 0.into());
+    assert_eq!(result.confirmed_height, Some(1.into()));
     assert_eq!(result.confirmed_frontier, Some(*DEV_GENESIS_HASH));
     assert_eq!(result.representative, Some(*DEV_GENESIS_ACCOUNT));
     assert_eq!(result.weight, Some(Amount::MAX));

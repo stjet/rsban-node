@@ -180,79 +180,42 @@ impl RunDaemonArgs {
 
     pub(crate) fn set_flags(&self, node_flags: &mut NodeFlags) {
         if let Some(config_overrides) = &self.config_overrides {
-            node_flags.set_config_overrides(config_overrides.clone());
+            node_flags.config_overrides = config_overrides.clone();
         }
         if let Some(rpc_config_overrides) = &self.rpc_config_overrides {
-            node_flags.set_rpc_config_overrides(rpc_config_overrides.clone());
+            node_flags.rpc_config_overrides = rpc_config_overrides.clone();
         }
-        if self.disable_activate_successors {
-            node_flags.set_disable_activate_successors(true);
-        }
-        if self.disable_backup {
-            node_flags.set_disable_backup(true);
-        }
-        if self.disable_lazy_bootstrap {
-            node_flags.set_disable_lazy_bootstrap(true);
-        }
-        if self.disable_legacy_bootstrap {
-            node_flags.set_disable_legacy_bootstrap(true);
-        }
-        if self.disable_wallet_bootstrap {
-            node_flags.set_disable_wallet_bootstrap(true);
-        }
-        if self.disable_bootstrap_listener {
-            node_flags.set_disable_bootstrap_listener(true);
-        }
-        if self.disable_bootstrap_bulk_pull_server {
-            node_flags.set_disable_bootstrap_bulk_pull_server(true);
-        }
-        if self.disable_bootstrap_bulk_push_client {
-            node_flags.set_disable_bootstrap_bulk_push_client(true);
-        }
-        if self.disable_ongoing_bootstrap {
-            node_flags.set_disable_ongoing_bootstrap(true);
-        }
-        if self.disable_ascending_bootstrap {
-            node_flags.set_disable_ascending_bootstrap(true);
-        }
-        if self.disable_rep_crawler {
-            node_flags.set_disable_rep_crawler(true);
-        }
-        if self.disable_request_loop {
-            node_flags.set_disable_request_loop(true);
-        }
-        if self.disable_tcp_realtime {
-            node_flags.set_disable_tcp_realtime(true);
-        }
-        if self.disable_providing_telemetry_metrics {
-            node_flags.set_disable_providing_telemetry_metrics(true);
-        }
-        if self.disable_block_processor_unchecked_deletion {
-            node_flags.set_disable_block_processor_unchecked_deletion(true);
-        }
-        if self.disable_block_processor_republishing {
-            node_flags.set_disable_block_processor_republishing(true);
-        }
-        if self.allow_bootstrap_peers_duplicates {
-            node_flags.set_allow_bootstrap_peers_duplicates(true);
-        }
-        if self.enable_pruning {
-            node_flags.set_enable_pruning(true);
-        }
-        if self.fast_bootstrap {
-            node_flags.set_fast_bootstrap(true);
-        }
+        node_flags.disable_activate_successors = self.disable_activate_successors;
+        node_flags.disable_backup = self.disable_backup;
+        node_flags.disable_lazy_bootstrap = self.disable_lazy_bootstrap;
+        node_flags.disable_legacy_bootstrap = self.disable_legacy_bootstrap;
+        node_flags.disable_wallet_bootstrap = self.disable_wallet_bootstrap;
+        node_flags.disable_bootstrap_listener = self.disable_bootstrap_listener;
+        node_flags.disable_bootstrap_bulk_pull_server = self.disable_bootstrap_bulk_pull_server;
+        node_flags.disable_bootstrap_bulk_push_client = self.disable_bootstrap_bulk_push_client;
+        node_flags.disable_ongoing_bootstrap = self.disable_ongoing_bootstrap;
+        node_flags.disable_ascending_bootstrap = self.disable_ascending_bootstrap;
+        node_flags.disable_rep_crawler = self.disable_rep_crawler;
+        node_flags.disable_request_loop = self.disable_request_loop;
+        node_flags.disable_tcp_realtime = self.disable_tcp_realtime;
+        node_flags.disable_providing_telemetry_metrics = self.disable_providing_telemetry_metrics;
+        node_flags.disable_block_processor_unchecked_deletion =
+            self.disable_block_processor_unchecked_deletion;
+        node_flags.disable_block_processor_republishing = self.disable_block_processor_republishing;
+        node_flags.allow_bootstrap_peers_duplicates = self.allow_bootstrap_peers_duplicates;
+        node_flags.enable_pruning = self.enable_pruning;
+        node_flags.fast_bootstrap = self.fast_bootstrap;
         if let Some(block_processor_batch_size) = self.block_processor_batch_size {
-            node_flags.set_block_processor_batch_size(block_processor_batch_size);
+            node_flags.block_processor_batch_size = block_processor_batch_size;
         }
         if let Some(block_processor_full_size) = self.block_processor_full_size {
-            node_flags.set_block_processor_full_size(block_processor_full_size);
+            node_flags.block_processor_full_size = block_processor_full_size;
         }
         if let Some(block_processor_verification_size) = self.block_processor_verification_size {
-            node_flags.set_block_processor_verification_size(block_processor_verification_size);
+            node_flags.block_processor_verification_size = block_processor_verification_size;
         }
         if let Some(vote_processor_capacity) = self.vote_processor_capacity {
-            node_flags.set_vote_processor_capacity(vote_processor_capacity);
+            node_flags.vote_processor_capacity = vote_processor_capacity;
         }
     }
 }

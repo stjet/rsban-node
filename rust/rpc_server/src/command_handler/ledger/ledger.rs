@@ -1,19 +1,21 @@
 use crate::command_handler::RpcCommandHandler;
 use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{LedgerAccountInfo, LedgerArgs, LedgerResponse};
-use std::{collections::HashMap, u64};
+use rsnano_rpc_messages::{
+    unwrap_bool_or_false, unwrap_u64_or_max, unwrap_u64_or_zero, LedgerAccountInfo, LedgerArgs,
+    LedgerResponse,
+};
+use std::collections::HashMap;
 
 impl RpcCommandHandler {
     pub(crate) fn ledger(&self, args: LedgerArgs) -> LedgerResponse {
-        let count = args.count.unwrap_or(u64::MAX);
+        let count = unwrap_u64_or_max(args.count);
         let threshold = args.threshold.unwrap_or(Amount::zero());
         let start = args.account.unwrap_or_default();
-        let modified_since = args.modified_since.unwrap_or(0);
-        let sorting = args.sorting.unwrap_or(false);
-        let representative = args.representative.unwrap_or(false);
-        let weight = args.weight.unwrap_or(false);
-        let pending = args.pending.unwrap_or(false);
-        let receivable = args.receivable.unwrap_or(pending);
+        let modified_since = unwrap_u64_or_zero(args.modified_since);
+        let sorting = unwrap_bool_or_false(args.sorting);
+        let representative = unwrap_bool_or_false(args.representative);
+        let weight = unwrap_bool_or_false(args.weight);
+        let receivable = unwrap_bool_or_false(args.receivable);
 
         let mut accounts: HashMap<Account, LedgerAccountInfo> = HashMap::new();
         let tx = self.node.store.tx_begin_read();
@@ -41,8 +43,8 @@ impl RpcCommandHandler {
                             .ledger
                             .representative_block_hash(&tx, &info.head),
                         balance: info.balance,
-                        modified_timestamp: info.modified,
-                        block_count: info.block_count,
+                        modified_timestamp: info.modified.into(),
+                        block_count: info.block_count.into(),
                         representative: representative.then(|| info.representative.into()),
                         weight: weight.then(|| self.node.ledger.weight_exact(&tx, account.into())),
                         pending: receivable,
@@ -87,8 +89,8 @@ impl RpcCommandHandler {
                                 .ledger
                                 .representative_block_hash(&tx, &info.head),
                             balance: info.balance,
-                            modified_timestamp: info.modified,
-                            block_count: info.block_count,
+                            modified_timestamp: info.modified.into(),
+                            block_count: info.block_count.into(),
                             representative: representative.then(|| info.representative.into()),
                             weight: weight
                                 .then(|| self.node.ledger.weight_exact(&tx, account.into())),

@@ -22,8 +22,8 @@ fn wallet_receivable_include_only_confirmed_false() {
 
     let args = WalletReceivableArgs {
         wallet,
-        count: Some(1),
-        include_only_confirmed: Some(false),
+        count: Some(1.into()),
+        include_only_confirmed: Some(false.into()),
         ..Default::default()
     };
 
@@ -68,7 +68,7 @@ fn wallet_receivable_options_none() {
             .client
             .wallet_receivable(WalletReceivableArgs {
                 wallet,
-                count: Some(1),
+                count: Some(1.into()),
                 ..Default::default()
             })
             .await
@@ -107,7 +107,7 @@ fn wallet_receivable_threshold_some() {
 
     let args = WalletReceivableArgs {
         wallet,
-        count: Some(2),
+        count: Some(2.into()),
         threshold: Some(Amount::raw(1)),
         ..Default::default()
     };

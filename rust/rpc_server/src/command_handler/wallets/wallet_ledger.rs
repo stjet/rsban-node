@@ -10,10 +10,10 @@ impl RpcCommandHandler {
         &self,
         args: WalletLedgerArgs,
     ) -> anyhow::Result<WalletLedgerResponse> {
-        let representative = args.representative.unwrap_or(false);
-        let weight = args.weight.unwrap_or(false);
-        let receivable = args.receivable.unwrap_or(false);
-        let modified_since = args.modified_since.unwrap_or(0);
+        let representative = args.representative.unwrap_or_default().inner();
+        let weight = args.weight.unwrap_or_default().inner();
+        let receivable = args.receivable.unwrap_or_default().inner();
+        let modified_since = args.modified_since.unwrap_or_default().inner();
 
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let account_dtos = get_accounts_info(
@@ -49,8 +49,8 @@ fn get_accounts_info(
                     open_block: info.open_block,
                     representative_block: node.ledger.representative_block_hash(&tx, &info.head),
                     balance: info.balance,
-                    modified_timestamp: info.modified,
-                    block_count: info.block_count,
+                    modified_timestamp: info.modified.into(),
+                    block_count: info.block_count.into(),
                     representative: representative.then(|| info.representative.as_account()),
                     weight: weight.then(|| node.ledger.weight_exact(&tx, account.into())),
                     receivable: receivable

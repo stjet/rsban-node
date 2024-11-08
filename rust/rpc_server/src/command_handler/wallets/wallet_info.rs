@@ -48,12 +48,12 @@ impl RpcCommandHandler {
             balance,
             receivable,
             pending: receivable,
-            accounts_count,
-            adhoc_count,
-            deterministic_count,
-            deterministic_index,
-            accounts_block_count: block_count,
-            accounts_cemented_block_count: cemented_count,
+            accounts_count: accounts_count.into(),
+            adhoc_count: adhoc_count.into(),
+            deterministic_count: deterministic_count.into(),
+            deterministic_index: deterministic_index.into(),
+            accounts_block_count: block_count.into(),
+            accounts_cemented_block_count: cemented_count.into(),
         })
     }
 }

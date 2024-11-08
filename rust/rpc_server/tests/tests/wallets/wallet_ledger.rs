@@ -68,8 +68,8 @@ fn wallet_ledger() {
     assert_eq!(info.open_block, BlockHash::from(open_hash));
     assert_eq!(info.representative_block, BlockHash::from(open_hash));
     assert_eq!(info.balance, send_amount);
-    assert!(info.modified_timestamp > 0);
-    assert_eq!(info.block_count, 1);
+    assert!(info.modified_timestamp.inner() > 0);
+    assert_eq!(info.block_count, 1.into());
     assert_eq!(info.weight, Some(send_amount));
     assert_eq!(info.pending, Some(Amount::zero()));
     assert_eq!(info.receivable, Some(Amount::zero()));

@@ -11,11 +11,11 @@ impl RpcCommandHandler {
         &self,
         args: WalletReceivableArgs,
     ) -> anyhow::Result<AccountsReceivableResponse> {
-        let count = args.count.unwrap_or(usize::MAX);
+        let count = args.count.unwrap_or(usize::MAX.into()).inner();
         let threshold = args.threshold.unwrap_or_default();
-        let source = args.source.unwrap_or(false);
-        let min_version = args.min_version.unwrap_or(false);
-        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true);
+        let source = args.source.unwrap_or_default().inner();
+        let min_version = args.min_version.unwrap_or_default().inner();
+        let include_only_confirmed = args.include_only_confirmed.unwrap_or(true.into()).inner();
 
         let accounts = self.node.wallets.get_accounts_of_wallet(&args.wallet)?;
         let tx = self.node.ledger.read_txn();

@@ -10,7 +10,11 @@ impl RpcCommandHandler {
         let (restored_count, last_restored_account) = self
             .node
             .wallets
-            .change_seed(args.wallet, &args.seed, args.count.unwrap_or(0))
+            .change_seed(
+                args.wallet,
+                &args.seed,
+                args.count.unwrap_or_default().inner(),
+            )
             .unwrap();
         WalletChangeSeedResponse::new(last_restored_account, restored_count)
     }

@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, RpcU32};
 use rsnano_core::{Account, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ pub struct WalletCreateResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_restored_account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub restored_count: Option<u32>,
+    pub restored_count: Option<RpcU32>,
 }
 
 #[cfg(test)]

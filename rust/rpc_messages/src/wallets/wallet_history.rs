@@ -1,4 +1,4 @@
-use crate::{HistoryEntry, RpcCommand};
+use crate::{HistoryEntry, RpcCommand, RpcU64};
 use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,7 @@ impl From<WalletId> for WalletHistoryArgs {
 pub struct WalletHistoryArgs {
     pub wallet: WalletId,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified_since: Option<u64>,
+    pub modified_since: Option<RpcU64>,
 }
 
 impl WalletHistoryArgs {
@@ -38,7 +38,7 @@ pub struct WalletHistoryArgsBuilder {
 
 impl WalletHistoryArgsBuilder {
     pub fn modified_since(mut self, value: u64) -> Self {
-        self.args.modified_since = Some(value);
+        self.args.modified_since = Some(value.into());
         self
     }
 
@@ -94,7 +94,7 @@ mod tests {
         let expected_json = r#"{
   "action": "wallet_history",
   "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-  "modified_since": 1625097600
+  "modified_since": "1625097600"
 }"#;
 
         let serialized = serde_json::to_string_pretty(&command).unwrap();
@@ -123,7 +123,7 @@ mod tests {
         let json_data = r#"{
             "action": "wallet_history",
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "modified_since": 1625097600
+            "modified_since": "1625097600"
         }"#;
 
         let expected_wallet_id = WalletId::decode_hex(

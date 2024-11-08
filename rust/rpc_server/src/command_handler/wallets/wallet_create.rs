@@ -16,7 +16,7 @@ impl RpcCommandHandler {
         if let Some(seed) = args.seed {
             let (count, last) = self.node.wallets.change_seed(wallet, &seed, 0)?;
             last_restored_account = Some(last);
-            restored_count = Some(count);
+            restored_count = Some(count.into());
         } else {
             last_restored_account = None;
             restored_count = None;

@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand};
 use rsnano_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct WalletRepresentativeSetArgs {
     pub wallet: WalletId,
     pub representative: Account,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub update_existing_accounts: Option<bool>,
+    pub update_existing_accounts: Option<RpcBool>,
 }
 
 impl WalletRepresentativeSetArgs {
@@ -38,7 +38,7 @@ pub struct WalletRepresentativeSetArgsBuilder {
 
 impl WalletRepresentativeSetArgsBuilder {
     pub fn update_existing_accounts(mut self) -> Self {
-        self.args.update_existing_accounts = Some(true);
+        self.args.update_existing_accounts = Some(true.into());
         self
     }
 
@@ -94,7 +94,7 @@ mod tests {
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
             "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "update_existing_accounts": true
+            "update_existing_accounts": "true"
         });
 
         let actual_json: serde_json::Value = from_str(&serialized).unwrap();
@@ -120,7 +120,7 @@ mod tests {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
             "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
-            "update_existing_accounts": true
+            "update_existing_accounts": "true"
         }"#;
 
         let deserialized: WalletRepresentativeSetArgs = from_str(json_str).unwrap();

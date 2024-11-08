@@ -26,12 +26,12 @@ fn wallet_info() {
     assert_eq!(result.balance, Amount::MAX - Amount::raw(1));
     assert_eq!(result.pending, Amount::raw(1));
     assert_eq!(result.receivable, Amount::raw(1));
-    assert_eq!(result.accounts_block_count, 2);
-    assert_eq!(result.accounts_cemented_block_count, 1);
-    assert_eq!(result.adhoc_count, 1);
-    assert_eq!(result.deterministic_count, 1);
-    assert_eq!(result.deterministic_index, 1);
-    assert_eq!(result.accounts_count, 2);
+    assert_eq!(result.accounts_block_count, 2.into());
+    assert_eq!(result.accounts_cemented_block_count, 1.into());
+    assert_eq!(result.adhoc_count, 1.into());
+    assert_eq!(result.deterministic_count, 1.into());
+    assert_eq!(result.deterministic_index, 1.into());
+    assert_eq!(result.accounts_count, 2.into());
 }
 
 #[test]

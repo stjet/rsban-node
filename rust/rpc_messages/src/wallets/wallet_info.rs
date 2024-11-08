@@ -1,4 +1,5 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
+use crate::{RpcU32, RpcU64};
 use rsnano_core::Amount;
 use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
@@ -14,12 +15,12 @@ pub struct WalletInfoResponse {
     pub balance: Amount,
     pub pending: Amount,
     pub receivable: Amount,
-    pub accounts_count: u64,
-    pub adhoc_count: u64,
-    pub deterministic_count: u64,
-    pub deterministic_index: u32,
-    pub accounts_block_count: u64,
-    pub accounts_cemented_block_count: u64,
+    pub accounts_count: RpcU64,
+    pub adhoc_count: RpcU64,
+    pub deterministic_count: RpcU64,
+    pub deterministic_index: RpcU32,
+    pub accounts_block_count: RpcU64,
+    pub accounts_cemented_block_count: RpcU64,
 }
 
 #[cfg(test)]
@@ -53,25 +54,25 @@ mod tests {
             balance: Amount::raw(1000),
             pending: Amount::raw(200),
             receivable: Amount::raw(300),
-            accounts_count: 1,
-            adhoc_count: 1,
-            deterministic_count: 1,
-            deterministic_index: 1,
-            accounts_block_count: 1,
-            accounts_cemented_block_count: 1,
+            accounts_count: 1.into(),
+            adhoc_count: 1.into(),
+            deterministic_count: 1.into(),
+            deterministic_index: 1.into(),
+            accounts_block_count: 1.into(),
+            accounts_cemented_block_count: 1.into(),
         };
 
         let serialized = serde_json::to_string(&wallet_info).unwrap();
 
         assert_eq!(
             serialized,
-            r#"{"balance":"1000","pending":"200","receivable":"300","accounts_count":1,"adhoc_count":1,"deterministic_count":1,"deterministic_index":1,"accounts_block_count":1,"accounts_cemented_block_count":1}"#
+            r#"{"balance":"1000","pending":"200","receivable":"300","accounts_count":"1","adhoc_count":"1","deterministic_count":"1","deterministic_index":"1","accounts_block_count":"1","accounts_cemented_block_count":"1"}"#
         );
     }
 
     #[test]
     fn deserialize_account_balance_dto() {
-        let json_str = r#"{"balance":"1000","pending":"200","receivable":"300","accounts_count":1,"adhoc_count":1,"deterministic_count":1,"deterministic_index":1,"accounts_block_count":1,"accounts_cemented_block_count":1}"#;
+        let json_str = r#"{"balance":"1000","pending":"200","receivable":"300","accounts_count":"1","adhoc_count":"1","deterministic_count":"1","deterministic_index":"1","accounts_block_count":"1","accounts_cemented_block_count":"1"}"#;
 
         let deserialized: WalletInfoResponse = serde_json::from_str(json_str).unwrap();
 
@@ -79,12 +80,12 @@ mod tests {
             balance: Amount::raw(1000),
             pending: Amount::raw(200),
             receivable: Amount::raw(300),
-            accounts_count: 1,
-            adhoc_count: 1,
-            deterministic_count: 1,
-            deterministic_index: 1,
-            accounts_block_count: 1,
-            accounts_cemented_block_count: 1,
+            accounts_count: 1.into(),
+            adhoc_count: 1.into(),
+            deterministic_count: 1.into(),
+            deterministic_index: 1.into(),
+            accounts_block_count: 1.into(),
+            accounts_cemented_block_count: 1.into(),
         };
 
         assert_eq!(deserialized, expected);

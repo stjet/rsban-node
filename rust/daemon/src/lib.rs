@@ -46,6 +46,7 @@ impl DaemonBuilder {
     where
         F: Future<Output = ()> + Send + 'static,
     {
+        // build node
         let data_path = self.node_builder.get_data_path()?;
         let parallelism = get_cpu_count();
         let daemon_config =
@@ -54,6 +55,8 @@ impl DaemonBuilder {
             RpcServerConfig::load_from_data_path(self.network, parallelism, &data_path)?;
         let node = self.node_builder.finish()?;
         let node = Arc::new(node);
+
+        // start node
         node.start();
         if let Some(mut started_callback) = self.node_started {
             started_callback(node.clone());

@@ -1,7 +1,8 @@
-use crate::{node_factory::NodeFactory, nullable_runtime::NullableRuntime};
+use crate::nullable_runtime::NullableRuntime;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use rsnano_core::Networks;
+use rsnano_daemon::DaemonBuilder;
 use rsnano_node::{Node, NodeCallbacks};
 use std::{
     path::PathBuf,
@@ -20,7 +21,6 @@ pub enum NodeState {
 }
 
 pub(crate) struct NodeRunner {
-    node_factory: NodeFactory,
     runtime: Arc<NullableRuntime>,
     node: Arc<Mutex<Option<Arc<Node>>>>,
     state: Arc<AtomicU8>,
@@ -28,9 +28,8 @@ pub(crate) struct NodeRunner {
 }
 
 impl NodeRunner {
-    pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
+    pub(crate) fn new(runtime: Arc<NullableRuntime>) -> Self {
         Self {
-            node_factory,
             runtime,
             node: Arc::new(Mutex::new(None)),
             state: Arc::new(AtomicU8::new(NodeState::Stopped as u8)),
@@ -47,29 +46,32 @@ impl NodeRunner {
         self.state
             .store(NodeState::Starting as u8, Ordering::SeqCst);
 
-        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
-        self.stop = Some(tx);
+        let (tx_stop, rx_stop) = tokio::sync::oneshot::channel::<()>();
+        self.stop = Some(tx_stop);
 
-        let node_factory = self.node_factory.clone();
         let node = self.node.clone();
         let state1 = self.state.clone();
         let state2 = self.state.clone();
         let data_path = data_path.into();
+
         self.runtime.spawn(async move {
-            node_factory
-                .run_node(
-                    network,
-                    data_path,
-                    callbacks,
-                    move |n| {
-                        *node.lock().unwrap() = Some(n);
-                        state1.store(NodeState::Started as u8, Ordering::SeqCst);
-                    },
-                    async move {
-                        let _ = rx.await;
-                    },
-                )
-                .await;
+            let on_started = move |n| {
+                *node.lock().unwrap() = Some(n);
+                state1.store(NodeState::Started as u8, Ordering::SeqCst);
+            };
+
+            let shutdown_signal = async move {
+                let _ = rx_stop.await;
+            };
+
+            DaemonBuilder::new(network)
+                .data_path(data_path)
+                .callbacks(callbacks)
+                .on_node_started(on_started)
+                .run(shutdown_signal)
+                .await
+                .unwrap();
+
             state2.store(NodeState::Stopped as u8, Ordering::SeqCst);
         });
     }

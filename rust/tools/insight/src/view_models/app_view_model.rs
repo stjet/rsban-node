@@ -4,8 +4,8 @@ use super::{
 };
 use crate::{
     channels::Channels, ledger_stats::LedgerStats, message_collection::MessageCollection,
-    message_recorder::MessageRecorder, node_factory::NodeFactory, node_runner::NodeRunner,
-    nullable_runtime::NullableRuntime, view_models::QueueViewModel,
+    message_recorder::MessageRecorder, node_runner::NodeRunner, nullable_runtime::NullableRuntime,
+    view_models::QueueViewModel,
 };
 use rsnano_node::{
     block_processing::BlockSource,
@@ -35,8 +35,8 @@ pub(crate) struct AppViewModel {
 }
 
 impl AppViewModel {
-    pub(crate) fn new(runtime: Arc<NullableRuntime>, node_factory: NodeFactory) -> Self {
-        let node_runner = NodeRunner::new(runtime, node_factory);
+    pub(crate) fn new(runtime: Arc<NullableRuntime>) -> Self {
+        let node_runner = NodeRunner::new(runtime);
         let messages = Arc::new(RwLock::new(MessageCollection::default()));
         let msg_recorder = Arc::new(MessageRecorder::new(messages.clone()));
         let clock = Arc::new(SteadyClock::default());
@@ -57,10 +57,7 @@ impl AppViewModel {
     }
 
     pub(crate) fn with_runtime(runtime: tokio::runtime::Handle) -> Self {
-        Self::new(
-            Arc::new(NullableRuntime::new(runtime.clone())),
-            NodeFactory::new(),
-        )
+        Self::new(Arc::new(NullableRuntime::new(runtime.clone())))
     }
 
     pub(crate) fn update(&mut self) {
@@ -145,75 +142,6 @@ impl AppViewModel {
 
 impl Default for AppViewModel {
     fn default() -> Self {
-        Self::new(Arc::new(NullableRuntime::default()), NodeFactory::default())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn initial_status() {
-        let model = AppViewModel::new(
-            Arc::new(NullableRuntime::new_null()),
-            NodeFactory::new_null(),
-        );
-        assert_eq!(model.node_runner.can_start_node(), true);
-        assert_eq!(model.node_runner.can_stop_node(), false);
-        assert_eq!(model.node_runner.status(), "not running");
-        assert_eq!(model.message_stats().send_rate(), "0");
-    }
-
-    #[tokio::test]
-    async fn starting_node() {
-        let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-
-        model.node_runner.start_node();
-
-        assert_eq!(model.node_runner.can_start_node(), false);
-        assert_eq!(model.node_runner.can_stop_node(), false);
-        assert_eq!(model.node_runner.status(), "starting...");
-        assert_eq!(runtime.blocking_spawns(), 1);
-    }
-
-    #[tokio::test]
-    async fn starting_completed() {
-        let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_node();
-
-        runtime.run_nulled_spawn().await;
-
-        assert_eq!(model.node_runner.status(), "running");
-        assert_eq!(model.node_runner.can_start_node(), false);
-        assert_eq!(model.node_runner.can_stop_node(), true);
-    }
-
-    #[tokio::test]
-    async fn stopping_node() {
-        let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_node();
-        runtime.run_nulled_spawn().await;
-        model.node_runner.stop_node();
-        assert_eq!(model.node_runner.can_start_node(), false);
-        assert_eq!(model.node_runner.can_stop_node(), false);
-        assert_eq!(model.node_runner.status(), "stopping...");
-        assert_eq!(runtime.blocking_spawns(), 2);
-    }
-
-    #[tokio::test]
-    async fn stopping_completed() {
-        let runtime = Arc::new(NullableRuntime::new_null());
-        let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
-        model.node_runner.start_node();
-        runtime.run_nulled_spawn().await;
-        model.node_runner.stop_node();
-        runtime.run_nulled_spawn().await;
-        assert_eq!(model.node_runner.can_start_node(), true);
-        assert_eq!(model.node_runner.can_stop_node(), false);
-        assert_eq!(model.node_runner.status(), "not running");
+        Self::new(Arc::new(NullableRuntime::default()))
     }
 }

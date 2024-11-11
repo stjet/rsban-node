@@ -1,5 +1,8 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
+    BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
+    PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo,
+    WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -165,7 +168,6 @@ fn pruning_automatic() {
     assert_eq!(node1.ledger.block_count(), 3);
 
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.pruned_count(), 1);
-    //assert_timely_eq(Duration::from_secs(5), || node1.store.pruned_count(), 1);
 
     assert_eq!(node1.ledger.pruned_count(), 1);
     assert_eq!(node1.ledger.block_count(), 3);
@@ -274,7 +276,6 @@ fn deferred_dependent_elections() {
 
     node1.process_local(send1.clone().into()).unwrap();
     let election_send1 = start_election(&node1, &send1.hash());
-    //assert!(election_send1.is_some());
 
     node1.process_local(open.clone().into()).unwrap();
     node1.process_local(send2.clone().into()).unwrap();
@@ -298,7 +299,6 @@ fn deferred_dependent_elections() {
         node2.block(&send2.hash()).is_some()
     });
 
-    //node1.distributed_work.make_blocking(WorkVersion::Work1, &open, node1.config.work_threshold(&open).unwrap() + 1);
     node1.process_local(open.clone().into()).unwrap();
 
     assert_never(std::time::Duration::from_millis(500), || {
@@ -309,7 +309,6 @@ fn deferred_dependent_elections() {
     node1.active.erase(&open.qualified_root());
     assert!(node1.active.election(&open.qualified_root()).is_none());
 
-    //node1.work_generate_blocking(&open, node1.work_threshold(&open).unwrap() + 1);
     node1.process_local(open.clone().into()).unwrap();
 
     assert_never(std::time::Duration::from_millis(500), || {
@@ -336,7 +335,6 @@ fn deferred_dependent_elections() {
     assert!(election_open.is_some());
 
     let election_send2 = node1.active.election(&send2.qualified_root()).unwrap();
-    //assert!(election_send2.is_some());
 
     node1.process_local(receive.clone().into()).unwrap();
     assert!(node1.active.election(&receive.qualified_root()).is_none());
@@ -765,7 +763,7 @@ fn no_voting() {
     let node1 = system.build_node().config(config).finish();
 
     let wallet_id1 = node1.wallets.wallet_ids()[0];
-    
+
     // Node1 has a rep
     node1
         .wallets
@@ -835,7 +833,6 @@ fn bootstrap_confirm_frontiers() {
 
     // create a bootstrap connection from node1 to node0
     // this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
-    //node1.connect(node0.network.endpoint());
     establish_tcp(&node1, &node0);
     node1
         .bootstrap_initiator
@@ -855,8 +852,6 @@ fn bootstrap_confirm_frontiers() {
             start_time.elapsed() < timeout,
             "Timeout waiting for block confirmation"
         );
-        //system0.poll();
-        //system1.poll();
         std::thread::sleep(Duration::from_millis(1));
     }
 }
@@ -1043,7 +1038,6 @@ fn rep_self_vote() {
     );
 
     let election1 = start_election(&node0, &block0.hash());
-    //assert!(election1.is_some());
 
     // Wait until representatives are activated & make vote
     assert_timely_eq(Duration::from_secs(1), || election1.vote_count(), 3);
@@ -1148,7 +1142,6 @@ fn fork_multi_flip() {
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     config.peering_port = Some(get_available_port());
     let node2 = system.build_node().config(config).flags(flags).finish();
-    //assert_eq!(1, node1.network.size());
 
     let key1 = KeyPair::new();
     let send1 = BlockEnum::LegacySend(SendBlock::new(
@@ -1195,13 +1188,14 @@ fn fork_multi_flip() {
         BlockStatus::Progress,
         node2.process_local(send3.clone()).unwrap()
     );
+    
     node1
         .wallets
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap(); // Insert voting key into node1
 
     let election = start_election(&node2, &send2.hash());
-    //assert!(election.is_some());
+
     assert_timely_msg(
         Duration::from_secs(5),
         || {
@@ -1226,8 +1220,8 @@ fn fork_multi_flip() {
         },
         "send1 not found on node2",
     );
-    //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send2.hash()));
-    //assert!(node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
+    assert!(!node2.ledger.any().block_exists(&node2.ledger.read_txn(), &send2.hash()));
+    assert!(!node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
 
     let winner = election.winner_hash().unwrap();
     assert_eq!(send1.hash(), winner);
@@ -1418,14 +1412,17 @@ fn search_receivable_confirmed() {
     node.wallets
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
-    //assert_eq!(WalletsError::None, node.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
+
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
+
     assert_timely(Duration::from_secs(5), || {
         !node.active.election(&send1.qualified_root()).is_some()
     });
+
     assert_timely(Duration::from_secs(5), || {
         !node.active.election(&send2.qualified_root()).is_some()
     });
+
     assert_timely_eq(
         Duration::from_secs(5),
         || node.balance(&key2.account()),
@@ -1491,7 +1488,7 @@ fn search_receivable_pruned() {
             .block_exists(&node1.ledger.read_txn(), &send2.hash())
     });
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 3);
-    //assert_eq!(WalletsError::None, node1.wallets.remove_account(&wallet_id, *DEV_GENESIS_ACCOUNT));
+
     node1
         .wallets
         .remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY)
@@ -1518,7 +1515,7 @@ fn search_receivable_pruned() {
         .wallets
         .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
         .unwrap();
-    //assert_eq!(Ok(()), node2.wallets.search_receivable_wallet(wallet_id2));
+
     node2.wallets.search_receivable_wallet(wallet_id2).unwrap();
     assert_timely_eq(
         Duration::from_secs(10),
@@ -1545,12 +1542,15 @@ fn search_receivable() {
         true,
         None,
     );
+
     assert!(send_result.is_ok());
+
     node.wallets
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
+
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
-    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+
     assert_timely_msg(
         Duration::from_secs(10),
         || !node.balance(&key2.account()).is_zero(),
@@ -1591,7 +1591,7 @@ fn search_receivable_same() {
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
-    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+
     assert_timely_msg(
         Duration::from_secs(10),
         || node.balance(&key2.account()) == node.config.receive_minimum * 2,
@@ -1651,7 +1651,7 @@ fn search_receivable_multiple() {
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
-    //assert_eq!(Err(WalletsError::None), node.wallets.search_receivable_wallet(wallet_id));
+
     assert_timely_msg(
         Duration::from_secs(10),
         || node.balance(&key2.account()) == node.config.receive_minimum * 2,

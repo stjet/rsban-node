@@ -9,7 +9,9 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, time::Duration};
-use test_helpers::{assert_timely, assert_timely_eq, get_available_port, setup_chain, start_election, System};
+use test_helpers::{
+    assert_timely, assert_timely_eq, get_available_port, setup_chain, start_election, System,
+};
 
 // FIXME: this test fails on rare occasions. It needs a review.
 #[test]
@@ -137,11 +139,8 @@ fn continuous_voting() {
         node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    node1.process_active(send1.clone());
-    //assert_timely(Duration::from_secs(5), || {
-    //node1.block(&send1.hash()).is_some() && node1.active.confirmed(&send1.hash())
-    //});
-
+    node1.process(send1.clone()).unwrap();
+    node1.confirm(send1.hash());
     node1.stats.clear();
 
     // Create a block that should be staying in AEC but not get confirmed
@@ -155,8 +154,8 @@ fn continuous_voting() {
         node1.work_generate_dev(send1.hash().into()),
     ));
 
-    node1.process_active(send2.clone());
-    //assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
+    node1.process(send2.clone()).unwrap();
+    assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
 
     // Ensure votes are broadcasted in continuous manner
     assert_timely(Duration::from_secs(5), || {

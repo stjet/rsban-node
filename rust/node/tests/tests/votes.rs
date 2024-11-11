@@ -240,12 +240,33 @@ fn vote_generator_multiple_representatives() {
         .unwrap();
 
     let amount = Amount::raw(100 * *GXRB_RATIO);
-    node.wallets
-        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key1.account(), amount, 0, true, None);
-    node.wallets
-        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key2.account(), amount, 0, true, None);
-    node.wallets
-        .send_sync(wallet_id, *DEV_GENESIS_ACCOUNT, key3.account(), amount, 0, true, None);
+    node.wallets.send_sync(
+        wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key1.account(),
+        amount,
+        0,
+        true,
+        None,
+    );
+    node.wallets.send_sync(
+        wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        amount,
+        0,
+        true,
+        None,
+    );
+    node.wallets.send_sync(
+        wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key3.account(),
+        amount,
+        0,
+        true,
+        None,
+    );
 
     // Assert balances
     assert_timely(Duration::from_secs(3), || {
@@ -274,7 +295,9 @@ fn vote_generator_multiple_representatives() {
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_ACCOUNT,
         Amount::raw(1),
-        0, true, None
+        0,
+        true,
+        None,
     );
     let send = node.block(&hash).unwrap();
 

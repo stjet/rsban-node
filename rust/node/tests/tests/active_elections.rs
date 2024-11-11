@@ -1,5 +1,6 @@
 use rsnano_core::{
-    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY
+    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair,
+    StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -15,7 +16,8 @@ use std::{
     collections::HashMap,
     sync::{atomic::Ordering, Arc},
     thread::sleep,
-    time::Duration, usize,
+    time::Duration,
+    usize,
 };
 use test_helpers::{
     assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
@@ -987,8 +989,11 @@ fn dropped_cleanup() {
     // An election was recently dropped
     assert_eq!(
         1,
-        node.stats
-            .count(StatType::ActiveElectionsDropped, DetailType::Manual, Direction::In)
+        node.stats.count(
+            StatType::ActiveElectionsDropped,
+            DetailType::Manual,
+            Direction::In
+        )
     );
 
     // Block cleared from active
@@ -1008,8 +1013,11 @@ fn dropped_cleanup() {
     // Not dropped
     assert_eq!(
         1,
-        node.stats
-            .count(StatType::ActiveElectionsDropped, DetailType::Manual, Direction::In)
+        node.stats.count(
+            StatType::ActiveElectionsDropped,
+            DetailType::Manual,
+            Direction::In
+        )
     );
 
     // Block cleared from active

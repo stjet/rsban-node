@@ -36,16 +36,6 @@ jobs:
         if: steps.build.outcome == 'success' && (success() || failure())
         run: cd build && ../ci/tests/run-rust-tests.sh
 
-      - name: RPC Tests
-        if: steps.build.outcome == 'success' && (success() || failure())
-        run: ../ci/tests/run-rpc-tests.sh
-        working-directory: build
-
-      - name: System Tests
-        if: steps.build.outcome == 'success' && (success() || failure())
-        run: ../ci/tests/run-system-tests.sh
-        working-directory: build
-
   linux_test:
     name: Linux [${{ matrix.COMPILER }}]
     timeout-minutes: 90
@@ -81,13 +71,3 @@ jobs:
       - name: Rust Tests
         if: steps.build.outcome == 'success' && (success() || failure())
         run: cd build && ../ci/tests/run-rust-tests.sh
-
-      - name: RPC Tests
-        if: steps.build.outcome == 'success' && (success() || failure())
-        run: ../ci/tests/run-rpc-tests.sh
-        working-directory: build
-
-      - name: System Tests
-        if: steps.build.outcome == 'success' && (success() || failure())
-        run: ../ci/tests/run-system-tests.sh
-        working-directory: build

@@ -27,7 +27,6 @@ add_executable(
   optimistic_scheduler.cpp
   peer_container.cpp
   signal_manager.cpp
-  socket.cpp
   system.cpp
   telemetry.cpp
   uint256_union.cpp

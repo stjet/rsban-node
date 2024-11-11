@@ -5,7 +5,6 @@ mod bootstrap_lazy;
 mod confirmation_active;
 mod confirmation_info;
 mod confirmation_quorum;
-mod keepalive;
 mod node_id;
 mod peers;
 mod populate_backlog;

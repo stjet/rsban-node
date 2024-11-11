@@ -1,7 +1,7 @@
 use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::{FairQueue, FairQueueInfo, QueueInfo},
+    transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},

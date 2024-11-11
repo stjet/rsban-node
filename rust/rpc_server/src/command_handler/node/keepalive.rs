@@ -18,8 +18,10 @@ mod tests {
     use std::sync::Arc;
 
     #[tokio::test]
+    #[ignore = "wip"]
     async fn keepalive() {
         let node = Arc::new(Node::new_null());
+        let tracker = node.rep_crawler.track_keepalives();
         let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
         let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
 

@@ -8,7 +8,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
+    utils::{ContainerInfo, ContainerInfoComponent, Peer, NULL_ENDPOINT},
     Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -18,6 +18,7 @@ use rsnano_network::{
     PeerConnector, TrafficType,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
+use rsnano_output_tracker::OutputTrackerMt;
 use std::{
     collections::HashMap,
     mem::size_of,
@@ -398,6 +399,10 @@ impl RepCrawler {
             // just by their address, so we rely on them listening on the default port
             self.keepalive_or_connect(peer.address.clone(), peer.port);
         }
+    }
+
+    pub fn track_keepalives(&self) -> OutputTrackerMt<Peer> {
+        todo!()
     }
 
     pub fn keepalive_or_connect(&self, address: String, port: u16) {

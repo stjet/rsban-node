@@ -1,12 +1,11 @@
 use super::{
-    parse_peers::parse_peers, ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml,
-    BootstrapServerToml, DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml,
-    IpcToml, LmdbToml, MessageProcessorToml, MonitorToml, OptimisticSchedulerToml,
-    PriorityBucketToml, RepCrawlerToml, RequestAggregatorToml, StatsToml, VoteCacheToml,
-    VoteProcessorToml, WebsocketToml,
+    ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
+    DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
+    MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
+    RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
 };
-use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
-use rsnano_core::{Account, Amount};
+use crate::config::{FrontiersConfirmationMode, NodeConfig};
+use rsnano_core::{utils::Peer, Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};
 
@@ -187,7 +186,8 @@ impl NodeConfig {
             self.pow_sleep_interval_ns = pow_sleep_interval_ns;
         }
         if let Some(preconfigured_peers) = &toml.preconfigured_peers {
-            self.preconfigured_peers = parse_peers(preconfigured_peers, self.default_peering_port);
+            self.preconfigured_peers =
+                Peer::parse_list(preconfigured_peers, self.default_peering_port);
         }
         if let Some(preconfigured_representatives) = &toml.preconfigured_representatives {
             self.preconfigured_representatives = preconfigured_representatives

@@ -1,6 +1,6 @@
 use rsnano_core::Networks;
 use rsnano_node::{Node, NodeBuilder, NodeCallbacks};
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 pub(crate) struct NodeFactory {
     runtime: tokio::runtime::Handle,
@@ -23,12 +23,18 @@ impl NodeFactory {
         }
     }
 
-    pub(crate) fn create_node(&self, network: Networks, callbacks: NodeCallbacks) -> Arc<Node> {
+    pub(crate) fn create_node(
+        &self,
+        network: Networks,
+        data_path: impl Into<PathBuf>,
+        callbacks: NodeCallbacks,
+    ) -> Arc<Node> {
         if self.is_nulled {
             Arc::new(Node::new_null_with_callbacks(callbacks))
         } else {
             NodeBuilder::new(network)
                 .runtime(self.runtime.clone())
+                .data_path(data_path)
                 .callbacks(callbacks)
                 .finish()
                 .unwrap()

@@ -12,11 +12,11 @@ impl<'a> MessageStatsViewModel<'a> {
     }
 
     pub(crate) fn send_rate(&self) -> String {
-        Self::to_string(&self.msg_recorder.send_rate)
+        Self::to_string(&self.msg_recorder.rates.send_rate)
     }
 
     pub(crate) fn receive_rate(&self) -> String {
-        Self::to_string(&self.msg_recorder.receive_rate)
+        Self::to_string(&self.msg_recorder.rates.receive_rate)
     }
 
     fn to_string(value: &AtomicU64) -> String {

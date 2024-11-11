@@ -1,7 +1,7 @@
 use super::UncheckedMap;
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::FairQueue,
+    transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -22,7 +22,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tracing::{debug, error, info, trace};
 
-#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, EnumIter)]
+#[derive(FromPrimitive, Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, EnumIter, Hash)]
 pub enum BlockSource {
     Unknown = 0,
     Live,
@@ -309,6 +309,10 @@ impl BlockProcessor {
     }
     pub fn force(&self, block: Arc<BlockEnum>) {
         self.processor_loop.force(block);
+    }
+
+    pub fn info(&self) -> FairQueueInfo<BlockSource> {
+        self.processor_loop.info()
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -695,6 +699,11 @@ impl BlockProcessorLoop {
         }
     }
 
+    pub fn info(&self) -> FairQueueInfo<BlockSource> {
+        let guard = self.mutex.lock().unwrap();
+        guard.info()
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -745,6 +754,10 @@ impl BlockProcessorImpl {
         }
 
         false
+    }
+
+    pub fn info(&self) -> FairQueueInfo<BlockSource> {
+        self.queue.compacted_info(|(source, _)| *source)
     }
 }
 

@@ -1,6 +1,6 @@
-use rsnano_core::{Amount, BlockEnum, BlockSubType, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_rpc_messages::ProcessArgs;
+use rsnano_rpc_messages::{BlockSubTypeDto, ProcessArgs};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -8,7 +8,7 @@ fn process() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -20,19 +20,16 @@ fn process() {
         node.work_generate_dev((*DEV_GENESIS_HASH).into()),
     ));
 
-    let args: ProcessArgs = ProcessArgs::builder(send1.json_representation())
-        .subtype(BlockSubType::Send)
-        .build();
+    let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
+        .subtype(BlockSubTypeDto::Send)
+        .finish();
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.process(args).await.unwrap() });
+        .block_on(async { server.client.process(args).await.unwrap() });
 
-    assert_eq!(result.value, send1.hash());
-
+    assert_eq!(result.hash, send1.hash());
     assert_eq!(node.latest(&*DEV_GENESIS_ACCOUNT), send1.hash());
-
-    server.abort();
 }
 
 #[test]
@@ -40,7 +37,7 @@ fn process_fails_with_low_work() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let send1 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -52,18 +49,16 @@ fn process_fails_with_low_work() {
         1,
     ));
 
-    let args: ProcessArgs = ProcessArgs::builder(send1.json_representation())
-        .subtype(BlockSubType::Send)
-        .build();
+    let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
+        .subtype(BlockSubTypeDto::Send)
+        .finish();
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.process(args).await });
+        .block_on(async { server.client.process(args).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
-        Some("node returned error: \"Work low\"".to_string())
+        Some("node returned error: \"Block work is less than threshold\"".to_string())
     );
-
-    server.abort();
 }

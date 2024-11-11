@@ -32,10 +32,11 @@ fn accounts_balances_only_confirmed_none() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .accounts_balances(vec![DEV_GENESIS_KEY.public_key().as_account()])
             .await
             .unwrap()
@@ -47,12 +48,8 @@ fn accounts_balances_only_confirmed_none() {
         account.balance,
         Amount::raw(340282366920938463463374607431768211455)
     );
-
     assert_eq!(account.pending, Amount::zero());
-
     assert_eq!(account.receivable, Amount::zero());
-
-    server.abort();
 }
 
 #[test]
@@ -62,10 +59,11 @@ fn account_balance_only_confirmed_true() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .accounts_balances(vec![DEV_GENESIS_KEY.public_key().as_account()])
             .await
             .unwrap()
@@ -79,10 +77,7 @@ fn account_balance_only_confirmed_true() {
     );
 
     assert_eq!(account.pending, Amount::zero());
-
     assert_eq!(account.receivable, Amount::zero());
-
-    server.abort();
 }
 
 #[test]
@@ -92,15 +87,15 @@ fn account_balance_only_confirmed_false() {
 
     send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let args = AccountsBalancesArgs::new(vec![DEV_GENESIS_KEY.public_key().as_account()])
         .include_unconfirmed_blocks()
-        .build();
+        .finish();
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.accounts_balances(args).await.unwrap() });
+        .block_on(async { server.client.accounts_balances(args).await.unwrap() });
 
     let account = result.balances.get(&DEV_GENESIS_ACCOUNT).unwrap();
 
@@ -110,8 +105,5 @@ fn account_balance_only_confirmed_false() {
     );
 
     assert_eq!(account.pending, Amount::raw(1));
-
     assert_eq!(account.receivable, Amount::raw(1));
-
-    server.abort();
 }

@@ -6,13 +6,11 @@ fn populate_backlog() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.populate_backlog().await.unwrap() });
+        .block_on(async { server.client.populate_backlog().await.unwrap() });
 
     assert_eq!(to_string(&result).unwrap(), r#"{"success":""}"#.to_string());
-
-    server.abort();
 }

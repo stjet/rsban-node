@@ -7,7 +7,7 @@ fn wallet_representative() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
@@ -17,11 +17,9 @@ fn wallet_representative() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_representative(wallet).await.unwrap() });
+        .block_on(async { server.client.wallet_representative(wallet).await.unwrap() });
 
-    assert_eq!(result.value, PublicKey::zero().into());
-
-    server.abort();
+    assert_eq!(result.representative, PublicKey::zero().into());
 }
 
 #[test]
@@ -29,16 +27,14 @@ fn wallet_representative_fails_with_wallet_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_representative(WalletId::zero()).await });
+        .block_on(async { server.client.wallet_representative(WalletId::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }

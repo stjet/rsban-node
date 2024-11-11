@@ -7,7 +7,7 @@ fn account_move() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -28,21 +28,20 @@ fn account_move() {
     assert!(source_accounts.contains(&account));
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![account])
             .await
             .unwrap()
     });
 
-    assert_eq!(result.value, true);
+    assert_eq!(result.moved, true.into());
 
     let new_wallet_accounts = node.wallets.get_accounts_of_wallet(&wallet).unwrap();
     let new_source_accounts = node.wallets.get_accounts_of_wallet(&source).unwrap();
 
     assert!(new_wallet_accounts.contains(&account));
     assert!(!new_source_accounts.contains(&account));
-
-    server.abort();
 }
 
 #[test]
@@ -50,7 +49,7 @@ fn account_remove_fails_without_enable_control() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -70,13 +69,14 @@ fn account_remove_fails_without_enable_control() {
     assert!(!wallet_accounts.contains(&account));
     assert!(source_accounts.contains(&account));
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.account_move(wallet, source, vec![account]).await });
+    let result = node.runtime.block_on(async {
+        server
+            .client
+            .account_move(wallet, source, vec![account])
+            .await
+    });
 
     assert!(result.is_err());
-
-    server.abort();
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn account_move_fails_source_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -92,7 +92,8 @@ fn account_move_fails_source_not_found() {
     node.wallets.create(wallet);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![Account::zero()])
             .await
     });
@@ -101,8 +102,6 @@ fn account_move_fails_source_not_found() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -110,7 +109,7 @@ fn account_move_fails_target_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -118,7 +117,8 @@ fn account_move_fails_target_not_found() {
     node.wallets.create(source);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![Account::zero()])
             .await
     });
@@ -127,8 +127,6 @@ fn account_move_fails_target_not_found() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet not found\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -136,7 +134,7 @@ fn account_move_fails_source_locked() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -147,7 +145,8 @@ fn account_move_fails_source_locked() {
     node.wallets.lock(&source).unwrap();
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![Account::zero()])
             .await
     });
@@ -156,8 +155,6 @@ fn account_move_fails_source_locked() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet is locked\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -165,7 +162,7 @@ fn account_move_fails_target_locked() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -176,7 +173,8 @@ fn account_move_fails_target_locked() {
     node.wallets.lock(&wallet).unwrap();
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![Account::zero()])
             .await
     });
@@ -185,8 +183,6 @@ fn account_move_fails_target_locked() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Wallet is locked\"".to_string())
     );
-
-    server.abort();
 }
 
 #[test]
@@ -194,7 +190,7 @@ fn account_move_fails_account_not_found() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::random();
     let source = WalletId::random();
@@ -203,7 +199,8 @@ fn account_move_fails_account_not_found() {
     node.wallets.create(source);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .account_move(wallet, source, vec![Account::zero()])
             .await
     });
@@ -212,6 +209,4 @@ fn account_move_fails_account_not_found() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Account not found\"".to_string())
     );
-
-    server.abort();
 }

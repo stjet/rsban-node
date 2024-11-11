@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::RepresentativesOnlineArgs;
+use rsnano_rpc_messages::{RepresentativesOnlineArgs, RepresentativesOnlineResponse};
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -10,7 +10,7 @@ fn representatives_online() {
     let mut system = System::new();
     let node = system.make_node();
     let node2 = system.make_node(); // Create node2
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
@@ -137,11 +137,20 @@ fn representatives_online() {
     // Test filtering by accounts using node2
     let filtered_result = node2
         .runtime
-        .block_on(async { rpc_client.representatives_online(args).await.unwrap() });
+        .block_on(async { server.client.representatives_online(args).await })
+        .unwrap();
 
-    assert_eq!(filtered_result.value.len(), 1);
-    assert!(filtered_result.value.contains_key(&new_rep.into()));
-    assert!(!filtered_result.value.contains_key(&(*DEV_GENESIS_ACCOUNT)));
+    let RepresentativesOnlineResponse::Detailed(filtered_result) = filtered_result else {
+        panic!("Not a detailed result")
+    };
+
+    assert_eq!(filtered_result.representatives.len(), 1);
+    assert!(filtered_result
+        .representatives
+        .contains_key(&new_rep.into()));
+    assert!(!filtered_result
+        .representatives
+        .contains_key(&(*DEV_GENESIS_ACCOUNT)));
 
     // Ensure node2 has the same view of online representatives
     let node2_online_reps = node2.online_reps.lock().unwrap().online_reps().count();
@@ -149,6 +158,4 @@ fn representatives_online() {
         node2_online_reps, 2,
         "Node2 doesn't have the correct number of online representatives"
     );
-
-    server.abort();
 }

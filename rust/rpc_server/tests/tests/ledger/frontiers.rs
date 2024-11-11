@@ -6,16 +6,22 @@ fn frontiers() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let result = node
-        .runtime
-        .block_on(async { rpc_client.frontiers(*DEV_GENESIS_ACCOUNT, 1).await.unwrap() });
+    let result = node.runtime.block_on(async {
+        server
+            .client
+            .frontiers(*DEV_GENESIS_ACCOUNT, 1)
+            .await
+            .unwrap()
+    });
 
     assert_eq!(
-        result.frontiers.get(&*DEV_GENESIS_ACCOUNT).unwrap(),
+        result
+            .frontiers
+            .unwrap()
+            .get(&*DEV_GENESIS_ACCOUNT)
+            .unwrap(),
         &*DEV_GENESIS_HASH
     );
-
-    server.abort();
 }

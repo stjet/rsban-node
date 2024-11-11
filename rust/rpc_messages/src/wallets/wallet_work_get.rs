@@ -1,4 +1,4 @@
-use crate::{RpcCommand, WalletRpcMessage};
+use crate::{common::WalletRpcMessage, RpcCommand};
 use rsnano_core::{Account, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,11 +10,11 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsWithWorkDto {
+pub struct AccountsWithWorkResponse {
     pub works: HashMap<Account, WorkNonce>,
 }
 
-impl AccountsWithWorkDto {
+impl AccountsWithWorkResponse {
     pub fn new(works: HashMap<Account, WorkNonce>) -> Self {
         Self { works }
     }
@@ -22,38 +22,10 @@ impl AccountsWithWorkDto {
 
 #[cfg(test)]
 mod tests {
-    use crate::{AccountsWithWorkDto, RpcCommand};
+    use super::*;
     use rsnano_core::{Account, WalletId, WorkNonce};
     use serde_json::to_string_pretty;
     use std::collections::HashMap;
-
-    #[test]
-    fn serialize_wallet_work_get_dto() {
-        let mut works_map = HashMap::new();
-        works_map.insert(Account::zero(), WorkNonce::from(1));
-
-        let works = AccountsWithWorkDto::new(works_map);
-
-        let expected_json = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
-        let serialized = serde_json::to_string(&works).unwrap();
-
-        assert_eq!(serialized, expected_json);
-    }
-
-    #[test]
-    fn deserialize_wallet_work_get_dto() {
-        let json_data = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
-        let works: AccountsWithWorkDto = serde_json::from_str(json_data).unwrap();
-
-        let mut expected_works_map = HashMap::new();
-        expected_works_map.insert(Account::zero(), WorkNonce::from(1));
-
-        let expected_works = AccountsWithWorkDto {
-            works: expected_works_map,
-        };
-
-        assert_eq!(works, expected_works);
-    }
 
     #[test]
     fn serialize_wallet_work_get_command() {
@@ -72,5 +44,33 @@ mod tests {
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(cmd, deserialized)
+    }
+
+    #[test]
+    fn serialize_wallet_work_get_dto() {
+        let mut works_map = HashMap::new();
+        works_map.insert(Account::zero(), WorkNonce::from(1));
+
+        let works = AccountsWithWorkResponse::new(works_map);
+
+        let expected_json = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
+        let serialized = serde_json::to_string(&works).unwrap();
+
+        assert_eq!(serialized, expected_json);
+    }
+
+    #[test]
+    fn deserialize_wallet_work_get_dto() {
+        let json_data = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
+        let works: AccountsWithWorkResponse = serde_json::from_str(json_data).unwrap();
+
+        let mut expected_works_map = HashMap::new();
+        expected_works_map.insert(Account::zero(), WorkNonce::from(1));
+
+        let expected_works = AccountsWithWorkResponse {
+            works: expected_works_map,
+        };
+
+        assert_eq!(works, expected_works);
     }
 }

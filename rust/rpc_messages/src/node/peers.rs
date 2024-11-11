@@ -1,7 +1,6 @@
-use crate::RpcCommand;
-use rsnano_core::Account;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+use crate::{RpcBool, RpcCommand, RpcU8};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, net::SocketAddrV6};
 
 impl RpcCommand {
     pub fn peers(peer_details: Option<bool>) -> Self {
@@ -11,149 +10,113 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct PeersArgs {
-    pub peer_details: Option<bool>,
+    pub peer_details: Option<RpcBool>,
 }
 
 impl PeersArgs {
     pub fn new(peer_details: Option<bool>) -> Self {
-        PeersArgs { peer_details }
+        PeersArgs {
+            peer_details: peer_details.map(|i| i.into()),
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum PeerInfo {
-    Simple(String),
-    Detailed {
-        protocol_version: u8,
-        #[serde(
-            serialize_with = "serialize_node_id",
-            deserialize_with = "deserialize_node_id"
-        )]
-        node_id: Account,
-        #[serde(rename = "type")]
-        connection_type: String,
-    },
-}
-
-fn serialize_node_id<S>(account: &Account, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&account.to_node_id())
-}
-
-fn deserialize_node_id<'de, D>(deserializer: D) -> Result<Account, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let node_id_str = String::deserialize(deserializer)?;
-    let account_str = node_id_str.replacen("node", "nano", 1);
-    Account::decode_account(&account_str).map_err(serde::de::Error::custom)
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PeersDto {
-    pub peers: PeerData,
-}
-
-impl PeersDto {
-    pub fn new(peers: PeerData) -> Self {
-        PeersDto { peers }
-    }
+pub struct PeerInfo {
+    pub protocol_version: RpcU8,
+    pub node_id: String,
+    #[serde(rename = "type")]
+    pub connection_type: String,
+    pub peering: SocketAddrV6,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum PeerData {
-    Simple(Vec<String>),
-    Detailed(HashMap<String, PeerInfo>),
+pub enum PeersDto {
+    Simple(SimplePeers),
+    Detailed(DetailedPeers),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SimplePeers {
+    pub peers: HashMap<SocketAddrV6, RpcU8>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DetailedPeers {
+    pub peers: HashMap<SocketAddrV6, PeerInfo>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rsnano_core::Account;
     use serde_json;
+    use std::net::Ipv6Addr;
 
     #[test]
     fn serialize_simple_peers() {
-        let simple_peers = PeersDto {
-            peers: PeerData::Simple(vec!["[::ffff:172.17.0.1]:32841".to_string()]),
-        };
+        let simple_peers = PeersDto::Simple(SimplePeers {
+            peers: [("[::ffff:172.17.0.1]:32841".parse().unwrap(), 16.into())].into(),
+        });
 
         let json = serde_json::to_string(&simple_peers).unwrap();
-        assert_eq!(json, r#"{"peers":["[::ffff:172.17.0.1]:32841"]}"#);
+        assert_eq!(json, r#"{"peers":{"[::ffff:172.17.0.1]:32841":"16"}}"#);
     }
 
     #[test]
     fn deserialize_simple_peers() {
-        let json = r#"{"peers":["[::ffff:172.17.0.1]:32841"]}"#;
-        let peers: PeersDto = serde_json::from_str(json).unwrap();
+        let json = r#"{"peers":{"[::ffff:172.17.0.1]:32841": "16"}}"#;
+        let peers: SimplePeers = serde_json::from_str(json).unwrap();
 
-        match peers.peers {
-            PeerData::Simple(vec) => {
-                assert_eq!(vec.len(), 1);
-                assert_eq!(vec[0], "[::ffff:172.17.0.1]:32841");
-            }
-            PeerData::Detailed(_) => panic!("Expected Simple, got Detailed"),
-        }
+        assert_eq!(peers.peers.len(), 1);
     }
 
     #[test]
     fn serialize_detailed_peers() {
-        let mut detailed_peers = HashMap::new();
-        detailed_peers.insert(
-            "[::ffff:172.17.0.1]:7075".to_string(),
-            PeerInfo::Detailed {
-                protocol_version: 18,
+        let mut peers = HashMap::new();
+        peers.insert(
+            "[::ffff:172.17.0.1]:7075".parse().unwrap(),
+            PeerInfo {
+                protocol_version: 18.into(),
                 node_id: Account::decode_account(
                     "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3",
                 )
-                .unwrap(),
+                .unwrap()
+                .to_node_id(),
                 connection_type: "tcp".to_string(),
+                peering: SocketAddrV6::new(Ipv6Addr::LOCALHOST, 111, 0, 0),
             },
         );
 
-        let peers = PeersDto {
-            peers: PeerData::Detailed(detailed_peers),
-        };
+        let peers = PeersDto::Detailed(DetailedPeers { peers });
 
         let json = serde_json::to_string(&peers).unwrap();
         assert_eq!(
             json,
-            r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#
+            r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#
         );
     }
 
     #[test]
     fn deserialize_detailed_peers() {
-        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":18,"node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp"}}}"#;
-        let peers: PeersDto = serde_json::from_str(json).unwrap();
+        let json = r#"{"peers":{"[::ffff:172.17.0.1]:7075":{"protocol_version":"18","node_id":"node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3","type":"tcp","peering":"[::1]:111"}}}"#;
+        let peers: DetailedPeers = serde_json::from_str(json).unwrap();
 
-        match peers.peers {
-            PeerData::Detailed(map) => {
-                assert_eq!(map.len(), 1);
-                let peer_info = map.get("[::ffff:172.17.0.1]:7075").unwrap();
-                match peer_info {
-                    PeerInfo::Detailed {
-                        protocol_version,
-                        node_id,
-                        connection_type,
-                    } => {
-                        assert_eq!(protocol_version, &18);
-                        assert_eq!(
-                            node_id,
-                            &Account::decode_account(
-                                "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
-                            )
-                            .unwrap()
-                        );
-                        assert_eq!(connection_type, "tcp");
-                    }
-                    PeerInfo::Simple(_) => panic!("Expected Detailed, got Simple"),
-                }
-            }
-            PeerData::Simple(_) => panic!("Expected Detailed, got Simple"),
-        }
+        assert_eq!(peers.peers.len(), 1);
+        let peer_info = peers
+            .peers
+            .get(&"[::ffff:172.17.0.1]:7075".parse().unwrap())
+            .unwrap();
+        assert_eq!(peer_info.protocol_version, 18.into());
+        assert_eq!(
+            peer_info.node_id,
+            Account::decode_account(
+                "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
+            )
+            .unwrap()
+            .to_node_id()
+        );
+        assert_eq!(peer_info.connection_type, "tcp");
     }
 }

@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcCommand, RpcU32};
 use rsnano_core::RawKey;
 use serde::{Deserialize, Serialize};
 
@@ -11,18 +11,21 @@ impl RpcCommand {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct DeterministicKeyArgs {
     pub seed: RawKey,
-    pub index: u32,
+    pub index: RpcU32,
 }
 
 impl DeterministicKeyArgs {
     pub fn new(seed: RawKey, index: u32) -> Self {
-        Self { seed, index }
+        Self {
+            seed,
+            index: index.into(),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{DeterministicKeyArgs, RpcCommand};
+    use super::{DeterministicKeyArgs, RpcCommand};
     use rsnano_core::RawKey;
     use serde_json::to_string_pretty;
 
@@ -37,7 +40,7 @@ mod tests {
             r#"{
   "action": "deterministic_key",
   "seed": "0000000000000000000000000000000000000000000000000000000000000000",
-  "index": 0
+  "index": "0"
 }"#
         )
     }

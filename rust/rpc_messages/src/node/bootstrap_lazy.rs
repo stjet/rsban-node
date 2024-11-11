@@ -1,30 +1,24 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcBoolNumber};
 use rsnano_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
-impl RpcCommand {
-    pub fn bootstrap_lazy(args: BootsrapLazyArgs) -> Self {
-        Self::BoostrapLazy(args)
-    }
-}
-
-impl From<BlockHash> for BootsrapLazyArgs {
+impl From<BlockHash> for BootstrapLazyArgs {
     fn from(value: BlockHash) -> Self {
         Self::builder(value).build()
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BootsrapLazyArgs {
+pub struct BootstrapLazyArgs {
     pub hash: BlockHash,
-    pub force: Option<bool>,
+    pub force: Option<RpcBool>,
     pub id: Option<String>,
 }
 
-impl BootsrapLazyArgs {
+impl BootstrapLazyArgs {
     pub fn builder(hash: BlockHash) -> BootsrapLazyArgsBuilder {
         BootsrapLazyArgsBuilder {
-            args: BootsrapLazyArgs {
+            args: BootstrapLazyArgs {
                 hash,
                 force: None,
                 id: None,
@@ -34,12 +28,12 @@ impl BootsrapLazyArgs {
 }
 
 pub struct BootsrapLazyArgsBuilder {
-    args: BootsrapLazyArgs,
+    args: BootstrapLazyArgs,
 }
 
 impl BootsrapLazyArgsBuilder {
     pub fn force(mut self) -> Self {
-        self.args.force = Some(true);
+        self.args.force = Some(true.into());
         self
     }
 
@@ -48,22 +42,13 @@ impl BootsrapLazyArgsBuilder {
         self
     }
 
-    pub fn build(self) -> BootsrapLazyArgs {
+    pub fn build(self) -> BootstrapLazyArgs {
         self.args
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BootstrapLazyDto {
-    pub started: bool,
-    pub key_inserted: bool,
-}
-
-impl BootstrapLazyDto {
-    pub fn new(started: bool, key_inserted: bool) -> Self {
-        Self {
-            started,
-            key_inserted,
-        }
-    }
+pub struct BootstrapLazyResponse {
+    pub started: RpcBoolNumber,
+    pub key_inserted: RpcBoolNumber,
 }

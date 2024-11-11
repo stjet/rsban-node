@@ -69,8 +69,8 @@ impl From<&GlobalConfig> for NetworkConfig {
         Self {
             max_inbound_connections: value.node_config.tcp.max_inbound_connections,
             max_outbound_connections: value.node_config.tcp.max_outbound_connections,
-            max_peers_per_ip: value.network_params.network.max_peers_per_ip,
-            max_peers_per_subnetwork: value.network_params.network.max_peers_per_subnetwork,
+            max_peers_per_ip: value.node_config.max_peers_per_ip,
+            max_peers_per_subnetwork: value.node_config.max_peers_per_subnetwork,
             max_attempts_per_ip: value.node_config.tcp.max_attempts_per_ip,
             allow_local_peers: value.node_config.allow_local_peers,
             disable_max_peers_per_ip: value.flags.disable_max_peers_per_ip,

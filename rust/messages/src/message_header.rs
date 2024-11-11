@@ -15,7 +15,7 @@ use super::*;
 /// Message types are serialized to the network and existing values must thus never change as
 /// types are added, removed and reordered in the enum.
 #[repr(u8)]
-#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq)]
+#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MessageType {
     Invalid = 0x0,
     NotAType = 0x1,

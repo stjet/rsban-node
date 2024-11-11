@@ -1,15 +1,6 @@
-use super::ChainArgs;
-use crate::RpcCommand;
-
-impl RpcCommand {
-    pub fn successors(args: ChainArgs) -> Self {
-        Self::Successors(args)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{ChainArgs, RpcCommand};
     use rsnano_core::BlockHash;
     use serde_json::{from_value, json};
 
@@ -23,15 +14,15 @@ mod tests {
             .offset(1)
             .reverse()
             .build();
-        let successors_command = RpcCommand::successors(args);
+        let successors_command = RpcCommand::Successors(args);
 
         let serialized = serde_json::to_value(successors_command).unwrap();
         let expected = json!({
             "action": "successors",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
 
         assert_eq!(serialized, expected);
@@ -42,9 +33,9 @@ mod tests {
         let json_value = json!({
             "action": "successors",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "count": 1,
-            "offset": 1,
-            "reverse": true
+            "count": "1",
+            "offset": "1",
+            "reverse": "true"
         });
 
         let deserialized: RpcCommand = from_value(json_value).unwrap();
@@ -56,7 +47,7 @@ mod tests {
             .offset(1)
             .reverse()
             .build();
-        let expected = RpcCommand::successors(args);
+        let expected = RpcCommand::Successors(args);
 
         assert_eq!(deserialized, expected);
     }

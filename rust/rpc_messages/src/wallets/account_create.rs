@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand, RpcU32};
 use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
@@ -12,9 +12,9 @@ impl RpcCommand {
 pub struct AccountCreateArgs {
     pub wallet: WalletId,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub index: Option<u32>,
+    pub index: Option<RpcU32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub work: Option<bool>,
+    pub work: Option<RpcBool>,
 }
 
 impl AccountCreateArgs {
@@ -37,18 +37,18 @@ impl AccountCreateArgs {
 
 pub struct AccountCreateArgsBuilder {
     wallet: WalletId,
-    index: Option<u32>,
-    work: Option<bool>,
+    index: Option<RpcU32>,
+    work: Option<RpcBool>,
 }
 
 impl AccountCreateArgsBuilder {
     pub fn with_index(mut self, index: u32) -> Self {
-        self.index = Some(index);
+        self.index = Some(index.into());
         self
     }
 
     pub fn without_precomputed_work(mut self) -> Self {
-        self.work = Some(false);
+        self.work = Some(false.into());
         self
     }
 
@@ -98,8 +98,8 @@ mod tests {
             r#"{
   "action": "account_create",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
-  "index": 1,
-  "work": false
+  "index": "1",
+  "work": "false"
 }"#
         )
     }
@@ -132,16 +132,16 @@ mod tests {
             .build();
 
         assert_eq!(args.wallet, WalletId::from(1));
-        assert_eq!(args.index, Some(2));
-        assert_eq!(args.work, Some(false));
+        assert_eq!(args.index, Some(2.into()));
+        assert_eq!(args.work, Some(false.into()));
 
         let json = to_string_pretty(&args).unwrap();
         assert_eq!(
             json,
             r#"{
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
-  "index": 2,
-  "work": false
+  "index": "2",
+  "work": "false"
 }"#
         );
     }

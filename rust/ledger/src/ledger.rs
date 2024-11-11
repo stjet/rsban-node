@@ -52,6 +52,27 @@ pub enum BlockStatus {
     InsufficientWork, // Insufficient work for this block, even though it passed the minimal validation
 }
 
+impl BlockStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BlockStatus::Progress => "Progress",
+            BlockStatus::BadSignature => "Bad signature",
+            BlockStatus::Old => "Old",
+            BlockStatus::NegativeSpend => "Negative spend",
+            BlockStatus::Fork => "Fork",
+            BlockStatus::Unreceivable => "Unreceivable",
+            BlockStatus::GapPrevious => "Gap previous",
+            BlockStatus::GapSource => "Gap source",
+            BlockStatus::GapEpochOpenPending => "Gap epoch open pendign",
+            BlockStatus::OpenedBurnAccount => "Opened burn account",
+            BlockStatus::BalanceMismatch => "Balance mismatch",
+            BlockStatus::RepresentativeMismatch => "Representative mismatch",
+            BlockStatus::BlockPosition => "Block position",
+            BlockStatus::InsufficientWork => "Insufficient work",
+        }
+    }
+}
+
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
@@ -443,6 +464,10 @@ impl Ledger {
 
     pub fn is_epoch_link(&self, link: &Link) -> bool {
         self.constants.epochs.is_epoch_link(link)
+    }
+
+    pub fn epoch_signer(&self, link: &Link) -> Option<Account> {
+        self.constants.epochs.epoch_signer(link)
     }
 
     /// Given the block hash of a send block, find the associated receive block that receives that send.

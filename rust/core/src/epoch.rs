@@ -22,6 +22,13 @@ pub enum Epoch {
 impl Epoch {
     pub const EPOCH_BEGIN: Epoch = Epoch::Epoch0;
     pub const MAX: Epoch = Epoch::Epoch2;
+    pub fn epoch_number(&self) -> u8 {
+        match self {
+            Epoch::Epoch1 => 1,
+            Epoch::Epoch2 => 2,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

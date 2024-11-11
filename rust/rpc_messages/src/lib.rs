@@ -7,45 +7,53 @@ mod wallets;
 pub use common::*;
 pub use ledger::*;
 pub use node::*;
-use serde::{Deserialize, Serialize};
 pub use utils::*;
 pub use wallets::*;
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum RpcCommand {
     AccountInfo(AccountInfoArgs),
-    Keepalive(AddressWithPortArg),
+    Keepalive(HostWithPortArgs),
     Stop,
     KeyCreate,
     Receive(ReceiveArgs),
     Send(SendArgs),
     WalletAdd(WalletAddArgs),
+    WorkPeers,
+    WorkPeerAdd(AddressWithPortArgs),
+    Telemetry(TelemetryArgs),
     AccountCreate(AccountCreateArgs),
     AccountBalance(AccountBalanceArgs),
     AccountsCreate(AccountsCreateArgs),
     AccountRemove(WalletWithAccountArgs),
     AccountMove(AccountMoveArgs),
     AccountList(WalletRpcMessage),
+    AccountRepresentativeSet(()), // TODO
+    ActiveDifficulty,
     WalletCreate(WalletCreateArgs),
     WalletContains(WalletWithAccountArgs),
     WalletDestroy(WalletRpcMessage),
     WalletLock(WalletRpcMessage),
     WalletLocked(WalletRpcMessage),
-    AccountBlockCount(AccountRpcMessage),
-    AccountKey(AccountRpcMessage),
-    AccountGet(KeyRpcMessage),
-    AccountRepresentative(AccountRpcMessage),
-    AccountWeight(AccountRpcMessage),
+    AccountBlockCount(AccountArg),
+    AccountKey(AccountArg),
+    AccountGet(KeyArg),
+    AccountRepresentative(AccountArg),
+    AccountWeight(AccountWeightArgs),
     AvailableSupply,
-    BlockAccount(BlockHashRpcMessage),
-    BlockConfirm(BlockHashRpcMessage),
+    BlockAccount(HashRpcMessage),
+    BlockConfirm(HashRpcMessage),
+    DatabaseTxnTracker(()), // TODO
+    ConfirmationHistory(ConfirmationHistoryArgs),
     BlockCount,
     Uptime,
     FrontierCount,
-    ValidateAccountNumber(AccountRpcMessage),
-    NanoToRaw(AmountDto),
-    RawToNano(AmountDto),
+    ValidateAccountNumber(AccountCandidateArg),
+    NanoToRaw(AmountRpcMessage),
+    RawToNano(AmountRpcMessage),
     WalletAddWatch(WalletAddWatchArgs),
     WalletRepresentative(WalletRpcMessage),
     WorkSet(WorkSetArgs),
@@ -53,7 +61,7 @@ pub enum RpcCommand {
     WalletWorkGet(WalletRpcMessage),
     AccountsFrontiers(AccountsRpcMessage),
     WalletFrontiers(WalletRpcMessage),
-    Frontiers(AccountWithCountArgs),
+    Frontiers(FrontiersArgs),
     WalletInfo(WalletRpcMessage),
     WalletExport(WalletRpcMessage),
     PasswordChange(WalletWithPasswordArgs),
@@ -71,14 +79,16 @@ pub enum RpcCommand {
     NodeId,
     SearchReceivableAll,
     ReceiveMinimum,
+    ReceiveMinimumSet(()), // TODO
+    Stats(StatsArgs),
     WalletChangeSeed(WalletChangeSeedArgs),
     Delegators(DelegatorsArgs),
-    DelegatorsCount(AccountRpcMessage),
+    DelegatorsCount(AccountArg),
     BlockHash(BlockHashArgs),
     AccountsBalances(AccountsBalancesArgs),
-    BlockInfo(BlockHashRpcMessage),
-    Blocks(BlocksHashesRpcMessage),
-    BlocksInfo(BlocksHashesRpcMessage),
+    BlockInfo(HashRpcMessage),
+    Blocks(HashesArgs),
+    BlocksInfo(BlocksInfoArgs),
     Chain(ChainArgs),
     Successors(ChainArgs),
     ConfirmationActive(ConfirmationActiveArgs),
@@ -87,10 +97,10 @@ pub enum RpcCommand {
     AccountHistory(AccountHistoryArgs),
     Sign(SignArgs),
     Process(ProcessArgs),
-    WorkCancel(BlockHashRpcMessage),
+    WorkCancel(HashRpcMessage),
     Bootstrap(BootstrapArgs),
     BootstrapAny(BootstrapAnyArgs),
-    BoostrapLazy(BootsrapLazyArgs),
+    BootstrapLazy(BootstrapLazyArgs),
     WalletReceivable(WalletReceivableArgs),
     WalletRepresentativeSet(WalletRepresentativeSetArgs),
     SearchReceivable(WalletRpcMessage),
@@ -102,12 +112,22 @@ pub enum RpcCommand {
     Receivable(ReceivableArgs),
     ReceivableExists(ReceivableExistsArgs),
     RepresentativesOnline(RepresentativesOnlineArgs),
-    Unchecked(UncheckedArgs),
-    UncheckedGet(BlockHashRpcMessage),
+    Unchecked(CountArgs),
+    UncheckedGet(HashRpcMessage),
     UncheckedKeys(UncheckedKeysArgs),
     ConfirmationInfo(ConfirmationInfoArgs),
     Ledger(LedgerArgs),
     WorkGenerate(WorkGenerateArgs),
     Republish(RepublishArgs),
     BlockCreate(BlockCreateArgs),
+    WorkPeersClear,
+    Version,
+}
+
+pub fn check_error(value: &serde_json::Value) -> Result<(), String> {
+    if let Some(serde_json::Value::String(error)) = value.get("error") {
+        Err(error.clone())
+    } else {
+        Ok(())
+    }
 }

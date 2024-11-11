@@ -6,14 +6,15 @@ fn validate_account_number() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
-    node.runtime.block_on(async {
-        rpc_client
-            .validate_account_number(Account::zero())
+    let result = node.runtime.block_on(async {
+        server
+            .client
+            .validate_account_number(Account::zero().encode_account())
             .await
             .unwrap()
     });
 
-    server.abort();
+    assert_eq!(result.valid, true.into());
 }

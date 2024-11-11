@@ -25,20 +25,21 @@ fn confirmation_info() {
         "not active on node 1",
     );
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let root = send.qualified_root();
 
-    let args = ConfirmationInfoArgs::builder(root)
+    let args = ConfirmationInfoArgs::build(root)
         .include_representatives()
-        .build();
+        .finish();
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.confirmation_info(args).await.unwrap() });
+        .block_on(async { server.client.confirmation_info(args).await })
+        .unwrap();
 
-    //assert_eq!(result.announcements, 1); TODO
-    assert_eq!(result.voters, 1);
+    assert_eq!(result.announcements, 0.into());
+    assert_eq!(result.voters, 1.into());
     assert_eq!(result.last_winner, send.hash());
 
     let blocks = result.blocks;
@@ -63,6 +64,4 @@ fn confirmation_info() {
         }
         _ => (),
     }
-
-    server.abort();
 }

@@ -1,6 +1,8 @@
 use crate::view_models::ChannelsViewModel;
-use eframe::egui::{Label, Sense, Ui};
+use eframe::egui::{Align, Label, Layout, Sense, Ui};
 use egui_extras::{Column, TableBuilder};
+
+use super::show_rep_state;
 
 pub(crate) struct ChannelsView<'a> {
     model: ChannelsViewModel<'a>,
@@ -18,16 +20,17 @@ impl<'a> ChannelsView<'a> {
             .striped(true)
             .resizable(false)
             .auto_shrink(false)
+            .cell_layout(Layout::left_to_right(Align::Center))
             .sense(Sense::click())
             .column(Column::auto())
-            .column(Column::auto())
+            .column(Column::auto()) // rep state
             .column(Column::remainder())
             .header(20.0, |mut header| {
                 header.col(|ui| {
                     ui.strong("Channel");
                 });
                 header.col(|ui| {
-                    ui.strong("in/out");
+                    ui.strong("Rep");
                 });
                 header.col(|ui| {
                     ui.strong("Remote Addr");
@@ -45,7 +48,7 @@ impl<'a> ChannelsView<'a> {
                         ui.add(Label::new(row_model.channel_id).selectable(false));
                     });
                     row.col(|ui| {
-                        ui.add(Label::new(row_model.direction).selectable(false));
+                        show_rep_state(ui, row_model.rep_state);
                     });
                     row.col(|ui| {
                         ui.add(Label::new(row_model.remote_addr).selectable(false));

@@ -14,7 +14,7 @@ fn bootstrap_id_none() {
     let mut system = System::new();
     let key = KeyPair::new();
     let node1 = system.make_disconnected_node();
-    let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), true);
+    let server = setup_rpc_client_and_server(node1.clone(), true);
 
     let wallet_id = WalletId::from(100);
     node1.wallets.create(wallet_id);
@@ -107,7 +107,8 @@ fn bootstrap_id_none() {
     let port = node2.tcp_listener.local_address().port();
 
     node1.runtime.spawn(async move {
-        rpc_client
+        server
+            .client
             .bootstrap(BootstrapArgs::new(address, port))
             .await
             .unwrap();
@@ -124,6 +125,4 @@ fn bootstrap_id_none() {
         || node2.balance(&DEV_GENESIS_ACCOUNT),
         Amount::raw(100),
     );*/
-
-    server.abort();
 }

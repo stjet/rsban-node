@@ -1,23 +1,9 @@
-use crate::cli::{get_path, init_tracing};
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::utils::get_cpu_count;
-use rsnano_node::{
-    config::{
-        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
-        NetworkConstants, NodeFlags,
-    },
-    NetworkParams, NodeBuilder, NodeExt,
-};
-use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
-use std::{
-    fs::read_to_string,
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-    sync::{Arc, Condvar, Mutex},
-};
-use tokio::net::TcpListener;
-use toml::from_str;
+use rsnano_core::Networks;
+use rsnano_daemon::DaemonBuilder;
+use rsnano_node::config::NodeFlags;
+use std::{path::PathBuf, str::FromStr};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -112,159 +98,123 @@ pub(crate) struct RunDaemonArgs {
 
 impl RunDaemonArgs {
     pub(crate) async fn run_daemon(&self) -> Result<()> {
-        let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from(
-            "rsnano_ffi=debug,rsnano_node=debug,rsnano_messages=debug,rsnano_ledger=debug,rsnano_store_lmdb=debug,rsnano_core=debug",
-        ));
-
-        init_tracing(dirs);
-
-        let path = get_path(&self.data_path, &self.network);
-        let network = NetworkConstants::active_network();
-        let network_params = NetworkParams::new(network);
-        let parallelism = get_cpu_count();
-
-        std::fs::create_dir_all(&path).map_err(|e| anyhow!("Create dir failed: {:?}", e))?;
-
-        let node_toml_config_path = get_node_toml_config_path(&path);
-
-        let mut daemon_config = DaemonConfig::new(&network_params, parallelism);
-        if node_toml_config_path.exists() {
-            let daemon_toml_str = read_to_string(node_toml_config_path)?;
-            let daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
-            daemon_config.merge_toml(&daemon_toml);
+        init_tracing();
+        let network = self.get_network()?;
+        let flags = self.get_flags();
+        let mut daemon = DaemonBuilder::new(network).flags(flags);
+        if let Some(path) = self.specified_data_path() {
+            daemon = daemon.data_path(path);
         }
-
-        let node_config = daemon_config.node;
-
-        let rpc_toml_config_path = get_rpc_toml_config_path(&path);
-
-        let mut rpc_server_config = RpcServerConfig::default_for(network, parallelism);
-        if rpc_toml_config_path.exists() {
-            let rpc_server_toml_str = read_to_string(rpc_toml_config_path)?;
-            let rpc_server_toml: RpcServerToml = from_str(&rpc_server_toml_str)?;
-            rpc_server_config.merge_toml(&rpc_server_toml);
-        }
-
-        let mut flags = NodeFlags::new();
-        self.set_flags(&mut flags);
-
-        let node = NodeBuilder::new(network_params.network.current_network)
-            .data_path(path)
-            .config(node_config)
-            .network_params(network_params)
-            .flags(flags)
-            .finish()
-            .unwrap();
-
-        let node = Arc::new(node);
-        node.start();
-
-        let rpc_server = if daemon_config.rpc_enable {
-            let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
-            let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
-            Some(tokio::spawn({
-                let listener = TcpListener::bind(socket_addr).await?;
-
-                run_rpc_server(node.clone(), listener, rpc_server_config.enable_control)
-            }))
-        } else {
-            None
-        };
-
-        let finished = Arc::new((Mutex::new(false), Condvar::new()));
-        let finished_clone = finished.clone();
-
-        ctrlc::set_handler(move || {
-            if let Some(server) = rpc_server.as_ref() {
-                server.abort();
-            }
-            node.stop();
-            *finished_clone.0.lock().unwrap() = true;
-            finished_clone.1.notify_all();
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        let guard = finished.0.lock().unwrap();
-        drop(finished.1.wait_while(guard, |g| !*g).unwrap());
-
-        Ok(())
+        daemon.run(shutdown_signal()).await
     }
 
-    pub(crate) fn set_flags(&self, node_flags: &mut NodeFlags) {
+    pub fn specified_data_path(&self) -> Option<PathBuf> {
+        self.data_path
+            .as_ref()
+            .map(|p| PathBuf::from_str(p).unwrap())
+    }
+
+    pub fn get_network(&self) -> anyhow::Result<Networks> {
+        self.network
+            .as_ref()
+            .map(|s| Networks::from_str(s).map_err(|e| anyhow!(e)))
+            .transpose()
+            .map(|n| n.unwrap_or(Networks::NanoLiveNetwork))
+    }
+
+    pub(crate) fn get_flags(&self) -> NodeFlags {
+        let mut flags = NodeFlags::new();
         if let Some(config_overrides) = &self.config_overrides {
-            node_flags.set_config_overrides(config_overrides.clone());
+            flags.config_overrides = config_overrides.clone();
         }
         if let Some(rpc_config_overrides) = &self.rpc_config_overrides {
-            node_flags.set_rpc_config_overrides(rpc_config_overrides.clone());
+            flags.rpc_config_overrides = rpc_config_overrides.clone();
         }
-        if self.disable_activate_successors {
-            node_flags.set_disable_activate_successors(true);
-        }
-        if self.disable_backup {
-            node_flags.set_disable_backup(true);
-        }
-        if self.disable_lazy_bootstrap {
-            node_flags.set_disable_lazy_bootstrap(true);
-        }
-        if self.disable_legacy_bootstrap {
-            node_flags.set_disable_legacy_bootstrap(true);
-        }
-        if self.disable_wallet_bootstrap {
-            node_flags.set_disable_wallet_bootstrap(true);
-        }
-        if self.disable_bootstrap_listener {
-            node_flags.set_disable_bootstrap_listener(true);
-        }
-        if self.disable_bootstrap_bulk_pull_server {
-            node_flags.set_disable_bootstrap_bulk_pull_server(true);
-        }
-        if self.disable_bootstrap_bulk_push_client {
-            node_flags.set_disable_bootstrap_bulk_push_client(true);
-        }
-        if self.disable_ongoing_bootstrap {
-            node_flags.set_disable_ongoing_bootstrap(true);
-        }
-        if self.disable_ascending_bootstrap {
-            node_flags.set_disable_ascending_bootstrap(true);
-        }
-        if self.disable_rep_crawler {
-            node_flags.set_disable_rep_crawler(true);
-        }
-        if self.disable_request_loop {
-            node_flags.set_disable_request_loop(true);
-        }
-        if self.disable_tcp_realtime {
-            node_flags.set_disable_tcp_realtime(true);
-        }
-        if self.disable_providing_telemetry_metrics {
-            node_flags.set_disable_providing_telemetry_metrics(true);
-        }
-        if self.disable_block_processor_unchecked_deletion {
-            node_flags.set_disable_block_processor_unchecked_deletion(true);
-        }
-        if self.disable_block_processor_republishing {
-            node_flags.set_disable_block_processor_republishing(true);
-        }
-        if self.allow_bootstrap_peers_duplicates {
-            node_flags.set_allow_bootstrap_peers_duplicates(true);
-        }
-        if self.enable_pruning {
-            node_flags.set_enable_pruning(true);
-        }
-        if self.fast_bootstrap {
-            node_flags.set_fast_bootstrap(true);
-        }
+        flags.disable_activate_successors = self.disable_activate_successors;
+        flags.disable_backup = self.disable_backup;
+        flags.disable_lazy_bootstrap = self.disable_lazy_bootstrap;
+        flags.disable_legacy_bootstrap = self.disable_legacy_bootstrap;
+        flags.disable_wallet_bootstrap = self.disable_wallet_bootstrap;
+        flags.disable_bootstrap_listener = self.disable_bootstrap_listener;
+        flags.disable_bootstrap_bulk_pull_server = self.disable_bootstrap_bulk_pull_server;
+        flags.disable_bootstrap_bulk_push_client = self.disable_bootstrap_bulk_push_client;
+        flags.disable_ongoing_bootstrap = self.disable_ongoing_bootstrap;
+        flags.disable_ascending_bootstrap = self.disable_ascending_bootstrap;
+        flags.disable_rep_crawler = self.disable_rep_crawler;
+        flags.disable_request_loop = self.disable_request_loop;
+        flags.disable_tcp_realtime = self.disable_tcp_realtime;
+        flags.disable_providing_telemetry_metrics = self.disable_providing_telemetry_metrics;
+        flags.disable_block_processor_unchecked_deletion =
+            self.disable_block_processor_unchecked_deletion;
+        flags.disable_block_processor_republishing = self.disable_block_processor_republishing;
+        flags.allow_bootstrap_peers_duplicates = self.allow_bootstrap_peers_duplicates;
+        flags.enable_pruning = self.enable_pruning;
+        flags.fast_bootstrap = self.fast_bootstrap;
         if let Some(block_processor_batch_size) = self.block_processor_batch_size {
-            node_flags.set_block_processor_batch_size(block_processor_batch_size);
+            flags.block_processor_batch_size = block_processor_batch_size;
         }
         if let Some(block_processor_full_size) = self.block_processor_full_size {
-            node_flags.set_block_processor_full_size(block_processor_full_size);
+            flags.block_processor_full_size = block_processor_full_size;
         }
         if let Some(block_processor_verification_size) = self.block_processor_verification_size {
-            node_flags.set_block_processor_verification_size(block_processor_verification_size);
+            flags.block_processor_verification_size = block_processor_verification_size;
         }
         if let Some(vote_processor_capacity) = self.vote_processor_capacity {
-            node_flags.set_vote_processor_capacity(vote_processor_capacity);
+            flags.vote_processor_capacity = vote_processor_capacity;
+        }
+
+        flags
+    }
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+}
+
+fn init_tracing() {
+    let dirs = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or(String::from("info"));
+    let filter = EnvFilter::builder().parse_lossy(dirs);
+    let value = std::env::var("NANO_LOG");
+    let log_style = value.as_ref().map(|i| i.as_str()).unwrap_or_default();
+    match log_style {
+        "json" => {
+            tracing_subscriber::fmt::fmt()
+                .json()
+                .with_env_filter(filter)
+                .init();
+        }
+        "noansi" => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(false)
+                .init();
+        }
+        _ => {
+            tracing_subscriber::fmt::fmt()
+                .with_env_filter(filter)
+                .with_ansi(true)
+                .init();
         }
     }
+    tracing::debug!(log_style, ?value, "init tracing");
 }

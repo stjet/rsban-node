@@ -14,13 +14,14 @@ rsnano_nullable_clock = { path = "../nullables/clock" }
 rsnano_rpc_messages = { path = "../rpc_messages" }
 rsnano_store_lmdb = { path = "../store_lmdb" }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1", features = ["net"] }
 anyhow = "1.0.40"
 axum = "0.7.5"
 toml = "0.8.15"
 tracing = "0.1"
 itertools = "0.13"
+indexmap = "2"
 
 [dev-dependencies]
 test_helpers = { path = "../tools/test_helpers" }

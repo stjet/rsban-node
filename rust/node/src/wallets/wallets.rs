@@ -26,6 +26,7 @@ use rsnano_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbEnv, LmdbIteratorImpl, LmdbWalletStore,
     LmdbWriteTransaction, Transaction,
 };
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -39,7 +40,7 @@ use std::{
 };
 use tracing::{info, warn};
 
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, Debug, Serialize, Deserialize)]
 pub enum WalletsError {
     None,
     Generic,
@@ -50,9 +51,9 @@ pub enum WalletsError {
     BadPublicKey,
 }
 
-impl fmt::Display for WalletsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let error_message = match self {
+impl WalletsError {
+    pub fn as_str(&self) -> &'static str {
+        match self {
             WalletsError::None => "No error",
             WalletsError::Generic => "Unknown error",
             WalletsError::WalletNotFound => "Wallet not found",
@@ -60,10 +61,17 @@ impl fmt::Display for WalletsError {
             WalletsError::AccountNotFound => "Account not found",
             WalletsError::InvalidPassword => "Invalid password",
             WalletsError::BadPublicKey => "Bad public key",
-        };
-        write!(f, "{}", error_message)
+        }
     }
 }
+
+impl fmt::Display for WalletsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::error::Error for WalletsError {}
 
 pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 
@@ -506,6 +514,10 @@ impl Wallets {
         for i in &deleted_items {
             guard.remove(i);
         }
+    }
+
+    pub fn wallet_exists(&self, wallet_id: &WalletId) -> bool {
+        self.mutex.lock().unwrap().contains_key(wallet_id)
     }
 
     pub fn destroy(&self, id: &WalletId) {
@@ -1062,10 +1074,13 @@ pub trait WalletsExt {
     fn receive_sync(
         &self,
         wallet: Arc<Wallet>,
-        block: &BlockEnum,
+        block: BlockHash,
         representative: PublicKey,
         amount: Amount,
-    ) -> Result<(), ()>;
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<BlockEnum, ()>;
 
     fn send_async_wallet(
         &self,
@@ -1097,6 +1112,9 @@ pub trait WalletsExt {
         source: Account,
         account: Account,
         amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
     ) -> BlockHash;
 
     fn search_receivable(
@@ -1721,29 +1739,32 @@ impl WalletsExt for Arc<Wallets> {
     fn receive_sync(
         &self,
         wallet: Arc<Wallet>,
-        block: &BlockEnum,
+        block_hash: BlockHash,
         representative: PublicKey,
         amount: Amount,
-    ) -> Result<(), ()> {
-        let result = Arc::new((Condvar::new(), Mutex::new((false, false)))); // done, result
+        account: Account,
+        work: u64,
+        generate_work: bool,
+    ) -> Result<BlockEnum, ()> {
+        let result = Arc::new((Condvar::new(), Mutex::new((false, None)))); // done, result
         let result_clone = Arc::clone(&result);
         self.receive_async_wallet(
             wallet,
-            block.hash(),
+            block_hash,
             representative,
             amount,
-            block.destination().unwrap(),
+            account,
             Box::new(move |block| {
-                *result_clone.1.lock().unwrap() = (true, block.is_some());
+                *result_clone.1.lock().unwrap() = (true, block.clone());
                 result_clone.0.notify_all();
             }),
-            0,
-            true,
+            work,
+            generate_work,
         );
         let mut guard = result.1.lock().unwrap();
         guard = result.0.wait_while(guard, |i| !i.0).unwrap();
-        if guard.1 {
-            Ok(())
+        if let Some(block) = guard.1.clone() {
+            Ok(block)
         } else {
             Err(())
         }
@@ -1819,6 +1840,9 @@ impl WalletsExt for Arc<Wallets> {
         source: Account,
         account: Account,
         amount: Amount,
+        work: u64,
+        generate_work: bool,
+        id: Option<String>,
     ) -> BlockHash {
         let guard = self.mutex.lock().unwrap();
         let Some(wallet) = guard.get(&wallet_id) else {
@@ -1838,9 +1862,9 @@ impl WalletsExt for Arc<Wallets> {
                     (true, block.map(|b| b.hash()).unwrap_or_default());
                 result_clone.0.notify_all();
             }),
-            0,
-            true,
-            None,
+            work,
+            generate_work,
+            id,
         );
 
         let mut guard = result.1.lock().unwrap();

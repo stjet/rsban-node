@@ -33,22 +33,6 @@ add_library(
   election_insertion_result.hpp
   election_status.hpp
   election_status.cpp
-  ipc/action_handler.hpp
-  ipc/action_handler.cpp
-  ipc/flatbuffers_handler.hpp
-  ipc/flatbuffers_handler.cpp
-  ipc/flatbuffers_util.hpp
-  ipc/flatbuffers_util.cpp
-  ipc/ipc_access_config.hpp
-  ipc/ipc_access_config.cpp
-  ipc/ipc_broker.hpp
-  ipc/ipc_broker.cpp
-  ipc/ipc_config.hpp
-  ipc/ipc_config.cpp
-  ipc/ipc_server.hpp
-  ipc/ipc_server.cpp
-  json_handler.hpp
-  json_handler.cpp
   local_vote_history.cpp
   local_vote_history.hpp
   make_store.hpp
@@ -118,7 +102,6 @@ target_link_libraries(
   nano_lib
   nano_store
   secure
-  rpc
   Boost::beast
   Boost::log_setup
   Boost::log

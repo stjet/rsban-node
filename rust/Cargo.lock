@@ -1194,16 +1194,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90eeab0aa92f3f9b4e87f258c72b139c207d251f9cbc1080a0086b86a8870dd3"
-dependencies = [
- "nix",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "cursor-icon"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2368,6 +2358,7 @@ checksum = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
+ "serde",
 ]
 
 [[package]]
@@ -3694,6 +3685,7 @@ dependencies = [
  "rsnano_node",
  "rsnano_nullable_clock",
  "rsnano_store_lmdb",
+ "strum",
  "tokio",
 ]
 
@@ -3719,6 +3711,17 @@ dependencies = [
  "serde",
  "serde_json",
  "static_assertions",
+]
+
+[[package]]
+name = "rsnano_daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rsnano_core",
+ "rsnano_node",
+ "rsnano_rpc_server",
+ "tokio",
 ]
 
 [[package]]
@@ -3857,9 +3860,9 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "clap 4.5.18",
- "ctrlc",
  "rand",
  "rsnano_core",
+ "rsnano_daemon",
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",
@@ -3940,7 +3943,9 @@ dependencies = [
 name = "rsnano_rpc_messages"
 version = "0.1.0"
 dependencies = [
+ "indexmap 2.5.0",
  "rsnano_core",
+ "rsnano_messages",
  "rsnano_node",
  "serde",
  "serde_json",
@@ -3952,6 +3957,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "indexmap 2.5.0",
  "itertools 0.13.0",
  "rsnano_core",
  "rsnano_ledger",
@@ -4127,6 +4133,7 @@ version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff5456707a1de34e7e37f2a6fd3d3f808c318259cbd01ab6377795054b483d8"
 dependencies = [
+ "indexmap 2.5.0",
  "itoa",
  "memchr",
  "ryu",

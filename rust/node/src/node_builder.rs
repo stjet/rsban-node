@@ -1,5 +1,5 @@
 use crate::{
-    config::{NodeConfig, NodeFlags},
+    config::{get_node_toml_config_path, DaemonConfig, DaemonToml, NodeConfig, NodeFlags},
     consensus::{
         BalanceChangedCallback, ElectionEndCallback, ElectionStatus, VoteProcessedCallback2,
     },
@@ -153,17 +153,18 @@ impl NodeBuilder {
         self
     }
 
+    pub fn get_data_path(&self) -> anyhow::Result<PathBuf> {
+        match &self.data_path {
+            Some(path) => Ok(path.clone()),
+            None => working_path_for(self.network).ok_or_else(|| anyhow!("working path not found")),
+        }
+    }
+
     pub fn finish(self) -> anyhow::Result<Node> {
+        let data_path = self.get_data_path()?;
         let runtime = self
             .runtime
             .unwrap_or_else(|| tokio::runtime::Handle::current());
-
-        let data_path = match self.data_path {
-            Some(path) => path,
-            None => {
-                working_path_for(self.network).ok_or_else(|| anyhow!("working path not found"))?
-            }
-        };
 
         let network_params = self
             .network_params
@@ -173,7 +174,14 @@ impl NodeBuilder {
             Some(c) => c,
             None => {
                 let cpu_count = get_cpu_count();
-                NodeConfig::new(None, &network_params, cpu_count)
+                let mut daemon_config = DaemonConfig::new(&network_params, cpu_count);
+                let config_path = get_node_toml_config_path(&data_path);
+                if config_path.exists() {
+                    let toml_str = std::fs::read_to_string(config_path)?;
+                    let daemon_toml: DaemonToml = toml::de::from_str(&toml_str)?;
+                    daemon_config.merge_toml(&daemon_toml);
+                }
+                daemon_config.node
             }
         };
 

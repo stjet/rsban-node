@@ -16,7 +16,7 @@ pub struct WalletBalancesArgs {
 }
 
 impl WalletBalancesArgs {
-    pub fn builder(wallet: WalletId) -> WalletBalancesArgsBuilder {
+    pub fn build(wallet: WalletId) -> WalletBalancesArgsBuilder {
         WalletBalancesArgsBuilder::new(wallet)
     }
 }
@@ -49,14 +49,14 @@ impl WalletBalancesArgsBuilder {
         self
     }
 
-    pub fn build(self) -> WalletBalancesArgs {
+    pub fn finish(self) -> WalletBalancesArgs {
         self.args
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{RpcCommand, WalletBalancesArgs};
+    use crate::{wallets::WalletBalancesArgs, RpcCommand};
     use rsnano_core::{Amount, WalletId};
     use serde_json::to_string_pretty;
 
@@ -73,9 +73,9 @@ mod tests {
 
     #[test]
     fn serialize_wallet_balances_command_threshold_some() {
-        let args = WalletBalancesArgs::builder(1.into())
+        let args = WalletBalancesArgs::build(1.into())
             .with_minimum_balance(Amount::zero())
-            .build();
+            .finish();
         assert_eq!(
             to_string_pretty(&RpcCommand::wallet_balances(args)).unwrap(),
             r#"{
@@ -96,9 +96,9 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_balances_command_threshold_some() {
-        let args = WalletBalancesArgs::builder(1.into())
+        let args = WalletBalancesArgs::build(1.into())
             .with_minimum_balance(Amount::zero())
-            .build();
+            .finish();
         let cmd = RpcCommand::wallet_balances(args);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
@@ -108,9 +108,9 @@ mod tests {
     #[test]
     fn wallet_balances_args_builder() {
         let wallet = 1.into();
-        let args = WalletBalancesArgs::builder(wallet)
+        let args = WalletBalancesArgs::build(wallet)
             .with_minimum_balance(Amount::raw(1000))
-            .build();
+            .finish();
 
         assert_eq!(args.wallet, wallet);
         assert_eq!(args.threshold, Some(Amount::raw(1000)));

@@ -15,23 +15,21 @@ use crate::{
     WebsocketConfigDto,
 };
 use num::FromPrimitive;
-use rsnano_core::{utils::get_cpu_count, Amount, PublicKey};
+use rsnano_core::{utils::get_cpu_count, Amount, Networks, PublicKey};
 use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
     cementation::ConfirmingSetConfig,
-    config::{MonitorConfig, NodeConfig, Peer},
+    config::{MonitorConfig, NetworkConstants, NodeConfig, Peer},
     consensus::PriorityBucketConfig,
     transport::{MessageProcessorConfig, TcpConfig},
-    NetworkParams,
+    IpcConfig, NetworkParams,
 };
-use std::{
-    convert::{TryFrom, TryInto},
-    time::Duration,
-};
+use std::{convert::TryFrom, time::Duration};
 
 #[repr(C)]
 pub struct NodeConfigDto {
     pub peering_port: u16,
+    pub default_peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfigDto,
     pub hinted_scheduler: HintedSchedulerConfigDto,
     pub priority_bucket: PriorityBucketConfigDto,
@@ -67,6 +65,8 @@ pub struct NodeConfigDto {
     pub use_memory_pools: bool,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
+    pub max_peers_per_ip: u16,
+    pub max_peers_per_subnetwork: u16,
     pub bootstrap_ascending: BootstrapAscendingConfigDto,
     pub bootstrap_server: BootstrapServerConfigDto,
     pub bootstrap_bandwidth_limit: usize,
@@ -203,6 +203,7 @@ pub unsafe extern "C" fn rsn_node_config_create(
 
 pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
     dto.peering_port = cfg.peering_port.unwrap_or_default();
+    dto.default_peering_port = cfg.default_peering_port;
     dto.optimistic_scheduler = (&cfg.optimistic_scheduler).into();
     dto.hinted_scheduler = (&cfg.hinted_scheduler).into();
     dto.priority_bucket = (&cfg.priority_bucket).into();
@@ -240,6 +241,8 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
 
     dto.bandwidth_limit = cfg.bandwidth_limit;
     dto.bandwidth_limit_burst_ratio = cfg.bandwidth_limit_burst_ratio;
+    dto.max_peers_per_ip = cfg.max_peers_per_ip;
+    dto.max_peers_per_subnetwork = cfg.max_peers_per_subnetwork;
     dto.bootstrap_bandwidth_limit = cfg.bootstrap_bandwidth_limit;
     dto.bootstrap_bandwidth_burst_ratio = cfg.bootstrap_bandwidth_burst_ratio;
     dto.bootstrap_ascending = (&cfg.bootstrap_ascending).into();
@@ -286,9 +289,10 @@ pub fn fill_node_config_dto(dto: &mut NodeConfigDto, cfg: &NodeConfig) {
         );
     }
     for (i, peer) in cfg.preconfigured_peers.iter().enumerate() {
-        let bytes = peer.as_bytes();
+        let bytes = peer.address.as_bytes();
         dto.preconfigured_peers[i].address[..bytes.len()].copy_from_slice(bytes);
         dto.preconfigured_peers[i].address_len = bytes.len();
+        dto.preconfigured_peers[i].port = peer.port;
     }
     dto.preconfigured_peers_count = cfg.preconfigured_peers.len();
     if cfg.preconfigured_representatives.len() > dto.preconfigured_representatives.len() {
@@ -357,7 +361,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
 
         let mut preconfigured_peers = Vec::with_capacity(value.preconfigured_peers_count);
         for i in 0..value.preconfigured_peers_count {
-            preconfigured_peers.push(Peer::from(&value.preconfigured_peers[i]).address);
+            preconfigured_peers.push(Peer::from(&value.preconfigured_peers[i]));
         }
 
         let mut preconfigured_representatives = Vec::new();
@@ -373,6 +377,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             } else {
                 None
             },
+            default_peering_port: value.default_peering_port,
             optimistic_scheduler: (&value.optimistic_scheduler).into(),
             hinted_scheduler: (&value.hinted_scheduler).into(),
             priority_bucket: (&value.priority_bucket).into(),
@@ -411,6 +416,8 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             use_memory_pools: value.use_memory_pools,
             bandwidth_limit: value.bandwidth_limit,
             bandwidth_limit_burst_ratio: value.bandwidth_limit_burst_ratio,
+            max_peers_per_ip: value.max_peers_per_ip,
+            max_peers_per_subnetwork: value.max_peers_per_subnetwork,
             bootstrap_bandwidth_limit: value.bootstrap_bandwidth_limit,
             bootstrap_bandwidth_burst_ratio: value.bootstrap_bandwidth_burst_ratio,
             bootstrap_ascending: (&value.bootstrap_ascending).into(),
@@ -442,7 +449,7 @@ impl TryFrom<&NodeConfigDto> for NodeConfig {
             .to_string(),
             callback_port: value.callback_port,
             websocket_config: (&value.websocket_config).into(),
-            ipc_config: (&value.ipc_config).try_into()?,
+            ipc_config: IpcConfig::new(&NetworkConstants::default_for(Networks::NanoLiveNetwork)),
             diagnostics_config: (&value.diagnostics_config).into(),
             stat_config: (&value.stat_config).into(),
             lmdb_config: (&value.lmdb_config).into(),

@@ -1,4 +1,4 @@
-use crate::{AccountsRpcMessage, RpcCommand};
+use crate::{common::AccountsRpcMessage, RpcCommand};
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,19 +10,10 @@ impl RpcCommand {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct AccountsRepresentativesDto {
-    pub representatives: HashMap<Account, Account>,
+pub struct AccountsRepresentativesResponse {
+    pub representatives: Option<HashMap<Account, Account>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<HashMap<Account, String>>,
-}
-
-impl AccountsRepresentativesDto {
-    pub fn new(representatives: HashMap<Account, Account>) -> Self {
-        Self {
-            representatives,
-            errors: None,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -60,7 +51,10 @@ mod tests {
     fn serialize_accounts_representatives_dto_without_errors() {
         let mut representatives = HashMap::new();
         representatives.insert(Account::from(123), Account::from(456));
-        let dto = AccountsRepresentativesDto::new(representatives);
+        let dto = AccountsRepresentativesResponse {
+            representatives: Some(representatives),
+            errors: None,
+        };
 
         assert_eq!(
             to_string_pretty(&dto).unwrap(),
@@ -79,12 +73,12 @@ mod tests {
     "nano_111111111111111111111111111111111111111111111111115uwdgas549": "nano_11111111111111111111111111111111111111111111111111gahteczqci"
   }
 }"#;
-        let dto: AccountsRepresentativesDto = from_str(json).unwrap();
+        let dto: AccountsRepresentativesResponse = from_str(json).unwrap();
 
-        assert_eq!(dto.representatives.len(), 1);
+        assert_eq!(dto.representatives.as_ref().unwrap().len(), 1);
         assert_eq!(dto.errors, None);
         assert_eq!(
-            dto.representatives.get(&Account::from(123)),
+            dto.representatives.unwrap().get(&Account::from(123)),
             Some(&Account::from(456))
         );
     }
@@ -96,8 +90,10 @@ mod tests {
         let mut errors = HashMap::new();
         errors.insert(Account::from(789), "Invalid account".to_string());
 
-        let mut dto = AccountsRepresentativesDto::new(representatives);
-        dto.errors = Some(errors);
+        let dto = AccountsRepresentativesResponse {
+            representatives: Some(representatives),
+            errors: Some(errors),
+        };
 
         assert_eq!(
             to_string_pretty(&dto).unwrap(),
@@ -122,13 +118,13 @@ mod tests {
     "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy": "Invalid account"
   }
 }"#;
-        let dto: AccountsRepresentativesDto = from_str(json).unwrap();
+        let dto: AccountsRepresentativesResponse = from_str(json).unwrap();
 
-        assert_eq!(dto.representatives.len(), 1);
+        assert_eq!(dto.representatives.as_ref().unwrap().len(), 1);
         assert!(dto.errors.is_some());
         assert_eq!(dto.errors.as_ref().unwrap().len(), 1);
         assert_eq!(
-            dto.representatives.get(&Account::from(123)),
+            dto.representatives.unwrap().get(&Account::from(123)),
             Some(&Account::from(456))
         );
         assert_eq!(

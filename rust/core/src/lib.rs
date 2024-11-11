@@ -403,7 +403,7 @@ impl Serialize for Frontier {
     }
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord, Default)]
 pub struct WorkNonce(u64);
 
 impl Display for WorkNonce {

@@ -49,7 +49,7 @@ fn test_republish_send_block() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     setup_test_environment(node.clone());
 
@@ -69,7 +69,7 @@ fn test_republish_send_block() {
     // Test: Republish send block
     let result = node
         .runtime
-        .block_on(async { rpc_client.republish(send.hash()).await.unwrap() });
+        .block_on(async { server.client.republish(send.hash()).await.unwrap() });
 
     assert_eq!(
         result.blocks.len(),
@@ -88,8 +88,6 @@ fn test_republish_send_block() {
         },
         "send block not received by node 2",
     );
-
-    server.abort();
 }
 
 #[test]
@@ -97,7 +95,7 @@ fn test_republish_genesis_block() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     setup_test_environment(node.clone());
 
@@ -108,7 +106,7 @@ fn test_republish_genesis_block() {
     // Test: Republish genesis block with count 1
     let result = node
         .runtime
-        .block_on(async { rpc_client.republish(args).await.unwrap() });
+        .block_on(async { server.client.republish(args).await.unwrap() });
 
     assert_eq!(
         result.blocks.len(),
@@ -117,8 +115,6 @@ fn test_republish_genesis_block() {
         result.blocks.len()
     );
     assert_eq!(result.blocks[0], *DEV_GENESIS_HASH, "Unexpected block hash");
-
-    server.abort();
 }
 
 #[test]
@@ -126,7 +122,7 @@ fn test_republish_open_block_with_sources() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let block_hash = setup_test_environment(node.clone());
 
@@ -139,7 +135,7 @@ fn test_republish_open_block_with_sources() {
     // Test: Republish open block with sources 2
     let result = node
         .runtime
-        .block_on(async { rpc_client.republish(args).await.unwrap() });
+        .block_on(async { server.client.republish(args).await.unwrap() });
 
     assert_eq!(
         result.blocks.len(),
@@ -160,6 +156,4 @@ fn test_republish_open_block_with_sources() {
         "Unexpected send block hash"
     );
     assert_eq!(result.blocks[2], block_hash, "Unexpected open block hash");
-
-    server.abort();
 }

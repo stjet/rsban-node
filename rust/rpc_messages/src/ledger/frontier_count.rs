@@ -1,11 +1,3 @@
-use crate::RpcCommand;
-
-impl RpcCommand {
-    pub fn frontier_count() -> Self {
-        Self::FrontierCount
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
@@ -27,7 +19,7 @@ mod tests {
     "action": "frontier_count"
     }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
-        let expected_command = RpcCommand::frontier_count();
+        let expected_command = RpcCommand::FrontierCount;
         assert_eq!(deserialized, expected_command);
     }
 }

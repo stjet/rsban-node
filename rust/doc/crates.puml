@@ -5,6 +5,7 @@
 [store_lmdb]
 [messages]
 [network]
+[daemon]
 [node]
 [main]
 [ffi]
@@ -24,8 +25,9 @@ folder "nullables"{
 }
 
 [C++ node] --> [ffi]
-[main] --> [node]
-[main] --> [rpc_server]
+[main] --> [daemon]
+[daemon] --> [node]
+[daemon] --> [rpc_server]
 [rpc_server] --> [node]
 [rpc_server] --> [rpc_messages]
 [rpc_client] --> [rpc_messages]

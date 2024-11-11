@@ -3,9 +3,12 @@ use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use rsnano_core::Networks;
 use rsnano_node::{Node, NodeCallbacks, NodeExt};
-use std::sync::{
-    atomic::{AtomicU8, Ordering},
-    Arc,
+use std::{
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicU8, Ordering},
+        Arc,
+    },
 };
 
 #[derive(FromPrimitive, PartialEq, Eq)]
@@ -33,21 +36,18 @@ impl NodeRunner {
         }
     }
 
-    pub(crate) fn start_live_node(&mut self, callbacks: NodeCallbacks) {
-        self.start_node(Networks::NanoLiveNetwork, callbacks);
-    }
-
-    pub(crate) fn start_beta_node(&mut self, callbacks: NodeCallbacks) {
-        self.start_node(Networks::NanoBetaNetwork, callbacks);
-    }
-
-    pub fn start_node(&mut self, network: Networks, callbacks: NodeCallbacks) {
-        let node = self.node_factory.create_node(network, callbacks);
-
-        let node2 = node.clone();
-
+    pub fn start_node(
+        &mut self,
+        network: Networks,
+        data_path: impl Into<PathBuf>,
+        callbacks: NodeCallbacks,
+    ) {
         self.state
             .store(NodeState::Starting as u8, Ordering::SeqCst);
+
+        let node = self.node_factory.create_node(network, data_path, callbacks);
+        let node2 = node.clone();
+
         self.node = Some(node);
 
         let state = self.state.clone();

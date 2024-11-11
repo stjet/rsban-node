@@ -9,16 +9,14 @@ fn bootstrap_any() {
 
     let hash = send_block(node.clone());
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.bootstrap_lazy(hash).await.unwrap() });
+        .block_on(async { server.client.bootstrap_lazy(hash).await.unwrap() });
 
-    assert_eq!(result.started, true);
-    assert_eq!(result.key_inserted, true);
-
-    server.abort();
+    assert_eq!(result.started, true.into());
+    assert_eq!(result.key_inserted, true.into());
 }
 
 #[test]
@@ -28,16 +26,14 @@ fn bootstrap_any_fails_with_legacy_bootstrap_disabled() {
     flags.disable_lazy_bootstrap = true;
     let node = system.build_node().flags(flags).finish();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.bootstrap_lazy(BlockHash::zero()).await });
+        .block_on(async { server.client.bootstrap_lazy(BlockHash::zero()).await });
 
     assert_eq!(
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"Lazy bootstrap is disabled\"".to_string())
     );
-
-    server.abort();
 }

@@ -1,4 +1,4 @@
-use crate::RpcCommand;
+use crate::{RpcBool, RpcCommand, RpcU64};
 use rsnano_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,19 +14,17 @@ pub struct LedgerArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account: Option<Account>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub count: Option<u64>,
+    pub count: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub representative: Option<bool>,
+    pub representative: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight: Option<bool>,
+    pub weight: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pending: Option<bool>,
+    pub receivable: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receivable: Option<bool>,
+    pub modified_since: Option<RpcU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified_since: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sorting: Option<bool>,
+    pub sorting: Option<RpcBool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<Amount>,
 }
@@ -50,32 +48,32 @@ impl LedgerArgsBuilder {
     }
 
     pub fn count(mut self, count: u64) -> Self {
-        self.args.count = Some(count);
+        self.args.count = Some(count.into());
         self
     }
 
     pub fn include_representative(mut self) -> Self {
-        self.args.representative = Some(true);
+        self.args.representative = Some(true.into());
         self
     }
 
     pub fn include_weight(mut self) -> Self {
-        self.args.weight = Some(true);
+        self.args.weight = Some(true.into());
         self
     }
 
     pub fn include_receivables(mut self) -> Self {
-        self.args.receivable = Some(true);
+        self.args.receivable = Some(true.into());
         self
     }
 
     pub fn modified_since(mut self, modified_since: u64) -> Self {
-        self.args.modified_since = Some(modified_since);
+        self.args.modified_since = Some(modified_since.into());
         self
     }
 
     pub fn sorted(mut self) -> Self {
-        self.args.sorting = Some(true);
+        self.args.sorting = Some(true.into());
         self
     }
 
@@ -90,7 +88,7 @@ impl LedgerArgsBuilder {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct LedgerDto {
+pub struct LedgerResponse {
     pub accounts: HashMap<Account, LedgerAccountInfo>,
 }
 
@@ -100,48 +98,24 @@ pub struct LedgerAccountInfo {
     pub open_block: BlockHash,
     pub representative_block: BlockHash,
     pub balance: Amount,
-    pub modified_timestamp: u64,
-    pub block_count: u64,
+    pub modified_timestamp: RpcU64,
+    pub block_count: RpcU64,
     pub representative: Option<Account>,
     pub weight: Option<Amount>,
     pub pending: Option<Amount>,
     pub receivable: Option<Amount>,
 }
 
-impl LedgerAccountInfo {
-    pub fn new(
-        frontier: BlockHash,
-        open_block: BlockHash,
-        representative_block: BlockHash,
-        balance: Amount,
-        modified_timestamp: u64,
-        block_count: u64,
-        representative: Option<Account>,
-        weight: Option<Amount>,
-        pending: Option<Amount>,
-        receivable: Option<Amount>,
-    ) -> Self {
-        Self {
-            frontier,
-            open_block,
-            representative_block,
-            balance,
-            modified_timestamp,
-            block_count,
-            representative,
-            weight,
-            pending,
-            receivable,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{LedgerAccountInfo, LedgerArgs, LedgerDto, RpcCommand};
+    use std::collections::HashMap;
+
+    use crate::{
+        ledger::{LedgerAccountInfo, LedgerArgs, LedgerResponse},
+        RpcCommand,
+    };
     use rsnano_core::{Account, Amount, BlockHash};
     use serde_json::json;
-    use std::collections::HashMap;
 
     #[test]
     fn test_ledger_rpc_command_serialization() {
@@ -167,12 +141,12 @@ mod tests {
         let expected = json!({
             "action": "ledger",
             "account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
-            "count": 1000,
-            "representative": true,
-            "weight": true,
-            "receivable": true,
-            "modified_since": 1234567890,
-            "sorting": true,
+            "count": "1000",
+            "representative": "true",
+            "weight": "true",
+            "receivable": "true",
+            "modified_since": "1234567890",
+            "sorting": "true",
             "threshold": "1000000000000000000000000000000"
         });
 
@@ -184,13 +158,13 @@ mod tests {
         let json_str = r#"{
             "action": "ledger",
             "account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
-            "count": 1000,
-            "representative": true,
-            "weight": true,
-            "pending": true,
-            "receivable": true,
-            "modified_since": 1234567890,
-            "sorting": true,
+            "count": "1000",
+            "representative": "true",
+            "weight": "true",
+            "pending": "true",
+            "receivable": "true",
+            "modified_since": "1234567890",
+            "sorting": "true",
             "threshold": "1000000000000000000000000000000"
         }"#;
 
@@ -207,13 +181,12 @@ mod tests {
                         .unwrap()
                     )
                 );
-                assert_eq!(args.count, Some(1000));
-                assert_eq!(args.representative, Some(true));
-                assert_eq!(args.weight, Some(true));
-                assert_eq!(args.pending, Some(true));
-                assert_eq!(args.receivable, Some(true));
-                assert_eq!(args.modified_since, Some(1234567890));
-                assert_eq!(args.sorting, Some(true));
+                assert_eq!(args.count, Some(1000.into()));
+                assert_eq!(args.representative, Some(true.into()));
+                assert_eq!(args.weight, Some(true.into()));
+                assert_eq!(args.receivable, Some(true.into()));
+                assert_eq!(args.modified_since, Some(1234567890.into()));
+                assert_eq!(args.sorting, Some(true.into()));
                 assert_eq!(
                     args.threshold,
                     Some(Amount::raw(1000000000000000000000000000000u128))
@@ -231,35 +204,35 @@ mod tests {
                 "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
             .unwrap(),
-            LedgerAccountInfo::new(
-                BlockHash::decode_hex(
+            LedgerAccountInfo {
+                frontier: BlockHash::decode_hex(
                     "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
                 )
                 .unwrap(),
-                BlockHash::decode_hex(
+                open_block: BlockHash::decode_hex(
                     "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                 )
                 .unwrap(),
-                BlockHash::decode_hex(
+                representative_block: BlockHash::decode_hex(
                     "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                 )
                 .unwrap(),
-                Amount::raw(10000000000000000000000000000000u128),
-                1553174994,
-                50,
-                Some(
+                balance: Amount::raw(10000000000000000000000000000000u128),
+                modified_timestamp: 1553174994.into(),
+                block_count: 50.into(),
+                representative: Some(
                     Account::decode_account(
                         "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     )
                     .unwrap(),
                 ),
-                Some(Amount::raw(10000000000000000000000000000000u128)),
-                Some(Amount::raw(10000000000000000000000000000u128)),
-                Some(Amount::raw(10000000000000000000000000000u128)),
-            ),
+                weight: Some(Amount::raw(10000000000000000000000000000000u128)),
+                pending: Some(Amount::raw(10000000000000000000000000000u128)),
+                receivable: Some(Amount::raw(10000000000000000000000000000u128)),
+            },
         );
 
-        let ledger_dto = LedgerDto { accounts };
+        let ledger_dto = LedgerResponse { accounts };
 
         let serialized = serde_json::to_value(&ledger_dto).unwrap();
 
@@ -270,8 +243,8 @@ mod tests {
                     "open_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "representative_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "balance": "10000000000000000000000000000000",
-                    "modified_timestamp": 1553174994,
-                    "block_count": 50,
+                    "modified_timestamp": "1553174994",
+                    "block_count": "50",
                     "representative": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     "weight": "10000000000000000000000000000000",
                     "pending": "10000000000000000000000000000",
@@ -292,8 +265,8 @@ mod tests {
                     "open_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "representative_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "balance": "10000000000000000000000000000000",
-                    "modified_timestamp": 1553174994,
-                    "block_count": 50,
+                    "modified_timestamp": "1553174994",
+                    "block_count": "50",
                     "representative": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     "weight": "10000000000000000000000000000000",
                     "pending": "10000000000000000000000000000",
@@ -302,7 +275,7 @@ mod tests {
             }
         }"#;
 
-        let deserialized: LedgerDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: LedgerResponse = serde_json::from_str(json_str).unwrap();
 
         assert_eq!(deserialized.accounts.len(), 1);
 
@@ -337,8 +310,8 @@ mod tests {
             account_info.balance,
             Amount::raw(10000000000000000000000000000000u128)
         );
-        assert_eq!(account_info.modified_timestamp, 1553174994);
-        assert_eq!(account_info.block_count, 50);
+        assert_eq!(account_info.modified_timestamp, 1553174994.into());
+        assert_eq!(account_info.block_count, 50.into());
         assert_eq!(
             account_info.representative,
             Some(

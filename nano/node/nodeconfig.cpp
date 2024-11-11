@@ -28,6 +28,7 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.priority_bucket = config.priority_bucket.into_dto ();
 	dto.peering_port = config.peering_port.value_or (0);
 	dto.peering_port_defined = config.peering_port.has_value ();
+	dto.default_peering_port = config.default_peering_port;
 	dto.bootstrap_fraction_numerator = config.bootstrap_fraction_numerator;
 	dto.bootstrap_ascending = config.bootstrap_ascending.to_dto ();
 	dto.bootstrap_server = config.bootstrap_server.to_dto ();
@@ -61,6 +62,8 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.use_memory_pools = config.use_memory_pools;
 	dto.bandwidth_limit = config.bandwidth_limit;
 	dto.bandwidth_limit_burst_ratio = config.bandwidth_limit_burst_ratio;
+	dto.max_peers_per_ip = config.max_peers_per_ip;
+	dto.max_peers_per_subnetwork = config.max_peers_per_subnetwork;
 	dto.bootstrap_bandwidth_limit = config.bootstrap_bandwidth_limit;
 	dto.bootstrap_bandwidth_burst_ratio = config.bootstrap_bandwidth_burst_ratio;
 	dto.confirming_set_batch_time_ms = config.confirming_set_batch_time.count ();
@@ -107,7 +110,6 @@ rsnano::NodeConfigDto to_node_config_dto (nano::node_config const & config)
 	dto.callback_target_len = config.callback_target.size ();
 	dto.callback_port = config.callback_port;
 	dto.websocket_config = config.websocket_config.to_dto ();
-	dto.ipc_config = config.ipc_config.to_dto ();
 	dto.diagnostics_config = config.diagnostics_config.to_dto ();
 	dto.stat_config = config.stats_config.to_dto ();
 	dto.lmdb_config = config.lmdb_config.to_dto ();
@@ -134,7 +136,6 @@ nano::node_config::node_config (nano::network_params & network_params) :
 nano::node_config::node_config (const std::optional<uint16_t> & peering_port_a, nano::network_params & network_params) :
 	network_params{ network_params },
 	websocket_config{ network_params.network },
-	ipc_config (network_params.network),
 	rep_crawler{ std::chrono::milliseconds (0) }
 {
 	rsnano::NodeConfigDto dto;
@@ -158,6 +159,7 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	{
 		peering_port = std::nullopt;
 	}
+	default_peering_port = dto.default_peering_port;
 	optimistic_scheduler.load_dto (dto.optimistic_scheduler);
 	hinted_scheduler.load_dto (dto.hinted_scheduler);
 	priority_bucket = nano::priority_bucket_config{ dto.priority_bucket };
@@ -193,6 +195,8 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	use_memory_pools = dto.use_memory_pools;
 	bandwidth_limit = dto.bandwidth_limit;
 	bandwidth_limit_burst_ratio = dto.bandwidth_limit_burst_ratio;
+	max_peers_per_ip = dto.max_peers_per_ip;
+	max_peers_per_subnetwork = dto.max_peers_per_subnetwork;
 	bootstrap_bandwidth_limit = dto.bootstrap_bandwidth_limit;
 	bootstrap_bandwidth_burst_ratio = dto.bootstrap_bandwidth_burst_ratio;
 	confirming_set_batch_time = std::chrono::milliseconds (dto.confirming_set_batch_time_ms);
@@ -234,7 +238,6 @@ void nano::node_config::load_dto (rsnano::NodeConfigDto & dto)
 	callback_target = std::string (reinterpret_cast<const char *> (dto.callback_target), dto.callback_target_len);
 	callback_port = dto.callback_port;
 	websocket_config.load_dto (dto.websocket_config);
-	ipc_config.load_dto (dto.ipc_config);
 	diagnostics_config.load_dto (dto.diagnostics_config);
 	stats_config.load_dto (dto.stat_config);
 	lmdb_config.load_dto (dto.lmdb_config);
@@ -270,12 +273,6 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			auto websocket_config_l (toml.get_required_child ("websocket"));
 			websocket_config.deserialize_toml (websocket_config_l);
-		}
-
-		if (toml.has_key ("ipc"))
-		{
-			auto ipc_config_l (toml.get_required_child ("ipc"));
-			ipc_config.deserialize_toml (ipc_config_l);
 		}
 
 		if (toml.has_key ("diagnostics"))

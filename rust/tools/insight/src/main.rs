@@ -1,5 +1,7 @@
 mod channels;
 mod ledger_stats;
+mod message_collection;
+mod message_rate_calculator;
 mod message_recorder;
 mod node_factory;
 mod node_runner;
@@ -23,9 +25,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "RsNano Insight",
         options,
-        Box::new(|cc| {
-            cc.egui_ctx.set_zoom_factor(1.15);
-            Ok(Box::new(AppView::new(runtime_handle)))
-        }),
+        Box::new(|_| Ok(Box::new(AppView::new(runtime_handle)))),
     )
 }

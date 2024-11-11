@@ -7,23 +7,24 @@ fn confirmation_quorum() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.confirmation_quorum(None).await.unwrap() });
+        .block_on(async { server.client.confirmation_quorum(None).await.unwrap() });
 
     let reps = node.online_reps.lock().unwrap();
 
     assert_eq!(result.quorum_delta, reps.quorum_delta());
-    assert_eq!(result.online_weight_quorum_percent, reps.quorum_percent());
+    assert_eq!(
+        result.online_weight_quorum_percent,
+        reps.quorum_percent().into()
+    );
     assert_eq!(result.online_weight_minimum, reps.online_weight_minimum());
     assert_eq!(result.online_stake_total, reps.online_weight());
     assert_eq!(result.peers_stake_total, reps.peered_weight());
     assert_eq!(result.trended_stake_total, reps.trended_weight());
     assert_eq!(result.peers, None);
-
-    server.abort();
 }
 
 #[test]
@@ -55,16 +56,19 @@ fn confirmation_quorum_peer_details() {
 
     assert_eq!(node0.block_confirmed(&hash), true);
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node1.clone(), false);
+    let server = setup_rpc_client_and_server(node1.clone(), false);
 
     let result = node0
         .runtime
-        .block_on(async { rpc_client.confirmation_quorum(Some(true)).await.unwrap() });
+        .block_on(async { server.client.confirmation_quorum(Some(true)).await.unwrap() });
 
     let reps = node0.online_reps.lock().unwrap();
 
     assert_eq!(result.quorum_delta, reps.quorum_delta());
-    assert_eq!(result.online_weight_quorum_percent, reps.quorum_percent());
+    assert_eq!(
+        result.online_weight_quorum_percent,
+        reps.quorum_percent().into()
+    );
     assert_eq!(result.online_weight_minimum, reps.online_weight_minimum());
     assert_eq!(result.online_stake_total, reps.online_weight());
     assert_eq!(result.peers_stake_total, reps.peered_weight());
@@ -72,6 +76,4 @@ fn confirmation_quorum_peer_details() {
 
     let peer_details = result.peers.unwrap();
     println!("{:?}", peer_details);
-
-    server.abort();
 }

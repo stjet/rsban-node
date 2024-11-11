@@ -10,7 +10,7 @@ fn chain() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -42,7 +42,8 @@ fn chain() {
     );
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .chain(ChainArgs::builder(block.hash(), u64::MAX).build())
             .await
             .unwrap()
@@ -53,8 +54,6 @@ fn chain() {
     assert_eq!(blocks.len(), 2);
     assert_eq!(blocks[0], block.hash());
     assert_eq!(blocks[1], genesis);
-
-    server.abort();
 }
 
 #[test]
@@ -62,7 +61,7 @@ fn chain_limit() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -94,7 +93,8 @@ fn chain_limit() {
     );
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .chain(ChainArgs::builder(block.hash(), 1).build())
             .await
             .unwrap()
@@ -104,8 +104,6 @@ fn chain_limit() {
 
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0], block.hash());
-
-    server.abort();
 }
 
 #[test]
@@ -113,7 +111,7 @@ fn chain_offset() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
@@ -148,12 +146,10 @@ fn chain_offset() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.chain(args).await.unwrap() });
+        .block_on(async { server.client.chain(args).await.unwrap() });
 
     let blocks = result.blocks.clone();
 
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0], genesis);
-
-    server.abort();
 }

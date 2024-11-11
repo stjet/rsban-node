@@ -113,6 +113,14 @@ impl ConfirmingSet {
         self.thread.len()
     }
 
+    pub fn info(&self) -> ConfirmingSetInfo {
+        let guard = self.thread.mutex.lock().unwrap();
+        ConfirmingSetInfo {
+            size: guard.set.len(),
+            max_size: self.thread.config.max_blocks,
+        }
+    }
+
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
         let guard = self.thread.mutex.lock().unwrap();
         ContainerInfoComponent::Composite(
@@ -124,6 +132,12 @@ impl ConfirmingSet {
             })],
         )
     }
+}
+
+#[derive(Default)]
+pub struct ConfirmingSetInfo {
+    pub size: usize,
+    pub max_size: usize,
 }
 
 impl Drop for ConfirmingSet {

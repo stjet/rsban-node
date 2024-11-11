@@ -18,10 +18,11 @@ fn block_create_state() {
         .unwrap();
     let key1 = KeyPair::new();
 
-    let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node.runtime.block_on(async {
-        rpc_client
+        server
+            .client
             .block_create(BlockCreateArgs::new(
                 BlockTypeDto::State,
                 Some(Amount::MAX - Amount::raw(100)),

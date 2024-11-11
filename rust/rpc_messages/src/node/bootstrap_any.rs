@@ -1,16 +1,11 @@
-use crate::RpcCommand;
 use rsnano_core::Account;
 use serde::{Deserialize, Serialize};
 
-impl RpcCommand {
-    pub fn bootstrap_any(args: BootstrapAnyArgs) -> Self {
-        Self::BootstrapAny(args)
-    }
-}
+use crate::RpcBool;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct BootstrapAnyArgs {
-    pub force: Option<bool>,
+    pub force: Option<RpcBool>,
     pub id: Option<String>,
     pub account: Option<Account>,
 }
@@ -29,7 +24,7 @@ pub struct BootstrapAnyArgsBuilder {
 
 impl BootstrapAnyArgsBuilder {
     pub fn force(mut self) -> Self {
-        self.args.force = Some(true);
+        self.args.force = Some(true.into());
         self
     }
 

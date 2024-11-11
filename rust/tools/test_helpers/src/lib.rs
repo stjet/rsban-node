@@ -27,6 +27,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing_subscriber::EnvFilter;
+
 pub struct System {
     runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
@@ -479,15 +480,24 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
 
 use tokio::net::TcpListener as TokioTcpListener;
 
-pub fn setup_rpc_client_and_server(
-    node: Arc<Node>,
-    enable_control: bool,
-) -> (
-    Arc<NanoRpcClient>,
-    tokio::task::JoinHandle<Result<(), anyhow::Error>>,
-) {
+pub struct RpcServerGuard {
+    pub client: Arc<NanoRpcClient>,
+    tx_stop: Option<tokio::sync::oneshot::Sender<()>>,
+}
+
+impl Drop for RpcServerGuard {
+    fn drop(&mut self) {
+        if let Some(tx) = self.tx_stop.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+pub fn setup_rpc_client_and_server(node: Arc<Node>, enable_control: bool) -> RpcServerGuard {
     let port = get_available_port();
     let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port);
+    let rpc_url = format!("http://[::1]:{}/", port);
+    let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
 
     let listener = node.runtime.block_on(async {
         TokioTcpListener::bind(socket_addr)
@@ -495,14 +505,26 @@ pub fn setup_rpc_client_and_server(
             .expect("Failed to bind to address")
     });
 
-    let server = node
-        .runtime
-        .spawn(run_rpc_server(node.clone(), listener, enable_control));
+    let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
+    let (tx_stop2, rx_stop2) = tokio::sync::oneshot::channel();
 
-    let rpc_url = format!("http://[::1]:{}/", port);
-    let rpc_client = Arc::new(NanoRpcClient::new(Url::parse(&rpc_url).unwrap()));
+    node.runtime.spawn(run_rpc_server(
+        node.clone(),
+        listener,
+        enable_control,
+        tx_stop,
+        async move {
+            tokio::select! {
+                _ = rx_stop => {},
+                _ = rx_stop2 => {}
+            }
+        },
+    ));
 
-    (rpc_client, server)
+    RpcServerGuard {
+        client: rpc_client,
+        tx_stop: Some(tx_stop2),
+    }
 }
 
 pub fn send_block(node: Arc<Node>) -> BlockHash {

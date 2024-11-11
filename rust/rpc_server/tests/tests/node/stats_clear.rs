@@ -7,10 +7,10 @@ fn stats_clear() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     node.runtime
-        .block_on(async { rpc_client.stats_clear().await.unwrap() });
+        .block_on(async { server.client.stats_clear().await.unwrap() });
 
     assert_eq!(
         node.stats
@@ -19,6 +19,4 @@ fn stats_clear() {
     );
 
     assert!(node.stats.last_reset() <= Duration::from_secs(5));
-
-    server.abort();
 }

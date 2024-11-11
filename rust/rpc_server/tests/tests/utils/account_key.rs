@@ -7,7 +7,7 @@ fn account_key() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let wallet_id = WalletId::random();
 
@@ -15,9 +15,7 @@ fn account_key() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.account_key(Account::zero()).await.unwrap() });
+        .block_on(async { server.client.account_key(Account::zero()).await.unwrap() });
 
     assert_eq!(result.key, Account::zero().into());
-
-    server.abort();
 }

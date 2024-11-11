@@ -15,10 +15,11 @@ use crate::{
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_env_or_default_string, is_sanitizer_build},
+    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build},
     Account, Amount, PublicKey, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{cmp::max, fmt, net::Ipv6Addr, str::FromStr, time::Duration};
 
 #[repr(u8)]
@@ -33,6 +34,7 @@ pub enum FrontiersConfirmationMode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
+    pub default_peering_port: u16,
     pub optimistic_scheduler: OptimisticSchedulerConfig,
     pub hinted_scheduler: HintedSchedulerConfig,
     pub priority_bucket: PriorityBucketConfig,
@@ -68,6 +70,8 @@ pub struct NodeConfig {
     pub use_memory_pools: bool,
     pub bandwidth_limit: usize,
     pub bandwidth_limit_burst_ratio: f64,
+    pub max_peers_per_ip: u16,
+    pub max_peers_per_subnetwork: u16,
     pub bootstrap_ascending: BootstrapAscendingConfig,
     pub bootstrap_server: BootstrapServerConfig,
     pub bootstrap_bandwidth_limit: usize,
@@ -82,7 +86,7 @@ pub struct NodeConfig {
     pub rep_crawler_weight_minimum: Amount,
     pub work_peers: Vec<Peer>,
     pub secondary_work_peers: Vec<Peer>,
-    pub preconfigured_peers: Vec<String>,
+    pub preconfigured_peers: Vec<Peer>,
     pub preconfigured_representatives: Vec<PublicKey>,
     pub max_pruning_age_s: i64,
     pub max_pruning_depth: u64,
@@ -112,7 +116,7 @@ pub struct NodeConfig {
     pub monitor: MonitorConfig,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Peer {
     pub address: String,
     pub port: u16,
@@ -161,6 +165,15 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
+    pub fn default_for(network: Networks, parallelism: usize) -> Self {
+        let net_params = NetworkParams::new(network);
+        Self::new(
+            Some(net_params.network.default_node_port),
+            &net_params,
+            parallelism,
+        )
+    }
+
     pub fn new(
         peering_port: Option<u16>,
         network_params: &NetworkParams,
@@ -179,13 +192,15 @@ impl NodeConfig {
         let mut enable_voting = false;
         let mut preconfigured_peers = Vec::new();
         let mut preconfigured_representatives = Vec::new();
+        let default_port = network_params.network.default_node_port;
         match network_params.network.current_network {
             Networks::NanoDevNetwork => {
                 enable_voting = true;
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());
             }
             Networks::NanoBetaNetwork => {
-                preconfigured_peers.push(DEFAULT_BETA_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_BETA_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     Account::decode_account(
                         "nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
@@ -195,7 +210,8 @@ impl NodeConfig {
                 );
             }
             Networks::NanoLiveNetwork => {
-                preconfigured_peers.push(DEFAULT_LIVE_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_LIVE_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
                         "A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF",
@@ -246,7 +262,8 @@ impl NodeConfig {
                 );
             }
             Networks::NanoTestNetwork => {
-                preconfigured_peers.push(DEFAULT_TEST_PEER_NETWORK.clone());
+                preconfigured_peers
+                    .push(Peer::new(DEFAULT_TEST_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());
             }
             Networks::Invalid => panic!("invalid network"),
@@ -259,6 +276,7 @@ impl NodeConfig {
 
         Self {
             peering_port,
+            default_peering_port: network_params.network.default_node_port,
             bootstrap_fraction_numerator: 1,
             receive_minimum: Amount::raw(*XRB_RATIO),
             online_weight_minimum: Amount::nano(60_000_000),
@@ -299,6 +317,8 @@ impl NodeConfig {
             bandwidth_limit: 10 * 1024 * 1024,
             // By default, allow bursts of 15MB/s (not sustainable)
             bandwidth_limit_burst_ratio: 3_f64,
+            max_peers_per_ip: network_params.network.max_peers_per_ip as u16,
+            max_peers_per_subnetwork: network_params.network.max_peers_per_subnetwork as u16,
             // Default boostrap outbound traffic limit is 5MB/s
             bootstrap_bandwidth_limit: 5 * 1024 * 1024,
             // Bootstrap traffic does not need bursts
@@ -387,6 +407,61 @@ impl Default for MonitorConfig {
         Self {
             enabled: true,
             interval: Duration::from_secs(60),
+        }
+    }
+}
+
+impl Serialize for Peer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Peer {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(D::Error::custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn test_peer_serialize() {
+        let peer = Peer::new("192.168.1.1", 7075);
+        let serialized = serde_json::to_string(&peer).unwrap();
+        assert_eq!(serialized, "\"192.168.1.1:7075\"");
+    }
+
+    #[test]
+    fn test_peer_deserialize() {
+        let serialized = "\"192.168.1.1:7075\"";
+        let peer: Peer = serde_json::from_str(serialized).unwrap();
+        assert_eq!(peer, Peer::new("192.168.1.1", 7075));
+    }
+
+    #[test]
+    fn test_peer_invalid_deserialize() {
+        let invalid_inputs = vec![
+            "\"invalid\"",
+            "\"192.168.1.1\"",
+            "\"192.168.1.1:\"",
+            "\"192.168.1.1:abc\"",
+            "\"192.168.1.1:65536\"",
+        ];
+
+        for input in invalid_inputs {
+            let result: Result<Peer, _> = serde_json::from_str(input);
+            assert!(result.is_err(), "Expected error for input: {}", input);
         }
     }
 }

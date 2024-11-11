@@ -1,4 +1,4 @@
-use crate::message_recorder::RecordedMessage;
+use crate::message_collection::RecordedMessage;
 use rsnano_network::ChannelDirection;
 
 #[derive(Clone)]

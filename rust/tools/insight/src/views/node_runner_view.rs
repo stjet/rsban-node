@@ -1,5 +1,6 @@
 use crate::view_models::NodeRunnerViewModel;
-use eframe::egui::{Button, Ui};
+use eframe::egui::{Button, RadioButton, TextEdit, Ui};
+use rsnano_core::Networks;
 
 pub(crate) struct NodeRunnerView<'a> {
     model: &'a mut NodeRunnerViewModel,
@@ -12,28 +13,25 @@ impl<'a> NodeRunnerView<'a> {
 
     pub fn show(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            self.start_beta_node_button(ui);
-            self.start_live_node_button(ui);
+            self.network_radio_button(ui, Networks::NanoLiveNetwork);
+            self.network_radio_button(ui, Networks::NanoBetaNetwork);
+            self.network_radio_button(ui, Networks::NanoTestNetwork);
+            ui.add_enabled(
+                self.model.can_start_node(),
+                TextEdit::singleline(&mut self.model.data_path),
+            );
+            self.start_node_button(ui);
             self.stop_button(ui);
             ui.label(self.model.status());
         });
     }
 
-    fn start_live_node_button(&mut self, ui: &mut Ui) {
+    fn start_node_button(&mut self, ui: &mut Ui) {
         if ui
-            .add_enabled(self.model.can_start_node(), Button::new("Start live node"))
+            .add_enabled(self.model.can_start_node(), Button::new("Start node"))
             .clicked()
         {
-            self.model.start_live_node();
-        }
-    }
-
-    fn start_beta_node_button(&mut self, ui: &mut Ui) {
-        if ui
-            .add_enabled(self.model.can_start_node(), Button::new("Start beta node"))
-            .clicked()
-        {
-            self.model.start_beta_node();
+            self.model.start_node();
         }
     }
 
@@ -43,6 +41,18 @@ impl<'a> NodeRunnerView<'a> {
             .clicked()
         {
             self.model.stop_node();
+        }
+    }
+
+    fn network_radio_button(&mut self, ui: &mut Ui, network: Networks) {
+        if ui
+            .add_enabled(
+                self.model.can_start_node(),
+                RadioButton::new(self.model.network() == network, network.as_str()),
+            )
+            .clicked()
+        {
+            self.model.set_network(network);
         }
     }
 }

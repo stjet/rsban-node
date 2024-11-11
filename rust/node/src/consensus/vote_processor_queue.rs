@@ -1,7 +1,7 @@
 use super::{RepTier, RepTiers, VoteProcessorConfig};
 use crate::{
     stats::{DetailType, StatType, Stats},
-    transport::FairQueue,
+    transport::{FairQueue, FairQueueInfo, QueueInfo},
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
@@ -111,6 +111,14 @@ impl VoteProcessorQueue {
             guard.stopped = true;
         }
         self.condition.notify_all();
+    }
+
+    pub fn info(&self) -> FairQueueInfo<RepTier> {
+        self.data
+            .lock()
+            .unwrap()
+            .queue
+            .compacted_info(|(tier, _)| *tier)
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {

@@ -1,11 +1,10 @@
-use std::fmt::Debug;
-
 use crate::utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream};
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use serde::de::{Unexpected, Visitor};
+use std::fmt::Debug;
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Amount {
     raw: u128, // native endian!
 }

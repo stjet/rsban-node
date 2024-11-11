@@ -3,7 +3,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountBalanceDto, AccountsBalancesDto, WalletBalancesArgs};
+use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesResponse, WalletBalancesArgs};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -31,23 +31,21 @@ fn wallet_balances_threshold_none() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet: WalletId = 1.into();
     node.wallets.create(wallet);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.wallet_balances(wallet).await.unwrap() });
+        .block_on(async { server.client.wallet_balances(wallet).await.unwrap() });
 
-    let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
-    let expected_result = AccountsBalancesDto {
+    let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
+    let expected_result = AccountsBalancesResponse {
         balances: expected_balances,
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }
 
 #[test]
@@ -55,7 +53,7 @@ fn wallet_balances_threshold_some() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet: WalletId = 1.into();
     let private_key = RawKey::zero();
@@ -70,24 +68,26 @@ fn wallet_balances_threshold_some() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet)
+        let args = WalletBalancesArgs::build(wallet)
             .with_minimum_balance(Amount::zero())
-            .build();
-        rpc_client.wallet_balances(args).await.unwrap()
+            .finish();
+        server.client.wallet_balances(args).await.unwrap()
     });
 
-    let mut expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
+    let mut expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
     expected_balances.insert(
         public_key.into(),
-        AccountBalanceDto::new(Amount::zero(), Amount::raw(1), Amount::raw(1)),
+        AccountBalanceResponse {
+            balance: Amount::zero(),
+            pending: Amount::raw(1),
+            receivable: Amount::raw(1),
+        },
     );
-    let expected_result = AccountsBalancesDto {
+    let expected_result = AccountsBalancesResponse {
         balances: expected_balances,
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn wallet_balances_threshold_some_fails() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let wallet = 1.into();
     node.wallets.create(wallet);
@@ -108,19 +108,17 @@ fn wallet_balances_threshold_some_fails() {
     send_block(node.clone(), public_key.into());
 
     let result = node.runtime.block_on(async {
-        let args = WalletBalancesArgs::builder(wallet)
+        let args = WalletBalancesArgs::build(wallet)
             .with_minimum_balance(Amount::nano(1))
-            .build();
+            .finish();
 
-        rpc_client.wallet_balances(args).await.unwrap()
+        server.client.wallet_balances(args).await.unwrap()
     });
 
-    let expected_balances: HashMap<Account, AccountBalanceDto> = HashMap::new();
-    let expected_result = AccountsBalancesDto {
+    let expected_balances: HashMap<Account, AccountBalanceResponse> = HashMap::new();
+    let expected_result = AccountsBalancesResponse {
         balances: expected_balances,
     };
 
     assert_eq!(result, expected_result);
-
-    server.abort();
 }

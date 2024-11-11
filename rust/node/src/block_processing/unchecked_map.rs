@@ -88,10 +88,10 @@ impl UncheckedMap {
         let mut result = Vec::new();
         lock.entries_container.for_each_with_dependency(
             hash,
-            &mut |_, info| {
+            |_, info| {
                 result.push(info.clone());
             },
-            &|| true,
+            || true,
         );
         result
     }
@@ -139,8 +139,8 @@ impl UncheckedMap {
 
     pub fn for_each(
         &self,
-        action: Box<dyn FnMut(&UncheckedKey, &UncheckedInfo)>,
-        predicate: Box<dyn Fn() -> bool>,
+        action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        predicate: impl FnMut() -> bool,
     ) {
         let lock = self.mutable.lock().unwrap();
         lock.entries_container.for_each(action, predicate)
@@ -149,8 +149,8 @@ impl UncheckedMap {
     pub fn for_each_with_dependency(
         &self,
         dependency: &HashOrAccount,
-        action: &mut dyn FnMut(&UncheckedKey, &UncheckedInfo),
-        predicate: &dyn Fn() -> bool,
+        action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        predicate: impl FnMut() -> bool,
     ) {
         let lock = self.mutable.lock().unwrap();
         lock.entries_container
@@ -256,14 +256,14 @@ impl UncheckedMapThread {
         let mut lock = self.mutable.lock().unwrap();
         lock.entries_container.for_each_with_dependency(
             hash,
-            &mut |key, info| {
+            |key, info| {
                 delete_queue.push(key.clone());
                 self.stats.inc(StatType::Unchecked, DetailType::Satisfied);
                 if let Some(callback) = &lock.satisfied_callback {
                     callback(info);
                 }
             },
-            &|| true,
+            || true,
         );
         if !self.disable_delete {
             for key in &delete_queue {
@@ -380,8 +380,8 @@ impl EntriesContainer {
 
     pub fn for_each(
         &self,
-        mut action: Box<dyn FnMut(&UncheckedKey, &UncheckedInfo)>,
-        predicate: Box<dyn Fn() -> bool>,
+        mut action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        mut predicate: impl FnMut() -> bool,
     ) {
         for entry in self.by_id.values() {
             if !predicate() {
@@ -394,8 +394,8 @@ impl EntriesContainer {
     pub fn for_each_with_dependency(
         &self,
         dependency: &HashOrAccount,
-        action: &mut dyn FnMut(&UncheckedKey, &UncheckedInfo),
-        predicate: &dyn Fn() -> bool,
+        mut action: impl FnMut(&UncheckedKey, &UncheckedInfo),
+        mut predicate: impl FnMut() -> bool,
     ) {
         let key = UncheckedKey::new(dependency.into(), BlockHash::zero());
         for (key, id) in self.by_key.range(key..) {

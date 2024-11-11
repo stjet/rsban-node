@@ -6,13 +6,11 @@ fn nano_to_raw() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.nano_to_raw(Amount::nano(1)).await.unwrap() });
+        .block_on(async { server.client.nano_to_raw(1).await.unwrap() });
 
-    assert_eq!(result.value, Amount::raw(1000000000000000000000000000000));
-
-    server.abort();
+    assert_eq!(result.amount, Amount::nano(1));
 }

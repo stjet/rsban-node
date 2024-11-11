@@ -1,4 +1,7 @@
-use crate::{BlockTypeDto, RpcCommand, WorkVersionDto};
+use crate::{
+    common::{BlockTypeDto, WorkVersionDto},
+    RpcCommand, RpcU64,
+};
 use rsnano_core::{Account, Amount, BlockHash, JsonBlock, Link, RawKey, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +38,7 @@ pub struct BlockCreateArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<WorkVersionDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub difficulty: Option<u64>,
+    pub difficulty: Option<RpcU64>,
 }
 
 impl BlockCreateArgs {
@@ -67,19 +70,19 @@ impl BlockCreateArgs {
             previous,
             work,
             version,
-            difficulty,
+            difficulty: difficulty.map(|i| i.into()),
         }
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct BlockCreateDto {
+pub struct BlockCreateResponse {
     pub hash: BlockHash,
     pub difficulty: WorkNonce,
     pub block: JsonBlock,
 }
 
-impl BlockCreateDto {
+impl BlockCreateResponse {
     pub fn new(hash: BlockHash, difficulty: WorkNonce, block: JsonBlock) -> Self {
         Self {
             hash,
@@ -204,7 +207,7 @@ mod tests {
     fn serialize_block_create_dto() {
         let block = StateBlock::new_test_instance();
 
-        let dto = BlockCreateDto::new(block.hash(), 10.into(), block.json_representation());
+        let dto = BlockCreateResponse::new(block.hash(), 10.into(), block.json_representation());
 
         let serialized = serde_json::to_string_pretty(&dto).unwrap();
         let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
@@ -230,7 +233,7 @@ mod tests {
 
         let json_string = serde_json::to_string(&json).unwrap();
 
-        let dto: BlockCreateDto = serde_json::from_str(&json_string).unwrap();
+        let dto: BlockCreateResponse = serde_json::from_str(&json_string).unwrap();
 
         assert_eq!(dto.hash, block.hash());
         assert_eq!(dto.difficulty, 10.into());

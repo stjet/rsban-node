@@ -7,4 +7,4 @@ mod stats_log_sink;
 pub use stats::*;
 pub use stats_config::StatsConfig;
 pub use stats_enums::*;
-pub use stats_log_sink::{StatFileWriter, StatsJsonWriter, StatsLogSink};
+pub use stats_log_sink::{StatFileWriter, StatsJsonWriter, StatsJsonWriterV2, StatsLogSink};

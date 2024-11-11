@@ -1,7 +1,7 @@
-use rsnano_core::{Account, Amount, BlockSubType, PublicKey, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, PublicKey, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{AccountHistoryArgs, AccountWithCountArgs};
+use rsnano_rpc_messages::{AccountHistoryArgs, BlockTypeDto};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -93,65 +93,68 @@ fn account_history() {
         .unwrap();
 
     // Set up RPC client and server
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let args = AccountWithCountArgs::new(*DEV_GENESIS_ACCOUNT, 100);
+    let args = AccountHistoryArgs::new(*DEV_GENESIS_ACCOUNT, 100);
 
     let account_history = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history.account, *DEV_GENESIS_ACCOUNT);
     assert_eq!(account_history.history.len(), 5);
 
     // Verify history entries
     let history = account_history.history;
-    assert_eq!(history[0].block_type, BlockSubType::Receive);
+    assert_eq!(history[0].block_type, Some(BlockTypeDto::Receive));
     assert_eq!(history[0].hash, ureceive.hash());
-    assert_eq!(history[0].account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(history[0].amount, Amount::nano(1_000));
-    assert_eq!(history[0].height, 6);
-    assert!(!history[0].confirmed);
+    assert_eq!(history[0].account, Some(*DEV_GENESIS_ACCOUNT));
+    assert_eq!(history[0].amount, Some(Amount::nano(1_000)));
+    assert_eq!(history[0].height, 6.into());
+    assert_eq!(history[0].confirmed, false.into());
 
-    assert_eq!(history[1].block_type, BlockSubType::Send);
+    assert_eq!(history[1].block_type, Some(BlockTypeDto::Send));
     assert_eq!(history[1].hash, usend.hash());
-    assert_eq!(history[1].account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(history[1].amount, Amount::nano(1_000));
-    assert_eq!(history[1].height, 5);
-    assert!(!history[1].confirmed);
+    assert_eq!(history[1].account, Some(*DEV_GENESIS_ACCOUNT));
+    assert_eq!(history[1].amount, Some(Amount::nano(1_000)));
+    assert_eq!(history[1].height, 5.into());
+    assert_eq!(history[1].confirmed, false.into());
 
-    assert_eq!(history[2].block_type, BlockSubType::Receive);
+    assert_eq!(history[2].block_type, Some(BlockTypeDto::Receive));
     assert_eq!(history[2].hash, receive.hash());
-    assert_eq!(history[2].account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(history[2].amount, node.config.receive_minimum);
-    assert_eq!(history[2].height, 4);
-    assert!(!history[2].confirmed);
+    assert_eq!(history[2].account, Some(*DEV_GENESIS_ACCOUNT));
+    assert_eq!(history[2].amount, Some(node.config.receive_minimum));
+    assert_eq!(history[2].height, 4.into());
+    assert_eq!(history[2].confirmed, false.into());
 
-    assert_eq!(history[3].block_type, BlockSubType::Send);
+    assert_eq!(history[3].block_type, Some(BlockTypeDto::Send));
     assert_eq!(history[3].hash, send.hash());
-    assert_eq!(history[3].account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(history[3].amount, node.config.receive_minimum);
-    assert_eq!(history[3].height, 3);
-    assert!(!history[3].confirmed);
+    assert_eq!(history[3].account, Some(*DEV_GENESIS_ACCOUNT));
+    assert_eq!(history[3].amount, Some(node.config.receive_minimum));
+    assert_eq!(history[3].height, 3.into());
+    assert_eq!(history[3].confirmed, false.into());
 
-    assert_eq!(history[4].block_type, BlockSubType::Receive);
+    assert_eq!(history[4].block_type, Some(BlockTypeDto::Receive));
     assert_eq!(history[4].hash, *DEV_GENESIS_HASH);
-    assert_eq!(history[4].account, *DEV_GENESIS_ACCOUNT);
-    assert_eq!(history[4].amount, node.ledger.constants.genesis_amount);
-    assert_eq!(history[4].height, 1);
-    assert!(history[4].confirmed);
+    assert_eq!(history[4].account, Some(*DEV_GENESIS_ACCOUNT));
+    assert_eq!(
+        history[4].amount,
+        Some(node.ledger.constants.genesis_amount)
+    );
+    assert_eq!(history[4].height, 1.into());
+    assert_eq!(history[4].confirmed, true.into());
 
-    let args = AccountHistoryArgs::builder(*DEV_GENESIS_ACCOUNT, 1)
+    let args = AccountHistoryArgs::build_for_account(*DEV_GENESIS_ACCOUNT, 1)
         .reverse()
-        .build();
+        .finish();
 
     // Test count and reverse
     let account_history_reverse = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_reverse.history.len(), 1);
-    assert_eq!(account_history_reverse.history[0].height, 1);
+    assert_eq!(account_history_reverse.history[0].height, 1.into());
     assert_eq!(account_history_reverse.next, Some(change.hash()));
 
     // Test filtering
@@ -186,40 +189,41 @@ fn account_history() {
         .unwrap()
         .unwrap();
 
-    let args = AccountHistoryArgs::builder(*DEV_GENESIS_ACCOUNT, 100)
+    let args = AccountHistoryArgs::build_for_account(*DEV_GENESIS_ACCOUNT, 100)
         .account_filter(vec![account2])
-        .build();
+        .finish();
 
     // Test filter for send state blocks
     let account_history_filtered_send = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_filtered_send.history.len(), 2);
     assert_eq!(
         account_history_filtered_send.history[0].block_type,
-        BlockSubType::Send
+        Some(BlockTypeDto::Send)
     );
-    assert_eq!(account_history_filtered_send.history[0].account, account2);
+    assert_eq!(
+        account_history_filtered_send.history[0].account,
+        Some(account2)
+    );
 
-    let args = AccountHistoryArgs::builder(account2.into(), 100)
+    let args = AccountHistoryArgs::build_for_account(account2.into(), 100)
         .account_filter(vec![*DEV_GENESIS_ACCOUNT])
-        .build();
+        .finish();
 
     // Test filter for receive state blocks
     let account_history_filtered_receive = node
         .runtime
-        .block_on(async { rpc_client.account_history(args).await.unwrap() });
+        .block_on(async { server.client.account_history(args).await.unwrap() });
 
     assert_eq!(account_history_filtered_receive.history.len(), 1);
     assert_eq!(
         account_history_filtered_receive.history[0].block_type,
-        BlockSubType::Receive
+        Some(BlockTypeDto::Receive)
     );
     assert_eq!(
         account_history_filtered_receive.history[0].account,
-        *DEV_GENESIS_ACCOUNT
+        Some(*DEV_GENESIS_ACCOUNT)
     );
-
-    server.abort();
 }

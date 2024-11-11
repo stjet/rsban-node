@@ -1,8 +1,9 @@
 use super::{
-    ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
-    DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
-    MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
-    RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
+    parse_peers::parse_peers, ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml,
+    BootstrapServerToml, DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml,
+    IpcToml, LmdbToml, MessageProcessorToml, MonitorToml, OptimisticSchedulerToml,
+    PriorityBucketToml, RepCrawlerToml, RequestAggregatorToml, StatsToml, VoteCacheToml,
+    VoteProcessorToml, WebsocketToml,
 };
 use crate::config::{FrontiersConfirmationMode, NodeConfig, Peer};
 use rsnano_core::{Account, Amount};
@@ -18,6 +19,8 @@ pub struct NodeToml {
     pub backup_before_upgrade: Option<bool>,
     pub bandwidth_limit: Option<usize>,
     pub bandwidth_limit_burst_ratio: Option<f64>,
+    pub max_peers_per_ip: Option<u16>,
+    pub max_peers_per_subnetwork: Option<u16>,
     pub block_processor_batch_max_time: Option<i64>,
     pub bootstrap_bandwidth_burst_ratio: Option<f64>,
     pub bootstrap_bandwidth_limit: Option<usize>,
@@ -99,6 +102,12 @@ impl NodeConfig {
         if let Some(bandwidth_limit) = toml.bandwidth_limit {
             self.bandwidth_limit = bandwidth_limit;
         }
+        if let Some(max) = toml.max_peers_per_ip {
+            self.max_peers_per_ip = max;
+        }
+        if let Some(max) = toml.max_peers_per_subnetwork {
+            self.max_peers_per_subnetwork = max;
+        }
         if let Some(bandwidth_limit_burst_ratio) = toml.bandwidth_limit_burst_ratio {
             self.bandwidth_limit_burst_ratio = bandwidth_limit_burst_ratio;
         }
@@ -178,7 +187,7 @@ impl NodeConfig {
             self.pow_sleep_interval_ns = pow_sleep_interval_ns;
         }
         if let Some(preconfigured_peers) = &toml.preconfigured_peers {
-            self.preconfigured_peers = preconfigured_peers.clone();
+            self.preconfigured_peers = parse_peers(preconfigured_peers, self.default_peering_port);
         }
         if let Some(preconfigured_representatives) = &toml.preconfigured_representatives {
             self.preconfigured_representatives = preconfigured_representatives
@@ -364,6 +373,8 @@ impl From<&NodeConfig> for NodeToml {
             backup_before_upgrade: Some(config.backup_before_upgrade),
             bandwidth_limit: Some(config.bandwidth_limit),
             bandwidth_limit_burst_ratio: Some(config.bandwidth_limit_burst_ratio),
+            max_peers_per_ip: Some(config.max_peers_per_ip),
+            max_peers_per_subnetwork: Some(config.max_peers_per_subnetwork),
             block_processor_batch_max_time: Some(config.block_processor_batch_max_time_ms),
             bootstrap_bandwidth_burst_ratio: Some(config.bootstrap_bandwidth_burst_ratio),
             bootstrap_bandwidth_limit: Some(config.bootstrap_bandwidth_limit),
@@ -392,7 +403,13 @@ impl From<&NodeConfig> for NodeToml {
             password_fanout: Some(config.password_fanout),
             peering_port: config.peering_port,
             pow_sleep_interval: Some(config.pow_sleep_interval_ns),
-            preconfigured_peers: Some(config.preconfigured_peers.clone()),
+            preconfigured_peers: Some(
+                config
+                    .preconfigured_peers
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect(),
+            ),
             preconfigured_representatives: Some(
                 config
                     .preconfigured_representatives

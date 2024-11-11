@@ -16,7 +16,7 @@ fn send() {
         .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let destination = Account::decode_account(
         "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
@@ -25,8 +25,15 @@ fn send() {
     let amount = Amount::raw(1000000);
 
     let result = node.runtime.block_on(async {
-        rpc_client
-            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
+        server
+            .client
+            .send(SendArgs {
+                wallet,
+                source: *DEV_GENESIS_ACCOUNT,
+                destination,
+                amount,
+                ..Default::default()
+            })
             .await
             .unwrap()
     });
@@ -35,7 +42,7 @@ fn send() {
 
     assert_timely_msg(
         Duration::from_secs(5),
-        || node.ledger.get_block(&tx, &result.value).is_some(),
+        || node.ledger.get_block(&tx, &result.block).is_some(),
         "Send block not found in ledger",
     );
 
@@ -46,8 +53,6 @@ fn send() {
             .unwrap(),
         Amount::MAX - amount
     );
-
-    server.abort();
 }
 
 #[test]
@@ -61,7 +66,7 @@ fn send_fails_without_enable_control() {
         .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), false);
+    let server = setup_rpc_client_and_server(node.clone(), false);
 
     let destination = Account::decode_account(
         "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
@@ -70,8 +75,15 @@ fn send_fails_without_enable_control() {
     let amount = Amount::raw(1000000);
 
     let result = node.runtime.block_on(async {
-        rpc_client
-            .send(SendArgs::builder(wallet, *DEV_GENESIS_ACCOUNT, destination, amount).build())
+        server
+            .client
+            .send(SendArgs {
+                wallet,
+                source: *DEV_GENESIS_ACCOUNT,
+                destination,
+                amount,
+                ..Default::default()
+            })
             .await
     });
 
@@ -79,6 +91,4 @@ fn send_fails_without_enable_control() {
         result.err().map(|e| e.to_string()),
         Some("node returned error: \"RPC control is disabled\"".to_string())
     );
-
-    server.abort();
 }

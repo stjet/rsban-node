@@ -6,13 +6,13 @@ fn work_generate() {
     let mut system = System::new();
     let node = system.build_node().finish();
 
-    let (rpc_client, _server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let hash = BlockHash::from_bytes([1; 32]);
 
     let work_generate_dto = node
         .runtime
-        .block_on(async { rpc_client.work_generate(hash).await.unwrap() });
+        .block_on(async { server.client.work_generate(hash).await.unwrap() });
 
     assert_eq!(hash, work_generate_dto.hash);
 
@@ -22,7 +22,7 @@ fn work_generate() {
             .work
             .difficulty(WorkVersion::Work1, &hash.into(), work);
 
-    assert_eq!(result_difficulty, work_generate_dto.difficulty);
+    assert_eq!(result_difficulty, work_generate_dto.difficulty.inner());
 
     let expected_multiplier = DifficultyV1::to_multiplier(
         result_difficulty,
@@ -31,5 +31,5 @@ fn work_generate() {
             .work
             .threshold_base(WorkVersion::Work1),
     );
-    assert!((expected_multiplier - work_generate_dto.multiplier.unwrap()).abs() < 1e-6);
+    assert!((expected_multiplier - work_generate_dto.multiplier.unwrap().inner()).abs() < 1e-6);
 }

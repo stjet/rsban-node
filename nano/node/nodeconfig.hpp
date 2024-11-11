@@ -14,7 +14,6 @@
 #include <nano/node/blockprocessor.hpp>
 #include <nano/node/bootstrap/bootstrap_config.hpp>
 #include <nano/node/bootstrap/bootstrap_server.hpp>
-#include <nano/node/ipc/ipc_config.hpp>
 #include <nano/node/repcrawler.hpp>
 #include <nano/node/scheduler/hinted.hpp>
 #include <nano/node/scheduler/optimistic.hpp>
@@ -130,6 +129,7 @@ public:
 	nano::account random_representative () const;
 	nano::network_params network_params;
 	std::optional<uint16_t> peering_port{};
+	uint16_t default_peering_port;
 	nano::scheduler::optimistic_config optimistic_scheduler;
 	nano::scheduler::hinted_config hinted_scheduler;
 	nano::priority_bucket_config priority_bucket;
@@ -169,7 +169,6 @@ public:
 	std::string callback_target;
 	bool allow_local_peers;
 	nano::stats_config stats_config;
-	nano::ipc::ipc_config ipc_config;
 	std::string external_address;
 	uint16_t external_port;
 	std::chrono::milliseconds block_processor_batch_max_time;
@@ -186,6 +185,8 @@ public:
 	std::size_t bandwidth_limit;
 	/** By default, allow bursts of 15MB/s (not sustainable) */
 	double bandwidth_limit_burst_ratio{ 3. };
+	uint16_t max_peers_per_ip;
+	uint16_t max_peers_per_subnetwork;
 	std::size_t bootstrap_bandwidth_limit;
 	double bootstrap_bandwidth_burst_ratio;
 	nano::bootstrap_ascending_config bootstrap_ascending;

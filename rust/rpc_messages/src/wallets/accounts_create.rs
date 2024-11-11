@@ -1,4 +1,4 @@
-use crate::{RpcCommand, WalletWithCountArgs};
+use crate::{RpcBool, RpcCommand, RpcU64, WalletWithCountArgs};
 use rsnano_core::WalletId;
 use serde::{Deserialize, Serialize};
 
@@ -10,21 +10,22 @@ impl RpcCommand {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct AccountsCreateArgs {
-    #[serde(flatten)]
-    pub wallet_with_count: WalletWithCountArgs,
+    pub wallet: WalletId,
+    pub count: RpcU64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub work: Option<bool>,
+    pub work: Option<RpcBool>,
 }
 
 impl AccountsCreateArgs {
     pub fn new(wallet: WalletId, count: u64) -> AccountsCreateArgs {
         AccountsCreateArgs {
-            wallet_with_count: WalletWithCountArgs::new(wallet, count),
+            wallet,
+            count: count.into(),
             work: None,
         }
     }
 
-    pub fn builder(wallet: WalletId, count: u64) -> AccountsCreateArgsBuilder {
+    pub fn build(wallet: WalletId, count: u64) -> AccountsCreateArgsBuilder {
         AccountsCreateArgsBuilder {
             wallet,
             count,
@@ -36,18 +37,19 @@ impl AccountsCreateArgs {
 pub struct AccountsCreateArgsBuilder {
     wallet: WalletId,
     count: u64,
-    work: Option<bool>,
+    work: Option<RpcBool>,
 }
 
 impl AccountsCreateArgsBuilder {
-    pub fn without_precomputed_work(mut self) -> Self {
-        self.work = Some(false);
+    pub fn precompute_work(mut self, precompute: bool) -> Self {
+        self.work = Some(precompute.into());
         self
     }
 
-    pub fn build(self) -> AccountsCreateArgs {
+    pub fn finish(self) -> AccountsCreateArgs {
         AccountsCreateArgs {
-            wallet_with_count: WalletWithCountArgs::new(self.wallet, self.count),
+            wallet: self.wallet,
+            count: self.count.into(),
             work: self.work,
         }
     }
@@ -56,7 +58,8 @@ impl AccountsCreateArgsBuilder {
 impl From<WalletWithCountArgs> for AccountsCreateArgs {
     fn from(wallet_with_count: WalletWithCountArgs) -> Self {
         Self {
-            wallet_with_count,
+            wallet: wallet_with_count.wallet,
+            count: wallet_with_count.count,
             work: None,
         }
     }
@@ -70,36 +73,36 @@ mod tests {
 
     #[test]
     fn serialize_accounts_create_command_work_some() {
-        let args = AccountsCreateArgs::builder(WalletId::from(1), 2)
-            .without_precomputed_work()
-            .build();
+        let args = AccountsCreateArgs::build(WalletId::from(1), 2)
+            .precompute_work(false)
+            .finish();
         assert_eq!(
             to_string_pretty(&RpcCommand::accounts_create(args)).unwrap(),
             r#"{
   "action": "accounts_create",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
-  "count": 2,
-  "work": false
+  "count": "2",
+  "work": "false"
 }"#
         )
     }
 
     #[test]
     fn serialize_accounts_create_command_work_none() {
-        let args = AccountsCreateArgs::builder(WalletId::from(2), 3).build();
+        let args = AccountsCreateArgs::build(WalletId::from(2), 3).finish();
         assert_eq!(
             to_string_pretty(&RpcCommand::accounts_create(args)).unwrap(),
             r#"{
   "action": "accounts_create",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000002",
-  "count": 3
+  "count": "3"
 }"#
         )
     }
 
     #[test]
     fn deserialize_accounts_create_command_work_none() {
-        let args = AccountsCreateArgs::builder(WalletId::from(1), 2).build();
+        let args = AccountsCreateArgs::build(WalletId::from(1), 2).finish();
         let cmd = RpcCommand::accounts_create(args);
         let serialized = serde_json::to_string_pretty(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
@@ -108,9 +111,9 @@ mod tests {
 
     #[test]
     fn deserialize_accounts_create_command_work_some() {
-        let args = AccountsCreateArgs::builder(WalletId::from(4), 5)
-            .without_precomputed_work()
-            .build();
+        let args = AccountsCreateArgs::build(WalletId::from(4), 5)
+            .precompute_work(false)
+            .finish();
         let cmd = RpcCommand::accounts_create(args);
         let serialized = serde_json::to_string(&cmd).unwrap();
         let deserialized: RpcCommand = serde_json::from_str(&serialized).unwrap();
@@ -119,21 +122,21 @@ mod tests {
 
     #[test]
     fn test_accounts_create_builder() {
-        let args = AccountsCreateArgs::builder(WalletId::from(1), 5)
-            .without_precomputed_work()
-            .build();
+        let args = AccountsCreateArgs::build(WalletId::from(1), 5)
+            .precompute_work(false)
+            .finish();
 
-        assert_eq!(args.wallet_with_count.wallet, WalletId::from(1));
-        assert_eq!(args.wallet_with_count.count, 5);
-        assert_eq!(args.work, Some(false));
+        assert_eq!(args.wallet, WalletId::from(1));
+        assert_eq!(args.count, 5.into());
+        assert_eq!(args.work, Some(false.into()));
 
         let json = to_string_pretty(&args).unwrap();
         assert_eq!(
             json,
             r#"{
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
-  "count": 5,
-  "work": false
+  "count": "5",
+  "work": "false"
 }"#
         );
     }
@@ -144,8 +147,8 @@ mod tests {
         let count = 3;
         let args: AccountsCreateArgs = WalletWithCountArgs::new(wallet_id, count).into();
 
-        assert_eq!(args.wallet_with_count.wallet, wallet_id);
-        assert_eq!(args.wallet_with_count.count, count);
+        assert_eq!(args.wallet, wallet_id);
+        assert_eq!(args.count, count.into());
         assert_eq!(args.work, None);
     }
 
@@ -160,7 +163,7 @@ mod tests {
             json,
             r#"{
   "wallet": "0000000000000000000000000000000000000000000000000000000000000002",
-  "count": 3
+  "count": "3"
 }"#
         );
     }

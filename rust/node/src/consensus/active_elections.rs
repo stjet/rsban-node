@@ -181,9 +181,10 @@ impl ActiveElections {
         self.mutex.lock().unwrap().roots.len()
     }
 
-    pub(crate) fn info(&self) -> ActiveElectionsInfo {
+    pub fn info(&self) -> ActiveElectionsInfo {
         let guard = self.mutex.lock().unwrap();
         ActiveElectionsInfo {
+            max_queue: self.config.size,
             total: guard.roots.len(),
             priority: guard.priority_count,
             hinted: guard.hinted_count,
@@ -1371,7 +1372,9 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     }
 }
 
-pub(crate) struct ActiveElectionsInfo {
+#[derive(Default)]
+pub struct ActiveElectionsInfo {
+    pub max_queue: usize,
     pub total: usize,
     pub priority: usize,
     pub hinted: usize,

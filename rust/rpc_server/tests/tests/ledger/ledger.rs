@@ -42,7 +42,7 @@ fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
 fn test_ledger() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let (keys, _, open) = setup_test_environment(node.clone());
 
@@ -55,7 +55,7 @@ fn test_ledger() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.ledger(args).await.unwrap() });
+        .block_on(async { server.client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);
@@ -66,21 +66,19 @@ fn test_ledger() {
         assert_eq!(open.hash(), info.open_block);
         assert_eq!(open.hash(), info.representative_block);
         assert_eq!(Amount::MAX - Amount::raw(100), info.balance);
-        assert!(((time as i64) - (info.modified_timestamp as i64)).abs() < 5);
-        assert_eq!(1, info.block_count);
+        assert!(((time as i64) - (info.modified_timestamp.inner() as i64)).abs() < 5);
+        assert_eq!(info.block_count, 1.into());
         assert!(info.weight.is_none());
         assert!(info.pending.is_none());
         assert!(info.representative.is_none());
     }
-
-    server.abort();
 }
 
 #[test]
 fn test_ledger_threshold() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let (keys, _, _) = setup_test_environment(node.clone());
 
@@ -92,20 +90,18 @@ fn test_ledger_threshold() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.ledger(args).await.unwrap() });
+        .block_on(async { server.client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);
     assert!(accounts.contains_key(&keys.account()));
-
-    server.abort();
 }
 
 #[test]
 fn test_ledger_pending() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let (rpc_client, server) = setup_rpc_client_and_server(node.clone(), true);
+    let server = setup_rpc_client_and_server(node.clone(), true);
 
     let (keys, send_block, _) = setup_test_environment(node.clone());
 
@@ -136,13 +132,11 @@ fn test_ledger_pending() {
 
     let result = node
         .runtime
-        .block_on(async { rpc_client.ledger(args).await.unwrap() });
+        .block_on(async { server.client.ledger(args).await.unwrap() });
 
     let accounts = result.accounts;
     assert_eq!(accounts.len(), 1);
     let account_info = accounts.get(&keys.account()).unwrap();
     assert_eq!(account_info.balance, send_amount);
     assert_eq!(account_info.pending, Some(send2_amount));
-
-    server.abort();
 }

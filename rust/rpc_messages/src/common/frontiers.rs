@@ -3,16 +3,17 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct FrontiersDto {
-    pub frontiers: HashMap<Account, BlockHash>,
+pub struct FrontiersResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frontiers: Option<HashMap<Account, BlockHash>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<HashMap<Account, String>>,
 }
 
-impl FrontiersDto {
+impl FrontiersResponse {
     pub fn new(frontiers: HashMap<Account, BlockHash>) -> Self {
         Self {
-            frontiers,
+            frontiers: Some(frontiers),
             errors: None,
         }
     }
@@ -46,7 +47,7 @@ mod tests {
             "Account not found".to_string(),
         );
 
-        let mut frontiers_dto = FrontiersDto::new(frontiers);
+        let mut frontiers_dto = FrontiersResponse::new(frontiers);
         frontiers_dto.errors = Some(errors);
         let serialized = serde_json::to_string_pretty(&frontiers_dto).unwrap();
         let expected_json = r#"{
@@ -74,7 +75,7 @@ mod tests {
             .unwrap(),
         );
 
-        let frontiers_dto = FrontiersDto::new(frontiers);
+        let frontiers_dto = FrontiersResponse::new(frontiers);
         let serialized = serde_json::to_string_pretty(&frontiers_dto).unwrap();
         let expected_json = r#"{
   "frontiers": {
@@ -94,7 +95,7 @@ mod tests {
                 "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3": "Account not found"
             }
         }"#;
-        let deserialized: FrontiersDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: FrontiersResponse = serde_json::from_str(json_str).unwrap();
 
         let mut frontiers = HashMap::new();
         frontiers.insert(
@@ -117,8 +118,8 @@ mod tests {
             "Account not found".to_string(),
         );
 
-        let expected_frontiers_dto = FrontiersDto {
-            frontiers,
+        let expected_frontiers_dto = FrontiersResponse {
+            frontiers: Some(frontiers),
             errors: Some(errors),
         };
         assert_eq!(deserialized, expected_frontiers_dto);
@@ -127,7 +128,7 @@ mod tests {
     #[test]
     fn deserialize_frontiers_dto_without_errors() {
         let json_str = r#"{"frontiers":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000000000000000000000000000000000000000000000000000000"}}"#;
-        let deserialized: FrontiersDto = serde_json::from_str(json_str).unwrap();
+        let deserialized: FrontiersResponse = serde_json::from_str(json_str).unwrap();
         let mut frontiers = HashMap::new();
         frontiers.insert(
             Account::decode_account(
@@ -139,7 +140,7 @@ mod tests {
             )
             .unwrap(),
         );
-        let expected_frontiers_dto = FrontiersDto::new(frontiers);
+        let expected_frontiers_dto = FrontiersResponse::new(frontiers);
         assert_eq!(deserialized, expected_frontiers_dto);
     }
 }

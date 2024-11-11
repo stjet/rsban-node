@@ -6,7 +6,6 @@ add_executable(
   backlog.cpp
   block.cpp
   block_store.cpp
-  blockprocessor.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp
   cli.cpp

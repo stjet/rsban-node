@@ -38,14 +38,14 @@ To just build and run the rsnano_node:
     git clone --recurse-submodules https://github.com/simpago/rsnano-node.git
     cd rsnano-node/rust/main
     cargo build --release
-    cargo run --release -- node run
+    cargo run --release -- node run --network=beta
 
 To install and run the rsnano_node executable:
 
     git clone --recurse-submodules https://github.com/simpago/rsnano-node.git
     cd rsnano-node
     cargo install --path rust/main
-    rsnano_node node run
+    rsnano_node node run --network=beta
 
 ### Contact us
 

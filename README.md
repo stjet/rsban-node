@@ -21,38 +21,31 @@ RsNano is a Rust port of the original Nano node.
 
 ## Option 1: Run the official docker image
 
-    docker run -d --name rsnano -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta simpago/rsnano-beta:latest nano_node daemon --network=beta
+    docker run -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta simpago/rsnano:V1.0RC1 nano_node daemon --network=beta
 
 ## Option 2: Build your own docker image
 
     docker build -f docker/node/Dockerfile -t rsnano-node https://github.com/simpago/rsnano-node.git#develop
 
-    docker run -d --name rsnano -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta rsnano-node:latest nano_node daemon --network=beta
+    docker run -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta rsnano-node:latest node run --network=beta
 
 ## Option 3: Build from source
 
-Currently you can only build RsNano on Linux.
+Currently you can only build RsNano on Linux and on Mac.
 
-Install the cmake plugin [Corrosion](https://github.com/corrosion-rs/corrosion) for building Rust projects with cmake:
+To just build and run the rsnano_node:
 
-    git clone https://github.com/AndrewGaspar/corrosion.git
-    # Optionally, specify -DCMAKE_INSTALL_PREFIX=<target-install-path>. You can install Corrosion anyway
-    cmake -Scorrosion -Bbuild -DCMAKE_BUILD_TYPE=Release
-    cmake --build build --config Release
-    # This next step may require sudo or admin privileges if you're installing to a system location,
-    # which is the default.
-    cmake --install build --config Release
+    git clone --recurse-submodules https://github.com/simpago/rsnano-node.git
+    cd rsnano-node/rust/main
+    cargo build --release
+    cargo run --release -- node run
 
-Build the nano-node. The official [nano-node build instructions](https://docs.nano.org/integration-guides/build-options/) still apply for RsNano.
+To install and run the rsnano_node executable:
 
     git clone --recurse-submodules https://github.com/simpago/rsnano-node.git
     cd rsnano-node
-    mkdir build && cd build
-
-    cmake -G "Unix Makefiles" -DNANO_TEST=ON -DCMAKE_BUILD_TYPE=Debug ..
-
-    make nano_node
-    ./nano_node --diagnostics
+    cargo install --path rust/main
+    rsnano_node node run
 
 ### Contact us
 

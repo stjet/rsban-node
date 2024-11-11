@@ -20,14 +20,14 @@ pub use rsnano_core::Networks;
 use std::path::{Path, PathBuf};
 pub use toml::DaemonToml;
 
-pub fn get_node_toml_config_path(data_path: &Path) -> PathBuf {
-    let mut node_toml = data_path.to_owned();
+pub fn get_node_toml_config_path(data_path: impl Into<PathBuf>) -> PathBuf {
+    let mut node_toml = data_path.into();
     node_toml.push("config-node.toml");
     node_toml
 }
 
-pub fn get_rpc_toml_config_path(data_path: &Path) -> PathBuf {
-    let mut rpc_toml = data_path.to_owned();
+pub fn get_rpc_toml_config_path(data_path: impl Into<PathBuf>) -> PathBuf {
+    let mut rpc_toml = data_path.into();
     rpc_toml.push("config-rpc.toml");
     rpc_toml
 }

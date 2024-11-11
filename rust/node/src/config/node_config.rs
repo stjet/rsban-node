@@ -15,7 +15,7 @@ use crate::{
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_env_or_default_string, is_sanitizer_build},
+    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build},
     Account, Amount, PublicKey, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
@@ -165,6 +165,16 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
+    pub fn default_for(network: Networks) -> Self {
+        let parallelism = get_cpu_count();
+        let net_params = NetworkParams::new(network);
+        Self::new(
+            Some(net_params.network.default_node_port),
+            &net_params,
+            parallelism,
+        )
+    }
+
     pub fn new(
         peering_port: Option<u16>,
         network_params: &NetworkParams,

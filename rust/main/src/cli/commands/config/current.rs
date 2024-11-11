@@ -42,7 +42,7 @@ impl CurrentArgs {
         let parallelism = get_cpu_count();
 
         if self.node {
-            let node_toml_config_path = get_node_toml_config_path(&path);
+            let node_toml_config_path = get_node_toml_config_path(path);
 
             if node_toml_config_path.exists() {
                 let daemon_toml_str = read_to_string(&node_toml_config_path)?;
@@ -58,7 +58,7 @@ impl CurrentArgs {
                 println!("{}", to_string(&merged_daemon_toml).unwrap());
             }
         } else {
-            let rpc_toml_config_path = get_rpc_toml_config_path(&path);
+            let rpc_toml_config_path = get_rpc_toml_config_path(path);
 
             if rpc_toml_config_path.exists() {
                 let rpc_toml_str = read_to_string(&rpc_toml_config_path)?;

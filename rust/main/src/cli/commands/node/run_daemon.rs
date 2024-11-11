@@ -1,5 +1,5 @@
 use crate::cli::get_path;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{ArgGroup, Parser};
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{
@@ -120,8 +120,6 @@ impl RunDaemonArgs {
         let network = NetworkConstants::active_network();
         let network_params = NetworkParams::new(network);
         let parallelism = get_cpu_count();
-        let flags = self.get_flags();
-
         let node_toml_config_path = get_node_toml_config_path(&path);
 
         let mut daemon_config = DaemonConfig::new(&network_params, parallelism);
@@ -140,12 +138,11 @@ impl RunDaemonArgs {
             rpc_server_config.merge_toml(&rpc_server_toml);
         }
 
-        let node = NodeBuilder::new(network)
-            .data_path(path)
-            .network_params(network_params)
-            .flags(flags)
-            .finish()
-            .unwrap();
+        let mut builder = NodeBuilder::new(network);
+        if let Some(path) = &self.data_path {
+            builder = builder.data_path(path);
+        }
+        let node = builder.flags(self.get_flags()).finish().unwrap();
 
         let node = Arc::new(node);
         node.start();
@@ -155,11 +152,13 @@ impl RunDaemonArgs {
         if daemon_config.rpc_enable {
             let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
             let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
+            let enable_control = rpc_server_config.enable_control;
+
             let listener = TcpListener::bind(socket_addr).await?;
             run_rpc_server(
                 node.clone(),
                 listener,
-                rpc_server_config.enable_control,
+                enable_control,
                 tx_stop,
                 shutdown_signal(rx_stop),
             )

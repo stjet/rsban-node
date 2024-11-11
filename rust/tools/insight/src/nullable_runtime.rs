@@ -1,5 +1,6 @@
 use std::{
-    ops::Deref,
+    future::Future,
+    pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Mutex,
@@ -14,11 +15,11 @@ pub(crate) struct NullableRuntime {
 #[allow(dead_code)]
 impl NullableRuntime {
     pub(crate) fn new(handle: tokio::runtime::Handle) -> Self {
-        Self::with_strategy(RuntimeStrategy::Real(RealRuntime(handle)))
+        Self::with_strategy(RuntimeStrategy::Real(handle))
     }
 
     pub(crate) fn new_null() -> Self {
-        Self::with_strategy(RuntimeStrategy::Null(StubRuntime(Mutex::new(None))))
+        Self::with_strategy(RuntimeStrategy::Null(StubRuntime::new()))
     }
 
     fn with_strategy(strategy: RuntimeStrategy) -> Self {
@@ -28,17 +29,51 @@ impl NullableRuntime {
         }
     }
 
+    pub(crate) fn spawn<F>(&self, f: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        match &self.strategy {
+            RuntimeStrategy::Real(s) => {
+                s.spawn(f);
+            }
+            RuntimeStrategy::Null(s) => {
+                s.spawn(f);
+            }
+        }
+    }
+
     pub(crate) fn blocking_spawns(&self) -> usize {
         self.blocking_spawns.load(Ordering::SeqCst)
     }
 
     pub(crate) fn spawn_blocking(&self, f: impl FnOnce() + Send + Sync + 'static) {
         self.blocking_spawns.fetch_add(1, Ordering::SeqCst);
-        self.strategy.spawn_blocking(Box::new(f));
+        match &self.strategy {
+            RuntimeStrategy::Real(s) => {
+                s.spawn_blocking(f);
+            }
+            RuntimeStrategy::Null(s) => s.spawn_blocking(f),
+        }
+    }
+
+    pub(crate) async fn run_nulled_spawn(&self) {
+        match &self.strategy {
+            RuntimeStrategy::Real(_) => {
+                panic!("run_nulled_spawn must not be called on a real runtime!")
+            }
+            RuntimeStrategy::Null(s) => s.run_nulled_spawn().await,
+        }
     }
 
     pub(crate) fn run_nulled_blocking_task(&self) {
-        self.strategy.run_nulled_blocking_task();
+        match &self.strategy {
+            RuntimeStrategy::Real(_) => {
+                panic!("run_nulled_blocking_task must not be called on a real runtime!")
+            }
+            RuntimeStrategy::Null(s) => s.run_nulled_blocking_task(),
+        }
     }
 }
 
@@ -50,49 +85,46 @@ impl Default for NullableRuntime {
 
 #[allow(dead_code)]
 enum RuntimeStrategy {
-    Real(RealRuntime),
+    Real(tokio::runtime::Handle),
     Null(StubRuntime),
 }
 
-impl Deref for RuntimeStrategy {
-    type Target = dyn RuntimeImpl;
+struct StubRuntime {
+    blocking: Mutex<Option<Box<dyn FnOnce() + Send + Sync>>>,
+    spawns: Mutex<Option<Pin<Box<dyn Future<Output = ()> + Send>>>>,
+}
 
-    fn deref(&self) -> &Self::Target {
-        match self {
-            RuntimeStrategy::Real(i) => i,
-            RuntimeStrategy::Null(i) => i,
+impl StubRuntime {
+    fn new() -> Self {
+        Self {
+            blocking: Mutex::new(None),
+            spawns: Mutex::new(None),
         }
     }
-}
 
-#[allow(dead_code)]
-trait RuntimeImpl {
-    fn spawn_blocking(&self, f: Box<dyn FnOnce() + Send + Sync>);
-    fn run_nulled_blocking_task(&self);
-}
-
-struct RealRuntime(tokio::runtime::Handle);
-
-impl RuntimeImpl for RealRuntime {
-    fn spawn_blocking(&self, f: Box<dyn FnOnce() + Send + Sync>) {
-        self.0.spawn_blocking(f);
+    fn spawn_blocking(&self, f: impl FnOnce() + Send + Sync + 'static) {
+        *self.blocking.lock().unwrap() = Some(Box::new(f));
     }
 
     fn run_nulled_blocking_task(&self) {
-        panic!("run_nulled_blocking_task must not be called on a real runtime!")
-    }
-}
-
-struct StubRuntime(Mutex<Option<Box<dyn FnOnce() + Send + Sync>>>);
-
-impl RuntimeImpl for StubRuntime {
-    fn spawn_blocking(&self, f: Box<dyn FnOnce() + Send + Sync>) {
-        *self.0.lock().unwrap() = Some(f);
-    }
-
-    fn run_nulled_blocking_task(&self) {
-        if let Some(f) = self.0.lock().unwrap().take() {
+        if let Some(f) = self.blocking.lock().unwrap().take() {
             f();
+        }
+    }
+
+    fn spawn<F>(&self, f: F)
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        *self.spawns.lock().unwrap() = Some(Box::pin(async move {
+            f.await;
+        }));
+    }
+
+    async fn run_nulled_spawn(&self) {
+        if let Some(f) = self.spawns.lock().unwrap().take() {
+            f.await;
         }
     }
 }

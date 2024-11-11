@@ -1,50 +1,48 @@
 use rsnano_core::Networks;
-use rsnano_node::{Node, NodeBuilder, NodeCallbacks};
-use std::{path::PathBuf, sync::Arc};
+use rsnano_daemon::DaemonBuilder;
+use rsnano_node::{Node, NodeCallbacks};
+use std::{future::Future, path::PathBuf, sync::Arc};
 
+#[derive(Clone)]
 pub(crate) struct NodeFactory {
-    runtime: tokio::runtime::Handle,
     is_nulled: bool,
 }
 
 impl NodeFactory {
-    pub(crate) fn new(runtime: tokio::runtime::Handle) -> Self {
-        Self {
-            runtime,
-            is_nulled: false,
-        }
+    pub(crate) fn new() -> Self {
+        Self { is_nulled: false }
     }
 
     #[allow(dead_code)]
     pub(crate) fn new_null() -> Self {
-        Self {
-            runtime: tokio::runtime::Handle::current(),
-            is_nulled: true,
-        }
+        Self { is_nulled: true }
     }
 
-    pub(crate) fn create_node(
+    pub(crate) async fn run_node(
         &self,
         network: Networks,
         data_path: impl Into<PathBuf>,
         callbacks: NodeCallbacks,
-    ) -> Arc<Node> {
+        mut started: impl FnMut(Arc<Node>) + Send + 'static,
+        shutdown: impl Future<Output = ()> + Send + 'static,
+    ) {
         if self.is_nulled {
-            Arc::new(Node::new_null_with_callbacks(callbacks))
+            let node = Arc::new(Node::new_null_with_callbacks(callbacks));
+            started(node);
+            shutdown.await;
         } else {
-            NodeBuilder::new(network)
-                .runtime(self.runtime.clone())
+            DaemonBuilder::new(network)
                 .data_path(data_path)
                 .callbacks(callbacks)
-                .finish()
-                .unwrap()
-                .into()
+                .on_node_started(started)
+                .run(shutdown)
+                .await;
         }
     }
 }
 
 impl Default for NodeFactory {
     fn default() -> Self {
-        Self::new(tokio::runtime::Handle::current())
+        Self::new()
     }
 }

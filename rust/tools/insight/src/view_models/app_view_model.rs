@@ -59,7 +59,7 @@ impl AppViewModel {
     pub(crate) fn with_runtime(runtime: tokio::runtime::Handle) -> Self {
         Self::new(
             Arc::new(NullableRuntime::new(runtime.clone())),
-            NodeFactory::new(runtime),
+            NodeFactory::new(),
         )
     }
 
@@ -72,7 +72,7 @@ impl AppViewModel {
         }
 
         if let Some(node) = self.node_runner.node() {
-            self.ledger_stats.update(node, now);
+            self.ledger_stats.update(&node, now);
             let channels = node.network_info.read().unwrap().list_realtime_channels(0);
             let telemetries = node.telemetry.get_all_telemetries();
             let (peered_reps, min_rep_weight) = {
@@ -184,7 +184,7 @@ mod tests {
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
         model.node_runner.start_node();
 
-        runtime.run_nulled_blocking_task();
+        runtime.run_nulled_spawn().await;
 
         assert_eq!(model.node_runner.status(), "running");
         assert_eq!(model.node_runner.can_start_node(), false);
@@ -196,7 +196,7 @@ mod tests {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
         model.node_runner.start_node();
-        runtime.run_nulled_blocking_task();
+        runtime.run_nulled_spawn().await;
         model.node_runner.stop_node();
         assert_eq!(model.node_runner.can_start_node(), false);
         assert_eq!(model.node_runner.can_stop_node(), false);
@@ -209,9 +209,9 @@ mod tests {
         let runtime = Arc::new(NullableRuntime::new_null());
         let mut model = AppViewModel::new(runtime.clone(), NodeFactory::new_null());
         model.node_runner.start_node();
-        runtime.run_nulled_blocking_task();
+        runtime.run_nulled_spawn().await;
         model.node_runner.stop_node();
-        runtime.run_nulled_blocking_task();
+        runtime.run_nulled_spawn().await;
         assert_eq!(model.node_runner.can_start_node(), true);
         assert_eq!(model.node_runner.can_stop_node(), false);
         assert_eq!(model.node_runner.status(), "not running");

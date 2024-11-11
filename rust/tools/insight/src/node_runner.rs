@@ -2,12 +2,12 @@ use crate::{node_factory::NodeFactory, nullable_runtime::NullableRuntime};
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 use rsnano_core::Networks;
-use rsnano_node::{Node, NodeCallbacks, NodeExt};
+use rsnano_node::{Node, NodeCallbacks};
 use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicU8, Ordering},
-        Arc,
+        Arc, Mutex,
     },
 };
 
@@ -22,8 +22,9 @@ pub enum NodeState {
 pub(crate) struct NodeRunner {
     node_factory: NodeFactory,
     runtime: Arc<NullableRuntime>,
-    node: Option<Arc<Node>>,
+    node: Arc<Mutex<Option<Arc<Node>>>>,
     state: Arc<AtomicU8>,
+    stop: Option<tokio::sync::oneshot::Sender<()>>,
 }
 
 impl NodeRunner {
@@ -31,8 +32,9 @@ impl NodeRunner {
         Self {
             node_factory,
             runtime,
-            node: None,
+            node: Arc::new(Mutex::new(None)),
             state: Arc::new(AtomicU8::new(NodeState::Stopped as u8)),
+            stop: None,
         }
     }
 
@@ -45,29 +47,38 @@ impl NodeRunner {
         self.state
             .store(NodeState::Starting as u8, Ordering::SeqCst);
 
-        let node = self.node_factory.create_node(network, data_path, callbacks);
-        let node2 = node.clone();
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        self.stop = Some(tx);
 
-        self.node = Some(node);
-
-        let state = self.state.clone();
-        self.runtime.spawn_blocking(move || {
-            node2.start();
-            state.store(NodeState::Started as u8, Ordering::SeqCst);
+        let node_factory = self.node_factory.clone();
+        let node = self.node.clone();
+        let state1 = self.state.clone();
+        let state2 = self.state.clone();
+        let data_path = data_path.into();
+        self.runtime.spawn(async move {
+            node_factory
+                .run_node(
+                    network,
+                    data_path,
+                    callbacks,
+                    move |n| {
+                        *node.lock().unwrap() = Some(n);
+                        state1.store(NodeState::Started as u8, Ordering::SeqCst);
+                    },
+                    async move {
+                        let _ = rx.await;
+                    },
+                )
+                .await;
+            state2.store(NodeState::Stopped as u8, Ordering::SeqCst);
         });
     }
 
     pub(crate) fn stop(&mut self) {
-        if let Some(node) = self.node.take() {
-            {
-                self.state
-                    .store(NodeState::Stopping as u8, Ordering::SeqCst);
-                let state = self.state.clone();
-                self.runtime.spawn_blocking(move || {
-                    node.stop();
-                    state.store(NodeState::Stopped as u8, Ordering::SeqCst);
-                });
-            }
+        if let Some(tx) = self.stop.take() {
+            self.state
+                .store(NodeState::Stopping as u8, Ordering::SeqCst);
+            let _ = tx.send(());
         }
     }
 
@@ -75,15 +86,15 @@ impl NodeRunner {
         FromPrimitive::from_u8(self.state.load(Ordering::SeqCst)).unwrap()
     }
 
-    pub(crate) fn node(&self) -> Option<&Node> {
-        self.node.as_ref().map(|n| &**n)
+    pub(crate) fn node(&self) -> Option<Arc<Node>> {
+        self.node.lock().unwrap().clone()
     }
 }
 
 impl Drop for NodeRunner {
     fn drop(&mut self) {
-        if let Some(node) = self.node.take() {
-            node.stop();
+        if let Some(tx_stop) = self.stop.take() {
+            let _ = tx_stop.send(());
         }
     }
 }

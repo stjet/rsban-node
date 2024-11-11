@@ -3679,6 +3679,7 @@ dependencies = [
  "num-format",
  "num-traits",
  "rsnano_core",
+ "rsnano_daemon",
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_network",

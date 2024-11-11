@@ -1,7 +1,7 @@
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{
     config::{DaemonConfig, Networks, NodeFlags},
-    Node, NodeBuilder, NodeExt,
+    Node, NodeBuilder, NodeCallbacks, NodeExt,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
 use std::{future::Future, path::PathBuf, sync::Arc};
@@ -10,7 +10,7 @@ use tokio::net::TcpListener;
 pub struct DaemonBuilder {
     network: Networks,
     node_builder: NodeBuilder,
-    node_started: Option<Box<dyn FnMut(Arc<Node>)>>,
+    node_started: Option<Box<dyn FnMut(Arc<Node>) + Send>>,
 }
 
 impl DaemonBuilder {
@@ -32,7 +32,12 @@ impl DaemonBuilder {
         self
     }
 
-    pub fn on_node_started(mut self, callback: impl FnMut(Arc<Node>) + 'static) -> Self {
+    pub fn callbacks(mut self, callbacks: NodeCallbacks) -> Self {
+        self.node_builder = self.node_builder.callbacks(callbacks);
+        self
+    }
+
+    pub fn on_node_started(mut self, callback: impl FnMut(Arc<Node>) + Send + 'static) -> Self {
         self.node_started = Some(Box::new(callback));
         self
     }

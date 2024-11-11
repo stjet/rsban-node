@@ -59,7 +59,7 @@ impl NodeRunnerViewModel {
         }
     }
 
-    pub(crate) fn node(&self) -> Option<&Node> {
+    pub(crate) fn node(&self) -> Option<Arc<Node>> {
         self.node_runner.node()
     }
 

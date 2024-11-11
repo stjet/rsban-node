@@ -22,7 +22,6 @@ add_executable(
   node.cpp
   object_stream.cpp
   optimistic_scheduler.cpp
-  peer_container.cpp
   system.cpp
   telemetry.cpp
   uint256_union.cpp

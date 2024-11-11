@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY
+    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -1350,5 +1350,5 @@ fn list_active() {
     assert_eq!(node.active.list_active(99999).len(), 3);
     assert_eq!(node.active.list_active(usize::MAX).len(), 3);
 
-    let active = node.active.list_active(usize::MAX);
+    node.active.list_active(usize::MAX);
 }

@@ -1,14 +1,12 @@
 use rsnano_core::{
-    Amount, BlockBuilder, BlockEnum, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource,
-    WalletId, DEV_GENESIS_KEY,
+    KeyPair, Signature, Vote, VoteCode, VoteSource,
+    DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
-    consensus::{ActiveElectionsExt, ElectionBehavior, RepTier},
     stats::{DetailType, Direction, StatType},
-    wallets::WalletsExt,
 };
 use std::{
     sync::Arc,
@@ -173,7 +171,6 @@ fn empty_hashes() {
 
 #[test]
 fn timestamp_and_duration_masking() {
-    let system = System::new();
     let key = KeyPair::new();
     let hash = vec![*DEV_GENESIS_HASH];
     let vote = Arc::new(Vote::new(&key, 0x123f, 0xf, hash));

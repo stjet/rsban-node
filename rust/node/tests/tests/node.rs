@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo, WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -731,10 +731,6 @@ fn send_callback() {
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
 
-    //node.config.callback_address = "localhost".to_string();
-    //node.config.callback_port = 8010;
-    //node.config.callback_target = "/".to_string();
-
     let send_result = node.wallets.send_action2(
         &wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -768,8 +764,8 @@ fn no_voting() {
     config.enable_voting = false;
     let node1 = system.build_node().config(config).finish();
 
-    let wallet_id0 = node0.wallets.wallet_ids()[0];
     let wallet_id1 = node1.wallets.wallet_ids()[0];
+    
     // Node1 has a rep
     node1
         .wallets
@@ -811,7 +807,7 @@ fn bootstrap_confirm_frontiers() {
     let node0 = system0.make_node();
     let node1 = system1.make_node();
     let wallet_id0 = node0.wallets.wallet_ids()[0];
-    let wallet_id1 = node1.wallets.wallet_ids()[0];
+
     node0
         .wallets
         .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)

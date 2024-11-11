@@ -9,7 +9,7 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{sync::Arc, time::Duration};
-use test_helpers::{assert_timely, assert_timely_eq, get_available_port, System};
+use test_helpers::{assert_timely, assert_timely_eq, get_available_port, setup_chain, start_election, System};
 
 // FIXME: this test fails on rare occasions. It needs a review.
 #[test]
@@ -384,30 +384,10 @@ fn quorum_minimum_flip_success() {
 fn election_behavior() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let wallet_id = node.wallets.wallet_ids()[0];
-    node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
-        .unwrap();
+    let chain = setup_chain(&node, 1, &DEV_GENESIS_KEY, false);
 
-    // Create a chain with one block
-    let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
-
-    node.process_active(send.clone());
-    assert_timely(Duration::from_secs(5), || {
-        node.active.election(&send.qualified_root()).is_some()
-    });
-
-    let election = node.active.election(&send.qualified_root()).unwrap();
-    //assert_eq!(election.behavior, ElectionBehavior::Manual);
+    let election = start_election(&node, &chain[0].hash());
+    assert_eq!(election.behavior, ElectionBehavior::Manual);
 }
 
 #[test]

@@ -93,7 +93,7 @@ mod bootstrap_processor {
         establish_tcp(&node1, &node0);
         let wallet_id = WalletId::random();
         node1.wallets.create(wallet_id);
-        let account = node1
+        node1
             .wallets
             .insert_adhoc2(&wallet_id, &key2.private_key(), true)
             .unwrap();
@@ -684,7 +684,6 @@ mod bootstrap_processor {
             .finish();
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
-        let wallet_id = node0.wallets.wallet_ids()[0];
 
         let block1 = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -764,7 +763,6 @@ mod bootstrap_processor {
         let node2 = system.build_node().config(config).flags(flags).finish();
 
         let wallet_id1 = node1.wallets.wallet_ids()[0];
-        let wallet_id2 = node2.wallets.wallet_ids()[0];
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         node2.insert_into_wallet(&key2);
 
@@ -915,7 +913,7 @@ mod bootstrap_processor {
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
         let wallet_id = node0.wallets.wallet_ids()[0];
-        let send = node0
+        node0
             .wallets
             .send_action2(
                 &wallet_id,

@@ -30,7 +30,6 @@ add_executable(
   socket.cpp
   system.cpp
   telemetry.cpp
-  timer.cpp
   uint256_union.cpp
   unchecked_map.cpp
   vote_processor.cpp

@@ -30,7 +30,6 @@ add_executable(
   socket.cpp
   system.cpp
   telemetry.cpp
-  toml.cpp
   timer.cpp
   uint256_union.cpp
   unchecked_map.cpp

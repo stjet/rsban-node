@@ -1,14 +1,16 @@
 use rsnano_core::utils::get_cpu_count;
 use rsnano_node::{
     config::{DaemonConfig, Networks, NodeFlags},
-    NodeBuilder, NodeExt,
+    Node, NodeBuilder, NodeExt,
 };
 use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
 use std::{future::Future, path::PathBuf, sync::Arc};
 use tokio::net::TcpListener;
+
 pub struct DaemonBuilder {
     network: Networks,
     node_builder: NodeBuilder,
+    node_started: Option<Box<dyn FnMut(Arc<Node>)>>,
 }
 
 impl DaemonBuilder {
@@ -16,6 +18,7 @@ impl DaemonBuilder {
         Self {
             network,
             node_builder: NodeBuilder::new(network),
+            node_started: None,
         }
     }
 
@@ -26,6 +29,11 @@ impl DaemonBuilder {
 
     pub fn flags(mut self, flags: NodeFlags) -> Self {
         self.node_builder = self.node_builder.flags(flags);
+        self
+    }
+
+    pub fn on_node_started(mut self, callback: impl FnMut(Arc<Node>) + 'static) -> Self {
+        self.node_started = Some(Box::new(callback));
         self
     }
 
@@ -42,6 +50,9 @@ impl DaemonBuilder {
         let node = self.node_builder.finish()?;
         let node = Arc::new(node);
         node.start();
+        if let Some(mut started_callback) = self.node_started {
+            started_callback(node.clone());
+        }
         let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
         let wait_for_shutdown = async move {
             tokio::select! {

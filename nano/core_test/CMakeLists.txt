@@ -15,7 +15,6 @@ add_executable(
   distributed_work.cpp
   election.cpp
   election_scheduler.cpp
-  epochs.cpp
   frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp

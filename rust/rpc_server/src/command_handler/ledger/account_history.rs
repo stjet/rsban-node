@@ -346,19 +346,17 @@ fn empty_entry() -> HistoryEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_node::Node;
-    use rsnano_rpc_messages::{check_error, RpcCommand};
-    use std::sync::Arc;
+    use crate::command_handler::test_rpc_command;
+    use rsnano_rpc_messages::{RpcCommand, RpcError};
 
     #[tokio::test]
     async fn history_rpc_call() {
-        let node = Arc::new(Node::new_null());
-        let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
-        let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
-        let result = cmd_handler.handle(RpcCommand::account_history(
+        let cmd = RpcCommand::account_history(
             AccountHistoryArgs::build_for_account(Account::from(42), 3).finish(),
-        ));
-        let error = check_error(&result).unwrap_err();
-        assert_eq!(error, "Account not found");
+        );
+
+        let result: RpcError = test_rpc_command(cmd);
+
+        assert_eq!(result.error, "Account not found");
     }
 }

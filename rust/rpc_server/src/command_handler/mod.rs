@@ -247,3 +247,26 @@ fn requires_control(command: &RpcCommand) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+use serde::de::DeserializeOwned;
+
+#[cfg(test)]
+pub fn test_rpc_command<T>(cmd: RpcCommand) -> T
+where
+    T: DeserializeOwned,
+{
+    let node = Arc::new(Node::new_null());
+    test_rpc_command_with_node(cmd, node)
+}
+
+#[cfg(test)]
+pub fn test_rpc_command_with_node<T>(cmd: RpcCommand, node: Arc<Node>) -> T
+where
+    T: DeserializeOwned,
+{
+    let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
+    let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
+    let result = cmd_handler.handle(cmd);
+    serde_json::from_value(result).unwrap()
+}

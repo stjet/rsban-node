@@ -9,3 +9,21 @@ impl RpcCommandHandler {
         Ok(StartedResponse::new(true))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_node::Node;
+    use rsnano_rpc_messages::RpcCommand;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn keepalive() {
+        let node = Arc::new(Node::new_null());
+        let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
+        let cmd_handler = RpcCommandHandler::new(node, true, tx_stop);
+
+        let result = cmd_handler.handle(RpcCommand::keepalive("foobar.com", 123));
+        // TODO check result
+    }
+}

@@ -20,7 +20,6 @@ add_executable(
   ledger_confirm.cpp
   network.cpp
   node.cpp
-  object_stream.cpp
   optimistic_scheduler.cpp
   system.cpp
   telemetry.cpp

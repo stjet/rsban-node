@@ -1240,10 +1240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "daemon"
-version = "0.1.0"
-
-[[package]]
 name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3718,6 +3714,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsnano_daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rsnano_core",
+ "rsnano_node",
+ "rsnano_rpc_server",
+ "tokio",
+]
+
+[[package]]
 name = "rsnano_ffi"
 version = "0.1.0"
 dependencies = [
@@ -3855,6 +3862,7 @@ dependencies = [
  "clap 4.5.18",
  "rand",
  "rsnano_core",
+ "rsnano_daemon",
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",

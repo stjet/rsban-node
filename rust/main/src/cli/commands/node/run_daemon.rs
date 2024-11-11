@@ -1,13 +1,9 @@
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::{utils::get_cpu_count, Networks};
-use rsnano_node::{
-    config::{DaemonConfig, NodeFlags},
-    working_path_for, NodeBuilder, NodeExt,
-};
-use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
-use std::{path::PathBuf, str::FromStr, sync::Arc};
-use tokio::net::TcpListener;
+use rsnano_core::Networks;
+use rsnano_daemon::DaemonBuilder;
+use rsnano_node::config::NodeFlags;
+use std::{path::PathBuf, str::FromStr};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -105,41 +101,13 @@ pub(crate) struct RunDaemonArgs {
 impl RunDaemonArgs {
     pub(crate) async fn run_daemon(&self) -> Result<()> {
         init_tracing();
-
         let network = self.get_network()?;
-        let data_path = self.get_data_path(network)?;
-        let parallelism = get_cpu_count();
-        let daemon_config = DaemonConfig::load_from_data_path(network, parallelism, &data_path)?;
-        let rpc_config = RpcServerConfig::load_from_data_path(network, parallelism, &data_path)?;
-
-        let node = NodeBuilder::new(network)
-            .data_path(data_path)
-            .flags(self.get_flags())
-            .finish()
-            .unwrap();
-
-        let node = Arc::new(node);
-        node.start();
-
-        let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
-
-        if daemon_config.rpc_enable {
-            let socket_addr = rpc_config.listening_addr()?;
-            let listener = TcpListener::bind(socket_addr).await?;
-            run_rpc_server(
-                node.clone(),
-                listener,
-                rpc_config.enable_control,
-                tx_stop,
-                shutdown_signal(rx_stop),
-            )
-            .await?;
-        } else {
-            shutdown_signal(rx_stop).await;
-        };
-
-        node.stop();
-        Ok(())
+        let flags = self.get_flags();
+        let mut daemon = DaemonBuilder::new(network).flags(flags);
+        if let Some(path) = self.specified_data_path() {
+            daemon = daemon.data_path(path);
+        }
+        daemon.run(shutdown_signal()).await
     }
 
     pub fn specified_data_path(&self) -> Option<PathBuf> {
@@ -154,13 +122,6 @@ impl RunDaemonArgs {
             .map(|s| Networks::from_str(s).map_err(|e| anyhow!(e)))
             .transpose()
             .map(|n| n.unwrap_or(Networks::NanoLiveNetwork))
-    }
-
-    pub fn get_data_path(&self, network: Networks) -> anyhow::Result<PathBuf> {
-        self.specified_data_path()
-            .map(|p| Some(p))
-            .unwrap_or_else(|| working_path_for(network))
-            .ok_or_else(|| anyhow!("invalid network"))
     }
 
     pub(crate) fn get_flags(&self) -> NodeFlags {
@@ -208,7 +169,7 @@ impl RunDaemonArgs {
     }
 }
 
-async fn shutdown_signal(tx_stop: tokio::sync::oneshot::Receiver<()>) {
+async fn shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -229,7 +190,6 @@ async fn shutdown_signal(tx_stop: tokio::sync::oneshot::Receiver<()>) {
     tokio::select! {
         _ = ctrl_c => {},
         _ = terminate => {},
-        _ = tx_stop => {},
     }
 }
 

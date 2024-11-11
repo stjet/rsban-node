@@ -153,17 +153,18 @@ impl NodeBuilder {
         self
     }
 
+    pub fn get_data_path(&self) -> anyhow::Result<PathBuf> {
+        match &self.data_path {
+            Some(path) => Ok(path.clone()),
+            None => working_path_for(self.network).ok_or_else(|| anyhow!("working path not found")),
+        }
+    }
+
     pub fn finish(self) -> anyhow::Result<Node> {
+        let data_path = self.get_data_path()?;
         let runtime = self
             .runtime
             .unwrap_or_else(|| tokio::runtime::Handle::current());
-
-        let data_path = match self.data_path {
-            Some(path) => path,
-            None => {
-                working_path_for(self.network).ok_or_else(|| anyhow!("working path not found"))?
-            }
-        };
 
         let network_params = self
             .network_params
